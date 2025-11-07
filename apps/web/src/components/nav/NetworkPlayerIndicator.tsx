@@ -408,7 +408,10 @@ export function NetworkPlayerIndicator({
               {badge.icon && (
                 <span
                   aria-hidden
-                  style={{ fontSize: '14px', filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))' }}
+                  style={{
+                    fontSize: '14px',
+                    filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))',
+                  }}
                 >
                   {badge.icon}
                 </span>

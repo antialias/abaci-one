@@ -77,7 +77,14 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
       >
         {t('overview.goalTitle')}
       </h3>
-      <p className={css({ fontSize: '16px', lineHeight: '1.6', mb: '20px', color: '#374151' })}>
+      <p
+        className={css({
+          fontSize: '16px',
+          lineHeight: '1.6',
+          mb: '20px',
+          color: '#374151',
+        })}
+      >
         {t('overview.goal')}
       </p>
 
@@ -102,7 +109,14 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
         />
       </div>
 
-      <p className={css({ fontSize: '14px', color: '#6b7280', mb: '20px', fontStyle: 'italic' })}>
+      <p
+        className={css({
+          fontSize: '14px',
+          color: '#6b7280',
+          mb: '20px',
+          fontStyle: 'italic',
+        })}
+      >
         {t('overview.boardCaption')}
       </p>
 

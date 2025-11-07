@@ -60,7 +60,13 @@ function GamesPageContent() {
       slidesToScroll: 1,
       skipSnaps: false,
     },
-    [Autoplay({ delay: 4000, stopOnInteraction: true, stopOnMouseEnter: true })]
+    [
+      Autoplay({
+        delay: 4000,
+        stopOnInteraction: true,
+        stopOnMouseEnter: true,
+      }),
+    ]
   )
   const [gamesSelectedIndex, setGamesSelectedIndex] = useState(0)
 

@@ -895,7 +895,10 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           break
         // Local UI state actions
         case 'UPDATE_INPUT':
-          setLocalUIState((prev) => ({ ...prev, currentInput: action.input || '' }))
+          setLocalUIState((prev) => ({
+            ...prev,
+            currentInput: action.input || '',
+          }))
           break
         case 'PAUSE_RACE':
           setLocalUIState((prev) => ({ ...prev, isPaused: true }))
@@ -904,7 +907,10 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           setLocalUIState((prev) => ({ ...prev, isPaused: false }))
           break
         case 'SHOW_ADAPTIVE_FEEDBACK':
-          setLocalUIState((prev) => ({ ...prev, adaptiveFeedback: action.feedback }))
+          setLocalUIState((prev) => ({
+            ...prev,
+            adaptiveFeedback: action.feedback,
+          }))
           break
         case 'CLEAR_ADAPTIVE_FEEDBACK':
           setLocalUIState((prev) => ({ ...prev, adaptiveFeedback: null }))
@@ -978,7 +984,10 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         }
         case 'UPDATE_DIFFICULTY_TRACKER': {
           // Update local difficulty tracker state
-          setLocalUIState((prev) => ({ ...prev, difficultyTracker: action.tracker }))
+          setLocalUIState((prev) => ({
+            ...prev,
+            difficultyTracker: action.tracker,
+          }))
           break
         }
         // Other local actions that don't affect UI (can be ignored for now)

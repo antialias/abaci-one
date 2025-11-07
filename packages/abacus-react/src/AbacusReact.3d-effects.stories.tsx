@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { AbacusReact } from './AbacusReact';
-import React from 'react';
+import type { Meta, StoryObj } from "@storybook/react";
+import { AbacusReact } from "./AbacusReact";
+import React from "react";
 
 const meta: Meta<typeof AbacusReact> = {
-  title: 'Soroban/3D Effects Showcase',
+  title: "Soroban/3D Effects Showcase",
   component: AbacusReact,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component: `
@@ -26,11 +26,11 @@ Two levels of progressive 3D enhancement for the abacus to make interactions fee
 - Glossy/Satin/Matte bead materials
 - Wood grain textures on frame
 - Enhanced physics for realistic motion
-        `
-      }
-    }
+        `,
+      },
+    },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -41,11 +41,20 @@ type Story = StoryObj<typeof meta>;
 // ============================================
 
 export const CompareAllLevels: Story = {
-  name: '🎯 Compare All Levels',
+  name: "🎯 Compare All Levels",
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '60px', alignItems: 'center' }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "60px",
+        alignItems: "center",
+      }}
+    >
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>No Enhancement</h3>
+        <h3 style={{ marginBottom: "10px", textAlign: "center" }}>
+          No Enhancement
+        </h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -58,7 +67,7 @@ export const CompareAllLevels: Story = {
       </div>
 
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Subtle</h3>
+        <h3 style={{ marginBottom: "10px", textAlign: "center" }}>Subtle</h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -72,7 +81,9 @@ export const CompareAllLevels: Story = {
       </div>
 
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Realistic (Satin Beads + Wood Frame)</h3>
+        <h3 style={{ marginBottom: "10px", textAlign: "center" }}>
+          Realistic (Satin Beads + Wood Frame)
+        </h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -83,10 +94,10 @@ export const CompareAllLevels: Story = {
           scaleFactor={1.2}
           enhanced3d="realistic"
           material3d={{
-            heavenBeads: 'satin',
-            earthBeads: 'satin',
-            lighting: 'top-down',
-            woodGrain: true
+            heavenBeads: "satin",
+            earthBeads: "satin",
+            lighting: "top-down",
+            woodGrain: true,
           }}
         />
       </div>
@@ -95,10 +106,11 @@ export const CompareAllLevels: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Side-by-side comparison of both enhancement levels. **Click beads** to see how they move!'
-      }
-    }
-  }
+        story:
+          "Side-by-side comparison of both enhancement levels. **Click beads** to see how they move!",
+      },
+    },
+  },
 };
 
 // ============================================
@@ -106,24 +118,25 @@ export const CompareAllLevels: Story = {
 // ============================================
 
 export const Subtle_Basic: Story = {
-  name: '1️⃣ Subtle - Basic',
+  name: "1️⃣ Subtle - Basic",
   args: {
     value: 12345,
     columns: 5,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'place-value',
+    colorScheme: "place-value",
     scaleFactor: 1.2,
-    enhanced3d: 'subtle'
+    enhanced3d: "subtle",
   },
   parameters: {
     docs: {
       description: {
-        story: 'Subtle 3D with light perspective tilt and depth shadows. Click beads to interact!'
-      }
-    }
-  }
+        story:
+          "Subtle 3D with light perspective tilt and depth shadows. Click beads to interact!",
+      },
+    },
+  },
 };
 
 // ============================================
@@ -131,142 +144,156 @@ export const Subtle_Basic: Story = {
 // ============================================
 
 export const Realistic_GlossyBeads: Story = {
-  name: '2️⃣ Realistic - Glossy Beads',
+  name: "2️⃣ Realistic - Glossy Beads",
   args: {
     value: 7890,
     columns: 4,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'heaven-earth',
+    colorScheme: "heaven-earth",
     scaleFactor: 1.3,
-    enhanced3d: 'realistic',
+    enhanced3d: "realistic",
     material3d: {
-      heavenBeads: 'glossy',
-      earthBeads: 'glossy',
-      lighting: 'top-down'
-    }
+      heavenBeads: "glossy",
+      earthBeads: "glossy",
+      lighting: "top-down",
+    },
   },
   parameters: {
     docs: {
       description: {
-        story: '**Glossy material** with high shine and strong highlights. Notice the radial gradients on the beads!'
-      }
-    }
-  }
+        story:
+          "**Glossy material** with high shine and strong highlights. Notice the radial gradients on the beads!",
+      },
+    },
+  },
 };
 
 export const Realistic_SatinBeads: Story = {
-  name: '2️⃣ Realistic - Satin Beads',
+  name: "2️⃣ Realistic - Satin Beads",
   args: {
     value: 7890,
     columns: 4,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'heaven-earth',
+    colorScheme: "heaven-earth",
     scaleFactor: 1.3,
-    enhanced3d: 'realistic',
+    enhanced3d: "realistic",
     material3d: {
-      heavenBeads: 'satin',
-      earthBeads: 'satin',
-      lighting: 'top-down'
-    }
+      heavenBeads: "satin",
+      earthBeads: "satin",
+      lighting: "top-down",
+    },
   },
   parameters: {
     docs: {
       description: {
-        story: '**Satin material** (default) with balanced shine. Medium highlights, smooth appearance.'
-      }
-    }
-  }
+        story:
+          "**Satin material** (default) with balanced shine. Medium highlights, smooth appearance.",
+      },
+    },
+  },
 };
 
 export const Realistic_MatteBeads: Story = {
-  name: '2️⃣ Realistic - Matte Beads',
+  name: "2️⃣ Realistic - Matte Beads",
   args: {
     value: 7890,
     columns: 4,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'heaven-earth',
+    colorScheme: "heaven-earth",
     scaleFactor: 1.3,
-    enhanced3d: 'realistic',
+    enhanced3d: "realistic",
     material3d: {
-      heavenBeads: 'matte',
-      earthBeads: 'matte',
-      lighting: 'ambient'
-    }
+      heavenBeads: "matte",
+      earthBeads: "matte",
+      lighting: "ambient",
+    },
   },
   parameters: {
     docs: {
       description: {
-        story: '**Matte material** with subtle shading, no shine. Flat, understated appearance.'
-      }
-    }
-  }
+        story:
+          "**Matte material** with subtle shading, no shine. Flat, understated appearance.",
+      },
+    },
+  },
 };
 
 export const Realistic_MixedMaterials: Story = {
-  name: '2️⃣ Realistic - Mixed Materials',
+  name: "2️⃣ Realistic - Mixed Materials",
   args: {
     value: 5678,
     columns: 4,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'heaven-earth',
+    colorScheme: "heaven-earth",
     scaleFactor: 1.3,
-    enhanced3d: 'realistic',
+    enhanced3d: "realistic",
     material3d: {
-      heavenBeads: 'glossy',  // Heaven beads are shiny
-      earthBeads: 'matte',    // Earth beads are flat
-      lighting: 'dramatic'
-    }
+      heavenBeads: "glossy", // Heaven beads are shiny
+      earthBeads: "matte", // Earth beads are flat
+      lighting: "dramatic",
+    },
   },
   parameters: {
     docs: {
       description: {
-        story: '**Mixed materials**: Glossy heaven beads (5-value) + Matte earth beads (1-value). Different visual weight!'
-      }
-    }
-  }
+        story:
+          "**Mixed materials**: Glossy heaven beads (5-value) + Matte earth beads (1-value). Different visual weight!",
+      },
+    },
+  },
 };
 
 export const Realistic_WoodGrain: Story = {
-  name: '2️⃣ Realistic - Wood Grain Frame',
+  name: "2️⃣ Realistic - Wood Grain Frame",
   args: {
     value: 3456,
     columns: 4,
     showNumbers: true,
     interactive: true,
     animated: true,
-    colorScheme: 'monochrome',
+    colorScheme: "monochrome",
     scaleFactor: 1.3,
-    enhanced3d: 'realistic',
+    enhanced3d: "realistic",
     material3d: {
-      heavenBeads: 'satin',
-      earthBeads: 'satin',
-      lighting: 'top-down',
-      woodGrain: true  // Enable wood texture on frame
-    }
+      heavenBeads: "satin",
+      earthBeads: "satin",
+      lighting: "top-down",
+      woodGrain: true, // Enable wood texture on frame
+    },
   },
   parameters: {
     docs: {
       description: {
-        story: '**Wood grain texture** overlaid on the frame (rods and reckoning bar). Traditional soroban aesthetic!'
-      }
-    }
-  }
+        story:
+          "**Wood grain texture** overlaid on the frame (rods and reckoning bar). Traditional soroban aesthetic!",
+      },
+    },
+  },
 };
 
 export const Realistic_LightingComparison: Story = {
-  name: '2️⃣ Realistic - Lighting Comparison',
+  name: "2️⃣ Realistic - Lighting Comparison",
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', alignItems: 'center' }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "40px",
+        alignItems: "center",
+      }}
+    >
       <div>
-        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Top-Down Lighting</h4>
+        <h4 style={{ marginBottom: "10px", textAlign: "center" }}>
+          Top-Down Lighting
+        </h4>
         <AbacusReact
           value={999}
           columns={3}
@@ -277,15 +304,17 @@ export const Realistic_LightingComparison: Story = {
           scaleFactor={1.2}
           enhanced3d="realistic"
           material3d={{
-            heavenBeads: 'glossy',
-            earthBeads: 'glossy',
-            lighting: 'top-down'
+            heavenBeads: "glossy",
+            earthBeads: "glossy",
+            lighting: "top-down",
           }}
         />
       </div>
 
       <div>
-        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Ambient Lighting</h4>
+        <h4 style={{ marginBottom: "10px", textAlign: "center" }}>
+          Ambient Lighting
+        </h4>
         <AbacusReact
           value={999}
           columns={3}
@@ -296,15 +325,17 @@ export const Realistic_LightingComparison: Story = {
           scaleFactor={1.2}
           enhanced3d="realistic"
           material3d={{
-            heavenBeads: 'glossy',
-            earthBeads: 'glossy',
-            lighting: 'ambient'
+            heavenBeads: "glossy",
+            earthBeads: "glossy",
+            lighting: "ambient",
           }}
         />
       </div>
 
       <div>
-        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Dramatic Lighting</h4>
+        <h4 style={{ marginBottom: "10px", textAlign: "center" }}>
+          Dramatic Lighting
+        </h4>
         <AbacusReact
           value={999}
           columns={3}
@@ -315,9 +346,9 @@ export const Realistic_LightingComparison: Story = {
           scaleFactor={1.2}
           enhanced3d="realistic"
           material3d={{
-            heavenBeads: 'glossy',
-            earthBeads: 'glossy',
-            lighting: 'dramatic'
+            heavenBeads: "glossy",
+            earthBeads: "glossy",
+            lighting: "dramatic",
           }}
         />
       </div>
@@ -326,10 +357,11 @@ export const Realistic_LightingComparison: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Compare different **lighting styles**: top-down (balanced), ambient (soft all around), dramatic (strong directional).'
-      }
-    }
-  }
+        story:
+          "Compare different **lighting styles**: top-down (balanced), ambient (soft all around), dramatic (strong directional).",
+      },
+    },
+  },
 };
 
 // ============================================
@@ -337,35 +369,74 @@ export const Realistic_LightingComparison: Story = {
 // ============================================
 
 export const Playground: Story = {
-  name: '🎮 Interactive Playground',
+  name: "🎮 Interactive Playground",
   render: () => {
-    const [level, setLevel] = React.useState<'subtle' | 'realistic'>('realistic');
-    const [material, setMaterial] = React.useState<'glossy' | 'satin' | 'matte'>('glossy');
-    const [lighting, setLighting] = React.useState<'top-down' | 'ambient' | 'dramatic'>('dramatic');
+    const [level, setLevel] = React.useState<"subtle" | "realistic">(
+      "realistic",
+    );
+    const [material, setMaterial] = React.useState<
+      "glossy" | "satin" | "matte"
+    >("glossy");
+    const [lighting, setLighting] = React.useState<
+      "top-down" | "ambient" | "dramatic"
+    >("dramatic");
     const [woodGrain, setWoodGrain] = React.useState(true);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '20px',
-          padding: '20px',
-          background: '#f5f5f5',
-          borderRadius: '8px',
-          maxWidth: '500px'
-        }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "30px",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "20px",
+            padding: "20px",
+            background: "#f5f5f5",
+            borderRadius: "8px",
+            maxWidth: "500px",
+          }}
+        >
           <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Enhancement Level</label>
-            <select value={level} onChange={e => setLevel(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              Enhancement Level
+            </label>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as any)}
+              style={{ width: "100%", padding: "5px" }}
+            >
               <option value="subtle">Subtle</option>
               <option value="realistic">Realistic</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Bead Material</label>
-            <select value={material} onChange={e => setMaterial(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              Bead Material
+            </label>
+            <select
+              value={material}
+              onChange={(e) => setMaterial(e.target.value as any)}
+              style={{ width: "100%", padding: "5px" }}
+            >
               <option value="glossy">Glossy</option>
               <option value="satin">Satin</option>
               <option value="matte">Matte</option>
@@ -373,8 +444,20 @@ export const Playground: Story = {
           </div>
 
           <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Lighting</label>
-            <select value={lighting} onChange={e => setLighting(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              Lighting
+            </label>
+            <select
+              value={lighting}
+              onChange={(e) => setLighting(e.target.value as any)}
+              style={{ width: "100%", padding: "5px" }}
+            >
               <option value="top-down">Top-Down</option>
               <option value="ambient">Ambient</option>
               <option value="dramatic">Dramatic</option>
@@ -382,8 +465,14 @@ export const Playground: Story = {
           </div>
 
           <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <input type="checkbox" checked={woodGrain} onChange={e => setWoodGrain(e.target.checked)} />
+            <label
+              style={{ display: "flex", alignItems: "center", gap: "5px" }}
+            >
+              <input
+                type="checkbox"
+                checked={woodGrain}
+                onChange={(e) => setWoodGrain(e.target.checked)}
+              />
               <span>Wood Grain</span>
             </label>
           </div>
@@ -403,12 +492,13 @@ export const Playground: Story = {
             heavenBeads: material,
             earthBeads: material,
             lighting: lighting,
-            woodGrain: woodGrain
+            woodGrain: woodGrain,
           }}
         />
 
-        <p style={{ maxWidth: '500px', textAlign: 'center', color: '#666' }}>
-          Click beads to interact! Try different combinations above to find your favorite look and feel.
+        <p style={{ maxWidth: "500px", textAlign: "center", color: "#666" }}>
+          Click beads to interact! Try different combinations above to find your
+          favorite look and feel.
         </p>
       </div>
     );
@@ -416,8 +506,9 @@ export const Playground: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Experiment with all the 3D options! Mix and match materials, lighting, and physics to find your perfect configuration.'
-      }
-    }
-  }
+        story:
+          "Experiment with all the 3D options! Mix and match materials, lighting, and physics to find your perfect configuration.",
+      },
+    },
+  },
 };

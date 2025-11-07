@@ -114,6 +114,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
+# Copy blog content (markdown files)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/content ./apps/web/content
+
 # Copy Panda CSS generated styles
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/styled-system ./apps/web/styled-system
 

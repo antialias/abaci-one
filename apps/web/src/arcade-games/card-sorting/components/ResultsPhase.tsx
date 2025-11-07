@@ -259,7 +259,10 @@ export function ResultsPhase() {
           width: { base: '100%', md: '400px' },
           background: 'rgba(255, 255, 255, 0.95)',
           borderLeft: { base: 'none', md: '3px solid rgba(59, 130, 246, 0.3)' },
-          borderBottom: { base: '3px solid rgba(59, 130, 246, 0.3)', md: 'none' },
+          borderBottom: {
+            base: '3px solid rgba(59, 130, 246, 0.3)',
+            md: 'none',
+          },
           padding: { base: '12px', md: '40px' },
           overflow: 'auto',
           display: 'flex',
@@ -604,7 +607,8 @@ export function ResultsPhase() {
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>🎮 </span>Play
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>🎮 </span>
+            Play
           </button>
 
           <button
@@ -629,7 +633,8 @@ export function ResultsPhase() {
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>⚙️ </span>Settings
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>⚙️ </span>
+            Settings
           </button>
 
           <button
@@ -654,7 +659,8 @@ export function ResultsPhase() {
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>🚪 </span>Exit
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>🚪 </span>
+            Exit
           </button>
         </div>
       </div>

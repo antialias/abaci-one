@@ -7,12 +7,14 @@
 **Purpose:** The main arcade landing page - displays the "Champion Arena"
 
 **Key Components:**
+
 - `ArcadeContent()` - Renders the main arcade interface
   - Uses `EnhancedChampionArena` component which contains `GameSelector`
   - The `GameSelector` displays all available games as cards
   - `GameSelector` includes both legacy games and registry games
-  
+
 **Current Flow:**
+
 1. User navigates to `/arcade`
 2. Page renders `FullscreenProvider` wrapper
 3. Displays `PageWithNav` with title "🏟️ Champion Arena"
@@ -23,6 +25,7 @@
 8. For legacy games, URL would be direct to their page
 
 **State Management:**
+
 - `GameModeContext` provides player selection (emoji, name, color)
 - `PageWithNav` wraps content and provides mini-nav with:
   - Active player list
@@ -39,10 +42,12 @@
 **Three States:**
 
 ### State 1: Loading
+
 - Shows "Loading room..." message
 - Waits for `useRoomData()` hook to resolve
 
 ### State 2: Game Selection UI (when `!roomData.gameName`)
+
 - Shows large game selection buttons
 - User clicks to select a game
 - Calls `setRoomGame()` mutation to save selection to room
@@ -53,8 +58,9 @@
   4. Game selection is persisted to the room database
 
 ### State 3: Game Display (when `roomData.gameName` is set)
+
 - Checks game registry first via `hasGame(roomData.gameName)`
-- If registry game: 
+- If registry game:
   - Gets game definition via `getGame(roomData.gameName)`
   - Renders: `<Provider><GameComponent /></Provider>`
   - Provider and GameComponent come from game registry definition
@@ -63,11 +69,13 @@
   - Currently only shows "Game not yet supported"
 
 **Key Hook:**
+
 - `useRoomData()` - Fetches current room from API and subscribes to socket updates
   - Returns `roomData` with fields: `id`, `name`, `code`, `gameName`, `gameConfig`, `members`, `memberPlayers`
   - Also returns `isLoading` boolean
 
 **Navigation Flow:**
+
 1. User navigates to `/arcade`
 2. `GameCard` onClick calls `router.push('/arcade/room?game={gameName}')`
 3. User arrives at `/arcade/room`
@@ -83,6 +91,7 @@
 The "mini app nav" is actually a sophisticated component within the `PageWithNav` wrapper that intelligently shows different UI based on context:
 
 **Components & Props:**
+
 - `navTitle` - Current page title (e.g., "Champion Arena", "Choose Game", "Speed Complement Race")
 - `navEmoji` - Icon emoji for current page
 - `gameMode` - Computed from active player count: 'none' | 'single' | 'battle' | 'tournament'
@@ -96,6 +105,7 @@ The "mini app nav" is actually a sophisticated component within the `PageWithNav
 **Three Display Modes:**
 
 ### Mode 1: Fullscreen Player Selection
+
 - When `showFullscreenSelection === true`
 - Displays:
   - Large title with emoji
@@ -104,6 +114,7 @@ The "mini app nav" is actually a sophisticated component within the `PageWithNav
   - Shows all inactive players for selection
 
 ### Mode 2: Solo Mode (NOT in room)
+
 - When `roomInfo` is undefined
 - Shows:
   - **Game Title Section** (left side):
@@ -115,6 +126,7 @@ The "mini app nav" is actually a sophisticated component within the `PageWithNav
     - `AddPlayerButton` - add more players
 
 ### Mode 3: Room Mode (IN a room)
+
 - When `roomInfo` is defined
 - Shows:
   - **Hidden:** Game title section (display: none)
@@ -128,6 +140,7 @@ The "mini app nav" is actually a sophisticated component within the `PageWithNav
     - Add player button (for local players only)
 
 **Key Sub-Components:**
+
 - `GameTitleMenu` - Menu for game options (setup, new game, quit)
 - `GameModeIndicator` - Shows 🎯 Solo, ⚔️ Battle, 🏆 Tournament, 👥 Select
 - `RoomInfo` - Displays room metadata
@@ -138,6 +151,7 @@ The "mini app nav" is actually a sophisticated component within the `PageWithNav
 - `PendingInvitations` - Banner for room invitations
 
 **State Management:**
+
 - Lifted from `PageWithNav` to preserve state across remounts:
   - `showPopover` / `setShowPopover` - AddPlayerButton popover state
   - `activeTab` / `setActiveTab` - 'add' or 'invite' tab selection
@@ -182,6 +196,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/GameSelector.tsx` (lines 1-112)
 
 **How It Works:**
+
 1. `GameSelector` component gets all games from both sources:
    - Legacy `GAMES_CONFIG` (currently empty)
    - Registry games via `getAllGames()`
@@ -198,6 +213,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 **Two Game Systems:**
 
 ### Registry Games (NEW - Modular)
+
 - Location: `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/arcade-games/`
 - File: `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/lib/arcade/game-registry.ts`
 - Examples: `complement-race`, `memory-quiz`, `matching`
@@ -205,12 +221,14 @@ User B: Sees same game selection (if set) or game selector (if not set)
 - Games registered globally via `registerGame()` function
 
 ### Legacy Games (OLD)
+
 - Location: Directly in `/app/arcade/` directory
 - Examples: `/app/arcade/complement-race/page.tsx`
 - Currently, only complement-race is partially migrated
 - Direct URL structure: `/arcade/{gameName}/page.tsx`
 
 **Game Config Structure (for display):**
+
 ```javascript
 {
   name: string,              // Display name
@@ -231,9 +249,11 @@ User B: Sees same game selection (if set) or game selector (if not set)
 ## 6. Key Components Summary
 
 ### PageWithNav - Main Layout Wrapper
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/PageWithNav.tsx` (lines 1-192)
 
 **Responsibilities:**
+
 - Wraps all game/arcade pages
 - Manages GameContextNav state (mini-nav)
 - Handles player configuration dialog
@@ -241,6 +261,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 - Renders top navigation bar via `AppNavBar`
 
 **Key Props:**
+
 - `navTitle` - Passed to GameContextNav
 - `navEmoji` - Passed to GameContextNav
 - `gameName` - Internal game name for API
@@ -250,13 +271,16 @@ User B: Sees same game selection (if set) or game selector (if not set)
 - `children` - Page content
 
 ### AppNavBar - Top Navigation Bar
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/AppNavBar.tsx` (lines 1-625)
 
 **Variants:**
+
 - `full` - Standard navigation (default for non-game pages)
 - `minimal` - Game navigation (auto-selected for `/arcade` and `/games`)
 
 **Minimal Nav Features:**
+
 - Hamburger menu (left) with:
   - Site navigation (Home, Create, Guide, Games)
   - Controls (Fullscreen, Exit Arcade)
@@ -265,26 +289,32 @@ User B: Sees same game selection (if set) or game selector (if not set)
 - Fullscreen indicator badge
 
 ### EnhancedChampionArena - Main Arcade Display
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/EnhancedChampionArena.tsx` (lines 1-40)
 
 **Responsibilities:**
+
 - Container for game selector
 - Full-height flex layout
 - Passes configuration to `GameSelector`
 
 ### GameSelector - Game Grid
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/GameSelector.tsx` (lines 1-112)
 
 **Responsibilities:**
+
 - Fetches all games from registry
 - Arranges in responsive grid
 - Shows header "🎮 Available Games"
 - Renders GameCard for each game
 
 ### GameCard - Individual Game Button
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/components/GameCard.tsx` (lines 1-241)
 
 **Responsibilities:**
+
 - Displays game with icon, name, description
 - Shows feature chips and player count indicator
 - Validates player count against game requirements
@@ -294,21 +324,25 @@ User B: Sees same game selection (if set) or game selector (if not set)
 ## 7. State Management
 
 ### GameModeContext
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/contexts/GameModeContext.tsx` (lines 1-325)
 
 **Manages:**
+
 - Local players (Map<string, Player>)
 - Active players (Set<string>)
 - Game mode (computed from active player count)
 - Player CRUD operations (add, update, remove)
 
 **Key Features:**
+
 - Fetches players from user's local DB via `useUserPlayers()`
 - Creates 4 default players if none exist
 - When in room: merges room members' players (marked as isLocal: false)
 - Syncs to room members via `notifyRoomOfPlayerUpdate()`
 
 **Computed Values:**
+
 - `activePlayerCount` - Size of activePlayers set
 - `gameMode`:
   - 1 player → 'single'
@@ -316,15 +350,18 @@ User B: Sees same game selection (if set) or game selector (if not set)
   - 3+ players → 'tournament'
 
 ### useRoomData Hook
+
 **File:** `/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/hooks/useRoomData.ts` (lines 1-450+)
 
 **Manages:**
+
 - Current room fetching via TanStack Query
 - Socket.io real-time updates
 - Room state (members, players, game name)
 - Moderation events (kicked, banned, invitations)
 
 **Key Operations:**
+
 - `fetchCurrentRoom()` - GET `/api/arcade/rooms/current`
 - `createRoomApi()` - POST `/api/arcade/rooms`
 - `joinRoomApi()` - POST `/api/arcade/rooms/{id}/join`
@@ -332,6 +369,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 - `setRoomGame()` - Updates room's gameName and gameConfig
 
 **Socket Events:**
+
 - `join-user-channel` - Personal notifications
 - `join-room` - Subscribe to room updates
 - `room-joined` - Refresh when entering room
@@ -360,21 +398,22 @@ User B: Sees same game selection (if set) or game selector (if not set)
 ```
 
 **Query Parameters:**
+
 - `/arcade/room?game={gameName}` - Optional game selection (parsed by GameCard)
 
 ## 9. Key Differences: /arcade vs /arcade/room
 
-| Aspect | /arcade | /arcade/room |
-|--------|---------|--------------|
-| **Purpose** | Game selection hub | Active game display or selection within room |
-| **Displays** | GameSelector with all games | Selected game OR game selector if no game in room |
-| **Room Context** | Optional (can start solo) | Usually in a room (fetches via useRoomData) |
-| **Navigation** | Click game → /arcade/room | Click game → Saves to room → Displays game |
-| **GameContextNav** | Shows player selector | Shows room info when joined |
-| **Player State** | Local only | Local + remote (room members) |
-| **Exit Button** | Usually hidden | Shows "Exit Session" to return to /arcade |
-| **Socket Connection** | Optional | Always connected (in room) |
-| **Page Transition** | User controls | Driven by room state updates |
+| Aspect                | /arcade                     | /arcade/room                                      |
+| --------------------- | --------------------------- | ------------------------------------------------- |
+| **Purpose**           | Game selection hub          | Active game display or selection within room      |
+| **Displays**          | GameSelector with all games | Selected game OR game selector if no game in room |
+| **Room Context**      | Optional (can start solo)   | Usually in a room (fetches via useRoomData)       |
+| **Navigation**        | Click game → /arcade/room   | Click game → Saves to room → Displays game        |
+| **GameContextNav**    | Shows player selector       | Shows room info when joined                       |
+| **Player State**      | Local only                  | Local + remote (room members)                     |
+| **Exit Button**       | Usually hidden              | Shows "Exit Session" to return to /arcade         |
+| **Socket Connection** | Optional                    | Always connected (in room)                        |
+| **Page Transition**   | User controls               | Driven by room state updates                      |
 
 ## 10. Planning the Merge (/arcade/room → /arcade)
 
@@ -414,6 +453,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 **Merge Strategy Options:**
 
 ### Option A: Single Route with Modes
+
 ```
 /arcade
 ├── Mode: browse (default, show GameSelector)
@@ -422,6 +462,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 ```
 
 ### Option B: Sub-routes
+
 ```
 /arcade
 ├── /arcade (selector)
@@ -430,6 +471,7 @@ User B: Sees same game selection (if set) or game selector (if not set)
 ```
 
 ### Option C: Query-Parameter Driven
+
 ```
 /arcade
 ├── /arcade (default - selector)

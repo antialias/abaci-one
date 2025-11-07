@@ -265,7 +265,10 @@ export function validateHarmony(
 
     // Check for duplicates
     if (a === m || m === b || a === b) {
-      return { valid: false, reason: 'Harmony cannot contain duplicate values' }
+      return {
+        valid: false,
+        reason: 'Harmony cannot contain duplicate values',
+      }
     }
 
     // Try all three proportion types
@@ -293,7 +296,10 @@ export function findPossibleHarmonies(
   color: Color,
   layoutMode: HarmonyLayoutMode = 'adjacent'
 ): Array<{ pieceIds: string[]; validation: HarmonyValidationResult }> {
-  const results: Array<{ pieceIds: string[]; validation: HarmonyValidationResult }> = []
+  const results: Array<{
+    pieceIds: string[]
+    validation: HarmonyValidationResult
+  }> = []
 
   // Get all live pieces for this color in enemy half
   const candidatePieces = Object.values(pieces).filter(

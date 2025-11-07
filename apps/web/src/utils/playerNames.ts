@@ -143,7 +143,10 @@ function selectWordListTier(emoji: string, wordType: 'adjectives' | 'nouns'): st
   }
 
   // Global abacus tier (25% preference)
-  availableTiers.push({ weight: 25, words: wordType === 'adjectives' ? ADJECTIVES : NOUNS })
+  availableTiers.push({
+    weight: 25,
+    words: wordType === 'adjectives' ? ADJECTIVES : NOUNS,
+  })
 
   // Weighted random selection
   const totalWeight = availableTiers.reduce((sum, tier) => sum + tier.weight, 0)

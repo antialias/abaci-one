@@ -213,7 +213,10 @@ export function ModerationPanel({
       const res = await fetch(`/api/arcade/rooms/${roomId}/ban`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: banTargetUserId, reason: selectedBanReason }),
+        body: JSON.stringify({
+          userId: banTargetUserId,
+          reason: selectedBanReason,
+        }),
       })
 
       if (!res.ok) {
@@ -671,7 +674,8 @@ export function ModerationPanel({
                         fontWeight: '700',
                       }}
                     >
-                      {pendingReports.length} report{pendingReports.length > 1 ? 's' : ''}
+                      {pendingReports.length} report
+                      {pendingReports.length > 1 ? 's' : ''}
                     </span>
                   )}
                 </span>
@@ -717,7 +721,13 @@ export function ModerationPanel({
         )}
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(156, 163, 175, 1)' }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '40px',
+              color: 'rgba(156, 163, 175, 1)',
+            }}
+          >
             Loading...
           </div>
         ) : (
@@ -736,7 +746,13 @@ export function ModerationPanel({
                     No other members
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                    }}
+                  >
                     {otherMembers.map((member) => {
                       const memberReports = reportsByUser[member.userId] || []
                       const hasReports = memberReports.length > 0
@@ -810,7 +826,12 @@ export function ModerationPanel({
                                   </span>
                                 )}
                               </div>
-                              <div style={{ fontSize: '12px', color: 'rgba(156, 163, 175, 1)' }}>
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: 'rgba(156, 163, 175, 1)',
+                                }}
+                              >
                                 {member.isOnline ? '🟢 Online' : '⚫ Offline'}
                               </div>
                             </div>
@@ -893,7 +914,11 @@ export function ModerationPanel({
                                   }}
                                 >
                                   <div style={{ marginBottom: '2px' }}>
-                                    <strong style={{ color: 'rgba(252, 165, 165, 1)' }}>
+                                    <strong
+                                      style={{
+                                        color: 'rgba(252, 165, 165, 1)',
+                                      }}
+                                    >
                                       {report.reporterName}:
                                     </strong>{' '}
                                     {report.reason.replace(/-/g, ' ')}
@@ -935,7 +960,13 @@ export function ModerationPanel({
                     No banned users
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
                     {bans.map((ban) => {
                       const isConfirming = confirmingUnbanUserId === ban.userId
 
@@ -972,7 +1003,12 @@ export function ModerationPanel({
                               >
                                 {ban.userName}
                               </div>
-                              <div style={{ fontSize: '12px', color: 'rgba(156, 163, 175, 1)' }}>
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: 'rgba(156, 163, 175, 1)',
+                                }}
+                              >
                                 {ban.reason.replace(/-/g, ' ')}
                               </div>
                               {ban.notes && (
@@ -1044,7 +1080,11 @@ export function ModerationPanel({
                                 This player will be able to rejoin the room.
                               </div>
                               <div
-                                style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
+                                style={{
+                                  display: 'flex',
+                                  gap: '8px',
+                                  justifyContent: 'flex-end',
+                                }}
                               >
                                 <button
                                   type="button"
@@ -1132,10 +1172,26 @@ export function ModerationPanel({
                         string,
                         { label: string; emoji: string; color: string }
                       > = {
-                        active: { label: 'Active', emoji: '🟢', color: 'rgba(34, 197, 94, 1)' },
-                        banned: { label: 'Banned', emoji: '🚫', color: 'rgba(239, 68, 68, 1)' },
-                        kicked: { label: 'Kicked', emoji: '👢', color: 'rgba(251, 146, 60, 1)' },
-                        left: { label: 'Left', emoji: '👋', color: 'rgba(156, 163, 175, 1)' },
+                        active: {
+                          label: 'Active',
+                          emoji: '🟢',
+                          color: 'rgba(34, 197, 94, 1)',
+                        },
+                        banned: {
+                          label: 'Banned',
+                          emoji: '🚫',
+                          color: 'rgba(239, 68, 68, 1)',
+                        },
+                        kicked: {
+                          label: 'Kicked',
+                          emoji: '👢',
+                          color: 'rgba(251, 146, 60, 1)',
+                        },
+                        left: {
+                          label: 'Left',
+                          emoji: '👋',
+                          color: 'rgba(156, 163, 175, 1)',
+                        },
                       }
 
                       const config = statusConfig[statusFilter]
@@ -1161,7 +1217,13 @@ export function ModerationPanel({
                           </div>
 
                           {/* Members in this status */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                            }}
+                          >
                             {filteredMembers.map((member) => {
                               const isConfirmingUnbanInvite =
                                 confirmingUnbanInviteUserId === member.userId
@@ -1226,7 +1288,12 @@ export function ModerationPanel({
 
                                     {/* Actions */}
                                     {!isConfirmingUnbanInvite && (
-                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          gap: '8px',
+                                        }}
+                                      >
                                         {!member.isCurrentlyInRoom && !member.isBanned && (
                                           <button
                                             type="button"
@@ -1425,7 +1492,13 @@ export function ModerationPanel({
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '24px',
+                }}
+              >
                 {/* Access Mode Section */}
                 <div>
                   <div
@@ -1459,17 +1532,42 @@ export function ModerationPanel({
                       }}
                     >
                       {[
-                        { value: 'open', emoji: '🌐', label: 'Open', desc: 'Anyone' },
-                        { value: 'password', emoji: '🔑', label: 'Password', desc: 'With key' },
-                        { value: 'approval-only', emoji: '✋', label: 'Approval', desc: 'Request' },
+                        {
+                          value: 'open',
+                          emoji: '🌐',
+                          label: 'Open',
+                          desc: 'Anyone',
+                        },
+                        {
+                          value: 'password',
+                          emoji: '🔑',
+                          label: 'Password',
+                          desc: 'With key',
+                        },
+                        {
+                          value: 'approval-only',
+                          emoji: '✋',
+                          label: 'Approval',
+                          desc: 'Request',
+                        },
                         {
                           value: 'restricted',
                           emoji: '🚫',
                           label: 'Restricted',
                           desc: 'Invite only',
                         },
-                        { value: 'locked', emoji: '🔒', label: 'Locked', desc: 'No new members' },
-                        { value: 'retired', emoji: '🏁', label: 'Retired', desc: 'Closed' },
+                        {
+                          value: 'locked',
+                          emoji: '🔒',
+                          label: 'Locked',
+                          desc: 'No new members',
+                        },
+                        {
+                          value: 'retired',
+                          emoji: '🏁',
+                          label: 'Retired',
+                          desc: 'Closed',
+                        },
                       ].map((mode) => (
                         <button
                           key={mode.value}
@@ -1517,7 +1615,13 @@ export function ModerationPanel({
                           }}
                         >
                           <span style={{ fontSize: '18px' }}>{mode.emoji}</span>
-                          <div style={{ textAlign: 'left', flex: 1, lineHeight: '1.2' }}>
+                          <div
+                            style={{
+                              textAlign: 'left',
+                              flex: 1,
+                              lineHeight: '1.2',
+                            }}
+                          >
                             <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
                             <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
                           </div>
@@ -1665,7 +1769,13 @@ export function ModerationPanel({
                       🙋 Pending Join Requests
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
                       {joinRequests
                         .filter((r: any) => r.status === 'pending')
                         .map((request: any) => (
@@ -1934,7 +2044,13 @@ export function ModerationPanel({
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginTop: '20px',
+          }}
+        >
           <button
             type="button"
             onClick={hasUnsavedAccessModeChanges ? undefined : onClose}
@@ -2104,7 +2220,13 @@ export function ModerationPanel({
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+              }}
+            >
               <Dialog.Close asChild>
                 <button
                   type="button"

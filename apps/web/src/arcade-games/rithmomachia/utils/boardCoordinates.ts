@@ -70,7 +70,10 @@ export function getSquareCorner(square: string, layout: BoardLayout): BoardPosit
  * @param layout - Board layout configuration
  * @returns Total width and height in pixels
  */
-export function getBoardDimensions(layout: BoardLayout): { width: number; height: number } {
+export function getBoardDimensions(layout: BoardLayout): {
+  width: number
+  height: number
+} {
   const boardSize = 8 * layout.cellSize + 7 * layout.gap
   return {
     width: boardSize + 2 * layout.padding,

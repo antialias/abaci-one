@@ -49,14 +49,34 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
       >
         {t('harmony.title')}
       </h3>
-      <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '8px', color: '#374151' })}>
+      <p
+        className={css({
+          fontSize: '15px',
+          lineHeight: '1.6',
+          mb: '8px',
+          color: '#374151',
+        })}
+      >
         {t('harmony.intro')}
       </p>
-      <p className={css({ fontSize: '14px', lineHeight: '1.6', mb: '24px', color: '#6b7280' })}>
+      <p
+        className={css({
+          fontSize: '14px',
+          lineHeight: '1.6',
+          mb: '24px',
+          color: '#6b7280',
+        })}
+      >
         {t('harmony.introDetail')}
       </p>
 
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px',
+        })}
+      >
         {/* Arithmetic Progression */}
         <div
           className={css({
@@ -67,11 +87,23 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           })}
         >
           <h4
-            className={css({ fontSize: '18px', fontWeight: 'bold', color: '#15803d', mb: '8px' })}
+            className={css({
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#15803d',
+              mb: '8px',
+            })}
           >
             {t('harmony.arithmetic')}
           </h4>
-          <p className={css({ fontSize: '14px', color: '#166534', mb: '12px', lineHeight: '1.6' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              color: '#166534',
+              mb: '12px',
+              lineHeight: '1.6',
+            })}
+          >
             {t('harmony.arithmeticDesc')}
           </p>
 
@@ -106,7 +138,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               {t('harmony.arithmeticFormula')}
             </p>
 
-            <div className={css({ fontSize: '13px', color: '#166534', lineHeight: '1.8' })}>
+            <div
+              className={css({
+                fontSize: '13px',
+                color: '#166534',
+                lineHeight: '1.8',
+              })}
+            >
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
                 {t('harmony.example')} 6, 9, 12
               </p>
@@ -117,7 +155,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             </div>
           </div>
 
-          <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              mb: '12px',
+            })}
+          >
             <RithmomachiaBoard
               pieces={arithmeticExample}
               scale={0.4}
@@ -163,11 +207,23 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           })}
         >
           <h4
-            className={css({ fontSize: '18px', fontWeight: 'bold', color: '#92400e', mb: '8px' })}
+            className={css({
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#92400e',
+              mb: '8px',
+            })}
           >
             {t('harmony.geometric')}
           </h4>
-          <p className={css({ fontSize: '14px', color: '#78350f', mb: '12px', lineHeight: '1.6' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              color: '#78350f',
+              mb: '12px',
+              lineHeight: '1.6',
+            })}
+          >
             {t('harmony.geometricDesc')}
           </p>
 
@@ -202,7 +258,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               {t('harmony.geometricFormula')}
             </p>
 
-            <div className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8' })}>
+            <div
+              className={css({
+                fontSize: '13px',
+                color: '#78350f',
+                lineHeight: '1.8',
+              })}
+            >
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
                 {t('harmony.example')} 4, 8, 16
               </p>
@@ -213,7 +275,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             </div>
           </div>
 
-          <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              mb: '12px',
+            })}
+          >
             <RithmomachiaBoard
               pieces={geometricExample}
               scale={0.4}
@@ -259,11 +327,23 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           })}
         >
           <h4
-            className={css({ fontSize: '18px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}
+            className={css({
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#1e40af',
+              mb: '8px',
+            })}
           >
             {t('harmony.harmonic')}
           </h4>
-          <p className={css({ fontSize: '14px', color: '#1e3a8a', mb: '12px', lineHeight: '1.6' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              color: '#1e3a8a',
+              mb: '12px',
+              lineHeight: '1.6',
+            })}
+          >
             {t('harmony.harmonicDesc')}
           </p>
 
@@ -298,7 +378,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               {t('harmony.harmonicFormula')}
             </p>
 
-            <div className={css({ fontSize: '13px', color: '#1e3a8a', lineHeight: '1.8' })}>
+            <div
+              className={css({
+                fontSize: '13px',
+                color: '#1e3a8a',
+                lineHeight: '1.8',
+              })}
+            >
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
                 {t('harmony.example')} 6, 8, 12
               </p>
@@ -306,7 +392,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             </div>
           </div>
 
-          <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              mb: '12px',
+            })}
+          >
             <RithmomachiaBoard
               pieces={harmonicExample}
               scale={0.4}
@@ -356,15 +448,32 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {t('harmony.strategyTitle')}
         </h3>
 
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          })}
+        >
           {/* Start with 2, Add the Third */}
           <div>
             <h4
-              className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
+              className={css({
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: '#374151',
+                mb: '8px',
+              })}
             >
               {t('harmony.startWith2Title')}
             </h4>
-            <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+              })}
+            >
               {t('harmony.startWith2')}
             </p>
           </div>
@@ -372,11 +481,22 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {/* Use Common Values */}
           <div>
             <h4
-              className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
+              className={css({
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: '#374151',
+                mb: '8px',
+              })}
             >
               {t('harmony.useCommonTitle')}
             </h4>
-            <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+              })}
+            >
               {t('harmony.useCommon')}
             </p>
           </div>
@@ -384,11 +504,22 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {/* Protect the Line */}
           <div>
             <h4
-              className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
+              className={css({
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: '#374151',
+                mb: '8px',
+              })}
             >
               {t('harmony.protectTitle')}
             </h4>
-            <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+              })}
+            >
               {t('harmony.protect')}
             </p>
           </div>
@@ -396,11 +527,22 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {/* Block Opponent's Harmonies */}
           <div>
             <h4
-              className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
+              className={css({
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: '#374151',
+                mb: '8px',
+              })}
             >
               {t('harmony.blockTitle')}
             </h4>
-            <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+              })}
+            >
               {t('harmony.block')}
             </p>
           </div>
@@ -408,11 +550,22 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {/* Calculate Before You Declare */}
           <div>
             <h4
-              className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
+              className={css({
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: '#374151',
+                mb: '8px',
+              })}
             >
               {t('harmony.calculateTitle')}
             </h4>
-            <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+              })}
+            >
               {t('harmony.calculate')}
             </p>
           </div>

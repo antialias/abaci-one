@@ -52,15 +52,15 @@ CREATE INDEX player_stats_last_played_idx ON player_stats(last_played_at);
 ```typescript
 type PerGameStats = {
   [gameName: string]: {
-    gamesPlayed: number
-    wins: number
-    losses: number
-    bestTime: number | null
-    highestAccuracy: number
-    averageScore: number
-    lastPlayed: number  // timestamp
-  }
-}
+    gamesPlayed: number;
+    wins: number;
+    losses: number;
+    bestTime: number | null;
+    highestAccuracy: number;
+    averageScore: number;
+    lastPlayed: number; // timestamp
+  };
+};
 ```
 
 #### Keep `user_stats`?
@@ -68,6 +68,7 @@ type PerGameStats = {
 **Decision**: Deprecate `user_stats` table. All stats are now per-player.
 
 **Reasoning**:
+
 - Users can have multiple players
 - Aggregate "user level" stats can be computed by summing player stats
 - Simpler mental model: players compete, players have stats
@@ -94,99 +95,99 @@ type PerGameStats = {
  */
 export interface GameResult {
   // Game identification
-  gameType: string  // e.g., "matching", "complement-race", "memory-quiz"
+  gameType: string; // e.g., "matching", "complement-race", "memory-quiz"
 
   // Player results (for multiplayer, array of results)
-  playerResults: PlayerGameResult[]
+  playerResults: PlayerGameResult[];
 
   // Game metadata
-  completedAt: number  // timestamp
-  duration: number     // milliseconds
+  completedAt: number; // timestamp
+  duration: number; // milliseconds
 
   // Optional game-specific data
   metadata?: {
     // For cooperative games (Memory Quiz, Card Sorting collaborative)
-    isTeamVictory?: boolean  // All players share win/loss
+    isTeamVictory?: boolean; // All players share win/loss
 
     // For specific win conditions (Rithmomachia)
-    winCondition?: string  // e.g., "HARMONY", "POINTS", "TIMEOUT"
+    winCondition?: string; // e.g., "HARMONY", "POINTS", "TIMEOUT"
 
     // For game modes
-    gameMode?: string  // e.g., "solo", "competitive", "cooperative"
+    gameMode?: string; // e.g., "solo", "competitive", "cooperative"
 
     // Extensible for other game-specific info
-    [key: string]: unknown
-  }
+    [key: string]: unknown;
+  };
 }
 
 export interface PlayerGameResult {
-  playerId: string
+  playerId: string;
 
   // Outcome
-  won: boolean  // For cooperative: all players have same value
-  placement?: number  // 1st, 2nd, 3rd place (for tournaments with 3+ players)
+  won: boolean; // For cooperative: all players have same value
+  placement?: number; // 1st, 2nd, 3rd place (for tournaments with 3+ players)
 
   // Performance
-  score?: number
-  accuracy?: number  // 0.0 - 1.0
-  completionTime?: number  // milliseconds (player-specific)
+  score?: number;
+  accuracy?: number; // 0.0 - 1.0
+  completionTime?: number; // milliseconds (player-specific)
 
   // Game-specific metrics (stored as JSON in DB)
   metrics?: {
     // Matching
-    moves?: number
-    matchedPairs?: number
-    difficulty?: number
+    moves?: number;
+    matchedPairs?: number;
+    difficulty?: number;
 
     // Complement Race
-    streak?: number
-    correctAnswers?: number
-    totalQuestions?: number
+    streak?: number;
+    correctAnswers?: number;
+    totalQuestions?: number;
 
     // Memory Quiz
-    correct?: number
-    incorrect?: number
+    correct?: number;
+    incorrect?: number;
 
     // Card Sorting
-    exactMatches?: number
-    inversions?: number
-    lcsLength?: number
+    exactMatches?: number;
+    inversions?: number;
+    lcsLength?: number;
 
     // Rithmomachia
-    capturedPieces?: number
-    points?: number
+    capturedPieces?: number;
+    points?: number;
 
     // Extensible for future games
-    [key: string]: unknown
-  }
+    [key: string]: unknown;
+  };
 }
 
 /**
  * Stats update returned from API
  */
 export interface StatsUpdate {
-  playerId: string
-  previousStats: PlayerStats
-  newStats: PlayerStats
+  playerId: string;
+  previousStats: PlayerStats;
+  newStats: PlayerStats;
   changes: {
-    gamesPlayed: number
-    wins: number
-    losses: number
-  }
+    gamesPlayed: number;
+    wins: number;
+    losses: number;
+  };
 }
 
 export interface PlayerStats {
-  playerId: string
-  gamesPlayed: number
-  totalWins: number
-  totalLosses: number
-  bestTime: number | null
-  highestAccuracy: number
-  favoriteGameType: string | null
-  gameStats: PerGameStats
-  lastPlayedAt: number | null
-  createdAt: number
-  updatedAt: number
+  playerId: string;
+  gamesPlayed: number;
+  totalWins: number;
+  totalLosses: number;
+  bestTime: number | null;
+  highestAccuracy: number;
+  favoriteGameType: string | null;
+  gameStats: PerGameStats;
+  lastPlayedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
 }
 ```
 
@@ -197,13 +198,15 @@ export interface PlayerStats {
 Records a game result and updates player stats.
 
 **Request:**
+
 ```typescript
 {
-  gameResult: GameResult
+  gameResult: GameResult;
 }
 ```
 
 **Response:**
+
 ```typescript
 {
   success: true,
@@ -212,6 +215,7 @@ Records a game result and updates player stats.
 ```
 
 **Logic:**
+
 1. Validate game result structure
 2. For each player result:
    - Fetch or create player_stats record
@@ -228,26 +232,27 @@ Records a game result and updates player stats.
 3. Return updates for all players
 
 **Example pseudo-code**:
+
 ```typescript
 for (const playerResult of gameResult.playerResults) {
-  const stats = await getPlayerStats(playerResult.playerId)
+  const stats = await getPlayerStats(playerResult.playerId);
 
-  stats.gamesPlayed++
+  stats.gamesPlayed++;
 
   // Handle cooperative games specially
   if (gameResult.metadata?.isTeamVictory !== undefined) {
     // Cooperative: all players share outcome
     if (playerResult.won) {
-      stats.totalWins++
+      stats.totalWins++;
     } else {
-      stats.totalLosses++
+      stats.totalLosses++;
     }
   } else {
     // Competitive/Solo: individual outcome
     if (playerResult.won) {
-      stats.totalWins++
+      stats.totalWins++;
     } else {
-      stats.totalLosses++
+      stats.totalLosses++;
     }
   }
 
@@ -260,9 +265,10 @@ for (const playerResult of gameResult.playerResults) {
 Fetch stats for a specific player.
 
 **Response:**
+
 ```typescript
 {
-  stats: PlayerStats
+  stats: PlayerStats;
 }
 ```
 
@@ -271,6 +277,7 @@ Fetch stats for a specific player.
 Fetch stats for all current user's players.
 
 **Response:**
+
 ```typescript
 {
   playerStats: PlayerStats[]
@@ -286,38 +293,38 @@ Main hook that games use to record results.
 ```typescript
 // src/hooks/useRecordGameResult.ts
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { GameResult, StatsUpdate } from '@/lib/arcade/stats/types'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { GameResult, StatsUpdate } from "@/lib/arcade/stats/types";
 
 export function useRecordGameResult() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (gameResult: GameResult): Promise<StatsUpdate[]> => {
-      const res = await fetch('/api/player-stats/record-game', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/player-stats/record-game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gameResult }),
-      })
+      });
 
-      if (!res.ok) throw new Error('Failed to record game result')
+      if (!res.ok) throw new Error("Failed to record game result");
 
-      const data = await res.json()
-      return data.updates
+      const data = await res.json();
+      return data.updates;
     },
 
     onSuccess: (updates) => {
       // Invalidate player stats queries to trigger refetch
-      queryClient.invalidateQueries({ queryKey: ['player-stats'] })
+      queryClient.invalidateQueries({ queryKey: ["player-stats"] });
 
       // Show success feedback (optional)
-      console.log('✅ Game result recorded:', updates)
+      console.log("✅ Game result recorded:", updates);
     },
 
     onError: (error) => {
-      console.error('❌ Failed to record game result:', error)
+      console.error("❌ Failed to record game result:", error);
     },
-  })
+  });
 }
 ```
 
@@ -328,24 +335,24 @@ Fetch stats for a player (or all players if no ID).
 ```typescript
 // src/hooks/usePlayerStats.ts
 
-import { useQuery } from '@tanstack/react-query'
-import type { PlayerStats } from '@/lib/arcade/stats/types'
+import { useQuery } from "@tanstack/react-query";
+import type { PlayerStats } from "@/lib/arcade/stats/types";
 
 export function usePlayerStats(playerId?: string) {
   return useQuery({
-    queryKey: playerId ? ['player-stats', playerId] : ['player-stats'],
+    queryKey: playerId ? ["player-stats", playerId] : ["player-stats"],
     queryFn: async (): Promise<PlayerStats | PlayerStats[]> => {
       const url = playerId
         ? `/api/player-stats/${playerId}`
-        : '/api/player-stats'
+        : "/api/player-stats";
 
-      const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to fetch player stats')
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch player stats");
 
-      const data = await res.json()
-      return playerId ? data.stats : data.playerStats
+      const data = await res.json();
+      return playerId ? data.stats : data.playerStats;
     },
-  })
+  });
 }
 ```
 
@@ -408,6 +415,7 @@ export function ResultsPhase() {
    - Add type exports
 
 2. **Generate migration**
+
    ```bash
    npx drizzle-kit generate:sqlite
    ```
@@ -484,14 +492,17 @@ export function ResultsPhase() {
 ### Handling Existing `user_stats`
 
 **Option A: Drop the table**
+
 - Simple, clean break
 - No historical data
 
 **Option B: Migrate to player stats**
+
 - For each user with stats, assign to their first/active player
 - More complex but preserves history
 
 **Recommendation**: Option A (drop it) since:
+
 - Very new feature, unlikely much data exists
 - Cleaner architecture
 - Users can rebuild stats by playing

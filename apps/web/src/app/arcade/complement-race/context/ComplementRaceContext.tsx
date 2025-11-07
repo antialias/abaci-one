@@ -44,9 +44,21 @@ const initialStations: Station[] = [
   { id: 'station-0', name: 'Depot', position: 0, icon: '🏭', emoji: '🏭' },
   { id: 'station-1', name: 'Riverside', position: 20, icon: '🌊', emoji: '🌊' },
   { id: 'station-2', name: 'Hillside', position: 40, icon: '⛰️', emoji: '⛰️' },
-  { id: 'station-3', name: 'Canyon View', position: 60, icon: '🏜️', emoji: '🏜️' },
+  {
+    id: 'station-3',
+    name: 'Canyon View',
+    position: 60,
+    icon: '🏜️',
+    emoji: '🏜️',
+  },
   { id: 'station-4', name: 'Meadows', position: 80, icon: '🌾', emoji: '🌾' },
-  { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️', emoji: '🏛️' },
+  {
+    id: 'station-5',
+    name: 'Grand Central',
+    position: 100,
+    icon: '🏛️',
+    emoji: '🏛️',
+  },
 ]
 
 const initialState: GameState = {

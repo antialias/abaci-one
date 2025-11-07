@@ -143,7 +143,11 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                 >
                   Room Name{' '}
                   <span
-                    style={{ fontWeight: '400', color: 'rgba(156, 163, 175, 1)', fontSize: '12px' }}
+                    style={{
+                      fontWeight: '400',
+                      color: 'rgba(156, 163, 175, 1)',
+                      fontSize: '12px',
+                    }}
                   >
                     (optional)
                   </span>
@@ -185,7 +189,11 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                 >
                   🎮 Choose Your Game{' '}
                   <span
-                    style={{ fontWeight: '400', color: 'rgba(156, 163, 175, 1)', fontSize: '12px' }}
+                    style={{
+                      fontWeight: '400',
+                      color: 'rgba(156, 163, 175, 1)',
+                      fontSize: '12px',
+                    }}
                   >
                     (optional)
                   </span>
@@ -315,10 +323,21 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                           }}
                         >
                           <Select.ItemText>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                              }}
+                            >
                               <span style={{ fontSize: '20px' }}>✨</span>
                               <div>
-                                <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                                <div
+                                  style={{
+                                    fontWeight: '500',
+                                    fontSize: '14px',
+                                  }}
+                                >
                                   Choose later
                                 </div>
                                 <div
@@ -385,7 +404,13 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                               }}
                             >
                               <Select.ItemText>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                  }}
+                                >
                                   <span style={{ fontSize: '28px' }}>{game.manifest.icon}</span>
                                   <div style={{ flex: 1 }}>
                                     <div
@@ -496,12 +521,38 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                 >
                   Who Can Join
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                  }}
+                >
                   {[
-                    { value: 'open', emoji: '🌐', label: 'Open', desc: 'Anyone' },
-                    { value: 'password', emoji: '🔑', label: 'Password', desc: 'With key' },
-                    { value: 'approval-only', emoji: '✋', label: 'Approval', desc: 'Request' },
-                    { value: 'restricted', emoji: '🚫', label: 'Restricted', desc: 'Invite only' },
+                    {
+                      value: 'open',
+                      emoji: '🌐',
+                      label: 'Open',
+                      desc: 'Anyone',
+                    },
+                    {
+                      value: 'password',
+                      emoji: '🔑',
+                      label: 'Password',
+                      desc: 'With key',
+                    },
+                    {
+                      value: 'approval-only',
+                      emoji: '✋',
+                      label: 'Approval',
+                      desc: 'Request',
+                    },
+                    {
+                      value: 'restricted',
+                      emoji: '🚫',
+                      label: 'Restricted',
+                      desc: 'Invite only',
+                    },
                   ].map((mode) => (
                     <button
                       key={mode.value}
@@ -549,7 +600,13 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                       }}
                     >
                       <span style={{ fontSize: '18px' }}>{mode.emoji}</span>
-                      <div style={{ textAlign: 'left', flex: 1, lineHeight: '1.2' }}>
+                      <div
+                        style={{
+                          textAlign: 'left',
+                          flex: 1,
+                          lineHeight: '1.2',
+                        }}
+                      >
                         <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
                         <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
                       </div>
@@ -749,7 +806,14 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
               )}
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  width: '100%',
+                  marginTop: '8px',
+                }}
+              >
                 <button
                   type="button"
                   onClick={handleClose}

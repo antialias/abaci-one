@@ -273,7 +273,12 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
                   >
                     <strong>{roomInfo?.name}</strong>
                   </p>
-                  <p style={{ fontSize: '13px', color: 'rgba(156, 163, 175, 1)' }}>
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'rgba(156, 163, 175, 1)',
+                    }}
+                  >
                     Code: {roomInfo?.code}
                   </p>
                 </div>
@@ -336,7 +341,12 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
                   >
                     <strong>{roomInfo?.name}</strong>
                   </p>
-                  <p style={{ fontSize: '13px', color: 'rgba(156, 163, 175, 1)' }}>
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'rgba(156, 163, 175, 1)',
+                    }}
+                  >
                     Code: {roomInfo?.code}
                   </p>
                 </div>

@@ -7,6 +7,7 @@ The `useAbacusState` hook has been **deprecated** in favor of the new `useAbacus
 ## Why Migrate?
 
 ### Problems with `useAbacusState` (deprecated)
+
 - ❌ Uses **array indices** for columns (0=leftmost, requires totalColumns)
 - ❌ Requires threading `totalColumns` through component tree
 - ❌ Index math creates confusion: `columnIndex = totalColumns - 1 - placeValue`
@@ -14,6 +15,7 @@ The `useAbacusState` hook has been **deprecated** in favor of the new `useAbacus
 - ❌ No support for BigInt (large numbers >15 digits)
 
 ### Benefits of `useAbacusPlaceStates` (new)
+
 - ✅ Uses **place values** directly (0=ones, 1=tens, 2=hundreds)
 - ✅ Native semantic meaning, no index conversion needed
 - ✅ Cleaner architecture with `Map<PlaceValue, State>`
@@ -26,17 +28,18 @@ The `useAbacusState` hook has been **deprecated** in favor of the new `useAbacus
 ### 1. Update Hook Usage
 
 **Before (deprecated):**
+
 ```tsx
-import { useAbacusState } from '@soroban/abacus-react';
+import { useAbacusState } from "@soroban/abacus-react";
 
 function MyComponent() {
   const {
     value,
     setValue,
-    columnStates,  // Array of column states
+    columnStates, // Array of column states
     getColumnState,
     setColumnState,
-    toggleBead
+    toggleBead,
   } = useAbacusState(123, 5); // totalColumns=5
 
   // Need to calculate indices
@@ -48,17 +51,18 @@ function MyComponent() {
 ```
 
 **After (new):**
+
 ```tsx
-import { useAbacusPlaceStates } from '@soroban/abacus-react';
+import { useAbacusPlaceStates } from "@soroban/abacus-react";
 
 function MyComponent() {
   const {
     value,
     setValue,
-    placeStates,   // Map<PlaceValue, PlaceState>
+    placeStates, // Map<PlaceValue, PlaceState>
     getPlaceState,
     setPlaceState,
-    toggleBeadAtPlace
+    toggleBeadAtPlace,
   } = useAbacusPlaceStates(123, 4); // maxPlaceValue=4 (0-4 = 5 columns)
 
   // Direct place value access - no index math!
@@ -72,6 +76,7 @@ function MyComponent() {
 ### 2. Update State Access Patterns
 
 **Before (array indexing):**
+
 ```tsx
 // Get state for tens column (need to know position in array)
 const tensIndex = columnStates.length - 2; // second from right
@@ -79,6 +84,7 @@ const tensState = columnStates[tensIndex];
 ```
 
 **After (place value):**
+
 ```tsx
 // Get state for tens place - no calculation needed!
 const tensState = getPlaceState(1); // 1 = tens place
@@ -87,32 +93,35 @@ const tensState = getPlaceState(1); // 1 = tens place
 ### 3. Update State Manipulation
 
 **Before:**
+
 ```tsx
 // Toggle bead in ones column (need BeadConfig with column index)
 toggleBead({
-  type: 'earth',
+  type: "earth",
   value: 1,
   active: false,
   position: 2,
-  placeValue: 0 // This was confusing - had place value BUT operated on column index
+  placeValue: 0, // This was confusing - had place value BUT operated on column index
 });
 ```
 
 **After:**
+
 ```tsx
 // Toggle bead at ones place - clean and semantic
 toggleBeadAtPlace({
-  type: 'earth',
+  type: "earth",
   value: 1,
   active: false,
   position: 2,
-  placeValue: 0 // Now actually used as place value!
+  placeValue: 0, // Now actually used as place value!
 });
 ```
 
 ### 4. Update Iteration Logic
 
 **Before (array iteration):**
+
 ```tsx
 columnStates.forEach((state, columnIndex) => {
   const placeValue = columnStates.length - 1 - columnIndex; // Manual conversion
@@ -121,6 +130,7 @@ columnStates.forEach((state, columnIndex) => {
 ```
 
 **After (Map iteration):**
+
 ```tsx
 placeStates.forEach((state, placeValue) => {
   console.log(`Place ${placeValue}:`, state); // Direct access, no conversion!
@@ -134,15 +144,15 @@ placeStates.forEach((state, placeValue) => {
 ```typescript
 function useAbacusState(
   initialValue?: number,
-  targetColumns?: number
+  targetColumns?: number,
 ): {
   value: number;
   setValue: (newValue: number) => void;
-  columnStates: ColumnState[];      // Array
+  columnStates: ColumnState[]; // Array
   getColumnState: (columnIndex: number) => ColumnState;
   setColumnState: (columnIndex: number, state: ColumnState) => void;
   toggleBead: (bead: BeadConfig) => void;
-}
+};
 ```
 
 ### useAbacusPlaceStates (new)
@@ -150,15 +160,15 @@ function useAbacusState(
 ```typescript
 function useAbacusPlaceStates(
   controlledValue?: number | bigint,
-  maxPlaceValue?: ValidPlaceValues
+  maxPlaceValue?: ValidPlaceValues,
 ): {
   value: number | bigint;
   setValue: (newValue: number | bigint) => void;
-  placeStates: PlaceStatesMap;      // Map
+  placeStates: PlaceStatesMap; // Map
   getPlaceState: (place: ValidPlaceValues) => PlaceState;
   setPlaceState: (place: ValidPlaceValues, state: PlaceState) => void;
   toggleBeadAtPlace: (bead: BeadConfig) => void;
-}
+};
 ```
 
 ## Complete Example
@@ -166,8 +176,8 @@ function useAbacusPlaceStates(
 ### Before: Array-based (deprecated)
 
 ```tsx
-import { useState } from 'react';
-import { useAbacusState, AbacusReact } from '@soroban/abacus-react';
+import { useState } from "react";
+import { useAbacusState, AbacusReact } from "@soroban/abacus-react";
 
 function DeprecatedExample() {
   const { value, setValue, columnStates } = useAbacusState(0, 3);
@@ -179,7 +189,8 @@ function DeprecatedExample() {
     const current = columnStates[tensColumnIndex];
 
     // Increment tens digit
-    const currentTensValue = (current.heavenActive ? 5 : 0) + current.earthActive;
+    const currentTensValue =
+      (current.heavenActive ? 5 : 0) + current.earthActive;
     const newTensValue = (currentTensValue + 1) % 10;
     setValue(value + 10);
   };
@@ -196,8 +207,8 @@ function DeprecatedExample() {
 ### After: Place-value based (new)
 
 ```tsx
-import { useState } from 'react';
-import { useAbacusPlaceStates, AbacusReact } from '@soroban/abacus-react';
+import { useState } from "react";
+import { useAbacusPlaceStates, AbacusReact } from "@soroban/abacus-react";
 
 function NewExample() {
   const { value, setValue, getPlaceState } = useAbacusPlaceStates(0, 2);
@@ -207,10 +218,11 @@ function NewExample() {
     const tensState = getPlaceState(1); // 1 = tens
 
     // Increment tens digit
-    const currentTensValue = (tensState.heavenActive ? 5 : 0) + tensState.earthActive;
+    const currentTensValue =
+      (tensState.heavenActive ? 5 : 0) + tensState.earthActive;
     const newTensValue = (currentTensValue + 1) % 10;
 
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       setValue(value + 10);
     } else {
       setValue(value + 10n);
@@ -233,7 +245,7 @@ The new hook supports BigInt for numbers exceeding JavaScript's safe integer lim
 ```tsx
 const { value, setValue } = useAbacusPlaceStates(
   123456789012345678901234567890n, // BigInt!
-  29 // 30 digits (place values 0-29)
+  29, // 30 digits (place values 0-29)
 );
 
 console.log(typeof value); // "bigint"
@@ -245,10 +257,10 @@ The new hook uses branded types and strict typing:
 
 ```tsx
 import type {
-  ValidPlaceValues,  // 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+  ValidPlaceValues, // 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   PlaceState,
-  PlaceStatesMap
-} from '@soroban/abacus-react';
+  PlaceStatesMap,
+} from "@soroban/abacus-react";
 
 // Type-safe place value access
 const onesState: PlaceState = getPlaceState(0);
@@ -267,20 +279,21 @@ const invalidState = getPlaceState(15); // Error if maxPlaceValue < 15
 ## Getting Help
 
 If you encounter issues during migration:
+
 1. Check the [README.md](./README.md) for updated examples
 2. Review [Storybook stories](./src) for usage patterns
 3. Open an issue at https://github.com/anthropics/claude-code/issues
 
 ## Summary
 
-| Feature | useAbacusState (old) | useAbacusPlaceStates (new) |
-|---------|---------------------|---------------------------|
-| Architecture | Array-based columns | Map-based place values |
-| Index math | Required | Not needed |
-| Semantic meaning | Indirect | Direct |
-| BigInt support | ❌ No | ✅ Yes |
-| Type safety | Basic | Enhanced |
-| Column threading | Required | Not required |
-| **Status** | ⚠️ Deprecated | ✅ Recommended |
+| Feature          | useAbacusState (old) | useAbacusPlaceStates (new) |
+| ---------------- | -------------------- | -------------------------- |
+| Architecture     | Array-based columns  | Map-based place values     |
+| Index math       | Required             | Not needed                 |
+| Semantic meaning | Indirect             | Direct                     |
+| BigInt support   | ❌ No                | ✅ Yes                     |
+| Type safety      | Basic                | Enhanced                   |
+| Column threading | Required             | Not required               |
+| **Status**       | ⚠️ Deprecated        | ✅ Recommended             |
 
 **Bottom line:** The new hook eliminates complexity and makes your code more maintainable. Migration is straightforward - primarily renaming and removing index calculations.

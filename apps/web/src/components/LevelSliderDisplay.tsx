@@ -677,7 +677,12 @@ export function LevelSliderDisplay({
                             : {},
                         })}
                       >
-                        <span className={css({ fontSize: sizing.iconSize, lineHeight: '1' })}>
+                        <span
+                          className={css({
+                            fontSize: sizing.iconSize,
+                            lineHeight: '1',
+                          })}
+                        >
                           {section.icon}
                         </span>
                         {hasData && section.digits && (

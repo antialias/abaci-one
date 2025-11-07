@@ -98,7 +98,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
       >
         {t('strategy.title')}
       </h3>
-      <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '24px', color: '#374151' })}>
+      <p
+        className={css({
+          fontSize: '15px',
+          lineHeight: '1.6',
+          mb: '24px',
+          color: '#374151',
+        })}
+      >
         {t('strategy.intro')}
       </p>
 
@@ -115,7 +122,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
         {t('strategy.openingPrinciples.title')}
       </h4>
 
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px', mb: '20px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          mb: '20px',
+        })}
+      >
         <div
           className={css({
             p: '12px',
@@ -124,7 +138,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
             border: '1px solid #86efac',
           })}
         >
-          <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#15803d', mb: '4px' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#15803d',
+              mb: '4px',
+            })}
+          >
             {t('strategy.openingPrinciples.controlCenter.title')}
           </p>
           <p className={css({ fontSize: '13px', color: '#166534' })}>
@@ -139,7 +160,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
             border: '1px solid #86efac',
           })}
         >
-          <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#15803d', mb: '4px' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#15803d',
+              mb: '4px',
+            })}
+          >
             {t('strategy.openingPrinciples.developCircles.title')}
           </p>
           <p className={css({ fontSize: '13px', color: '#166534' })}>
@@ -154,7 +182,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
             border: '1px solid #86efac',
           })}
         >
-          <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#15803d', mb: '4px' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#15803d',
+              mb: '4px',
+            })}
+          >
             {t('strategy.openingPrinciples.protectPyramid.title')}
           </p>
           <p className={css({ fontSize: '13px', color: '#166534' })}>
@@ -169,7 +204,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
             border: '1px solid #86efac',
           })}
         >
-          <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#15803d', mb: '4px' })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#15803d',
+              mb: '4px',
+            })}
+          >
             {t('strategy.openingPrinciples.knowNumbers.title')}
           </p>
           <p className={css({ fontSize: '13px', color: '#166534' })}>
@@ -188,7 +230,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '12px',
+          })}
+        >
           Example: Good Opening Position
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -236,7 +285,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.midGame.helperNetworks.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -253,7 +309,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.midGame.createThreats.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -270,7 +333,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.midGame.thinkDefensively.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -287,7 +357,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.midGame.exchangeWhenAhead.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -305,7 +382,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '12px',
+          })}
+        >
           Example: Helper Network
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -341,7 +425,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '12px',
+          })}
+        >
           Example: Defensive Positioning
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -389,7 +480,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.victoryPaths.harmony.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '8px' })}>
@@ -397,13 +495,19 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
         </p>
         <ul className={css({ fontSize: '13px', color: '#6b7280', pl: '20px' })}>
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.victoryPaths.harmony.arithmetic') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.victoryPaths.harmony.arithmetic'),
+            }}
           />
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.victoryPaths.harmony.geometric') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.victoryPaths.harmony.geometric'),
+            }}
           />
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.victoryPaths.harmony.harmonic') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.victoryPaths.harmony.harmonic'),
+            }}
           />
         </ul>
       </div>
@@ -417,7 +521,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.victoryPaths.exhaustion.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -434,7 +545,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('strategy.victoryPaths.points.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280' })}>
@@ -452,7 +570,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #86efac',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#15803d', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#15803d',
+            mb: '12px',
+          })}
+        >
           Example: Arithmetic Harmony Setup
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -489,21 +614,43 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           borderRadius: '4px',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#991b1b', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#991b1b',
+            mb: '8px',
+          })}
+        >
           {t('strategy.commonMistakes.title')}
         </p>
-        <ul className={css({ fontSize: '14px', color: '#7f1d1d', lineHeight: '1.6', pl: '20px' })}>
+        <ul
+          className={css({
+            fontSize: '14px',
+            color: '#7f1d1d',
+            lineHeight: '1.6',
+            pl: '20px',
+          })}
+        >
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.commonMistakes.movingWithoutCalc') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.commonMistakes.movingWithoutCalc'),
+            }}
           />
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.commonMistakes.ignoringGeometry') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.commonMistakes.ignoringGeometry'),
+            }}
           />
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.commonMistakes.neglectingHarmony') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.commonMistakes.neglectingHarmony'),
+            }}
           />
           <li
-            dangerouslySetInnerHTML={{ __html: t.raw('strategy.commonMistakes.exposingPyramid') }}
+            dangerouslySetInnerHTML={{
+              __html: t.raw('strategy.commonMistakes.exposingPyramid'),
+            }}
           />
         </ul>
       </div>
@@ -518,7 +665,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #fca5a5',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#991b1b', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#991b1b',
+            mb: '12px',
+          })}
+        >
           Example: Exposed Pyramid
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -554,7 +708,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid #fca5a5',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#991b1b', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#991b1b',
+            mb: '12px',
+          })}
+        >
           Example: Pieces Too Close
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
@@ -602,7 +763,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid rgba(139, 92, 246, 0.3)',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#5b21b6', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#5b21b6',
+            mb: '8px',
+          })}
+        >
           {t('strategy.advanced.sacrifices.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b21a8' })}>
@@ -619,7 +787,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid rgba(139, 92, 246, 0.3)',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#5b21b6', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#5b21b6',
+            mb: '8px',
+          })}
+        >
           {t('strategy.advanced.pyramidFaces.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b21a8' })}>
@@ -636,7 +811,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid rgba(139, 92, 246, 0.3)',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#5b21b6', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#5b21b6',
+            mb: '8px',
+          })}
+        >
           {t('strategy.advanced.tempo.title')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b21a8' })}>
@@ -654,7 +836,14 @@ export function StrategySection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           border: '2px solid rgba(139, 92, 246, 0.3)',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#5b21b6', mb: '12px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#5b21b6',
+            mb: '12px',
+          })}
+        >
           Example: Tempo Play
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>

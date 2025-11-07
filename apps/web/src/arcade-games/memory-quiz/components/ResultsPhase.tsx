@@ -166,7 +166,11 @@ export function ResultsPhase() {
                 // Group players by userId
                 const userTeams = new Map<
                   string,
-                  { userId: string; players: any[]; score: { correct: number; incorrect: number } }
+                  {
+                    userId: string
+                    players: any[]
+                    score: { correct: number; incorrect: number }
+                  }
                 >()
 
                 console.log('🏆 [ResultsPhase] Building leaderboard:', {
@@ -189,7 +193,10 @@ export function ResultsPhase() {
                     userTeams.set(userId, {
                       userId,
                       players: [],
-                      score: state.playerScores?.[userId] || { correct: 0, incorrect: 0 },
+                      score: state.playerScores?.[userId] || {
+                        correct: 0,
+                        incorrect: 0,
+                      },
                     })
                   }
                   userTeams.get(userId)!.players.push(metadata)
@@ -232,7 +239,13 @@ export function ResultsPhase() {
                             marginBottom: '10px',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                            }}
+                          >
                             <span style={{ fontSize: '24px', minWidth: '32px' }}>
                               {index === 0
                                 ? '🏆'
@@ -242,7 +255,12 @@ export function ResultsPhase() {
                                     ? '🥉'
                                     : `${index + 1}.`}
                             </span>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                              }}
+                            >
                               <span
                                 style={{
                                   fontWeight: 'bold',
@@ -384,7 +402,11 @@ export function ResultsPhase() {
                 // Group players by userId
                 const userTeams = new Map<
                   string,
-                  { userId: string; players: any[]; score: { correct: number; incorrect: number } }
+                  {
+                    userId: string
+                    players: any[]
+                    score: { correct: number; incorrect: number }
+                  }
                 >()
 
                 console.log('🤝 [ResultsPhase] Building team contributions:', {
@@ -407,7 +429,10 @@ export function ResultsPhase() {
                     userTeams.set(userId, {
                       userId,
                       players: [],
-                      score: state.playerScores?.[userId] || { correct: 0, incorrect: 0 },
+                      score: state.playerScores?.[userId] || {
+                        correct: 0,
+                        incorrect: 0,
+                      },
                     })
                   }
                   userTeams.get(userId)!.players.push(metadata)
@@ -440,8 +465,20 @@ export function ResultsPhase() {
                           marginBottom: '8px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '16px',
+                              fontWeight: '600',
+                              color: '#6b7280',
+                            }}
+                          >
                             Team {index + 1}
                           </span>
                         </div>

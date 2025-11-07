@@ -69,7 +69,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
     if (player.userId === viewerId) {
       console.log('[Deactivate Player API] ERROR: Cannot deactivate your own players')
       return NextResponse.json(
-        { error: 'Cannot deactivate your own players. Use the player controls in the nav.' },
+        {
+          error: 'Cannot deactivate your own players. Use the player controls in the nav.',
+        },
         { status: 400 }
       )
     }

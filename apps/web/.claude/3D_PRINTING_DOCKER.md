@@ -5,6 +5,7 @@
 The 3D printable abacus customization feature is fully containerized with optimized Docker multi-stage builds.
 
 **Key Technologies:**
+
 - OpenSCAD 2021.01 (for rendering STL/3MF from .scad files)
 - BOSL2 v2.0.0 (minimized library, .scad files only)
 - Typst v0.11.1 (pre-built binary)
@@ -86,6 +87,7 @@ RUN mkdir -p /bosl2 && \
 ```
 
 **Purpose:** Clone BOSL2 and aggressively minimize by removing:
+
 - `.git` directory
 - Tests, tutorials, examples
 - Documentation (markdown files)
@@ -111,6 +113,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ```
 
 **Removed from runner:**
+
 - ❌ git (only needed in bosl2-builder)
 - ❌ wget (only needed in typst-builder)
 - ❌ curl (not needed at runtime)
@@ -159,16 +162,19 @@ These files are NOT excluded by `.dockerignore`.
 ### Local Testing
 
 1. **Build the Docker image:**
+
    ```bash
    docker build -t soroban-abacus-test .
    ```
 
 2. **Run the container:**
+
    ```bash
    docker run -p 3000:3000 soroban-abacus-test
    ```
 
 3. **Test OpenSCAD inside the container:**
+
    ```bash
    docker exec -it <container-id> sh
    openscad --version
@@ -225,12 +231,14 @@ docker run -p 3000:3000 \
 The final image is Debian-based (required for OpenSCAD), but optimized using multi-stage builds:
 
 **Before optimization (original Debian approach):**
+
 - Base runner: ~250MB
 - With all build tools (git, wget, curl, xz-utils): ~290MB
 - With BOSL2 (full): ~295MB
 - **Total: ~295MB**
 
 **After optimization (current multi-stage approach):**
+
 - Base runner: ~250MB
 - Runtime deps only (no build tools): ~250MB
 - BOSL2 (minimized, .scad only): ~252MB
@@ -260,6 +268,7 @@ This trade-off (Debian vs Alpine) is necessary for OpenSCAD availability, but th
 If you see "openscad: command not found" in logs:
 
 1. Verify OpenSCAD is installed:
+
    ```bash
    docker exec -it <container-id> which openscad
    docker exec -it <container-id> openscad --version
@@ -275,6 +284,7 @@ If you see "openscad: command not found" in logs:
 If OpenSCAD reports "Can't open library 'BOSL2/std.scad'":
 
 1. Check BOSL2 exists:
+
    ```bash
    docker exec -it <container-id> ls /usr/share/openscad/libraries/BOSL2/std.scad
    ```

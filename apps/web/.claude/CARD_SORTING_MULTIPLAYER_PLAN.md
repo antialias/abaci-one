@@ -1,6 +1,7 @@
 # Card Sorting: Multiplayer & Spectator Features Plan
 
 ## Overview
+
 Add collaborative and competitive multiplayer modes to the card-sorting game, plus enhanced spectator experience with real-time player indicators.
 
 ---
@@ -12,14 +13,15 @@ Add collaborative and competitive multiplayer modes to the card-sorting game, pl
 ### Data Structure Changes
 
 #### `CardPosition` type enhancement:
+
 ```typescript
 export interface CardPosition {
-  cardId: string
-  x: number // % of viewport width (0-100)
-  y: number // % of viewport height (0-100)
-  rotation: number // degrees (-15 to 15)
-  zIndex: number
-  draggedByPlayerId?: string // NEW: ID of player currently dragging this card
+  cardId: string;
+  x: number; // % of viewport width (0-100)
+  y: number; // % of viewport height (0-100)
+  rotation: number; // degrees (-15 to 15)
+  zIndex: number;
+  draggedByPlayerId?: string; // NEW: ID of player currently dragging this card
 }
 ```
 
@@ -73,6 +75,7 @@ export interface CardPosition {
 ## 2. Spectator Mode UI Enhancements
 
 ### 2.1 Spectator Banner
+
 **Top banner that clearly indicates spectator status**
 
 ```typescript
@@ -97,6 +100,7 @@ export interface CardPosition {
 ```
 
 ### 2.2 Educational Mode Toggle
+
 **Allow spectators to see the correct answer (for learning)**
 
 - Toggle button in spectator banner
@@ -104,6 +108,7 @@ export interface CardPosition {
 - Don't show actual numbers unless player revealed them
 
 ### 2.3 Player Stats Sidebar
+
 **Show real-time stats (optional, can collapse)**
 
 - Time elapsed
@@ -116,6 +121,7 @@ export interface CardPosition {
 ## 3. Collaborative Mode: "Team Sort"
 
 ### 3.1 Core Mechanics
+
 - Multiple players share the same board and card set
 - Anyone can move any card at any time
 - Shared timer and shared score
@@ -124,13 +130,14 @@ export interface CardPosition {
 ### 3.2 State Changes
 
 #### `CardSortingState` additions:
+
 ```typescript
 export interface CardSortingState extends GameState {
   // ... existing fields ...
 
-  gameMode: 'solo' | 'collaborative' | 'competitive' | 'relay' // NEW
-  players: Map<string, PlayerMetadata> // NEW: all active players
-  activePlayers: string[] // NEW: players currently in game (not spectators)
+  gameMode: "solo" | "collaborative" | "competitive" | "relay"; // NEW
+  players: Map<string, PlayerMetadata>; // NEW: all active players
+  activePlayers: string[]; // NEW: players currently in game (not spectators)
 }
 ```
 
@@ -175,6 +182,7 @@ export interface CardSortingState extends GameState {
 ```
 
 ### 3.5 Scoring
+
 - Same scoring algorithm but labeled as "Team Score"
 - All players see the same results
 - Leaderboard entry records all participants
@@ -184,6 +192,7 @@ export interface CardSortingState extends GameState {
 ## 4. Competitive Mode: "Race Sort"
 
 ### 4.1 Core Mechanics
+
 - 2-4 players get the **same** card set
 - Each player has their **own separate board**
 - Race to finish first OR best score after time limit
@@ -196,6 +205,7 @@ export interface CardSortingState extends GameState {
 **Solution:** Each player needs their own game state, but they're in the same room.
 
 #### Option A: Separate Sessions
+
 - Each competitive player creates their own session
 - Room tracks all session IDs
 - Client fetches all sessions and displays them
@@ -203,31 +213,33 @@ export interface CardSortingState extends GameState {
 - **Cons:** Complex room management
 
 #### Option B: Multi-Player State (RECOMMENDED)
+
 ```typescript
 export interface CompetitiveGameState extends GameState {
-  gameMode: 'competitive'
-  sharedCards: SortingCard[] // Same cards for everyone
-  correctOrder: SortingCard[] // Shared answer
-  playerBoards: Map<string, PlayerBoard> // Each player's board state
-  gameStartTime: number
-  gameEndTime: number | null
-  winners: string[] // Player IDs who completed, in order
+  gameMode: "competitive";
+  sharedCards: SortingCard[]; // Same cards for everyone
+  correctOrder: SortingCard[]; // Shared answer
+  playerBoards: Map<string, PlayerBoard>; // Each player's board state
+  gameStartTime: number;
+  gameEndTime: number | null;
+  winners: string[]; // Player IDs who completed, in order
 }
 
 export interface PlayerBoard {
-  playerId: string
-  placedCards: (SortingCard | null)[]
-  cardPositions: CardPosition[]
-  availableCards: SortingCard[]
-  numbersRevealed: boolean
-  completedAt: number | null
-  scoreBreakdown: ScoreBreakdown | null
+  playerId: string;
+  placedCards: (SortingCard | null)[];
+  cardPositions: CardPosition[];
+  availableCards: SortingCard[];
+  numbersRevealed: boolean;
+  completedAt: number | null;
+  scoreBreakdown: ScoreBreakdown | null;
 }
 ```
 
 ### 4.3 UI Layout
 
 **Split-screen view:**
+
 ```
 ┌─────────────────────────────────────┐
 │  Leaderboard (top bar)              │
@@ -240,10 +252,12 @@ export interface PlayerBoard {
 ```
 
 **Your board:**
+
 - Normal interactive gameplay
 - Full size, left side
 
 **Opponent preview(s):**
+
 - Right side (or bottom on mobile)
 - Smaller scale (50-70% size)
 - Semi-transparent cards
@@ -251,6 +265,7 @@ export interface PlayerBoard {
 - Can toggle between different opponents
 
 **Leaderboard bar:**
+
 ```
 ┌─────────────────────────────────────┐
 │ 🥇 Alice (5/8) • 🥈 You (4/8) • ... │
@@ -258,6 +273,7 @@ export interface PlayerBoard {
 ```
 
 ### 4.4 Spectator View for Competitive
+
 - Can watch all players simultaneously
 - Grid layout showing all boards
 - Highlight current leader with gold border
@@ -267,19 +283,21 @@ export interface PlayerBoard {
 ## 5. Hybrid Mode: "Relay Sort" (Future)
 
 ### 5.1 Core Mechanics
+
 - Players take turns (30-60 seconds each)
 - Cumulative team score
 - Can "pass" turn early
 - Strategy: communicate via chat about optimal moves
 
 ### 5.2 Turn Management
+
 ```typescript
 export interface RelayGameState extends GameState {
-  gameMode: 'relay'
-  turnOrder: string[] // Player IDs
-  currentTurnIndex: number
-  turnStartTime: number
-  turnDuration: number // seconds
+  gameMode: "relay";
+  turnOrder: string[]; // Player IDs
+  currentTurnIndex: number;
+  turnStartTime: number;
+  turnDuration: number; // seconds
   // ... rest similar to collaborative
 }
 ```
@@ -289,17 +307,20 @@ export interface RelayGameState extends GameState {
 ## 6. Implementation Phases
 
 ### Phase 1: Foundation (Do First) ✅
+
 - [x] Add `draggedByPlayerId` to `CardPosition`
 - [x] Show player emoji on cards being dragged
 - [x] Add `players` map to Provider context
 - [x] Fetch room members and map to player metadata
 
 ### Phase 2: Spectator Enhancements
+
 - [ ] Spectator banner component
 - [ ] Educational mode toggle
 - [ ] Stats sidebar (collapsible)
 
 ### Phase 3: Collaborative Mode
+
 - [ ] Add `gameMode` to state and config
 - [ ] Implement JOIN/LEAVE moves
 - [ ] Colored cursor tracking
@@ -307,6 +328,7 @@ export interface RelayGameState extends GameState {
 - [ ] Team scoring UI
 
 ### Phase 4: Competitive Mode
+
 - [ ] Design multi-player state structure
 - [ ] Refactor Provider for per-player boards
 - [ ] Split-screen UI layout
@@ -315,6 +337,7 @@ export interface RelayGameState extends GameState {
 - [ ] Winner determination
 
 ### Phase 5: Polish & Testing
+
 - [ ] Mobile responsive layouts
 - [ ] Performance optimization (many simultaneous players)
 - [ ] Network resilience (handle disconnects)
@@ -325,21 +348,25 @@ export interface RelayGameState extends GameState {
 ## 7. Technical Considerations
 
 ### 7.1 WebSocket Message Frequency
+
 - **Current:** Position updates throttled to 100ms (10Hz)
 - **Collaborative:** May need higher frequency for smoothness
 - **Recommendation:** 50ms (20Hz) for active drag, 100ms otherwise
 
 ### 7.2 State Synchronization
+
 - Use optimistic updates for local player
 - Reconcile with server state on conflicts
 - Use timestamp-based conflict resolution
 
 ### 7.3 Player Disconnection Handling
+
 - Collaborative: Keep their last positions, mark as "disconnected"
 - Competitive: Pause their timer, allow rejoin within 60s
 - Spectators: Just remove from viewer list
 
 ### 7.4 Security & Validation
+
 - Server validates all moves (already done)
 - Prevent players from seeing others' moves before they happen
 - Rate limit position updates per player
@@ -351,6 +378,7 @@ export interface RelayGameState extends GameState {
 ### New Tables
 
 #### `competitive_rounds` (for competitive mode)
+
 ```sql
 CREATE TABLE competitive_rounds (
   id UUID PRIMARY KEY,
@@ -363,6 +391,7 @@ CREATE TABLE competitive_rounds (
 ```
 
 #### `player_round_results` (for competitive mode)
+
 ```sql
 CREATE TABLE player_round_results (
   id UUID PRIMARY KEY,

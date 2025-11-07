@@ -22,10 +22,11 @@ The following packages must ONLY be in `devDependencies`, NEVER in `dependencies
 ### What To Do Instead
 
 **❌ WRONG - Adding tsx to dependencies to run .ts/.tsx at runtime:**
+
 ```json
 {
   "dependencies": {
-    "tsx": "^4.20.5"  // NEVER DO THIS
+    "tsx": "^4.20.5" // NEVER DO THIS
   }
 }
 ```
@@ -57,6 +58,7 @@ The following packages must ONLY be in `devDependencies`, NEVER in `dependencies
 ### Red Flags
 
 If you find yourself thinking:
+
 - "I need to add tsx to dependencies to run this .ts file in production"
 - "This script needs TypeScript at runtime"
 - "Production can't import this .tsx file"
@@ -66,6 +68,7 @@ If you find yourself thinking:
 ### Enforcement
 
 Before modifying `package.json` dependencies:
+
 1. Check if any TypeScript execution tools are being added
 2. Ask yourself: "Could this code be in `src/` instead?"
 3. If unsure, ask the user before proceeding
@@ -77,6 +80,7 @@ Before modifying `package.json` dependencies:
 ### The Mistake (Made Multiple Times)
 
 When implementing addition worksheet preview examples, I was told **THREE TIMES** to factor out the problem rendering code:
+
 - "the example should be closely associated in the codebase semantically with the template"
 - "just be sure to factor, not fork"
 - "we need to be showing exactly what the worksheet template uses"
@@ -84,6 +88,7 @@ When implementing addition worksheet preview examples, I was told **THREE TIMES*
 **What I did wrong:** Copied the Typst problem rendering code from `typstGenerator.ts` to `example/route.ts`
 
 **Why this is wrong:**
+
 - Changes to worksheet layout won't reflect in preview
 - Maintaining two copies guarantees they'll drift apart
 - Violates DRY (Don't Repeat Yourself)
@@ -94,14 +99,16 @@ When implementing addition worksheet preview examples, I was told **THREE TIMES*
 **✅ CORRECT - Extract to shared function:**
 
 1. Create shared function in `typstHelpers.ts`:
+
    ```typescript
    export function generateProblemBoxFunction(cellSize: number): string {
      // Returns the Typst function definition that both files can use
-     return `#let problem-box(problem, index) = { ... }`
+     return `#let problem-box(problem, index) = { ... }`;
    }
    ```
 
 2. Both `typstGenerator.ts` and `example/route.ts` import and use it:
+
    ```typescript
    import { generateProblemBoxFunction } from './typstHelpers'
 
@@ -113,17 +120,19 @@ When implementing addition worksheet preview examples, I was told **THREE TIMES*
    ```
 
 **❌ WRONG - Copy/paste the code:**
+
 ```typescript
 // typstGenerator.ts
-const template = `#let problem-box = { ... }` // ← Original
+const template = `#let problem-box = { ... }`; // ← Original
 
 // example/route.ts
-const template = `#let problem-box = { ... }` // ← Copy/paste = FORKED CODE
+const template = `#let problem-box = { ... }`; // ← Copy/paste = FORKED CODE
 ```
 
 ### Red Flags
 
 If you find yourself:
+
 - Copying large blocks of code between files
 - Saying "I'll make it match the other file"
 - Maintaining "two versions" of the same logic
@@ -133,6 +142,7 @@ If you find yourself:
 ### Rule of Thumb
 
 When the user says "factor" or "share code" or "use the same template":
+
 1. Find the common code
 2. Extract to shared function in appropriate utility file
 3. Import and call that function from both places
@@ -162,6 +172,21 @@ This single command runs all quality checks in the correct order:
 4. `npm run lint` - Verify 0 errors, 0 warnings
 
 **DO NOT COMMIT** until all checks pass with zero errors and zero warnings.
+
+## Blog Post Examples
+
+**REUSABLE PATTERN: Generating single-problem examples for blog posts**
+
+We have a **single-problem example generator** used for both the UI preview and blog post examples. This ensures blog examples use the **exact same rendering** as the live tool.
+
+See `.claude/BLOG_EXAMPLES_PATTERN.md` for complete documentation.
+
+**Quick reference:**
+- UI preview API: `src/app/api/create/worksheets/addition/example/route.ts`
+- Blog generators: `scripts/generateTenFrameExamples.ts`, `scripts/generateBlogExamples.ts`
+- Shared code: `src/app/create/worksheets/addition/typstHelpers.ts`
+
+**Key benefit**: Blog examples stay in sync with actual worksheet rendering. When rendering changes, just re-run the generator scripts.
 
 ## Available Scripts
 
@@ -251,22 +276,24 @@ npm run check          # Biome check (format + lint + organize imports)
 - Token syntax: `color: 'blue.200'`, `borderColor: 'gray.300'`, etc.
 
 **Common Mistakes to Avoid:**
+
 - ❌ Don't reference "Tailwind" in code, comments, or documentation
 - ❌ Don't use Tailwind utility classes (e.g., `className="bg-blue-500"`)
 - ✅ Use Panda CSS `css()` function for all styling
 - ✅ Use Panda's token system (defined in `panda.config.ts`)
 
 **Color Tokens:**
+
 ```typescript
 // Correct (Panda CSS)
 css({
-  bg: 'blue.200',
-  borderColor: 'gray.300',
-  color: 'brand.600'
-})
+  bg: "blue.200",
+  borderColor: "gray.300",
+  color: "brand.600",
+});
 
 // Incorrect (Tailwind)
-className="bg-blue-200 border-gray-300 text-brand-600"
+className = "bg-blue-200 border-gray-300 text-brand-600";
 ```
 
 See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
@@ -278,6 +305,7 @@ See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 When creating ANY new HTML/JSX element (div, button, section, etc.), add appropriate data attributes:
 
 **Required patterns:**
+
 - `data-component="component-name"` - For top-level component containers
 - `data-element="element-name"` - For major UI elements
 - `data-section="section-name"` - For page sections
@@ -286,12 +314,14 @@ When creating ANY new HTML/JSX element (div, button, section, etc.), add appropr
 - `data-status="status-value"` - For status indicators
 
 **Why this matters:**
+
 - Allows easy element selection for testing, debugging, and automation
 - Makes it simple to reference elements by name in discussions
 - Provides semantic meaning beyond CSS classes
 - Enables reliable E2E testing selectors
 
 **Examples:**
+
 ```typescript
 // Component container
 <div data-component="game-board" className={css({...})}>
@@ -307,11 +337,13 @@ When creating ANY new HTML/JSX element (div, button, section, etc.), add appropr
 ```
 
 **DO NOT:**
+
 - ❌ Skip data attributes on new elements
 - ❌ Use generic names like `data-element="div"`
 - ❌ Use data attributes for styling (use CSS classes instead)
 
 **DO:**
+
 - ✅ Use descriptive, kebab-case names
 - ✅ Add data attributes to ALL significant elements
 - ✅ Make names semantic and self-documenting
@@ -327,6 +359,7 @@ When creating ANY new HTML/JSX element (div, button, section, etc.), add appropr
 - DO NOT manually draw abacus columns, beads, or bars
 
 **Common Mistakes to Avoid:**
+
 - ❌ Don't create custom abacus components or SVGs
 - ❌ Don't manually render abacus beads or columns
 - ✅ Always use `AbacusReact` from `@soroban/abacus-react`
@@ -338,6 +371,7 @@ When creating ANY new HTML/JSX element (div, button, section, etc.), add appropr
 `AbacusReact` already supports server-side rendering - it detects SSR and disables animations automatically.
 
 **✅ CORRECT - Use in build scripts:**
+
 ```typescript
 // scripts/generateAbacusIcons.tsx
 import React from 'react'
@@ -349,6 +383,7 @@ const svg = renderToStaticMarkup(<AbacusReact value={5} columns={2} />)
 ```
 
 **❌ WRONG - Do NOT use in Next.js route handlers:**
+
 ```typescript
 // src/app/icon/route.tsx - DON'T DO THIS!
 import { renderToStaticMarkup } from 'react-dom/server'  // ❌ Next.js forbids this!
@@ -360,18 +395,20 @@ export async function GET() {
 ```
 
 **✅ CORRECT - Pre-generate and read in route handlers:**
+
 ```typescript
 // src/app/icon/route.tsx
-import { readFileSync } from 'fs'
+import { readFileSync } from "fs";
 
 export async function GET() {
   // Read pre-generated SVG from scripts/generateAbacusIcons.tsx
-  const svg = readFileSync('public/icons/day-01.svg', 'utf-8')
-  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } })
+  const svg = readFileSync("public/icons/day-01.svg", "utf-8");
+  return new Response(svg, { headers: { "Content-Type": "image/svg+xml" } });
 }
 ```
 
 **Pattern to follow:**
+
 1. Generate static SVGs using `scripts/generateAbacusIcons.tsx` (uses renderToStaticMarkup)
 2. Commit generated SVGs to `public/icons/` or `public/`
 3. Route handlers read and serve the pre-generated files
@@ -380,14 +417,17 @@ export async function GET() {
 **MANDATORY: Read the Docs Before Customizing**
 
 **ALWAYS read the full README documentation before customizing or styling AbacusReact:**
+
 - Location: `packages/abacus-react/README.md`
 - Check homepage implementation: `src/app/page.tsx` (MiniAbacus component)
 - Check storybook examples: `src/stories/AbacusReact.*.stories.tsx`
 
 **Key Documentation Points:**
+
 1. **Custom Styles**: Use `fill` (not just `stroke`) for columnPosts and reckoningBar
 2. **Props**: Use direct props like `value`, `columns`, `scaleFactor` (not config objects)
 3. **Example from Homepage:**
+
    ```typescript
    const darkStyles = {
      columnPosts: {
@@ -410,6 +450,7 @@ export async function GET() {
    ```
 
 **Example Usage:**
+
 ```typescript
 import { AbacusReact } from '@soroban/abacus-react'
 
@@ -421,6 +462,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 ### @soroban/abacus-react TypeScript Module Resolution
 
 **Issue:** TypeScript reports that `AbacusReact`, `useAbacusConfig`, and other exports do not exist from the `@soroban/abacus-react` package, even though:
+
 - The package builds successfully
 - The exports are correctly defined in `dist/index.d.ts`
 - The imports work at runtime
@@ -429,6 +471,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 **Impact:** `npm run type-check` will report errors for any files importing from `@soroban/abacus-react`.
 
 **Workaround:** This is a known pre-existing issue. When running pre-commit checks, TypeScript errors related to `@soroban/abacus-react` imports can be ignored. Focus on:
+
 - New TypeScript errors in your changed files (excluding @soroban/abacus-react imports)
 - Format checks
 - Lint checks
@@ -457,6 +500,7 @@ When working on arcade room game settings, refer to:
 Settings are stored as: `gameConfig[gameName][setting]`
 
 Three places must handle settings correctly:
+
 1. **Provider** (`Room{Game}Provider.tsx`) - Merges saved config with defaults
 2. **Socket Server** (`socket-server.ts`) - Creates session from saved config
 3. **Validator** (`{Game}Validator.ts`) - `getInitialState()` must accept ALL settings
@@ -478,21 +522,23 @@ When working with z-index values or encountering layering issues, refer to:
 **Quick Reference:**
 
 **ALWAYS use the constants file:**
+
 ```typescript
-import { Z_INDEX } from '@/constants/zIndex'
+import { Z_INDEX } from "@/constants/zIndex";
 
 // ✅ Good
-zIndex: Z_INDEX.NAV_BAR
-zIndex: Z_INDEX.MODAL
-zIndex: Z_INDEX.TOOLTIP
+zIndex: Z_INDEX.NAV_BAR;
+zIndex: Z_INDEX.MODAL;
+zIndex: Z_INDEX.TOOLTIP;
 
 // ❌ Bad - magic numbers!
-zIndex: 100
-zIndex: 10000
-zIndex: 500
+zIndex: 100;
+zIndex: 10000;
+zIndex: 500;
 ```
 
 **Layering hierarchy:**
+
 - Base content: 0-99
 - Navigation/UI chrome: 100-999
 - Overlays/dropdowns/tooltips: 1000-9999
@@ -504,6 +550,7 @@ zIndex: 500
 Z-index values are only compared within the same stacking context! Elements with `position + zIndex`, `opacity < 1`, `transform`, or `filter` create new stacking contexts where child z-indexes are relative, not global.
 
 Before setting a z-index, always check:
+
 1. What stacking context is this element in?
 2. Am I comparing against siblings or global elements?
 3. Does my parent create a stacking context?
@@ -513,6 +560,7 @@ Before setting a z-index, always check:
 This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 
 **ALWAYS use MCP SQLite tools for database operations:**
+
 - `mcp__sqlite__list_tables` - List all tables
 - `mcp__sqlite__describe_table` - Get table schema
 - `mcp__sqlite__read_query` - Run SELECT queries
@@ -521,6 +569,7 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 - **DO NOT use bash `sqlite3` commands** - use the MCP tools instead
 
 **Database Schema:**
+
 - Schema definitions: `src/db/schema/`
 - Drizzle config: `drizzle.config.ts`
 - Migrations: `drizzle/` directory
@@ -532,31 +581,38 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 When adding/modifying database schema:
 
 1. **Update the schema file** in `src/db/schema/`:
+
    ```typescript
    // Example: Add new column to existing table
-   export const abacusSettings = sqliteTable('abacus_settings', {
-     userId: text('user_id').primaryKey(),
+   export const abacusSettings = sqliteTable("abacus_settings", {
+     userId: text("user_id").primaryKey(),
      // ... existing columns ...
-     newField: integer('new_field', { mode: 'boolean' }).notNull().default(false),
-   })
+     newField: integer("new_field", { mode: "boolean" })
+       .notNull()
+       .default(false),
+   });
    ```
 
 2. **Generate migration using drizzle-kit**:
+
    ```bash
    npx drizzle-kit generate --custom
    ```
+
    This creates:
    - A new SQL file in `drizzle/####_name.sql`
    - Updates `drizzle/meta/_journal.json`
    - Creates a snapshot in `drizzle/meta/####_snapshot.json`
 
 3. **Edit the generated SQL file** (it will be empty):
+
    ```sql
    -- Custom SQL migration file, put your code below! --
    ALTER TABLE `abacus_settings` ADD `new_field` integer DEFAULT 0 NOT NULL;
    ```
 
 4. **Test the migration** on your local database:
+
    ```bash
    npm run db:migrate
    ```
@@ -567,12 +623,14 @@ When adding/modifying database schema:
    ```
 
 **What NOT to do:**
+
 - ❌ DO NOT manually create SQL files in `drizzle/` without using `drizzle-kit generate`
 - ❌ DO NOT manually edit `drizzle/meta/_journal.json`
 - ❌ DO NOT run SQL directly with `sqlite3` command
 - ❌ DO NOT use `drizzle-kit generate` without `--custom` flag (it requires interactive prompts)
 
 **Why this matters:**
+
 - Drizzle tracks applied migrations in `__drizzle_migrations` table
 - Manual SQL files won't be tracked properly
 - Production deployments run `npm run db:migrate` automatically
@@ -582,14 +640,17 @@ When adding/modifying database schema:
 
 **CRITICAL: Never assume deployment is complete just because the website is accessible.**
 
+**Deployment System:** The NAS uses `compose-updater` (NOT Watchtower) for automatic deployments. See `.claude/DEPLOYMENT.md` for complete documentation.
+
 When monitoring deployments to production (NAS at abaci.one):
 
 1. **GitHub Actions Success ≠ NAS Deployment**
    - GitHub Actions builds and pushes Docker images to GHCR
-   - The NAS must separately pull and restart containers
-   - There may be a delay or manual step between these
+   - compose-updater checks for new images every 5 minutes and auto-deploys
+   - There is a 5-7 minute delay between GitHub Actions completing and NAS deployment
 
 2. **Always verify the deployed commit:**
+
    ```bash
    # Check what's actually running on production
    ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
@@ -599,6 +660,7 @@ When monitoring deployments to production (NAS at abaci.one):
    ```
 
 3. **Compare commits explicitly:**
+
    ```bash
    # Current HEAD
    git rev-parse HEAD
@@ -614,7 +676,13 @@ When monitoring deployments to production (NAS at abaci.one):
 5. **If commits don't match:**
    - Report the gap clearly: "NAS is X commits behind origin/main"
    - List what features are NOT yet deployed
-   - Ask if manual NAS deployment action is needed
+   - Note that compose-updater should pick it up within 5 minutes
+
+**Force immediate deployment:**
+```bash
+# Restart compose-updater to trigger immediate check (instead of waiting up to 5 minutes)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+```
 
 **Common mistake:** Seeing https://abaci.one is online and assuming the new code is deployed. Always verify the commit SHA.
 
@@ -639,6 +707,7 @@ When working on the Rithmomachia arcade game, refer to:
 - **Victory**: Harmony (3+ pieces in enemy half forming arithmetic/geometric/harmonic progression), exhaustion, or optional point threshold
 
 **Critical Rules**:
+
 - All piece values are positive integers (use `number`, not `bigint` for game state serialization)
 - No jumping - pieces must have clear paths
 - Captures require valid mathematical relations (use helper pieces for sum/diff/product/ratio)

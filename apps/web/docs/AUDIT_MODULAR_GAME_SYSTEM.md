@@ -25,6 +25,7 @@ The modular game system **now meets its stated intentions** after implementing t
 > "A modular, plugin-based architecture for building multiplayer arcade games"
 >
 > **Goals:**
+>
 > 1. **Modularity**: Each game is self-contained and independently deployable
 > 2. Games register themselves with a central registry
 > 3. No need to modify core infrastructure when adding games
@@ -47,6 +48,7 @@ The modular game system **now meets its stated intentions** after implementing t
 2. **Server Validator Map** (`src/lib/arcade/validation/index.ts`)
 
 **Impact**:
+
 - ❌ Broke modularity - couldn't just drop in a new game
 - ❌ Easy to forget one registration, causing runtime errors
 - ❌ Violated DRY principle
@@ -59,16 +61,17 @@ Created unified isomorphic validator registry at `src/lib/arcade/validators.ts`:
 ```typescript
 export const validatorRegistry = {
   matching: matchingGameValidator,
-  'memory-quiz': memoryQuizGameValidator,
-  'number-guesser': numberGuesserValidator,
+  "memory-quiz": memoryQuizGameValidator,
+  "number-guesser": numberGuesserValidator,
   // Add new games here - GameName type auto-updates!
-} as const
+} as const;
 
 // Auto-derived type - no manual updates needed!
-export type GameName = keyof typeof validatorRegistry
+export type GameName = keyof typeof validatorRegistry;
 ```
 
 **Changes Made**:
+
 1. ✅ Created `src/lib/arcade/validators.ts` - Unified validator registry (isomorphic)
 2. ✅ Updated `validation/index.ts` - Now re-exports from unified registry (backwards compatible)
 3. ✅ Updated `validation/types.ts` - GameName now auto-derived (no more hard-coded union)
@@ -79,6 +82,7 @@ export type GameName = keyof typeof validatorRegistry
 8. ✅ Updated `game-registry.ts` - Added runtime validation check
 
 **Benefits**:
+
 - ✅ Single registration point for validators
 - ✅ Auto-derived GameName type (no manual updates)
 - ✅ Type-safe validator access
@@ -96,11 +100,13 @@ export type GameName = keyof typeof validatorRegistry
 **Resolution**: Created separate isomorphic validator registry that server can import without pulling in client-only code.
 
 **How It Works Now**:
+
 - `src/lib/arcade/validators.ts` - Isomorphic, server can import safely
 - `src/lib/arcade/game-registry.ts` - Client-only, imports React components
 - Both use the same validator instances (verified at runtime)
 
 **Benefits**:
+
 - ✅ Server has direct access to validators
 - ✅ No need for dual validator maps
 - ✅ Clear separation: validators (isomorphic) vs UI (client-only)
@@ -112,23 +118,31 @@ export type GameName = keyof typeof validatorRegistry
 **Problem**: Multiple overlapping type definitions for same concepts:
 
 **GameValidator** has THREE definitions:
+
 1. `validation/types.ts` - Legacy validator interface
 2. `game-sdk/types.ts` - SDK validator interface (extends legacy)
 3. Individual game validators - Implement one or both?
 
 **GameMove** has TWO type systems:
+
 1. `validation/types.ts` - Legacy move types (MatchingFlipCardMove, etc.)
 2. Game-specific types in each game's `types.ts`
 
 **GameName** is hard-coded:
+
 ```typescript
 // validation/types.ts:9
-export type GameName = 'matching' | 'memory-quiz' | 'complement-race' | 'number-guesser'
+export type GameName =
+  | "matching"
+  | "memory-quiz"
+  | "complement-race"
+  | "number-guesser";
 ```
 
 This must be manually updated for every new game!
 
 **Impact**:
+
 - Confusing which types to use
 - Easy to use wrong import
 - GameName type doesn't auto-update from registry
@@ -140,6 +154,7 @@ This must be manually updated for every new game!
 **Problem**: Existing games (matching, memory-quiz) still use old structure:
 
 **Old Pattern** (matching, memory-quiz):
+
 ```
 src/app/arcade/matching/
   ├── context/           (Old pattern)
@@ -148,6 +163,7 @@ src/app/arcade/matching/
 ```
 
 **New Pattern** (number-guesser):
+
 ```
 src/arcade-games/number-guesser/
   ├── index.ts           (New pattern)
@@ -157,12 +173,14 @@ src/arcade-games/number-guesser/
 ```
 
 **Impact**:
+
 - Inconsistent codebase structure
 - Two different patterns developers must understand
 - Documentation shows new pattern, but most games use old pattern
 - Confusing for new developers
 
 **Evidence**:
+
 - `src/app/arcade/matching/` - Uses old structure
 - `src/app/arcade/memory-quiz/` - Uses old structure
 - `src/arcade-games/number-guesser/` - Uses new structure
@@ -179,16 +197,17 @@ src/arcade-games/number-guesser/
 // src/lib/arcade/validators.ts
 export const validatorRegistry = {
   matching: matchingGameValidator,
-  'memory-quiz': memoryQuizGameValidator,
-  'number-guesser': numberGuesserValidator,
+  "memory-quiz": memoryQuizGameValidator,
+  "number-guesser": numberGuesserValidator,
   // Add new games here...
-} as const
+} as const;
 
 // Auto-derived! No manual updates needed!
-export type GameName = keyof typeof validatorRegistry
+export type GameName = keyof typeof validatorRegistry;
 ```
 
 **Benefits**:
+
 - ✅ GameName type updates automatically when adding to registry
 - ✅ Impossible to forget type update (it's derived)
 - ✅ Single registration step (just add to validatorRegistry)
@@ -203,11 +222,13 @@ export type GameName = keyof typeof validatorRegistry
 **Problem**: Server code cannot import `game-registry.ts` because it contains React components.
 
 **Why**:
+
 - `GameDefinition` includes `Provider` and `GameComponent` (React components)
 - Server-side code runs in Node.js, can't import React components
 - No way to access just the validator from registry
 
 **Potential Solutions**:
+
 1. Split registry into isomorphic and client-only parts
 2. Separate validator registration from game registration
 3. Use conditional exports in package.json
@@ -219,9 +240,11 @@ export type GameName = keyof typeof validatorRegistry
 **Problem**: Documentation describes a fully modular system, but reality requires manual edits in multiple places.
 
 **From README.md**:
+
 > "Step 7: Register Game - Add to src/lib/arcade/game-registry.ts"
 
 **Missing Steps**:
+
 - Also add to `validation/index.ts` validator map
 - Also add to `GameName` type union
 - Import validator in server files
@@ -235,10 +258,11 @@ export type GameName = keyof typeof validatorRegistry
 **Problem**: Registration is type-safe but has no runtime validation:
 
 ```typescript
-registerGame(numberGuesserGame)  // No validation that validator works
+registerGame(numberGuesserGame); // No validation that validator works
 ```
 
 **Missing Checks**:
+
 - Does validator implement all required methods?
 - Does manifest match expected schema?
 - Are all required fields present?
@@ -256,51 +280,53 @@ registerGame(numberGuesserGame)  // No validation that validator works
 
 ```typescript
 // src/lib/arcade/validators.ts (NEW FILE - isomorphic)
-import { numberGuesserValidator } from '@/arcade-games/number-guesser/Validator'
-import { matchingGameValidator } from '@/lib/arcade/validation/MatchingGameValidator'
+import { numberGuesserValidator } from "@/arcade-games/number-guesser/Validator";
+import { matchingGameValidator } from "@/lib/arcade/validation/MatchingGameValidator";
 // ... other validators
 
 export const validatorRegistry = new Map([
-  ['number-guesser', numberGuesserValidator],
-  ['matching', matchingGameValidator],
+  ["number-guesser", numberGuesserValidator],
+  ["matching", matchingGameValidator],
   // ...
-])
+]);
 
 export function getValidator(gameName: string) {
-  const validator = validatorRegistry.get(gameName)
-  if (!validator) throw new Error(`No validator for game: ${gameName}`)
-  return validator
+  const validator = validatorRegistry.get(gameName);
+  if (!validator) throw new Error(`No validator for game: ${gameName}`);
+  return validator;
 }
 
-export type GameName = keyof typeof validatorRegistry  // Auto-derived!
+export type GameName = keyof typeof validatorRegistry; // Auto-derived!
 ```
 
 **Update game-registry.ts** to use this:
 
 ```typescript
 // src/lib/arcade/game-registry.ts
-import { getValidator } from './validators'
+import { getValidator } from "./validators";
 
 export function registerGame(game: GameDefinition) {
-  const { name } = game.manifest
+  const { name } = game.manifest;
 
   // Verify validator is registered server-side
-  const validator = getValidator(name)
+  const validator = getValidator(name);
   if (validator !== game.validator) {
-    console.warn(`[Registry] Validator mismatch for ${name}`)
+    console.warn(`[Registry] Validator mismatch for ${name}`);
   }
 
-  registry.set(name, game)
+  registry.set(name, game);
 }
 ```
 
 **Pros**:
+
 - Single source of truth for validators
 - Auto-derived GameName type
 - Client and server use same validator
 - Only one registration needed
 
 **Cons**:
+
 - Still requires manual import in validators.ts
 - Doesn't solve "drop in a game" fully
 
@@ -317,11 +343,13 @@ export function registerGame(game: GameDefinition) {
 ```
 
 **Pros**:
+
 - Truly modular - just add folder, run build
 - No manual registration
 - Auto-derived types
 
 **Cons**:
+
 - Build-time complexity
 - Magic (harder to understand)
 - May not work with all bundlers
@@ -335,29 +363,33 @@ export function registerGame(game: GameDefinition) {
 ```typescript
 // Isomorphic (client + server)
 export interface GameValidatorDefinition {
-  name: string
-  validator: GameValidator
-  defaultConfig: GameConfig
+  name: string;
+  validator: GameValidator;
+  defaultConfig: GameConfig;
 }
 
 // Client-only
 export interface GameUIDefinition {
-  name: string
-  manifest: GameManifest
-  Provider: GameProviderComponent
-  GameComponent: GameComponent
+  name: string;
+  manifest: GameManifest;
+  Provider: GameProviderComponent;
+  GameComponent: GameComponent;
 }
 
 // Combined (client-only)
-export interface GameDefinition extends GameValidatorDefinition, GameUIDefinition {}
+export interface GameDefinition
+  extends GameValidatorDefinition,
+    GameUIDefinition {}
 ```
 
 **Pros**:
+
 - Clear separation of concerns
 - Server can import just validator definition
 - Type-safe
 
 **Cons**:
+
 - More complexity
 - Still requires two registries
 
@@ -432,11 +464,13 @@ export interface GameDefinition extends GameValidatorDefinition, GameUIDefinitio
 ### Migration Path
 
 **Option A: Big Bang** (Risky)
+
 - Migrate all games to new structure in one PR
 - Update server to use unified registry
 - High risk of breakage
 
 **Option B: Incremental** (Safer)
+
 - Document dual registration as "current reality"
 - Create unified validator registry (doesn't break old games)
 - Slowly migrate old games one by one
@@ -448,15 +482,15 @@ export interface GameDefinition extends GameValidatorDefinition, GameUIDefinitio
 
 ## Compliance with Intentions
 
-| Intention | Status | Notes |
-|-----------|--------|-------|
-| Modularity | ✅ Pass | Single registration in validators.ts + game-registry.ts |
-| Self-registration | ✅ Pass | Both client and server use unified registry |
-| Type safety | ✅ Pass | Good TypeScript coverage + auto-derived GameName |
-| No core changes | ⚠️ Improved | Must edit validators.ts, but one central file |
-| Drop-in games | ⚠️ Improved | Two registration points (validator + game def) |
-| Stable SDK API | ✅ Pass | SDK is well-designed and consistent |
-| Clear patterns | ⚠️ Partial | New pattern is clear, but old games don't follow it |
+| Intention         | Status      | Notes                                                   |
+| ----------------- | ----------- | ------------------------------------------------------- |
+| Modularity        | ✅ Pass     | Single registration in validators.ts + game-registry.ts |
+| Self-registration | ✅ Pass     | Both client and server use unified registry             |
+| Type safety       | ✅ Pass     | Good TypeScript coverage + auto-derived GameName        |
+| No core changes   | ⚠️ Improved | Must edit validators.ts, but one central file           |
+| Drop-in games     | ⚠️ Improved | Two registration points (validator + game def)          |
+| Stable SDK API    | ✅ Pass     | SDK is well-designed and consistent                     |
+| Clear patterns    | ⚠️ Partial  | New pattern is clear, but old games don't follow it     |
 
 **Original Grade**: **D** (Failed core modularity requirement)
 **Current Grade**: **B+** (Modularity achieved, some legacy migration pending)
@@ -509,7 +543,8 @@ The modular game system has a **solid foundation** but is **not truly modular** 
 
 ---
 
-*This audit was conducted by reviewing:*
+_This audit was conducted by reviewing:_
+
 - `src/lib/arcade/game-registry.ts`
 - `src/lib/arcade/validation/index.ts`
 - `src/lib/arcade/session-manager.ts`

@@ -10,7 +10,7 @@ import type { BeadMaterial, LightingStyle } from "./AbacusReact";
  */
 export function darkenColor(hex: string, amount: number): string {
   // Remove # if present
-  const color = hex.replace('#', '');
+  const color = hex.replace("#", "");
 
   // Parse RGB
   const r = parseInt(color.substring(0, 2), 16);
@@ -23,7 +23,7 @@ export function darkenColor(hex: string, amount: number): string {
   const newB = Math.max(0, Math.floor(b * (1 - amount)));
 
   // Convert back to hex
-  return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
 /**
@@ -31,7 +31,7 @@ export function darkenColor(hex: string, amount: number): string {
  */
 export function lightenColor(hex: string, amount: number): string {
   // Remove # if present
-  const color = hex.replace('#', '');
+  const color = hex.replace("#", "");
 
   // Parse RGB
   const r = parseInt(color.substring(0, 2), 16);
@@ -44,7 +44,7 @@ export function lightenColor(hex: string, amount: number): string {
   const newB = Math.min(255, Math.floor(b + (255 - b) * amount));
 
   // Convert back to hex
-  return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
 /**
@@ -54,7 +54,7 @@ export function getBeadGradient(
   id: string,
   color: string,
   material: BeadMaterial = "satin",
-  active: boolean = true
+  active: boolean = true,
 ): string {
   const baseColor = active ? color : "rgb(211, 211, 211)";
 
@@ -97,7 +97,9 @@ export function getBeadGradient(
 /**
  * Generate shadow definition based on lighting style
  */
-export function getLightingFilter(lighting: LightingStyle = "top-down"): string {
+export function getLightingFilter(
+  lighting: LightingStyle = "top-down",
+): string {
   switch (lighting) {
     case "dramatic":
       return `
@@ -125,7 +127,7 @@ export function getLightingFilter(lighting: LightingStyle = "top-down"): string 
  */
 export function getBeadZDepth(
   enhanced3d: boolean | "subtle" | "realistic",
-  active: boolean
+  active: boolean,
 ): number {
   if (!enhanced3d || enhanced3d === true) return 0;
 
@@ -167,7 +169,7 @@ export function getWoodGrainPattern(id: string): string {
  */
 export function get3DContainerClasses(
   enhanced3d: boolean | "subtle" | "realistic" | undefined,
-  lighting?: LightingStyle
+  lighting?: LightingStyle,
 ): string {
   const classes: string[] = ["abacus-3d-container"];
 
@@ -195,7 +197,7 @@ export function getBeadGradientId(
   columnIndex: number,
   beadType: "heaven" | "earth",
   position: number,
-  material: BeadMaterial
+  material: BeadMaterial,
 ): string {
   return `bead-gradient-${columnIndex}-${beadType}-${position}-${material}`;
 }
@@ -208,7 +210,7 @@ export function getPhysicsConfig(enhanced3d: boolean | "subtle" | "realistic") {
     tension: 300,
     friction: 22,
     mass: 0.5,
-    clamp: false
+    clamp: false,
   };
 
   if (!enhanced3d || enhanced3d === "subtle") {
@@ -220,6 +222,6 @@ export function getPhysicsConfig(enhanced3d: boolean | "subtle" | "realistic") {
     tension: 320,
     friction: 24,
     mass: 0.6,
-    clamp: false
+    clamp: false,
   };
 }

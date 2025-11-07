@@ -109,7 +109,10 @@ function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): Memory
       const newNumberFoundBy = { ...numberFoundBy }
 
       if (typedMove.userId) {
-        const currentScore = newPlayerScores[typedMove.userId] || { correct: 0, incorrect: 0 }
+        const currentScore = newPlayerScores[typedMove.userId] || {
+          correct: 0,
+          incorrect: 0,
+        }
         newPlayerScores[typedMove.userId] = {
           ...currentScore,
           correct: currentScore.correct + 1,
@@ -131,7 +134,10 @@ function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): Memory
       const newPlayerScores = { ...playerScores }
 
       if (typedMove.userId) {
-        const currentScore = newPlayerScores[typedMove.userId] || { correct: 0, incorrect: 0 }
+        const currentScore = newPlayerScores[typedMove.userId] || {
+          correct: 0,
+          incorrect: 0,
+        }
         newPlayerScores[typedMove.userId] = {
           ...currentScore,
           incorrect: currentScore.incorrect + 1,
@@ -488,11 +494,23 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
       >
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
         <h2
-          style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', color: '#dc2626' }}
+          style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            marginBottom: '12px',
+            color: '#dc2626',
+          }}
         >
           Game State Mismatch
         </h2>
-        <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '24px', maxWidth: '500px' }}>
+        <p
+          style={{
+            fontSize: '16px',
+            color: '#6b7280',
+            marginBottom: '24px',
+            maxWidth: '500px',
+          }}
+        >
           There's a mismatch between game types in this room. This usually happens when room members
           are playing different games.
         </p>

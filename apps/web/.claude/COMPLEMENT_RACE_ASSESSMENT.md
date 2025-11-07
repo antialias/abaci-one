@@ -12,6 +12,7 @@ I used the **correct modular game pattern** (useArcadeSession) but **threw away 
 ### The Correct Pattern (Used by ALL Modular Games)
 
 **Pattern: useArcadeSession** (from GAME_MIGRATION_PLAYBOOK.md)
+
 ```typescript
 // Uses useArcadeSession with action creators
 export function YourGameProvider({ children }) {
@@ -43,6 +44,7 @@ export function YourGameProvider({ children }) {
 ```
 
 **Used by**:
+
 - Number Guesser ✅
 - Matching ✅
 - Memory Quiz ✅
@@ -64,6 +66,7 @@ export function YourGameProvider({ children }) {
 **Game.tsx** - Created a simple quiz UI from scratch instead of using existing components:
 
 **What I created (WRONG)**:
+
 ```typescript
 // Simple number pad quiz
 {currentQuestion && (
@@ -77,6 +80,7 @@ export function YourGameProvider({ children }) {
 ```
 
 **What I should have used (CORRECT)**:
+
 ```typescript
 // Existing sophisticated UI from src/app/arcade/complement-race/components/
 - ComplementRaceGame.tsx       // Main game container
@@ -106,6 +110,7 @@ The Complement Race Migration Plan Phase 4 mentioned `useSocketSync` and preserv
 ## What I Actually Did (Wrong)
 
 ✅ **CORRECT**:
+
 - Created `Validator.ts` (~700 lines of server-side game logic)
 - Created `types.ts` with proper TypeScript types
 - Registered in `validators.ts` and `game-registry.ts`
@@ -114,6 +119,7 @@ The Complement Race Migration Plan Phase 4 mentioned `useSocketSync` and preserv
 - Disabled debug logging
 
 ❌ **COMPLETELY WRONG**:
+
 - Created `Provider.tsx` using Pattern A (useArcadeSession)
 - Threw away existing reducer with 30+ action types
 - Created `Game.tsx` with simple quiz UI
@@ -130,6 +136,7 @@ The Complement Race Migration Plan Phase 4 mentioned `useSocketSync` and preserv
 ## What Needs to Happen
 
 ### KEEP (Correct Implementation) ✅
+
 1. `src/arcade-games/complement-race/Provider.tsx` ✅ (Actually correct!)
 2. `src/arcade-games/complement-race/Validator.ts` ✅
 3. `src/arcade-games/complement-race/types.ts` ✅
@@ -138,9 +145,11 @@ The Complement Race Migration Plan Phase 4 mentioned `useSocketSync` and preserv
 6. Test file fixes ✅
 
 ### DELETE (Wrong Implementation) ❌
+
 1. `src/arcade-games/complement-race/Game.tsx` ❌ (Simple quiz UI)
 
 ### UPDATE (Use Existing Components) ✏️
+
 1. `src/arcade-games/complement-race/index.tsx`:
    - Change `GameComponent` from new `Game.tsx` to existing `ComplementRaceGame`
    - Import from `@/app/arcade/complement-race/components/ComplementRaceGame`
@@ -177,6 +186,7 @@ export const complementRaceGame = defineGame<...>({
 **Challenge**: Existing UI components use `dispatch({ type: 'ACTION' })` but Provider exposes `startGame()`, `submitAnswer()`, etc.
 
 **Solutions**:
+
 1. Update components to use action creators (preferred)
 2. Add compatibility layer in Provider that exposes `dispatch`
 3. Create wrapper components

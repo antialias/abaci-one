@@ -298,6 +298,35 @@ function HamburgerMenu({
             </Link>
           </DropdownMenu.Item>
 
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/blog"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                color: 'rgba(209, 213, 219, 1)',
+                fontSize: '14px',
+                fontWeight: '500',
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'
+                e.currentTarget.style.color = 'rgba(196, 181, 253, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>📝</span>
+              <span>Blog</span>
+            </Link>
+          </DropdownMenu.Item>
+
           <DropdownMenu.Separator
             style={{
               height: '1px',
@@ -632,7 +661,12 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         })}
       >
         <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
-          <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
+          <div
+            className={hstack({
+              justify: 'space-between',
+              alignItems: 'center',
+            })}
+          >
             {/* Logo - conditionally shown based on hero visibility */}
             {showBranding ? (
               <Link
@@ -642,7 +676,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   flexDirection: 'column',
                   gap: '0',
                   textDecoration: 'none',
-                  _hover: { '& > .brand-name': { color: 'rgba(196, 181, 253, 1)' } },
+                  _hover: {
+                    '& > .brand-name': { color: 'rgba(196, 181, 253, 1)' },
+                  },
                   opacity: 0,
                   animation: 'fadeIn 0.3s ease-out forwards',
                 })}
@@ -714,6 +750,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 </NavLink>
                 <NavLink href="/games" currentPath={pathname} isTransparent={isTransparent}>
                   Games
+                </NavLink>
+                <NavLink href="/blog" currentPath={pathname} isTransparent={isTransparent}>
+                  Blog
                 </NavLink>
               </nav>
 

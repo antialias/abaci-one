@@ -227,7 +227,11 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
     }
 
     // All good - white and black assigned, and user controls at least one
-    return { status: 'ok', activePlayerCount: activeCount, localPlayerCount: localCount }
+    return {
+      status: 'ok',
+      activePlayerCount: activeCount,
+      localPlayerCount: localCount,
+    }
   }, [activePlayerList.length, localActivePlayerIds, whitePlayerId, blackPlayerId])
 
   const localTurnPlayerId = useMemo(() => {

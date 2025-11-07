@@ -90,8 +90,13 @@ function inferSequenceFromPositions(
     .filter(
       (
         item
-      ): item is { card: SortingCard; x: number; y: number; rotation: number; zIndex: number } =>
-        item !== null
+      ): item is {
+        card: SortingCard
+        x: number
+        y: number
+        rotation: number
+        zIndex: number
+      } => item !== null
     )
 
   if (positionedCards.length === 0) return []
@@ -298,7 +303,12 @@ function ContinuousSequencePath({
   }
 
   // Calculate badge positions along the actual drawn path at arc-length midpoint
-  const badges: Array<{ x: number; y: number; number: number; isCorrect: boolean }> = []
+  const badges: Array<{
+    x: number
+    y: number
+    number: number
+    isCorrect: boolean
+  }> = []
 
   // Helper to evaluate cubic bezier at parameter t
   const evalCubicBezier = (
@@ -1520,7 +1530,12 @@ export function PlayingPhaseDrag() {
               })}
             >
               <span className={css({ display: { base: 'none', sm: 'inline' } })}>Progress:</span>
-              <span className={css({ fontWeight: '600', fontSize: { base: '12px', md: '16px' } })}>
+              <span
+                className={css({
+                  fontWeight: '600',
+                  fontSize: { base: '12px', md: '16px' },
+                })}
+              >
                 {state.placedCards.filter((c) => c !== null).length}/{state.cardCount}
               </span>
               <span className={css({ display: { base: 'none', sm: 'inline' } })}>cards</span>
@@ -1567,7 +1582,10 @@ export function PlayingPhaseDrag() {
             position: 'fixed',
             // Mobile: bottom sheet, Desktop: right sidebar
             top: { base: 'auto', md: '56px' },
-            bottom: { base: spectatorStatsCollapsed ? '-120px' : '0', md: 'auto' },
+            bottom: {
+              base: spectatorStatsCollapsed ? '-120px' : '0',
+              md: 'auto',
+            },
             right: { base: '0', md: spectatorStatsCollapsed ? '-240px' : '0' },
             left: { base: '0', md: 'auto' },
             width: { base: '100%', md: '240px' },

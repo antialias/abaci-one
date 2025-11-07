@@ -149,7 +149,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
           className={hstack({
             gap: '3',
             justify: 'center',
-            align: 'center',
+            alignItems: 'center',
           })}
         >
           <button
@@ -236,7 +236,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
           className={hstack({
             gap: '3',
             justify: 'center',
-            align: 'center',
+            alignItems: 'center',
           })}
         >
           <button

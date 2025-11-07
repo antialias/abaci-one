@@ -3,11 +3,13 @@
 ## Confirmations and Dialogs
 
 **NEVER use native browser dialogs:**
+
 - ❌ `alert()`
 - ❌ `confirm()`
 - ❌ `prompt()`
 
 **ALWAYS use inline React-based confirmations:**
+
 - Show confirmation UI in-place using React state
 - Provide Cancel and Confirm buttons
 - Use descriptive warning messages with appropriate emoji (⚠️)
@@ -46,6 +48,7 @@ const [confirming, setConfirming] = useState(false)
 ### Real Examples
 
 See `/src/components/nav/ModerationPanel.tsx` for production examples:
+
 - Transfer ownership confirmation (lines 1793-1929)
 - Unban user confirmation (shows inline warning with Cancel/Confirm)
 
@@ -60,6 +63,7 @@ See `/src/components/nav/ModerationPanel.tsx` for production examples:
 ### Migration Checklist
 
 When replacing native dialogs:
+
 - [ ] Add state variable for confirmation (e.g., `const [confirming, setConfirming] = useState(false)`)
 - [ ] Remove the `confirm()` or `alert()` call from the handler
 - [ ] Replace the original UI with conditional rendering
@@ -83,6 +87,7 @@ See `.claude/CLAUDE.md` for complete Panda CSS documentation.
 ## Emoji Usage
 
 Emojis are used liberally throughout the UI for visual communication:
+
 - 👑 Host/owner status
 - ⏳ Waiting states
 - ⚠️ Warnings and confirmations

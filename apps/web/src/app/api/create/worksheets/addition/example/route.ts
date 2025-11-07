@@ -1,4 +1,12 @@
 // API route for generating compact addition problem examples for display option previews
+//
+// REUSABLE FOR BLOG POSTS: The generateExampleTypst function below is also used
+// to generate static single-problem examples for blog posts. See:
+// - scripts/generateTenFrameExamples.ts for the blog post example generator
+// - scripts/generateBlogExamples.ts for difficulty progression examples
+//
+// This ensures blog post examples use the EXACT same rendering as the live UI preview,
+// maintaining consistency between what users see in documentation vs. the actual tool.
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
@@ -78,7 +86,7 @@ ${generateProblemStackFunction(cellSize)}
 #let bO = calc.rem(b, 10)
 
 #align(center + horizon)[
-  #problem-stack(a, b, aT, aO, bT, bO, if show-numbers { 0 } else { none })
+  #problem-stack(a, b, aT, aO, bT, bO, if show-numbers { 0 } else { none }, show-carries, show-answers, show-colors, show-ten-frames, show-numbers)
 ]
 `
 }

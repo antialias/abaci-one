@@ -65,7 +65,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
       >
         {t('capture.title')}
       </h3>
-      <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '24px', color: '#374151' })}>
+      <p
+        className={css({
+          fontSize: '15px',
+          lineHeight: '1.6',
+          mb: '24px',
+          color: '#374151',
+        })}
+      >
         {t('capture.description')}
       </p>
 
@@ -91,7 +98,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.equality')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -130,7 +144,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.multiple')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -181,7 +202,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.sum')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -220,7 +248,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.difference')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -259,7 +294,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.product')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -298,7 +340,14 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           border: '2px solid #e5e7eb',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#111827',
+            mb: '8px',
+          })}
+        >
           {t('capture.ratio')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
@@ -336,10 +385,23 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           borderRadius: '4px',
         })}
       >
-        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#1e40af',
+            mb: '8px',
+          })}
+        >
           {t('capture.helpersTitle')}
         </p>
-        <p className={css({ fontSize: '14px', color: '#1e3a8a', lineHeight: '1.6' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            color: '#1e3a8a',
+            lineHeight: '1.6',
+          })}
+        >
           {t('capture.helpersDescription')}
         </p>
       </div>

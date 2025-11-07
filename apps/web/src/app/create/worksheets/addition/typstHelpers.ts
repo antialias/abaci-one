@@ -101,7 +101,8 @@ export function generateProblemStackFunction(cellSize: number): string {
   return String.raw`
 // Problem rendering function for addition worksheets
 // Returns the stack/grid structure for rendering a single 2-digit addition problem
-#let problem-stack(a, b, aT, aO, bT, bO, index-or-none) = {
+// Per-problem display flags: show-carries, show-answers, show-colors, show-ten-frames, show-numbers
+#let problem-stack(a, b, aT, aO, bT, bO, index-or-none, show-carries, show-answers, show-colors, show-ten-frames, show-numbers) = {
   stack(
     dir: ttb,
     spacing: 0pt,

@@ -9,6 +9,7 @@
 ## Executive Summary
 
 Migrate the Memory Lightning game from the legacy architecture to the new modular game platform. This game is unique because:
+
 - ✅ Already has a validator (`MemoryQuizGameValidator`)
 - ✅ Already uses `useArcadeSession` in room mode
 - ❌ Located in `/app/arcade/memory-quiz/` instead of `/arcade-games/`
@@ -23,6 +24,7 @@ Migrate the Memory Lightning game from the legacy architecture to the new modula
 ## Current Architecture
 
 ### File Structure
+
 ```
 src/app/arcade/memory-quiz/
 ├── page.tsx                          # Main page (local mode)
@@ -50,6 +52,7 @@ src/lib/arcade/validation/
 **⚠️ Local Mode Deprecated**: This migration only supports room mode. All games must be played in a room (even solo play is a single-player room). No local/offline mode code should be included.
 
 ### Current State Type (`SorobanQuizState`)
+
 ```typescript
 interface SorobanQuizState {
   // Core game data
@@ -90,26 +93,31 @@ interface SorobanQuizState {
 ```
 
 ### Current Move Types
+
 ```typescript
 type MemoryQuizGameMove =
-  | { type: 'START_QUIZ'; data: { numbers: number[], activePlayers, playerMetadata } }
-  | { type: 'NEXT_CARD' }
-  | { type: 'SHOW_INPUT_PHASE' }
-  | { type: 'ACCEPT_NUMBER'; data: { number: number } }
-  | { type: 'REJECT_NUMBER' }
-  | { type: 'SET_INPUT'; data: { input: string } }
-  | { type: 'SHOW_RESULTS' }
-  | { type: 'RESET_QUIZ' }
-  | { type: 'SET_CONFIG'; data: { field, value } }
+  | {
+      type: "START_QUIZ";
+      data: { numbers: number[]; activePlayers; playerMetadata };
+    }
+  | { type: "NEXT_CARD" }
+  | { type: "SHOW_INPUT_PHASE" }
+  | { type: "ACCEPT_NUMBER"; data: { number: number } }
+  | { type: "REJECT_NUMBER" }
+  | { type: "SET_INPUT"; data: { input: string } }
+  | { type: "SHOW_RESULTS" }
+  | { type: "RESET_QUIZ" }
+  | { type: "SET_CONFIG"; data: { field; value } };
 ```
 
 ### Current Config
+
 ```typescript
 interface MemoryQuizGameConfig {
-  selectedCount: 2 | 5 | 8 | 12 | 15
-  displayTime: number
-  selectedDifficulty: 'beginner' | 'easy' | 'medium' | 'hard' | 'expert'
-  playMode: 'cooperative' | 'competitive'
+  selectedCount: 2 | 5 | 8 | 12 | 15;
+  displayTime: number;
+  selectedDifficulty: "beginner" | "easy" | "medium" | "hard" | "expert";
+  playMode: "cooperative" | "competitive";
 }
 ```
 
@@ -118,6 +126,7 @@ interface MemoryQuizGameConfig {
 ## Target Architecture
 
 ### New File Structure
+
 ```
 src/arcade-games/memory-quiz/           # NEW location
 ├── index.ts                            # Game definition (defineGame)
@@ -136,6 +145,7 @@ src/arcade-games/memory-quiz/           # NEW location
 ```
 
 ### New Provider Pattern
+
 - ✅ Single provider (room mode only)
 - ✅ Uses `useArcadeSession` with `roomId` (always provided)
 - ✅ Uses Game SDK hooks (`useViewerId`, `useRoomData`, `useGameMode`)
@@ -147,6 +157,7 @@ src/arcade-games/memory-quiz/           # NEW location
 ## Migration Steps
 
 ### Phase 1: Preparation (1 hour)
+
 **Goal**: Set up new structure without breaking existing game
 
 1. ✅ Create `/src/arcade-games/memory-quiz/` directory
@@ -161,10 +172,13 @@ src/arcade-games/memory-quiz/           # NEW location
 ---
 
 ### Phase 2: Create Game Definition (1 hour)
+
 **Goal**: Define the game using `defineGame()` helper
 
 **Steps**:
+
 1. Create `game.yaml` manifest (optional but recommended)
+
    ```yaml
    name: memory-quiz
    displayName: Memory Lightning
@@ -186,44 +200,51 @@ src/arcade-games/memory-quiz/           # NEW location
    ```
 
 2. Create `index.ts` game definition:
+
    ```typescript
-   import { defineGame } from '@/lib/arcade/game-sdk'
-   import type { GameManifest } from '@/lib/arcade/game-sdk'
-   import { GameComponent } from './components/GameComponent'
-   import { MemoryQuizProvider } from './Provider'
-   import type { MemoryQuizConfig, MemoryQuizMove, MemoryQuizState } from './types'
-   import { memoryQuizValidator } from './Validator'
+   import { defineGame } from "@/lib/arcade/game-sdk";
+   import type { GameManifest } from "@/lib/arcade/game-sdk";
+   import { GameComponent } from "./components/GameComponent";
+   import { MemoryQuizProvider } from "./Provider";
+   import type {
+     MemoryQuizConfig,
+     MemoryQuizMove,
+     MemoryQuizState,
+   } from "./types";
+   import { memoryQuizValidator } from "./Validator";
 
    const manifest: GameManifest = {
-     name: 'memory-quiz',
-     displayName: 'Memory Lightning',
-     icon: '🧠',
+     name: "memory-quiz",
+     displayName: "Memory Lightning",
+     icon: "🧠",
      // ... (copy from game.yaml or define inline)
-   }
+   };
 
    const defaultConfig: MemoryQuizConfig = {
      selectedCount: 5,
      displayTime: 2.0,
-     selectedDifficulty: 'easy',
-     playMode: 'cooperative',
-   }
+     selectedDifficulty: "easy",
+     playMode: "cooperative",
+   };
 
-   function validateMemoryQuizConfig(config: unknown): config is MemoryQuizConfig {
+   function validateMemoryQuizConfig(
+     config: unknown,
+   ): config is MemoryQuizConfig {
      return (
-       typeof config === 'object' &&
+       typeof config === "object" &&
        config !== null &&
-       'selectedCount' in config &&
-       'displayTime' in config &&
-       'selectedDifficulty' in config &&
-       'playMode' in config &&
+       "selectedCount" in config &&
+       "displayTime" in config &&
+       "selectedDifficulty" in config &&
+       "playMode" in config &&
        [2, 5, 8, 12, 15].includes((config as any).selectedCount) &&
-       typeof (config as any).displayTime === 'number' &&
+       typeof (config as any).displayTime === "number" &&
        (config as any).displayTime > 0 &&
-       ['beginner', 'easy', 'medium', 'hard', 'expert'].includes(
-         (config as any).selectedDifficulty
+       ["beginner", "easy", "medium", "hard", "expert"].includes(
+         (config as any).selectedDifficulty,
        ) &&
-       ['cooperative', 'competitive'].includes((config as any).playMode)
-     )
+       ["cooperative", "competitive"].includes((config as any).playMode)
+     );
    }
 
    export const memoryQuizGame = defineGame<
@@ -237,24 +258,26 @@ src/arcade-games/memory-quiz/           # NEW location
      validator: memoryQuizValidator,
      defaultConfig,
      validateConfig: validateMemoryQuizConfig,
-   })
+   });
    ```
 
 3. Register game in `game-registry.ts`:
+
    ```typescript
-   import { memoryQuizGame } from '@/arcade-games/memory-quiz'
-   registerGame(memoryQuizGame)
+   import { memoryQuizGame } from "@/arcade-games/memory-quiz";
+   registerGame(memoryQuizGame);
    ```
 
 4. Update `validators.ts` to import from new location:
+
    ```typescript
-   import { memoryQuizValidator } from '@/arcade-games/memory-quiz/Validator'
+   import { memoryQuizValidator } from "@/arcade-games/memory-quiz/Validator";
    ```
 
 5. Add type inference to `game-configs.ts`:
    ```typescript
-   import type { memoryQuizGame } from '@/arcade-games/memory-quiz'
-   export type MemoryQuizGameConfig = InferGameConfig<typeof memoryQuizGame>
+   import type { memoryQuizGame } from "@/arcade-games/memory-quiz";
+   export type MemoryQuizGameConfig = InferGameConfig<typeof memoryQuizGame>;
    ```
 
 **Verification**: Game definition compiles, validator registered
@@ -262,15 +285,18 @@ src/arcade-games/memory-quiz/           # NEW location
 ---
 
 ### Phase 3: Update Types (30 minutes)
+
 **Goal**: Ensure types match Game SDK expectations
 
 **Changes to `types.ts`**:
+
 1. Rename `SorobanQuizState` → `MemoryQuizState`
 2. Ensure `MemoryQuizState` extends `GameState` from SDK
 3. Rename move types to match SDK patterns
 4. Export proper config type
 
 **Example**:
+
 ```typescript
 import type { GameConfig, GameState, GameMove } from '@/lib/arcade/game-sdk'
 
@@ -327,6 +353,7 @@ export type MemoryQuizMove =
 ```
 
 **Key Changes**:
+
 - All moves must have `playerId`, `userId`, `timestamp` (SDK requirement)
 - State should include `activePlayers` and `playerMetadata` (SDK standard)
 - Use `TEAM_MOVE` for moves where specific player doesn't matter
@@ -336,9 +363,11 @@ export type MemoryQuizMove =
 ---
 
 ### Phase 4: Create Provider (2 hours)
+
 **Goal**: Single provider for room mode (only mode supported)
 
 **Key Pattern**:
+
 ```typescript
 'use client'
 
@@ -413,6 +442,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
 ```
 
 **Key Changes from Current RoomProvider**:
+
 1. ✅ No reducer - server handles all state
 2. ✅ Uses SDK hooks exclusively
 3. ✅ Simpler action creators (server does the work)
@@ -420,6 +450,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
 5. ✅ Always uses roomId (no conditional logic)
 
 **Files to Delete**:
+
 - ❌ `reducer.ts` (no longer needed)
 - ❌ `LocalMemoryQuizProvider.tsx` (local mode deprecated)
 - ❌ Client-side `applyMoveOptimistically()` (server authoritative)
@@ -429,10 +460,13 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
 ---
 
 ### Phase 5: Update Components (1 hour)
+
 **Goal**: Update components to use new provider API
 
 **Changes Needed**:
+
 1. **GameComponent.tsx** (new file):
+
    ```typescript
    'use client'
 
@@ -470,18 +504,21 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
    ```
 
 2. **SetupPhase.tsx**: Update to use action creators instead of dispatch
+
    ```diff
    - dispatch({ type: 'SET_DIFFICULTY', difficulty: value })
    + setConfig('selectedDifficulty', value)
    ```
 
 3. **DisplayPhase.tsx**: Update to use `nextCard` action
+
    ```diff
    - dispatch({ type: 'NEXT_CARD' })
    + nextCard()
    ```
 
 4. **InputPhase.tsx**: Update to use `acceptNumber`, `rejectNumber` actions
+
    ```diff
    - dispatch({ type: 'ACCEPT_NUMBER', number })
    + acceptNumber(number)
@@ -494,6 +531,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
    ```
 
 **Minimal Changes**:
+
 - Components mostly stay the same
 - Replace `dispatch()` calls with action creators
 - No other UI changes needed
@@ -503,9 +541,11 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
 ---
 
 ### Phase 6: Update Page Route (15 minutes)
+
 **Goal**: Update page to use new game definition
 
 **New `/app/arcade/memory-quiz/page.tsx`**:
+
 ```typescript
 'use client'
 
@@ -529,9 +569,11 @@ export default function MemoryQuizPage() {
 ---
 
 ### Phase 7: Testing (30 minutes)
+
 **Goal**: Verify all functionality works
 
 **Test Cases**:
+
 1. **Solo Play** (single player in room):
    - [ ] Setup phase renders
    - [ ] Can change all settings (count, difficulty, display time, play mode)
@@ -569,9 +611,11 @@ export default function MemoryQuizPage() {
 ## Breaking Changes
 
 ### For Users
+
 - ✅ **None** - Game should work identically
 
 ### For Developers
+
 - ❌ Can't use `dispatch()` anymore (use action creators)
 - ❌ Can't access reducer (server-driven state only)
 - ❌ No local mode support (room mode only)
@@ -581,6 +625,7 @@ export default function MemoryQuizPage() {
 ## Rollback Plan
 
 If migration fails:
+
 1. Revert page to use old providers
 2. Keep old files in place
 3. Remove new `/arcade-games/memory-quiz/` directory
@@ -611,18 +656,21 @@ If migration fails:
 ## Complexity Analysis
 
 ### What Makes This Easier
+
 - ✅ Validator already exists and works
 - ✅ Already uses `useArcadeSession`
 - ✅ Move types mostly match SDK requirements
 - ✅ Well-tested, stable game
 
 ### What Makes This Harder
+
 - ❌ Complex UI state (keyboard detection, animations)
 - ❌ Two-phase gameplay (display, then input)
 - ❌ Timing synchronization requirements
 - ❌ Local input optimization (doesn't sync every keystroke)
 
 ### Estimated Time
+
 - **Fast path** (no issues): 3-4 hours
 - **Normal path** (minor fixes): 4-6 hours
 - **Slow path** (major issues): 6-8 hours
@@ -647,7 +695,9 @@ If migration fails:
 ## Notes
 
 ### UI State Challenges
+
 Memory Quiz has significant UI-only state:
+
 - `wrongGuessAnimations` - visual feedback
 - `hasPhysicalKeyboard` - device detection
 - `showOnScreenKeyboard` - toggle state
@@ -656,11 +706,13 @@ Memory Quiz has significant UI-only state:
 **Solution**: These can remain client-only (not synced). They don't affect game logic.
 
 ### Input Optimization
+
 Current implementation doesn't sync `currentInput` over network (only final submission).
 
 **Solution**: Keep this pattern. Use local state for input, only sync `ACCEPT_NUMBER`/`REJECT_NUMBER`.
 
 ### Timing Synchronization
+
 Room creator controls card timing (NEXT_CARD moves).
 
 **Solution**: Check `isRoomCreator` flag, only creator can advance cards.

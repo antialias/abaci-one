@@ -42,9 +42,27 @@ describe('useTrackManagement - Passenger Display', () => {
 
     // Mock stations
     mockStations = [
-      { id: 'station1', name: 'Station 1', icon: '🏠', emoji: '🏠', position: 20 },
-      { id: 'station2', name: 'Station 2', icon: '🏢', emoji: '🏢', position: 50 },
-      { id: 'station3', name: 'Station 3', icon: '🏪', emoji: '🏪', position: 80 },
+      {
+        id: 'station1',
+        name: 'Station 1',
+        icon: '🏠',
+        emoji: '🏠',
+        position: 20,
+      },
+      {
+        id: 'station2',
+        name: 'Station 2',
+        icon: '🏢',
+        emoji: '🏢',
+        position: 50,
+      },
+      {
+        id: 'station3',
+        name: 'Station 3',
+        icon: '🏪',
+        emoji: '🏪',
+        position: 80,
+      },
     ]
 
     // Mock passengers - initial set (multiplayer format)

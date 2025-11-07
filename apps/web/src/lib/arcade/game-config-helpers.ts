@@ -86,7 +86,10 @@ export async function getGameConfig<T extends ExtendedGameName>(
 
   // Merge saved config with defaults to handle missing fields
   const defaults = getDefaultGameConfig(gameName)
-  return { ...defaults, ...(configRow.config as object) } as GameConfigByName[T]
+  return {
+    ...defaults,
+    ...(configRow.config as object),
+  } as GameConfigByName[T]
 }
 
 /**

@@ -385,7 +385,10 @@ export function ReasonTooltip({
                   <code className="reason-tooltip__expanded">{segment.expression}</code>
                 </div>
                 <div className="reason-tooltip__label">
-                  {t('formula', { original: originalValue, expanded: segment.expression })}
+                  {t('formula', {
+                    original: originalValue,
+                    expanded: segment.expression,
+                  })}
                 </div>
               </div>
             )}

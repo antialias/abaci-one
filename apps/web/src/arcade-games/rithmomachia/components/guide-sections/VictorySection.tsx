@@ -42,7 +42,13 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         {t('victory.title')}
       </h3>
 
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px',
+        })}
+      >
         <div>
           <h4
             className={css({
@@ -58,7 +64,14 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <span>👑</span>
             <span>{t('victory.harmony')}</span>
           </h4>
-          <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151', mb: '16px' })}>
+          <p
+            className={css({
+              fontSize: '15px',
+              lineHeight: '1.6',
+              color: '#374151',
+              mb: '16px',
+            })}
+          >
             {t('victory.harmonyDesc')}
           </p>
 
@@ -83,7 +96,12 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               {t('victory.requirementsTitle')}
             </p>
             <ul
-              className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+              className={css({
+                fontSize: '14px',
+                color: '#78350f',
+                lineHeight: '1.8',
+                pl: '20px',
+              })}
             >
               <li>
                 <strong>{t('victory.enemyTerritoryTitle')}</strong> {t('victory.enemyTerritory')}
@@ -176,7 +194,13 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <span>🚫</span>
             <span>{t('victory.exhaustion')}</span>
           </h4>
-          <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151' })}>
+          <p
+            className={css({
+              fontSize: '15px',
+              lineHeight: '1.6',
+              color: '#374151',
+            })}
+          >
             {t('victory.exhaustionDesc')}
           </p>
         </div>

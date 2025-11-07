@@ -33,6 +33,7 @@ const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
 ```
 
 **Actual Behavior (CORRECT)**:
+
 - ✅ When a USER plays Card Sorting in a room, the game state SYNCS ACROSS THE ROOM NETWORK
 - ✅ This enables **spectator mode** - other room members can watch the game in real-time
 - ✅ Card Sorting is single-player (`maxPlayers: 1`), but spectators can watch and cheer
@@ -40,10 +41,12 @@ const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
 - ✅ Creates social/collaborative experience ("Watch me solve this!")
 
 **Supported By Architecture** (ARCADE_ARCHITECTURE.md, Spectator Mode section):
+
 > Spectator mode is automatically enabled when using room-based sync (`roomId: roomData?.id`).
 > Any room member who is not actively playing becomes a spectator and can watch the game in real-time.
 >
 > **✅ This is the PREFERRED pattern** - even for single-player games like Card Sorting, because:
+>
 > - Enables spectator mode automatically
 > - Creates social experience ("watch me solve this!")
 > - No extra code needed
@@ -54,29 +57,30 @@ const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
 ```typescript
 // For single-player games WITH spectator mode support:
 export function CardSortingProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
-  const { roomData } = useRoomData()  // ✅ Fetch room data for spectator mode
+  const { data: viewerId } = useViewerId();
+  const { roomData } = useRoomData(); // ✅ Fetch room data for spectator mode
 
   const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
-    userId: viewerId || '',
-    roomId: roomData?.id,  // ✅ Enable spectator mode - room members can watch
+    userId: viewerId || "",
+    roomId: roomData?.id, // ✅ Enable spectator mode - room members can watch
     initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
-  })
+  });
 
   // Actions check for localPlayerId - spectators won't have one
   const startGame = useCallback(() => {
     if (!localPlayerId) {
-      console.warn('[CardSorting] No local player - spectating only')
-      return  // ✅ Spectators blocked from starting game
+      console.warn("[CardSorting] No local player - spectating only");
+      return; // ✅ Spectators blocked from starting game
     }
     // ... send move
-  }, [localPlayerId, sendMove])
+  }, [localPlayerId, sendMove]);
 }
 ```
 
 **Why This Pattern is Used**:
 This enables spectator mode as a first-class user experience. Room members can:
+
 - Watch other players solve puzzles
 - Learn strategies by observation
 - Cheer and coach
@@ -101,6 +105,7 @@ memory-quiz/Provider.tsx:  const { roomData } = useRoomData()
 ```
 
 All providers pass `roomId: roomData?.id` to `useArcadeSession`. This means:
+
 - ✅ **All games** support spectator mode automatically
 - ✅ **Single-player games** (card-sorting) enable "watch me play" experience
 - ✅ **Multiplayer games** (matching, memory-quiz, complement-race) support both players and spectators
@@ -118,14 +123,14 @@ All providers pass `roomId: roomData?.id` to `useArcadeSession`. This means:
 The provider correctly uses `useGameMode()` to access active players:
 
 ```typescript
-const { activePlayers, players } = useGameMode()
+const { activePlayers, players } = useGameMode();
 
 const localPlayerId = useMemo(() => {
   return Array.from(activePlayers).find((id) => {
-    const player = players.get(id)
-    return player?.isLocal !== false
-  })
-}, [activePlayers, players])
+    const player = players.get(id);
+    return player?.isLocal !== false;
+  });
+}, [activePlayers, players]);
 ```
 
 ✅ Only includes players with `isActive = true`
@@ -139,17 +144,18 @@ const localPlayerId = useMemo(() => {
 **Location**: Provider.tsx lines 383-491 (all move creators)
 
 All moves correctly use:
+
 - `playerId: localPlayerId` (PLAYER makes the move)
 - `userId: viewerId || ''` (USER owns the session)
 
 ```typescript
 // Example from startGame (lines 383-391)
 sendMove({
-  type: 'START_GAME',
-  playerId: localPlayerId,  // ✅ PLAYER ID
-  userId: viewerId || '',    // ✅ USER ID
+  type: "START_GAME",
+  playerId: localPlayerId, // ✅ PLAYER ID
+  userId: viewerId || "", // ✅ USER ID
   data: { playerMetadata, selectedCards },
-})
+});
 ```
 
 ✅ Follows USER/PLAYER distinction correctly
@@ -187,14 +193,18 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
 Uses the modular game system correctly:
 
 ```typescript
-export const cardSortingGame = defineGame<CardSortingConfig, CardSortingState, CardSortingMove>({
+export const cardSortingGame = defineGame<
+  CardSortingConfig,
+  CardSortingState,
+  CardSortingMove
+>({
   manifest,
   Provider: CardSortingProvider,
   GameComponent,
   validator: cardSortingValidator,
   defaultConfig,
   validateConfig: validateCardSortingConfig,
-})
+});
 ```
 
 ✅ Proper TypeScript generics
@@ -262,6 +272,7 @@ export function GameComponent() {
 ```
 
 **Also Consider**:
+
 - Show "Join Game" prompt during setup phase for spectators
 - Display spectator count ("2 people watching")
 - Add smooth real-time animations for spectators
@@ -273,12 +284,14 @@ export function GameComponent() {
 All arcade games currently support spectator mode. Consider documenting this in each game's README:
 
 **Games with Spectator Mode**:
+
 - ✅ `card-sorting` - Single-player puzzle with spectators
 - ✅ `matching` - Multiplayer battle with spectators
 - ✅ `memory-quiz` - Cooperative with spectators
 - ✅ `complement-race` - Competitive with spectators
 
 **Documentation to Add**:
+
 - How spectator mode works in each game
 - Example scenarios (family game night, classroom)
 - Best practices for spectator experience
@@ -290,28 +303,28 @@ All arcade games currently support spectator mode. Consider documenting this in 
 Following ARCADE_ARCHITECTURE.md Spectator Mode section, add tests:
 
 ```typescript
-describe('Card Sorting - Spectator Mode', () => {
-  it('should sync state to spectators when USER plays in a room', async () => {
+describe("Card Sorting - Spectator Mode", () => {
+  it("should sync state to spectators when USER plays in a room", async () => {
     // Setup: USER A and USER B in same room
     // Action: USER A plays Card Sorting
     // Assert: USER B (spectator) sees card placements in real-time
     // Assert: USER B cannot place cards (no localPlayerId)
-  })
+  });
 
-  it('should prevent spectators from making moves', () => {
+  it("should prevent spectators from making moves", () => {
     // Setup: USER A playing, USER B spectating
     // Action: USER B attempts to place card
     // Assert: Action blocked (localPlayerId check)
     // Assert: Server rejects if somehow sent
-  })
+  });
 
-  it('should allow spectator to play after current player finishes', () => {
+  it("should allow spectator to play after current player finishes", () => {
     // Setup: USER A playing, USER B spectating
     // Action: USER A finishes, USER B starts new game
     // Assert: USER B becomes player
     // Assert: USER A becomes spectator
-  })
-})
+  });
+});
 ```
 
 ---
@@ -319,6 +332,7 @@ describe('Card Sorting - Spectator Mode', () => {
 ### 4. Architecture Documentation
 
 **✅ COMPLETED**: ARCADE_ARCHITECTURE.md has been updated with comprehensive spectator mode documentation:
+
 - Added "SPECTATOR" to core terminology
 - Documented three synchronization modes (Local, Room-Based with Spectator, Pure Multiplayer)
 - Complete "Spectator Mode" section with:
@@ -366,6 +380,7 @@ Based on ARCADE_ARCHITECTURE.md Spectator Mode Pattern:
 ## Summary
 
 The Card Sorting Challenge game is **correctly implemented** with:
+
 - ✅ Active players (only `isActive = true` players participate)
 - ✅ Player ID vs User ID distinction
 - ✅ Validator pattern
@@ -378,6 +393,7 @@ The Card Sorting Challenge game is **correctly implemented** with:
 ✅ **CORRECT**: Room sync enables spectator mode as a first-class feature
 
 The `roomId: roomData?.id` pattern is **intentional and correct**:
+
 1. ✅ Enables spectator mode automatically
 2. ✅ Room members can watch games in real-time
 3. ✅ Creates social/collaborative experience
@@ -385,6 +401,7 @@ The `roomId: roomData?.id` pattern is **intentional and correct**:
 5. ✅ Follows ARCADE_ARCHITECTURE.md recommended pattern
 
 **Recommended Enhancements** (not critical):
+
 1. Add spectator UI indicators ("👀 Spectating...")
 2. Disable controls visually for spectators
 3. Add spectator mode tests

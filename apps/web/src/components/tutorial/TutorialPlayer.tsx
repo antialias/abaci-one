@@ -1312,7 +1312,14 @@ function TutorialPlayerContent({
           </div>
 
           {/* Progress bar */}
-          <div className={css({ mt: 2, bg: 'gray.200', borderRadius: 'full', h: 2 })}>
+          <div
+            className={css({
+              mt: 2,
+              bg: 'gray.200',
+              borderRadius: 'full',
+              h: 2,
+            })}
+          >
             <div
               className={css({
                 bg: 'blue.500',

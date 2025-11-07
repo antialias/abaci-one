@@ -98,14 +98,22 @@ function DraggableCard({ card, containerRef }: DraggableCardProps) {
   const appConfig = useAbacusConfig()
 
   // Track position - starts at initial, updates when dragged
-  const [position, setPosition] = useState({ x: card.initialX, y: card.initialY })
+  const [position, setPosition] = useState({
+    x: card.initialX,
+    y: card.initialY,
+  })
   const [rotation, setRotation] = useState(card.initialRotation) // Now dynamic!
   const [zIndex, setZIndex] = useState(card.zIndex)
   const [isDragging, setIsDragging] = useState(false)
   const [dragSpeed, setDragSpeed] = useState(0) // Speed for dynamic shadow
 
   // Track drag state
-  const dragStartRef = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
+  const dragStartRef = useRef<{
+    x: number
+    y: number
+    cardX: number
+    cardY: number
+  } | null>(null)
   const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }) // Offset from card center where grabbed
   const baseRotationRef = useRef(card.initialRotation) // Starting rotation
   const lastMoveTimeRef = useRef<number>(0)

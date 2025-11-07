@@ -21,36 +21,48 @@ The implementation is **93% compliant** with the specification, with all major g
 ### 1. **BigInt Requirement Violation** ⚠️ CRITICAL
 
 **SPEC Requirement (§10, §13.2):**
+
 > Use bigints (JS `BigInt`) for relation math to avoid overflow with large powers.
 
 **Implementation:** `relationEngine.ts` uses `number` type for all arithmetic
 
 ```typescript
 // SPEC says this should be BigInt
-export function checkProduct(a: number, b: number, h: number): RelationCheckResult {
-  const product = a * h  // Can overflow with large values!
+export function checkProduct(
+  a: number,
+  b: number,
+  h: number,
+): RelationCheckResult {
+  const product = a * h; // Can overflow with large values!
   // ...
 }
 ```
 
 **Impact:**
+
 - **HIGH SEVERITY** - With traditional piece values (361, 289, 225, etc.), multiplication can overflow
 - Example: `361 * 289 = 104,329` (safe)
 - But with higher values or accumulated products, overflow risk increases
 - SPEC explicitly requires BigInt for "large powers"
 
 **Evidence:**
+
 - File: `utils/relationEngine.ts` lines 18-296
 - Comment on line 5 claims "All arithmetic uses BigInt" but all functions use `number`
 - `formatValue()` function (line 296) has JSDoc saying "Format a BigInt value" but accepts `number`
 
 **Recommendation:**
+
 ```typescript
 // Convert all relation functions to use bigint
-export function checkProduct(a: bigint, b: bigint, h: bigint): RelationCheckResult {
-  const product = a * h
+export function checkProduct(
+  a: bigint,
+  b: bigint,
+  h: bigint,
+): RelationCheckResult {
+  const product = a * h;
   if (product === b || b * h === a) {
-    return { valid: true, relation: 'PRODUCT' }
+    return { valid: true, relation: "PRODUCT" };
   }
   // ...
 }
@@ -61,6 +73,7 @@ export function checkProduct(a: bigint, b: bigint, h: bigint): RelationCheckResu
 ### 2. **Pyramid as Helper - Unclear Implementation** ⚠️ MEDIUM-CRITICAL
 
 **SPEC Requirement (§13.2):**
+
 > If you allow Pyramid as helper, require explicit `helperFaceUsed` in payload and store it.
 
 **Implementation:** `validateCapture()` in `Validator.ts` (lines 276-371) **does not check if helper is a Pyramid**
@@ -69,29 +82,31 @@ export function checkProduct(a: bigint, b: bigint, h: bigint): RelationCheckResu
 // Current code (lines 302-318)
 if (helperPieceId) {
   try {
-    helperPiece = getPieceById(state.pieces, helperPieceId)
+    helperPiece = getPieceById(state.pieces, helperPieceId);
   } catch (e) {
-    return { valid: false, error: `Helper piece not found: ${helperPieceId}` }
+    return { valid: false, error: `Helper piece not found: ${helperPieceId}` };
   }
 
   // Check helper is friendly
   if (helperPiece.color !== mover.color) {
-    return { valid: false, error: 'Helper must be friendly' }
+    return { valid: false, error: "Helper must be friendly" };
   }
 
   // Get helper value
-  helperValue = getEffectiveValue(helperPiece)
+  helperValue = getEffectiveValue(helperPiece);
   // ⚠️ getEffectiveValue() returns null for Pyramid without activePyramidFace
   // ⚠️ No validation for helperFaceUsed in capture data!
 }
 ```
 
 **Gap:** SPEC says helpers **do not switch faces** (§13.2), but:
+
 - No check if helper is a Pyramid
 - No `helperFaceUsed` field in `CaptureContext` type
 - `getEffectiveValue()` returns `null` for Pyramids without `activePyramidFace` set
 
 **Impact:**
+
 - If a Pyramid is used as helper, capture will fail (helperValue = null)
 - No way to specify helper face in move data
 - Ambiguous behavior: should Pyramids be allowed as helpers or not?
@@ -99,21 +114,23 @@ if (helperPieceId) {
 **Recommendation:** SPEC says Pyramids "do not switch faces" for helpers. Two options:
 
 **Option A (Explicit):** Add `helperFaceUsed` to capture data:
+
 ```typescript
 interface CaptureContext {
   relation: RelationKind;
   moverPieceId: string;
   targetPieceId: string;
   helperPieceId?: string;
-  helperFaceUsed?: number | null;  // ← Add this
+  helperFaceUsed?: number | null; // ← Add this
   moverFaceUsed?: number | null;
 }
 ```
 
 **Option B (Simple):** Disallow Pyramids as helpers:
+
 ```typescript
-if (helperPiece.type === 'P') {
-  return { valid: false, error: 'Pyramids cannot be used as helpers' }
+if (helperPiece.type === "P") {
+  return { valid: false, error: "Pyramids cannot be used as helpers" };
 }
 ```
 
@@ -122,6 +139,7 @@ if (helperPiece.type === 'P') {
 ### 3. **Harmony Params Type Mismatch** ⚠️ MEDIUM
 
 **SPEC Requirement (§11.4):**
+
 ```typescript
 interface HarmonyDeclaration {
   // ...
@@ -130,14 +148,15 @@ interface HarmonyDeclaration {
 ```
 
 **Implementation (types.ts line 52-57):**
+
 ```typescript
 export interface HarmonyDeclaration {
   // ...
   params: {
-    a?: string // first value in proportion (A-M-B structure)
-    m?: string // middle value in proportion
-    b?: string // last value in proportion
-  }
+    a?: string; // first value in proportion (A-M-B structure)
+    m?: string; // middle value in proportion
+    b?: string; // last value in proportion
+  };
 }
 ```
 
@@ -154,22 +173,26 @@ export interface HarmonyDeclaration {
 ### 4. **No Test Files Found** ⚠️ MEDIUM
 
 **SPEC Requirement (§15):**
+
 > Test cases (goldens) - 10 test scenarios provided
 
 **Implementation:** **ZERO test files** found in `src/arcade-games/rithmomachia/`
 
 **Gap:**
+
 - No `*.test.ts` or `*.spec.ts` files
 - No unit tests for validators
 - No integration tests for game scenarios
 - SPEC provides 10 specific test cases that should be automated
 
 **Impact:**
+
 - No automated regression testing
 - Changes could break game logic undetected
 - Manual testing burden on developer
 
 **Recommendation:** Create test suite covering SPEC §15 test cases:
+
 ```
 src/arcade-games/rithmomachia/__tests__/
   ├── relationEngine.test.ts       # Test all 7 capture relations
@@ -184,11 +207,13 @@ src/arcade-games/rithmomachia/__tests__/
 ### 5. **Time Controls Not Enforced** ⚠️ LOW
 
 **SPEC Requirement (§11.2):**
+
 ```typescript
 clocks?: { Wms: number; Bms: number } | null; // optional timers
 ```
 
 **Implementation:**
+
 - `timeControlMs` config field exists (types.ts line 88)
 - Stored in state but **never enforced**
 - No clock countdown logic
@@ -205,6 +230,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 ## ✅ COMPLIANT AREAS (Working Correctly)
 
 ### Board & Setup ✅
+
 - ✅ 8 rows × 16 columns (A-P, 1-8)
 - ✅ Traditional 25-piece setup per side
 - ✅ Correct piece values and types
@@ -212,6 +238,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ Piece IDs follow naming convention
 
 ### Movement & Geometry ✅
+
 - ✅ Circle: Diagonal (bishop-like)
 - ✅ Triangle: Orthogonal (rook-like)
 - ✅ Square: Queen-like (diagonal + orthogonal)
@@ -220,6 +247,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ No jumping enforced
 
 ### Capture Relations (7 types) ✅
+
 - ✅ EQUAL: `a == b`
 - ✅ MULTIPLE: `a % b == 0`
 - ✅ DIVISOR: `b % a == 0`
@@ -231,12 +259,14 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 **Note:** Logic correct but should use BigInt (see Critical Issue #1)
 
 ### Ambush Captures ✅
+
 - ✅ Requires 2 friendly helpers
 - ✅ Validates relation with enemy piece
 - ✅ Post-move declaration
 - ✅ Resets no-progress counter
 
 ### Harmony Victories ✅
+
 - ✅ Three-piece proportions (A-M-B structure)
 - ✅ Arithmetic: `2M = A + B`
 - ✅ Geometric: `M² = A · B`
@@ -248,17 +278,20 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ `allowAnySetOnRecheck` config respected
 
 ### Other Victory Conditions ✅
+
 - ✅ Exhaustion (no legal moves)
 - ✅ Resignation
 - ✅ Point victory (optional, C=1, T=2, S=3, P=5)
 - ✅ 30-point threshold
 
 ### Draw Conditions ✅
+
 - ✅ Threefold repetition (using Zobrist hashing)
 - ✅ 50-move rule (no captures/no harmony)
 - ✅ Mutual agreement (offer/accept)
 
 ### Configuration ✅
+
 - ✅ All 8 config fields implemented
 - ✅ Player assignment (whitePlayerId, blackPlayerId)
 - ✅ Point win toggle
@@ -266,6 +299,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ Config persistence in database
 
 ### State Management ✅
+
 - ✅ Immutable state updates
 - ✅ Provider pattern with context
 - ✅ Move history tracking
@@ -274,6 +308,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ Turn management
 
 ### Validation ✅
+
 - ✅ Server-side validation via Validator class
 - ✅ Turn ownership checks
 - ✅ Piece existence checks
@@ -283,6 +318,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ Pyramid face validation
 
 ### UI Components ✅
+
 - ✅ Full game board rendering
 - ✅ Drag-and-drop movement
 - ✅ Click-to-select movement
@@ -297,6 +333,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - ✅ Error notifications
 
 ### Socket Protocol ✅
+
 - ✅ Uses arcade SDK generic session handling
 - ✅ No game-specific socket code needed
 - ✅ Move validation server-side
@@ -306,15 +343,15 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 
 ## 📊 Compliance Score
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| **Core Rules** | 95% | All rules implemented, BigInt issue only |
-| **Data Models** | 100% | All types match SPEC |
-| **Validation** | 90% | Missing helper Pyramid validation |
-| **Victory Conditions** | 100% | All 6 conditions working |
-| **UI/UX** | 95% | Excellent, missing math inspector |
-| **Testing** | 0% | No test files |
-| **Documentation** | 100% | SPEC is comprehensive |
+| Category               | Score | Notes                                    |
+| ---------------------- | ----- | ---------------------------------------- |
+| **Core Rules**         | 95%   | All rules implemented, BigInt issue only |
+| **Data Models**        | 100%  | All types match SPEC                     |
+| **Validation**         | 90%   | Missing helper Pyramid validation        |
+| **Victory Conditions** | 100%  | All 6 conditions working                 |
+| **UI/UX**              | 95%   | Excellent, missing math inspector        |
+| **Testing**            | 0%    | No test files                            |
+| **Documentation**      | 100%  | SPEC is comprehensive                    |
 
 **Overall:** 93% compliant
 
@@ -323,14 +360,17 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 ## 🎯 Priority Action Items
 
 ### High Priority (Fix before release)
+
 1. **Implement BigInt arithmetic** in `relationEngine.ts` (Critical Issue #1)
 2. **Decide on Pyramid helper policy** and implement validation (Critical Issue #2)
 
 ### Medium Priority (Fix in next sprint)
+
 3. **Create test suite** covering SPEC §15 test cases (Medium Issue #4)
 4. **Update SPEC** to match harmony params structure (Medium Issue #3)
 
 ### Low Priority (Future enhancement)
+
 5. **Implement time controls** if needed for competitive play (Low Issue #5)
 6. **Add math inspector UI** (SPEC §14 suggestion)
 7. **Add harmony builder UI** (SPEC §14 suggestion)
@@ -340,6 +380,7 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 ## 🔍 Detailed Code Review Notes
 
 ### Validator.ts (895 lines)
+
 - **Excellent:** Comprehensive move validation
 - **Excellent:** Proper state immutability
 - **Excellent:** Harmony persistence logic correct
@@ -348,12 +389,14 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - **Gap:** No `helperFaceUsed` handling
 
 ### relationEngine.ts (296 lines)
+
 - **Critical:** Uses `number` instead of `bigint`
 - **Good:** All 7 relations correctly implemented
 - **Good:** Bidirectional checks (a→b and b→a)
 - **Good:** Helper validation structure
 
 ### harmonyValidator.ts (364 lines)
+
 - **Excellent:** Three-piece structure correct
 - **Excellent:** Collinearity logic solid
 - **Excellent:** Middle piece detection accurate
@@ -361,38 +404,45 @@ clocks?: { Wms: number; Bms: number } | null; // optional timers
 - **Good:** Layout modes implemented
 
 ### pathValidator.ts (210 lines)
+
 - **Excellent:** All movement geometries correct
 - **Excellent:** Path clearance algorithm
 - **Good:** getLegalMoves() utility
 
 ### pieceSetup.ts (234 lines)
+
 - **Excellent:** Traditional setup matches reference
 - **Excellent:** All 50 pieces correctly placed
 - **Good:** Utility functions comprehensive
 
 ### Provider.tsx (730 lines)
+
 - **Excellent:** Player assignment logic
 - **Excellent:** Observer mode detection
 - **Excellent:** Config persistence
 - **Good:** Error handling with toasts
 
 ### RithmomachiaGame.tsx (30,000+ lines)
+
 - **Excellent:** Comprehensive UI
 - **Excellent:** Drag-and-drop + click movement
 - **Good:** Relation selection modal
 - **Note:** Very large file, consider splitting
 
 ### PieceRenderer.tsx (200 lines)
+
 - **Excellent:** Clean SVG rendering
 - **Good:** Color gradients
 - **Good:** Responsive sizing
 
 ### types.ts (318 lines)
+
 - **Excellent:** Complete type definitions
 - **Good:** Helper utilities (parseSquare, etc.)
 - **Minor:** Harmony params naming differs from SPEC
 
 ### zobristHash.ts (180 lines)
+
 - **Excellent:** Deterministic hashing
 - **Good:** Uses BigInt internally
 - **Good:** Repetition detection

@@ -2,11 +2,11 @@
 
 ## 0) High-level goals
 
-* Two players ("White" and "Black") play on a rectangular grid.
-* Pieces carry **positive integers** called **values**.
-* You move pieces like chess (clear paths, legal geometries).
-* You **capture** via **mathematical relations** (equality, sum, difference, multiple, divisor, product, ratio).
-* You may also win by building a **Harmony** (a progression) inside enemy territory.
+- Two players ("White" and "Black") play on a rectangular grid.
+- Pieces carry **positive integers** called **values**.
+- You move pieces like chess (clear paths, legal geometries).
+- You **capture** via **mathematical relations** (equality, sum, difference, multiple, divisor, product, ratio).
+- You may also win by building a **Harmony** (a progression) inside enemy territory.
 
 This spec aims for: fully deterministic setup, no ambiguities, consistent networking, and easy future extensions.
 
@@ -14,15 +14,14 @@ This spec aims for: fully deterministic setup, no ambiguities, consistent networ
 
 ## 1) Board
 
-* **Dimensions:** `8 rows × 16 columns`
-* **Coordinates:** Columns `A…P` (left→right), Rows `1…8` (bottom→top from White's perspective)
+- **Dimensions:** `8 rows × 16 columns`
+- **Coordinates:** Columns `A…P` (left→right), Rows `1…8` (bottom→top from White's perspective)
+  - Bottom rank (Row 1) is White's back rank.
+  - Top rank (Row 8) is Black's back rank.
 
-  * Bottom rank (Row 1) is White's back rank.
-  * Top rank (Row 8) is Black's back rank.
-* **Halves:**
-
-  * **White half:** Rows `1–4`
-  * **Black half:** Rows `5–8`
+- **Halves:**
+  - **White half:** Rows `1–4`
+  - **Black half:** Rows `5–8`
 
 ---
 
@@ -30,13 +29,13 @@ This spec aims for: fully deterministic setup, no ambiguities, consistent networ
 
 Each side has **24 pieces**:
 
-* **8 Circles (C)** — "light" pieces
+- **8 Circles (C)** — "light" pieces
   Movement: **diagonal, any distance**, no jumping (like a bishop).
-* **8 Triangles (T)** — "medium" pieces
+- **8 Triangles (T)** — "medium" pieces
   Movement: **orthogonal, any distance**, no jumping (like a rook).
-* **7 Squares (S)** — "heavy" pieces
+- **7 Squares (S)** — "heavy" pieces
   Movement: **queen-like, any distance**, no jumping (orthogonal or diagonal).
-* **1 Pyramid (P)** — "royal" piece
+- **1 Pyramid (P)** — "royal" piece
   Movement: **king-like, 1 step** in any direction (8-neighborhood).
 
 > Note: Movement is purely geometric. Numeric relations are only for captures and victory checks.
@@ -49,26 +48,28 @@ This is the **traditional Rithmomachia** ("The Philosophers' Game") setup, where
 
 ### 3.1 Piece types and their numerical associations
 
-* **Circles** → Units and squares (low geometric bases); move **diagonally** like bishops
-* **Triangles** → Triangular numbers and figurates; move **orthogonally** like rooks
-* **Squares** → Square numbers and composites; move like **queens** (orthogonal + diagonal)
-* **Pyramids** → Composite/sum pieces with multiple faces; move like **kings** (1 step any direction)
+- **Circles** → Units and squares (low geometric bases); move **diagonally** like bishops
+- **Triangles** → Triangular numbers and figurates; move **orthogonally** like rooks
+- **Squares** → Square numbers and composites; move like **queens** (orthogonal + diagonal)
+- **Pyramids** → Composite/sum pieces with multiple faces; move like **kings** (1 step any direction)
 
 ### 3.2 Black values (traditional layout)
 
 **Total: 24 pieces**
-* **Squares (7):** `28` (×2), `66` (×2), `120`, `225` (15²), `361` (19²)
-* **Triangles (8):** `12`, `16` (4²), `30`, `36` (6²), `56`, `64` (8²), `90`, `100` (10²)
-* **Circles (8):** `3`, `5`, `7`, `9` (×2), `25` (5²), `49` (7²), `81` (9²)
-* **Pyramid (1):** `[36, 25, 16, 4]` (faces: 6², 5², 4², 2²)
+
+- **Squares (7):** `28` (×2), `66` (×2), `120`, `225` (15²), `361` (19²)
+- **Triangles (8):** `12`, `16` (4²), `30`, `36` (6²), `56`, `64` (8²), `90`, `100` (10²)
+- **Circles (8):** `3`, `5`, `7`, `9` (×2), `25` (5²), `49` (7²), `81` (9²)
+- **Pyramid (1):** `[36, 25, 16, 4]` (faces: 6², 5², 4², 2²)
 
 ### 3.3 White values (traditional layout)
 
 **Total: 24 pieces**
-* **Squares (7):** `15`, `25` (5²), `45`, `81` (9²), `153`, `169` (13²), `289` (17²)
-* **Triangles (8):** `6`, `9`, `20` (×2), `25` (5²), `72`, `81` (9²) (note: one T with value 72 appears twice in column O)
-* **Circles (8):** `2`, `4` (×2), `6`, `8`, `16` (×2), `64` (8²)
-* **Pyramid (1):** `[64, 49, 36, 25]` (faces: 8², 7², 6², 5²)
+
+- **Squares (7):** `15`, `25` (5²), `45`, `81` (9²), `153`, `169` (13²), `289` (17²)
+- **Triangles (8):** `6`, `9`, `20` (×2), `25` (5²), `72`, `81` (9²) (note: one T with value 72 appears twice in column O)
+- **Circles (8):** `2`, `4` (×2), `6`, `8`, `16` (×2), `64` (8²)
+- **Pyramid (1):** `[64, 49, 36, 25]` (faces: 8², 7², 6², 5²)
 
 > **Philosophical note:** The initial layout visually encodes proportionality—large composite figurates on outer edges, smaller simple numbers inside. Numbers on each side form progressions that enable arithmetical, geometrical, and harmonical victories. For relations and Pyramid captures, the Pyramid's **face value** is chosen by the owner at capture time.
 
@@ -77,6 +78,7 @@ This is the **traditional Rithmomachia** ("The Philosophers' Game") setup, where
 ## 4) Initial setup — Traditional formation
 
 **SYMMETRIC VERTICAL LAYOUT** — The board is **8 rows × 16 columns** with:
+
 - **BLACK (left side)**: Columns **A, B, C, D**
 - **WHITE (right side)**: Columns **M, N, O, P**
 - **Battlefield (middle)**: Columns **E through L** (8 empty columns)
@@ -86,24 +88,28 @@ This is the **classical symmetric formation** from authoritative historical sour
 ### BLACK Setup (Left side — columns A, B, C, D)
 
 **Column A** (Outer edge — Sparse squares):
+
 ```
 A1: S(28)    A2: S(66)    A3: empty   A4: empty
 A5: empty    A6: empty    A7: S(225)  A8: S(361)
 ```
 
 **Column B** (Mixed with Pyramid at B8):
+
 ```
 B1: S(28)    B2: S(66)    B3: T(36)   B4: T(30)
 B5: T(56)    B6: T(64)    B7: S(120)  B8: P[36,25,16,4]
 ```
 
 **Column C** (Triangles and circles):
+
 ```
 C1: T(16)    C2: T(12)    C3: C(9)    C4: C(25)
 C5: C(49)    C6: C(81)    C7: T(90)   C8: T(100)
 ```
 
 **Column D** (Inner edge — Small circles, sparse):
+
 ```
 D1: empty    D2: empty    D3: C(3)    D4: C(5)
 D5: C(7)     D6: C(9)     D7: empty   D8: empty
@@ -112,24 +118,28 @@ D5: C(7)     D6: C(9)     D7: empty   D8: empty
 ### WHITE Setup (Right side — columns M, N, O, P)
 
 **Column M** (Inner edge — Small circles, sparse):
+
 ```
 M1: empty    M2: empty    M3: C(8)    M4: C(6)
 M5: C(4)     M6: C(2)     M7: empty   M8: empty
 ```
 
 **Column N** (Triangles and circles):
+
 ```
 N1: T(81)    N2: T(72)    N3: C(64)   N4: C(16)
 N5: C(16)    N6: C(4)     N7: T(6)    N8: T(9)
 ```
 
 **Column O** (Mixed with Pyramid at O2):
+
 ```
 O1: S(153)   O2: P[64,49,36,25]  O3: T(72)   O4: T(20)
 O5: T(20)    O6: T(25)           O7: S(45)   O8: S(15)
 ```
 
 **Column P** (Outer edge — Sparse squares):
+
 ```
 P1: S(289)   P2: S(169)   P3: empty   P4: empty
 P5: empty    P6: empty    P7: S(81)   P8: S(25)
@@ -142,11 +152,11 @@ P5: empty    P6: empty    P7: S(81)   P8: S(25)
 
 ### Strategic layout philosophy
 
-* **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks with sparse placement
-* **Secondary columns (B and O)**: Dense formations with Pyramids (royal pieces) at B8 (Black) and O2 (White)
-* **Tertiary columns (C and N)**: Full ranks of mixed triangles and circles
-* **Inner edges (D and M)**: Small circles (2–9) for tactical infiltration, sparse placement
-* **Central battlefield (E–L)**: 8 empty columns provide space for mathematical maneuvering
+- **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks with sparse placement
+- **Secondary columns (B and O)**: Dense formations with Pyramids (royal pieces) at B8 (Black) and O2 (White)
+- **Tertiary columns (C and N)**: Full ranks of mixed triangles and circles
+- **Inner edges (D and M)**: Small circles (2–9) for tactical infiltration, sparse placement
+- **Central battlefield (E–L)**: 8 empty columns provide space for mathematical maneuvering
 
 Some pieces appear with duplicate values (e.g., A1 and B1 both have S(28)), reflecting the traditional layout's mathematical symmetries. White moves first.
 
@@ -154,13 +164,13 @@ Some pieces appear with duplicate values (e.g., A1 and B1 both have S(28)), refl
 
 ## 5) Turn structure
 
-* **White moves first.**
-* A **turn** consists of:
-
+- **White moves first.**
+- A **turn** consists of:
   1. **One movement** of a single piece (legal geometry, empty path).
   2. Optional **Capture Resolution** (if the destination contains an enemy piece or you declare a relation capture; see §6).
   3. Optional **Harmony Declaration** (if achieved; see §7).
-* No en passant, no jumps, no castling; Pyramid is not a king (you don't lose on "check"), but see victory (§7, §8).
+
+- No en passant, no jumps, no castling; Pyramid is not a king (you don't lose on "check"), but see victory (§7, §8).
 
 ---
 
@@ -172,23 +182,23 @@ There are two categories:
 
 If you **move onto a square occupied by an enemy**, the capture **succeeds only if** **at least one** of the following relations between your **moved piece's value** (or Pyramid face) and the **enemy piece's value** is true:
 
-* **Equality:** `a == b`
-* **Multiple / Divisor:** `a % b == 0` or `b % a == 0` (strictly positive integers)
-* **Sum (with an on-board friendly helper):** `a + h == b` or `b + h == a`
-* **Difference (with helper):** `|a - h| == b` or `|b - h| == a`
-* **Product (with helper):** `a * h == b` or `b * h == a`
-* **Ratio (with helper):** `a * r == b` or `b * r == a`, where `r` equals the exact value of **some friendly helper** on the board.
+- **Equality:** `a == b`
+- **Multiple / Divisor:** `a % b == 0` or `b % a == 0` (strictly positive integers)
+- **Sum (with an on-board friendly helper):** `a + h == b` or `b + h == a`
+- **Difference (with helper):** `|a - h| == b` or `|b - h| == a`
+- **Product (with helper):** `a * h == b` or `b * h == a`
+- **Ratio (with helper):** `a * r == b` or `b * r == a`, where `r` equals the exact value of **some friendly helper** on the board.
 
 **Helpers**:
 
-* Are **any one** of your other pieces **already on the board** (they do **not** move).
-* You must **name** the helper (piece ID) during capture resolution (for determinism).
-* Only **one** helper may be used per capture.
-* Helpers may be anywhere (not required to be adjacent).
+- Are **any one** of your other pieces **already on the board** (they do **not** move).
+- You must **name** the helper (piece ID) during capture resolution (for determinism).
+- Only **one** helper may be used per capture.
+- Helpers may be anywhere (not required to be adjacent).
 
 **Pyramid face choice**:
 
-* If your mover is a **Pyramid**, at capture time you may **choose one** of its faces (e.g., `8` or `27` or `64` or `1`) to be `a`. Record this in the move log.
+- If your mover is a **Pyramid**, at capture time you may **choose one** of its faces (e.g., `8` or `27` or `64` or `1`) to be `a`. Record this in the move log.
 
 If **none** of the relations hold, your landing **fails**: the move is illegal.
 
@@ -208,15 +218,15 @@ If, **after your movement**, an **enemy piece** sits on a square such that a rel
 
 All harmonies use **three pieces** where M is the middle piece (spatially between A and B on the board):
 
-* **Arithmetic Proportion (AP)**: the middle is the arithmetic mean
+- **Arithmetic Proportion (AP)**: the middle is the arithmetic mean
   - **Condition:** `2M = A + B`
   - **Example:** 6, 9, 12 (since 2·9 = 6 + 12 = 18)
 
-* **Geometric Proportion (GP)**: the middle is the geometric mean
+- **Geometric Proportion (GP)**: the middle is the geometric mean
   - **Condition:** `M² = A · B`
   - **Example:** 6, 12, 24 (since 12² = 6·24 = 144)
 
-* **Harmonic Proportion (HP)**: the middle is the harmonic mean
+- **Harmonic Proportion (HP)**: the middle is the harmonic mean
   - **Condition:** `2AB = M(A + B)` (equivalently, 1/A, 1/M, 1/B forms an AP)
   - **Examples:**
     - 6, 8, 12 (since 2·6·12 = 8·(6+12) = 144)
@@ -238,22 +248,25 @@ The three pieces must be arranged in a **straight line** (row, column, or diagon
 ### 7.3 Common harmony triads (for reference)
 
 **Arithmetic:**
+
 - (6, 9, 12), (8, 12, 16), (5, 7, 9), (4, 6, 8)
 
 **Geometric:**
+
 - (4, 8, 16), (3, 9, 27), (2, 8, 32), (5, 25, 125)
 
 **Harmonic:**
+
 - (3, 4, 6), (4, 6, 12), (6, 8, 12), (10, 12, 15), (8, 12, 24), (6, 10, 15)
 
 ### 7.4 Declaring and winning
 
 **Rules:**
 
-* Pieces must be **distinct** and on **distinct squares**
-* All three must be **entirely within opponent's half**
-* **Pyramid face**: When a Pyramid is included, you must **fix** a face value for the duration of the check
-* **Persistence:** Your declared Harmony must **survive the opponent's next full turn** (they can try to break it by moving/capturing). If, when your next turn begins, the Harmony still exists (same set or **any valid set** of ≥3), **you win immediately**
+- Pieces must be **distinct** and on **distinct squares**
+- All three must be **entirely within opponent's half**
+- **Pyramid face**: When a Pyramid is included, you must **fix** a face value for the duration of the check
+- **Persistence:** Your declared Harmony must **survive the opponent's next full turn** (they can try to break it by moving/capturing). If, when your next turn begins, the Harmony still exists (same set or **any valid set** of ≥3), **you win immediately**
 
 **Procedure:**
 
@@ -269,28 +282,28 @@ The three pieces must be arranged in a **straight line** (row, column, or diagon
 
 ## 8) Other victory conditions
 
-* **Exhaustion:** If a player has **no legal moves** at the start of their turn, they **lose**.
-* **Resignation:** A player may resign at any time.
-* **Point victory (optional toggle):** Track point values for pieces (C=1, T=2, S=3, P=5). If a player reaches **30 points captured**, they may declare a **Point Win** at the end of their turn. (Off by default; enable for ladders.)
+- **Exhaustion:** If a player has **no legal moves** at the start of their turn, they **lose**.
+- **Resignation:** A player may resign at any time.
+- **Point victory (optional toggle):** Track point values for pieces (C=1, T=2, S=3, P=5). If a player reaches **30 points captured**, they may declare a **Point Win** at the end of their turn. (Off by default; enable for ladders.)
 
 ---
 
 ## 9) Draws
 
-* **Threefold repetition** (same full state, same player to move) → draw on claim.
-* **50-move rule** (no capture, no Harmony declaration) → draw on claim.
-* **Mutual agreement** → draw.
+- **Threefold repetition** (same full state, same player to move) → draw on claim.
+- **50-move rule** (no capture, no Harmony declaration) → draw on claim.
+- **Mutual agreement** → draw.
 
 ---
 
 ## 10) Illegal states / edge cases
 
-* **No zero or negative values.** All values are positive integers.
-* **No jumping** ever.
-* **Self-capture** forbidden.
-* **Helper identity** must be a currently alive friendly piece, not the mover (unless the relation allows using the mover's own value on both sides, which it shouldn't—disallow self as helper).
-* **Division/ratio** must be exact in integers—no rounding.
-* **Overflow**: Use bigints (JS `BigInt`) for relation math to avoid overflow with large powers.
+- **No zero or negative values.** All values are positive integers.
+- **No jumping** ever.
+- **Self-capture** forbidden.
+- **Helper identity** must be a currently alive friendly piece, not the mover (unless the relation allows using the mover's own value on both sides, which it shouldn't—disallow self as helper).
+- **Division/ratio** must be exact in integers—no rounding.
+- **Overflow**: Use bigints (JS `BigInt`) for relation math to avoid overflow with large powers.
 
 ---
 
@@ -299,17 +312,17 @@ The three pieces must be arranged in a **straight line** (row, column, or diagon
 ### 11.1 Piece
 
 ```ts
-type PieceType = 'C' | 'T' | 'S' | 'P';
-type Color = 'W' | 'B';
+type PieceType = "C" | "T" | "S" | "P";
+type Color = "W" | "B";
 
 interface Piece {
-  id: string;          // stable UUID
+  id: string; // stable UUID
   color: Color;
   type: PieceType;
-  value?: number;      // for C/T/S always present
+  value?: number; // for C/T/S always present
   pyramidFaces?: number[]; // for P only (length 4)
   activePyramidFace?: number | null; // last chosen face for logging/captures
-  square: string;      // "A1".."P8"
+  square: string; // "A1".."P8"
   captured: boolean;
 }
 ```
@@ -319,9 +332,9 @@ interface Piece {
 ```ts
 interface GameState {
   id: string;
-  boardCols: number;     // 16
-  boardRows: number;     // 8
-  turn: Color;           // 'W' or 'B'
+  boardCols: number; // 16
+  boardRows: number; // 8
+  turn: Color; // 'W' or 'B'
   pieces: Record<string, Piece>;
   history: MoveRecord[];
   pendingHarmony?: HarmonyDeclaration | null; // if declared last turn
@@ -331,7 +344,7 @@ interface GameState {
     fiftyMoveRule: boolean;
     allowAnySetOnRecheck: boolean; // true per §7
   };
-  halfBoundaries: { whiteHalfRows: [1,2,3,4], blackHalfRows: [5,6,7,8] };
+  halfBoundaries: { whiteHalfRows: [1, 2, 3, 4]; blackHalfRows: [5, 6, 7, 8] };
   clocks?: { Wms: number; Bms: number } | null; // optional timers
 }
 ```
@@ -339,48 +352,55 @@ interface GameState {
 ### 11.3 Move + capture records
 
 ```ts
-type RelationKind = 'EQUAL' | 'MULTIPLE' | 'DIVISOR' | 'SUM' | 'DIFF' | 'PRODUCT' | 'RATIO';
+type RelationKind =
+  | "EQUAL"
+  | "MULTIPLE"
+  | "DIVISOR"
+  | "SUM"
+  | "DIFF"
+  | "PRODUCT"
+  | "RATIO";
 
 interface CaptureContext {
   relation: RelationKind;
   moverPieceId: string;
   targetPieceId: string;
-  helperPieceId?: string;            // required for SUM/DIFF/PRODUCT/RATIO
-  moverFaceUsed?: number | null;     // if mover was a Pyramid
+  helperPieceId?: string; // required for SUM/DIFF/PRODUCT/RATIO
+  moverFaceUsed?: number | null; // if mover was a Pyramid
 }
 
 interface AmbushContext {
   relation: RelationKind;
   enemyPieceId: string;
   helper1Id: string;
-  helper2Id: string;   // two helpers for ambush
+  helper2Id: string; // two helpers for ambush
 }
 
 interface MoveRecord {
   ply: number;
   color: Color;
-  from: string;        // e.g., "C2"
-  to: string;          // e.g., "C6"
+  from: string; // e.g., "C2"
+  to: string; // e.g., "C6"
   pieceId: string;
   pyramidFaceUsed?: number | null;
   capture?: CaptureContext | null;
   ambush?: AmbushContext | null;
   harmonyDeclared?: HarmonyDeclaration | null;
   pointsCapturedThisMove?: number; // if point scoring is on
-  fenLikeHash?: string;            // for repetition detection
-  noProgressCount?: number;        // for 50-move rule
-  resultAfter?: 'ONGOING' | 'WINS_W' | 'WINS_B' | 'DRAW';
+  fenLikeHash?: string; // for repetition detection
+  noProgressCount?: number; // for 50-move rule
+  resultAfter?: "ONGOING" | "WINS_W" | "WINS_B" | "DRAW";
 }
 ```
 
 ### 11.4 Harmony declaration
 
 ```ts
-type HarmonyType = 'ARITH' | 'GEOM' | 'HARM';
+type HarmonyType = "ARITH" | "GEOM" | "HARM";
 
 interface HarmonyDeclaration {
   by: Color;
-  pieceIds: string[];          // ≥3
+  pieceIds: string[]; // ≥3
   type: HarmonyType;
   params: { v?: string; d?: string; r?: string }; // store as strings for bigints if needed
   declaredAtPly: number;
@@ -454,52 +474,51 @@ interface HarmonyDeclaration {
 
 ### 13.1 Movement
 
-* Check turn ownership.
-* Check piece exists, not captured.
-* Validate geometry for type (C diag; T ortho; S queen; P king).
-* Validate clear path (grid ray-cast).
-* If destination is empty:
+- Check turn ownership.
+- Check piece exists, not captured.
+- Validate geometry for type (C diag; T ortho; S queen; P king).
+- Validate clear path (grid ray-cast).
+- If destination is empty:
+  - Allow **non-capture** move.
+  - After move, you may **declare ambush** (if valid).
 
-  * Allow **non-capture** move.
-  * After move, you may **declare ambush** (if valid).
-* If destination occupied by enemy:
-
-  * Move only allowed if **landing capture** relations validate (with declared helper if required).
-  * Otherwise reject.
+- If destination occupied by enemy:
+  - Move only allowed if **landing capture** relations validate (with declared helper if required).
+  - Otherwise reject.
 
 ### 13.2 Relation checks
 
-* All arithmetic in **bigints**.
-* Equality is trivial.
-* Multiple/Divisor: simple modulo checks; reject zeros.
-* Sum/Diff/Product/Ratio require **helper** piece ID. Validate that helper:
+- All arithmetic in **bigints**.
+- Equality is trivial.
+- Multiple/Divisor: simple modulo checks; reject zeros.
+- Sum/Diff/Product/Ratio require **helper** piece ID. Validate that helper:
+  - is friendly, alive, not the mover,
+  - has a well-defined value (Pyramid has implicit four candidates, but **helpers do not switch faces**; they are not pyramids here in our v1; if you allow Pyramid as helper, require explicit `helperFaceUsed` in payload and store it).
 
-  * is friendly, alive, not the mover,
-  * has a well-defined value (Pyramid has implicit four candidates, but **helpers do not switch faces**; they are not pyramids here in our v1; if you allow Pyramid as helper, require explicit `helperFaceUsed` in payload and store it).
-* For **Pyramid mover**, allow `pyramidFaceUsed` and use that as `a`.
+- For **Pyramid mover**, allow `pyramidFaceUsed` and use that as `a`.
 
 ### 13.3 Ambush
 
-* The mover's landing square can be empty or enemy (if enemy, you must pass landing-capture first).
-* Ambush uses **two helpers**; both must be friendly, alive, distinct, not the mover.
-* Validate relation against the **enemy piece value** and the two helpers per the declared relation (server recomputes).
+- The mover's landing square can be empty or enemy (if enemy, you must pass landing-capture first).
+- Ambush uses **two helpers**; both must be friendly, alive, distinct, not the mover.
+- Validate relation against the **enemy piece value** and the two helpers per the declared relation (server recomputes).
 
 ### 13.4 Harmony
 
-* Validate ≥3 friendly pieces **on enemy half**.
-* Extract their effective values (Pyramids must fix a face for the check; store it inside the HarmonyDeclaration).
-* Validate strict progression per type.
-* Store a pending declaration tied to `declaredAtPly`.
-* On the declarer's next turn start: if **any** valid ≥3 set exists (per `allowAnySetOnRecheck`), award win; otherwise clear pending.
+- Validate ≥3 friendly pieces **on enemy half**.
+- Extract their effective values (Pyramids must fix a face for the check; store it inside the HarmonyDeclaration).
+- Validate strict progression per type.
+- Store a pending declaration tied to `declaredAtPly`.
+- On the declarer's next turn start: if **any** valid ≥3 set exists (per `allowAnySetOnRecheck`), award win; otherwise clear pending.
 
 ---
 
 ## 14) UI/UX suggestions (client)
 
-* Hover a destination to see **all legal relation captures** (auto-suggest helpers).
-* Toggle **"math inspector"** to show factors, multiples, candidate sums/diffs.
-* **Harmony builder** UI: click pieces on enemy half; client proposes arithmetic/geometric/harmonic fits.
-* Log every move with human-readable math, e.g.:
+- Hover a destination to see **all legal relation captures** (auto-suggest helpers).
+- Toggle **"math inspector"** to show factors, multiples, candidate sums/diffs.
+- **Harmony builder** UI: click pieces on enemy half; client proposes arithmetic/geometric/harmonic fits.
+- Log every move with human-readable math, e.g.:
   `W: T(27) C2→C7 captures B S(125) by RATIO 27×(125/27)=125 [helper W S(125)? nope; example only]`.
 
 ---
@@ -528,18 +547,18 @@ interface HarmonyDeclaration {
 
 ## 16) Optional rule toggles (versioning)
 
-* **Strict Pyramid faces:** Allow Pyramid as **helper** only if face is declared similarly to mover.
-* **Helper adjacency:** Require helpers to be **adjacent** to enemy for SUM/DIFF/PRODUCT/RATIO (reduces global scans).
-* **Any-set vs same-set on recheck:** We chose **any-set**. Switchable.
+- **Strict Pyramid faces:** Allow Pyramid as **helper** only if face is declared similarly to mover.
+- **Helper adjacency:** Require helpers to be **adjacent** to enemy for SUM/DIFF/PRODUCT/RATIO (reduces global scans).
+- **Any-set vs same-set on recheck:** We chose **any-set**. Switchable.
 
 ---
 
 ## 17) Dev notes
 
-* Use **Zobrist hashing** (or similar) for `fenLikeHash` to detect repetitions.
-* Keep a **no-progress counter** (reset on any capture or harmony declaration).
-* Use **BigInt** end-to-end for piece values and relation math.
-* Build a **deterministic PRNG** only if you later add random presets—current spec is deterministic.
+- Use **Zobrist hashing** (or similar) for `fenLikeHash` to detect repetitions.
+- Keep a **no-progress counter** (reset on any capture or harmony declaration).
+- Use **BigInt** end-to-end for piece values and relation math.
+- Build a **deterministic PRNG** only if you later add random presets—current spec is deterministic.
 
 ---
 
@@ -565,6 +584,7 @@ The current implementation in `src/arcade-games/rithmomachia/` follows this spec
 - **UI**: ✅ Click-to-select, click-to-move piece interaction
 
 **Remaining features (future enhancement):**
+
 1. Math inspector UI (show legal captures with auto-suggested helpers)
 2. Harmony builder UI (visual progression detector)
 3. Move history display with human-readable math notation

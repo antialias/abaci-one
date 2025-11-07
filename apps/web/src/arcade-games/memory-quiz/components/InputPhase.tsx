@@ -406,7 +406,11 @@ export function InputPhase() {
                 // Group players by userId
                 const userTeams = new Map<
                   string,
-                  { userId: string; players: any[]; score: { correct: number; incorrect: number } }
+                  {
+                    userId: string
+                    players: any[]
+                    score: { correct: number; incorrect: number }
+                  }
                 >()
 
                 console.log('📊 [InputPhase] Building scoreboard:', {
@@ -429,7 +433,10 @@ export function InputPhase() {
                     userTeams.set(userId, {
                       userId,
                       players: [],
-                      score: state.playerScores?.[userId] || { correct: 0, incorrect: 0 },
+                      score: state.playerScores?.[userId] || {
+                        correct: 0,
+                        incorrect: 0,
+                      },
                     })
                   }
                   userTeams.get(userId)!.players.push(metadata)
@@ -468,7 +475,13 @@ export function InputPhase() {
                             marginBottom: '8px',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                            }}
+                          >
                             <span style={{ fontSize: '18px' }}>
                               {index === 0 ? '👑' : `${index + 1}.`}
                             </span>

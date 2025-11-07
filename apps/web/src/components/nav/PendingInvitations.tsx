@@ -204,7 +204,12 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
             >
               <div style={{ flex: 1 }}>
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '4px',
+                  }}
                 >
                   {isAutoUnban && <span style={{ fontSize: '20px' }}>🎉</span>}
                   <h4

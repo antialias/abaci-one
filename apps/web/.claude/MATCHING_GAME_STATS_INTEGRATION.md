@@ -13,20 +13,24 @@
 Already has all the data we need:
 
 ```typescript
-const { state, resetGame, activePlayers, gameMode, exitSession } = useMatching()
-const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
+const { state, resetGame, activePlayers, gameMode, exitSession } =
+  useMatching();
+const { players: playerMap, activePlayers: activePlayerIds } = useGameMode();
 
-const gameTime = state.gameEndTime && state.gameStartTime
-  ? state.gameEndTime - state.gameStartTime
-  : 0
+const gameTime =
+  state.gameEndTime && state.gameStartTime
+    ? state.gameEndTime - state.gameStartTime
+    : 0;
 
-const analysis = getPerformanceAnalysis(state)
-const multiplayerResult = gameMode === 'multiplayer'
-  ? getMultiplayerWinner(state, activePlayers)
-  : null
+const analysis = getPerformanceAnalysis(state);
+const multiplayerResult =
+  gameMode === "multiplayer"
+    ? getMultiplayerWinner(state, activePlayers)
+    : null;
 ```
 
 **Available data:**
+
 - ✅ `state.scores` - scores by player ID
 - ✅ `state.gameStartTime`, `state.gameEndTime` - timing
 - ✅ `state.matchedPairs`, `state.totalPairs` - completion
@@ -48,7 +52,7 @@ export interface MatchingState extends GameState {
   // ... existing fields ...
 
   // Stats recording
-  recorded?: boolean  // ← ADD THIS
+  recorded?: boolean; // ← ADD THIS
 }
 ```
 
@@ -57,9 +61,9 @@ export interface MatchingState extends GameState {
 ```typescript
 // At top of src/arcade-games/matching/components/ResultsPhase.tsx
 
-import { useEffect } from 'react'  // ← ADD if not present
-import { useRecordGameResult } from '@/hooks/useRecordGameResult'
-import type { GameResult } from '@/lib/arcade/stats/types'
+import { useEffect } from "react"; // ← ADD if not present
+import { useRecordGameResult } from "@/hooks/useRecordGameResult";
+import type { GameResult } from "@/lib/arcade/stats/types";
 ```
 
 ### Step 3: Call the hook
@@ -86,35 +90,39 @@ Add this useEffect after the hook declarations:
 // Record game result once when entering results phase
 useEffect(() => {
   // Only record if we haven't already
-  if (state.phase === 'results' && !state.recorded && !isRecording) {
-    const gameTime = state.gameEndTime && state.gameStartTime
-      ? state.gameEndTime - state.gameStartTime
-      : 0
+  if (state.phase === "results" && !state.recorded && !isRecording) {
+    const gameTime =
+      state.gameEndTime && state.gameStartTime
+        ? state.gameEndTime - state.gameStartTime
+        : 0;
 
-    const analysis = getPerformanceAnalysis(state)
-    const multiplayerResult = gameMode === 'multiplayer'
-      ? getMultiplayerWinner(state, activePlayers)
-      : null
+    const analysis = getPerformanceAnalysis(state);
+    const multiplayerResult =
+      gameMode === "multiplayer"
+        ? getMultiplayerWinner(state, activePlayers)
+        : null;
 
     // Build GameResult
     const gameResult: GameResult = {
-      gameType: state.gameType === 'abacus-numeral'
-        ? 'matching-abacus'
-        : 'matching-complements',
+      gameType:
+        state.gameType === "abacus-numeral"
+          ? "matching-abacus"
+          : "matching-complements",
       completedAt: state.gameEndTime || Date.now(),
       duration: gameTime,
 
-      playerResults: activePlayers.map(playerId => {
-        const score = state.scores[playerId] || 0
+      playerResults: activePlayers.map((playerId) => {
+        const score = state.scores[playerId] || 0;
         const won = multiplayerResult
           ? multiplayerResult.winners.includes(playerId)
-          : state.matchedPairs === state.totalPairs  // Solo = completed
+          : state.matchedPairs === state.totalPairs; // Solo = completed
 
         // In multiplayer, calculate per-player accuracy from their score
         // In single player, use overall accuracy
-        const playerAccuracy = gameMode === 'multiplayer'
-          ? score / state.totalPairs  // Their score as fraction of total pairs
-          : analysis.statistics.accuracy / 100  // Convert percentage to 0-1
+        const playerAccuracy =
+          gameMode === "multiplayer"
+            ? score / state.totalPairs // Their score as fraction of total pairs
+            : analysis.statistics.accuracy / 100; // Convert percentage to 0-1
 
         return {
           playerId,
@@ -126,8 +134,8 @@ useEffect(() => {
             moves: state.moves,
             matchedPairs: state.matchedPairs,
             difficulty: state.difficulty,
-          }
-        }
+          },
+        };
       }),
 
       metadata: {
@@ -135,23 +143,23 @@ useEffect(() => {
         difficulty: state.difficulty,
         grade: analysis.grade,
         starRating: analysis.starRating,
-      }
-    }
+      },
+    };
 
     // Record to database
     recordGame(gameResult, {
       onSuccess: (updates) => {
-        console.log('✅ Stats recorded:', updates)
+        console.log("✅ Stats recorded:", updates);
         // Mark as recorded to prevent duplicate saves
         // Note: This assumes Provider has a way to update state.recorded
         // We'll need to add an action for this
       },
       onError: (error) => {
-        console.error('❌ Failed to record stats:', error)
-      }
-    })
+        console.error("❌ Failed to record stats:", error);
+      },
+    });
   }
-}, [state.phase, state.recorded, isRecording, /* ... deps */])
+}, [state.phase, state.recorded, isRecording /* ... deps */]);
 ```
 
 ### Step 5: Add loading state UI (optional)
@@ -200,33 +208,34 @@ The Provider needs an action to mark the game as recorded:
 // Add to the context type
 export interface MatchingContextType {
   // ... existing ...
-  markAsRecorded: () => void  // ← ADD THIS
+  markAsRecorded: () => void; // ← ADD THIS
 }
 
 // Add to the reducer or state update logic
 const markAsRecorded = useCallback(() => {
-  setState(prev => ({ ...prev, recorded: true }))
-}, [])
+  setState((prev) => ({ ...prev, recorded: true }));
+}, []);
 
 // Add to the context value
 const contextValue: MatchingContextType = {
   // ... existing ...
   markAsRecorded,
-}
+};
 ```
 
 Then in ResultsPhase useEffect:
 
 ```typescript
 onSuccess: (updates) => {
-  console.log('✅ Stats recorded:', updates)
-  markAsRecorded()  // ← Use this instead
-}
+  console.log("✅ Stats recorded:", updates);
+  markAsRecorded(); // ← Use this instead
+};
 ```
 
 ## Testing Checklist
 
 ### Solo Game
+
 - [ ] Play a game to completion
 - [ ] Check console for "✅ Stats recorded"
 - [ ] Refresh page
@@ -235,6 +244,7 @@ onSuccess: (updates) => {
 - [ ] Verify player's totalWins incremented (if completed)
 
 ### Multiplayer Game
+
 - [ ] Activate 2+ players
 - [ ] Play a game to completion
 - [ ] Check console for stats for ALL players
@@ -244,6 +254,7 @@ onSuccess: (updates) => {
 - [ ] All players should have +1 games played
 
 ### Edge Cases
+
 - [ ] Incomplete game (exit early) - should NOT record
 - [ ] Play again from results - should NOT duplicate record
 - [ ] Network error during save - should show error, not mark as recorded
@@ -251,18 +262,22 @@ onSuccess: (updates) => {
 ## Common Issues
 
 ### Issue: Stats recorded multiple times
+
 **Cause**: useEffect dependency array missing or incorrect
 **Fix**: Ensure `state.recorded` is in deps and checked in condition
 
 ### Issue: Can't read property 'id' of undefined
+
 **Cause**: Player not found in playerMap
 **Fix**: Add null checks when mapping activePlayers
 
 ### Issue: Accuracy is always 100% or 0%
+
 **Cause**: Wrong calculation or unit (percentage vs decimal)
 **Fix**: Ensure accuracy is 0.0 - 1.0, not 0-100
 
 ### Issue: Single player never "wins"
+
 **Cause**: Wrong win condition for solo mode
 **Fix**: Solo player wins if they complete all pairs (`state.matchedPairs === state.totalPairs`)
 
@@ -278,6 +293,7 @@ onSuccess: (updates) => {
 
 **Status**: Ready for implementation
 **Blocked by**:
+
 - Database schema (player_stats table)
 - API endpoints (/api/player-stats/record-game)
 - React hooks (useRecordGameResult)

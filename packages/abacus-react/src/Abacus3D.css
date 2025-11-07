@@ -33,7 +33,7 @@
 /* Bead depth shadows - subtle */
 .abacus-3d-container.enhanced-subtle .abacus-bead.active {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))
-          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 .abacus-3d-container.enhanced-subtle .abacus-bead.inactive {
@@ -68,37 +68,37 @@
 /* Enhanced bead shadows with ambient occlusion */
 .abacus-3d-container.enhanced-realistic .abacus-bead.active {
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3))
-          drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
-          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
 .abacus-3d-container.enhanced-realistic .abacus-bead.inactive {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))
-          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
 /* Frame with depth and texture */
 .abacus-3d-container.enhanced-realistic rect[class*="column-post"],
 .abacus-3d-container.enhanced-realistic rect[class*="reckoning-bar"] {
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25))
-          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
 /* Material-specific enhancements */
 .abacus-3d-container.enhanced-realistic .bead-material-glossy {
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3))
-          drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
-          drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
 }
 
 .abacus-3d-container.enhanced-realistic .bead-material-satin {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))
-          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 .abacus-3d-container.enhanced-realistic .bead-material-matte {
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
-          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
 }
 
 /* Wood grain texture overlay */
@@ -110,7 +110,7 @@
 
 /* Lighting effects - top-down */
 .abacus-3d-container.enhanced-realistic.lighting-top-down::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -10%;
   left: 50%;
@@ -128,7 +128,7 @@
 
 /* Lighting effects - ambient */
 .abacus-3d-container.enhanced-realistic.lighting-ambient::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -10%;
   background: radial-gradient(
@@ -142,7 +142,7 @@
 
 /* Lighting effects - dramatic */
 .abacus-3d-container.enhanced-realistic.lighting-dramatic::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -20%;
   left: -10%;
@@ -179,24 +179,27 @@
 /* Maximum depth shadows */
 .abacus-3d-container.enhanced-delightful .abacus-bead.active {
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35))
-          drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))
-          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .abacus-3d-container.enhanced-delightful .abacus-bead.inactive {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))
-          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
 /* Hover parallax effect */
 .abacus-3d-container.enhanced-delightful.parallax-enabled .abacus-bead {
-  transition: transform 0.15s ease-out, filter 0.15s ease-out;
+  transition:
+    transform 0.15s ease-out,
+    filter 0.15s ease-out;
 }
 
-.abacus-3d-container.enhanced-delightful.parallax-enabled .abacus-bead.parallax-lift {
+.abacus-3d-container.enhanced-delightful.parallax-enabled
+  .abacus-bead.parallax-lift {
   transform: translateZ(4px) scale(1.02);
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4))
-          drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+    drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
 }
 
 /* Clack ripple effect */
@@ -235,7 +238,8 @@
 }
 
 @keyframes particle-sparkle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0;
     transform: scale(0) rotate(0deg);
   }
@@ -259,7 +263,7 @@
 
 /* Enhanced lighting with multiple sources */
 .abacus-3d-container.enhanced-delightful::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -15%;
   left: 50%;
@@ -277,7 +281,7 @@
 }
 
 .abacus-3d-container.enhanced-delightful::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -10%;
   left: 50%;
@@ -293,13 +297,12 @@
   z-index: -1;
 }
 
-
 /* Frame depth enhancement */
 .abacus-3d-container.enhanced-delightful rect[class*="column-post"],
 .abacus-3d-container.enhanced-delightful rect[class*="reckoning-bar"] {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))
-          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))
-          drop-shadow(0 0 2px rgba(0, 0, 0, 0.1));
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))
+    drop-shadow(0 0 2px rgba(0, 0, 0, 0.1));
 }
 
 /* Wood grain texture - enhanced for delightful mode */

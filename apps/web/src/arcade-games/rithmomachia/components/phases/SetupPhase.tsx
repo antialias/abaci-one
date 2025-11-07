@@ -100,7 +100,13 @@ export function SetupPhase({ onOpenGuide, isGuideOpen }: SetupPhaseProps) {
               backdropFilter: 'blur(10px)',
             })}
           >
-            <span className={css({ color: 'white', fontWeight: 'bold', fontSize: '1.8vh' })}>
+            <span
+              className={css({
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '1.8vh',
+              })}
+            >
               ⚠️ {lastError}
             </span>
             <button
@@ -236,7 +242,11 @@ export function SetupPhase({ onOpenGuide, isGuideOpen }: SetupPhaseProps) {
                       })}
                     >
                       <div
-                        className={css({ fontSize: '1.2vh', fontWeight: 'bold', color: '#92400e' })}
+                        className={css({
+                          fontSize: '1.2vh',
+                          fontWeight: 'bold',
+                          color: '#92400e',
+                        })}
                       >
                         Threshold:
                       </div>

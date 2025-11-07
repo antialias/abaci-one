@@ -22,12 +22,12 @@ Arrange 3 of your pieces in enemy territory to form a **mathematical progression
 
 Each piece has a **number value** and moves differently:
 
-| Shape | Symbol | Movement | Count |
-|-------|--------|----------|-------|
-| **Circle** | ○ | Diagonal (like a bishop) | 8 |
-| **Triangle** | △ | Straight lines (like a rook) | 8 |
-| **Square** | □ | Any direction (like a queen) | 7 |
-| **Pyramid** | ◇ | One step any way (like a king) | 1 |
+| Shape        | Symbol | Movement                       | Count |
+| ------------ | ------ | ------------------------------ | ----- |
+| **Circle**   | ○      | Diagonal (like a bishop)       | 8     |
+| **Triangle** | △      | Straight lines (like a rook)   | 8     |
+| **Square**   | □      | Any direction (like a queen)   | 7     |
+| **Pyramid**  | ◇      | One step any way (like a king) | 1     |
 
 **Pyramids are special:** They have 4 face values. When capturing, you choose which face to use.
 
@@ -47,10 +47,12 @@ Each piece has a **number value** and moves differently:
 You can capture an enemy piece **only if your piece's value relates mathematically** to theirs:
 
 ### Simple Relations (no helper needed):
+
 - **Equal:** Your 25 captures their 25
 - **Multiple/Divisor:** Your 64 captures their 16 (64 ÷ 16 = 4)
 
 ### Advanced Relations (need one helper piece):
+
 - **Sum:** Your 9 + helper 16 = enemy 25
 - **Difference:** Your 30 - helper 10 = enemy 20
 - **Product:** Your 5 × helper 5 = enemy 25
@@ -107,15 +109,18 @@ If your opponent has no legal moves, they lose.
 ## Common Progressions to Know
 
 **Arithmetic** (easiest to spot):
+
 - 4, 6, 8
 - 6, 9, 12
 - 5, 7, 9
 
 **Geometric** (same ratio between values):
+
 - 4, 8, 16
 - 9, 27, 81
 
 **Harmonic** (trickiest):
+
 - 6, 8, 12
 - 3, 4, 6
 

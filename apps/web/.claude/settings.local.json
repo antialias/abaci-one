@@ -162,7 +162,11 @@
       "Bash(typst:*)",
       "Bash(npx tsx:*)",
       "Bash(sort:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(npx prettier:*)",
+      "Bash(timeout 180 npm run build:*)",
+      "Bash(.dockerignore.test)",
+      "Bash(do echo \"=== Check $i ===\")"
     ],
     "deny": [],
     "ask": []

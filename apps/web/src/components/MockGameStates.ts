@@ -59,11 +59,35 @@ export function createMockComplementRaceState(): ComplementRaceState {
   // Create stations for sprint mode
   const mockStations = [
     { id: 'station-0', name: 'Depot', position: 0, icon: '🏭', emoji: '🏭' },
-    { id: 'station-1', name: 'Riverside', position: 20, icon: '🌊', emoji: '🌊' },
-    { id: 'station-2', name: 'Hillside', position: 40, icon: '⛰️', emoji: '⛰️' },
-    { id: 'station-3', name: 'Canyon View', position: 60, icon: '🏜️', emoji: '🏜️' },
+    {
+      id: 'station-1',
+      name: 'Riverside',
+      position: 20,
+      icon: '🌊',
+      emoji: '🌊',
+    },
+    {
+      id: 'station-2',
+      name: 'Hillside',
+      position: 40,
+      icon: '⛰️',
+      emoji: '⛰️',
+    },
+    {
+      id: 'station-3',
+      name: 'Canyon View',
+      position: 60,
+      icon: '🏜️',
+      emoji: '🏜️',
+    },
     { id: 'station-4', name: 'Meadows', position: 80, icon: '🌾', emoji: '🌾' },
-    { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️', emoji: '🏛️' },
+    {
+      id: 'station-5',
+      name: 'Grand Central',
+      position: 100,
+      icon: '🏛️',
+      emoji: '🏛️',
+    },
   ]
 
   // Override to playing phase with mid-game action
@@ -363,12 +387,33 @@ export function createMockRithmomachiaState(): RithmomachiaState {
     capturedPieces: {
       W: [
         // White has captured 2 black pieces
-        { id: 'B_C_01', color: 'B', type: 'C', value: 4, square: 'CAPTURED', captured: true },
-        { id: 'B_T_01', color: 'B', type: 'T', value: 9, square: 'CAPTURED', captured: true },
+        {
+          id: 'B_C_01',
+          color: 'B',
+          type: 'C',
+          value: 4,
+          square: 'CAPTURED',
+          captured: true,
+        },
+        {
+          id: 'B_T_01',
+          color: 'B',
+          type: 'T',
+          value: 9,
+          square: 'CAPTURED',
+          captured: true,
+        },
       ],
       B: [
         // Black has captured 1 white piece
-        { id: 'W_C_02', color: 'W', type: 'C', value: 6, square: 'CAPTURED', captured: true },
+        {
+          id: 'W_C_02',
+          color: 'W',
+          type: 'C',
+          value: 6,
+          square: 'CAPTURED',
+          captured: true,
+        },
       ],
     },
     history: [

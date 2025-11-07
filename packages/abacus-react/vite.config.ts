@@ -13,7 +13,8 @@ export default defineConfig(async () => {
           static: resolve(__dirname, "src/static.ts"),
         },
         formats: ["es", "cjs"],
-        fileName: (format, entryName) => `${entryName}.${format === "es" ? "es" : "cjs"}.js`,
+        fileName: (format, entryName) =>
+          `${entryName}.${format === "es" ? "es" : "cjs"}.js`,
       },
       sourcemap: true,
       rollupOptions: {

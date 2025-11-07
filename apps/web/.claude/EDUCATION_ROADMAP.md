@@ -5,11 +5,13 @@
 **Mission:** Fill the gap in the USA school system by providing a complete, self-directed abacus curriculum that trains students from beginner to mastery using the Japanese kyu/dan ranking system.
 
 **Target Users:**
+
 - Primary: Elementary school students (ages 6-12)
 - Secondary: Middle school students and adult learners
 - Teachers/Parents: Dashboard for monitoring progress
 
 **Core Experience Principles:**
+
 1. **Integrated Learning Loop:** Tutorial → Practice → Play → Assessment → Progress
 2. **Self-Directed:** Simple enough for kids to fire up and start learning independently
 3. **Gamified Progression:** Games reinforce lessons, feel like play but teach skills
@@ -23,6 +25,7 @@
 ### ✅ What We Have (Well-Built)
 
 **1. Interactive Abacus Component (AbacusReact)**
+
 - Highly polished, production-ready
 - Excellent pedagogical features (bead highlighting, direction arrows, tooltips)
 - Multiple color schemes and accessibility options
@@ -30,6 +33,7 @@
 - **Rating: 95% Complete**
 
 **2. Game System (4 Games)**
+
 - Memory Lightning (memorization skills)
 - Matching Pairs Battle (pattern recognition, complements)
 - Card Sorting (visual literacy, ordering)
@@ -39,6 +43,7 @@
 - **Rating: 80% Complete** (games exist but need curriculum integration)
 
 **3. Tutorial Infrastructure**
+
 - Tutorial player with step-based guidance
 - Tutorial editor for content creation
 - Bead highlighting system for instruction
@@ -46,12 +51,14 @@
 - **Rating: 70% Complete** (infrastructure exists but lacks content)
 
 **4. Real-time Multiplayer**
+
 - Socket.IO integration
 - Room-based architecture
 - State synchronization
 - **Rating: 90% Complete**
 
 **5. Flashcard Generator**
+
 - PDF/PNG/SVG export
 - Customizable layouts and themes
 - **Rating: 100% Complete**
@@ -59,6 +66,7 @@
 ### ⚠️ What We Have (Partially Built)
 
 **1. Progress Tracking**
+
 - Basic user stats (games played, wins, accuracy)
 - No skill-level tracking
 - No tutorial completion tracking
@@ -66,12 +74,14 @@
 - **Rating: 30% Complete**
 
 **2. Tutorial Content**
+
 - One example tutorial (GuidedAdditionTutorial)
 - Type system for tutorials defined
 - No comprehensive curriculum
 - **Rating: 15% Complete**
 
 **3. Assessment System**
+
 - Per-game scoring exists
 - Achievement system exists
 - No formal tests or certification
@@ -96,6 +106,7 @@
 ### Beginner Levels (Kyu)
 
 **10 Kyu - "First Steps"**
+
 - Age: 6-7 years
 - Skills: Basic bead manipulation, numbers 1-10
 - Curriculum: Recognize and set numbers on abacus, understand place value
@@ -103,51 +114,60 @@
 - Games: Card Sorting (visual recognition), Memory Lightning (basic)
 
 **9 Kyu - "Number Explorer"**
+
 - Skills: Addition/subtraction with no carry (1-9)
 - Curriculum: Friends of 5 concept introduction
 - Assessment: 20 problems, 2-digit addition/subtraction, no carry, 80% accuracy
 - Games: Complement Race (practice mode), Matching Pairs (numerals)
 
 **8 Kyu - "Complement Apprentice"**
+
 - Skills: Friends of 5 mastery, introduction to friends of 10
 - Curriculum: All combinations that make 5, carry concepts
 - Assessment: 30 problems including carries using friends of 5, 85% accuracy
 - Games: Complement Race (friends-5 sprint), Matching Pairs (complement pairs)
 
 **7 Kyu - "Addition Warrior"**
+
 - Skills: Friends of 10 mastery, 2-digit addition/subtraction with carries
 - Curriculum: All combinations that make 10, mixed complement strategies
 - Assessment: 40 problems, 2-3 digit calculations, mixed operations, 85% accuracy
 - Games: Complement Race (friends-10 sprint), All games at medium difficulty
 
 **6 Kyu - "Speed Calculator"**
+
 - Skills: Multi-digit addition/subtraction (3-4 digits), speed emphasis
 - Curriculum: Chain calculations, mental imagery beginning
 - Assessment: 50 problems, 3-4 digits, 3 minutes time limit, 90% accuracy
 - Games: Complement Race (survival mode), Memory Lightning (medium)
 
 **5 Kyu - "Multiplication Initiate"**
+
 - Skills: Single-digit multiplication (1-5)
 - Curriculum: Multiplication tables 1-5, abacus multiplication method
 - Assessment: 30 multiplication problems, 40 add/subtract problems, 90% accuracy
 - Games: All games at hard difficulty
 
 **4 Kyu - "Multiplication Master"**
+
 - Skills: Full multiplication tables (1-9), 2-digit × 1-digit
 - Curriculum: All multiplication patterns, division introduction
 - Assessment: 40 multiplication, 20 division, 40 add/subtract, 90% accuracy
 
 **3 Kyu - "Division Explorer"**
+
 - Skills: Division mastery (2-digit ÷ 1-digit), mixed operations
 - Curriculum: Division algorithm, remainders, mixed problem solving
 - Assessment: 100 mixed problems in 10 minutes, 92% accuracy
 
 **2 Kyu - "Advanced Operator"**
+
 - Skills: Multi-digit multiplication/division, decimals introduction
 - Curriculum: 3-digit × 2-digit, decimals, percentages
 - Assessment: 120 mixed problems including decimals, 10 minutes, 93% accuracy
 
 **1 Kyu - "Pre-Mastery"**
+
 - Skills: Decimal operations, fractions, complex multi-step problems
 - Curriculum: Real-world applications, word problems
 - Assessment: 150 mixed problems, 10 minutes, 95% accuracy
@@ -156,15 +176,18 @@
 ### Master Levels (Dan)
 
 **1 Dan - "Shodan" (First Degree)**
+
 - Skills: Mental imagery without abacus, complex calculations
 - Assessment: 200 mixed problems, 10 minutes, 96% accuracy
 - Mental arithmetic certification
 
 **2 Dan - "Nidan"**
+
 - Skills: Advanced mental calculation, speed competitions
 - Assessment: 250 problems, 10 minutes, 97% accuracy
 
 **3 Dan - "Sandan"**
+
 - Skills: Championship-level speed and accuracy
 - Assessment: 300 problems, 10 minutes, 98% accuracy
 
@@ -188,10 +211,12 @@
 ### Example: Teaching "Friends of 5"
 
 **1. Assessment (Placement)**
+
 - Quick quiz: "Can you add 3 + 4 using the abacus?"
 - Result: Student struggles → Assign Friends of 5 tutorial
 
 **2. Learn (Tutorial)**
+
 - Interactive tutorial: "Friends of 5"
 - Steps:
   1. Show that 5 = 1+4, 2+3, 3+2, 4+1
@@ -201,23 +226,27 @@
   5. Practice all combinations
 
 **3. Practice (Structured Exercises)**
+
 - 20 problems: Set number, add its friend
 - Real-time feedback on bead movements
 - Hints available: "Use the heaven bead!"
 - Must achieve 90% accuracy to proceed
 
 **4. Play (Game Reinforcement)**
+
 - Complement Race: Friends-5 mode
 - Matching Pairs: Match numbers that make 5
 - Makes practice feel like play
 
 **5. Test (Formal Assessment)**
+
 - 30 problems mixing friends-5 with previous skills
 - Timed: 5 minutes
 - Must achieve 85% to certify skill
 - Can retake after reviewing mistakes
 
 **6. Advance (Progress Update)**
+
 - Friends of 5 skill marked as "Mastered"
 - Unlock: Friends of 10 tutorial
 - Update skill matrix
@@ -232,76 +261,76 @@
 ```typescript
 // Skill taxonomy
 enum SkillCategory {
-  NUMBER_SENSE = 'number-sense',
-  ADDITION = 'addition',
-  SUBTRACTION = 'subtraction',
-  MULTIPLICATION = 'multiplication',
-  DIVISION = 'division',
-  MENTAL_CALC = 'mental-calculation',
-  COMPLEMENTS = 'complements',
-  SPEED = 'speed',
-  ACCURACY = 'accuracy'
+  NUMBER_SENSE = "number-sense",
+  ADDITION = "addition",
+  SUBTRACTION = "subtraction",
+  MULTIPLICATION = "multiplication",
+  DIVISION = "division",
+  MENTAL_CALC = "mental-calculation",
+  COMPLEMENTS = "complements",
+  SPEED = "speed",
+  ACCURACY = "accuracy",
 }
 
 // Individual skill (atomic unit)
 interface Skill {
-  id: string
-  name: string
-  category: SkillCategory
-  kyuLevel: number // Which kyu level this skill belongs to
-  prerequisiteSkills: string[] // Must master these first
-  description: string
-  estimatedPracticeTime: number // minutes
+  id: string;
+  name: string;
+  category: SkillCategory;
+  kyuLevel: number; // Which kyu level this skill belongs to
+  prerequisiteSkills: string[]; // Must master these first
+  description: string;
+  estimatedPracticeTime: number; // minutes
 }
 
 // Learning module (collection of related skills)
 interface Module {
-  id: string
-  title: string
-  kyuLevel: number
-  description: string
-  skills: string[] // Skill IDs
-  estimatedCompletionTime: number // hours
-  sequence: number // Order within kyu level
+  id: string;
+  title: string;
+  kyuLevel: number;
+  description: string;
+  skills: string[]; // Skill IDs
+  estimatedCompletionTime: number; // hours
+  sequence: number; // Order within kyu level
 }
 
 // Tutorial (teaches one or more skills)
 interface Tutorial {
-  id: string
-  skillIds: string[]
-  moduleId: string
-  type: 'interactive' | 'video' | 'reading'
-  content: TutorialStep[]
-  estimatedDuration: number
+  id: string;
+  skillIds: string[];
+  moduleId: string;
+  type: "interactive" | "video" | "reading";
+  content: TutorialStep[];
+  estimatedDuration: number;
 }
 
 // Practice set (reinforces skills)
 interface PracticeSet {
-  id: string
-  skillIds: string[]
-  problemCount: number
-  timeLimit?: number
-  passingAccuracy: number
-  difficulty: 'easy' | 'medium' | 'hard'
+  id: string;
+  skillIds: string[];
+  problemCount: number;
+  timeLimit?: number;
+  passingAccuracy: number;
+  difficulty: "easy" | "medium" | "hard";
 }
 
 // Game mapping (which games teach which skills)
 interface GameSkillMapping {
-  gameId: string
-  skillIds: string[]
-  difficulty: string
-  recommendedKyuRange: [number, number]
+  gameId: string;
+  skillIds: string[];
+  difficulty: string;
+  recommendedKyuRange: [number, number];
 }
 
 // Assessment (formal test)
 interface Assessment {
-  id: string
-  type: 'placement' | 'skill-check' | 'kyu-certification'
-  kyuLevel?: number
-  skillIds: string[]
-  problemCount: number
-  timeLimit: number
-  passingAccuracy: number
+  id: string;
+  type: "placement" | "skill-check" | "kyu-certification";
+  kyuLevel?: number;
+  skillIds: string[];
+  problemCount: number;
+  timeLimit: number;
+  passingAccuracy: number;
 }
 ```
 
@@ -358,6 +387,7 @@ interface Assessment {
 **Goal:** Students can learn and certify 10 Kyu and 9 Kyu levels
 
 **Database Schema Updates:**
+
 - [ ] Create `skills` table
 - [ ] Create `modules` table
 - [ ] Create `curriculum_tutorials` table (links tutorials to skills)
@@ -372,6 +402,7 @@ interface Assessment {
 - [ ] Extend `user_stats` table: add `currentKyuLevel`, `currentDanLevel`, `skillsMastered`
 
 **Tutorial Content Creation:**
+
 - [ ] 10 Kyu tutorials (5 tutorials):
   1. Introduction to Abacus
   2. Understanding Place Value
@@ -384,12 +415,14 @@ interface Assessment {
   3. Friends of 5 - Subtraction
 
 **Practice Sets:**
+
 - [ ] Build practice set generator for each skill
 - [ ] Implement immediate feedback system
 - [ ] Add hint system for common mistakes
 - [ ] Track accuracy and time per problem
 
 **Assessment System:**
+
 - [ ] Build placement test component (determines starting level)
 - [ ] Build skill-check test component (practice test before certification)
 - [ ] Build kyu certification test component (formal test)
@@ -398,6 +431,7 @@ interface Assessment {
 - [ ] Allow test retakes with review of mistakes
 
 **Game Integration:**
+
 - [ ] Map existing games to skills
   - Memory Lightning → Number recognition, memory
   - Card Sorting → Visual pattern recognition, ordering
@@ -407,6 +441,7 @@ interface Assessment {
 - [ ] Track game performance per skill
 
 **Student Dashboard:**
+
 - [ ] Create dashboard showing:
   - Current kyu level
   - Skills mastered / in progress / locked
@@ -417,6 +452,7 @@ interface Assessment {
 - [ ] Add celebratory animations for milestones
 
 **Core User Flow:**
+
 - [ ] Onboarding: Placement test → Assign kyu level
 - [ ] Home: Dashboard shows next recommended activity
 - [ ] Click "Start Learning" → Next tutorial
@@ -427,6 +463,7 @@ interface Assessment {
 - [ ] Celebration and badge award
 
 **Deliverables:**
+
 - Students can complete 10 Kyu and 9 Kyu
 - ~8 tutorials
 - ~10 skills defined
@@ -441,6 +478,7 @@ interface Assessment {
 **Goal:** Complete beginner curriculum through multiplication introduction
 
 **Content Creation:**
+
 - [ ] 8 Kyu: Friends of 10 tutorials and practice (4 weeks)
 - [ ] 7 Kyu: Mixed complements, 2-digit operations (4 weeks)
 - [ ] 6 Kyu: Multi-digit, speed training (6 weeks)
@@ -448,6 +486,7 @@ interface Assessment {
 - Total: ~40 tutorials, ~30 skills
 
 **Enhanced Features:**
+
 - [ ] Adaptive difficulty in practice sets (adjusts based on performance)
 - [ ] Spaced repetition system (review mastered skills periodically)
 - [ ] Daily recommended practice (10-15 min sessions)
@@ -455,11 +494,13 @@ interface Assessment {
 - [ ] Peer comparison (anonymous, optional)
 
 **New Games:**
+
 - [ ] Multiplication tables game
 - [ ] Speed drill game (flash calculation)
 - [ ] Mental math game (visualization without physical abacus)
 
 **Parent/Teacher Dashboard:**
+
 - [ ] View student progress
 - [ ] See time spent learning
 - [ ] Review test results
@@ -467,6 +508,7 @@ interface Assessment {
 - [ ] Generate progress reports
 
 **Gamification Enhancements:**
+
 - [ ] Achievement badges for milestones
 - [ ] Experience points (XP) system
 - [ ] Level-up animations
@@ -474,6 +516,7 @@ interface Assessment {
 - [ ] Virtual rewards (stickers, themes)
 
 **Deliverables:**
+
 - Complete 8-5 Kyu curriculum
 - ~50 total tutorials (cumulative)
 - ~40 total skills (cumulative)
@@ -488,6 +531,7 @@ interface Assessment {
 **Goal:** Advanced operations, real-world applications, mental calculation
 
 **Content Creation:**
+
 - [ ] 4 Kyu: Full multiplication, division introduction (8 weeks)
 - [ ] 3 Kyu: Division mastery, mixed operations (8 weeks)
 - [ ] 2 Kyu: Decimals, percentages (10 weeks)
@@ -495,30 +539,35 @@ interface Assessment {
 - Total: ~60 additional tutorials, ~40 additional skills
 
 **Mental Calculation Training:**
+
 - [ ] Visualization exercises (see abacus in mind)
 - [ ] Flash anzan (rapid mental calculation)
 - [ ] Mental calculation games
 - [ ] Transition from physical to mental abacus
 
 **Real-World Applications:**
+
 - [ ] Shopping math (money, change, discounts)
 - [ ] Measurement conversions
 - [ ] Time calculations
 - [ ] Real-world word problems
 
 **Competition Features:**
+
 - [ ] Speed competitions (leaderboards)
 - [ ] Accuracy challenges
 - [ ] Weekly tournaments
 - [ ] Regional/global rankings (optional)
 
 **AI Tutor Assistant:**
+
 - [ ] Smart hints during practice
 - [ ] Personalized learning paths
 - [ ] Concept explanations on demand
 - [ ] Answer specific questions ("Why do I use friends of 5 here?")
 
 **Deliverables:**
+
 - Complete 4-1 Kyu curriculum
 - ~110 total tutorials (cumulative)
 - ~80 total skills (cumulative)
@@ -533,12 +582,14 @@ interface Assessment {
 **Goal:** Championship-level speed and accuracy, mental calculation mastery
 
 **Content Creation:**
+
 - [ ] Dan level certification tests
 - [ ] Advanced mental calculation curriculum
 - [ ] Championship preparation materials
 - [ ] Expert-level problem sets
 
 **Advanced Features:**
+
 - [ ] Customized training plans for dan levels
 - [ ] Video lessons from expert abacus users
 - [ ] Community forum for advanced learners
@@ -546,11 +597,13 @@ interface Assessment {
 - [ ] Certification/diploma generation (printable)
 
 **Integration with Standards:**
+
 - [ ] Align with League of Soroban of Americas standards
 - [ ] Japan Abacus Committee certification mapping
 - [ ] International competition preparation
 
 **Deliverables:**
+
 - 1-10 Dan curriculum
 - Certification system
 - Community features
@@ -561,12 +614,14 @@ interface Assessment {
 ### Phase 5: Ecosystem (Months 18+) - "Complete Platform"
 
 **Content Management System:**
+
 - [ ] Tutorial builder UI (create without code)
 - [ ] Content versioning
 - [ ] Community-contributed content (vetted)
 - [ ] Multilingual support (Spanish, Japanese, Hindi)
 
 **Classroom Features:**
+
 - [ ] Teacher creates classes
 - [ ] Bulk student enrollment
 - [ ] Class-wide assignments
@@ -574,6 +629,7 @@ interface Assessment {
 - [ ] Live teaching mode (project for class)
 
 **Analytics & Insights:**
+
 - [ ] Student learning velocity
 - [ ] Skill gap analysis
 - [ ] Predictive success modeling
@@ -581,17 +637,20 @@ interface Assessment {
 - [ ] Export data for research
 
 **Mobile App:**
+
 - [ ] iOS and React Native apps
 - [ ] Offline mode
 - [ ] Sync across devices
 
 **Integrations:**
+
 - [ ] Google Classroom
 - [ ] Canvas LMS
 - [ ] Schoology
 - [ ] Export to SIS systems
 
 **Advanced Gamification:**
+
 - [ ] Story mode (learning quest)
 - [ ] Cooperative challenges
 - [ ] Guild/team system
@@ -602,6 +661,7 @@ interface Assessment {
 ## Success Metrics
 
 ### Student Engagement
+
 - **Daily Active Users (DAU):** Target 40% of registered students
 - **Weekly Active Users (WAU):** Target 70% of registered students
 - **Average session time:** 20-30 minutes
@@ -610,23 +670,27 @@ interface Assessment {
 - **Streak length:** Average 7+ days
 
 ### Learning Outcomes
+
 - **Certification pass rate:** >70% on first attempt per kyu level
 - **Skill mastery rate:** >85% accuracy on mastered skills after 30 days
 - **Time to mastery:** Track average time per kyu level
 - **Progression velocity:** Students advance 1 kyu level per 4-8 weeks (varies by level)
 
 ### Content Quality
+
 - **Tutorial completion rate:** >90%
 - **Practice set completion rate:** >85%
 - **Game play rate:** >60% of students play games weekly
 - **Assessment completion rate:** >75%
 
 ### Platform Health
+
 - **System uptime:** >99.5%
 - **Load time:** <2 seconds
 - **Error rate:** <0.1%
 
 ### Business/Growth
+
 - **Monthly signups:** Track growth month-over-month
 - **Paid conversion** (if applicable): Target 10-20%
 - **Teacher/school adoption:** Track institutional users
@@ -639,6 +703,7 @@ interface Assessment {
 ### Database Changes Priority
 
 **Immediate (Phase 1):**
+
 ```sql
 -- Skills and curriculum structure
 CREATE TABLE skills (...)
@@ -661,11 +726,13 @@ CREATE TABLE game_skill_mappings (...)
 ```
 
 **Phase 2:**
+
 - Add spaced repetition tables
 - Achievement tracking enhancements
 - Peer comparison data
 
 **Phase 3:**
+
 - Mental calculation tracking
 - Competition results
 - AI tutor interaction logs
@@ -673,18 +740,21 @@ CREATE TABLE game_skill_mappings (...)
 ### API Endpoints Needed
 
 **Progress & Skills:**
+
 - `GET /api/student/progress` - Current kyu level, skills, next steps
 - `GET /api/student/skills/:skillId` - Skill details and progress
 - `POST /api/student/skills/:skillId/practice` - Record practice attempt
 - `GET /api/student/dashboard` - Dashboard data
 
 **Curriculum:**
+
 - `GET /api/curriculum/kyu/:level` - All modules for kyu level
 - `GET /api/curriculum/modules/:moduleId` - Module details
 - `GET /api/curriculum/tutorials/:tutorialId` - Tutorial content
 - `GET /api/curriculum/next` - Next recommended activity
 
 **Assessments:**
+
 - `POST /api/assessments/placement` - Take placement test
 - `POST /api/assessments/skill-check/:skillId` - Practice test
 - `POST /api/assessments/certification/:kyuLevel` - Certification test
@@ -692,11 +762,13 @@ CREATE TABLE game_skill_mappings (...)
 - `GET /api/assessments/:assessmentId/results` - Get results
 
 **Games:**
+
 - `GET /api/games/recommended` - Games for current skills
 - `POST /api/games/:gameId/result` - Log game completion
 - `GET /api/games/:gameId/skills` - Which skills this game teaches
 
 **Teacher/Parent:**
+
 - `GET /api/teacher/students` - List of students
 - `GET /api/teacher/students/:studentId/progress` - Student progress
 - `POST /api/teacher/assignments` - Create assignment
@@ -860,24 +932,28 @@ CREATE TABLE game_skill_mappings (...)
 ## Next Immediate Steps
 
 ### Week 1: Database Schema Design
+
 - [ ] Design complete schema for Phase 1
 - [ ] Write migration scripts
 - [ ] Document schema decisions
 - [ ] Review with stakeholders
 
 ### Week 2-3: Content Planning
+
 - [ ] Write detailed 10 Kyu curriculum outline
 - [ ] Write detailed 9 Kyu curriculum outline
 - [ ] Define all skills for 10-9 Kyu
 - [ ] Map skills to existing games
 
 ### Week 4-5: Tutorial Content Creation
+
 - [ ] Write 5 tutorials for 10 Kyu
 - [ ] Write 3 tutorials for 9 Kyu
 - [ ] Create interactive steps with highlighting
 - [ ] Add kid-friendly explanations
 
 ### Week 6-7: Assessment System Build
+
 - [ ] Build assessment component UI
 - [ ] Implement grading engine
 - [ ] Create placement test (20 problems)
@@ -885,18 +961,21 @@ CREATE TABLE game_skill_mappings (...)
 - [ ] Create 9 Kyu certification test (40 problems)
 
 ### Week 8-9: Practice System
+
 - [ ] Build practice session component
 - [ ] Implement problem generator for each skill
 - [ ] Add immediate feedback system
 - [ ] Create hint system
 
 ### Week 10-11: Student Dashboard
+
 - [ ] Design dashboard UI (kid-friendly)
 - [ ] Build progress visualization
 - [ ] Implement "next recommended activity" logic
 - [ ] Add achievement display
 
 ### Week 12: Integration & Testing
+
 - [ ] Connect all pieces: tutorials → practice → games → assessment
 - [ ] Test complete user flow
 - [ ] User testing with kids
@@ -924,6 +1003,7 @@ CREATE TABLE game_skill_mappings (...)
 This roadmap provides a clear path from current state (scattered features) to target state (complete educational platform). The phased approach allows incremental delivery while maintaining focus on core learning experience.
 
 **Estimated Timeline:**
+
 - Phase 1 (10-9 Kyu MVP): 3 months
 - Phase 2 (8-5 Kyu): 5 months
 - Phase 3 (4-1 Kyu): 6 months

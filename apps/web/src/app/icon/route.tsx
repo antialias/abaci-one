@@ -39,7 +39,9 @@ export async function GET(request: Request) {
     if (parsedDay >= 1 && parsedDay <= 31) {
       dayOfMonth = parsedDay
     } else {
-      return new Response('Invalid day parameter. Must be 1-31.', { status: 400 })
+      return new Response('Invalid day parameter. Must be 1-31.', {
+        status: 400,
+      })
     }
   } else {
     dayOfMonth = getDayOfMonth()

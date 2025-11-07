@@ -3,6 +3,7 @@ import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
 import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
+import { WorksheetErrorBoundary } from './components/WorksheetErrorBoundary'
 import type { WorksheetFormState } from './types'
 import { generateWorksheetPreview } from './generatePreview'
 
@@ -67,10 +68,13 @@ export default async function AdditionWorksheetPage() {
   const initialSettings = await loadWorksheetSettings()
 
   // Calculate derived state needed for preview
-  const rows = Math.ceil(
-    (initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols
-  )
-  const total = initialSettings.problemsPerPage * initialSettings.pages
+  // Use defaults for required fields (loadWorksheetSettings should always provide these, but TypeScript needs guarantees)
+  const problemsPerPage = initialSettings.problemsPerPage ?? 20
+  const pages = initialSettings.pages ?? 1
+  const cols = initialSettings.cols ?? 5
+
+  const rows = Math.ceil((problemsPerPage * pages) / cols)
+  const total = problemsPerPage * pages
 
   // Create full config for preview generation
   const fullConfig: WorksheetFormState = {
@@ -85,11 +89,13 @@ export default async function AdditionWorksheetPage() {
   const previewResult = generateWorksheetPreview(fullConfig)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
-  // Pass settings and preview to client
+  // Pass settings and preview to client, wrapped in error boundary
   return (
-    <AdditionWorksheetClient
-      initialSettings={initialSettings}
-      initialPreview={previewResult.success ? previewResult.pages : undefined}
-    />
+    <WorksheetErrorBoundary>
+      <AdditionWorksheetClient
+        initialSettings={initialSettings}
+        initialPreview={previewResult.success ? previewResult.pages : undefined}
+      />
+    </WorksheetErrorBoundary>
   )
 }

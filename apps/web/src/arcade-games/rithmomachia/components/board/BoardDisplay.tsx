@@ -649,7 +649,10 @@ export function BoardDisplay() {
   // Detect portrait vs landscape and calculate explicit dimensions for rotation
   const boardAspectRatio = boardWidth / boardHeight // ~2:1 for 16x8 board
   const [containerAspectRatio, setContainerAspectRatio] = useState(1)
-  const [svgDimensions, setSvgDimensions] = useState<{ width: string; height: string } | null>(null)
+  const [svgDimensions, setSvgDimensions] = useState<{
+    width: string
+    height: string
+  } | null>(null)
   const [updateCounter, setUpdateCounter] = useState(0)
 
   useEffect(() => {

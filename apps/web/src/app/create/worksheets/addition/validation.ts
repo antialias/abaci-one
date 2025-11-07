@@ -1,6 +1,7 @@
 // Validation logic for worksheet configuration
 
 import type { WorksheetFormState, WorksheetConfig, ValidationResult } from './types'
+import type { DisplayRules } from './displayRules'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -71,21 +72,69 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   const problemsPerPage = formState.problemsPerPage ?? total
   const pages = formState.pages ?? 1
 
+  // Handle V2 displayRules or V1 boolean flags
+  let displayRules: DisplayRules
+  let showCarryBoxes: boolean
+  let showAnswerBoxes: boolean
+  let showPlaceValueColors: boolean
+  let showProblemNumbers: boolean
+  let showCellBorder: boolean
+  let showTenFrames: boolean
+
+  if (formState.displayRules) {
+    // V2: Use displayRules from formState
+    displayRules = formState.displayRules
+    // Derive V1 compatibility flags (use 'always' as true, anything else as false for now)
+    showCarryBoxes = displayRules.carryBoxes === 'always'
+    showAnswerBoxes = displayRules.answerBoxes === 'always'
+    showPlaceValueColors = displayRules.placeValueColors === 'always'
+    showProblemNumbers = displayRules.problemNumbers === 'always'
+    showCellBorder = displayRules.cellBorders === 'always'
+    showTenFrames = displayRules.tenFrames === 'always'
+  } else {
+    // V1: Use individual boolean flags, convert to displayRules
+    showCarryBoxes = formState.showCarryBoxes ?? true
+    showAnswerBoxes = formState.showAnswerBoxes ?? true
+    showPlaceValueColors = formState.showPlaceValueColors ?? true
+    showProblemNumbers = formState.showProblemNumbers ?? true
+    showCellBorder = formState.showCellBorder ?? true
+    showTenFrames = formState.showTenFrames ?? false
+
+    displayRules = {
+      carryBoxes: showCarryBoxes ? 'always' : 'never',
+      answerBoxes: showAnswerBoxes ? 'always' : 'never',
+      placeValueColors: showPlaceValueColors ? 'always' : 'never',
+      problemNumbers: showProblemNumbers ? 'always' : 'never',
+      cellBorders: showCellBorder ? 'always' : 'never',
+      tenFrames: showTenFrames ? 'always' : 'never',
+    }
+  }
+
   // Build complete config with defaults
   const config: WorksheetConfig = {
+    // V2 fields
+    version: 2,
+    displayRules,
+    difficultyProfile: formState.difficultyProfile,
+
     // Primary state
     problemsPerPage,
     cols,
     pages,
+    orientation,
+
     // Derived state
     total,
     rows,
+
     // Other fields
     name: formState.name?.trim() || 'Student',
     date: formState.date?.trim() || getDefaultDate(),
     pAnyStart,
     pAllStart,
     interpolate: formState.interpolate ?? true,
+
+    // Layout
     page: {
       wIn: orientation === 'portrait' ? 8.5 : 11,
       hIn: orientation === 'portrait' ? 11 : 8.5,
@@ -96,13 +145,16 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       top: 1.1,
       bottom: 0.7,
     },
-    showCarryBoxes: formState.showCarryBoxes ?? true,
-    showAnswerBoxes: formState.showAnswerBoxes ?? true,
-    showPlaceValueColors: formState.showPlaceValueColors ?? true,
-    showProblemNumbers: formState.showProblemNumbers ?? true,
-    showCellBorder: formState.showCellBorder ?? true,
-    showTenFrames: formState.showTenFrames ?? false,
+
+    // V1 compatibility flags (derived from displayRules)
+    showCarryBoxes,
+    showAnswerBoxes,
+    showPlaceValueColors,
+    showProblemNumbers,
+    showCellBorder,
+    showTenFrames,
     showTenFramesForAll: formState.showTenFramesForAll ?? false,
+
     fontSize,
     seed,
   }

@@ -76,13 +76,21 @@ export function PlayingGuideModal({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isResizing, setIsResizing] = useState(false)
   const [resizeDirection, setResizeDirection] = useState<string>('')
-  const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
+  const [resizeStart, setResizeStart] = useState({
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0,
+  })
   const [isHovered, setIsHovered] = useState(false)
   const [dockPreview, setDockPreview] = useState<'left' | 'right' | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const hasUndockedRef = useRef(false) // Track if we've undocked during current drag
   const undockPositionRef = useRef<{ x: number; y: number } | null>(null) // Position at moment of undocking
-  const [dragTransform, setDragTransform] = useState<{ x: number; y: number } | null>(null) // Visual transform while dragging from dock
+  const [dragTransform, setDragTransform] = useState<{
+    x: number
+    y: number
+  } | null>(null) // Visual transform while dragging from dock
 
   // Save position to localStorage whenever it changes
   useEffect(() => {
@@ -175,7 +183,12 @@ export function PlayingGuideModal({
     setResizeDirection(direction)
     setDragStart({ x: e.clientX, y: e.clientY })
     // Save initial dimensions and position for resize calculation
-    setResizeStart({ width: size.width, height: size.height, x: position.x, y: position.y })
+    setResizeStart({
+      width: size.width,
+      height: size.height,
+      x: position.x,
+      y: position.y,
+    })
   }
 
   // Bust-out button handler
@@ -851,7 +864,12 @@ export function PlayingGuideModal({
               }}
               title={section.label}
             >
-              <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit', flexShrink: 0 }}>
+              <span
+                style={{
+                  fontSize: isVeryNarrow ? '18px' : 'inherit',
+                  flexShrink: 0,
+                }}
+              >
                 {section.icon}
               </span>
               {!isVeryNarrow && (
@@ -859,7 +877,12 @@ export function PlayingGuideModal({
                   mode="single"
                   min={8}
                   max={isNarrow ? 12 : 14}
-                  style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
                 >
                   {section.label}
                 </Textfit>

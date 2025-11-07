@@ -200,7 +200,10 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
     const newNumberFoundBy = { ...numberFoundBy }
 
     if (userId) {
-      const currentScore = newPlayerScores[userId] || { correct: 0, incorrect: 0 }
+      const currentScore = newPlayerScores[userId] || {
+        correct: 0,
+        incorrect: 0,
+      }
       newPlayerScores[userId] = {
         ...currentScore,
         correct: currentScore.correct + 1,
@@ -244,7 +247,10 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
     const playerScores = state.playerScores || {}
     const newPlayerScores = { ...playerScores }
     if (userId) {
-      const currentScore = newPlayerScores[userId] || { correct: 0, incorrect: 0 }
+      const currentScore = newPlayerScores[userId] || {
+        correct: 0,
+        incorrect: 0,
+      }
       newPlayerScores[userId] = {
         ...currentScore,
         incorrect: currentScore.incorrect + 1,
@@ -365,7 +371,10 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
 
       case 'selectedDifficulty':
         if (!['beginner', 'easy', 'medium', 'hard', 'expert'].includes(value)) {
-          return { valid: false, error: `Invalid selectedDifficulty: ${value}` }
+          return {
+            valid: false,
+            error: `Invalid selectedDifficulty: ${value}`,
+          }
         }
         break
 

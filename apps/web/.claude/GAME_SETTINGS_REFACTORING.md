@@ -19,16 +19,16 @@
 // src/lib/arcade/game-configs.ts
 
 export interface MatchingGameConfig {
-  gameType: 'abacus-numeral' | 'complement-pairs'
-  difficulty: number
-  turnTimer: number
+  gameType: "abacus-numeral" | "complement-pairs";
+  difficulty: number;
+  turnTimer: number;
 }
 
 export interface MemoryQuizGameConfig {
-  selectedCount: 2 | 5 | 8 | 12 | 15
-  displayTime: number
-  selectedDifficulty: DifficultyLevel
-  playMode: 'cooperative' | 'competitive'
+  selectedCount: 2 | 5 | 8 | 12 | 15;
+  displayTime: number;
+  selectedDifficulty: DifficultyLevel;
+  playMode: "cooperative" | "competitive";
 }
 
 export interface ComplementRaceGameConfig {
@@ -36,27 +36,28 @@ export interface ComplementRaceGameConfig {
 }
 
 export interface RoomGameConfig {
-  matching?: MatchingGameConfig
-  'memory-quiz'?: MemoryQuizGameConfig
-  'complement-race'?: ComplementRaceGameConfig
+  matching?: MatchingGameConfig;
+  "memory-quiz"?: MemoryQuizGameConfig;
+  "complement-race"?: ComplementRaceGameConfig;
 }
 
 // Default configs
 export const DEFAULT_MATCHING_CONFIG: MatchingGameConfig = {
-  gameType: 'abacus-numeral',
+  gameType: "abacus-numeral",
   difficulty: 6,
   turnTimer: 30,
-}
+};
 
 export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
   selectedCount: 5,
   displayTime: 2.0,
-  selectedDifficulty: 'easy',
-  playMode: 'cooperative',
-}
+  selectedDifficulty: "easy",
+  playMode: "cooperative",
+};
 ```
 
 **Benefits:**
+
 - Single source of truth for each game's settings
 - TypeScript enforces consistency across codebase
 - Easy to see what settings each game has
@@ -70,47 +71,53 @@ export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
 ```typescript
 // src/lib/arcade/game-config-helpers.ts
 
-import type { GameName } from './validation'
-import type { RoomGameConfig, MatchingGameConfig, MemoryQuizGameConfig } from './game-configs'
-import { DEFAULT_MATCHING_CONFIG, DEFAULT_MEMORY_QUIZ_CONFIG } from './game-configs'
+import type { GameName } from "./validation";
+import type {
+  RoomGameConfig,
+  MatchingGameConfig,
+  MemoryQuizGameConfig,
+} from "./game-configs";
+import {
+  DEFAULT_MATCHING_CONFIG,
+  DEFAULT_MEMORY_QUIZ_CONFIG,
+} from "./game-configs";
 
 /**
  * Get game-specific config from room's gameConfig with defaults
  */
 export function getGameConfig<T extends GameName>(
   roomGameConfig: RoomGameConfig | null | undefined,
-  gameName: T
-): T extends 'matching'
+  gameName: T,
+): T extends "matching"
   ? MatchingGameConfig
-  : T extends 'memory-quiz'
-  ? MemoryQuizGameConfig
-  : never {
-
+  : T extends "memory-quiz"
+    ? MemoryQuizGameConfig
+    : never {
   if (!roomGameConfig) {
-    return getDefaultGameConfig(gameName) as any
+    return getDefaultGameConfig(gameName) as any;
   }
 
-  const savedConfig = roomGameConfig[gameName]
+  const savedConfig = roomGameConfig[gameName];
   if (!savedConfig) {
-    return getDefaultGameConfig(gameName) as any
+    return getDefaultGameConfig(gameName) as any;
   }
 
   // Merge saved config with defaults to handle missing fields
-  const defaults = getDefaultGameConfig(gameName)
-  return { ...defaults, ...savedConfig } as any
+  const defaults = getDefaultGameConfig(gameName);
+  return { ...defaults, ...savedConfig } as any;
 }
 
 function getDefaultGameConfig(gameName: GameName) {
   switch (gameName) {
-    case 'matching':
-      return DEFAULT_MATCHING_CONFIG
-    case 'memory-quiz':
-      return DEFAULT_MEMORY_QUIZ_CONFIG
-    case 'complement-race':
+    case "matching":
+      return DEFAULT_MATCHING_CONFIG;
+    case "memory-quiz":
+      return DEFAULT_MEMORY_QUIZ_CONFIG;
+    case "complement-race":
       // return DEFAULT_COMPLEMENT_RACE_CONFIG
-      throw new Error('complement-race config not implemented')
+      throw new Error("complement-race config not implemented");
     default:
-      throw new Error(`Unknown game: ${gameName}`)
+      throw new Error(`Unknown game: ${gameName}`);
   }
 }
 
@@ -120,10 +127,16 @@ function getDefaultGameConfig(gameName: GameName) {
 export function updateGameConfig<T extends GameName>(
   currentRoomConfig: RoomGameConfig | null | undefined,
   gameName: T,
-  updates: Partial<T extends 'matching' ? MatchingGameConfig : T extends 'memory-quiz' ? MemoryQuizGameConfig : never>
+  updates: Partial<
+    T extends "matching"
+      ? MatchingGameConfig
+      : T extends "memory-quiz"
+        ? MemoryQuizGameConfig
+        : never
+  >,
 ): RoomGameConfig {
-  const current = currentRoomConfig || {}
-  const gameConfig = current[gameName] || getDefaultGameConfig(gameName)
+  const current = currentRoomConfig || {};
+  const gameConfig = current[gameName] || getDefaultGameConfig(gameName);
 
   return {
     ...current,
@@ -131,53 +144,57 @@ export function updateGameConfig<T extends GameName>(
       ...gameConfig,
       ...updates,
     },
-  }
+  };
 }
 ```
 
 **Usage in socket-server.ts:**
+
 ```typescript
 // BEFORE (error-prone, duplicated)
-const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
+const memoryQuizConfig = (room.gameConfig as any)?.["memory-quiz"] || {};
 initialState = validator.getInitialState({
   selectedCount: memoryQuizConfig.selectedCount || 5,
   displayTime: memoryQuizConfig.displayTime || 2.0,
-  selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
-  playMode: memoryQuizConfig.playMode || 'cooperative',
-})
+  selectedDifficulty: memoryQuizConfig.selectedDifficulty || "easy",
+  playMode: memoryQuizConfig.playMode || "cooperative",
+});
 
 // AFTER (type-safe, concise)
-const config = getGameConfig(room.gameConfig, 'memory-quiz')
-initialState = validator.getInitialState(config)
+const config = getGameConfig(room.gameConfig, "memory-quiz");
+initialState = validator.getInitialState(config);
 ```
 
 **Usage in RoomMemoryQuizProvider.tsx:**
+
 ```typescript
 // BEFORE (verbose, error-prone)
 const mergedInitialState = useMemo(() => {
-  const gameConfig = roomData?.gameConfig as Record<string, any>
-  const savedConfig = gameConfig?.['memory-quiz']
+  const gameConfig = roomData?.gameConfig as Record<string, any>;
+  const savedConfig = gameConfig?.["memory-quiz"];
 
   return {
     ...initialState,
     selectedCount: savedConfig?.selectedCount ?? initialState.selectedCount,
     displayTime: savedConfig?.displayTime ?? initialState.displayTime,
-    selectedDifficulty: savedConfig?.selectedDifficulty ?? initialState.selectedDifficulty,
+    selectedDifficulty:
+      savedConfig?.selectedDifficulty ?? initialState.selectedDifficulty,
     playMode: savedConfig?.playMode ?? initialState.playMode,
-  }
-}, [roomData?.gameConfig])
+  };
+}, [roomData?.gameConfig]);
 
 // AFTER (type-safe, concise)
 const mergedInitialState = useMemo(() => {
-  const config = getGameConfig(roomData?.gameConfig, 'memory-quiz')
+  const config = getGameConfig(roomData?.gameConfig, "memory-quiz");
   return {
     ...initialState,
-    ...config,  // Spread config directly - all settings included
-  }
-}, [roomData?.gameConfig])
+    ...config, // Spread config directly - all settings included
+  };
+}, [roomData?.gameConfig]);
 ```
 
 **Benefits:**
+
 - No more manual property-by-property merging
 - Type-safe
 - Defaults handled automatically
@@ -192,7 +209,7 @@ const mergedInitialState = useMemo(() => {
 ```typescript
 // src/lib/arcade/validation/MemoryQuizGameValidator.ts
 
-import type { MemoryQuizGameConfig } from '@/lib/arcade/game-configs'
+import type { MemoryQuizGameConfig } from "@/lib/arcade/game-configs";
 
 export class MemoryQuizGameValidator {
   // BEFORE: Manual type definition
@@ -210,14 +227,15 @@ export class MemoryQuizGameValidator {
       selectedCount: config.selectedCount,
       displayTime: config.displayTime,
       selectedDifficulty: config.selectedDifficulty,
-      playMode: config.playMode,  // TypeScript ensures all fields are handled
+      playMode: config.playMode, // TypeScript ensures all fields are handled
       // ...
-    }
+    };
   }
 }
 ```
 
 **Benefits:**
+
 - If you add a setting to `MemoryQuizGameConfig`, TypeScript forces you to handle it
 - Impossible to forget a setting
 - Impossible to use wrong type
@@ -263,43 +281,46 @@ If you add a new field to `MemoryQuizGameConfig`, TypeScript will error on `_exh
 
 export function validateGameConfig(
   gameName: GameName,
-  config: any
+  config: any,
 ): config is MatchingGameConfig | MemoryQuizGameConfig {
   switch (gameName) {
-    case 'matching':
+    case "matching":
       return (
-        typeof config.gameType === 'string' &&
-        ['abacus-numeral', 'complement-pairs'].includes(config.gameType) &&
-        typeof config.difficulty === 'number' &&
+        typeof config.gameType === "string" &&
+        ["abacus-numeral", "complement-pairs"].includes(config.gameType) &&
+        typeof config.difficulty === "number" &&
         config.difficulty > 0 &&
-        typeof config.turnTimer === 'number' &&
+        typeof config.turnTimer === "number" &&
         config.turnTimer > 0
-      )
+      );
 
-    case 'memory-quiz':
+    case "memory-quiz":
       return (
         [2, 5, 8, 12, 15].includes(config.selectedCount) &&
-        typeof config.displayTime === 'number' &&
+        typeof config.displayTime === "number" &&
         config.displayTime > 0 &&
-        ['beginner', 'easy', 'medium', 'hard', 'expert'].includes(config.selectedDifficulty) &&
-        ['cooperative', 'competitive'].includes(config.playMode)
-      )
+        ["beginner", "easy", "medium", "hard", "expert"].includes(
+          config.selectedDifficulty,
+        ) &&
+        ["cooperative", "competitive"].includes(config.playMode)
+      );
 
     default:
-      return false
+      return false;
   }
 }
 ```
 
 Use in settings API:
+
 ```typescript
 // src/app/api/arcade/rooms/[roomId]/settings/route.ts
 
 if (body.gameConfig !== undefined) {
   if (!validateGameConfig(room.gameName, body.gameConfig[room.gameName])) {
-    return NextResponse.json({ error: 'Invalid game config' }, { status: 400 })
+    return NextResponse.json({ error: "Invalid game config" }, { status: 400 });
   }
-  updateData.gameConfig = body.gameConfig
+  updateData.gameConfig = body.gameConfig;
 }
 ```
 
@@ -317,6 +338,7 @@ All game configs are stored in a single JSON column in `arcade_rooms.gameConfig`
 ```
 
 **Issues:**
+
 - No schema validation
 - Inefficient updates (read/parse/modify/serialize entire blob)
 - Grows without bounds as more games added
@@ -331,27 +353,37 @@ Create `room_game_configs` table with one row per game per room:
 ```typescript
 // src/db/schema/room-game-configs.ts
 
-export const roomGameConfigs = sqliteTable('room_game_configs', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  roomId: text('room_id')
-    .notNull()
-    .references(() => arcadeRooms.id, { onDelete: 'cascade' }),
-  gameName: text('game_name', {
-    enum: ['matching', 'memory-quiz', 'complement-race'],
-  }).notNull(),
-  config: text('config', { mode: 'json' }).notNull(), // Game-specific JSON
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => ({
-  uniqueRoomGame: uniqueIndex('room_game_idx').on(table.roomId, table.gameName),
-}))
+export const roomGameConfigs = sqliteTable(
+  "room_game_configs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    roomId: text("room_id")
+      .notNull()
+      .references(() => arcadeRooms.id, { onDelete: "cascade" }),
+    gameName: text("game_name", {
+      enum: ["matching", "memory-quiz", "complement-race"],
+    }).notNull(),
+    config: text("config", { mode: "json" }).notNull(), // Game-specific JSON
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    uniqueRoomGame: uniqueIndex("room_game_idx").on(
+      table.roomId,
+      table.gameName,
+    ),
+  }),
+);
 ```
 
 **Benefits:**
+
 - ✅ Smaller rows (only configs for games that have been used)
 - ✅ Easier updates (single row, not entire JSON blob)
 - ✅ Can track updatedAt per game
@@ -359,6 +391,7 @@ export const roomGameConfigs = sqliteTable('room_game_configs', {
 - ✅ Foundation for future audit trail
 
 **Migration Strategy:**
+
 1. Create new table
 2. Migrate existing data from `arcade_rooms.gameConfig`
 3. Update all config read/write code
@@ -370,6 +403,7 @@ See migration SQL below.
 ## Implementation Priority
 
 ### Phase 1: Schema Migration (HIGHEST PRIORITY)
+
 1. **Create new table** - Add `room_game_configs` schema
 2. **Create migration** - SQL to migrate existing data
 3. **Update helper functions** - Adapt to new table structure
@@ -378,15 +412,18 @@ See migration SQL below.
 6. **Drop old column** - Remove `gameConfig` from `arcade_rooms`
 
 ### Phase 2: Type Safety (HIGH)
+
 1. **Create shared config types** (`game-configs.ts`) - Prevents type mismatches
 2. **Create helper functions** (`game-config-helpers.ts`) - Now queries new table
 3. **Update validators** to use shared types - Enforces consistency
 
 ### Phase 3: Compile-Time Safety (MEDIUM)
+
 1. **Add exhaustiveness checking** - Catches missing fields at compile time
 2. **Enforce validator config types** - Use shared types
 
 ### Phase 4: Runtime Safety (LOW)
+
 1. **Add runtime validation** - Prevents invalid data from being saved
 
 ## Detailed Migration SQL
@@ -439,32 +476,38 @@ WHERE json_extract(game_config, '$."memory-quiz"') IS NOT NULL;
 ### Step-by-Step with Checkpoints
 
 **Checkpoint 1: Schema & Migration**
+
 1. Create `src/db/schema/room-game-configs.ts`
 2. Export from `src/db/schema/index.ts`
 3. Generate and apply migration
 4. Verify data migrated correctly
 
 **Checkpoint 2: Helper Functions**
+
 1. Create shared config types in `src/lib/arcade/game-configs.ts`
 2. Create helper functions in `src/lib/arcade/game-config-helpers.ts`
 3. Add unit tests for helpers
 
 **Checkpoint 3: Update Config Reads**
+
 1. Update socket-server.ts to read from new table
 2. Update RoomMemoryQuizProvider to read from new table
 3. Update RoomMemoryPairsProvider to read from new table
 4. Test: Load room and verify settings appear
 
 **Checkpoint 4: Update Config Writes**
+
 1. Update useRoomData.ts updateGameConfig to write to new table
 2. Update settings API to write to new table
 3. Test: Change settings and verify they persist
 
 **Checkpoint 5: Update Validators**
+
 1. Update validators to use shared config types
 2. Test: All games work correctly
 
 **Checkpoint 6: Cleanup**
+
 1. Remove old gameConfig column references
 2. Drop gameConfig column from arcade_rooms table
 3. Final testing of all games

@@ -5,6 +5,7 @@ This document describes the production deployment infrastructure and procedures 
 ## Infrastructure Overview
 
 ### Production Server
+
 - **Host**: `nas.home.network` (Synology NAS DS923+)
 - **Access**: SSH access required
   - Must be connected to network at **730 N. Oak Park Ave**
@@ -12,24 +13,52 @@ This document describes the production deployment infrastructure and procedures 
 - **Project Directory**: `/volume1/homes/antialias/projects/abaci.one`
 
 ### Docker Configuration
-- **Docker binary**: `/usr/local/bin/docker`
-- **Docker Compose binary**: `/usr/local/bin/docker-compose`
-- **Container name**: `soroban-abacus-flashcards`
-- **Image**: `ghcr.io/antialias/soroban-abacus-flashcards:latest`
 
-### Auto-Deployment
-- **Watchtower** monitors and auto-updates containers
-- **Update frequency**: Every **5 minutes**
-- Watchtower pulls latest images and restarts containers automatically
+This deployment uses **two separate Docker Compose projects**:
+
+1. **soroban-app** (`docker-compose.yaml`)
+   - Main web application
+   - Container: `soroban-abacus-flashcards`
+   - Image: `ghcr.io/antialias/soroban-abacus-flashcards:main`
+   - Port: 3000 (internal to Docker network)
+
+2. **soroban-updater** (`docker-compose.updater.yaml`)
+   - Automatic update service
+   - Container: `compose-updater`
+   - Image: `virtualzone/compose-updater:latest`
+   - Checks for new images every 5 minutes
+
+**Why separate projects?** If compose-updater was in the same project as the app, running `docker-compose down` would kill itself mid-update. Separate projects prevent this.
+
+### Auto-Deployment with compose-updater
+
+- **compose-updater** monitors and auto-updates containers
+- **Update frequency**: Every **5 minutes** (configurable via `INTERVAL=5`)
+- Works WITH docker-compose files (respects configuration, volumes, environment variables)
+- Automatically cleans up old images (`CLEANUP=1`)
 - No manual intervention required for deployments after pushing to main
+
+**Key advantages over Watchtower:**
+- Respects docker-compose.yaml configuration
+- Re-reads `.env` file on every update
+- Can manage multiple docker-compose projects
+- Container labels control which containers to watch:
+  ```yaml
+  labels:
+    - "docker-compose-watcher.watch=1"
+    - "docker-compose-watcher.dir=/volume1/homes/antialias/projects/abaci.one"
+    - "com.centurylinklabs.watchtower.enable=false"  # Disables Watchtower for this container
+  ```
 
 ## Database Management
 
 ### Location
+
 - **Database path**: `data/sqlite.db` (relative to project directory)
 - **WAL files**: `data/sqlite.db-shm` and `data/sqlite.db-wal`
 
 ### Migrations
+
 - **Automatic**: Migrations run on server startup via `server.js`
 - **Migration folder**: `./drizzle`
 - **Process**:
@@ -40,6 +69,7 @@ This document describes the production deployment infrastructure and procedures 
   5. Logs: `❌ Migration failed: [error]` (on failure, process exits)
 
 ### Nuke and Rebuild Database
+
 If you need to completely reset the production database:
 
 ```bash
@@ -65,6 +95,7 @@ rm -f data/sqlite.db data/sqlite.db-shm data/sqlite.db-wal
 ## CI/CD Pipeline
 
 ### GitHub Actions
+
 When code is pushed to `main` branch:
 
 1. **Workflows triggered**:
@@ -74,92 +105,157 @@ When code is pushed to `main` branch:
    - `Deploy Storybooks to GitHub Pages` - Publishes Storybook
 
 2. **Image build**:
-   - Built image is tagged as `latest`
+   - Built image is tagged as `main` (also `latest` for compatibility)
    - Pushed to GitHub Container Registry (ghcr.io)
    - Typically completes within 1-2 minutes
 
 3. **Deployment**:
-   - Watchtower detects new image (within 5 minutes)
-   - Pulls latest image
-   - Recreates and restarts container
-   - Total deployment time: ~5-7 minutes from push to production
+   - compose-updater detects new image (within 5 minutes)
+   - Pulls new image
+   - Runs `docker-compose down && docker-compose up -d`
+   - Cleans up old images
+   - Total deployment time: ~5-7 minutes from push to production (15-30 seconds downtime during restart)
 
 ## Manual Deployment Procedures
 
 ### Force Pull Latest Image
-If you need to immediately deploy without waiting for Watchtower:
+
+If you need to immediately deploy without waiting for compose-updater's next check cycle:
 
 ```bash
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && /usr/local/bin/docker-compose pull && /usr/local/bin/docker-compose up -d"
+# Option 1: Restart compose-updater (triggers immediate check)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+
+# Option 2: Manual pull and restart
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose pull && docker-compose up -d"
 ```
 
 ### Check Container Status
+
 ```bash
-ssh nas.home.network "/usr/local/bin/docker ps | grep -E '(soroban|abaci)'"
+# Check both app and compose-updater
+ssh nas.home.network "docker ps | grep -E '(soroban|compose)'"
+
+# Check just the app
+ssh nas.home.network "docker ps | grep soroban-abacus-flashcards"
 ```
 
 ### View Logs
-```bash
-# Recent logs
-ssh nas.home.network "/usr/local/bin/docker logs --tail 100 soroban-abacus-flashcards"
 
-# Follow logs in real-time
-ssh nas.home.network "/usr/local/bin/docker logs -f soroban-abacus-flashcards"
+```bash
+# Application logs - recent
+ssh nas.home.network "docker logs --tail 100 soroban-abacus-flashcards"
+
+# Application logs - follow in real-time
+ssh nas.home.network "docker logs -f soroban-abacus-flashcards"
+
+# compose-updater logs - see update activity
+ssh nas.home.network "docker logs --tail 50 compose-updater"
+
+# compose-updater logs - follow to watch for updates
+ssh nas.home.network "docker logs -f compose-updater"
 
 # Search for specific patterns
-ssh nas.home.network "/usr/local/bin/docker logs soroban-abacus-flashcards" | grep -i "error"
+ssh nas.home.network "docker logs soroban-abacus-flashcards" | grep -i "error"
 ```
 
 ### Restart Container
+
 ```bash
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && /usr/local/bin/docker-compose restart"
+# Restart just the app (quick, minimal downtime)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose restart"
+
+# Full restart (down then up, recreates container)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose down && docker-compose up -d"
+
+# Restart compose-updater (triggers immediate update check)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
 ```
 
-## Deployment Script
+## Checking Deployed Version
 
-The project includes a deployment script at `nas-deployment/deploy.sh` for manual deployments.
+Always verify what's actually running in production:
+
+```bash
+# Get commit SHA of running container
+ssh nas.home.network 'docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
+
+# Compare with current HEAD
+git rev-parse HEAD
+
+# Or check via the deployment info modal in the app UI
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
 #### 1. Migration Failures
+
 **Symptom**: Container keeps restarting, logs show migration errors
 
 **Solution**:
+
 1. Check migration files in `drizzle/` directory
 2. Verify `drizzle/meta/_journal.json` is up to date
 3. If migrations are corrupted, may need to nuke database (see above)
 
 #### 2. Container Not Updating
+
 **Symptom**: Changes pushed but production still shows old code
 
 **Possible causes**:
+
 - GitHub Actions build failed - check workflow status with `gh run list`
-- Watchtower not running - check with `docker ps | grep watchtower`
+- compose-updater not running - check with `docker ps | grep compose-updater`
+- compose-updater labels incorrect - check container labels
 - Image not pulled - manually pull with `docker-compose pull`
 
-**Solution**:
+**Debugging**:
+
 ```bash
-# Force pull and restart
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && /usr/local/bin/docker-compose pull && /usr/local/bin/docker-compose up -d"
+# Check compose-updater is running
+ssh nas.home.network "docker ps | grep compose-updater"
+
+# Check compose-updater logs for errors
+ssh nas.home.network "docker logs --tail 50 compose-updater"
+
+# Check container labels are correct
+ssh nas.home.network "docker inspect soroban-abacus-flashcards" | grep -A3 "docker-compose-watcher"
+# Should show:
+#   "docker-compose-watcher.watch": "1"
+#   "docker-compose-watcher.dir": "/volume1/homes/antialias/projects/abaci.one"
+```
+
+**Solution**:
+
+```bash
+# Option 1: Restart compose-updater to force immediate check
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+
+# Option 2: Manual pull and restart
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose pull && docker-compose up -d"
 ```
 
 #### 3. Missing Database Columns
+
 **Symptom**: Errors like `SqliteError: no such column: "column_name"`
 
 **Cause**: Migration not registered or not run
 
 **Solution**:
+
 1. Verify migration exists in `drizzle/` directory
 2. Check migration is registered in `drizzle/meta/_journal.json`
 3. If migration is new, restart container to run migrations
 4. If migration is malformed, fix it and nuke database
 
 #### 4. API Returns Unexpected Response
+
 **Symptom**: Client shows errors but API appears to work
 
 **Debugging**:
+
 1. Test API directly with curl: `curl -X POST 'https://abaci.one/api/arcade/rooms' -H 'Content-Type: application/json' -d '...'`
 2. Check production logs for errors
 3. Verify container is running latest image:
@@ -170,11 +266,26 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && /usr/loc
 
 ## Environment Variables
 
-Production environment variables are configured in the docker-compose.yml file on the server. Common variables:
+Production environment variables are stored in `.env` file on the server and loaded via `env_file:` in docker-compose.yaml.
 
-- `NEXT_PUBLIC_URL` - Base URL for the application
-- `DATABASE_URL` - SQLite database path
-- Additional variables may be set in `.env.production` or docker-compose.yml
+**Critical advantage**: compose-updater re-reads the `.env` file on every update, so environment variable changes are automatically picked up without manual intervention.
+
+Common variables:
+
+- `AUTH_URL` - Base URL (https://abaci.one)
+- `AUTH_SECRET` - Random secret for sessions (NEVER share!)
+- `AUTH_TRUST_HOST=true` - Required for NextAuth v5
+- `DATABASE_URL` - SQLite database path (optional, defaults to `./data/sqlite.db`)
+
+To update environment variables:
+
+```bash
+# Edit .env file on NAS
+ssh nas.home.network "vi /volume1/homes/antialias/projects/abaci.one/.env"
+
+# Restart compose-updater (will pick up new .env on next cycle)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+```
 
 ## Network Configuration
 

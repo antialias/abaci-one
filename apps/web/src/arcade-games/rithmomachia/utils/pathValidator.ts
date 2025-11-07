@@ -58,7 +58,10 @@ export function isGeometryLegal(
       if (isDiagonal || isOrthogonal) {
         return { valid: true }
       }
-      return { valid: false, reason: 'Squares move orthogonally or diagonally' }
+      return {
+        valid: false,
+        reason: 'Squares move orthogonally or diagonally',
+      }
     }
 
     case 'P': {
@@ -105,7 +108,10 @@ export function isPathClear(
     const pieceAtSquare = Object.values(pieces).find((p) => p.square === square && !p.captured)
 
     if (pieceAtSquare) {
-      return { valid: false, reason: `Path blocked by ${pieceAtSquare.id} at ${square}` }
+      return {
+        valid: false,
+        reason: `Path blocked by ${pieceAtSquare.id} at ${square}`,
+      }
     }
 
     currentFile += stepFile

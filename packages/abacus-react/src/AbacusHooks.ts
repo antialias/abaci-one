@@ -2,13 +2,13 @@
  * Utility hooks for working with abacus calculations and state
  */
 
-import { useMemo } from 'react'
+import { useMemo } from "react";
 import {
   calculateBeadDiffFromValues,
   numberToAbacusState,
   type BeadDiffOutput,
   type AbacusState,
-} from './AbacusUtils'
+} from "./AbacusUtils";
 
 /**
  * Hook to calculate bead differences between two values
@@ -36,11 +36,11 @@ import {
 export function useAbacusDiff(
   fromValue: number | bigint,
   toValue: number | bigint,
-  maxPlaces: number = 5
+  maxPlaces: number = 5,
 ): BeadDiffOutput {
   return useMemo(() => {
-    return calculateBeadDiffFromValues(fromValue, toValue, maxPlaces)
-  }, [fromValue, toValue, maxPlaces])
+    return calculateBeadDiffFromValues(fromValue, toValue, maxPlaces);
+  }, [fromValue, toValue, maxPlaces]);
 }
 
 /**
@@ -63,9 +63,9 @@ export function useAbacusDiff(
  */
 export function useAbacusState(
   value: number | bigint,
-  maxPlaces: number = 5
+  maxPlaces: number = 5,
 ): AbacusState {
   return useMemo(() => {
-    return numberToAbacusState(value, maxPlaces)
-  }, [value, maxPlaces])
+    return numberToAbacusState(value, maxPlaces);
+  }, [value, maxPlaces]);
 }

@@ -7,9 +7,11 @@ The web application has developed numerous custom patterns and workarounds for s
 ## Priority 1: Critical Features (High Impact, High Frequency)
 
 ### 1. **Inline "Mini Abacus" Component**
+
 **Location**: `apps/web/src/app/arcade/complement-race/components/AbacusTarget.tsx`
 
 **Current Implementation**:
+
 ```tsx
 <AbacusReact
   value={number}
@@ -45,6 +47,7 @@ The web application has developed numerous custom patterns and workarounds for s
 ```
 
 **Benefits**:
+
 - Single prop instead of 5+
 - Consistent inline abacus appearance across the app
 - Better semantic intent
@@ -52,7 +55,9 @@ The web application has developed numerous custom patterns and workarounds for s
 ---
 
 ### 2. **Theme-Aware Styling Presets**
+
 **Locations**:
+
 - `MyAbacus.tsx` (lines 60-85) - structural & trophy styles
 - `HeroAbacus.tsx` (lines 20-32) - structural styles
 - `LevelSliderDisplay.tsx` (lines 263-275) - dark theme styles
@@ -62,16 +67,16 @@ The web application has developed numerous custom patterns and workarounds for s
 ```tsx
 const structuralStyles = {
   columnPosts: {
-    fill: 'rgb(255, 255, 255)',
-    stroke: 'rgb(200, 200, 200)',
+    fill: "rgb(255, 255, 255)",
+    stroke: "rgb(200, 200, 200)",
     strokeWidth: 2,
   },
   reckoningBar: {
-    fill: 'rgb(255, 255, 255)',
-    stroke: 'rgb(200, 200, 200)',
+    fill: "rgb(255, 255, 255)",
+    stroke: "rgb(200, 200, 200)",
     strokeWidth: 3,
   },
-}
+};
 ```
 
 **Problem**: Manual style object creation for common themes is repetitive and error-prone.
@@ -82,15 +87,16 @@ const structuralStyles = {
 // Native API proposal
 <AbacusReact
   value={123}
-  theme="dark"  // or "light", "translucent", "solid", "trophy"
-/>
+  theme="dark" // or "light", "translucent", "solid", "trophy"
+/>;
 
 // Or expose theme constants
-import { ABACUS_THEMES } from '@soroban/abacus-react'
-<AbacusReact customStyles={ABACUS_THEMES.dark} />
+import { ABACUS_THEMES } from "@soroban/abacus-react";
+<AbacusReact customStyles={ABACUS_THEMES.dark} />;
 ```
 
 **Benefits**:
+
 - Eliminates ~30 lines of style definitions per component
 - Ensures visual consistency
 - Makes theme switching trivial
@@ -98,7 +104,9 @@ import { ABACUS_THEMES } from '@soroban/abacus-react'
 ---
 
 ### 3. **Scaling Containers & Responsive Layouts**
+
 **Locations**:
+
 - `HeroAbacus.tsx` (lines 133-138) - manual scale transforms
 - `MyAbacus.tsx` (lines 214-218) - responsive scale values
 - `LevelSliderDisplay.tsx` (lines 370-379) - dynamic scale calculation
@@ -106,10 +114,12 @@ import { ABACUS_THEMES } from '@soroban/abacus-react'
 **Current Pattern**: Components manually wrap abacus in transform containers:
 
 ```tsx
-<div style={{
-  transform: 'scale(3.5)',
-  transformOrigin: 'center center'
-}}>
+<div
+  style={{
+    transform: "scale(3.5)",
+    transformOrigin: "center center",
+  }}
+>
   <AbacusReact value={1234} columns={4} />
 </div>
 ```
@@ -122,13 +132,14 @@ import { ABACUS_THEMES } from '@soroban/abacus-react'
 // Native API proposal
 <AbacusReact
   value={1234}
-  scaleFactor={{ base: 2.5, md: 3.5, lg: 4.5 }}  // Responsive
-  scaleOrigin="center"  // Handle transform origin
-  scaleContainer={true}  // Apply correct boundaries for interaction
+  scaleFactor={{ base: 2.5, md: 3.5, lg: 4.5 }} // Responsive
+  scaleOrigin="center" // Handle transform origin
+  scaleContainer={true} // Apply correct boundaries for interaction
 />
 ```
 
 **Benefits**:
+
 - Eliminates wrapper divs
 - Proper click/hover boundaries
 - Built-in responsive scaling
@@ -138,21 +149,22 @@ import { ABACUS_THEMES } from '@soroban/abacus-react'
 ## Priority 2: Developer Experience Improvements
 
 ### 4. **Bead Diff Calculation System**
+
 **Location**: `apps/web/src/utils/beadDiff.ts` (285 lines) + `abacusInstructionGenerator.ts` (400+ lines)
 
 **Current Implementation**: Complex utilities to calculate which beads need to move between states:
 
 ```tsx
 // Current external pattern
-import { calculateBeadDiffFromValues } from '@/utils/beadDiff'
+import { calculateBeadDiffFromValues } from "@/utils/beadDiff";
 
-const diff = calculateBeadDiffFromValues(fromValue, toValue)
-const stepBeadHighlights = diff.changes.map(change => ({
+const diff = calculateBeadDiffFromValues(fromValue, toValue);
+const stepBeadHighlights = diff.changes.map((change) => ({
   placeValue: change.placeValue,
   beadType: change.beadType,
   direction: change.direction,
   // ...
-}))
+}));
 ```
 
 **Problem**: Tutorial/game developers need to calculate bead movements manually. This core logic belongs in abacus-react.
@@ -161,22 +173,23 @@ const stepBeadHighlights = diff.changes.map(change => ({
 
 ```tsx
 // Native API proposal
-import { useAbacusDiff } from '@soroban/abacus-react'
+import { useAbacusDiff } from "@soroban/abacus-react";
 
 function Tutorial() {
-  const diff = useAbacusDiff(startValue, targetValue)
+  const diff = useAbacusDiff(startValue, targetValue);
 
   return (
     <AbacusReact
       value={currentValue}
-      stepBeadHighlights={diff.highlights}  // Generated by hook
+      stepBeadHighlights={diff.highlights} // Generated by hook
       // diff also includes: instructions, order, validation
     />
-  )
+  );
 }
 ```
 
 **Benefits**:
+
 - Centralizes "diff" algorithm
 - Eliminates ~500 lines of application code
 - Better tested and maintained
@@ -184,6 +197,7 @@ function Tutorial() {
 ---
 
 ### 5. **Tutorial/Step Context Provider**
+
 **Location**: `apps/web/src/components/tutorial/TutorialContext.tsx`
 
 **Current Pattern**: Apps need to implement complex state management for multi-step tutorial flows with reducer patterns, event tracking, and error handling.
@@ -194,21 +208,26 @@ function Tutorial() {
 
 ```tsx
 // Native API proposal
-import { AbacusReact, AbacusTutorial } from '@soroban/abacus-react'
+import { AbacusReact, AbacusTutorial } from "@soroban/abacus-react";
 
 <AbacusTutorial
   steps={[
     { from: 0, to: 5, instruction: "Add 5" },
     { from: 5, to: 15, instruction: "Add 10" },
   ]}
-  onStepComplete={(step) => { /* analytics */ }}
-  onComplete={() => { /* celebration */ }}
+  onStepComplete={(step) => {
+    /* analytics */
+  }}
+  onComplete={() => {
+    /* celebration */
+  }}
 >
   <AbacusReact />
-</AbacusTutorial>
+</AbacusTutorial>;
 ```
 
 **Benefits**:
+
 - Reusable tutorial infrastructure
 - Built-in progress tracking and validation
 - Could power educational features across projects
@@ -218,17 +237,18 @@ import { AbacusReact, AbacusTutorial } from '@soroban/abacus-react'
 ## Priority 3: Nice-to-Have Enhancements
 
 ### 6. **Animation Speed Configuration**
+
 **Location**: `LevelSliderDisplay.tsx` (lines 306-345)
 
 **Current Pattern**: Applications control animation speed by rapidly changing the value prop:
 
 ```tsx
-const intervalMs = 500 - danProgress * 490  // 500ms down to 10ms
+const intervalMs = 500 - danProgress * 490; // 500ms down to 10ms
 setInterval(() => {
-  setAnimatedDigits(prev => {
+  setAnimatedDigits((prev) => {
     // Rapidly change digits to simulate calculation
-  })
-}, intervalMs)
+  });
+}, intervalMs);
 ```
 
 **Problem**: "Rapid calculation" animation requires external interval management.
@@ -239,18 +259,20 @@ setInterval(() => {
 // Native API proposal
 <AbacusReact
   value={calculatingValue}
-  animationSpeed="fast"  // or "normal", "slow", or ms number
-  autoAnimate={true}  // Animate value prop changes automatically
+  animationSpeed="fast" // or "normal", "slow", or ms number
+  autoAnimate={true} // Animate value prop changes automatically
 />
 ```
 
 **Benefits**:
+
 - Smoother animations with internal management
 - Consistent timing across the app
 
 ---
 
 ### 7. **Draggable/Positionable Abacus Cards**
+
 **Location**: `InteractiveFlashcards.tsx`
 
 **Current Pattern**: Complex drag-and-drop implementation wrapped around each AbacusReact instance with pointer capture, offset tracking, and rotation.
@@ -271,6 +293,7 @@ const abacusRef = useAbacusRef()
 ---
 
 ### 8. **Column Highlighting for Multi-Step Problems**
+
 **Location**: Tutorial system extensively
 
 **Current Pattern**: Manual column highlighting based on place values with custom overlay positioning logic.
@@ -283,8 +306,8 @@ const abacusRef = useAbacusRef()
 // Native API proposal
 <AbacusReact
   value={123}
-  highlightColumns={[1]}  // Highlight tens column
-  columnLabels={["ones", "tens", "hundreds"]}  // Optional labels
+  highlightColumns={[1]} // Highlight tens column
+  columnLabels={["ones", "tens", "hundreds"]} // Optional labels
 />
 ```
 
@@ -293,7 +316,9 @@ const abacusRef = useAbacusRef()
 ## Priority 4: Documentation & Exports
 
 ### 9. **Utility Functions & Types**
+
 **Current State**: Apps re-implement utilities for working with abacus states:
+
 - `numberToAbacusState()` - convert numbers to bead states
 - `calculateBeadChanges()` - diff algorithm
 - `ValidPlaceValues` type - imported but limited
@@ -318,7 +343,7 @@ export {
   useAbacusDiff,
   useAbacusValidation,
   useAbacusState,
-}
+};
 ```
 
 ---
@@ -326,35 +351,42 @@ export {
 ## Implementation Roadmap
 
 ### Phase 1 (Immediate) ✅ COMPLETED
+
 1. ✅ Add `frameVisible={false}` prop
 2. ✅ Add `compact` prop/variant
 3. ✅ Export theme presets (ABACUS_THEMES constant)
 
 ### Phase 2 (Short-term) ✅ COMPLETED
+
 4. ⏸️ Enhanced `scaleFactor` with responsive object support (DEFERRED - too complex, low priority)
 5. ✅ Export utility functions (numberToAbacusState, calculateBeadDiff, etc.)
 
 ### Phase 3 (Medium-term) ✅ COMPLETED
+
 6. ✅ Add `useAbacusDiff` hook
 7. ✅ Add native column highlighting with `highlightColumns` and `columnLabels` props
 
 ### Phase 4 (Long-term - Future)
+
 8. 📋 Consider tutorial context provider (needs more research)
 9. 📋 Animation speed controls
 
 ## Completed Features Summary
 
 ### New Props
+
 - `frameVisible?: boolean` - Show/hide column posts and reckoning bar
 - `compact?: boolean` - Compact layout for inline display (implies frameVisible=false)
 - `highlightColumns?: number[]` - Highlight specific columns by index
 - `columnLabels?: string[]` - Optional labels for columns
 
 ### New Exports
+
 - `ABACUS_THEMES` - Pre-defined theme presets (light, dark, trophy, translucent, solid, traditional)
 - `AbacusThemeName` type - TypeScript type for theme names
 
 ### New Utility Functions
+
 - `numberToAbacusState(value, maxPlaces)` - Convert number to bead positions
 - `abacusStateToNumber(state)` - Convert bead positions to number
 - `calculateBeadChanges(startState, targetState)` - Calculate bead differences
@@ -364,10 +396,12 @@ export {
 - `areStatesEqual(state1, state2)` - Compare states
 
 ### New Hooks
+
 - `useAbacusDiff(fromValue, toValue, maxPlaces)` - Calculate bead differences for tutorials
 - `useAbacusState(value, maxPlaces)` - Convert number to abacus state (memoized)
 
 ### New Types
+
 - `BeadState` - Bead state in a single column
 - `AbacusState` - Complete abacus state
 - `BeadDiffResult` - Single bead movement result
@@ -379,15 +413,18 @@ export {
 ## Metrics & Impact
 
 **Code Reduction Estimate**:
+
 - Eliminates ~800-1000 lines of repetitive application code
 - Reduces component complexity by ~40% for tutorial/game components
 
 **Developer Experience**:
+
 - Faster onboarding for new features using abacus
 - More consistent UX across application
 - Better TypeScript support and autocomplete
 
 **Maintenance**:
+
 - Centralized logic easier to test and debug
 - Single source of truth for abacus behavior
 - Easier to add new features (e.g., sound effects for different themes)

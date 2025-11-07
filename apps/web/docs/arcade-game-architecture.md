@@ -137,15 +137,16 @@ A game is defined by five core pieces:
 
 ```typescript
 interface GameDefinition<TConfig, TState, TMove> {
-  manifest: GameManifest          // Display metadata
-  Provider: GameProviderComponent // React context provider
-  GameComponent: GameComponent    // Main UI component
-  validator: GameValidator        // Server validation logic
-  defaultConfig: TConfig          // Default settings
+  manifest: GameManifest; // Display metadata
+  Provider: GameProviderComponent; // React context provider
+  GameComponent: GameComponent; // Main UI component
+  validator: GameValidator; // Server validation logic
+  defaultConfig: TConfig; // Default settings
 }
 ```
 
 **Why this structure?**
+
 - `manifest`: Declarative metadata for discovery and UI
 - `Provider`: Encapsulates all game logic and state management
 - `GameComponent`: Pure UI component, no business logic
@@ -158,19 +159,21 @@ The validator is the **source of truth** for game logic.
 
 ```typescript
 interface GameValidator<TState, TMove> {
-  validateMove(state: TState, move: TMove): ValidationResult
-  isGameComplete(state: TState): boolean
-  getInitialState(config: unknown): TState
+  validateMove(state: TState, move: TMove): ValidationResult;
+  isGameComplete(state: TState): boolean;
+  getInitialState(config: unknown): TState;
 }
 ```
 
 **Key Principles:**
+
 - **Pure functions**: No side effects, no I/O
 - **Deterministic**: Same input → same output
 - **Complete game logic**: All rules enforced here
 - **Returns new state**: Immutable state updates
 
 **Why server-side?**
+
 - Prevents cheating (client can't fake moves)
 - Single source of truth (no client/server divergence)
 - Easier debugging (all logic in one place)
@@ -182,16 +185,17 @@ The provider manages client state and provides a clean API.
 
 ```typescript
 interface GameContextValue {
-  state: GameState           // Current game state
-  lastError: string | null   // Last validation error
-  startGame: () => void      // Action creators
-  makeMove: (data) => void   // ...
-  clearError: () => void
-  exitSession: () => void
+  state: GameState; // Current game state
+  lastError: string | null; // Last validation error
+  startGame: () => void; // Action creators
+  makeMove: (data) => void; // ...
+  clearError: () => void;
+  exitSession: () => void;
 }
 ```
 
 **Responsibilities:**
+
 - Wrap `useArcadeSession` with game-specific actions
 - Build player metadata from game mode context
 - Provide clean, typed API to components
@@ -210,16 +214,19 @@ The system uses **optimistic UI** for instant feedback:
    - ✗ Invalid → Rollback and show error
 
 **Why optimistic updates?**
+
 - Instant feedback (no perceived latency)
 - Better UX for fast-paced games
 - Handles network issues gracefully
 
 **Tradeoff:**
+
 - More complex state management
 - Need rollback logic
 - Potential for flashing/jumpy UI on rollback
 
 **When NOT to use:**
+
 - High-stakes actions (payments, permanent changes)
 - Actions with irreversible side effects
 - When server latency is acceptable
@@ -236,6 +243,7 @@ Client A makes move → Server validates → Broadcast to all clients
 ```
 
 **Conflict Resolution:**
+
 - Server state is **always authoritative**
 - Version numbers prevent out-of-order updates
 - Pending moves are reapplied after server sync
@@ -250,13 +258,14 @@ The SDK provides a **stable API surface** that games import from:
 
 ```typescript
 // ✅ GOOD: Import from SDK
-import { useArcadeSession, type GameDefinition } from '@/lib/arcade/game-sdk'
+import { useArcadeSession, type GameDefinition } from "@/lib/arcade/game-sdk";
 
 // ❌ BAD: Import internal implementation
-import { useArcadeSocket } from '@/hooks/useArcadeSocket'
+import { useArcadeSocket } from "@/hooks/useArcadeSocket";
 ```
 
 **Why?**
+
 - **Stability**: Internal APIs can change, SDK stays stable
 - **Discoverability**: One place to find all game APIs
 - **Encapsulation**: Hide implementation details
@@ -281,22 +290,23 @@ Games register themselves on module load:
 
 ```typescript
 // game-registry.ts
-const registry = new Map<string, GameDefinition>()
+const registry = new Map<string, GameDefinition>();
 
 export function registerGame(game: GameDefinition) {
-  registry.set(game.manifest.name, game)
+  registry.set(game.manifest.name, game);
 }
 
 export function getGame(name: string) {
-  return registry.get(name)
+  return registry.get(name);
 }
 
 // At bottom of file
-import { numberGuesserGame } from '@/arcade-games/number-guesser'
-registerGame(numberGuesserGame)
+import { numberGuesserGame } from "@/arcade-games/number-guesser";
+registerGame(numberGuesserGame);
 ```
 
 **Why self-registration?**
+
 - No central "game list" to maintain
 - Games are automatically discovered
 - Import errors are caught at module load time
@@ -306,7 +316,7 @@ registerGame(numberGuesserGame)
 
 ```typescript
 // ❌ Rejected: Magic, fragile, breaks with bundlers
-const games = import.meta.glob('../arcade-games/*/index.ts')
+const games = import.meta.glob("../arcade-games/*/index.ts");
 ```
 
 ### Player Metadata
@@ -318,17 +328,19 @@ function buildPlayerMetadata(
   playerIds: string[],
   existingMetadata: Record<string, unknown>,
   playerMap: Map<string, Player>,
-  viewerId?: string
-): Record<string, PlayerMetadata>
+  viewerId?: string,
+): Record<string, PlayerMetadata>;
 ```
 
 **Sources:**
+
 1. `playerIds`: Which players are active
 2. `existingMetadata`: Carry over existing data (for reconnects)
 3. `playerMap`: Player details (name, emoji, color, userId)
 4. `viewerId`: Current user (for ownership checks)
 
 **Why so complex?**
+
 - Players can be local or remote (in rooms)
 - Need to preserve data across state updates
 - Must map player IDs to user IDs for permissions
@@ -339,30 +351,30 @@ function buildPlayerMetadata(
 ```typescript
 // 1. Client sends move
 sendMove({
-  type: 'MAKE_GUESS',
-  playerId: 'player-123',
-  userId: 'user-456',
+  type: "MAKE_GUESS",
+  playerId: "player-123",
+  userId: "user-456",
   timestamp: Date.now(),
-  data: { guess: 42 }
-})
+  data: { guess: 42 },
+});
 
 // 2. Optimistic update (client-side)
-const optimisticState = applyMove(currentState, move)
-setOptimisticState(optimisticState)
+const optimisticState = applyMove(currentState, move);
+setOptimisticState(optimisticState);
 
 // 3. Server validates
-const result = validator.validateMove(serverState, move)
+const result = validator.validateMove(serverState, move);
 
 // 4a. Valid → Broadcast new state
 if (result.valid) {
-  serverState = result.newState
-  version++
-  broadcastToAllClients({ gameState: serverState, version })
+  serverState = result.newState;
+  version++;
+  broadcastToAllClients({ gameState: serverState, version });
 }
 
 // 4b. Invalid → Send rejection
 else {
-  sendToClient({ error: result.error, move })
+  sendToClient({ error: result.error, move });
 }
 
 // 5. Client handles response
@@ -371,6 +383,7 @@ else {
 ```
 
 **Key Points:**
+
 - Optimistic update happens **before** server response
 - Server is **authoritative** (client state can be overwritten)
 - Version numbers prevent stale updates
@@ -385,17 +398,20 @@ else {
 **Choice:** All game logic runs on server, client is "dumb"
 
 **Rationale:**
+
 - Prevents cheating (client can't manipulate state)
 - Single source of truth (no client/server divergence)
 - Easier testing (one codebase for game logic)
 - Can add server-side features (analytics, matchmaking)
 
 **Tradeoff:**
+
 - ➕ Secure, consistent, easier to maintain
 - ➖ Network latency affects UX (mitigated by optimistic updates)
 - ➖ Can't play offline
 
 **Alternative Considered:** Client-side validation + server verification
+
 - Rejected: Duplicate logic, potential for divergence
 
 ### Decision: Optimistic Updates
@@ -403,11 +419,13 @@ else {
 **Choice:** Apply moves immediately, rollback on rejection
 
 **Rationale:**
+
 - Instant feedback (no perceived latency)
 - Better UX for turn-based games
 - Handles network issues gracefully
 
 **Tradeoff:**
+
 - ➕ Feels instant, smooth UX
 - ➖ More complex state management
 - ➖ Potential for jarring rollbacks
@@ -419,17 +437,20 @@ else {
 **Choice:** Full TypeScript on client and server
 
 **Rationale:**
+
 - Compile-time validation catches bugs early
 - Better IDE support (autocomplete, refactoring)
 - Self-documenting code (types as documentation)
 - Easier refactoring (compiler catches breakages)
 
 **Tradeoff:**
+
 - ➕ Fewer runtime errors, better DX
 - ➖ Slower initial development (must define types)
 - ➖ Learning curve for new developers
 
 **Alternative Considered:** JavaScript with JSDoc
+
 - Rejected: JSDoc is not type-safe, easy to drift
 
 ### Decision: React Context for State
@@ -437,17 +458,20 @@ else {
 **Choice:** Each game has a Provider that wraps game logic
 
 **Rationale:**
+
 - Natural React pattern
 - Easy to compose (Provider wraps GameComponent)
 - No prop drilling
 - Easy to test (can provide mock context)
 
 **Tradeoff:**
+
 - ➕ Clean component APIs, easy to understand
 - ➖ Can't use context outside React tree
 - ➖ Re-renders if not memoized carefully
 
 **Alternative Considered:** Zustand/Redux
+
 - Rejected: Overkill for game-specific state, harder to isolate per-game
 
 ### Decision: Phase-Based UI
@@ -455,12 +479,14 @@ else {
 **Choice:** Each game has distinct phases (setup, playing, results)
 
 **Rationale:**
+
 - Clear separation of concerns
 - Easy to understand game flow
 - Each phase is independently testable
 - Natural mapping to game states
 
 **Tradeoff:**
+
 - ➕ Organized, predictable
 - ➖ Some duplication (multiple components)
 - ➖ Can't have overlapping phases
@@ -478,16 +504,19 @@ else {
 **Choice:** Don't sort player arrays, use Set iteration order
 
 **Rationale:**
+
 - Set order is consistent within a session
 - Matches UI display order (PageWithNav uses same Set)
 - Avoids alphabetical bias (first player isn't always "AAA")
 
 **Tradeoff:**
+
 - ➕ UI and game logic always match
 - ➖ Order is not predictable across sessions
 - ➖ Different players see different orders (based on join time)
 
 **Why not sort?**
+
 - Creates mismatch: UI shows Set order, game uses sorted order
 - Causes "skipping first player" bug (discovered in Number Guesser)
 
@@ -497,20 +526,23 @@ else {
 
 ```typescript
 const { state, sendMove } = useArcadeSession({
-  applyMove: (state, move) => state // Don't apply, wait for server
-})
+  applyMove: (state, move) => state, // Don't apply, wait for server
+});
 ```
 
 **Rationale:**
+
 - Keeps client logic minimal (less code to maintain)
 - Prevents client/server logic divergence
 - Server is authoritative (no client-side cheats)
 
 **Tradeoff:**
+
 - ➕ Simple, secure
 - ➖ Slightly slower UX (wait for server)
 
 **When to use client-side `applyMove`:**
+
 - Very fast-paced games (60fps animations)
 - Purely cosmetic updates (particles, sounds)
 - Never for game logic (scoring, winning, etc.)
@@ -527,10 +559,10 @@ const { state, sendMove } = useArcadeSession({
 
 ```typescript
 // Client sends
-sendMove({ data: { guess: 42 } })
+sendMove({ data: { guess: 42 } });
 
 // Server receives
-move.data.guess === "42" // String! 😱
+move.data.guess === "42"; // String! 😱
 ```
 
 **Solution:** Explicit coercion in validator
@@ -545,6 +577,7 @@ validateMove(state, move) {
 **Lesson:** Always coerce types from `move.data` in validator.
 
 **Symptom Observed:** User reported "first guess always rejected, second guess always correct" which was caused by:
+
 - First guess: `"42" < 1` evaluates to `false` (string comparison)
 - Validator thinks it's valid, calculates distance as `NaN`
 - `NaN === 0` is false, so guess is "wrong"
@@ -558,6 +591,7 @@ validateMove(state, move) {
 **Problem:** Set iteration order differed from sorted order, causing "skipped player" bug.
 
 **Root Cause:**
+
 - UI used `Array.from(Set)` → Set iteration order
 - Game used `Array.from(Set).sort()` → Alphabetical order
 - Leftmost UI player ≠ First game player
@@ -606,8 +640,9 @@ const { lastError, clearError } = useArcadeSession()
 **Solution:** Check if last guess was correct:
 
 ```typescript
-const roundComplete = state.guesses.length > 0 &&
-  state.guesses[state.guesses.length - 1].distance === 0
+const roundComplete =
+  state.guesses.length > 0 &&
+  state.guesses[state.guesses.length - 1].distance === 0;
 ```
 
 **Lesson:** Be precise about what "complete" means (round vs. game).
@@ -619,13 +654,13 @@ const roundComplete = state.guesses.length > 0 &&
 **Solution:** Add logging in validator:
 
 ```typescript
-console.log('[NumberGuesser] Validating guess:', {
+console.log("[NumberGuesser] Validating guess:", {
   guess,
   guessType: typeof guess,
   secretNumber: state.secretNumber,
   secretNumberType: typeof state.secretNumber,
-  distance: Math.abs(guess - state.secretNumber)
-})
+  distance: Math.abs(guess - state.secretNumber),
+});
 ```
 
 **Lesson:** Log types and values during development.
@@ -639,6 +674,7 @@ console.log('[NumberGuesser] Validating guess:', {
 **Current State:** Manual testing only
 
 **Proposal:**
+
 - Unit tests for validators (pure functions, easy to test)
 - Integration tests for Provider + useArcadeSession
 - E2E tests for full game flows (Playwright)
@@ -665,6 +701,7 @@ describe('NumberGuesserValidator', () => {
 **Current State:** No move history
 
 **Proposal:**
+
 - Store all moves in database
 - Allow "replay" of games
 - Enable undo/redo (for certain games)
@@ -674,13 +711,13 @@ describe('NumberGuesserValidator', () => {
 
 ```typescript
 interface GameSession {
-  id: string
-  roomId: string
-  gameType: string
-  moves: GameMove[]
-  finalState: GameState
-  startTime: number
-  endTime: number
+  id: string;
+  roomId: string;
+  gameType: string;
+  moves: GameMove[];
+  finalState: GameState;
+  startTime: number;
+  endTime: number;
 }
 ```
 
@@ -689,6 +726,7 @@ interface GameSession {
 **Current State:** No analytics
 
 **Proposal:**
+
 - Track game completions, durations, winners
 - Player skill ratings (Elo, TrueSkill)
 - Popular games dashboard
@@ -699,6 +737,7 @@ interface GameSession {
 **Current State:** Only active players can view game
 
 **Proposal:**
+
 - Allow non-players to watch
 - Spectators can't send moves (read-only)
 - Show spectator count in room
@@ -707,8 +746,8 @@ interface GameSession {
 
 ```typescript
 interface RoomMember {
-  userId: string
-  role: 'player' | 'spectator' | 'host'
+  userId: string;
+  role: "player" | "spectator" | "host";
 }
 ```
 
@@ -717,6 +756,7 @@ interface RoomMember {
 **Current State:** One config per game
 
 **Proposal:**
+
 - Preset variants (Easy, Medium, Hard)
 - Custom rules per room
 - "House rules" feature
@@ -728,7 +768,7 @@ const variants = {
   beginner: { minNumber: 1, maxNumber: 20, roundsToWin: 1 },
   standard: { minNumber: 1, maxNumber: 100, roundsToWin: 3 },
   expert: { minNumber: 1, maxNumber: 1000, roundsToWin: 5 },
-}
+};
 ```
 
 ### 6. Tournaments / Brackets
@@ -736,6 +776,7 @@ const variants = {
 **Current State:** Single-room games only
 
 **Proposal:**
+
 - Multi-round tournaments
 - Bracket generation
 - Leaderboards
@@ -745,11 +786,13 @@ const variants = {
 **Current State:** Games are hard-coded
 
 **Proposal:**
+
 - Load games from external bundles
 - Community-created games
 - Sandboxed execution (Deno, WASM)
 
 **Challenges:**
+
 - Security (untrusted code)
 - Type safety (dynamic loading)
 - Versioning (breaking changes)
@@ -759,6 +802,7 @@ const variants = {
 **Current State:** Text chat only (if implemented)
 
 **Proposal:**
+
 - WebRTC voice/video
 - Per-room channels
 - Mute/kick controls
@@ -767,17 +811,17 @@ const variants = {
 
 ## Appendix: Key Files Reference
 
-| Path | Purpose |
-|------|---------|
-| `src/lib/arcade/game-sdk/index.ts` | SDK exports (public API) |
-| `src/lib/arcade/game-registry.ts` | Game registration |
-| `src/lib/arcade/manifest-schema.ts` | Manifest validation |
-| `src/hooks/useArcadeSession.ts` | Session management hook |
-| `src/hooks/useArcadeSocket.ts` | WebSocket connection |
+| Path                                  | Purpose                     |
+| ------------------------------------- | --------------------------- |
+| `src/lib/arcade/game-sdk/index.ts`    | SDK exports (public API)    |
+| `src/lib/arcade/game-registry.ts`     | Game registration           |
+| `src/lib/arcade/manifest-schema.ts`   | Manifest validation         |
+| `src/hooks/useArcadeSession.ts`       | Session management hook     |
+| `src/hooks/useArcadeSocket.ts`        | WebSocket connection        |
 | `src/hooks/useOptimisticGameState.ts` | Optimistic state management |
-| `src/contexts/GameModeContext.tsx` | Player management |
-| `src/components/PageWithNav.tsx` | Game navigation wrapper |
-| `src/arcade-games/number-guesser/` | Example game implementation |
+| `src/contexts/GameModeContext.tsx`    | Player management           |
+| `src/components/PageWithNav.tsx`      | Game navigation wrapper     |
+| `src/arcade-games/number-guesser/`    | Example game implementation |
 
 ---
 
@@ -789,4 +833,4 @@ const variants = {
 
 ---
 
-*Last Updated: 2025-10-15*
+_Last Updated: 2025-10-15_

@@ -368,7 +368,10 @@ export default function HomePage() {
                   >
                     {t('whatYouLearn.title')}
                   </h3>
-                  <div data-element="skills-grid" className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}>
+                  <div
+                    data-element="skills-grid"
+                    className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}
+                  >
                     {[
                       {
                         title: t('skills.readNumbers.title'),

@@ -450,7 +450,11 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
   if (showConfirmation && roomData && targetRoomData) {
     return (
       <RoomSwitchConfirmation
-        currentRoom={{ name: roomData.name, code: roomData.code, gameName: roomData.gameName }}
+        currentRoom={{
+          name: roomData.name,
+          code: roomData.code,
+          gameName: roomData.gameName,
+        }}
         targetRoom={{
           name: targetRoomData.name,
           code: targetRoomData.code,
@@ -513,7 +517,13 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
               marginBottom: '20px',
             }}
           >
-            <div style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(251, 191, 36, 1)' }}>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'rgba(251, 191, 36, 1)',
+              }}
+            >
               {getRoomDisplayWithEmoji({
                 name: targetRoomData.name,
                 code: targetRoomData.code,
@@ -682,7 +692,11 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                 }}
               >
                 <div
-                  style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(96, 165, 250, 1)' }}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'rgba(96, 165, 250, 1)',
+                  }}
                 >
                   {getRoomDisplayWithEmoji({
                     name: targetRoomData.name,
@@ -772,7 +786,11 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                 }}
               >
                 <div
-                  style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(96, 165, 250, 1)' }}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'rgba(96, 165, 250, 1)',
+                  }}
                 >
                   {getRoomDisplayWithEmoji({
                     name: targetRoomData.name,

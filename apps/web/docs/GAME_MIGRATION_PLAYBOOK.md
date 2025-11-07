@@ -19,6 +19,7 @@ This playbook provides step-by-step instructions for migrating a legacy arcade g
 ## Prerequisites
 
 Before starting, ensure:
+
 - [ ] You understand the Game SDK architecture (`/src/arcade-games/README.md`)
 - [ ] You've read `ARCHITECTURAL_IMPROVEMENTS.md`
 - [ ] The game is currently working in production
@@ -33,6 +34,7 @@ Before starting, ensure:
 Create a migration plan document (`docs/[GAME_NAME]_MIGRATION_PLAN.md`) with:
 
 **Current File Structure**:
+
 ```
 List all files the game currently uses:
 - State types
@@ -44,6 +46,7 @@ List all files the game currently uses:
 ```
 
 **Current State Shape**:
+
 ```typescript
 // Document the current state interface
 interface CurrentGameState {
@@ -54,6 +57,7 @@ interface CurrentGameState {
 ```
 
 **Current Move Types**:
+
 ```typescript
 // Document all move types
 type CurrentGameMove =
@@ -62,6 +66,7 @@ type CurrentGameMove =
 ```
 
 **Current Config**:
+
 ```typescript
 // Document game configuration
 interface CurrentGameConfig {
@@ -72,22 +77,26 @@ interface CurrentGameConfig {
 ### Step 1.2: Identify Validator Status
 
 **Check if validator exists**:
+
 ```bash
 grep -r "YourGameValidator" src/lib/arcade/validation/
 ```
 
 **Status**:
+
 - ✅ **Validator exists**: Migration is easier (skip validator creation)
 - ❌ **No validator**: Need to create one (add 2-3 hours)
 
 ### Step 1.3: Assess Current Provider Pattern
 
 **Which pattern does the game use?**
+
 - **Reducer Pattern**: Has `reducer.ts`, uses `useReducer`, dispatches actions
 - **ArcadeSession Pattern**: Uses `useArcadeSession`, sends moves
 - **Hybrid**: Uses both (uh oh)
 
 **How many providers?**
+
 - **Single Provider**: One provider (room mode only)
 - **Dual Providers**: Separate `LocalProvider.tsx` and `RoomProvider.tsx` (both will be replaced)
 
@@ -96,6 +105,7 @@ grep -r "YourGameValidator" src/lib/arcade/validation/
 ### Step 1.4: Identify Complexity Factors
 
 Rate each factor (Low/Medium/High):
+
 - [ ] **UI State Complexity**: Animations, keyboard state, timeouts
 - [ ] **Timing Requirements**: Card sequences, turn timers, synchronization
 - [ ] **Input Handling**: Real-time input, debouncing, local optimization
@@ -103,6 +113,7 @@ Rate each factor (Low/Medium/High):
 - [ ] **Configuration Persistence**: Settings saved per room/game
 
 **Complexity Score**:
+
 - 0-2 High: **Easy** (2-4 hours)
 - 3-4 High: **Medium** (4-6 hours)
 - 5+ High: **Hard** (6-8+ hours)
@@ -119,6 +130,7 @@ mkdir -p src/arcade-games/[game-name]/components
 ```
 
 **Directory structure**:
+
 ```
 src/arcade-games/[game-name]/
 ├── index.ts              # Game definition (will create)
@@ -136,12 +148,14 @@ src/arcade-games/[game-name]/
 ### Step 2.2: Copy Validator
 
 **If validator exists**:
+
 ```bash
 cp src/lib/arcade/validation/[Game]Validator.ts \
    src/arcade-games/[game-name]/Validator.ts
 ```
 
 **Update imports** in the validator:
+
 ```diff
 - import type { SomeOldType } from '@/app/arcade/[game]'
 + import type { SomeNewType } from './types'
@@ -161,8 +175,10 @@ cp src/app/arcade/[game-name]/types.ts \
 ### Step 2.4: Document Migration Checklist
 
 In your migration plan, add:
+
 ```markdown
 ## Migration Checklist
+
 - [ ] Phase 1: Analysis complete
 - [ ] Phase 2: Preparation complete
 - [ ] Phase 3: Game definition created
@@ -181,6 +197,7 @@ In your migration plan, add:
 ### Step 3.1: Create Manifest
 
 **Option A: YAML file** (recommended):
+
 ```yaml
 # src/arcade-games/[game-name]/game.yaml
 name: game-name
@@ -203,12 +220,13 @@ available: true
 ```
 
 **Option B: Inline object**:
+
 ```typescript
 const manifest: GameManifest = {
-  name: 'game-name',
-  displayName: 'Game Display Name',
+  name: "game-name",
+  displayName: "Game Display Name",
   // ... all fields from above
-}
+};
 ```
 
 ### Step 3.2: Define Default Config
@@ -218,7 +236,7 @@ const defaultConfig: YourGameConfig = {
   setting1: defaultValue1,
   setting2: defaultValue2,
   // ... all game settings with sensible defaults
-}
+};
 ```
 
 ### Step 3.3: Create Config Validator
@@ -226,18 +244,18 @@ const defaultConfig: YourGameConfig = {
 ```typescript
 function validateYourGameConfig(config: unknown): config is YourGameConfig {
   return (
-    typeof config === 'object' &&
+    typeof config === "object" &&
     config !== null &&
     // Check each field exists
-    'setting1' in config &&
-    'setting2' in config &&
+    "setting1" in config &&
+    "setting2" in config &&
     // Validate each field's type and value
-    typeof (config as any).setting1 === 'string' &&
-    typeof (config as any).setting2 === 'number' &&
+    typeof (config as any).setting1 === "string" &&
+    typeof (config as any).setting2 === "number" &&
     // Validate constraints
     (config as any).setting2 >= 1 &&
     (config as any).setting2 <= 100
-  )
+  );
 }
 ```
 
@@ -245,75 +263,80 @@ function validateYourGameConfig(config: unknown): config is YourGameConfig {
 
 ```typescript
 // src/arcade-games/[game-name]/index.ts
-import { defineGame } from '@/lib/arcade/game-sdk'
-import type { GameManifest } from '@/lib/arcade/game-sdk'
-import { GameComponent } from './components/GameComponent'
-import { YourGameProvider } from './Provider'
-import type { YourGameConfig, YourGameMove, YourGameState } from './types'
-import { yourGameValidator } from './Validator'
+import { defineGame } from "@/lib/arcade/game-sdk";
+import type { GameManifest } from "@/lib/arcade/game-sdk";
+import { GameComponent } from "./components/GameComponent";
+import { YourGameProvider } from "./Provider";
+import type { YourGameConfig, YourGameMove, YourGameState } from "./types";
+import { yourGameValidator } from "./Validator";
 
 const manifest: GameManifest = {
   // ... manifest from Step 3.1
-}
+};
 
 const defaultConfig: YourGameConfig = {
   // ... config from Step 3.2
-}
+};
 
 function validateYourGameConfig(config: unknown): config is YourGameConfig {
   // ... validator from Step 3.3
 }
 
-export const yourGame = defineGame<YourGameConfig, YourGameState, YourGameMove>({
-  manifest,
-  Provider: YourGameProvider,
-  GameComponent,
-  validator: yourGameValidator,
-  defaultConfig,
-  validateConfig: validateYourGameConfig,
-})
+export const yourGame = defineGame<YourGameConfig, YourGameState, YourGameMove>(
+  {
+    manifest,
+    Provider: YourGameProvider,
+    GameComponent,
+    validator: yourGameValidator,
+    defaultConfig,
+    validateConfig: validateYourGameConfig,
+  },
+);
 ```
 
 ### Step 3.5: Register Game
 
 **In `src/lib/arcade/game-registry.ts`**:
-```typescript
-import { yourGame } from '@/arcade-games/[game-name]'
 
-registerGame(yourGame)
+```typescript
+import { yourGame } from "@/arcade-games/[game-name]";
+
+registerGame(yourGame);
 ```
 
 **In `src/lib/arcade/validators.ts`**:
+
 ```typescript
-import { yourGameValidator } from '@/arcade-games/[game-name]/Validator'
+import { yourGameValidator } from "@/arcade-games/[game-name]/Validator";
 
 export const validatorRegistry = {
   // ... other games
-  'game-name': yourGameValidator,
-} as const
+  "game-name": yourGameValidator,
+} as const;
 ```
 
 ### Step 3.6: Add Type Inference
 
 **In `src/lib/arcade/game-configs.ts`**:
+
 ```typescript
 // Add type-only import
-import type { yourGame } from '@/arcade-games/[game-name]'
+import type { yourGame } from "@/arcade-games/[game-name]";
 
 // Infer config type
-export type YourGameConfig = InferGameConfig<typeof yourGame>
+export type YourGameConfig = InferGameConfig<typeof yourGame>;
 
 // Add to GameConfigByName
 export type GameConfigByName = {
   // ... other games
-  'game-name': YourGameConfig,
-}
+  "game-name": YourGameConfig;
+};
 
 // Add default config constant
 export const DEFAULT_YOUR_GAME_CONFIG: YourGameConfig = {
   setting1: defaultValue1,
   setting2: defaultValue2,
-}
+};
 ```
 
 ---
@@ -324,24 +347,24 @@ export const DEFAULT_YOUR_GAME_CONFIG: YourGameConfig = {
 
 ```typescript
 // src/arcade-games/[game-name]/types.ts
-import type { GameConfig, GameState, GameMove } from '@/lib/arcade/game-sdk'
+import type { GameConfig, GameState, GameMove } from "@/lib/arcade/game-sdk";
 
 export interface YourGameConfig extends GameConfig {
-  setting1: string
-  setting2: number
+  setting1: string;
+  setting2: number;
   // ... all game settings
 }
 
 export interface YourGameState extends GameState {
   // Game-specific fields
-  gamePhase: 'setup' | 'playing' | 'results'
+  gamePhase: "setup" | "playing" | "results";
 
   // Multiplayer fields (from GameState)
-  activePlayers: string[]
-  playerMetadata: Record<string, PlayerMetadata>
+  activePlayers: string[];
+  playerMetadata: Record<string, PlayerMetadata>;
 
   // Your game's custom fields
-  score: Record<string, number>
+  score: Record<string, number>;
   // ...
 }
 ```
@@ -349,30 +372,32 @@ export interface YourGameState extends GameState {
 ### Step 4.2: Update Move Types
 
 **Ensure all moves have required fields**:
+
 ```typescript
 export type YourGameMove =
   | {
-      type: 'START_GAME'
-      playerId: string      // Required
-      userId: string        // Required
-      timestamp: number     // Added by SDK
+      type: "START_GAME";
+      playerId: string; // Required
+      userId: string; // Required
+      timestamp: number; // Added by SDK
       data: {
-        activePlayers: string[]
-        playerMetadata: Record<string, any>
-      }
+        activePlayers: string[];
+        playerMetadata: Record<string, any>;
+      };
     }
   | {
-      type: 'MAKE_MOVE'
-      playerId: string
-      userId: string
-      timestamp: number
+      type: "MAKE_MOVE";
+      playerId: string;
+      userId: string;
+      timestamp: number;
       data: {
         // Move-specific data
-      }
-    }
+      };
+    };
 ```
 
 **Key Requirements**:
+
 - ✅ Every move must have: `playerId`, `userId`, `timestamp`, `data`
 - ✅ Use `TEAM_MOVE` constant for moves where specific player doesn't matter
 - ✅ `data` is always an object (never primitive)
@@ -380,7 +405,7 @@ export type YourGameMove =
 ### Step 4.3: Export Types
 
 ```typescript
-export type { PlayerMetadata } from '@/lib/arcade/player-ownership.client'
+export type { PlayerMetadata } from "@/lib/arcade/player-ownership.client";
 // ... any other needed types
 ```
 
@@ -509,31 +534,33 @@ const setConfig = useCallback(
   (field: keyof YourGameConfig, value: any) => {
     // Send move to update state immediately
     sendMove({
-      type: 'SET_CONFIG',
+      type: "SET_CONFIG",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: { field, value },
-    })
+    });
 
     // Persist to database (always - room mode only)
     if (roomData?.id) {
-      const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-      const currentConfig = (currentGameConfig['game-name'] as Record<string, any>) || {}
+      const currentGameConfig =
+        (roomData.gameConfig as Record<string, any>) || {};
+      const currentConfig =
+        (currentGameConfig["game-name"] as Record<string, any>) || {};
 
       updateGameConfig({
         roomId: roomData.id,
         gameConfig: {
           ...currentGameConfig,
-          'game-name': {
+          "game-name": {
             ...currentConfig,
             [field]: value,
           },
         },
-      })
+      });
     }
   },
-  [viewerId, sendMove, roomData, updateGameConfig]
-)
+  [viewerId, sendMove, roomData, updateGameConfig],
+);
 ```
 
 ### Step 5.3: Handle Local-Only State
@@ -542,24 +569,27 @@ For UI state that doesn't need network sync:
 
 ```typescript
 // Example: Input field that updates every keystroke
-const [localInput, setLocalInput] = useState('')
+const [localInput, setLocalInput] = useState("");
 
 // Merge with network state
 const mergedState = {
   ...state,
   currentInput: localInput, // Override with local value
-}
+};
 
 // Only send to network when submitting
-const submitAnswer = useCallback((answer: string) => {
-  sendMove({
-    type: 'SUBMIT_ANSWER',
-    playerId: state.currentPlayer,
-    userId: viewerId || '',
-    data: { answer },
-  })
-  setLocalInput('') // Clear local state
-}, [state.currentPlayer, viewerId, sendMove])
+const submitAnswer = useCallback(
+  (answer: string) => {
+    sendMove({
+      type: "SUBMIT_ANSWER",
+      playerId: state.currentPlayer,
+      userId: viewerId || "",
+      data: { answer },
+    });
+    setLocalInput(""); // Clear local state
+  },
+  [state.currentPlayer, viewerId, sendMove],
+);
 ```
 
 ---
@@ -609,6 +639,7 @@ export function GameComponent() {
 ### Step 6.2: Update Phase Components
 
 **Pattern for each component**:
+
 ```typescript
 import { useYourGame } from '../Provider'
 
@@ -626,6 +657,7 @@ export function YourPhase() {
 ```
 
 **Common Changes**:
+
 ```diff
 - const { state, dispatch } = useYourGame()
 + const { state, actionName } = useYourGame()
@@ -751,6 +783,7 @@ npm run pre-commit
 ```
 
 **Must pass**:
+
 - [ ] TypeScript compilation (0 errors)
 - [ ] Format check (all files formatted)
 - [ ] Lint check (0 errors, 0 warnings)
@@ -784,14 +817,17 @@ rm src/lib/arcade/validation/[Game]Validator.ts
 ### Step 9.2: Update Documentation
 
 **In `ARCHITECTURAL_IMPROVEMENTS.md`**:
+
 ```markdown
 ### Migrated Games
+
 - ✅ Number Guesser (v4.0.0)
 - ✅ Math Sprint (v4.0.1)
 - ✅ Memory Quiz (v4.1.0) - Completed 2025-01-16
 ```
 
 **In your migration plan**:
+
 ```markdown
 ## Migration Complete ✅
 
@@ -834,6 +870,7 @@ git push
 **Symptom**: Lots of type errors in components
 
 **Solution**:
+
 1. Check that move types include `playerId`, `userId`, `timestamp`
 2. Verify state extends `GameState` from SDK
 3. Update component imports to use new provider location
@@ -843,6 +880,7 @@ git push
 **Symptom**: Players see different states
 
 **Solution**:
+
 1. Verify `roomId` is passed to `useArcadeSession` (should always be present)
 2. Check validator is handling moves correctly
 3. Ensure `applyMove` returns state (doesn't mutate)
@@ -853,6 +891,7 @@ git push
 **Symptom**: Settings reset on page reload
 
 **Solution**:
+
 1. Check `useUpdateGameConfig` is called in `setConfig`
 2. Verify config is scoped by game name: `gameConfig['game-name']`
 3. Ensure `initialState` useMemo depends on `roomData`
@@ -862,6 +901,7 @@ git push
 **Symptom**: Validator rejects all moves
 
 **Solution**:
+
 1. Check move type strings match validator switch cases
 2. Verify validator is registered correctly
 3. Check move structure includes all required fields
@@ -871,6 +911,7 @@ git push
 **Symptom**: useContext errors or null reference errors
 
 **Solution**:
+
 1. Verify Provider wraps all components
 2. Check context exports match usage
 3. Ensure hooks are called within Provider
@@ -883,67 +924,70 @@ If your game doesn't have a validator, create one:
 
 ```typescript
 // src/arcade-games/[game-name]/Validator.ts
-import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
-import type { YourGameState, YourGameMove } from './types'
+import type { GameValidator, ValidationResult } from "@/lib/arcade/game-sdk";
+import type { YourGameState, YourGameMove } from "./types";
 
-export class YourGameValidator implements GameValidator<YourGameState, YourGameMove> {
+export class YourGameValidator
+  implements GameValidator<YourGameState, YourGameMove>
+{
   validateMove(
     state: YourGameState,
     move: YourGameMove,
-    context?: { userId?: string }
+    context?: { userId?: string },
   ): ValidationResult {
     switch (move.type) {
-      case 'START_GAME':
-        return this.validateStartGame(state, move.data)
+      case "START_GAME":
+        return this.validateStartGame(state, move.data);
 
-      case 'MAKE_MOVE':
-        return this.validateMakeMove(state, move.playerId, move.data)
+      case "MAKE_MOVE":
+        return this.validateMakeMove(state, move.playerId, move.data);
 
       // ... handle each move type
 
       default:
-        return { valid: false, error: 'Unknown move type' }
+        return { valid: false, error: "Unknown move type" };
     }
   }
 
   private validateStartGame(state: YourGameState, data: any): ValidationResult {
     // Check preconditions
-    if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only start from setup phase' }
+    if (state.gamePhase !== "setup") {
+      return { valid: false, error: "Can only start from setup phase" };
     }
 
     // Create new state
     const newState: YourGameState = {
       ...state,
-      gamePhase: 'playing',
+      gamePhase: "playing",
       activePlayers: data.activePlayers || [],
       playerMetadata: data.playerMetadata || {},
       // ... initialize game state
-    }
+    };
 
-    return { valid: true, newState }
+    return { valid: true, newState };
   }
 
   // ... more validation methods
 
   isGameComplete(state: YourGameState): boolean {
-    return state.gamePhase === 'results'
+    return state.gamePhase === "results";
   }
 
   getInitialState(config: YourGameConfig): YourGameState {
     return {
-      gamePhase: 'setup',
+      gamePhase: "setup",
       activePlayers: [],
       playerMetadata: {},
       // ... all initial state from config
-    }
+    };
   }
 }
 
-export const yourGameValidator = new YourGameValidator()
+export const yourGameValidator = new YourGameValidator();
 ```
 
 **Key Principles**:
+
 1. ✅ Validator is authoritative (client is display only)
 2. ✅ Always return new state (never mutate)
 3. ✅ Validate all preconditions before state changes
@@ -959,15 +1003,15 @@ export const yourGameValidator = new YourGameValidator()
 ```typescript
 // Validator
 if (move.playerId !== state.currentPlayer) {
-  return { valid: false, error: 'Not your turn' }
+  return { valid: false, error: "Not your turn" };
 }
 
 // After valid move, rotate turn
-const nextPlayerIndex = (currentIndex + 1) % state.activePlayers.length
+const nextPlayerIndex = (currentIndex + 1) % state.activePlayers.length;
 const newState = {
   ...state,
   currentPlayer: state.activePlayers[nextPlayerIndex],
-}
+};
 ```
 
 ### Pattern: Team Moves
@@ -975,20 +1019,20 @@ const newState = {
 ```typescript
 // Use TEAM_MOVE for moves where any player can act
 sendMove({
-  type: 'SUBMIT_ANSWER',
+  type: "SUBMIT_ANSWER",
   playerId: TEAM_MOVE, // Not attributed to specific player
-  userId: viewerId || '',
+  userId: viewerId || "",
   data: { answer },
-})
+});
 ```
 
 ### Pattern: Timed Actions
 
 ```typescript
 // Store timestamp in state, check elapsed time
-const elapsedTime = Date.now() - state.startTime
+const elapsedTime = Date.now() - state.startTime;
 if (elapsedTime > state.timeLimit) {
-  return { valid: false, error: 'Time expired' }
+  return { valid: false, error: "Time expired" };
 }
 ```
 
@@ -996,9 +1040,9 @@ if (elapsedTime > state.timeLimit) {
 
 ```typescript
 // Track scores by userId (not playerId) for multi-character games
-const newScores = { ...state.scores }
+const newScores = { ...state.scores };
 if (move.userId) {
-  newScores[move.userId] = (newScores[move.userId] || 0) + points
+  newScores[move.userId] = (newScores[move.userId] || 0) + points;
 }
 ```
 
@@ -1009,6 +1053,7 @@ if (move.userId) {
 Use this as a final verification before declaring migration complete:
 
 ### Code Quality
+
 - [ ] TypeScript compiles with 0 errors
 - [ ] Linter passes with 0 errors, 0 warnings
 - [ ] Formatter has been run
@@ -1016,6 +1061,7 @@ Use this as a final verification before declaring migration complete:
 - [ ] No console warnings in terminal
 
 ### Architecture
+
 - [ ] Game definition created with `defineGame()`
 - [ ] Validator implements `GameValidator` interface
 - [ ] Provider uses SDK hooks exclusively
@@ -1023,12 +1069,14 @@ Use this as a final verification before declaring migration complete:
 - [ ] Config validation function exists
 
 ### Registration
+
 - [ ] Game registered in `game-registry.ts`
 - [ ] Validator registered in `validators.ts`
 - [ ] Config type inferred in `game-configs.ts`
 - [ ] Default config constant added
 
 ### Functionality
+
 - [ ] All game phases work in local mode
 - [ ] All game phases work in room mode
 - [ ] Settings persist in room mode
@@ -1037,6 +1085,7 @@ Use this as a final verification before declaring migration complete:
 - [ ] Can exit and re-enter game
 
 ### Documentation
+
 - [ ] Migration plan created
 - [ ] Breaking changes documented
 - [ ] Testing results recorded
@@ -1049,6 +1098,7 @@ Use this as a final verification before declaring migration complete:
 You've now successfully migrated a game to the modular platform! 🎉
 
 The game is now:
+
 - ✅ Self-contained in `/arcade-games/[game-name]/`
 - ✅ Using the Game SDK for all functionality
 - ✅ Room mode only (no local mode code)
@@ -1058,6 +1108,7 @@ The game is now:
 - ✅ Easier to maintain and extend
 
 **Next Steps**:
+
 1. Monitor game in production for any issues
 2. Consider adding game-specific settings
 3. Migrate the next legacy game!
@@ -1065,6 +1116,7 @@ The game is now:
 ---
 
 **Questions or issues?** Refer to:
+
 - Game SDK Docs: `/src/arcade-games/README.md`
 - Architecture Docs: `/docs/ARCHITECTURAL_IMPROVEMENTS.md`
 - Example Games: Number Guesser, Math Sprint, Memory Quiz

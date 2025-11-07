@@ -138,7 +138,13 @@ export function SetupPlayerRequirement({
         >
           {inactivePlayers.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <p style={{ margin: '0 0 12px 0', color: '#64748b', fontSize: '14px' }}>
+              <p
+                style={{
+                  margin: '0 0 12px 0',
+                  color: '#64748b',
+                  fontSize: '14px',
+                }}
+              >
                 No inactive players available
               </p>
               <button

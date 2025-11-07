@@ -94,7 +94,10 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
   ): ValidationResult {
     // Must be in playing phase
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only place cards during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only place cards during playing phase',
+      }
     }
 
     // Card must exist in availableCards
@@ -143,7 +146,10 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
   ): ValidationResult {
     // Must be in playing phase
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only insert cards during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only insert cards during playing phase',
+      }
     }
 
     // Card must exist in availableCards
@@ -424,7 +430,10 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
   ): ValidationResult {
     // Must be in playing phase
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only update positions during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only update positions during playing phase',
+      }
     }
 
     // Validate positions array

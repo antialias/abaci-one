@@ -27,6 +27,7 @@ Successfully implemented **all 3 critical architectural improvements** identifie
 **Solution**: Accept any string, validate at runtime against validator registry.
 
 **Changes**:
+
 - `arcade-rooms.ts`: `gameName: text('game_name')` (removed enum)
 - `arcade-sessions.ts`: `currentGame: text('current_game').notNull()` (removed enum)
 - `room-game-configs.ts`: `gameName: text('game_name').notNull()` (removed enum)
@@ -34,6 +35,7 @@ Successfully implemented **all 3 critical architectural improvements** identifie
 - Updated settings API to use `isValidGameName()` instead of hardcoded array
 
 **Impact**:
+
 ```diff
 - BEFORE: Update 3 database schemas + run migration for each game
 + AFTER: No database changes needed - just register validator
@@ -51,35 +53,38 @@ Successfully implemented **all 3 critical architectural improvements** identifie
 **Solution**: Move validation to game definitions - games own their validation logic.
 
 **Changes**:
+
 - Added `validateConfig?: (config: unknown) => config is TConfig` to `GameDefinition`
 - Updated `defineGame()` to accept and return `validateConfig`
 - Added validation to Number Guesser and Math Sprint
 - Updated `validateGameConfig()` to call `game.validateConfig()` from registry
 
 **Impact**:
+
 ```diff
 - BEFORE: Add case to 50-line switch statement in helper file
 + AFTER: Add validateConfig function to game definition
 ```
 
 **Example**:
+
 ```typescript
 // In game index.ts
 function validateMathSprintConfig(config: unknown): config is MathSprintConfig {
   return (
-    typeof config === 'object' &&
+    typeof config === "object" &&
     config !== null &&
-    ['easy', 'medium', 'hard'].includes(config.difficulty) &&
-    typeof config.questionsPerRound === 'number' &&
+    ["easy", "medium", "hard"].includes(config.difficulty) &&
+    typeof config.questionsPerRound === "number" &&
     config.questionsPerRound >= 5 &&
     config.questionsPerRound <= 20
-  )
+  );
 }
 
 export const mathSprintGame = defineGame({
   // ... other fields
   validateConfig: validateMathSprintConfig,
-})
+});
 ```
 
 **Files Modified**: 5 files
@@ -91,18 +96,18 @@ export const mathSprintGame = defineGame({
 
 ### Adding a New Game
 
-| Task | Before | After (Phase 1-3) |
-|------|--------|----------|
-| **Database Schemas** | Update 3 enum types | ✅ No changes needed |
-| **Settings API** | Add to validGames array | ✅ No changes needed (runtime validation) |
-| **Config Helpers** | Add switch case + validation (25 lines) | ✅ No changes needed |
-| **Game Config Types** | Manually define interface (10-15 lines) | ✅ One-line type inference |
-| **GameConfigByName** | Add entry manually | ✅ Add entry (auto-typed) |
-| **RoomGameConfig** | Add optional property | ✅ Auto-derived from GameConfigByName |
-| **Default Config** | Add to DEFAULT_X_CONFIG constant | ✔️ Still needed (3-5 lines) |
-| **Validator Registry** | Register in validators.ts | ✔️ Still needed (1 line) |
-| **Game Registry** | Register in game-registry.ts | ✔️ Still needed (1 line) |
-| **validateConfig Function** | N/A | ✔️ Add to game definition (10-15 lines) |
+| Task                        | Before                                  | After (Phase 1-3)                         |
+| --------------------------- | --------------------------------------- | ----------------------------------------- |
+| **Database Schemas**        | Update 3 enum types                     | ✅ No changes needed                      |
+| **Settings API**            | Add to validGames array                 | ✅ No changes needed (runtime validation) |
+| **Config Helpers**          | Add switch case + validation (25 lines) | ✅ No changes needed                      |
+| **Game Config Types**       | Manually define interface (10-15 lines) | ✅ One-line type inference                |
+| **GameConfigByName**        | Add entry manually                      | ✅ Add entry (auto-typed)                 |
+| **RoomGameConfig**          | Add optional property                   | ✅ Auto-derived from GameConfigByName     |
+| **Default Config**          | Add to DEFAULT_X_CONFIG constant        | ✔️ Still needed (3-5 lines)               |
+| **Validator Registry**      | Register in validators.ts               | ✔️ Still needed (1 line)                  |
+| **Game Registry**           | Register in game-registry.ts            | ✔️ Still needed (1 line)                  |
+| **validateConfig Function** | N/A                                     | ✔️ Add to game definition (10-15 lines)   |
 
 **Total Files to Update**: 12 → **3** (75% reduction)
 **Total Lines of Boilerplate**: ~60 lines → ~20 lines (67% reduction)
@@ -110,6 +115,7 @@ export const mathSprintGame = defineGame({
 ### What's Left
 
 Three items still require manual updates:
+
 1. **Default Config Constants** (`game-configs.ts`) - 3-5 lines per game
 2. **Validator Registry** (`validators.ts`) - 1 line per game
 3. **Game Registry** (`game-registry.ts`) - 1 line per game
@@ -120,15 +126,18 @@ Three items still require manual updates:
 ## Migration Impact
 
 ### Existing Data
+
 - ✅ **No data migration needed** - strings remain strings
 - ✅ **Backward compatible** - existing games work unchanged
 
 ### TypeScript Changes
+
 - ⚠️ Database columns now accept `string` instead of specific enum
 - ✅ Runtime validation prevents invalid data
 - ✅ Type safety maintained through validator registry
 
 ### Developer Experience
+
 ```diff
 - BEFORE: 15-20 minutes of boilerplate per game
 + AFTER: 2-3 minutes to add validation function
@@ -139,21 +148,25 @@ Three items still require manual updates:
 ## Architectural Wins
 
 ### 1. Single Source of Truth
+
 - ✅ Validator registry is the authoritative list of games
 - ✅ All validation checks against registry at runtime
 - ✅ No duplication across database/API/helpers
 
 ### 2. Self-Contained Games
+
 - ✅ Games define their own validation logic
 - ✅ No scattered switch statements
 - ✅ Easy to understand - everything in one place
 
 ### 3. True Modularity
+
 - ✅ Database schemas accept any registered game
 - ✅ API endpoints dynamically validate
 - ✅ Helper functions delegate to games
 
 ### 4. Developer Friction Reduced
+
 - ✅ No database schema changes
 - ✅ No API endpoint updates
 - ✅ No helper switch statements
@@ -168,6 +181,7 @@ Three items still require manual updates:
 **Solution**: Use TypeScript utility types to infer from game definitions.
 
 **Changes**:
+
 - Added `InferGameConfig<T>` utility type that extracts config from game definitions
 - `NumberGuesserGameConfig` now inferred: `InferGameConfig<typeof numberGuesserGame>`
 - `MathSprintGameConfig` now inferred: `InferGameConfig<typeof mathSprintGame>`
@@ -175,30 +189,35 @@ Three items still require manual updates:
 - Changed `RoomGameConfig` from interface to type for auto-derivation
 
 **Impact**:
+
 ```diff
 - BEFORE: Manually define interface with 10-15 lines per game
 + AFTER: One-line type inference from game definition
 ```
 
 **Example**:
+
 ```typescript
 // Type-only import (won't load React components)
-import type { mathSprintGame } from '@/arcade-games/math-sprint'
+import type { mathSprintGame } from "@/arcade-games/math-sprint";
 
 // Utility type
-type InferGameConfig<T> = T extends { defaultConfig: infer Config } ? Config : never
+type InferGameConfig<T> = T extends { defaultConfig: infer Config }
+  ? Config
+  : never;
 
 // Inferred type (was 6 lines, now 1 line!)
-export type MathSprintGameConfig = InferGameConfig<typeof mathSprintGame>
+export type MathSprintGameConfig = InferGameConfig<typeof mathSprintGame>;
 
 // Auto-derived RoomGameConfig (was 5 manual entries, now automatic!)
 export type RoomGameConfig = {
-  [K in keyof GameConfigByName]?: GameConfigByName[K]
-}
+  [K in keyof GameConfigByName]?: GameConfigByName[K];
+};
 ```
 
 **Files Modified**: 2 files
 **Commits**:
+
 - `271b8ec3 - refactor(arcade): implement Phase 3 - infer config types from game definitions`
 - `4c15c13f - docs(arcade): update README with Phase 3 type inference architecture`
 
@@ -209,6 +228,7 @@ export type RoomGameConfig = {
 ## Future Work (Optional)
 
 ### Phase 4: Extract Config-Only Exports
+
 **Optional improvement**: Create separate `config.ts` files in each game directory that export just config and validation (no React dependencies). This would allow importing default configs directly without duplication.
 
 ---
@@ -216,6 +236,7 @@ export type RoomGameConfig = {
 ## Testing
 
 ### Manual Testing
+
 - ✅ Math Sprint works end-to-end
 - ✅ Number Guesser works end-to-end
 - ✅ Room settings API accepts math-sprint
@@ -223,6 +244,7 @@ export type RoomGameConfig = {
 - ✅ TypeScript compilation succeeds
 
 ### Test Coverage Needed
+
 - [ ] Unit tests for `isValidGameName()`
 - [ ] Unit tests for game `validateConfig()` functions
 - [ ] Integration test: Add new game without touching infrastructure
@@ -233,17 +255,20 @@ export type RoomGameConfig = {
 ## Lessons Learned
 
 ### What Worked Well
+
 1. **Incremental Approach** - Fixed one issue at a time
 2. **Backward Compatibility** - Legacy games still work
 3. **Runtime Validation** - Flexible and extensible
 4. **Clear Commit Messages** - Easy to track changes
 
 ### Challenges
+
 1. **TypeScript Enums → Runtime Checks** - Required migration strategy
 2. **Fallback for Legacy Games** - Switch statement still exists for old games
 3. **Type Inference** - Config types still manually defined
 
 ### Best Practices Established
+
 1. **Games own validation** - Self-contained, testable
 2. **Registry as source of truth** - No duplicate lists
 3. **Runtime validation** - Catch errors early with good messages
@@ -256,12 +281,14 @@ export type RoomGameConfig = {
 The modular game system is now **significantly improved across all three phases**:
 
 **Before (Phases 1-3)**:
+
 - Must update 12 files to add a game (~60 lines of boilerplate)
 - Database migration required for each new game
 - Easy to forget a step (manual type definitions, switch statements)
 - Scattered validation logic across multiple files
 
 **After (All Phases Complete)**:
+
 - Update 3 files to add a game (75% reduction)
 - ~20 lines of boilerplate (67% reduction)
 - No database migration needed
@@ -270,12 +297,14 @@ The modular game system is now **significantly improved across all three phases*
 - Clear runtime error messages
 
 **Key Achievements**:
+
 1. ✅ **Phase 1**: Runtime validation replaces database enums
 2. ✅ **Phase 2**: Games own their validation logic
 3. ✅ **Phase 3**: TypeScript types inferred from game definitions
 
 **Remaining Work**:
-- Optional Phase 4: Extract config-only exports to eliminate DEFAULT_*_CONFIG duplication
+
+- Optional Phase 4: Extract config-only exports to eliminate DEFAULT\_\*\_CONFIG duplication
 - Add comprehensive test suite for validation and type inference
 - Migrate legacy games (matching, memory-quiz) to new system
 
@@ -291,8 +320,8 @@ The architecture is now **production-ready** and can scale to dozens of games wi
 4. Register game in `game-registry.ts` (1 line)
 5. Add type inference to `game-configs.ts`:
    ```typescript
-   import type { myGame } from '@/arcade-games/my-game'
-   export type MyGameConfig = InferGameConfig<typeof myGame>
+   import type { myGame } from "@/arcade-games/my-game";
+   export type MyGameConfig = InferGameConfig<typeof myGame>;
    ```
 6. Add to `GameConfigByName` (1 line - type is auto-inferred!)
 7. Add defaults to `game-configs.ts` (3-5 lines)

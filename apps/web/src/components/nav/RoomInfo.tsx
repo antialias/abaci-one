@@ -66,7 +66,11 @@ export function RoomInfo({
 
   // Use room display utility for consistent naming
   const displayName = joinCode
-    ? getRoomDisplayWithEmoji({ name: roomName || null, code: joinCode, gameName })
+    ? getRoomDisplayWithEmoji({
+        name: roomName || null,
+        code: joinCode,
+        gameName,
+      })
     : roomName || gameName
   const shareUrl = joinCode ? getRoomShareUrl(joinCode) : ''
 

@@ -7,7 +7,9 @@ The tutorial system is a sophisticated interactive learning platform for teachin
 ## Key Components
 
 ### 1. TutorialPlayer (`/src/components/tutorial/TutorialPlayer.tsx`)
+
 The main tutorial playback component that:
+
 - Displays tutorial steps progressively
 - Highlights specific beads users should interact with
 - Provides real-time feedback and tooltips
@@ -16,6 +18,7 @@ The main tutorial playback component that:
 - Auto-advances to next step on correct completion
 
 **Key Features:**
+
 - **Bead Highlighting**: Visual indicators showing which beads to manipulate
 - **Step Progress**: Shows current step out of total steps
 - **Error Feedback**: Provides hints when user makes mistakes
@@ -23,7 +26,9 @@ The main tutorial playback component that:
 - **Pedagogical Decomposition**: Explains the "why" behind each operation
 
 ### 2. TutorialEditor (`/src/components/tutorial/TutorialEditor.tsx`)
+
 A full-featured editor for creating and editing tutorials:
+
 - Visual step editor
 - Bead highlight configuration
 - Multi-step instruction editor
@@ -37,67 +42,69 @@ A full-featured editor for creating and editing tutorials:
 
 ```typescript
 interface Tutorial {
-  id: string
-  title: string
-  description: string
-  category: string
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
-  estimatedDuration: number // minutes
-  steps: TutorialStep[]
-  tags: string[]
-  author: string
-  version: string
-  createdAt: Date
-  updatedAt: Date
-  isPublished: boolean
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  estimatedDuration: number; // minutes
+  steps: TutorialStep[];
+  tags: string[];
+  author: string;
+  version: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isPublished: boolean;
 }
 
 interface TutorialStep {
-  id: string
-  title: string
-  problem: string                    // e.g. "2 + 3"
-  description: string                // User-facing explanation
-  startValue: number                 // Initial abacus value
-  targetValue: number                // Goal value
-  expectedAction: 'add' | 'remove' | 'multi-step'
-  actionDescription: string
+  id: string;
+  title: string;
+  problem: string; // e.g. "2 + 3"
+  description: string; // User-facing explanation
+  startValue: number; // Initial abacus value
+  targetValue: number; // Goal value
+  expectedAction: "add" | "remove" | "multi-step";
+  actionDescription: string;
 
   // Bead highlighting
   highlightBeads?: Array<{
-    placeValue: number               // 0=ones, 1=tens, etc.
-    beadType: 'heaven' | 'earth'
-    position?: number                // For earth beads: 0-3
-  }>
+    placeValue: number; // 0=ones, 1=tens, etc.
+    beadType: "heaven" | "earth";
+    position?: number; // For earth beads: 0-3
+  }>;
 
   // Progressive step highlighting
   stepBeadHighlights?: Array<{
-    placeValue: number
-    beadType: 'heaven' | 'earth'
-    position?: number
-    stepIndex: number                // Which instruction step
-    direction: 'up' | 'down' | 'activate' | 'deactivate'
-    order?: number                   // Order within step
-  }>
+    placeValue: number;
+    beadType: "heaven" | "earth";
+    position?: number;
+    stepIndex: number; // Which instruction step
+    direction: "up" | "down" | "activate" | "deactivate";
+    order?: number; // Order within step
+  }>;
 
-  totalSteps?: number                // For multi-step operations
-  multiStepInstructions?: string[]   // Sequential instructions
+  totalSteps?: number; // For multi-step operations
+  multiStepInstructions?: string[]; // Sequential instructions
 
   // Tooltips and guidance
   tooltip: {
-    content: string                  // Short title
-    explanation: string              // Detailed explanation
-  }
+    content: string; // Short title
+    explanation: string; // Detailed explanation
+  };
 }
 ```
 
 ### 4. Tutorial Converter (`/src/utils/tutorialConverter.ts`)
 
 Utility that converts the original `GuidedAdditionTutorial` data into the new tutorial format:
+
 - `guidedAdditionSteps`: Array of tutorial steps from basic addition to complements
 - `convertGuidedAdditionTutorial()`: Converts to Tutorial object
 - `getTutorialForEditor()`: Main export used in the app
 
 **Current Tutorial Steps:**
+
 1. Basic Addition (0+1, 1+1, 2+1, 3+1)
 2. Heaven Bead Introduction (0+5, 5+1)
 3. Five Complements (3+4, 2+3 using 5-complement method)
@@ -106,11 +113,13 @@ Utility that converts the original `GuidedAdditionTutorial` data into the new tu
 ### 5. Supporting Utilities
 
 **`/src/utils/abacusInstructionGenerator.ts`**
+
 - Automatically generates step-by-step instructions from start/target values
 - Creates bead highlight data
 - Determines movement directions
 
 **`/src/utils/beadDiff.ts`**
+
 - Calculates differences between abacus states
 - Generates visual feedback tooltips
 - Explains what changed and why
@@ -158,50 +167,53 @@ return <TutorialPlayer tutorial={friendsOf5Tutorial} />
 
 ```typescript
 const customTutorial: Tutorial = {
-  id: 'my-tutorial',
-  title: 'My Custom Tutorial',
-  description: 'Learning something new',
-  category: 'Custom',
-  difficulty: 'beginner',
+  id: "my-tutorial",
+  title: "My Custom Tutorial",
+  description: "Learning something new",
+  category: "Custom",
+  difficulty: "beginner",
   estimatedDuration: 5,
   steps: [
     {
-      id: 'step-1',
-      title: 'Add 2',
-      problem: '0 + 2',
-      description: 'Move two earth beads up',
+      id: "step-1",
+      title: "Add 2",
+      problem: "0 + 2",
+      description: "Move two earth beads up",
       startValue: 0,
       targetValue: 2,
-      expectedAction: 'add',
-      actionDescription: 'Add two earth beads',
+      expectedAction: "add",
+      actionDescription: "Add two earth beads",
       highlightBeads: [
-        { placeValue: 0, beadType: 'earth', position: 0 },
-        { placeValue: 0, beadType: 'earth', position: 1 }
+        { placeValue: 0, beadType: "earth", position: 0 },
+        { placeValue: 0, beadType: "earth", position: 1 },
       ],
       tooltip: {
-        content: 'Adding 2',
-        explanation: 'Push two earth beads up to represent 2'
-      }
-    }
+        content: "Adding 2",
+        explanation: "Push two earth beads up to represent 2",
+      },
+    },
   ],
-  tags: ['custom'],
-  author: 'Me',
-  version: '1.0.0',
+  tags: ["custom"],
+  author: "Me",
+  version: "1.0.0",
   createdAt: new Date(),
   updatedAt: new Date(),
-  isPublished: true
-}
+  isPublished: true,
+};
 ```
 
 ## Current Implementation Locations
 
 **Live Tutorials:**
+
 - `/guide` - Second tab "Arithmetic Operations" contains the full guided addition tutorial
 
 **Editor:**
+
 - `/tutorial-editor` - Full tutorial editing interface
 
 **Storybook:**
+
 - Multiple tutorial stories in `/src/components/tutorial/*.stories.tsx`
 
 ## Key Design Principles

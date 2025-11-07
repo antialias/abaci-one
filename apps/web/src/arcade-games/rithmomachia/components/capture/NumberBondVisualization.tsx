@@ -50,7 +50,11 @@ export function NumberBondVisualization({
   const operator = getRelationOperator(relation)
 
   // Calculate actual board position for target
-  const targetBoardPos = getSquarePosition(targetPiece.square, { cellSize, gap, padding })
+  const targetBoardPos = getSquarePosition(targetPiece.square, {
+    cellSize,
+    gap,
+    padding,
+  })
 
   // Animation: Rotate and collapse from actual positions to target
   const captureAnimation = useSpring({

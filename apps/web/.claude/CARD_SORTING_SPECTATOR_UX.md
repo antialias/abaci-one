@@ -18,11 +18,13 @@ The Card Sorting Challenge correctly implements spectator mode functionally - sp
 ## Current Behavior
 
 **Functional (Correct)**:
+
 - ✅ Actions check `if (!localPlayerId) return` before sending moves
 - ✅ Spectators cannot start game, place cards, or check solution
 - ✅ Spectators receive real-time state updates
 
 **Missing (UX Gap)**:
+
 - ❌ No visual indicator that user is spectating
 - ❌ Buttons appear clickable but don't respond
 - ❌ No context about whose game is being watched
@@ -33,40 +35,46 @@ The Card Sorting Challenge correctly implements spectator mode functionally - sp
 ## Enhancement 1: Expose `localPlayerId` in Context
 
 ### Location
+
 `/src/arcade-games/card-sorting/Provider.tsx`
 
 ### Changes
 
 **Add to `CardSortingContextValue` interface** (line 14):
+
 ```typescript
 interface CardSortingContextValue {
-  state: CardSortingState
+  state: CardSortingState;
   // Actions
-  startGame: () => void
-  placeCard: (cardId: string, position: number) => void
-  insertCard: (cardId: string, insertPosition: number) => void
-  removeCard: (position: number) => void
-  checkSolution: () => void
-  revealNumbers: () => void
-  goToSetup: () => void
-  resumeGame: () => void
-  setConfig: (field: 'cardCount' | 'showNumbers' | 'timeLimit', value: unknown) => void
-  exitSession: () => void
+  startGame: () => void;
+  placeCard: (cardId: string, position: number) => void;
+  insertCard: (cardId: string, insertPosition: number) => void;
+  removeCard: (position: number) => void;
+  checkSolution: () => void;
+  revealNumbers: () => void;
+  goToSetup: () => void;
+  resumeGame: () => void;
+  setConfig: (
+    field: "cardCount" | "showNumbers" | "timeLimit",
+    value: unknown,
+  ) => void;
+  exitSession: () => void;
   // Computed
-  canCheckSolution: boolean
-  placedCount: number
-  elapsedTime: number
-  hasConfigChanged: boolean
-  canResumeGame: boolean
+  canCheckSolution: boolean;
+  placedCount: number;
+  elapsedTime: number;
+  hasConfigChanged: boolean;
+  canResumeGame: boolean;
   // UI state
-  selectedCardId: string | null
-  selectCard: (cardId: string | null) => void
-  localPlayerId: string | undefined  // ✨ NEW: Expose for spectator checks
-  isSpectating: boolean               // ✨ NEW: Derived flag for convenience
+  selectedCardId: string | null;
+  selectCard: (cardId: string | null) => void;
+  localPlayerId: string | undefined; // ✨ NEW: Expose for spectator checks
+  isSpectating: boolean; // ✨ NEW: Derived flag for convenience
 }
 ```
 
 **Update context value** (line 527):
+
 ```typescript
 const contextValue: CardSortingContextValue = {
   state,
@@ -90,12 +98,13 @@ const contextValue: CardSortingContextValue = {
   // UI state
   selectedCardId,
   selectCard: setSelectedCardId,
-  localPlayerId,                      // ✨ NEW
-  isSpectating: !localPlayerId,       // ✨ NEW: Convenience flag
-}
+  localPlayerId, // ✨ NEW
+  isSpectating: !localPlayerId, // ✨ NEW: Convenience flag
+};
 ```
 
 ### Rationale
+
 - Components need `localPlayerId` to determine spectator vs player state
 - `isSpectating` is a convenience flag to avoid `!localPlayerId` checks everywhere
 - Makes spectator mode a first-class concept in the API
@@ -105,11 +114,13 @@ const contextValue: CardSortingContextValue = {
 ## Enhancement 2: Spectator Indicator Banner
 
 ### Location
+
 `/src/arcade-games/card-sorting/components/GameComponent.tsx`
 
 ### Visual Design
 
 **Banner Appearance**:
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │ 👀 Spectating Alice 👧's game                       │
@@ -118,6 +129,7 @@ const contextValue: CardSortingContextValue = {
 ```
 
 **Styling**:
+
 - Background: `rgba(59, 130, 246, 0.1)` (soft blue, semi-transparent)
 - Border: `1px solid rgba(59, 130, 246, 0.3)` (blue.500 with opacity)
 - Border radius: `8px`
@@ -131,6 +143,7 @@ const contextValue: CardSortingContextValue = {
 ### Implementation
 
 **Add banner component**:
+
 ```typescript
 // Add after existing imports
 import { useCardSorting } from '../Provider'
@@ -251,11 +264,13 @@ export function GameComponent() {
 ### Behavior
 
 **Show Banner When**:
+
 - ✅ `isSpectating === true` (no local player)
 - ✅ `state.gamePhase === 'playing'` OR `state.gamePhase === 'results'`
 - ❌ NOT during setup phase (handled separately below)
 
 **Hide Banner When**:
+
 - User has an active local player
 - Game is in setup phase (use setup phase spectator prompt instead)
 
@@ -316,7 +331,9 @@ export function SetupPhase() {
 ## Enhancement 3: Visual Disabled States
 
 ### Location
+
 All interactive components in:
+
 - `/src/arcade-games/card-sorting/components/SetupPhase.tsx`
 - `/src/arcade-games/card-sorting/components/PlayingPhase.tsx`
 - `/src/arcade-games/card-sorting/components/ResultsPhase.tsx`
@@ -324,21 +341,23 @@ All interactive components in:
 ### Visual Design
 
 **Disabled Button Styling**:
+
 ```typescript
 const disabledStyles = {
   opacity: 0.5,
-  cursor: 'not-allowed',
-  pointerEvents: 'none',  // Prevent all interactions
-}
+  cursor: "not-allowed",
+  pointerEvents: "none", // Prevent all interactions
+};
 ```
 
 **Disabled Card Styling**:
+
 ```typescript
 const disabledCardStyles = {
   opacity: 0.6,
-  cursor: 'default',
-  pointerEvents: 'none',
-}
+  cursor: "default",
+  pointerEvents: "none",
+};
 ```
 
 ### Implementation by Phase
@@ -348,6 +367,7 @@ const disabledCardStyles = {
 **File**: `/src/arcade-games/card-sorting/components/SetupPhase.tsx`
 
 **Changes**:
+
 ```typescript
 export function SetupPhase() {
   const {
@@ -442,6 +462,7 @@ export function SetupPhase() {
 **File**: `/src/arcade-games/card-sorting/components/PlayingPhase.tsx`
 
 **Changes**:
+
 ```typescript
 export function PlayingPhase() {
   const {
@@ -567,6 +588,7 @@ export function PlayingPhase() {
 **File**: `/src/arcade-games/card-sorting/components/ResultsPhase.tsx`
 
 **Changes**:
+
 ```typescript
 export function ResultsPhase() {
   const {
@@ -623,6 +645,7 @@ export function ResultsPhase() {
 ## Enhancement 4: Spectator Mode Tests
 
 ### Location
+
 Create new file: `/src/arcade-games/card-sorting/__tests__/spectator-mode.test.tsx`
 
 ### Test Suite
@@ -894,26 +917,27 @@ describe('Card Sorting - Spectator Mode', () => {
 ## Enhancement 5: Player Ownership Tests
 
 ### Location
+
 Create new file: `/src/arcade-games/card-sorting/__tests__/player-ownership.test.tsx`
 
 ### Test Suite
 
 ```typescript
-import { describe, it, expect } from 'vitest'
-import { CardSortingValidator } from '../Validator'
-import type { CardSortingState, CardSortingMove } from '../types'
+import { describe, it, expect } from "vitest";
+import { CardSortingValidator } from "../Validator";
+import type { CardSortingState, CardSortingMove } from "../types";
 
-const validator = new CardSortingValidator()
+const validator = new CardSortingValidator();
 
-describe('Card Sorting - Player Ownership Validation', () => {
+describe("Card Sorting - Player Ownership Validation", () => {
   const createMockState = (): CardSortingState => ({
-    gamePhase: 'playing',
-    playerId: 'player_alice',
+    gamePhase: "playing",
+    playerId: "player_alice",
     playerMetadata: {
-      id: 'player_alice',
-      name: 'Alice',
-      emoji: '👧',
-      userId: 'user_123',
+      id: "player_alice",
+      name: "Alice",
+      emoji: "👧",
+      userId: "user_123",
     },
     cardCount: 8,
     showNumbers: true,
@@ -921,147 +945,147 @@ describe('Card Sorting - Player Ownership Validation', () => {
     gameStartTime: Date.now(),
     gameEndTime: null,
     selectedCards: [
-      { id: 'card_1', number: 1, abacus: null },
-      { id: 'card_2', number: 2, abacus: null },
+      { id: "card_1", number: 1, abacus: null },
+      { id: "card_2", number: 2, abacus: null },
     ],
     correctOrder: [
-      { id: 'card_1', number: 1, abacus: null },
-      { id: 'card_2', number: 2, abacus: null },
+      { id: "card_1", number: 1, abacus: null },
+      { id: "card_2", number: 2, abacus: null },
     ],
     availableCards: [
-      { id: 'card_1', number: 1, abacus: null },
-      { id: 'card_2', number: 2, abacus: null },
+      { id: "card_1", number: 1, abacus: null },
+      { id: "card_2", number: 2, abacus: null },
     ],
     placedCards: new Array(8).fill(null),
     selectedCardId: null,
     numbersRevealed: false,
     scoreBreakdown: null,
-  })
+  });
 
-  describe('Player ID Validation', () => {
-    it('should accept move from correct player', () => {
-      const state = createMockState()
+  describe("Player ID Validation", () => {
+    it("should accept move from correct player", () => {
+      const state = createMockState();
       const move: CardSortingMove = {
-        type: 'PLACE_CARD',
-        playerId: 'player_alice',
-        userId: 'user_123',
-        data: { cardId: 'card_1', position: 0 },
-      }
+        type: "PLACE_CARD",
+        playerId: "player_alice",
+        userId: "user_123",
+        data: { cardId: "card_1", position: 0 },
+      };
 
       const result = validator.validateMove(state, move, {
-        activePlayers: ['player_alice'],
-        playerOwnership: { player_alice: 'user_123' },
-      })
+        activePlayers: ["player_alice"],
+        playerOwnership: { player_alice: "user_123" },
+      });
 
-      expect(result.valid).toBe(true)
-    })
+      expect(result.valid).toBe(true);
+    });
 
-    it('should reject move from player not in active players', () => {
-      const state = createMockState()
+    it("should reject move from player not in active players", () => {
+      const state = createMockState();
       const move: CardSortingMove = {
-        type: 'PLACE_CARD',
-        playerId: 'player_bob',  // Not in activePlayers
-        userId: 'user_456',
-        data: { cardId: 'card_1', position: 0 },
-      }
+        type: "PLACE_CARD",
+        playerId: "player_bob", // Not in activePlayers
+        userId: "user_456",
+        data: { cardId: "card_1", position: 0 },
+      };
 
       const result = validator.validateMove(state, move, {
-        activePlayers: ['player_alice'],  // Only Alice is active
+        activePlayers: ["player_alice"], // Only Alice is active
         playerOwnership: {
-          player_alice: 'user_123',
-          player_bob: 'user_456',
+          player_alice: "user_123",
+          player_bob: "user_456",
         },
-      })
+      });
 
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('PLAYER not in game')
-    })
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("PLAYER not in game");
+    });
 
-    it('should reject move when user does not own player', () => {
-      const state = createMockState()
+    it("should reject move when user does not own player", () => {
+      const state = createMockState();
       const move: CardSortingMove = {
-        type: 'PLACE_CARD',
-        playerId: 'player_alice',
-        userId: 'user_456',  // Wrong user ID
-        data: { cardId: 'card_1', position: 0 },
-      }
+        type: "PLACE_CARD",
+        playerId: "player_alice",
+        userId: "user_456", // Wrong user ID
+        data: { cardId: "card_1", position: 0 },
+      };
 
       const result = validator.validateMove(state, move, {
-        activePlayers: ['player_alice'],
-        playerOwnership: { player_alice: 'user_123' },  // Alice owned by user_123
-      })
+        activePlayers: ["player_alice"],
+        playerOwnership: { player_alice: "user_123" }, // Alice owned by user_123
+      });
 
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('USER does not own this PLAYER')
-    })
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("USER does not own this PLAYER");
+    });
 
-    it('should reject move from spectator (no player ownership)', () => {
-      const state = createMockState()
+    it("should reject move from spectator (no player ownership)", () => {
+      const state = createMockState();
       const move: CardSortingMove = {
-        type: 'START_GAME',
-        playerId: 'player_spectator',
-        userId: 'user_999',
+        type: "START_GAME",
+        playerId: "player_spectator",
+        userId: "user_999",
         data: {
           playerMetadata: {
-            id: 'player_spectator',
-            name: 'Spectator',
-            emoji: '👀',
-            userId: 'user_999',
+            id: "player_spectator",
+            name: "Spectator",
+            emoji: "👀",
+            userId: "user_999",
           },
           selectedCards: [],
         },
-      }
+      };
 
       const result = validator.validateMove(state, move, {
-        activePlayers: ['player_alice'],  // Spectator not in active players
+        activePlayers: ["player_alice"], // Spectator not in active players
         playerOwnership: {
-          player_alice: 'user_123',
-          player_spectator: 'user_999',
+          player_alice: "user_123",
+          player_spectator: "user_999",
         },
-      })
+      });
 
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('PLAYER not in game')
-    })
-  })
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("PLAYER not in game");
+    });
+  });
 
-  describe('Single Player Game Constraints', () => {
-    it('should allow only one active player in the game', () => {
-      const state = createMockState()
+  describe("Single Player Game Constraints", () => {
+    it("should allow only one active player in the game", () => {
+      const state = createMockState();
 
       // Card Sorting is single-player (maxPlayers: 1)
       // If somehow multiple players try to join, validator should reject
 
       const move: CardSortingMove = {
-        type: 'START_GAME',
-        playerId: 'player_bob',
-        userId: 'user_456',
+        type: "START_GAME",
+        playerId: "player_bob",
+        userId: "user_456",
         data: {
           playerMetadata: {
-            id: 'player_bob',
-            name: 'Bob',
-            emoji: '👦',
-            userId: 'user_456',
+            id: "player_bob",
+            name: "Bob",
+            emoji: "👦",
+            userId: "user_456",
           },
           selectedCards: [],
         },
-      }
+      };
 
       // State already has player_alice playing
       const result = validator.validateMove(state, move, {
-        activePlayers: ['player_alice', 'player_bob'],  // Two active players
+        activePlayers: ["player_alice", "player_bob"], // Two active players
         playerOwnership: {
-          player_alice: 'user_123',
-          player_bob: 'user_456',
+          player_alice: "user_123",
+          player_bob: "user_456",
         },
-      })
+      });
 
       // Should reject if game is single-player only
       // (This depends on validator implementation)
-      expect(result.valid).toBe(false)
-    })
-  })
-})
+      expect(result.valid).toBe(false);
+    });
+  });
+});
 ```
 
 ---
@@ -1069,12 +1093,14 @@ describe('Card Sorting - Player Ownership Validation', () => {
 ## Implementation Checklist
 
 ### Phase 1: Context Updates
+
 - [ ] Add `localPlayerId` to `CardSortingContextValue` interface
 - [ ] Add `isSpectating` to `CardSortingContextValue` interface
 - [ ] Expose both in context value object
 - [ ] Verify hook exports work correctly
 
 ### Phase 2: Spectator Indicators
+
 - [ ] Add spectator banner to `GameComponent.tsx`
 - [ ] Add setup phase spectator prompt to `SetupPhase.tsx`
 - [ ] Test banner appears for spectators
@@ -1082,6 +1108,7 @@ describe('Card Sorting - Player Ownership Validation', () => {
 - [ ] Test player name/emoji displayed correctly
 
 ### Phase 3: Disabled States
+
 - [ ] Update `SetupPhase.tsx` buttons with disabled state
 - [ ] Update `PlayingPhase.tsx` cards and buttons with disabled state
 - [ ] Update `ResultsPhase.tsx` buttons with disabled state
@@ -1089,6 +1116,7 @@ describe('Card Sorting - Player Ownership Validation', () => {
 - [ ] Test interactions actually blocked
 
 ### Phase 4: Testing
+
 - [ ] Create spectator mode test file
 - [ ] Write spectator indicator tests
 - [ ] Write disabled controls tests
@@ -1100,6 +1128,7 @@ describe('Card Sorting - Player Ownership Validation', () => {
 - [ ] All tests pass
 
 ### Phase 5: Quality & Deploy
+
 - [ ] Run `npm run pre-commit` (format, lint, type-check)
 - [ ] Manual testing: Join room as spectator
 - [ ] Manual testing: Verify banner appears
@@ -1114,6 +1143,7 @@ describe('Card Sorting - Player Ownership Validation', () => {
 ## Visual Examples
 
 ### Spectating During Playing Phase
+
 ```
 ┌───────────────────────────────────────────────────────┐
 │ 👀 Spectating Alice 👧's game                         │
@@ -1134,6 +1164,7 @@ describe('Card Sorting - Player Ownership Validation', () => {
 ```
 
 ### Spectating During Setup Phase
+
 ```
 ┌───────────────────────────────────────────────────────┐
 │            👤 Add a Player to Start                   │
@@ -1155,23 +1186,27 @@ describe('Card Sorting - Player Ownership Validation', () => {
 ## Success Criteria
 
 ✅ **User Experience**:
+
 - Spectators immediately know they're watching, not playing
 - All interactive controls clearly disabled
 - Spectators can see whose game they're watching
 - Clear call-to-action to add a player to join
 
 ✅ **Functional**:
+
 - No moves sent from spectators (existing behavior maintained)
 - Real-time state updates visible to spectators
 - Context correctly exposes spectator state
 
 ✅ **Code Quality**:
+
 - All tests pass
 - TypeScript types correct
 - Pre-commit checks pass
 - No regressions in player functionality
 
 ✅ **Accessibility**:
+
 - Disabled buttons use `disabled` attribute (not just styling)
 - Screen readers announce disabled state
 - Color contrast meets WCAG AA standards

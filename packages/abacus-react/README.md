@@ -28,7 +28,6 @@ yarn add @soroban/abacus-react
 
 ## Quick Start
 
-
 ### Basic Usage
 
 Simple abacus showing a number
@@ -36,12 +35,7 @@ Simple abacus showing a number
 <img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/basic-usage.svg" alt="Basic Usage">
 
 ```tsx
-<AbacusReact
-  value={123}
-  columns={3}
-  showNumbers={true}
-  scaleFactor={1.0}
-/>
+<AbacusReact value={123} columns={3} showNumbers={true} scaleFactor={1.0} />
 ```
 
 ### Interactive Mode
@@ -58,8 +52,8 @@ Clickable abacus with animations
   animated={true}
   showNumbers={true}
   callbacks={{
-    onValueChange: (newValue) => console.log('New value:', newValue),
-    onBeadClick: (event) => console.log('Bead clicked:', event)
+    onValueChange: (newValue) => console.log("New value:", newValue),
+    onBeadClick: (event) => console.log("Bead clicked:", event),
   }}
 />
 ```
@@ -77,13 +71,11 @@ Personalized colors and highlights
   colorScheme="place-value"
   beadShape="circle"
   customStyles={{
-    heavenBeads: { fill: '#ff6b35' },
-    earthBeads: { fill: '#3498db' },
-    numerals: { color: '#2c3e50', fontWeight: 'bold' }
+    heavenBeads: { fill: "#ff6b35" },
+    earthBeads: { fill: "#3498db" },
+    numerals: { color: "#2c3e50", fontWeight: "bold" },
   }}
-  highlightBeads={[
-    { columnIndex: 1, beadType: 'heaven' }
-  ]}
+  highlightBeads={[{ columnIndex: 1, beadType: "heaven" }]}
 />
 ```
 
@@ -115,6 +107,7 @@ import { AbacusReact, ABACUS_THEMES } from '@soroban/abacus-react';
 ```
 
 **Available Themes:**
+
 - `light` - Solid white frame with subtle gray accents (best for light backgrounds)
 - `dark` - Translucent white with subtle glow (best for dark backgrounds)
 - `trophy` - Golden frame with warm tones (best for achievements/rewards)
@@ -128,27 +121,24 @@ For static, non-interactive displays that work in React Server Components:
 
 ```tsx
 // IMPORTANT: Use /static import path for RSC compatibility!
-import { AbacusStatic } from '@soroban/abacus-react/static';
+import { AbacusStatic } from "@soroban/abacus-react/static";
 
 // ✅ Works in React Server Components - no "use client" needed!
 // ✅ No JavaScript sent to client
 // ✅ Perfect for SSG, SSR, and static previews
 
-<AbacusStatic
-  value={123}
-  columns="auto"
-  hideInactiveBeads
-  compact
-/>
+<AbacusStatic value={123} columns="auto" hideInactiveBeads compact />;
 ```
 
 **Import paths:**
+
 - `@soroban/abacus-react` - Full package (client components with hooks/animations)
 - `@soroban/abacus-react/static` - Server-compatible components only (no client code)
 
 **Guaranteed Visual Consistency:**
 
 Both `AbacusStatic` and `AbacusReact` share the same underlying layout engine. **Same props = same exact SVG output.** This ensures:
+
 - Static previews match interactive versions pixel-perfect
 - Server-rendered abaci look identical to client-rendered ones
 - PDF generation produces accurate representations
@@ -204,36 +194,36 @@ This architecture eliminates code duplication (~560 lines removed in the refacto
 
 **When to use `AbacusStatic` vs `AbacusReact`:**
 
-| Feature | AbacusStatic | AbacusReact |
-|---------|--------------|-------------|
-| React Server Components | ✅ Yes | ❌ No (requires "use client") |
-| Client-side JavaScript | ❌ None | ✅ Yes |
-| User interaction | ❌ No | ✅ Click/drag beads |
-| Animations | ❌ No | ✅ Smooth transitions |
-| Sound effects | ❌ No | ✅ Optional sounds |
-| 3D effects | ❌ No | ✅ Yes |
-| **Visual output** | **✅ Identical** | **✅ Identical** |
-| Bundle size | 📦 Minimal | 📦 Full-featured |
-| Use cases | Preview cards, thumbnails, static pages, PDFs | Interactive tutorials, games, tools |
+| Feature                 | AbacusStatic                                  | AbacusReact                         |
+| ----------------------- | --------------------------------------------- | ----------------------------------- |
+| React Server Components | ✅ Yes                                        | ❌ No (requires "use client")       |
+| Client-side JavaScript  | ❌ None                                       | ✅ Yes                              |
+| User interaction        | ❌ No                                         | ✅ Click/drag beads                 |
+| Animations              | ❌ No                                         | ✅ Smooth transitions               |
+| Sound effects           | ❌ No                                         | ✅ Optional sounds                  |
+| 3D effects              | ❌ No                                         | ✅ Yes                              |
+| **Visual output**       | **✅ Identical**                              | **✅ Identical**                    |
+| Bundle size             | 📦 Minimal                                    | 📦 Full-featured                    |
+| Use cases               | Preview cards, thumbnails, static pages, PDFs | Interactive tutorials, games, tools |
 
 ```tsx
 // Example: Server Component with static abacus cards
 // app/flashcards/page.tsx
-import { AbacusStatic } from '@soroban/abacus-react/static'
+import { AbacusStatic } from "@soroban/abacus-react/static";
 
 export default function FlashcardsPage() {
-  const numbers = [1, 5, 10, 25, 50, 100]
+  const numbers = [1, 5, 10, 25, 50, 100];
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      {numbers.map(num => (
+      {numbers.map((num) => (
         <div key={num} className="card">
           <AbacusStatic value={num} columns="auto" compact />
           <p>{num}</p>
         </div>
       ))}
     </div>
-  )
+  );
 }
 ```
 
@@ -271,26 +261,38 @@ Educational guidance with tooltips and column highlighting
   columns={3}
   interactive={true}
   // Highlight the tens column with a label
-  highlightColumns={[1]}  // Highlight column index 1 (tens)
-  columnLabels={['ones', 'tens', 'hundreds']}  // Add labels to columns
-  overlays={[{
-    id: 'tip',
-    type: 'tooltip',
-    target: { type: 'bead', columnIndex: 1, beadType: 'earth', beadPosition: 1 },
-    content: <div>Click this bead in the tens column!</div>,
-    offset: { x: 0, y: -30 }
-  }]}
+  highlightColumns={[1]} // Highlight column index 1 (tens)
+  columnLabels={["ones", "tens", "hundreds"]} // Add labels to columns
+  overlays={[
+    {
+      id: "tip",
+      type: "tooltip",
+      target: {
+        type: "bead",
+        columnIndex: 1,
+        beadType: "earth",
+        beadPosition: 1,
+      },
+      content: <div>Click this bead in the tens column!</div>,
+      offset: { x: 0, y: -30 },
+    },
+  ]}
   callbacks={{
     onBeadClick: (event) => {
-      if (event.columnIndex === 1 && event.beadType === 'earth' && event.position === 1) {
-        console.log('Correct! You clicked the tens column.');
+      if (
+        event.columnIndex === 1 &&
+        event.beadType === "earth" &&
+        event.position === 1
+      ) {
+        console.log("Correct! You clicked the tens column.");
       }
-    }
+    },
   }}
 />
 ```
 
 **Column Highlighting:**
+
 - `highlightColumns` - Array of column indices to highlight (e.g., `[0, 2]` highlights first and third columns)
 - `columnLabels` - Optional labels displayed above each column (indexed left to right)
 
@@ -322,10 +324,10 @@ Material-based rendering with lighting effects and textures.
   columns={4}
   enhanced3d="realistic"
   material3d={{
-    heavenBeads: 'glossy',   // 'glossy' | 'satin' | 'matte'
-    earthBeads: 'satin',
-    lighting: 'top-down',    // 'top-down' | 'ambient' | 'dramatic'
-    woodGrain: true          // Add wood texture to frame
+    heavenBeads: "glossy", // 'glossy' | 'satin' | 'matte'
+    earthBeads: "satin",
+    lighting: "top-down", // 'top-down' | 'ambient' | 'dramatic'
+    woodGrain: true, // Add wood texture to frame
   }}
   interactive
   animated
@@ -333,11 +335,13 @@ Material-based rendering with lighting effects and textures.
 ```
 
 **Materials:**
+
 - `glossy` - High shine with strong highlights
 - `satin` - Balanced shine (default)
 - `matte` - Subtle shading, no shine
 
 **Lighting:**
+
 - `top-down` - Balanced directional light from above
 - `ambient` - Soft light from all directions
 - `dramatic` - Strong directional light for high contrast
@@ -352,13 +356,13 @@ Maximum satisfaction with enhanced physics and interactive effects.
   columns={4}
   enhanced3d="delightful"
   material3d={{
-    heavenBeads: 'glossy',
-    earthBeads: 'satin',
-    lighting: 'dramatic',
-    woodGrain: true
+    heavenBeads: "glossy",
+    earthBeads: "satin",
+    lighting: "dramatic",
+    woodGrain: true,
   }}
   physics3d={{
-    hoverParallax: true      // Beads lift on hover with Z-depth
+    hoverParallax: true, // Beads lift on hover with Z-depth
   }}
   interactive
   animated
@@ -367,6 +371,7 @@ Maximum satisfaction with enhanced physics and interactive effects.
 ```
 
 **Physics Options:**
+
 - `hoverParallax` - Beads near mouse cursor lift up with depth perception
 
 All 3D modes work with existing configurations and preserve exact geometry.
@@ -378,29 +383,29 @@ All 3D modes work with existing configurations and preserve exact geometry.
 ```tsx
 interface AbacusConfig {
   // Display
-  value?: number;                    // 0-99999, number to display
-  columns?: number | 'auto';         // Number of columns or auto-calculate
-  showNumbers?: boolean;             // Show place value numbers
-  scaleFactor?: number;              // 0.5 - 3.0, size multiplier
+  value?: number; // 0-99999, number to display
+  columns?: number | "auto"; // Number of columns or auto-calculate
+  showNumbers?: boolean; // Show place value numbers
+  scaleFactor?: number; // 0.5 - 3.0, size multiplier
 
   // Appearance
-  beadShape?: 'diamond' | 'square' | 'circle';
-  colorScheme?: 'monochrome' | 'place-value' | 'alternating' | 'heaven-earth';
-  colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
-  hideInactiveBeads?: boolean;       // Hide/show inactive beads
+  beadShape?: "diamond" | "square" | "circle";
+  colorScheme?: "monochrome" | "place-value" | "alternating" | "heaven-earth";
+  colorPalette?: "default" | "colorblind" | "mnemonic" | "grayscale" | "nature";
+  hideInactiveBeads?: boolean; // Hide/show inactive beads
 
   // Layout & Frame
-  frameVisible?: boolean;            // Show/hide column posts and reckoning bar
-  compact?: boolean;                 // Compact layout (implies frameVisible=false)
+  frameVisible?: boolean; // Show/hide column posts and reckoning bar
+  compact?: boolean; // Compact layout (implies frameVisible=false)
 
   // Interaction
-  interactive?: boolean;             // Enable user interactions
-  animated?: boolean;               // Enable animations
-  gestures?: boolean;               // Enable drag gestures
+  interactive?: boolean; // Enable user interactions
+  animated?: boolean; // Enable animations
+  gestures?: boolean; // Enable drag gestures
 
   // Tutorial Features
-  highlightColumns?: number[];       // Highlight specific columns by index
-  columnLabels?: string[];           // Optional labels for columns
+  highlightColumns?: number[]; // Highlight specific columns by index
+  columnLabels?: string[]; // Optional labels for columns
 }
 ```
 
@@ -418,12 +423,12 @@ interface AbacusCallbacks {
 }
 
 interface BeadClickEvent {
-  columnIndex: number;              // 0, 1, 2...
-  beadType: 'heaven' | 'earth';     // Type of bead
-  position: number;                 // Position within type (0-3 for earth)
-  active: boolean;                  // Current state
-  value: number;                    // Numeric value (1 or 5)
-  bead: BeadConfig;                 // Full bead configuration
+  columnIndex: number; // 0, 1, 2...
+  beadType: "heaven" | "earth"; // Type of bead
+  position: number; // Position within type (0-3 for earth)
+  active: boolean; // Current state
+  value: number; // Numeric value (1 or 5)
+  bead: BeadConfig; // Full bead configuration
 }
 ```
 
@@ -436,41 +441,43 @@ Target any visual element with precise control:
 ```tsx
 const customStyles = {
   // Global defaults
-  heavenBeads: { fill: '#ff6b35' },
-  earthBeads: { fill: '#3498db' },
+  heavenBeads: { fill: "#ff6b35" },
+  earthBeads: { fill: "#3498db" },
   activeBeads: { opacity: 1.0 },
   inactiveBeads: { opacity: 0.3 },
 
   // Column-specific overrides
   columns: {
-    0: { // Hundreds column
-      heavenBeads: { fill: '#e74c3c' },
-      earthBeads: { fill: '#2ecc71' }
-    }
+    0: {
+      // Hundreds column
+      heavenBeads: { fill: "#e74c3c" },
+      earthBeads: { fill: "#2ecc71" },
+    },
   },
 
   // Individual bead targeting
   beads: {
-    1: { // Middle column
-      heaven: { fill: '#f39c12' },
+    1: {
+      // Middle column
+      heaven: { fill: "#f39c12" },
       earth: {
-        0: { fill: '#1abc9c' }, // First earth bead
-        3: { fill: '#e67e22' }  // Fourth earth bead
-      }
-    }
+        0: { fill: "#1abc9c" }, // First earth bead
+        3: { fill: "#e67e22" }, // Fourth earth bead
+      },
+    },
   },
 
   // UI elements
-  reckoningBar: { stroke: '#34495e', strokeWidth: 3 },
-  columnPosts: { stroke: '#7f8c8d' },
+  reckoningBar: { stroke: "#34495e", strokeWidth: 3 },
+  columnPosts: { stroke: "#7f8c8d" },
   numerals: {
-    color: '#2c3e50',
-    fontSize: '14px',
-    fontFamily: 'monospace'
-  }
+    color: "#2c3e50",
+    fontSize: "14px",
+    fontFamily: "monospace",
+  },
 };
 
-<AbacusReact customStyles={customStyles} />
+<AbacusReact customStyles={customStyles} />;
 ```
 
 ### Tutorial and Overlay System
@@ -480,41 +487,45 @@ Create interactive educational experiences:
 ```tsx
 const overlays = [
   {
-    id: 'welcome-tooltip',
-    type: 'tooltip',
+    id: "welcome-tooltip",
+    type: "tooltip",
     target: {
-      type: 'bead',
+      type: "bead",
       columnIndex: 0,
-      beadType: 'earth',
-      beadPosition: 0
+      beadType: "earth",
+      beadPosition: 0,
     },
     content: (
-      <div style={{
-        background: '#333',
-        color: 'white',
-        padding: '8px',
-        borderRadius: '4px'
-      }}>
+      <div
+        style={{
+          background: "#333",
+          color: "white",
+          padding: "8px",
+          borderRadius: "4px",
+        }}
+      >
         Click me to start!
       </div>
     ),
-    offset: { x: 0, y: -30 }
-  }
+    offset: { x: 0, y: -30 },
+  },
 ];
 
 <AbacusReact
   overlays={overlays}
-  highlightBeads={[
-    { columnIndex: 0, beadType: 'earth', position: 0 }
-  ]}
+  highlightBeads={[{ columnIndex: 0, beadType: "earth", position: 0 }]}
   callbacks={{
     onBeadClick: (event) => {
-      if (event.columnIndex === 0 && event.beadType === 'earth' && event.position === 0) {
-        console.log('Tutorial step completed!');
+      if (
+        event.columnIndex === 0 &&
+        event.beadType === "earth" &&
+        event.position === 0
+      ) {
+        console.log("Tutorial step completed!");
       }
-    }
+    },
   }}
-/>
+/>;
 ```
 
 ### Bead Reference System
@@ -552,7 +563,7 @@ function AdvancedExample() {
 Calculate bead differences between values for tutorials and animations:
 
 ```tsx
-import { useAbacusDiff } from '@soroban/abacus-react';
+import { useAbacusDiff } from "@soroban/abacus-react";
 
 function Tutorial() {
   const [currentValue, setCurrentValue] = useState(5);
@@ -566,7 +577,7 @@ function Tutorial() {
       <p>{diff.summary}</p> {/* "add heaven bead in tens column, then..." */}
       <AbacusReact
         value={currentValue}
-        stepBeadHighlights={diff.highlights}  // Highlight beads that need to change
+        stepBeadHighlights={diff.highlights} // Highlight beads that need to change
         interactive
         onValueChange={setCurrentValue}
       />
@@ -577,6 +588,7 @@ function Tutorial() {
 ```
 
 **Returns:**
+
 - `changes` - Array of bead movements with direction and order
 - `highlights` - Bead highlight data for stepBeadHighlights prop
 - `hasChanges` - Boolean indicating if any changes needed
@@ -587,17 +599,19 @@ function Tutorial() {
 Convert numbers to abacus bead states:
 
 ```tsx
-import { useAbacusState } from '@soroban/abacus-react';
+import { useAbacusState } from "@soroban/abacus-react";
 
 function BeadAnalyzer() {
   const value = 123;
   const state = useAbacusState(value);
 
   // Check bead positions
-  const onesHasHeaven = state[0].heavenActive;  // false (3 < 5)
-  const tensEarthCount = state[1].earthActive;  // 2 (20 = 2 tens)
+  const onesHasHeaven = state[0].heavenActive; // false (3 < 5)
+  const tensEarthCount = state[1].earthActive; // 2 (20 = 2 tens)
 
-  return <div>Ones column heaven bead: {onesHasHeaven ? 'active' : 'inactive'}</div>;
+  return (
+    <div>Ones column heaven bead: {onesHasHeaven ? "active" : "inactive"}</div>
+  );
 }
 ```
 
@@ -606,7 +620,7 @@ function BeadAnalyzer() {
 Get exact sizing information for layout planning:
 
 ```tsx
-import { useAbacusDimensions } from '@soroban/abacus-react';
+import { useAbacusDimensions } from "@soroban/abacus-react";
 
 function MyComponent() {
   const dimensions = useAbacusDimensions(3, 1.2); // 3 columns, 1.2x scale
@@ -628,7 +642,7 @@ Low-level functions for working with abacus states and calculations:
 Convert a number to bead positions:
 
 ```tsx
-import { numberToAbacusState } from '@soroban/abacus-react';
+import { numberToAbacusState } from "@soroban/abacus-react";
 
 const state = numberToAbacusState(123, 5); // 5 columns
 // Returns: {
@@ -644,12 +658,12 @@ const state = numberToAbacusState(123, 5); // 5 columns
 Convert bead positions back to a number:
 
 ```tsx
-import { abacusStateToNumber } from '@soroban/abacus-react';
+import { abacusStateToNumber } from "@soroban/abacus-react";
 
 const state = {
   0: { heavenActive: false, earthActive: 3 },
   1: { heavenActive: false, earthActive: 2 },
-  2: { heavenActive: true, earthActive: 0 }
+  2: { heavenActive: true, earthActive: 0 },
 };
 
 const value = abacusStateToNumber(state); // 123
@@ -660,14 +674,14 @@ const value = abacusStateToNumber(state); // 123
 Calculate the exact bead movements needed between two states:
 
 ```tsx
-import { calculateBeadDiff, numberToAbacusState } from '@soroban/abacus-react';
+import { calculateBeadDiff, numberToAbacusState } from "@soroban/abacus-react";
 
 const fromState = numberToAbacusState(5);
 const toState = numberToAbacusState(15);
 const diff = calculateBeadDiff(fromState, toState);
 
 console.log(diff.summary); // "add heaven bead in tens column"
-console.log(diff.changes);  // Detailed array of movements with order
+console.log(diff.changes); // Detailed array of movements with order
 ```
 
 ### calculateBeadDiffFromValues
@@ -675,7 +689,7 @@ console.log(diff.changes);  // Detailed array of movements with order
 Convenience wrapper for calculating diff from numbers:
 
 ```tsx
-import { calculateBeadDiffFromValues } from '@soroban/abacus-react';
+import { calculateBeadDiffFromValues } from "@soroban/abacus-react";
 
 const diff = calculateBeadDiffFromValues(42, 57);
 // Equivalent to: calculateBeadDiff(numberToAbacusState(42), numberToAbacusState(57))
@@ -686,11 +700,11 @@ const diff = calculateBeadDiffFromValues(42, 57);
 Check if a value is within the supported range:
 
 ```tsx
-import { validateAbacusValue } from '@soroban/abacus-react';
+import { validateAbacusValue } from "@soroban/abacus-react";
 
 const result = validateAbacusValue(123456, 5); // 5 columns max
-console.log(result.isValid);  // false
-console.log(result.error);    // "Value exceeds maximum for 5 columns (max: 99999)"
+console.log(result.isValid); // false
+console.log(result.error); // "Value exceeds maximum for 5 columns (max: 99999)"
 ```
 
 ### areStatesEqual
@@ -698,7 +712,7 @@ console.log(result.error);    // "Value exceeds maximum for 5 columns (max: 9999
 Compare two abacus states:
 
 ```tsx
-import { areStatesEqual, numberToAbacusState } from '@soroban/abacus-react';
+import { areStatesEqual, numberToAbacusState } from "@soroban/abacus-react";
 
 const state1 = numberToAbacusState(123);
 const state2 = numberToAbacusState(123);
@@ -712,13 +726,13 @@ const isEqual = areStatesEqual(state1, state2); // true
 This is the **single source of truth** for all layout dimensions, used internally by both `AbacusStatic` and `AbacusReact` to guarantee pixel-perfect consistency.
 
 ```tsx
-import { calculateStandardDimensions } from '@soroban/abacus-react';
+import { calculateStandardDimensions } from "@soroban/abacus-react";
 
 const dimensions = calculateStandardDimensions({
   columns: 3,
   scaleFactor: 1.5,
   showNumbers: true,
-  columnLabels: ['ones', 'tens', 'hundreds']
+  columnLabels: ["ones", "tens", "hundreds"],
 });
 
 // Returns complete layout info:
@@ -746,14 +760,17 @@ const dimensions = calculateStandardDimensions({
 Used internally by `AbacusSVGRenderer` to position all beads consistently in both static and interactive modes.
 
 ```tsx
-import { calculateBeadPosition, calculateStandardDimensions } from '@soroban/abacus-react';
+import {
+  calculateBeadPosition,
+  calculateStandardDimensions,
+} from "@soroban/abacus-react";
 
 const dimensions = calculateStandardDimensions({ columns: 3, scaleFactor: 1 });
 const bead = {
-  type: 'heaven',
+  type: "heaven",
   active: true,
   position: 0,
-  placeValue: 1  // tens column
+  placeValue: 1, // tens column
 };
 
 const position = calculateBeadPosition(bead, dimensions);
@@ -769,21 +786,23 @@ Useful for custom rendering or positioning tooltips/overlays relative to specifi
 ```tsx
 function MathLesson() {
   const [problem, setProblem] = useState({ a: 23, b: 45 });
-  const [step, setStep] = useState('show-first');
+  const [step, setStep] = useState("show-first");
 
   return (
     <div>
-      <h3>Add {problem.a} + {problem.b}</h3>
+      <h3>
+        Add {problem.a} + {problem.b}
+      </h3>
 
       <AbacusReact
-        value={step === 'show-first' ? problem.a : 0}
-        interactive={step === 'add-second'}
+        value={step === "show-first" ? problem.a : 0}
+        interactive={step === "add-second"}
         callbacks={{
           onValueChange: (value) => {
             if (value === problem.a + problem.b) {
               celebrate();
             }
-          }
+          },
         }}
       />
     </div>
@@ -839,8 +858,8 @@ import {
   calculateBeadDiffFromValues,
   validateAbacusValue,
   areStatesEqual,
-  calculateStandardDimensions,  // NEW: Shared layout calculator
-  calculateBeadPosition,         // NEW: Bead position calculator
+  calculateStandardDimensions, // NEW: Shared layout calculator
+  calculateBeadPosition, // NEW: Bead position calculator
 
   // Theme Presets
   ABACUS_THEMES,
@@ -857,9 +876,9 @@ import {
   BeadDiffResult,
   BeadDiffOutput,
   AbacusThemeName,
-  AbacusLayoutDimensions,        // NEW: Complete layout dimensions type
-  BeadPositionConfig             // NEW: Bead config for position calculation
-} from '@soroban/abacus-react';
+  AbacusLayoutDimensions, // NEW: Complete layout dimensions type
+  BeadPositionConfig, // NEW: Bead config for position calculation
+} from "@soroban/abacus-react";
 
 // All interfaces fully typed for excellent developer experience
 ```

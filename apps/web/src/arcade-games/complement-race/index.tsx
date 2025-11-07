@@ -74,5 +74,9 @@ export const complementRaceGame = defineGame<
 })
 
 // Re-export types for convenience
-export type { ComplementRaceConfig, ComplementRaceState, ComplementRaceMove } from './types'
+export type {
+  ComplementRaceConfig,
+  ComplementRaceState,
+  ComplementRaceMove,
+} from './types'
 export { complementRaceValidator } from './Validator'

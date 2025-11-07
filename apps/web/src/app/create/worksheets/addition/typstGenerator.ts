@@ -2,6 +2,8 @@
 
 import type { AdditionProblem, WorksheetConfig } from './types'
 import { generateTypstHelpers, generateProblemStackFunction } from './typstHelpers'
+import { analyzeProblem } from './problemAnalysis'
+import { resolveDisplayForProblem } from './displayRules'
 
 /**
  * Chunk array into pages of specified size
@@ -23,7 +25,23 @@ function generatePageTypst(
   problemOffset: number,
   rowsPerPage: number
 ): string {
-  const problemsTypst = pageProblems.map((p) => `  (a: ${p.a}, b: ${p.b}),`).join('\n')
+  // Analyze each problem and resolve display options
+  const enrichedProblems = pageProblems.map((p) => {
+    const meta = analyzeProblem(p.a, p.b)
+    const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
+    return {
+      ...p,
+      ...displayOptions,
+    }
+  })
+
+  // Generate Typst problem data with per-problem display flags
+  const problemsTypst = enrichedProblems
+    .map(
+      (p) =>
+        `  (a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
+    )
+    .join('\n')
 
   // Calculate actual number of rows on this page
   const actualRows = Math.ceil(pageProblems.length / config.cols)
@@ -39,11 +57,15 @@ function generatePageTypst(
   const problemBoxHeight = availableHeight / actualRows
   const problemBoxWidth = contentWidth / config.cols
 
+  // Calculate cell size assuming MAXIMUM possible embellishments
+  // Check if ANY problem on this page might show ten-frames
+  const anyProblemMayShowTenFrames = enrichedProblems.some((p) => p.showTenFrames)
+
   // Calculate cell size to fill the entire problem box
   // Without ten-frames: 5 rows (carry, first number, second number, line, answer)
   // With ten-frames: 5 rows + ten-frames row (0.8 * cellSize for square cells)
   // Total with ten-frames: 5.8 rows, reduced breathing room to maximize size
-  const cellSize = config.showTenFrames ? problemBoxHeight / 6.0 : problemBoxHeight / 4.5
+  const cellSize = anyProblemMayShowTenFrames ? problemBoxHeight / 6.0 : problemBoxHeight / 4.5
 
   return String.raw`
 // addition-worksheet-page.typ (auto-generated)
@@ -59,13 +81,7 @@ function generatePageTypst(
 // Single non-breakable block to ensure one page
 #block(breakable: false)[
 
-#let grid-stroke = ${config.showCellBorder ? '(thickness: 1pt, dash: "dashed", paint: gray.darken(20%))' : 'none'}
 #let heavy-stroke = 0.8pt
-#let show-carries = ${config.showCarryBoxes ? 'true' : 'false'}
-#let show-answers = ${config.showAnswerBoxes ? 'true' : 'false'}
-#let show-colors = ${config.showPlaceValueColors ? 'true' : 'false'}
-#let show-numbers = ${config.showProblemNumbers ? 'true' : 'false'}
-#let show-ten-frames = ${config.showTenFrames ? 'true' : 'false'}
 #let show-ten-frames-for-all = ${config.showTenFramesForAll ? 'true' : 'false'}
 
 ${generateTypstHelpers(cellSize)}
@@ -80,13 +96,24 @@ ${generateProblemStackFunction(cellSize)}
   let bT = calc.floor(calc.rem(b, 100) / 10)
   let bO = calc.rem(b, 10)
 
+  // Extract per-problem display flags
+  let grid-stroke = if problem.showCellBorder { (thickness: 1pt, dash: "dashed", paint: gray.darken(20%)) } else { none }
+
   box(
     inset: 0pt,
     width: ${problemBoxWidth}in,
-    height: ${problemBoxHeight}in
+    height: ${problemBoxHeight}in,
+    stroke: grid-stroke
   )[
     #align(center + horizon)[
-      #problem-stack(a, b, aT, aO, bT, bO, index)
+      #problem-stack(
+        a, b, aT, aO, bT, bO, index,
+        problem.showCarryBoxes,
+        problem.showAnswerBoxes,
+        problem.showPlaceValueColors,
+        problem.showTenFrames,
+        problem.showProblemNumbers
+      )
     ]
   ]
 }
@@ -109,7 +136,6 @@ ${problemsTypst}
   columns: ${config.cols},
   column-gutter: 0pt,
   row-gutter: 0pt,
-  stroke: grid-stroke,
   ..for r in range(0, ${actualRows}) {
     for c in range(0, ${config.cols}) {
       let idx = r * ${config.cols} + c

@@ -27,7 +27,13 @@ const DEFAULT_STATIONS: Station[] = [
   { id: 'hillside', name: 'Hillside', position: 40, icon: '⛰️', emoji: '⛰️' },
   { id: 'canyon', name: 'Canyon View', position: 60, icon: '🏜️', emoji: '🏜️' },
   { id: 'meadows', name: 'Meadows', position: 80, icon: '🌾', emoji: '🌾' },
-  { id: 'grand-central', name: 'Grand Central', position: 100, icon: '🏛️', emoji: '🏛️' },
+  {
+    id: 'grand-central',
+    name: 'Grand Central',
+    position: 100,
+    icon: '🏛️',
+    emoji: '🏛️',
+  },
 ]
 
 const PASSENGER_NAMES = [
@@ -152,7 +158,10 @@ export class ComplementRaceValidator
     }
 
     if (activePlayers.length > state.config.maxPlayers) {
-      return { valid: false, error: `Too many players (max ${state.config.maxPlayers})` }
+      return {
+        valid: false,
+        error: `Too many players (max ${state.config.maxPlayers})`,
+      }
     }
 
     // Initialize player states
@@ -444,7 +453,10 @@ export class ComplementRaceValidator
     carIndex: number
   ): ValidationResult {
     if (state.config.style !== 'sprint') {
-      return { valid: false, error: 'Passengers only available in sprint mode' }
+      return {
+        valid: false,
+        error: 'Passengers only available in sprint mode',
+      }
     }
 
     const player = state.players[playerId]
@@ -512,7 +524,10 @@ export class ComplementRaceValidator
     passengerId: string
   ): ValidationResult {
     if (state.config.style !== 'sprint') {
-      return { valid: false, error: 'Passengers only available in sprint mode' }
+      return {
+        valid: false,
+        error: 'Passengers only available in sprint mode',
+      }
     }
 
     const player = state.players[playerId]

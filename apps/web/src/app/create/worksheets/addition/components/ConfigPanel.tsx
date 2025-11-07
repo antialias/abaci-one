@@ -2,6 +2,7 @@
 
 import type React from 'react'
 import * as Checkbox from '@radix-ui/react-checkbox'
+import * as Slider from '@radix-ui/react-slider'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
@@ -26,6 +27,7 @@ import {
   type DifficultyLevel,
   type DifficultyMode,
 } from '../difficultyProfiles'
+import { defaultAdditionConfig } from '../../config-schemas'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -198,10 +200,23 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
   // Helper function to handle difficulty adjustments
   const handleDifficultyChange = (mode: DifficultyMode, direction: 'harder' | 'easier') => {
+    // Defensive: Ensure all required fields are defined before calling makeHarder/makeEasier
+    // This prevents "Cannot read properties of undefined" errors in production
+
+    // Log warning if any fields are missing (helps debug production issues)
+    if (!formState.displayRules || !formState.pAnyStart || !formState.pAllStart) {
+      console.error('[ConfigPanel] Missing required fields for difficulty adjustment!', {
+        hasDisplayRules: !!formState.displayRules,
+        hasPAnyStart: formState.pAnyStart !== undefined,
+        hasPAllStart: formState.pAllStart !== undefined,
+        formState,
+      })
+    }
+
     const currentState = {
-      pAnyStart: formState.pAnyStart!,
-      pAllStart: formState.pAllStart!,
-      displayRules: formState.displayRules!,
+      pAnyStart: formState.pAnyStart ?? defaultAdditionConfig.pAnyStart,
+      pAllStart: formState.pAllStart ?? defaultAdditionConfig.pAllStart,
+      displayRules: formState.displayRules ?? defaultAdditionConfig.displayRules,
     }
 
     const result =
@@ -717,7 +732,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
             return (
               <>
-                {/* Overall Difficulty Visualization */}
+                {/* Overall Difficulty Slider */}
                 <div className={css({ mb: '3' })}>
                   <div
                     className={css({
@@ -727,63 +742,242 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                       mb: '2',
                     })}
                   >
-                    Overall Difficulty
+                    Overall Difficulty: {currentDifficulty.toFixed(1)} / 10
                   </div>
 
-                  {/* Difficulty bar with preset markers */}
-                  <div
-                    className={css({
-                      position: 'relative',
-                      h: '12',
-                      bg: 'gray.100',
-                      rounded: 'full',
-                      px: '2',
-                    })}
-                  >
-                    {/* Preset markers */}
-                    {DIFFICULTY_PROGRESSION.map((profileName) => {
-                      const p = DIFFICULTY_PROFILES[profileName]
-                      const difficulty = calculateOverallDifficulty(
-                        p.regrouping.pAnyStart,
-                        p.regrouping.pAllStart,
-                        p.displayRules
-                      )
-                      const position = (difficulty / 10) * 100
+                  {/* Difficulty Slider */}
+                  <div className={css({ position: 'relative', px: '2' })}>
+                    <Slider.Root
+                      value={[currentDifficulty * 10]}
+                      max={100}
+                      step={1}
+                      onValueChange={(value) => {
+                        const targetDifficulty = value[0] / 10
 
-                      return (
-                        <div
-                          key={profileName}
+                        // Calculate preset positions in 2D space
+                        const presetPoints = DIFFICULTY_PROGRESSION.map((presetName) => {
+                          const preset = DIFFICULTY_PROFILES[presetName]
+                          const regrouping = calculateRegroupingIntensity(
+                            preset.regrouping.pAnyStart,
+                            preset.regrouping.pAllStart
+                          )
+                          const scaffolding = calculateScaffoldingLevel(
+                            preset.displayRules,
+                            regrouping
+                          )
+                          const difficulty = calculateOverallDifficulty(
+                            preset.regrouping.pAnyStart,
+                            preset.regrouping.pAllStart,
+                            preset.displayRules
+                          )
+                          return { regrouping, scaffolding, difficulty, name: presetName }
+                        })
+
+                        // Find which path segment we're on and interpolate
+                        let idealRegrouping = 0
+                        let idealScaffolding = 10
+
+                        for (let i = 0; i < presetPoints.length - 1; i++) {
+                          const start = presetPoints[i]
+                          const end = presetPoints[i + 1]
+
+                          if (
+                            targetDifficulty >= start.difficulty &&
+                            targetDifficulty <= end.difficulty
+                          ) {
+                            // Interpolate between start and end
+                            const t =
+                              (targetDifficulty - start.difficulty) /
+                              (end.difficulty - start.difficulty)
+                            idealRegrouping =
+                              start.regrouping + t * (end.regrouping - start.regrouping)
+                            idealScaffolding =
+                              start.scaffolding + t * (end.scaffolding - start.scaffolding)
+                            console.log(
+                              '[Slider] Interpolating between',
+                              start.name,
+                              'and',
+                              end.name,
+                              {
+                                t,
+                                idealRegrouping,
+                                idealScaffolding,
+                              }
+                            )
+                            break
+                          }
+                        }
+
+                        // Handle edge cases (before first or after last preset)
+                        if (targetDifficulty < presetPoints[0].difficulty) {
+                          idealRegrouping = presetPoints[0].regrouping
+                          idealScaffolding = presetPoints[0].scaffolding
+                        } else if (
+                          targetDifficulty > presetPoints[presetPoints.length - 1].difficulty
+                        ) {
+                          idealRegrouping = presetPoints[presetPoints.length - 1].regrouping
+                          idealScaffolding = presetPoints[presetPoints.length - 1].scaffolding
+                        }
+
+                        // Find valid configuration closest to ideal point on path
+                        let closestConfig: {
+                          pAnyStart: number
+                          pAllStart: number
+                          displayRules: any
+                          distance: number
+                        } | null = null
+
+                        for (let regIdx = 0; regIdx < REGROUPING_PROGRESSION.length; regIdx++) {
+                          for (
+                            let scaffIdx = 0;
+                            scaffIdx < SCAFFOLDING_PROGRESSION.length;
+                            scaffIdx++
+                          ) {
+                            const validState = findNearestValidState(regIdx, scaffIdx)
+                            if (
+                              validState.regroupingIdx !== regIdx ||
+                              validState.scaffoldingIdx !== scaffIdx
+                            ) {
+                              continue
+                            }
+
+                            const regrouping = REGROUPING_PROGRESSION[regIdx]
+                            const displayRules = SCAFFOLDING_PROGRESSION[scaffIdx]
+
+                            const actualRegrouping = calculateRegroupingIntensity(
+                              regrouping.pAnyStart,
+                              regrouping.pAllStart
+                            )
+                            const actualScaffolding = calculateScaffoldingLevel(
+                              displayRules,
+                              actualRegrouping
+                            )
+
+                            // Euclidean distance to ideal point on pedagogical path
+                            const distance = Math.sqrt(
+                              (actualRegrouping - idealRegrouping) ** 2 +
+                                (actualScaffolding - idealScaffolding) ** 2
+                            )
+
+                            if (closestConfig === null || distance < closestConfig.distance) {
+                              closestConfig = {
+                                pAnyStart: regrouping.pAnyStart,
+                                pAllStart: regrouping.pAllStart,
+                                displayRules,
+                                distance,
+                              }
+                            }
+                          }
+                        }
+
+                        if (closestConfig) {
+                          console.log('[Slider] Closest config:', {
+                            ...closestConfig,
+                            regrouping: calculateRegroupingIntensity(
+                              closestConfig.pAnyStart,
+                              closestConfig.pAllStart
+                            ),
+                            scaffolding: calculateScaffoldingLevel(
+                              closestConfig.displayRules,
+                              calculateRegroupingIntensity(
+                                closestConfig.pAnyStart,
+                                closestConfig.pAllStart
+                              )
+                            ),
+                          })
+                          const matchedProfile = getProfileFromConfig(
+                            closestConfig.pAllStart,
+                            closestConfig.pAnyStart,
+                            closestConfig.displayRules
+                          )
+                          onChange({
+                            pAnyStart: closestConfig.pAnyStart,
+                            pAllStart: closestConfig.pAllStart,
+                            displayRules: closestConfig.displayRules,
+                            difficultyProfile:
+                              matchedProfile !== 'custom' ? matchedProfile : undefined,
+                          })
+                        }
+                      }}
+                      className={css({
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        userSelect: 'none',
+                        touchAction: 'none',
+                        h: '12',
+                      })}
+                    >
+                      <Slider.Track
+                        className={css({
+                          bg: 'gray.100',
+                          position: 'relative',
+                          flexGrow: 1,
+                          h: '2',
+                          rounded: 'full',
+                        })}
+                      >
+                        <Slider.Range
                           className={css({
                             position: 'absolute',
-                            top: '50%',
-                            left: `${position}%`,
-                            transform: 'translate(-50%, -50%)',
-                            w: '2',
-                            h: '2',
-                            bg: 'gray.400',
+                            bg: 'brand.500',
+                            h: 'full',
                             rounded: 'full',
                           })}
-                          title={p.label}
                         />
-                      )
-                    })}
 
-                    {/* Current position indicator */}
-                    <div
-                      className={css({
-                        position: 'absolute',
-                        top: '50%',
-                        left: `${(currentDifficulty / 10) * 100}%`,
-                        transform: 'translate(-50%, -50%)',
-                        w: '4',
-                        h: '4',
-                        bg: 'brand.500',
-                        rounded: 'full',
-                        border: '2px solid',
-                        borderColor: 'white',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      })}
-                    />
+                        {/* Preset markers on track */}
+                        {DIFFICULTY_PROGRESSION.map((profileName) => {
+                          const p = DIFFICULTY_PROFILES[profileName]
+                          const presetDifficulty = calculateOverallDifficulty(
+                            p.regrouping.pAnyStart,
+                            p.regrouping.pAllStart,
+                            p.displayRules
+                          )
+                          const position = (presetDifficulty / 10) * 100
+
+                          return (
+                            <div
+                              key={profileName}
+                              className={css({
+                                position: 'absolute',
+                                top: '50%',
+                                left: `${position}%`,
+                                transform: 'translate(-50%, -50%)',
+                                w: '1.5',
+                                h: '1.5',
+                                bg: 'gray.400',
+                                rounded: 'full',
+                                pointerEvents: 'none',
+                                zIndex: 1,
+                              })}
+                              title={p.label}
+                            />
+                          )
+                        })}
+                      </Slider.Track>
+
+                      <Slider.Thumb
+                        className={css({
+                          display: 'block',
+                          w: '5',
+                          h: '5',
+                          bg: 'white',
+                          border: '2px solid',
+                          borderColor: 'brand.500',
+                          rounded: 'full',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          _hover: {
+                            bg: 'brand.50',
+                          },
+                          _focus: {
+                            outline: 'none',
+                            boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.1)',
+                          },
+                        })}
+                      />
+                    </Slider.Root>
                   </div>
 
                   {/* Status text */}

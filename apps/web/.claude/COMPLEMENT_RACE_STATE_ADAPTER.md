@@ -5,12 +5,14 @@
 The existing single-player UI components were deeply coupled to a specific state shape that differed from the new multiplayer state structure:
 
 **Old Single-Player State**:
+
 - `currentQuestion` - single question object at root level
 - `correctAnswers`, `streak`, `score` - at root level
 - `gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'`
 - Config fields at root: `mode`, `style`, `complementDisplay`
 
 **New Multiplayer State**:
+
 - `currentQuestions: Record<playerId, question>` - per player
 - `players: Record<playerId, PlayerState>` - stats nested in player objects
 - `gamePhase: 'setup' | 'lobby' | 'countdown' | 'playing' | 'results'`
@@ -33,6 +35,7 @@ Defined an interface that matches the old single-player `GameState` shape, allow
 #### 2. Local UI State
 
 Uses `useState` to track local UI state that doesn't need server synchronization:
+
 - `currentInput` - what user is typing
 - `previousQuestion` - for animations
 - `isPaused` - local pause state
@@ -47,12 +50,14 @@ Transforms multiplayer state into compatible single-player shape:
 
 ```typescript
 const compatibleState = useMemo((): CompatibleGameState => {
-  const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
+  const localPlayer = localPlayerId
+    ? multiplayerState.players[localPlayerId]
+    : null;
 
   // Map gamePhase: setup/lobby -> controls
-  let gamePhase = multiplayerState.gamePhase
-  if (gamePhase === 'setup' || gamePhase === 'lobby') {
-    gamePhase = 'controls'
+  let gamePhase = multiplayerState.gamePhase;
+  if (gamePhase === "setup" || gamePhase === "lobby") {
+    gamePhase = "controls";
   }
 
   return {
@@ -70,7 +75,7 @@ const compatibleState = useMemo((): CompatibleGameState => {
     streak: localPlayer?.streak || 0,
 
     // Map AI opponents to old aiRacers format
-    aiRacers: multiplayerState.aiOpponents.map(ai => ({
+    aiRacers: multiplayerState.aiOpponents.map((ai) => ({
       id: ai.id,
       name: ai.name,
       position: ai.position,
@@ -81,8 +86,8 @@ const compatibleState = useMemo((): CompatibleGameState => {
     currentInput: localUIState.currentInput,
     adaptiveFeedback: localUIState.adaptiveFeedback,
     // ... etc
-  }
-}, [multiplayerState, localPlayerId, localUIState])
+  };
+}, [multiplayerState, localPlayerId, localUIState]);
 ```
 
 #### 4. Compatibility Dispatch
@@ -90,26 +95,29 @@ const compatibleState = useMemo((): CompatibleGameState => {
 Maps old reducer action types to new action creators:
 
 ```typescript
-const dispatch = useCallback((action: { type: string; [key: string]: any }) => {
-  switch (action.type) {
-    case 'START_COUNTDOWN':
-    case 'BEGIN_GAME':
-      startGame()
-      break
+const dispatch = useCallback(
+  (action: { type: string; [key: string]: any }) => {
+    switch (action.type) {
+      case "START_COUNTDOWN":
+      case "BEGIN_GAME":
+        startGame();
+        break;
 
-    case 'SUBMIT_ANSWER':
-      const responseTime = Date.now() - multiplayerState.questionStartTime
-      submitAnswer(action.answer, responseTime)
-      break
+      case "SUBMIT_ANSWER":
+        const responseTime = Date.now() - multiplayerState.questionStartTime;
+        submitAnswer(action.answer, responseTime);
+        break;
 
-    // Local UI state actions
-    case 'UPDATE_INPUT':
-      setLocalUIState(prev => ({ ...prev, currentInput: action.input }))
-      break
+      // Local UI state actions
+      case "UPDATE_INPUT":
+        setLocalUIState((prev) => ({ ...prev, currentInput: action.input }));
+        break;
 
-    // ... etc
-  }
-}, [startGame, submitAnswer, multiplayerState.questionStartTime])
+      // ... etc
+    }
+  },
+  [startGame, submitAnswer, multiplayerState.questionStartTime],
+);
 ```
 
 ## Benefits
@@ -132,11 +140,13 @@ const dispatch = useCallback((action: { type: string; [key: string]: any }) => {
 ## Testing
 
 ### Type Checking
+
 - ✅ No TypeScript errors in new code
 - ✅ All component files compile successfully
 - ✅ Only pre-existing errors remain (known @soroban/abacus-react issue)
 
 ### Format & Lint
+
 - ✅ Code formatted with Biome
 - ✅ No new lint warnings
 - ✅ All style guidelines followed

@@ -40,6 +40,8 @@ Thumbs.db
 README.md
 docs/
 *.md
+# EXCEPTION: Include blog content markdown files
+!apps/web/content/**/*.md
 
 # Python cache
 __pycache__

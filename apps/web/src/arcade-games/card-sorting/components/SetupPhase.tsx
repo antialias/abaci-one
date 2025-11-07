@@ -206,7 +206,12 @@ export function SetupPhase() {
                   justifyContent: 'center',
                 })}
               >
-                <div className={css({ transform: 'scale(0.35)', transformOrigin: 'center' })}>
+                <div
+                  className={css({
+                    transform: 'scale(0.35)',
+                    transformOrigin: 'center',
+                  })}
+                >
                   <AbacusReact value={value} columns={2} showNumbers={false} />
                 </div>
               </div>

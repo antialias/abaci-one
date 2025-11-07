@@ -46,7 +46,12 @@ export default function TestStaticAbacusPage() {
       </div>
 
       <div
-        style={{ marginTop: '40px', padding: '20px', background: '#f0fdf4', borderRadius: '8px' }}
+        style={{
+          marginTop: '40px',
+          padding: '20px',
+          background: '#f0fdf4',
+          borderRadius: '8px',
+        }}
       >
         <h2 style={{ marginTop: 0, color: '#166534' }}>✅ Success!</h2>
         <p style={{ color: '#15803d' }}>

@@ -17,56 +17,61 @@ This system provides type-safe storage of worksheet settings using JSON blobs wi
 **Example**: Add `showHints` to addition worksheets
 
 1. **Update the schema** (`config-schemas.ts`):
+
 ```typescript
 export const additionConfigV2Schema = z.object({
   version: z.literal(2),
   // ... all V1 fields ...
   showHints: z.boolean(), // NEW FIELD
-})
+});
 ```
 
 2. **Create migration function**:
+
 ```typescript
 function migrateAdditionV1toV2(v1: AdditionConfigV1): AdditionConfigV2 {
   return {
     ...v1,
     version: 2,
     showHints: false, // Default value for new field
-  }
+  };
 }
 ```
 
 3. **Update discriminated union**:
+
 ```typescript
-export const additionConfigSchema = z.discriminatedUnion('version', [
+export const additionConfigSchema = z.discriminatedUnion("version", [
   additionConfigV1Schema,
   additionConfigV2Schema, // Add new version
-])
+]);
 ```
 
 4. **Update migration switch**:
+
 ```typescript
 export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV2 {
-  const parsed = additionConfigSchema.safeParse(rawConfig)
-  if (!parsed.success) return defaultAdditionConfig
+  const parsed = additionConfigSchema.safeParse(rawConfig);
+  if (!parsed.success) return defaultAdditionConfig;
 
   switch (parsed.data.version) {
     case 1:
-      return migrateAdditionV1toV2(parsed.data)
+      return migrateAdditionV1toV2(parsed.data);
     case 2:
-      return parsed.data // Latest version
+      return parsed.data; // Latest version
     default:
-      return defaultAdditionConfig
+      return defaultAdditionConfig;
   }
 }
 ```
 
 5. **Update default**:
+
 ```typescript
 export const defaultAdditionConfig: AdditionConfigV2 = {
   version: 2,
   // ... all fields including showHints: false
-}
+};
 ```
 
 ## Adding a New Worksheet Type
@@ -74,6 +79,7 @@ export const defaultAdditionConfig: AdditionConfigV2 = {
 **Example**: Add multiplication worksheets
 
 1. **Create schema**:
+
 ```typescript
 export const multiplicationConfigV1Schema = z.object({
   version: z.literal(1),
@@ -84,18 +90,23 @@ export const multiplicationConfigV1Schema = z.object({
 ```
 
 2. **Create helpers**:
+
 ```typescript
-export function parseMultiplicationConfig(jsonString: string): MultiplicationConfigV1 {
+export function parseMultiplicationConfig(
+  jsonString: string,
+): MultiplicationConfigV1 {
   try {
-    const raw = JSON.parse(jsonString)
-    return multiplicationConfigSchema.parse(raw)
+    const raw = JSON.parse(jsonString);
+    return multiplicationConfigSchema.parse(raw);
   } catch (error) {
-    return defaultMultiplicationConfig
+    return defaultMultiplicationConfig;
   }
 }
 
-export function serializeMultiplicationConfig(config: Omit<MultiplicationConfigV1, 'version'>): string {
-  return JSON.stringify({ ...config, version: 1 })
+export function serializeMultiplicationConfig(
+  config: Omit<MultiplicationConfigV1, "version">,
+): string {
+  return JSON.stringify({ ...config, version: 1 });
 }
 ```
 
@@ -106,37 +117,37 @@ export function serializeMultiplicationConfig(config: Omit<MultiplicationConfigV
 ### Saving Settings
 
 ```typescript
-import { serializeAdditionConfig } from './config-schemas'
+import { serializeAdditionConfig } from "./config-schemas";
 
 const configJSON = serializeAdditionConfig({
   problemsPerPage: 20,
   cols: 5,
   // ... all other fields (version added automatically)
-})
+});
 
 await db.insert(worksheetSettings).values({
   id: crypto.randomUUID(),
   userId: user.id,
-  worksheetType: 'addition',
+  worksheetType: "addition",
   config: configJSON,
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 ```
 
 ### Loading Settings
 
 ```typescript
-import { parseAdditionConfig } from './config-schemas'
+import { parseAdditionConfig } from "./config-schemas";
 
 const row = await db
   .select()
   .from(worksheetSettings)
   .where(eq(worksheetSettings.userId, userId))
-  .where(eq(worksheetSettings.worksheetType, 'addition'))
-  .limit(1)
+  .where(eq(worksheetSettings.worksheetType, "addition"))
+  .limit(1);
 
-const config = row ? parseAdditionConfig(row.config) : defaultAdditionConfig
+const config = row ? parseAdditionConfig(row.config) : defaultAdditionConfig;
 // config is now type-safe and guaranteed to be latest version!
 ```
 
@@ -167,10 +178,10 @@ const config = row ? parseAdditionConfig(row.config) : defaultAdditionConfig
 
 ```typescript
 // Stored in DB (corrupted):
-"{invalid json{{"
+"{invalid json{{";
 
 // Falls back to defaults:
-parseAdditionConfig("{invalid json{{")
+parseAdditionConfig("{invalid json{{");
 // Returns: defaultAdditionConfig
 ```
 
@@ -204,24 +215,26 @@ const config: AdditionConfigV1 = {
   version: 1,
   problemsPerPage: 20,
   // ❌ Error: Missing required field 'cols'
-}
+};
 
 // Runtime validation catches invalid values:
-parseAdditionConfig('{"version": 1, "cols": 999}')
+parseAdditionConfig('{"version": 1, "cols": 999}');
 // ❌ Zod error: cols must be <= 10, falls back to defaults
 
 // Full autocomplete in editors:
-config.show // ← autocomplete suggests: showCarryBoxes, showAnswerBoxes, etc.
+config.show; // ← autocomplete suggests: showCarryBoxes, showAnswerBoxes, etc.
 ```
 
 ## Database Schema Evolution
 
 **Important**: The database schema NEVER needs to change when:
+
 - Adding new worksheet types (just store different JSON)
 - Adding new fields to existing types (handled by migration)
 - Changing default values (handled in defaultConfig)
 
 **Only needs migration when**:
+
 - Adding indexes for performance
 - Changing primary key structure
 - Adding completely new columns to worksheet_settings table itself

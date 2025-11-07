@@ -23,6 +23,7 @@ Speed Complement Race is currently a sophisticated single-player game with three
 ## Current State Analysis
 
 ### What We Have
+
 - ✅ Complex single-player game with 3 modes
 - ✅ Advanced adaptive difficulty system
 - ✅ AI opponent system with personalities
@@ -32,6 +33,7 @@ Speed Complement Race is currently a sophisticated single-player game with three
 - ✅ Sound effects and visual feedback
 
 ### What's Missing
+
 - ❌ Multiplayer support (max players: 1)
 - ❌ Socket integration
 - ❌ Validator registration in modular system
@@ -59,6 +61,7 @@ Game Components (existing UI)
 ```
 
 ### Key Principles
+
 1. **Preserve existing gameplay** - Keep all three modes working
 2. **Maintain UI/UX quality** - All animations, sounds, visuals stay intact
 3. **Support both single and multiplayer** - AI opponents + human players
@@ -72,19 +75,27 @@ Game Components (existing UI)
 ## Phase 1: Configuration & Type System ✓
 
 ### 1.1 Define ComplementRaceGameConfig
+
 **File**: `src/lib/game-configs.ts`
 
 ```typescript
 export interface ComplementRaceGameConfig {
   // Game Style (which mode)
-  style: 'practice' | 'sprint' | 'survival';
+  style: "practice" | "sprint" | "survival";
 
   // Question Settings
-  mode: 'friends5' | 'friends10' | 'mixed';
-  complementDisplay: 'number' | 'abacus' | 'random';
+  mode: "friends5" | "friends10" | "mixed";
+  complementDisplay: "number" | "abacus" | "random";
 
   // Difficulty
-  timeoutSetting: 'preschool' | 'kindergarten' | 'relaxed' | 'slow' | 'normal' | 'fast' | 'expert';
+  timeoutSetting:
+    | "preschool"
+    | "kindergarten"
+    | "relaxed"
+    | "slow"
+    | "normal"
+    | "fast"
+    | "expert";
 
   // AI Settings
   enableAI: boolean;
@@ -103,10 +114,10 @@ export interface ComplementRaceGameConfig {
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
-  style: 'practice',
-  mode: 'mixed',
-  complementDisplay: 'random',
-  timeoutSetting: 'normal',
+  style: "practice",
+  mode: "mixed",
+  complementDisplay: "random",
+  timeoutSetting: "normal",
   enableAI: true,
   aiOpponentCount: 2,
   maxPlayers: 1,
@@ -118,9 +129,11 @@ export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
 ```
 
 ### 1.2 Disable Debug Logging
+
 **File**: `src/app/arcade/complement-race/hooks/useSteamJourney.ts`
 
 Change:
+
 ```typescript
 const DEBUG_PASSENGER_BOARDING = false; // was true
 ```
@@ -130,9 +143,11 @@ const DEBUG_PASSENGER_BOARDING = false; // was true
 ## Phase 2: Validator Implementation ✓
 
 ### 2.1 Create ComplementRaceValidator
+
 **File**: `src/lib/validators/ComplementRaceValidator.ts`
 
 **Responsibilities**:
+
 - Validate player answers
 - Generate questions
 - Manage game state
@@ -140,20 +155,33 @@ const DEBUG_PASSENGER_BOARDING = false; // was true
 - Synchronize multiplayer state
 
 **Key Methods**:
+
 ```typescript
 class ComplementRaceValidator {
-  getInitialState(config: ComplementRaceGameConfig): GameState
-  getNewQuestion(state: GameState): ComplementQuestion
-  validateAnswer(state: GameState, playerId: string, answer: number): ValidationResult
-  updatePlayerProgress(state: GameState, playerId: string, correct: boolean): GameState
-  checkWinCondition(state: GameState): { winner: string | null, gameOver: boolean }
-  updateAIPositions(state: GameState, deltaTime: number): GameState
-  serializeState(state: GameState): SerializedState
-  deserializeState(serialized: SerializedState): GameState
+  getInitialState(config: ComplementRaceGameConfig): GameState;
+  getNewQuestion(state: GameState): ComplementQuestion;
+  validateAnswer(
+    state: GameState,
+    playerId: string,
+    answer: number,
+  ): ValidationResult;
+  updatePlayerProgress(
+    state: GameState,
+    playerId: string,
+    correct: boolean,
+  ): GameState;
+  checkWinCondition(state: GameState): {
+    winner: string | null;
+    gameOver: boolean;
+  };
+  updateAIPositions(state: GameState, deltaTime: number): GameState;
+  serializeState(state: GameState): SerializedState;
+  deserializeState(serialized: SerializedState): GameState;
 }
 ```
 
 **State Structure**:
+
 ```typescript
 interface MultiplayerGameState {
   // Configuration
@@ -181,7 +209,7 @@ interface MultiplayerGameState {
   progress: Map<playerId, number>; // 0-100% or lap count
 
   // Game Status
-  phase: 'waiting' | 'countdown' | 'playing' | 'finished';
+  phase: "waiting" | "countdown" | "playing" | "finished";
   winner: string | null;
   startTime: number | null;
 
@@ -207,9 +235,11 @@ interface PlayerState {
 ## Phase 3: Socket Server Integration ✓
 
 ### 3.1 Register Game Handler
+
 **File**: `src/services/socket-server.ts`
 
 Add to game session management:
+
 ```typescript
 case 'complement-race':
   validator = new ComplementRaceValidator();
@@ -219,11 +249,13 @@ case 'complement-race':
 ### 3.2 Socket Events
 
 **Client → Server**:
+
 - `game:answer` - Submit answer for current question
 - `game:ready` - Player ready to start
 - `game:settings-change` - Update game config (host only)
 
 **Server → Client**:
+
 - `game:state-update` - Full state sync
 - `game:question-new` - New question generated
 - `game:answer-result` - Answer validation result
@@ -234,11 +266,13 @@ case 'complement-race':
 ### 3.3 Real-time Synchronization Strategy
 
 **State Updates**:
+
 - Full state broadcast every 200ms (AI updates)
 - Instant broadcasts on player actions (answers, ready status)
 - Delta compression for large states (sprint mode passengers)
 
 **Race Condition Handling**:
+
 - Server is source of truth
 - Client predictions for smooth animations
 - Rollback on server correction
@@ -248,9 +282,11 @@ case 'complement-race':
 ## Phase 4: Room Provider & Configuration ✓
 
 ### 4.1 Create RoomComplementRaceProvider
+
 **File**: `src/app/arcade/complement-race/context/RoomComplementRaceProvider.tsx`
 
 Similar to existing `ComplementRaceProvider` but:
+
 - Accepts `roomCode` prop
 - Loads saved config from arcade room state
 - Merges saved config with defaults
@@ -291,9 +327,11 @@ export function RoomComplementRaceProvider({
 ```
 
 ### 4.2 Update Arcade Room Store
+
 **File**: `src/app/arcade/stores/arcade-room-store.ts`
 
 Ensure complement-race config is saved:
+
 ```typescript
 updateGameConfig: (gameName: string, config: Partial<GameConfig>) => {
   set((state) => {
@@ -314,12 +352,14 @@ updateGameConfig: (gameName: string, config: Partial<GameConfig>) => {
 **Core Concept**: ONE railroad with ONE set of passengers. Players compete to pick them up and deliver them first.
 
 #### Shared Game Board
+
 - All players see the SAME track with SAME stations
 - 6-8 passengers spawn per route at various stations
 - Once a player picks up a passenger, it disappears for EVERYONE
 - Real competition for limited resources
 
 #### Visual Design: Ghost Trains
+
 ```
 Your train: 🚂🟦 Full opacity (100%), prominent
 Other players: 🚂🟢🟡🟣 Low opacity (30-40%), "ghost" effect
@@ -334,12 +374,14 @@ Benefits:
 #### Gameplay Mechanics
 
 **Movement**:
+
 - Answer complement questions to build momentum
 - Correct answer → +15 momentum → train speed increases
 - Each player has independent momentum/speed
 - Trains can pass through each other (no collision)
 
 **Pickup Rules**:
+
 ```typescript
 When train reaches station (within 5% position):
   IF passenger waiting at station:
@@ -351,6 +393,7 @@ When train reaches station (within 5% position):
 ```
 
 **Delivery Rules**:
+
 ```typescript
 When train with passenger reaches destination station:
   ✅ Auto-deliver
@@ -360,11 +403,13 @@ When train with passenger reaches destination station:
 ```
 
 **Capacity**:
+
 - Each train: 3 passenger cars = max 3 concurrent passengers
 - Must deliver before picking up more
 - Strategic choice: quick nearby delivery vs. valuable long-distance
 
 **Resource Competition**:
+
 - 6-8 passengers per route
 - 4 players competing
 - Not enough for everyone to get all passengers
@@ -373,21 +418,25 @@ When train with passenger reaches destination station:
 #### Win Conditions (Host Configurable)
 
 **Route-based** (default):
+
 - Play 3 routes (3 minutes)
 - Most passengers delivered wins
 - Tiebreaker: total points
 
 **Score-based**:
+
 - First to 100 points
 - Urgent passengers (20pts) are strategic targets
 
 **Time-based**:
+
 - 5-minute session
 - Most deliveries at time limit
 
 ### 5.2 Practice/Survival Mode Multiplayer
 
 **Practice Mode**: Linear race track with multiple lanes
+
 - 2-4 horizontal lanes stacked vertically
 - Each player in their own lane
 - AI opponents fill remaining lanes (optional)
@@ -396,6 +445,7 @@ When train with passenger reaches destination station:
 - First to 20 questions wins
 
 **Survival Mode**: Circular track with lap counting
+
 - Players race on shared circular track
 - Lap counter instead of finish line
 - Infinite laps, timed rounds
@@ -404,6 +454,7 @@ When train with passenger reaches destination station:
 ### 5.3 Practice Mode: Simultaneous Questions
 
 **Question Flow**:
+
 ```
 1. Same question appears for all players: "7 + ? = 10"
 2. Players race to answer (optional: show "🤔" indicator)
@@ -420,6 +471,7 @@ When train with passenger reaches destination station:
 ```
 
 **Strategic Tension**:
+
 - Rush to be first (more reward) vs. take time to be accurate
 - See opponents' progress in real-time
 - Dramatic overtaking moments
@@ -427,7 +479,10 @@ When train with passenger reaches destination station:
 ### 5.4 AI Opponent Scaling
 
 ```typescript
-function getAICount(config: ComplementRaceGameConfig, humanPlayers: number): number {
+function getAICount(
+  config: ComplementRaceGameConfig,
+  humanPlayers: number,
+): number {
   if (!config.enableAI) return 0;
 
   const totalRacers = humanPlayers + config.aiOpponentCount;
@@ -438,6 +493,7 @@ function getAICount(config: ComplementRaceGameConfig, humanPlayers: number): num
 ```
 
 **AI Behavior in Multiplayer**:
+
 - Optional (host configurable)
 - Fill empty lanes in practice/survival modes
 - Act as ghost trains in sprint mode
@@ -447,6 +503,7 @@ function getAICount(config: ComplementRaceGameConfig, humanPlayers: number): num
 ### 5.5 Live Updates & Broadcasts
 
 **Event Feed** (shown to all players):
+
 ```
 • 🟦 Player 1 delivered 👨‍💼 Bob! +10 pts
 • 🟢 Player 2 picked up 👩‍🎓 Alice at Hillside
@@ -455,6 +512,7 @@ function getAICount(config: ComplementRaceGameConfig, humanPlayers: number): num
 ```
 
 **Tension Moments** (sprint mode):
+
 ```
 When 2+ players approach same station:
 "🚨 Race for passenger at Riverside!"
@@ -466,6 +524,7 @@ Result:
 ```
 
 **Scoreboard** (always visible):
+
 ```
 🏆 LEADERBOARD:
 1. 🟣 Player 4: 4 delivered (50 pts)
@@ -481,12 +540,14 @@ Result:
 ### 6.1 Track Visualization Updates
 
 **Practice/Survival Mode**:
+
 - Stack up to 4 player tracks vertically
 - Show player names/avatars
 - Color-code each player's lane
 - Show AI opponents in separate lanes
 
 **Sprint Mode**:
+
 - Show multiple trains on same track OR
 - Picture-in-picture mini views OR
 - Leaderboard overlay with positions
@@ -494,6 +555,7 @@ Result:
 ### 6.2 Settings UI
 
 **Add to GameControls.tsx**:
+
 - Max Players selector (1-4)
 - Enable AI toggle
 - AI Opponent Count (0-2)
@@ -502,6 +564,7 @@ Result:
 ### 6.3 Lobby/Waiting Room
 
 **Add GameLobby.tsx phase**:
+
 - Show connected players
 - Ready check system
 - Host can change settings
@@ -510,6 +573,7 @@ Result:
 ### 6.4 Results Screen Updates
 
 **Show multiplayer results**:
+
 - Leaderboard with all player scores
 - Individual stats per player
 - Replay button (returns to lobby)
@@ -520,19 +584,21 @@ Result:
 ## Phase 7: Registry & Routing ✓
 
 ### 7.1 Update Game Registry
+
 **File**: `src/lib/validators/index.ts`
 
 ```typescript
-import { ComplementRaceValidator } from './ComplementRaceValidator';
+import { ComplementRaceValidator } from "./ComplementRaceValidator";
 
 export const GAME_VALIDATORS = {
-  'matching': MatchingGameValidator,
-  'number-guesser': NumberGuesserValidator,
-  'complement-race': ComplementRaceValidator, // ADD THIS
+  matching: MatchingGameValidator,
+  "number-guesser": NumberGuesserValidator,
+  "complement-race": ComplementRaceValidator, // ADD THIS
 } as const;
 ```
 
 ### 7.2 Update Game Config
+
 **File**: `src/lib/game-configs.ts`
 
 ```typescript
@@ -543,26 +609,34 @@ export type GameConfig =
 ```
 
 ### 7.3 Update GameSelector
+
 **File**: `src/components/GameSelector.tsx`
 
 ```typescript
 GAMES_CONFIG = {
-  'complement-race': {
-    name: 'Speed Complement Race',
-    fullName: 'Speed Complement Race 🏁',
+  "complement-race": {
+    name: "Speed Complement Race",
+    fullName: "Speed Complement Race 🏁",
     maxPlayers: 4, // CHANGE FROM 1
-    url: '/arcade/complement-race',
-    chips: ['🤖 AI Opponents', '🔥 Speed Challenge', '🏆 Three Game Modes', '👥 Multiplayer'],
-    difficulty: 'Intermediate',
+    url: "/arcade/complement-race",
+    chips: [
+      "🤖 AI Opponents",
+      "🔥 Speed Challenge",
+      "🏆 Three Game Modes",
+      "👥 Multiplayer",
+    ],
+    difficulty: "Intermediate",
     available: true,
-  }
-}
+  },
+};
 ```
 
 ### 7.4 Update Routing
+
 **File**: `src/app/arcade/complement-race/page.tsx`
 
 Add room-based routing:
+
 ```typescript
 // Support both standalone and room-based play
 export default function ComplementRacePage({
@@ -593,6 +667,7 @@ export default function ComplementRacePage({
 ## Phase 8: Testing & Validation ⚠️ PENDING
 
 ### 8.1 Unit Tests
+
 - [ ] ComplementRaceValidator logic
 - [ ] Question generation
 - [ ] Answer validation
@@ -600,12 +675,14 @@ export default function ComplementRacePage({
 - [ ] AI position updates
 
 ### 8.2 Integration Tests
+
 - [ ] Socket event flow
 - [ ] State synchronization
 - [ ] Room configuration persistence
 - [ ] Multi-player race logic
 
 ### 8.3 E2E Tests
+
 - [ ] Single-player mode (backward compatibility)
 - [ ] Multiplayer with 2 players
 - [ ] Multiplayer with 4 players
@@ -614,6 +691,7 @@ export default function ComplementRacePage({
 - [ ] Settings persistence across sessions
 
 ### 8.4 Manual Testing Checklist
+
 - [ ] Create room with complement-race
 - [ ] Join with multiple clients
 - [ ] Change settings (host only)
@@ -730,12 +808,14 @@ export function GhostTrain({ position, color, opacity, name, passengerCount }: G
 ```
 
 **Visual Design**:
+
 - Local player: Full opacity (100%), vibrant colors, clear
 - Other players: 30-40% opacity, subtle blur, labeled with name
 - Show passenger count on ghost trains
 - No collision detection needed (trains pass through each other)
 
 **Checklist**:
+
 - [ ] Create GhostTrain component
 - [ ] Update SteamTrainJourney to render all players
 - [ ] Test with 2 players (local + 1 ghost)
@@ -849,6 +929,7 @@ export function Lane({ yOffset, isLocalPlayer, children }: LaneProps) {
 ```
 
 **Features**:
+
 - Each lane is color-coded per player
 - Local player's lane has brighter background
 - Progress bars show position clearly
@@ -856,6 +937,7 @@ export function Lane({ yOffset, isLocalPlayer, children }: LaneProps) {
 - Smooth position interpolation for animations
 
 **Checklist**:
+
 - [ ] Create Lane component
 - [ ] Create Racer component (or update existing)
 - [ ] Update LinearTrack to render multiple lanes
@@ -971,6 +1053,7 @@ export function LeaderboardRow({ rank, player, isLocalPlayer }: LeaderboardRowPr
 ```
 
 **Checklist**:
+
 - [ ] Update GameResults.tsx to show leaderboard
 - [ ] Create LeaderboardRow component
 - [ ] Add winner announcement
@@ -1116,6 +1199,7 @@ return (
 ```
 
 **Checklist**:
+
 - [ ] Create GameLobby.tsx component
 - [ ] Create PlayerCard component
 - [ ] Add setReady to Provider context
@@ -1132,6 +1216,7 @@ return (
 **Current State**: AI opponents defined in types but not populated
 
 **Files to Update**:
+
 1. `src/arcade-games/complement-race/Validator.ts` - AI logic
 2. Track components (LinearTrack, SteamTrainJourney) - AI rendering
 
@@ -1256,6 +1341,7 @@ private shouldAIAnswerCorrectly(personality: string): boolean {
 **Already handled by 9.1 and 9.2** - Since AI opponents are in `state.players`, they'll render automatically as ghost trains/lanes!
 
 **Checklist**:
+
 - [ ] Implement AI population in validateStartGame
 - [ ] Implement updateAIPositions logic
 - [ ] Add AI answer timing system
@@ -1309,6 +1395,7 @@ export function EventFeed() {
 ```
 
 **Checklist**:
+
 - [ ] Create EventFeed component
 - [ ] Update Validator to emit events
 - [ ] Add event types (claim, deliver, overtake)
@@ -1323,11 +1410,13 @@ export function EventFeed() {
 **Total Estimated Time**: 15-20 hours
 
 **Priority Breakdown**:
+
 - 🚨 **HIGH** (8-9 hours): Ghost trains, multi-lane track, results screen
 - ⚠️ **MEDIUM** (8-12 hours): Lobby system, AI opponents
 - ✅ **LOW** (3-4 hours): Event feed
 
 **Completion Criteria**:
+
 - [ ] Can see all players' trains/positions in real-time
 - [ ] Multiplayer leaderboard shows all players
 - [ ] Lobby shows player list with ready indicators
@@ -1336,6 +1425,7 @@ export function EventFeed() {
 - [ ] Zero visual glitches with 4 players
 
 **Once Phase 9 is complete**:
+
 - Multiplayer will be FULLY functional
 - Overall implementation: 100% complete
 - Ready for Phase 8 (Testing & Validation)
@@ -1345,24 +1435,28 @@ export function EventFeed() {
 ## Implementation Order
 
 ### ✅ Priority 1: Foundation (COMPLETE)
+
 1. ✓ Define ComplementRaceGameConfig
 2. ✓ Disable debug logging
 3. ✓ Create ComplementRaceValidator skeleton
 4. ✓ Register in modular system
 
 ### ✅ Priority 2: Core Multiplayer (COMPLETE)
+
 5. ✓ Implement validator methods
 6. ✓ Socket server integration
 7. ✓ Create RoomComplementRaceProvider (State Adapter Pattern)
 8. ✓ Update arcade room store
 
 ### ✅ Priority 3: Basic UI Integration (COMPLETE)
+
 9. ✓ Add navigation bar (PageWithNav)
 10. ✓ Update settings UI
 11. ✓ Config persistence
 12. ✓ Registry integration
 
 ### 🚨 Priority 4: Multiplayer Visuals (CRITICAL - NEXT)
+
 13. [ ] Ghost trains (Sprint Mode)
 14. [ ] Multi-lane track (Practice Mode)
 15. [ ] Multiplayer results screen
@@ -1370,6 +1464,7 @@ export function EventFeed() {
 17. [ ] AI opponent display
 
 ### Priority 5: Testing & Polish (FINAL)
+
 18. [ ] Write tests (unit, integration, E2E)
 19. [ ] Manual testing with 2-4 players
 20. [ ] Bug fixes
@@ -1381,15 +1476,19 @@ export function EventFeed() {
 ## Risk Mitigation
 
 ### Risk 1: Breaking Existing Single-Player
+
 **Mitigation**: Keep existing Provider, add new RoomProvider, support both paths
 
 ### Risk 2: Complex Sprint Mode State Sync
+
 **Mitigation**: Start with Practice mode, add Sprint later, use delta compression
 
 ### Risk 3: Performance with 4 Players
+
 **Mitigation**: Optimize rendering, use React.memo, throttle updates, profile early
 
 ### Risk 4: AI + Multiplayer Complexity
+
 **Mitigation**: Make AI optional, test with AI disabled first, add AI last
 
 ---
@@ -1397,6 +1496,7 @@ export function EventFeed() {
 ## Reference Games
 
 Use these as architectural reference:
+
 - **Matching Game** (`src/lib/validators/MatchingGameValidator.ts`) - Room config, socket integration
 - **Number Guesser** (`src/lib/validators/NumberGuesserValidator.ts`) - Turn-based logic
 - **Game Settings Docs** (`.claude/GAME_SETTINGS_PERSISTENCE.md`) - Config patterns
@@ -1406,6 +1506,7 @@ Use these as architectural reference:
 ## Success Criteria
 
 ### ✅ Backend & Infrastructure (COMPLETE)
+
 - [x] Complement Race appears in arcade room game selector
 - [x] Can create room with complement-race
 - [x] Settings persist across page refreshes
@@ -1415,6 +1516,7 @@ Use these as architectural reference:
 - [x] Pre-commit checks pass
 
 ### ⚠️ Multiplayer Visuals (IN PROGRESS - Phase 9)
+
 - [ ] **Sprint Mode**: Can see other players' trains (ghost effect)
 - [ ] **Practice Mode**: Multi-lane track shows all players
 - [ ] **Survival Mode**: Circular track with multiple players
@@ -1424,6 +1526,7 @@ Use these as architectural reference:
 - [ ] AI opponents visible in all game modes
 
 ### Testing & Polish (PENDING)
+
 - [ ] 2-player multiplayer test (all 3 modes)
 - [ ] 4-player multiplayer test (all 3 modes)
 - [ ] AI + human players test
@@ -1434,6 +1537,7 @@ Use these as architectural reference:
 - [ ] Event feed for competitive tension (optional)
 
 ### Current Status: 70% Complete
+
 **What Works**: Backend, state management, config persistence, navigation
 **What's Missing**: Multiplayer visualization (ghost trains, multi-lane tracks, lobby UI)
 
@@ -1444,15 +1548,18 @@ Use these as architectural reference:
 **Immediate Priority**: Phase 9 - Multiplayer Visual Features
 
 ### Quick Wins (Do These First)
+
 1. **Ghost Trains** (2-3 hours) - Make Sprint mode multiplayer visible
 2. **Multi-Lane Track** (3-4 hours) - Make Practice mode multiplayer visible
 3. **Results Screen** (1-2 hours) - Show full leaderboard
 
 ### After Quick Wins
+
 4. **Visual Lobby** (2-3 hours) - Add ready check system
 5. **AI Opponents** (4-6 hours) - Populate and display AI players
 
 ### Then Testing
+
 6. Manual testing with 2+ players
 7. Bug fixes and polish
 8. Unit/integration tests

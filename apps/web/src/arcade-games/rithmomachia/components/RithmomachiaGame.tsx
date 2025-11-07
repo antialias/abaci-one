@@ -158,7 +158,9 @@ export function RithmomachiaGame() {
   const handleUndock = () => {
     console.log('[RithmomachiaGame] handleUndock called')
     setGuideDocked(false)
-    console.log('[RithmomachiaGame] Undocked state updated', { guideDocked: false })
+    console.log('[RithmomachiaGame] Undocked state updated', {
+      guideDocked: false,
+    })
   }
 
   const handleDockPreview = (side: 'left' | 'right' | null) => {

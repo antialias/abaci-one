@@ -10,8 +10,8 @@ Panda CSS's `css()` function requires **static values at build time**. It cannot
 
 ```typescript
 // ❌ This doesn't work
-const color = 'blue.400'
-css({ color: color })  // Panda can't resolve this at build time
+const color = "blue.400";
+css({ color: color }); // Panda can't resolve this at build time
 ```
 
 The `css()` function performs static analysis during the build process to generate CSS classes. It cannot handle runtime-dynamic token paths.
@@ -40,6 +40,7 @@ const stages = [
 1. **Use `as const`**: TypeScript needs the array marked as `const` so the token strings are treated as literal types, not generic strings. The `token()` function expects the `Token` literal type.
 
 2. **Use inline styles**: When using `token()`, apply colors via the `style` prop, not through the `css()` function:
+
    ```typescript
    // ✅ Correct
    <div style={{ color: token(stage.color) }}>
@@ -51,12 +52,13 @@ const stages = [
 3. **Static tokens in css()**: For static usage, you CAN use tokens directly in `css()`:
    ```typescript
    // ✅ This works because it's static
-   css({ color: 'blue.400' })
+   css({ color: "blue.400" });
    ```
 
 ## How token() Works
 
 The `token()` function:
+
 - Takes a token path like `"colors.blue.400"`
 - Looks it up in the generated token registry (`styled-system/tokens/index.mjs`)
 - Returns the actual CSS value (e.g., `"#60a5fa"`)
@@ -65,6 +67,7 @@ The `token()` function:
 ## Token Type Definition
 
 The `Token` type is a union of all valid token paths:
+
 ```typescript
 type Token = "colors.blue.400" | "colors.green.400" | "colors.violet.400" | ...
 ```

@@ -32,7 +32,11 @@ export function InvitePlayersTab() {
         name: 'Quick Room',
         gameName: 'matching',
         creatorName: 'Player',
-        gameConfig: { difficulty: 6, gameType: 'abacus-numeral', turnTimer: 30 },
+        gameConfig: {
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+          turnTimer: 30,
+        },
       })
       // Room will be automatically updated in cache by the mutation's onSuccess
     } catch (err) {

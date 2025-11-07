@@ -3,7 +3,7 @@
  * These eliminate the need for manual style object creation
  */
 
-import type { AbacusCustomStyles } from './AbacusReact'
+import type { AbacusCustomStyles } from "./AbacusReact";
 
 export const ABACUS_THEMES = {
   /**
@@ -12,13 +12,13 @@ export const ABACUS_THEMES = {
    */
   light: {
     columnPosts: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
+      fill: "rgb(255, 255, 255)",
+      stroke: "rgb(200, 200, 200)",
       strokeWidth: 2,
     },
     reckoningBar: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
+      fill: "rgb(255, 255, 255)",
+      stroke: "rgb(200, 200, 200)",
       strokeWidth: 3,
     },
   } as AbacusCustomStyles,
@@ -29,13 +29,13 @@ export const ABACUS_THEMES = {
    */
   dark: {
     columnPosts: {
-      fill: 'rgba(255, 255, 255, 0.3)',
-      stroke: 'rgba(255, 255, 255, 0.2)',
+      fill: "rgba(255, 255, 255, 0.3)",
+      stroke: "rgba(255, 255, 255, 0.2)",
       strokeWidth: 2,
     },
     reckoningBar: {
-      fill: 'rgba(255, 255, 255, 0.4)',
-      stroke: 'rgba(255, 255, 255, 0.25)',
+      fill: "rgba(255, 255, 255, 0.4)",
+      stroke: "rgba(255, 255, 255, 0.25)",
       strokeWidth: 3,
     },
   } as AbacusCustomStyles,
@@ -46,13 +46,13 @@ export const ABACUS_THEMES = {
    */
   trophy: {
     columnPosts: {
-      fill: '#fbbf24',
-      stroke: '#f59e0b',
+      fill: "#fbbf24",
+      stroke: "#f59e0b",
       strokeWidth: 3,
     },
     reckoningBar: {
-      fill: '#fbbf24',
-      stroke: '#f59e0b',
+      fill: "#fbbf24",
+      stroke: "#f59e0b",
       strokeWidth: 4,
     },
   } as AbacusCustomStyles,
@@ -63,13 +63,13 @@ export const ABACUS_THEMES = {
    */
   translucent: {
     columnPosts: {
-      fill: 'rgba(0, 0, 0, 0.05)',
-      stroke: 'rgba(0, 0, 0, 0.1)',
+      fill: "rgba(0, 0, 0, 0.05)",
+      stroke: "rgba(0, 0, 0, 0.1)",
       strokeWidth: 1,
     },
     reckoningBar: {
-      fill: 'rgba(0, 0, 0, 0.1)',
-      stroke: 'none',
+      fill: "rgba(0, 0, 0, 0.1)",
+      stroke: "none",
       strokeWidth: 0,
     },
   } as AbacusCustomStyles,
@@ -80,13 +80,13 @@ export const ABACUS_THEMES = {
    */
   solid: {
     columnPosts: {
-      fill: 'rgb(0, 0, 0)',
-      stroke: 'rgb(0, 0, 0)',
+      fill: "rgb(0, 0, 0)",
+      stroke: "rgb(0, 0, 0)",
       strokeWidth: 2,
     },
     reckoningBar: {
-      fill: 'rgb(0, 0, 0)',
-      stroke: 'none',
+      fill: "rgb(0, 0, 0)",
+      stroke: "none",
       strokeWidth: 0,
     },
   } as AbacusCustomStyles,
@@ -97,19 +97,19 @@ export const ABACUS_THEMES = {
    */
   traditional: {
     columnPosts: {
-      fill: '#8B5A2B',
-      stroke: '#654321',
+      fill: "#8B5A2B",
+      stroke: "#654321",
       strokeWidth: 2,
     },
     reckoningBar: {
-      fill: '#8B5A2B',
-      stroke: '#654321',
+      fill: "#8B5A2B",
+      stroke: "#654321",
       strokeWidth: 3,
     },
   } as AbacusCustomStyles,
-} as const
+} as const;
 
 /**
  * Theme names type for TypeScript autocomplete
  */
-export type AbacusThemeName = keyof typeof ABACUS_THEMES
+export type AbacusThemeName = keyof typeof ABACUS_THEMES;

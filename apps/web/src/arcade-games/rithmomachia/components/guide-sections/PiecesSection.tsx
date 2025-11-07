@@ -77,7 +77,13 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
         {t('pieces.description')}
       </p>
 
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px',
+        })}
+      >
         {pieces.map((piece) => (
           <div
             key={piece.type}
@@ -131,11 +137,23 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 >
                   {piece.name}
                 </h4>
-                <p className={css({ fontSize: '14px', color: '#6b7280', mb: '4px' })}>
+                <p
+                  className={css({
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    mb: '4px',
+                  })}
+                >
                   {piece.movement}{' '}
                   <span className={css({ fontStyle: 'italic' })}>{piece.chessAnalogy}</span>
                 </p>
-                <p className={css({ fontSize: '13px', color: '#9ca3af', fontWeight: '600' })}>
+                <p
+                  className={css({
+                    fontSize: '13px',
+                    color: '#9ca3af',
+                    fontWeight: '600',
+                  })}
+                >
                   Count: {piece.count}
                   {piece.count > 1 ? ' per side' : ''}
                 </p>
@@ -155,10 +173,24 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
           borderRadius: '4px',
         })}
       >
-        <h4 className={css({ fontSize: '18px', fontWeight: 'bold', color: '#92400e', mb: '12px' })}>
+        <h4
+          className={css({
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#92400e',
+            mb: '12px',
+          })}
+        >
           {t('pieces.pyramidTitle')}
         </h4>
-        <p className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.6', mb: '16px' })}>
+        <p
+          className={css({
+            fontSize: '14px',
+            color: '#78350f',
+            lineHeight: '1.6',
+            mb: '16px',
+          })}
+        >
           {t('pieces.pyramidIntro')}
         </p>
 
@@ -184,7 +216,13 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             >
               {t('pieces.blackPyramid')}:
             </p>
-            <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
+            <div
+              className={css({
+                width: '80px',
+                height: '80px',
+                margin: '0 auto',
+              })}
+            >
               <PieceRenderer
                 type="P"
                 color="B"
@@ -219,7 +257,13 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             >
               {t('pieces.whitePyramid')}:
             </p>
-            <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
+            <div
+              className={css({
+                width: '80px',
+                height: '80px',
+                margin: '0 auto',
+              })}
+            >
               <PieceRenderer
                 type="P"
                 color="W"
@@ -263,7 +307,12 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             {t('pieces.pyramidHowItWorks')}
           </p>
           <ul
-            className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+            className={css({
+              fontSize: '13px',
+              color: '#78350f',
+              lineHeight: '1.8',
+              pl: '20px',
+            })}
           >
             <li>{t('pieces.pyramidRule1')}</li>
             <li>{t('pieces.pyramidRule2')}</li>
@@ -281,7 +330,13 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             mb: '20px',
           })}
         >
-          <p className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.6' })}>
+          <p
+            className={css({
+              fontSize: '13px',
+              color: '#78350f',
+              lineHeight: '1.6',
+            })}
+          >
             <strong>{t('pieces.example')}</strong> {t('pieces.pyramidExample')}
           </p>
         </div>
@@ -298,11 +353,24 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
           >
             {t('pieces.pyramidVisualTitle')}
           </h5>
-          <p className={css({ fontSize: '13px', color: '#78350f', mb: '12px', lineHeight: '1.6' })}>
+          <p
+            className={css({
+              fontSize: '13px',
+              color: '#78350f',
+              mb: '12px',
+              lineHeight: '1.6',
+            })}
+          >
             {t('pieces.pyramidVisualDesc')}
           </p>
 
-          <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              mb: '12px',
+            })}
+          >
             <RithmomachiaBoard
               pieces={[
                 // White Pyramid at H5
@@ -339,7 +407,12 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
               {t('pieces.pyramidCaptureOptions')}
             </p>
             <ul
-              className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+              className={css({
+                fontSize: '13px',
+                color: '#78350f',
+                lineHeight: '1.8',
+                pl: '20px',
+              })}
             >
               <li>{t('pieces.pyramidOption1')}</li>
               <li>{t('pieces.pyramidOption2')}</li>

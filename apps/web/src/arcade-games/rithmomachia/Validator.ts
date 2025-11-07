@@ -192,7 +192,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
 
     // Check from square matches piece location
     if (piece.square !== from) {
-      return { valid: false, error: `Piece is not at ${from}, it's at ${piece.square}` }
+      return {
+        valid: false,
+        error: `Piece is not at ${from}, it's at ${piece.square}`,
+      }
     }
 
     // Validate movement geometry and path
@@ -233,7 +236,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
 
     // Must have a capture declaration if landing on enemy
     if (!capture) {
-      return { valid: false, error: 'Must declare capture relation when landing on enemy piece' }
+      return {
+        valid: false,
+        error: 'Must declare capture relation when landing on enemy piece',
+      }
     }
 
     // Validate the capture relation
@@ -293,7 +299,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
       try {
         helperPiece = getPieceById(state.pieces, capture.helperPieceId)
       } catch (e) {
-        return { valid: false, error: `Helper piece not found: ${capture.helperPieceId}` }
+        return {
+          valid: false,
+          error: `Helper piece not found: ${capture.helperPieceId}`,
+        }
       }
 
       // Helper must be friendly
@@ -333,7 +342,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
           helperValue
         )
         if (!relationCheck.valid) {
-          return { valid: false, error: relationCheck.explanation || 'Relation check failed' }
+          return {
+            valid: false,
+            error: relationCheck.explanation || 'Relation check failed',
+          }
         }
         return { valid: true }
       } else {
@@ -351,14 +363,20 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
         }
 
         // None of the faces worked
-        return { valid: false, error: 'No pyramid face satisfies the relation' }
+        return {
+          valid: false,
+          error: 'No pyramid face satisfies the relation',
+        }
       }
     } else {
       // Non-pyramid piece
       const moverValue = mover.value!
       const relationCheck = checkRelation(capture.relation, moverValue, targetValue, helperValue)
       if (!relationCheck.valid) {
-        return { valid: false, error: relationCheck.explanation || 'Relation check failed' }
+        return {
+          valid: false,
+          error: relationCheck.explanation || 'Relation check failed',
+        }
       }
       return { valid: true }
     }
@@ -528,7 +546,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
     try {
       enemyPiece = getPieceById(state.pieces, ambush.enemyPieceId)
     } catch (e) {
-      return { valid: false, error: `Enemy piece not found: ${ambush.enemyPieceId}` }
+      return {
+        valid: false,
+        error: `Enemy piece not found: ${ambush.enemyPieceId}`,
+      }
     }
 
     // Must be enemy
@@ -581,7 +602,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
     const relationCheck = checkRelation(ambush.relation, helper1Value, enemyValue, helper2Value)
 
     if (!relationCheck.valid) {
-      return { valid: false, error: relationCheck.explanation || 'Ambush relation failed' }
+      return {
+        valid: false,
+        error: relationCheck.explanation || 'Ambush relation failed',
+      }
     }
 
     return { valid: true }
@@ -625,7 +649,10 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
 
     // Check type matches
     if (validation.type !== harmonyType) {
-      return { valid: false, error: `Expected ${harmonyType} but found ${validation.type}` }
+      return {
+        valid: false,
+        error: `Expected ${harmonyType} but found ${validation.type}`,
+      }
     }
 
     // Create harmony declaration
@@ -800,13 +827,19 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
 
     if (field === 'pointWinThreshold') {
       if (typeof value !== 'number' || value < 1) {
-        return { valid: false, error: 'pointWinThreshold must be a positive number' }
+        return {
+          valid: false,
+          error: 'pointWinThreshold must be a positive number',
+        }
       }
     }
 
     if (field === 'timeControlMs') {
       if (value !== null && (typeof value !== 'number' || value < 0)) {
-        return { valid: false, error: 'timeControlMs must be null or a non-negative number' }
+        return {
+          valid: false,
+          error: 'timeControlMs must be null or a non-negative number',
+        }
       }
     }
 

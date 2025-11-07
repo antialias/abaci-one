@@ -80,7 +80,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         // Only the room creator can access retired rooms
         if (!isRoomCreator) {
           return NextResponse.json(
-            { error: 'This room has been retired and is only accessible to the owner' },
+            {
+              error: 'This room has been retired and is only accessible to the owner',
+            },
             { status: 410 }
           )
         }

@@ -61,7 +61,13 @@ export function ResultsPhase() {
 
       {state.winner ? (
         <>
-          <div className={css({ fontSize: '2xl', color: 'purple.600', fontWeight: 'semibold' })}>
+          <div
+            className={css({
+              fontSize: '2xl',
+              color: 'purple.600',
+              fontWeight: 'semibold',
+            })}
+          >
             {winnerText} Wins!
           </div>
           <div className={css({ fontSize: 'lg', color: 'gray.600' })}>

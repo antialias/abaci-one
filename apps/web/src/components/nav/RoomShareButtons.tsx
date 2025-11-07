@@ -21,7 +21,14 @@ export function RoomShareButtons({ joinCode, shareUrl }: RoomShareButtonsProps) 
   return (
     <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
       {/* Left side: stacked buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          flex: 1,
+        }}
+      >
         <CopyButton
           text={joinCode}
           variant="code"

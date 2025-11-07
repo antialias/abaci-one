@@ -48,6 +48,7 @@ WHERE game_config IS NOT NULL
 ```
 
 **Results:**
+
 - 5991 matching game configs migrated
 - 9 memory-quiz game configs migrated
 - Total: 6000 configs
@@ -55,10 +56,12 @@ WHERE game_config IS NOT NULL
 ## Old vs New Schema
 
 **Old Schema:**
+
 - `arcade_rooms.game_config` (TEXT/JSON) - stored config for currently selected game only
 - Config was lost when switching games
 
 **New Schema:**
+
 - `room_game_configs` table - one row per game per room
 - Unique constraint on (room_id, game_name)
 - Configs persist when switching between games
@@ -84,6 +87,7 @@ sqlite3 data/sqlite.db "SELECT game_name, COUNT(*) FROM room_game_configs GROUP 
 ## Related Files
 
 This migration supports the refactoring documented in:
+
 - `.claude/GAME_SETTINGS_PERSISTENCE.md` - Architecture documentation
 - `src/lib/arcade/game-configs.ts` - Shared config types
 - `src/lib/arcade/game-config-helpers.ts` - Database access helpers

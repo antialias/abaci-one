@@ -11,12 +11,14 @@
 ### ✅ Phase 1: Foundation & Architecture (COMPLETE)
 
 **1. Comprehensive Migration Plan**
+
 - File: `.claude/COMPLEMENT_RACE_MIGRATION_PLAN.md`
 - Detailed multiplayer game design with ghost train visualization
 - Shared universe passenger competition mechanics
 - Complete 8-phase implementation roadmap
 
 **2. Type System** (`src/arcade-games/complement-race/types.ts`)
+
 - `ComplementRaceConfig` - Full game configuration with all settings
 - `ComplementRaceState` - Multiplayer game state management
 - `ComplementRaceMove` - Player action types
@@ -24,6 +26,7 @@
 - All types fully documented and exported
 
 **3. Validator** (`src/arcade-games/complement-race/Validator.ts`) - **~700 lines**
+
 - ✅ Question generation (friends of 5, 10, mixed)
 - ✅ Answer validation with scoring
 - ✅ Player progress tracking
@@ -35,6 +38,7 @@
 - Fully implements `GameValidator<ComplementRaceState, ComplementRaceMove>`
 
 **4. Game Definition** (`src/arcade-games/complement-race/index.tsx`)
+
 - Manifest with game metadata
 - Default configuration
 - Config validation function
@@ -43,6 +47,7 @@
 - Properly typed with generics
 
 **5. Registry Integration**
+
 - ✅ Registered in `src/lib/arcade/validators.ts`
 - ✅ Registered in `src/lib/arcade/game-registry.ts`
 - ✅ Added types to `src/lib/arcade/validation/types.ts`
@@ -50,6 +55,7 @@
 - ✅ Added types to `src/lib/arcade/game-configs.ts`
 
 **6. Configuration System**
+
 - ✅ `ComplementRaceGameConfig` defined with all settings:
   - Game style (practice, sprint, survival)
   - Question settings (mode, display type)
@@ -62,6 +68,7 @@
 - ✅ Room-based config persistence supported
 
 **7. Code Quality**
+
 - ✅ Debug logging disabled (`DEBUG_PASSENGER_BOARDING = false`)
 - ✅ New modular code compiles (only 1 minor type warning)
 - ✅ Backward compatible Station type (icon + emoji fields)
@@ -74,17 +81,20 @@
 ### Core Mechanics
 
 **Shared Universe**:
+
 - ONE track with ONE set of passengers
 - Real competition for limited resources
 - First to station claims passenger
 - Ghost train visualization (opponents at 30-40% opacity)
 
 **Player Capacity**:
+
 - 1-4 players per game
 - 3 passenger cars per train
 - Strategic delivery choices
 
 **Win Conditions** (Host Configurable):
+
 1. **Route-based**: Complete N routes, highest score wins
 2. **Score-based**: First to target score
 3. **Time-based**: Most deliveries in time limit
@@ -92,17 +102,20 @@
 ### Game Modes
 
 **Practice Mode**: Linear race
+
 - First to 20 questions wins
 - Optional AI opponents
 - Simultaneous question answering
 
 **Sprint Mode**: Train journey with passengers
+
 - 60-second routes
 - Passenger pickup/delivery competition
 - Momentum system
 - Time-of-day cycles
 
 **Survival Mode**: Infinite laps
+
 - Circular track
 - Lap counting
 - Endurance challenge
@@ -152,30 +165,34 @@ src/lib/arcade/
 
 ```typescript
 // Create: src/arcade-games/complement-race/__tests__/Validator.test.ts
-import { complementRaceValidator } from '../Validator'
-import { DEFAULT_COMPLEMENT_RACE_CONFIG } from '@/lib/arcade/game-configs'
+import { complementRaceValidator } from "../Validator";
+import { DEFAULT_COMPLEMENT_RACE_CONFIG } from "@/lib/arcade/game-configs";
 
-test('generates initial state', () => {
-  const state = complementRaceValidator.getInitialState(DEFAULT_COMPLEMENT_RACE_CONFIG)
-  expect(state.gamePhase).toBe('setup')
-  expect(state.stations).toHaveLength(6)
-})
+test("generates initial state", () => {
+  const state = complementRaceValidator.getInitialState(
+    DEFAULT_COMPLEMENT_RACE_CONFIG,
+  );
+  expect(state.gamePhase).toBe("setup");
+  expect(state.stations).toHaveLength(6);
+});
 
-test('validates starting game', () => {
-  const state = complementRaceValidator.getInitialState(DEFAULT_COMPLEMENT_RACE_CONFIG)
+test("validates starting game", () => {
+  const state = complementRaceValidator.getInitialState(
+    DEFAULT_COMPLEMENT_RACE_CONFIG,
+  );
   const result = complementRaceValidator.validateMove(state, {
-    type: 'START_GAME',
-    playerId: 'p1',
-    userId: 'u1',
+    type: "START_GAME",
+    playerId: "p1",
+    userId: "u1",
     timestamp: Date.now(),
     data: {
-      activePlayers: ['p1', 'p2'],
-      playerMetadata: { p1: { name: 'Alice' }, p2: { name: 'Bob' } }
-    }
-  })
-  expect(result.valid).toBe(true)
-  expect(result.newState?.activePlayers).toHaveLength(2)
-})
+      activePlayers: ["p1", "p2"],
+      playerMetadata: { p1: { name: "Alice" }, p2: { name: "Bob" } },
+    },
+  });
+  expect(result.valid).toBe(true);
+  expect(result.newState?.activePlayers).toHaveLength(2);
+});
 ```
 
 ### 2. Game Appears in Selector
@@ -209,10 +226,12 @@ npm run type-check
 ## ✅ What's Been Implemented (Update)
 
 ### Provider Component
+
 **Status**: ✅ Complete
 **Location**: `src/arcade-games/complement-race/Provider.tsx`
 
 **Implemented**:
+
 - ✅ Socket connection via useArcadeSession
 - ✅ Real-time state synchronization
 - ✅ Config loading from room (with persistence)
@@ -221,10 +240,12 @@ npm run type-check
 - ✅ Optimistic update handling
 
 ### Game UI Component
+
 **Status**: ✅ MVP Complete
 **Location**: `src/arcade-games/complement-race/Game.tsx`
 
 **Implemented**:
+
 - ✅ Setup phase with game settings display
 - ✅ Lobby/countdown phase UI
 - ✅ Playing phase with:
@@ -239,6 +260,7 @@ npm run type-check
 ### What's Still Pending
 
 **Multiplayer-Specific Features** (can be added later):
+
 - Ghost train visualization (opacity-based rendering)
 - Shared passenger board (sprint mode)
 - Advanced race track visualization
@@ -252,12 +274,14 @@ npm run type-check
 ### Immediate (Can Test Multiplayer)
 
 **1. Create RoomComplementRaceProvider** (~2-3 hours)
+
 - Connect to socket
 - Load room config
 - Sync state with server
 - Handle moves
 
 **2. Create Basic Multiplayer UI** (~3-4 hours)
+
 - Show all player positions
 - Render ghost trains
 - Display shared passenger board
@@ -266,16 +290,19 @@ npm run type-check
 ### Polish (Make it Great)
 
 **3. Sprint Mode Multiplayer** (~4-6 hours)
+
 - Multiple trains on same track
 - Passenger competition visualization
 - Route celebration for all players
 
 **4. Practice/Survival Modes** (~2-3 hours)
+
 - Multi-lane racing
 - Lap tracking (survival)
 - Finish line detection
 
 **5. Testing & Bug Fixes** (~2-3 hours)
+
 - End-to-end multiplayer testing
 - Handle edge cases
 - Performance optimization
@@ -313,14 +340,17 @@ npm run type-check
 ## 🔗 Important Files to Reference
 
 **For Provider Implementation**:
+
 - `src/arcade-games/number-guesser/Provider.tsx` - Socket integration pattern
 - `src/arcade-games/matching/Provider.tsx` - Room config loading
 
 **For UI Implementation**:
+
 - `src/app/arcade/complement-race/components/` - Existing UI components
 - `src/arcade-games/number-guesser/components/` - Multiplayer UI patterns
 
 **For Testing**:
+
 - `src/arcade-games/number-guesser/__tests__/` - Validator test patterns
 - `.claude/GAME_SETTINGS_PERSISTENCE.md` - Config testing guide
 
@@ -350,6 +380,7 @@ npm run type-check
 ### What Was Wrong
 
 I initially created a **simple quiz UI** (`Game.tsx`) from scratch, throwing away ALL the existing beautiful components:
+
 - ❌ No RailroadTrackPath
 - ❌ No SteamTrainJourney
 - ❌ No PassengerCard
@@ -365,13 +396,14 @@ The user rightfully said: **"what the fuck is this game?"**
 ✅ **Updated** `index.tsx` to use existing `ComplementRaceGame` from `src/app/arcade/complement-race/components/`
 ✅ **Added** `dispatch` compatibility layer to Provider to bridge action creators with existing UI expectations
 ✅ **Preserved** ALL existing beautiful UI components:
-  - Train animations ✅
-  - Track visualization ✅
-  - Passenger mechanics ✅
-  - Route celebrations ✅
-  - HUD with pressure gauge ✅
-  - Adaptive difficulty ✅
-  - AI opponents ✅
+
+- Train animations ✅
+- Track visualization ✅
+- Passenger mechanics ✅
+- Route celebrations ✅
+- HUD with pressure gauge ✅
+- Adaptive difficulty ✅
+- AI opponents ✅
 
 ### What Works Now
 
