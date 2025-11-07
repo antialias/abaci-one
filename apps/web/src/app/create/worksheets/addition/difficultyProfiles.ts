@@ -701,9 +701,18 @@ export function findNearestPreset(
     )
 
     // Calculate if this preset is harder or easier
-    // Harder = higher regrouping OR lower scaffolding (higher scaffolding level number)
-    const isHarder = regrouping > currentRegrouping || scaffolding > currentScaffolding
-    const isEasier = regrouping < currentRegrouping || scaffolding < currentScaffolding
+    // Harder = not easier in ANY dimension AND harder in AT LEAST ONE dimension
+    // This prevents selecting the current preset as "next" when already at a preset
+    const isHarder =
+      regrouping >= currentRegrouping &&
+      scaffolding >= currentScaffolding &&
+      (regrouping > currentRegrouping || scaffolding > currentScaffolding)
+
+    // Easier = not harder in ANY dimension AND easier in AT LEAST ONE dimension
+    const isEasier =
+      regrouping <= currentRegrouping &&
+      scaffolding <= currentScaffolding &&
+      (regrouping < currentRegrouping || scaffolding < currentScaffolding)
 
     return { profile, distance, regrouping, scaffolding, isHarder, isEasier }
   })
