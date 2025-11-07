@@ -369,6 +369,56 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 JSON.stringify(displayRules) === JSON.stringify(profile.displayRules)
               const isCustom = !matchesProfile
 
+              // Find nearest presets for custom configurations
+              let nearestEasier: DifficultyLevel | null = null
+              let nearestHarder: DifficultyLevel | null = null
+              let customDescription = ''
+
+              if (isCustom) {
+                const currentRegrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
+                const currentScaffolding = calculateScaffoldingLevel(displayRules, currentRegrouping)
+
+                // Calculate distances to all presets
+                const distances = DIFFICULTY_PROGRESSION.map((presetName) => {
+                  const preset = DIFFICULTY_PROFILES[presetName]
+                  const presetRegrouping = calculateRegroupingIntensity(
+                    preset.regrouping.pAnyStart,
+                    preset.regrouping.pAllStart
+                  )
+                  const presetScaffolding = calculateScaffoldingLevel(
+                    preset.displayRules,
+                    presetRegrouping
+                  )
+                  const distance = Math.sqrt(
+                    (currentRegrouping - presetRegrouping) ** 2 +
+                      (currentScaffolding - presetScaffolding) ** 2
+                  )
+                  return { presetName, distance, difficulty: calculateOverallDifficulty(
+                    preset.regrouping.pAnyStart,
+                    preset.regrouping.pAllStart,
+                    preset.displayRules
+                  )}
+                }).sort((a, b) => a.distance - b.distance)
+
+                const currentDifficultyValue = calculateOverallDifficulty(
+                  pAnyStart,
+                  pAllStart,
+                  displayRules
+                )
+
+                // Find closest easier and harder presets
+                const easierPresets = distances.filter(d => d.difficulty < currentDifficultyValue)
+                const harderPresets = distances.filter(d => d.difficulty > currentDifficultyValue)
+
+                nearestEasier = easierPresets.length > 0 ? easierPresets[0].presetName : distances[0].presetName
+                nearestHarder = harderPresets.length > 0 ? harderPresets[0].presetName : distances[distances.length - 1].presetName
+
+                // Generate custom description
+                const regroupingPercent = Math.round(currentRegrouping * 10)
+                const scaffoldingLevel = Math.round(currentScaffolding)
+                customDescription = `${regroupingPercent}% regrouping, ${scaffoldingLevel}/10 scaffolding`
+              }
+
               // Calculate current difficulty position
               const currentDifficulty = calculateOverallDifficulty(
                 pAnyStart,
@@ -495,11 +545,21 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 color: 'gray.700',
                               })}
                             >
-                              {isCustom
-                                ? '✨ Custom'
-                                : currentProfile
-                                  ? DIFFICULTY_PROFILES[currentProfile].label
-                                  : 'Early Learner'}
+                              {isCustom ? (
+                                nearestEasier && nearestHarder ? (
+                                  <>
+                                    {DIFFICULTY_PROFILES[nearestEasier].label}
+                                    {' ↔ '}
+                                    {DIFFICULTY_PROFILES[nearestHarder].label}
+                                  </>
+                                ) : (
+                                  '✨ Custom'
+                                )
+                              ) : currentProfile ? (
+                                DIFFICULTY_PROFILES[currentProfile].label
+                              ) : (
+                                'Early Learner'
+                              )}
                             </div>
                             <div
                               className={css({
@@ -509,7 +569,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                               })}
                             >
                               {isCustom
-                                ? 'Settings modified from preset'
+                                ? customDescription
                                 : currentProfile
                                   ? DIFFICULTY_PROFILES[currentProfile].description
                                   : 'Scaffolds appear when needed. Introduces occasional regrouping.'}
