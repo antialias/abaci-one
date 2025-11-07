@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { readFileSync } from 'fs'
 import { join } from 'path'
 
 export const runtime = 'nodejs'
@@ -14,16 +14,13 @@ function getDayOfMonth(): number {
   return centralDate.getDate()
 }
 
-// Generate icon by calling script that uses react-dom/server
-function generateDayIcon(day: number): string {
-  // Call the generation script as a subprocess
-  // Scripts can use react-dom/server, route handlers cannot
-  const scriptPath = join(process.cwd(), 'scripts', 'generateDayIcon.tsx')
-  const svg = execSync(`npx tsx "${scriptPath}" ${day}`, {
-    encoding: 'utf-8',
-    cwd: process.cwd(),
-  })
-  return svg
+// Load pre-generated day icon from public/icons/
+function loadDayIcon(day: number): string {
+  // Read pre-generated icon from public/icons/
+  // Icons are generated at build time by scripts/generateAllDayIcons.tsx
+  const filename = `icon-day-${day.toString().padStart(2, '0')}.svg`
+  const filepath = join(process.cwd(), 'public', 'icons', filename)
+  return readFileSync(filepath, 'utf-8')
 }
 
 export async function GET(request: Request) {
@@ -51,8 +48,8 @@ export async function GET(request: Request) {
   let svg = iconCache.get(dayOfMonth)
 
   if (!svg) {
-    // Generate and cache
-    svg = generateDayIcon(dayOfMonth)
+    // Load pre-generated icon and cache
+    svg = loadDayIcon(dayOfMonth)
     iconCache.set(dayOfMonth, svg)
 
     // Clear old cache entries (keep only current day, unless testing with override)

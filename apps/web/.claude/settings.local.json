@@ -168,11 +168,14 @@
       "Bash(.dockerignore.test)",
       "Bash(do echo \"=== Check $i ===\")",
       "Bash(pnpm panda codegen:*)",
-      "Bash(npx biome lint:*)"
+      "Bash(npx biome lint:*)",
+      "Bash(TZ=America/Chicago date:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
