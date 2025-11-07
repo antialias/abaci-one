@@ -35,6 +35,7 @@ interface ExampleOptions {
   showPlaceValueColors?: boolean
   showTenFrames?: boolean
   showProblemNumbers?: boolean
+  transparentBackground?: boolean
   fontSize?: number
   addend1: number
   addend2: number
@@ -58,9 +59,10 @@ function generateExampleTypst(config: ExampleOptions): string {
   const showNumbers = config.showProblemNumbers ?? false
   const showTenFrames = config.showTenFrames ?? false
   const showTenFramesForAll = false // Not used for blog examples
+  const transparentBg = config.transparentBackground ?? false
 
   return String.raw`
-#set page(width: auto, height: auto, margin: 12pt, fill: white)
+#set page(width: auto, height: auto, margin: 12pt, fill: ${transparentBg ? 'none' : 'white'})
 #set text(size: ${fontSize}pt, font: "New Computer Modern Math")
 
 #let heavy-stroke = 0.8pt
@@ -101,11 +103,12 @@ const examples = [
     options: {
       addend1: 47,
       addend2: 38, // 7+8=15 requires regrouping, will show ten-frames
-      showCarryBoxes: true,
-      showAnswerBoxes: true,
-      showPlaceValueColors: true,
+      showCarryBoxes: false,
+      showAnswerBoxes: false,
+      showPlaceValueColors: false,
       showTenFrames: true,
-      showProblemNumbers: true,
+      showProblemNumbers: false,
+      transparentBackground: true,
     },
   },
   {
@@ -115,11 +118,12 @@ const examples = [
     options: {
       addend1: 47,
       addend2: 38, // Same problem, no ten-frames
-      showCarryBoxes: true,
-      showAnswerBoxes: true,
-      showPlaceValueColors: true,
+      showCarryBoxes: false,
+      showAnswerBoxes: false,
+      showPlaceValueColors: false,
       showTenFrames: false, // No ten-frames
-      showProblemNumbers: true,
+      showProblemNumbers: false,
+      transparentBackground: true,
     },
   },
   {
@@ -129,11 +133,12 @@ const examples = [
     options: {
       addend1: 28,
       addend2: 15, // 8+5=13 requires regrouping
-      showCarryBoxes: true,
-      showAnswerBoxes: true,
-      showPlaceValueColors: true,
+      showCarryBoxes: false,
+      showAnswerBoxes: false,
+      showPlaceValueColors: false,
       showTenFrames: true,
-      showProblemNumbers: true,
+      showProblemNumbers: false,
+      transparentBackground: true,
     },
   },
   {
@@ -143,11 +148,12 @@ const examples = [
     options: {
       addend1: 57,
       addend2: 68, // Both ones (7+8=15) and tens (5+6+1=12) regroup
-      showCarryBoxes: true,
-      showAnswerBoxes: true,
-      showPlaceValueColors: true,
+      showCarryBoxes: false,
+      showAnswerBoxes: false,
+      showPlaceValueColors: false,
       showTenFrames: true,
-      showProblemNumbers: true,
+      showProblemNumbers: false,
+      transparentBackground: true,
     },
   },
 ] as const
@@ -161,11 +167,25 @@ for (const example of examples) {
     const typstSource = generateExampleTypst(example.options)
 
     // Compile to SVG
-    const svg = execSync('typst compile --format svg - -', {
+    let svg = execSync('typst compile --format svg - -', {
       input: typstSource,
       encoding: 'utf8',
       maxBuffer: 2 * 1024 * 1024,
     })
+
+    // Post-process: Make SVG visible on dark background
+    // - Digits on white cells should stay BLACK
+    // - Operator symbols (+) should be WHITE
+    // - Structural elements (borders, bars) should be WHITE
+    svg = svg
+      .replace(/stroke="#000000"/g, 'stroke="rgba(255, 255, 255, 0.8)"')
+      .replace(/stroke="#0000004d"/g, 'stroke="rgba(255, 255, 255, 0.4)"')
+
+    // Replace operator (+) fill specifically to white
+    svg = svg.replace(
+      /(<use xlink:href="#gCFEF70472F9D2AA9AC128F96529819DA"[^>]*fill=")#000000/g,
+      '$1rgba(255, 255, 255, 0.9)'
+    )
 
     // Save to file
     const outputPath = path.join(outputDir, example.filename)
