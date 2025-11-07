@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       colorPalette,
       hideInactiveBeads,
       showEmptyColumns,
-      columns: columns === 'auto' ? 'auto' : Number(columns),
+      columns: (columns === 'auto' ? 'auto' : Number(columns)) as number | 'auto',
       scaleFactor,
       coloredNumerals,
     }
@@ -231,7 +231,7 @@ ${pages.join('\n\n#pagebreak()\n\n')}
     const filename = `soroban-flashcards-${range}.pdf`
 
     // Return PDF directly as download
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

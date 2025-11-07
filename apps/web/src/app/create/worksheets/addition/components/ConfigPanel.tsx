@@ -1,12 +1,13 @@
-"use client";
+'use client'
 
-import React from "react";
-import * as Checkbox from "@radix-ui/react-checkbox";
-import { useTranslations } from "next-intl";
-import { css } from "../../../../../../styled-system/css";
-import { stack } from "../../../../../../styled-system/patterns";
-import type { WorksheetFormState } from "../types";
-import { DisplayOptionsPreview } from "./DisplayOptionsPreview";
+import type React from 'react'
+import * as Checkbox from '@radix-ui/react-checkbox'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { useTranslations } from 'next-intl'
+import { css } from '../../../../../../styled-system/css'
+import { stack } from '../../../../../../styled-system/patterns'
+import type { WorksheetFormState } from '../types'
+import { DisplayOptionsPreview } from './DisplayOptionsPreview'
 import {
   DIFFICULTY_PROFILES,
   DIFFICULTY_PROGRESSION,
@@ -24,43 +25,37 @@ import {
   getProfileFromConfig,
   type DifficultyLevel,
   type DifficultyMode,
-} from "../difficultyProfiles";
+} from '../difficultyProfiles'
 
 interface ConfigPanelProps {
-  formState: WorksheetFormState;
-  onChange: (updates: Partial<WorksheetFormState>) => void;
+  formState: WorksheetFormState
+  onChange: (updates: Partial<WorksheetFormState>) => void
 }
 
 interface ToggleOptionProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-  description: string;
-  children?: React.ReactNode;
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+  description: string
+  children?: React.ReactNode
 }
 
-function ToggleOption({
-  checked,
-  onChange,
-  label,
-  description,
-  children,
-}: ToggleOptionProps) {
+function ToggleOption({ checked, onChange, label, description, children }: ToggleOptionProps) {
   return (
     <div
       data-element="toggle-option-container"
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        h: children ? "auto" : "20",
-        bg: checked ? "brand.50" : "white",
-        border: "2px solid",
-        borderColor: checked ? "brand.500" : "gray.200",
-        rounded: "lg",
-        transition: "all 0.15s",
+        display: 'flex',
+        flexDirection: 'column',
+        h: children ? 'auto' : '20',
+        bg: checked ? 'brand.50' : 'white',
+        border: '2px solid',
+        borderColor: checked ? 'brand.500' : 'gray.200',
+        rounded: 'lg',
+        transition: 'all 0.15s',
         _hover: {
-          borderColor: checked ? "brand.600" : "gray.300",
-          bg: checked ? "brand.100" : "gray.50",
+          borderColor: checked ? 'brand.600' : 'gray.300',
+          bg: checked ? 'brand.100' : 'gray.50',
         },
       })}
     >
@@ -69,72 +64,72 @@ function ToggleOption({
         onCheckedChange={onChange}
         data-element="toggle-option"
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          gap: "1.5",
-          p: "2.5",
-          bg: "transparent",
-          border: "none",
-          rounded: "lg",
-          cursor: "pointer",
-          textAlign: "left",
-          w: "full",
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          gap: '1.5',
+          p: '2.5',
+          bg: 'transparent',
+          border: 'none',
+          rounded: 'lg',
+          cursor: 'pointer',
+          textAlign: 'left',
+          w: 'full',
           _focus: {
-            outline: "none",
-            ring: "2px",
-            ringColor: "brand.300",
+            outline: 'none',
+            ring: '2px',
+            ringColor: 'brand.300',
           },
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "2",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '2',
           })}
         >
           <div
             className={css({
-              fontSize: "xs",
-              fontWeight: "semibold",
-              color: checked ? "brand.700" : "gray.700",
+              fontSize: 'xs',
+              fontWeight: 'semibold',
+              color: checked ? 'brand.700' : 'gray.700',
             })}
           >
             {label}
           </div>
           <div
             className={css({
-              w: "9",
-              h: "5",
-              bg: checked ? "brand.500" : "gray.300",
-              rounded: "full",
-              position: "relative",
-              transition: "background-color 0.15s",
+              w: '9',
+              h: '5',
+              bg: checked ? 'brand.500' : 'gray.300',
+              rounded: 'full',
+              position: 'relative',
+              transition: 'background-color 0.15s',
               flexShrink: 0,
             })}
           >
             <div
               style={{
-                position: "absolute",
-                top: "0.125rem",
-                left: checked ? "1.125rem" : "0.125rem",
-                width: "1rem",
-                height: "1rem",
-                background: "white",
-                borderRadius: "9999px",
-                transition: "left 0.15s",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                position: 'absolute',
+                top: '0.125rem',
+                left: checked ? '1.125rem' : '0.125rem',
+                width: '1rem',
+                height: '1rem',
+                background: 'white',
+                borderRadius: '9999px',
+                transition: 'left 0.15s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               }}
             />
           </div>
         </div>
         <div
           className={css({
-            fontSize: "2xs",
-            color: checked ? "brand.600" : "gray.500",
-            lineHeight: "1.3",
+            fontSize: '2xs',
+            color: checked ? 'brand.600' : 'gray.500',
+            lineHeight: '1.3',
           })}
         >
           {description}
@@ -142,176 +137,125 @@ function ToggleOption({
       </Checkbox.Root>
       {children}
     </div>
-  );
+  )
 }
 
 export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
-  const t = useTranslations("create.worksheets.addition");
-  const [harderDropdownOpen, setHarderDropdownOpen] = React.useState(false);
-  const [easierDropdownOpen, setEasierDropdownOpen] = React.useState(false);
-  const harderDropdownRef = React.useRef<HTMLDivElement>(null);
-  const easierDropdownRef = React.useRef<HTMLDivElement>(null);
-
-  // Close dropdowns when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        harderDropdownRef.current &&
-        !harderDropdownRef.current.contains(event.target as Node)
-      ) {
-        setHarderDropdownOpen(false);
-      }
-      if (
-        easierDropdownRef.current &&
-        !easierDropdownRef.current.contains(event.target as Node)
-      ) {
-        setEasierDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const t = useTranslations('create.worksheets.addition')
 
   // Helper to get default column count for a given problemsPerPage (user can override)
   const getDefaultColsForProblemsPerPage = (
     problemsPerPage: number,
-    orientation: "portrait" | "landscape",
+    orientation: 'portrait' | 'landscape'
   ): number => {
-    if (orientation === "portrait") {
+    if (orientation === 'portrait') {
       // Portrait: prefer 2-3 columns
-      if (problemsPerPage === 6) return 2;
-      if (problemsPerPage === 8) return 2;
-      if (problemsPerPage === 10) return 2;
-      if (problemsPerPage === 12) return 3;
-      if (problemsPerPage === 15) return 3;
-      return 2; // default
+      if (problemsPerPage === 6) return 2
+      if (problemsPerPage === 8) return 2
+      if (problemsPerPage === 10) return 2
+      if (problemsPerPage === 12) return 3
+      if (problemsPerPage === 15) return 3
+      return 2 // default
     } else {
       // Landscape: prefer 4-5 columns
-      if (problemsPerPage === 8) return 4;
-      if (problemsPerPage === 10) return 5;
-      if (problemsPerPage === 12) return 4;
-      if (problemsPerPage === 15) return 5;
-      if (problemsPerPage === 16) return 4;
-      if (problemsPerPage === 20) return 5;
-      return 4; // default
+      if (problemsPerPage === 8) return 4
+      if (problemsPerPage === 10) return 5
+      if (problemsPerPage === 12) return 4
+      if (problemsPerPage === 15) return 5
+      if (problemsPerPage === 16) return 4
+      if (problemsPerPage === 20) return 5
+      return 4 // default
     }
-  };
+  }
 
   // Helper to calculate derived state (rows, total) from primary state (problemsPerPage, cols, pages)
-  const calculateDerivedState = (
-    problemsPerPage: number,
-    cols: number,
-    pages: number,
-  ) => {
-    const rowsPerPage = problemsPerPage / cols;
-    const rows = rowsPerPage * pages;
-    const total = problemsPerPage * pages;
-    return { rows, total };
-  };
+  const calculateDerivedState = (problemsPerPage: number, cols: number, pages: number) => {
+    const rowsPerPage = problemsPerPage / cols
+    const rows = rowsPerPage * pages
+    const total = problemsPerPage * pages
+    return { rows, total }
+  }
 
   // Get current primary state with defaults
-  const currentOrientation = formState.orientation || "portrait";
+  const currentOrientation = formState.orientation || 'portrait'
   const currentProblemsPerPage =
-    formState.problemsPerPage || (currentOrientation === "portrait" ? 15 : 20);
+    formState.problemsPerPage || (currentOrientation === 'portrait' ? 15 : 20)
   const currentCols =
-    formState.cols ||
-    getDefaultColsForProblemsPerPage(
-      currentProblemsPerPage,
-      currentOrientation,
-    );
-  const currentPages = formState.pages || 1;
+    formState.cols || getDefaultColsForProblemsPerPage(currentProblemsPerPage, currentOrientation)
+  const currentPages = formState.pages || 1
 
-  console.log("=== ConfigPanel Render ===");
-  console.log("Primary state:", {
+  console.log('=== ConfigPanel Render ===')
+  console.log('Primary state:', {
     problemsPerPage: currentProblemsPerPage,
     cols: currentCols,
     pages: currentPages,
     orientation: currentOrientation,
-  });
+  })
   console.log(
-    "Derived state:",
-    calculateDerivedState(currentProblemsPerPage, currentCols, currentPages),
-  );
+    'Derived state:',
+    calculateDerivedState(currentProblemsPerPage, currentCols, currentPages)
+  )
 
   // Helper function to handle difficulty adjustments
-  const handleDifficultyChange = (
-    mode: DifficultyMode,
-    direction: "harder" | "easier",
-  ) => {
+  const handleDifficultyChange = (mode: DifficultyMode, direction: 'harder' | 'easier') => {
     const currentState = {
       pAnyStart: formState.pAnyStart!,
       pAllStart: formState.pAllStart!,
       displayRules: formState.displayRules!,
-    };
+    }
 
     const result =
-      direction === "harder"
-        ? makeHarder(currentState, mode)
-        : makeEasier(currentState, mode);
+      direction === 'harder' ? makeHarder(currentState, mode) : makeEasier(currentState, mode)
 
-    const beforeReg = calculateRegroupingIntensity(
-      currentState.pAnyStart,
-      currentState.pAllStart,
-    );
-    const beforeScaf = calculateScaffoldingLevel(
-      currentState.displayRules,
-      beforeReg,
-    );
-    const afterReg = calculateRegroupingIntensity(
-      result.pAnyStart,
-      result.pAllStart,
-    );
-    const afterScaf = calculateScaffoldingLevel(result.displayRules, afterReg);
+    const beforeReg = calculateRegroupingIntensity(currentState.pAnyStart, currentState.pAllStart)
+    const beforeScaf = calculateScaffoldingLevel(currentState.displayRules, beforeReg)
+    const afterReg = calculateRegroupingIntensity(result.pAnyStart, result.pAllStart)
+    const afterScaf = calculateScaffoldingLevel(result.displayRules, afterReg)
 
-    console.log(`=== MAKE ${direction.toUpperCase()} (${mode}) ===`);
+    console.log(`=== MAKE ${direction.toUpperCase()} (${mode}) ===`)
     console.log(
-      `BEFORE: (${beforeReg.toFixed(2)}, ${beforeScaf.toFixed(2)}) | pAny=${(currentState.pAnyStart * 100).toFixed(0)}% pAll=${(currentState.pAllStart * 100).toFixed(0)}% | rules=${JSON.stringify(currentState.displayRules)}`,
-    );
+      `BEFORE: (${beforeReg.toFixed(2)}, ${beforeScaf.toFixed(2)}) | pAny=${(currentState.pAnyStart * 100).toFixed(0)}% pAll=${(currentState.pAllStart * 100).toFixed(0)}% | rules=${JSON.stringify(currentState.displayRules)}`
+    )
     console.log(
-      `AFTER:  (${afterReg.toFixed(2)}, ${afterScaf.toFixed(2)}) | pAny=${(result.pAnyStart * 100).toFixed(0)}% pAll=${(result.pAllStart * 100).toFixed(0)}% | rules=${JSON.stringify(result.displayRules)}`,
-    );
+      `AFTER:  (${afterReg.toFixed(2)}, ${afterScaf.toFixed(2)}) | pAny=${(result.pAnyStart * 100).toFixed(0)}% pAll=${(result.pAllStart * 100).toFixed(0)}% | rules=${JSON.stringify(result.displayRules)}`
+    )
     console.log(
-      `DELTA:  (${(afterReg - beforeReg).toFixed(2)}, ${(afterScaf - beforeScaf).toFixed(2)})`,
-    );
-    console.log(`DESC:   ${result.changeDescription}`);
-    console.log("==================");
+      `DELTA:  (${(afterReg - beforeReg).toFixed(2)}, ${(afterScaf - beforeScaf).toFixed(2)})`
+    )
+    console.log(`DESC:   ${result.changeDescription}`)
+    console.log('==================')
 
     onChange({
       difficultyProfile: result.difficultyProfile,
       displayRules: result.displayRules,
       pAllStart: result.pAllStart,
       pAnyStart: result.pAnyStart,
-    });
-
-    // Close dropdowns after selection
-    setHarderDropdownOpen(false);
-    setEasierDropdownOpen(false);
-  };
+    })
+  }
 
   return (
-    <div data-component="config-panel" className={stack({ gap: "3" })}>
+    <div data-component="config-panel" className={stack({ gap: '3' })}>
       {/* Student Name */}
       <input
         type="text"
-        value={formState.name || ""}
+        value={formState.name || ''}
         onChange={(e) => onChange({ name: e.target.value })}
         placeholder="Student Name"
         className={css({
-          w: "full",
-          px: "3",
-          py: "2",
-          border: "1px solid",
-          borderColor: "gray.300",
-          rounded: "lg",
-          fontSize: "sm",
+          w: 'full',
+          px: '3',
+          py: '2',
+          border: '1px solid',
+          borderColor: 'gray.300',
+          rounded: 'lg',
+          fontSize: 'sm',
           _focus: {
-            outline: "none",
-            borderColor: "brand.500",
-            ring: "2px",
-            ringColor: "brand.200",
+            outline: 'none',
+            borderColor: 'brand.500',
+            ring: '2px',
+            ringColor: 'brand.200',
           },
-          _placeholder: { color: "gray.400" },
+          _placeholder: { color: 'gray.400' },
         })}
       />
 
@@ -319,101 +263,88 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
       <div
         data-section="layout"
         className={css({
-          bg: "gray.50",
-          border: "1px solid",
-          borderColor: "gray.200",
-          rounded: "xl",
-          p: "3",
+          bg: 'gray.50',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'xl',
+          p: '3',
         })}
       >
-        <div className={stack({ gap: "2.5" })}>
+        <div className={stack({ gap: '2.5' })}>
           {/* Orientation - Inline */}
           <div>
             <div
               className={css({
-                fontSize: "xs",
-                fontWeight: "semibold",
-                color: "gray.500",
-                textTransform: "uppercase",
-                letterSpacing: "wider",
-                mb: "1.5",
+                fontSize: 'xs',
+                fontWeight: 'semibold',
+                color: 'gray.500',
+                textTransform: 'uppercase',
+                letterSpacing: 'wider',
+                mb: '1.5',
               })}
             >
               Orientation
             </div>
             <div
               className={css({
-                display: "flex",
-                gap: "2",
-                justifyContent: "center",
+                display: 'flex',
+                gap: '2',
+                justifyContent: 'center',
               })}
             >
               <button
                 onClick={() => {
-                  const newOrientation = "portrait";
-                  const newProblemsPerPage = 15; // Default for portrait
+                  const newOrientation = 'portrait'
+                  const newProblemsPerPage = 15 // Default for portrait
                   const newCols = getDefaultColsForProblemsPerPage(
                     newProblemsPerPage,
-                    newOrientation,
-                  );
-                  const newPages = currentPages;
-                  const derived = calculateDerivedState(
-                    newProblemsPerPage,
-                    newCols,
-                    newPages,
-                  );
+                    newOrientation
+                  )
+                  const newPages = currentPages
+                  const derived = calculateDerivedState(newProblemsPerPage, newCols, newPages)
                   onChange({
                     orientation: newOrientation,
                     problemsPerPage: newProblemsPerPage,
                     cols: newCols,
                     pages: newPages,
                     ...derived,
-                  });
+                  })
                 }}
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "1",
-                  w: "16",
-                  h: "20",
-                  border: "2px solid",
-                  borderColor:
-                    currentOrientation === "portrait"
-                      ? "brand.500"
-                      : "gray.300",
-                  bg: currentOrientation === "portrait" ? "brand.50" : "white",
-                  rounded: "md",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1',
+                  w: '16',
+                  h: '20',
+                  border: '2px solid',
+                  borderColor: currentOrientation === 'portrait' ? 'brand.500' : 'gray.300',
+                  bg: currentOrientation === 'portrait' ? 'brand.50' : 'white',
+                  rounded: 'md',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
                   _hover: {
-                    borderColor: "brand.400",
-                    transform: "translateY(-1px)",
+                    borderColor: 'brand.400',
+                    transform: 'translateY(-1px)',
                   },
                 })}
               >
                 <div
                   className={css({
-                    w: "8",
-                    h: "10",
-                    border: "1.5px solid",
-                    borderColor:
-                      currentOrientation === "portrait"
-                        ? "brand.400"
-                        : "gray.400",
-                    bg: "white",
-                    rounded: "sm",
+                    w: '8',
+                    h: '10',
+                    border: '1.5px solid',
+                    borderColor: currentOrientation === 'portrait' ? 'brand.400' : 'gray.400',
+                    bg: 'white',
+                    rounded: 'sm',
                   })}
                 />
                 <div
                   className={css({
-                    fontSize: "2xs",
-                    fontWeight: "semibold",
-                    color:
-                      currentOrientation === "portrait"
-                        ? "brand.700"
-                        : "gray.600",
+                    fontSize: '2xs',
+                    fontWeight: 'semibold',
+                    color: currentOrientation === 'portrait' ? 'brand.700' : 'gray.600',
                   })}
                 >
                   Portrait
@@ -421,70 +352,57 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               </button>
               <button
                 onClick={() => {
-                  const newOrientation = "landscape";
-                  const newProblemsPerPage = 20; // Default for landscape
+                  const newOrientation = 'landscape'
+                  const newProblemsPerPage = 20 // Default for landscape
                   const newCols = getDefaultColsForProblemsPerPage(
                     newProblemsPerPage,
-                    newOrientation,
-                  );
-                  const newPages = currentPages;
-                  const derived = calculateDerivedState(
-                    newProblemsPerPage,
-                    newCols,
-                    newPages,
-                  );
+                    newOrientation
+                  )
+                  const newPages = currentPages
+                  const derived = calculateDerivedState(newProblemsPerPage, newCols, newPages)
                   onChange({
                     orientation: newOrientation,
                     problemsPerPage: newProblemsPerPage,
                     cols: newCols,
                     pages: newPages,
                     ...derived,
-                  });
+                  })
                 }}
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "1",
-                  w: "20",
-                  h: "16",
-                  border: "2px solid",
-                  borderColor:
-                    currentOrientation === "landscape"
-                      ? "brand.500"
-                      : "gray.300",
-                  bg: currentOrientation === "landscape" ? "brand.50" : "white",
-                  rounded: "md",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1',
+                  w: '20',
+                  h: '16',
+                  border: '2px solid',
+                  borderColor: currentOrientation === 'landscape' ? 'brand.500' : 'gray.300',
+                  bg: currentOrientation === 'landscape' ? 'brand.50' : 'white',
+                  rounded: 'md',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
                   _hover: {
-                    borderColor: "brand.400",
-                    transform: "translateY(-1px)",
+                    borderColor: 'brand.400',
+                    transform: 'translateY(-1px)',
                   },
                 })}
               >
                 <div
                   className={css({
-                    w: "10",
-                    h: "8",
-                    border: "1.5px solid",
-                    borderColor:
-                      currentOrientation === "landscape"
-                        ? "brand.400"
-                        : "gray.400",
-                    bg: "white",
-                    rounded: "sm",
+                    w: '10',
+                    h: '8',
+                    border: '1.5px solid',
+                    borderColor: currentOrientation === 'landscape' ? 'brand.400' : 'gray.400',
+                    bg: 'white',
+                    rounded: 'sm',
                   })}
                 />
                 <div
                   className={css({
-                    fontSize: "2xs",
-                    fontWeight: "semibold",
-                    color:
-                      currentOrientation === "landscape"
-                        ? "brand.700"
-                        : "gray.600",
+                    fontSize: '2xs',
+                    fontWeight: 'semibold',
+                    color: currentOrientation === 'landscape' ? 'brand.700' : 'gray.600',
                   })}
                 >
                   Landscape
@@ -497,106 +415,96 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           <div>
             <div
               className={css({
-                fontSize: "xs",
-                fontWeight: "semibold",
-                color: "gray.500",
-                textTransform: "uppercase",
-                letterSpacing: "wider",
-                mb: "1.5",
+                fontSize: 'xs',
+                fontWeight: 'semibold',
+                color: 'gray.500',
+                textTransform: 'uppercase',
+                letterSpacing: 'wider',
+                mb: '1.5',
               })}
             >
               Problems per Page
             </div>
             <div
               className={css({
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "1.5",
-                justifyContent: "center",
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1.5',
+                justifyContent: 'center',
               })}
             >
-              {(currentOrientation === "portrait"
+              {(currentOrientation === 'portrait'
                 ? [6, 8, 10, 12, 15]
                 : [8, 10, 12, 15, 16, 20]
               ).map((count) => {
-                const isSelected = currentProblemsPerPage === count;
-                const cols = getDefaultColsForProblemsPerPage(
-                  count,
-                  currentOrientation,
-                );
-                const rows = Math.ceil(count / cols);
+                const isSelected = currentProblemsPerPage === count
+                const cols = getDefaultColsForProblemsPerPage(count, currentOrientation)
+                const rows = Math.ceil(count / cols)
 
                 return (
                   <button
                     key={count}
                     onClick={() => {
-                      console.log("=== Problems per Page Button Clicked ===");
-                      console.log("Clicked count:", count);
-                      const newCols = getDefaultColsForProblemsPerPage(
-                        count,
-                        currentOrientation,
-                      );
-                      const newPages = currentPages;
-                      const derived = calculateDerivedState(
-                        count,
-                        newCols,
-                        newPages,
-                      );
-                      console.log("New state:", {
+                      console.log('=== Problems per Page Button Clicked ===')
+                      console.log('Clicked count:', count)
+                      const newCols = getDefaultColsForProblemsPerPage(count, currentOrientation)
+                      const newPages = currentPages
+                      const derived = calculateDerivedState(count, newCols, newPages)
+                      console.log('New state:', {
                         problemsPerPage: count,
                         cols: newCols,
                         pages: newPages,
                         ...derived,
-                      });
+                      })
                       onChange({
                         problemsPerPage: count,
                         cols: newCols,
                         pages: newPages,
                         ...derived,
-                      });
+                      })
                     }}
                     className={css({
-                      display: "grid",
-                      gridTemplateRows: "1fr auto",
-                      alignItems: "center",
-                      gap: "1",
-                      w: currentOrientation === "portrait" ? "14" : "16",
-                      h: currentOrientation === "portrait" ? "16" : "14",
-                      p: "2",
-                      border: "2px solid",
-                      borderColor: isSelected ? "brand.500" : "gray.300",
-                      bg: isSelected ? "brand.50" : "white",
-                      rounded: "lg",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
+                      display: 'grid',
+                      gridTemplateRows: '1fr auto',
+                      alignItems: 'center',
+                      gap: '1',
+                      w: currentOrientation === 'portrait' ? '14' : '16',
+                      h: currentOrientation === 'portrait' ? '16' : '14',
+                      p: '2',
+                      border: '2px solid',
+                      borderColor: isSelected ? 'brand.500' : 'gray.300',
+                      bg: isSelected ? 'brand.50' : 'white',
+                      rounded: 'lg',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
                       _hover: {
-                        borderColor: "brand.400",
-                        transform: "translateY(-1px)",
+                        borderColor: 'brand.400',
+                        transform: 'translateY(-1px)',
                       },
                     })}
                   >
                     {/* Grid visualization - fills available space with 1fr */}
                     <div
                       className={css({
-                        display: "grid",
-                        placeItems: "center",
-                        w: "full",
-                        h: "full",
+                        display: 'grid',
+                        placeItems: 'center',
+                        w: 'full',
+                        h: 'full',
                       })}
                       style={{
                         gridTemplateColumns: `repeat(${cols}, 1fr)`,
                         gridTemplateRows: `repeat(${rows}, 1fr)`,
-                        gap: currentOrientation === "portrait" ? "3px" : "2px",
+                        gap: currentOrientation === 'portrait' ? '3px' : '2px',
                       }}
                     >
                       {Array.from({ length: count }).map((_, i) => (
                         <div
                           key={i}
                           className={css({
-                            w: "1.5",
-                            h: "1.5",
-                            bg: isSelected ? "brand.500" : "gray.400",
-                            rounded: "full",
+                            w: '1.5',
+                            h: '1.5',
+                            bg: isSelected ? 'brand.500' : 'gray.400',
+                            rounded: 'full',
                           })}
                         />
                       ))}
@@ -604,19 +512,19 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     {/* Count label - fixed height */}
                     <div
                       className={css({
-                        fontSize: "2xs",
-                        fontWeight: "semibold",
-                        color: isSelected ? "brand.700" : "gray.600",
-                        h: "4",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        fontSize: '2xs',
+                        fontWeight: 'semibold',
+                        color: isSelected ? 'brand.700' : 'gray.600',
+                        h: '4',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       })}
                     >
                       {count}
                     </div>
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -625,65 +533,65 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           <div>
             <div
               className={css({
-                fontSize: "xs",
-                fontWeight: "semibold",
-                color: "gray.500",
-                textTransform: "uppercase",
-                letterSpacing: "wider",
-                mb: "1.5",
+                fontSize: 'xs',
+                fontWeight: 'semibold',
+                color: 'gray.500',
+                textTransform: 'uppercase',
+                letterSpacing: 'wider',
+                mb: '1.5',
               })}
             >
               Pages ({currentProblemsPerPage * currentPages} total problems)
             </div>
-            <div className={css({ display: "flex", gap: "1.5" })}>
+            <div className={css({ display: 'flex', gap: '1.5' })}>
               {[1, 2, 3, 4].map((pageCount) => {
-                const isSelected = currentPages === pageCount;
+                const isSelected = currentPages === pageCount
                 return (
                   <button
                     key={pageCount}
                     onClick={() => {
-                      console.log("=== Page Count Button Clicked ===");
-                      console.log("Clicked page count:", pageCount);
+                      console.log('=== Page Count Button Clicked ===')
+                      console.log('Clicked page count:', pageCount)
                       const derived = calculateDerivedState(
                         currentProblemsPerPage,
                         currentCols,
-                        pageCount,
-                      );
-                      console.log("New state:", {
+                        pageCount
+                      )
+                      console.log('New state:', {
                         problemsPerPage: currentProblemsPerPage,
                         cols: currentCols,
                         pages: pageCount,
                         ...derived,
-                      });
+                      })
                       onChange({
                         problemsPerPage: currentProblemsPerPage,
                         cols: currentCols,
                         pages: pageCount,
                         ...derived,
-                      });
+                      })
                     }}
                     className={css({
                       flex: 1,
-                      px: "3",
-                      py: "1.5",
-                      border: "1.5px solid",
-                      borderColor: isSelected ? "brand.500" : "gray.300",
-                      bg: isSelected ? "brand.50" : "white",
-                      rounded: "lg",
-                      cursor: "pointer",
-                      fontSize: "xs",
-                      fontWeight: "semibold",
-                      color: isSelected ? "brand.700" : "gray.600",
-                      transition: "all 0.15s",
+                      px: '3',
+                      py: '1.5',
+                      border: '1.5px solid',
+                      borderColor: isSelected ? 'brand.500' : 'gray.300',
+                      bg: isSelected ? 'brand.50' : 'white',
+                      rounded: 'lg',
+                      cursor: 'pointer',
+                      fontSize: 'xs',
+                      fontWeight: 'semibold',
+                      color: isSelected ? 'brand.700' : 'gray.600',
+                      transition: 'all 0.15s',
                       _hover: {
-                        borderColor: "brand.400",
-                        transform: "translateY(-1px)",
+                        borderColor: 'brand.400',
+                        transform: 'translateY(-1px)',
                       },
                     })}
                   >
                     {pageCount}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -694,21 +602,21 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
       <div
         data-section="difficulty"
         className={css({
-          bg: "gray.50",
-          border: "1px solid",
-          borderColor: "gray.200",
-          rounded: "xl",
-          p: "3",
+          bg: 'gray.50',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'xl',
+          p: '3',
         })}
       >
-        <div className={stack({ gap: "2.5" })}>
+        <div className={stack({ gap: '2.5' })}>
           <div
             className={css({
-              fontSize: "xs",
-              fontWeight: "semibold",
-              color: "gray.500",
-              textTransform: "uppercase",
-              letterSpacing: "wider",
+              fontSize: 'xs',
+              fontWeight: 'semibold',
+              color: 'gray.500',
+              textTransform: 'uppercase',
+              letterSpacing: 'wider',
             })}
           >
             Difficulty Level
@@ -717,61 +625,106 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           {/* Get current profile and state */}
           {(() => {
             const currentProfile = (formState.difficultyProfile ||
-              "earlyLearner") as DifficultyLevel;
-            const profile = DIFFICULTY_PROFILES[currentProfile];
+              'earlyLearner') as DifficultyLevel
+            const profile = DIFFICULTY_PROFILES[currentProfile]
 
             // Use defaults from profile if form state values are undefined
-            const pAnyStart =
-              formState.pAnyStart ?? profile.regrouping.pAnyStart;
-            const pAllStart =
-              formState.pAllStart ?? profile.regrouping.pAllStart;
-            const displayRules = formState.displayRules ?? profile.displayRules;
+            const pAnyStart = formState.pAnyStart ?? profile.regrouping.pAnyStart
+            const pAllStart = formState.pAllStart ?? profile.regrouping.pAllStart
+            const displayRules = formState.displayRules ?? profile.displayRules
 
             // Check if current state matches the selected profile
             const matchesProfile =
               pAnyStart === profile.regrouping.pAnyStart &&
               pAllStart === profile.regrouping.pAllStart &&
-              JSON.stringify(displayRules) ===
-                JSON.stringify(profile.displayRules);
-            const isCustom = !matchesProfile;
+              JSON.stringify(displayRules) === JSON.stringify(profile.displayRules)
+            const isCustom = !matchesProfile
 
             // Calculate current difficulty position
-            const currentDifficulty = calculateOverallDifficulty(
-              pAnyStart,
-              pAllStart,
-              displayRules,
-            );
+            const currentDifficulty = calculateOverallDifficulty(pAnyStart, pAllStart, displayRules)
 
-            // Calculate make easier/harder results for preview
-            const easierResult = makeEasier({
-              pAnyStart,
-              pAllStart,
-              displayRules,
-            });
+            // Calculate make easier/harder results for preview (all modes)
+            const easierResultBoth = makeEasier(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'both'
+            )
 
-            const harderResult = makeHarder({
-              pAnyStart,
-              pAllStart,
-              displayRules,
-            });
+            const easierResultChallenge = makeEasier(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'challenge'
+            )
 
-            const canMakeEasier =
-              easierResult.changeDescription !==
-              "Already at minimum difficulty";
-            const canMakeHarder =
-              harderResult.changeDescription !==
-              "Already at maximum difficulty";
+            const easierResultSupport = makeEasier(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'support'
+            )
+
+            const harderResultBoth = makeHarder(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'both'
+            )
+
+            const harderResultChallenge = makeHarder(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'challenge'
+            )
+
+            const harderResultSupport = makeHarder(
+              {
+                pAnyStart,
+                pAllStart,
+                displayRules,
+              },
+              'support'
+            )
+
+            const canMakeEasierBoth =
+              easierResultBoth.changeDescription !== 'Already at minimum difficulty'
+            const canMakeEasierChallenge =
+              easierResultChallenge.changeDescription !== 'Already at minimum difficulty'
+            const canMakeEasierSupport =
+              easierResultSupport.changeDescription !== 'Already at minimum difficulty'
+            const canMakeHarderBoth =
+              harderResultBoth.changeDescription !== 'Already at maximum difficulty'
+            const canMakeHarderChallenge =
+              harderResultChallenge.changeDescription !== 'Already at maximum difficulty'
+            const canMakeHarderSupport =
+              harderResultSupport.changeDescription !== 'Already at maximum difficulty'
+
+            // Keep legacy names for compatibility
+            const canMakeEasier = canMakeEasierBoth
+            const canMakeHarder = canMakeHarderBoth
 
             return (
               <>
                 {/* Overall Difficulty Visualization */}
-                <div className={css({ mb: "3" })}>
+                <div className={css({ mb: '3' })}>
                   <div
                     className={css({
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      color: "gray.700",
-                      mb: "2",
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      color: 'gray.700',
+                      mb: '2',
                     })}
                   >
                     Overall Difficulty
@@ -780,55 +733,55 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   {/* Difficulty bar with preset markers */}
                   <div
                     className={css({
-                      position: "relative",
-                      h: "12",
-                      bg: "gray.100",
-                      rounded: "full",
-                      px: "2",
+                      position: 'relative',
+                      h: '12',
+                      bg: 'gray.100',
+                      rounded: 'full',
+                      px: '2',
                     })}
                   >
                     {/* Preset markers */}
                     {DIFFICULTY_PROGRESSION.map((profileName) => {
-                      const p = DIFFICULTY_PROFILES[profileName];
+                      const p = DIFFICULTY_PROFILES[profileName]
                       const difficulty = calculateOverallDifficulty(
                         p.regrouping.pAnyStart,
                         p.regrouping.pAllStart,
-                        p.displayRules,
-                      );
-                      const position = (difficulty / 10) * 100;
+                        p.displayRules
+                      )
+                      const position = (difficulty / 10) * 100
 
                       return (
                         <div
                           key={profileName}
                           className={css({
-                            position: "absolute",
-                            top: "50%",
+                            position: 'absolute',
+                            top: '50%',
                             left: `${position}%`,
-                            transform: "translate(-50%, -50%)",
-                            w: "2",
-                            h: "2",
-                            bg: "gray.400",
-                            rounded: "full",
+                            transform: 'translate(-50%, -50%)',
+                            w: '2',
+                            h: '2',
+                            bg: 'gray.400',
+                            rounded: 'full',
                           })}
                           title={p.label}
                         />
-                      );
+                      )
                     })}
 
                     {/* Current position indicator */}
                     <div
                       className={css({
-                        position: "absolute",
-                        top: "50%",
+                        position: 'absolute',
+                        top: '50%',
                         left: `${(currentDifficulty / 10) * 100}%`,
-                        transform: "translate(-50%, -50%)",
-                        w: "4",
-                        h: "4",
-                        bg: "brand.500",
-                        rounded: "full",
-                        border: "2px solid",
-                        borderColor: "white",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        transform: 'translate(-50%, -50%)',
+                        w: '4',
+                        h: '4',
+                        bg: 'brand.500',
+                        rounded: 'full',
+                        border: '2px solid',
+                        borderColor: 'white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                       })}
                     />
                   </div>
@@ -836,28 +789,24 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   {/* Status text */}
                   <div
                     className={css({
-                      fontSize: "2xs",
-                      color: "gray.600",
-                      textAlign: "center",
-                      mt: "1.5",
+                      fontSize: '2xs',
+                      color: 'gray.600',
+                      textAlign: 'center',
+                      mt: '1.5',
                     })}
                   >
                     {isCustom ? (
                       <>
-                        You're here (Custom) •{" "}
-                        {(() => {
-                          const regrouping = calculateRegroupingIntensity(
-                            pAnyStart,
-                            pAllStart,
-                          );
+                        You're here (Custom) • {(() => {
+                          const regrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
                           const nearest = findNearestPreset(
                             regrouping,
                             calculateScaffoldingLevel(displayRules, regrouping),
-                            "any",
-                          );
+                            'any'
+                          )
                           return nearest
                             ? `Moving toward ${nearest.profile.label}`
-                            : "Custom settings";
+                            : 'Custom settings'
                         })()}
                       </>
                     ) : (
@@ -869,21 +818,21 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 {/* DEBUG: 2D Cartesian Plane */}
                 <div
                   className={css({
-                    bg: "orange.50",
-                    border: "2px solid",
-                    borderColor: "orange.300",
-                    rounded: "lg",
-                    p: "3",
+                    bg: 'orange.50',
+                    border: '2px solid',
+                    borderColor: 'orange.300',
+                    rounded: 'lg',
+                    p: '3',
                   })}
                 >
                   <div
                     className={css({
-                      fontWeight: "bold",
-                      color: "orange.800",
-                      mb: "2",
-                      fontSize: "2xs",
-                      textTransform: "uppercase",
-                      letterSpacing: "wider",
+                      fontWeight: 'bold',
+                      color: 'orange.800',
+                      mb: '2',
+                      fontSize: '2xs',
+                      textTransform: 'uppercase',
+                      letterSpacing: 'wider',
                     })}
                   >
                     🐛 DEBUG: 2D Difficulty Space
@@ -891,94 +840,65 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
                   {/* SVG Graph */}
                   {(() => {
-                    const width = 300;
-                    const height = 300;
-                    const padding = 40;
-                    const graphWidth = width - padding * 2;
-                    const graphHeight = height - padding * 2;
+                    const width = 300
+                    const height = 300
+                    const padding = 40
+                    const graphWidth = width - padding * 2
+                    const graphHeight = height - padding * 2
 
-                    const currentReg = calculateRegroupingIntensity(
-                      pAnyStart,
-                      pAllStart,
-                    );
-                    const currentScaf = calculateScaffoldingLevel(
-                      displayRules,
-                      currentReg,
-                    );
+                    const currentReg = calculateRegroupingIntensity(pAnyStart, pAllStart)
+                    const currentScaf = calculateScaffoldingLevel(displayRules, currentReg)
 
                     // Convert 0-10 scale to SVG coordinates
-                    const toX = (val: number) =>
-                      padding + (val / 10) * graphWidth;
-                    const toY = (val: number) =>
-                      height - padding - (val / 10) * graphHeight;
+                    const toX = (val: number) => padding + (val / 10) * graphWidth
+                    const toY = (val: number) => height - padding - (val / 10) * graphHeight
 
                     // Convert SVG coordinates to 0-10 scale
                     const fromX = (x: number) =>
-                      Math.max(
-                        0,
-                        Math.min(10, ((x - padding) / graphWidth) * 10),
-                      );
+                      Math.max(0, Math.min(10, ((x - padding) / graphWidth) * 10))
                     const fromY = (y: number) =>
-                      Math.max(
-                        0,
-                        Math.min(
-                          10,
-                          ((height - padding - y) / graphHeight) * 10,
-                        ),
-                      );
+                      Math.max(0, Math.min(10, ((height - padding - y) / graphHeight) * 10))
 
-                    const handleClick = (
-                      e: React.MouseEvent<SVGSVGElement>,
-                    ) => {
-                      const svg = e.currentTarget;
-                      const rect = svg.getBoundingClientRect();
-                      const x = e.clientX - rect.left;
-                      const y = e.clientY - rect.top;
+                    const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+                      const svg = e.currentTarget
+                      const rect = svg.getBoundingClientRect()
+                      const x = e.clientX - rect.left
+                      const y = e.clientY - rect.top
 
                       // Convert to difficulty space (0-10)
-                      const regroupingIntensity = fromX(x);
-                      const scaffoldingLevel = fromY(y);
+                      const regroupingIntensity = fromX(x)
+                      const scaffoldingLevel = fromY(y)
 
                       // Map to progression indices (0-10 → 0-18 for regrouping, 0-12 for scaffolding)
                       const regroupingIdx = Math.round(
-                        (regroupingIntensity / 10) *
-                          (REGROUPING_PROGRESSION.length - 1),
-                      );
+                        (regroupingIntensity / 10) * (REGROUPING_PROGRESSION.length - 1)
+                      )
                       const scaffoldingIdx = Math.round(
-                        (scaffoldingLevel / 10) *
-                          (SCAFFOLDING_PROGRESSION.length - 1),
-                      );
+                        (scaffoldingLevel / 10) * (SCAFFOLDING_PROGRESSION.length - 1)
+                      )
 
                       // Find nearest valid state (applies pedagogical constraints)
-                      const validState = findNearestValidState(
-                        regroupingIdx,
-                        scaffoldingIdx,
-                      );
+                      const validState = findNearestValidState(regroupingIdx, scaffoldingIdx)
 
                       // Get actual values from progressions
-                      const newRegrouping =
-                        REGROUPING_PROGRESSION[validState.regroupingIdx];
-                      const newDisplayRules =
-                        SCAFFOLDING_PROGRESSION[validState.scaffoldingIdx];
+                      const newRegrouping = REGROUPING_PROGRESSION[validState.regroupingIdx]
+                      const newDisplayRules = SCAFFOLDING_PROGRESSION[validState.scaffoldingIdx]
 
                       // Check if this matches a preset
                       const matchedProfile = getProfileFromConfig(
                         newRegrouping.pAllStart,
                         newRegrouping.pAnyStart,
-                        newDisplayRules,
-                      );
+                        newDisplayRules
+                      )
 
                       // Update via onChange
                       onChange({
                         pAnyStart: newRegrouping.pAnyStart,
                         pAllStart: newRegrouping.pAllStart,
                         displayRules: newDisplayRules,
-                        difficultyProfile:
-                          matchedProfile !== "custom"
-                            ? matchedProfile
-                            : undefined,
-                      });
-                    };
+                        difficultyProfile: matchedProfile !== 'custom' ? matchedProfile : undefined,
+                      })
+                    }
 
                     return (
                       <svg
@@ -986,8 +906,8 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                         height={height}
                         onClick={handleClick}
                         className={css({
-                          display: "block",
-                          cursor: "crosshair",
+                          display: 'block',
+                          cursor: 'crosshair',
                         })}
                       >
                         {/* Grid lines */}
@@ -1055,15 +975,12 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
                         {/* Preset points */}
                         {DIFFICULTY_PROGRESSION.map((profileName) => {
-                          const p = DIFFICULTY_PROFILES[profileName];
+                          const p = DIFFICULTY_PROFILES[profileName]
                           const reg = calculateRegroupingIntensity(
                             p.regrouping.pAnyStart,
-                            p.regrouping.pAllStart,
-                          );
-                          const scaf = calculateScaffoldingLevel(
-                            p.displayRules,
-                            reg,
-                          );
+                            p.regrouping.pAllStart
+                          )
+                          const scaf = calculateScaffoldingLevel(p.displayRules, reg)
 
                           return (
                             <g key={profileName}>
@@ -1086,7 +1003,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 {p.label}
                               </text>
                             </g>
-                          );
+                          )
                         })}
 
                         {/* Current position */}
@@ -1098,569 +1015,427 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           stroke="#1e40af"
                           strokeWidth="2"
                         />
-                        <circle
-                          cx={toX(currentReg)}
-                          cy={toY(currentScaf)}
-                          r="3"
-                          fill="white"
-                        />
+                        <circle cx={toX(currentReg)} cy={toY(currentScaf)} r="3" fill="white" />
                       </svg>
-                    );
+                    )
                   })()}
 
                   {/* Numeric readout */}
                   <div
                     className={css({
-                      mt: "2",
-                      fontSize: "2xs",
-                      fontFamily: "mono",
-                      color: "orange.700",
+                      mt: '2',
+                      fontSize: '2xs',
+                      fontFamily: 'mono',
+                      color: 'orange.700',
                     })}
                   >
-                    Current: (
-                    {(() => {
-                      const reg = calculateRegroupingIntensity(
-                        pAnyStart,
-                        pAllStart,
-                      );
-                      const scaf = calculateScaffoldingLevel(displayRules, reg);
-                      return `${reg.toFixed(2)}, ${scaf.toFixed(2)}`;
-                    })()}
-                    )
+                    Current: ({(() => {
+                      const reg = calculateRegroupingIntensity(pAnyStart, pAllStart)
+                      const scaf = calculateScaffoldingLevel(displayRules, reg)
+                      return `${reg.toFixed(2)}, ${scaf.toFixed(2)}`
+                    })()})
                   </div>
                 </div>
 
                 {/* Difficulty level buttons */}
                 <div
                   className={css({
-                    display: "flex",
-                    gap: "2",
-                    flexWrap: "wrap",
+                    display: 'flex',
+                    gap: '2',
+                    flexWrap: 'wrap',
                   })}
                 >
                   {DIFFICULTY_PROGRESSION.map((profileName) => {
-                    const p = DIFFICULTY_PROFILES[profileName];
-                    const isSelected = currentProfile === profileName;
+                    const p = DIFFICULTY_PROFILES[profileName]
+                    const isSelected = currentProfile === profileName
 
                     return (
                       <button
                         key={profileName}
                         onClick={() => {
-                          const selectedProfile =
-                            DIFFICULTY_PROFILES[profileName];
+                          const selectedProfile = DIFFICULTY_PROFILES[profileName]
                           onChange({
                             difficultyProfile: profileName,
                             pAllStart: selectedProfile.regrouping.pAllStart,
                             pAnyStart: selectedProfile.regrouping.pAnyStart,
                             displayRules: selectedProfile.displayRules,
-                          });
+                          })
                         }}
                         className={css({
                           flex: 1,
-                          minWidth: "120px",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.5",
-                          p: "2.5",
-                          border: "2px solid",
-                          borderColor: isSelected ? "brand.500" : "gray.300",
-                          bg: isSelected ? "brand.50" : "white",
-                          rounded: "lg",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
+                          minWidth: '120px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5',
+                          p: '2.5',
+                          border: '2px solid',
+                          borderColor: isSelected ? 'brand.500' : 'gray.300',
+                          bg: isSelected ? 'brand.50' : 'white',
+                          rounded: 'lg',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
                           _hover: {
-                            borderColor: "brand.400",
-                            transform: "translateY(-1px)",
+                            borderColor: 'brand.400',
+                            transform: 'translateY(-1px)',
                           },
                         })}
                       >
                         <div
                           className={css({
-                            fontSize: "xs",
-                            fontWeight: "bold",
-                            color: isSelected ? "brand.700" : "gray.700",
+                            fontSize: 'xs',
+                            fontWeight: 'bold',
+                            color: isSelected ? 'brand.700' : 'gray.700',
                           })}
                         >
                           {p.label}
                         </div>
                         <div
                           className={css({
-                            fontSize: "2xs",
-                            color: isSelected ? "brand.600" : "gray.500",
-                            lineHeight: "1.3",
+                            fontSize: '2xs',
+                            color: isSelected ? 'brand.600' : 'gray.500',
+                            lineHeight: '1.3',
                           })}
                         >
                           {p.description}
                         </div>
                       </button>
-                    );
+                    )
                   })}
                 </div>
 
                 {/* Make Easier/Harder buttons with preview */}
                 <div
                   className={css({
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2",
-                    pt: "1",
-                    borderTop: "1px solid",
-                    borderColor: "gray.200",
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2',
+                    pt: '1',
+                    borderTop: '1px solid',
+                    borderColor: 'gray.200',
                   })}
                 >
-                  {/* Preview what will change */}
-                  <div
-                    className={css({
-                      fontSize: "2xs",
-                      color: "gray.600",
-                      textAlign: "center",
-                    })}
-                  >
-                    <div className={stack({ gap: "1" })}>
-                      {canMakeEasier && (
-                        <div>
-                          ← Make Easier: {easierResult.changeDescription}
-                        </div>
-                      )}
-                      {canMakeHarder && (
-                        <div>
-                          Make Harder →: {harderResult.changeDescription}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Four-Button Layout: [Alt-35%][Rec-65%][Rec-65%][Alt-35%] */}
+                  <Tooltip.Provider delayDuration={300}>
+                    <div className={css({ display: 'flex', gap: '1' })}>
+                      {/* Determine which mode is alternative for easier */}
+                      {(() => {
+                        const easierAlternativeMode =
+                          easierResultBoth.changeDescription ===
+                          easierResultChallenge.changeDescription
+                            ? 'support'
+                            : 'challenge'
+                        const easierAlternativeResult =
+                          easierAlternativeMode === 'support'
+                            ? easierResultSupport
+                            : easierResultChallenge
+                        const easierAlternativeLabel =
+                          easierAlternativeMode === 'support'
+                            ? '↑ More support'
+                            : '← Less challenge'
+                        const canEasierAlternative =
+                          easierAlternativeMode === 'support'
+                            ? canMakeEasierSupport
+                            : canMakeEasierChallenge
 
-                  {/* Split Buttons */}
-                  <div className={css({ display: "flex", gap: "2" })}>
-                    {/* Make Easier Split Button */}
-                    <div
-                      ref={easierDropdownRef}
-                      data-element="easier-split-button"
-                      className={css({ position: "relative", flex: 1 })}
-                    >
-                      <div className={css({ display: "flex", gap: "0" })}>
-                        {/* Main button */}
-                        <button
-                          onClick={() =>
-                            handleDifficultyChange("both", "easier")
-                          }
-                          disabled={!canMakeEasier}
-                          className={css({
-                            flex: 1,
-                            px: "3",
-                            py: "2",
-                            fontSize: "xs",
-                            fontWeight: "semibold",
-                            color: canMakeEasier ? "brand.700" : "gray.400",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: canMakeEasier
-                              ? "brand.500"
-                              : "gray.300",
-                            borderRight: "none",
-                            roundedLeft: "lg",
-                            cursor: canMakeEasier ? "pointer" : "not-allowed",
-                            opacity: canMakeEasier ? 1 : 0.5,
-                            transition: "all 0.15s",
-                            _hover: canMakeEasier
-                              ? {
-                                  bg: "brand.50",
-                                }
-                              : {},
-                          })}
-                        >
-                          ← Make Easier
-                        </button>
-                        {/* Dropdown arrow */}
-                        <button
-                          onClick={() =>
-                            setEasierDropdownOpen(!easierDropdownOpen)
-                          }
-                          disabled={!canMakeEasier}
-                          className={css({
-                            px: "2",
-                            py: "2",
-                            fontSize: "xs",
-                            color: canMakeEasier ? "brand.700" : "gray.400",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: canMakeEasier
-                              ? "brand.500"
-                              : "gray.300",
-                            borderLeft: "none",
-                            roundedRight: "lg",
-                            cursor: canMakeEasier ? "pointer" : "not-allowed",
-                            opacity: canMakeEasier ? 1 : 0.5,
-                            transition: "all 0.15s",
-                            _hover: canMakeEasier
-                              ? {
-                                  bg: "brand.50",
-                                }
-                              : {},
-                          })}
-                        >
-                          ▼
-                        </button>
-                      </div>
-                      {/* Dropdown menu */}
-                      {easierDropdownOpen && (
-                        <div
-                          className={css({
-                            position: "absolute",
-                            top: "calc(100% + 4px)",
-                            left: "0",
-                            right: "0",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: "gray.300",
-                            rounded: "lg",
-                            shadow: "modal",
-                            zIndex: 10,
-                            overflow: "hidden",
-                          })}
-                        >
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("both", "easier")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              borderBottom: "1px solid",
-                              borderColor: "gray.200",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
-                              })}
-                            >
-                              ↙ Easier (both)
-                            </div>
-                            <div
-                              className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
-                              })}
-                            >
-                              Simpler problems + more help
-                            </div>
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("challenge", "easier")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              borderBottom: "1px solid",
-                              borderColor: "gray.200",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
-                              })}
-                            >
-                              ← Less challenge
-                            </div>
-                            <div
-                              className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
-                              })}
-                            >
-                              Simpler problems only
-                            </div>
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("support", "easier")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
-                              })}
-                            >
-                              ↑ More support
-                            </div>
-                            <div
-                              className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
-                              })}
-                            >
-                              Add visual aids only
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        return (
+                          <>
+                            {/* Alternative Easier Button (35%) */}
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <button
+                                  onClick={() =>
+                                    handleDifficultyChange(easierAlternativeMode, 'easier')
+                                  }
+                                  disabled={!canEasierAlternative}
+                                  data-action={`easier-${easierAlternativeMode}`}
+                                  className={css({
+                                    flex: '0.35',
+                                    px: '2',
+                                    py: '2',
+                                    minH: '10',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '2xs',
+                                    fontWeight: 'medium',
+                                    color: canEasierAlternative ? 'gray.600' : 'gray.400',
+                                    bg: 'white',
+                                    border: '1.5px solid',
+                                    borderColor: canEasierAlternative ? 'gray.300' : 'gray.300',
+                                    rounded: 'lg',
+                                    cursor: canEasierAlternative ? 'pointer' : 'not-allowed',
+                                    opacity: canEasierAlternative ? 1 : 0.5,
+                                    transition: 'all 0.15s',
+                                    _hover: canEasierAlternative
+                                      ? {
+                                          bg: 'gray.50',
+                                          borderColor: 'gray.400',
+                                        }
+                                      : {},
+                                  })}
+                                >
+                                  {easierAlternativeLabel}
+                                </button>
+                              </Tooltip.Trigger>
+                              {canEasierAlternative && (
+                                <Tooltip.Portal>
+                                  <Tooltip.Content
+                                    side="top"
+                                    className={css({
+                                      bg: 'gray.800',
+                                      color: 'white',
+                                      px: '3',
+                                      py: '2',
+                                      rounded: 'md',
+                                      fontSize: 'xs',
+                                      maxW: '250px',
+                                      shadow: 'lg',
+                                      zIndex: 1000,
+                                    })}
+                                  >
+                                    {easierAlternativeResult.changeDescription}
+                                    <Tooltip.Arrow className={css({ fill: 'gray.800' })} />
+                                  </Tooltip.Content>
+                                </Tooltip.Portal>
+                              )}
+                            </Tooltip.Root>
 
-                    {/* Make Harder Split Button */}
-                    <div
-                      ref={harderDropdownRef}
-                      data-element="harder-split-button"
-                      className={css({ position: "relative", flex: 1 })}
-                    >
-                      <div className={css({ display: "flex", gap: "0" })}>
-                        {/* Main button */}
-                        <button
-                          onClick={() =>
-                            handleDifficultyChange("both", "harder")
-                          }
-                          disabled={!canMakeHarder}
-                          className={css({
-                            flex: 1,
-                            px: "3",
-                            py: "2",
-                            fontSize: "xs",
-                            fontWeight: "semibold",
-                            color: canMakeHarder ? "brand.700" : "gray.400",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: canMakeHarder
-                              ? "brand.500"
-                              : "gray.300",
-                            borderRight: "none",
-                            roundedLeft: "lg",
-                            cursor: canMakeHarder ? "pointer" : "not-allowed",
-                            opacity: canMakeHarder ? 1 : 0.5,
-                            transition: "all 0.15s",
-                            _hover: canMakeHarder
-                              ? {
-                                  bg: "brand.50",
-                                }
-                              : {},
-                          })}
-                        >
-                          Make Harder →
-                        </button>
-                        {/* Dropdown arrow */}
-                        <button
-                          onClick={() =>
-                            setHarderDropdownOpen(!harderDropdownOpen)
-                          }
-                          disabled={!canMakeHarder}
-                          className={css({
-                            px: "2",
-                            py: "2",
-                            fontSize: "xs",
-                            color: canMakeHarder ? "brand.700" : "gray.400",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: canMakeHarder
-                              ? "brand.500"
-                              : "gray.300",
-                            borderLeft: "none",
-                            roundedRight: "lg",
-                            cursor: canMakeHarder ? "pointer" : "not-allowed",
-                            opacity: canMakeHarder ? 1 : 0.5,
-                            transition: "all 0.15s",
-                            _hover: canMakeHarder
-                              ? {
-                                  bg: "brand.50",
-                                }
-                              : {},
-                          })}
-                        >
-                          ▼
-                        </button>
-                      </div>
-                      {/* Dropdown menu */}
-                      {harderDropdownOpen && (
-                        <div
-                          className={css({
-                            position: "absolute",
-                            top: "calc(100% + 4px)",
-                            left: "0",
-                            right: "0",
-                            bg: "white",
-                            border: "1.5px solid",
-                            borderColor: "gray.300",
-                            rounded: "lg",
-                            shadow: "modal",
-                            zIndex: 10,
-                            overflow: "hidden",
-                          })}
-                        >
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("both", "harder")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              borderBottom: "1px solid",
-                              borderColor: "gray.200",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
+                            {/* Recommended Easier Button (65%) */}
+                            <button
+                              onClick={() => handleDifficultyChange('both', 'easier')}
+                              disabled={!canMakeEasier}
+                              data-action="easier-both"
                               className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
+                                flex: '0.65',
+                                px: '3',
+                                py: '2',
+                                minH: '10',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: '0.5',
+                                color: canMakeEasier ? 'brand.700' : 'gray.400',
+                                bg: 'white',
+                                border: '1.5px solid',
+                                borderColor: canMakeEasier ? 'brand.500' : 'gray.300',
+                                rounded: 'lg',
+                                cursor: canMakeEasier ? 'pointer' : 'not-allowed',
+                                opacity: canMakeEasier ? 1 : 0.5,
+                                transition: 'all 0.15s',
+                                _hover: canMakeEasier
+                                  ? {
+                                      bg: 'brand.50',
+                                    }
+                                  : {},
                               })}
                             >
-                              ↗ Harder (both)
-                            </div>
-                            <div
+                              <div
+                                className={css({
+                                  fontSize: 'xs',
+                                  fontWeight: 'semibold',
+                                  flexShrink: 0,
+                                })}
+                              >
+                                ← Make Easier
+                              </div>
+                              {canMakeEasier && (
+                                <div
+                                  className={css({
+                                    fontSize: '2xs',
+                                    fontWeight: 'normal',
+                                    lineHeight: '1.3',
+                                    textAlign: 'left',
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                  })}
+                                  style={{ WebkitBoxOrient: 'vertical' } as React.CSSProperties}
+                                >
+                                  {easierResultBoth.changeDescription}
+                                </div>
+                              )}
+                            </button>
+                          </>
+                        )
+                      })()}
+
+                      {/* Determine which mode is alternative for harder */}
+                      {(() => {
+                        const harderAlternativeMode =
+                          harderResultBoth.changeDescription ===
+                          harderResultChallenge.changeDescription
+                            ? 'support'
+                            : 'challenge'
+                        const harderAlternativeResult =
+                          harderAlternativeMode === 'support'
+                            ? harderResultSupport
+                            : harderResultChallenge
+                        const harderAlternativeLabel =
+                          harderAlternativeMode === 'support'
+                            ? '↓ Less support'
+                            : '→ More challenge'
+                        const canHarderAlternative =
+                          harderAlternativeMode === 'support'
+                            ? canMakeHarderSupport
+                            : canMakeHarderChallenge
+
+                        return (
+                          <>
+                            {/* Recommended Harder Button (65%) */}
+                            <button
+                              onClick={() => handleDifficultyChange('both', 'harder')}
+                              disabled={!canMakeHarder}
+                              data-action="harder-both"
                               className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
+                                flex: '0.65',
+                                px: '3',
+                                py: '2',
+                                minH: '10',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: '0.5',
+                                color: canMakeHarder ? 'brand.700' : 'gray.400',
+                                bg: 'white',
+                                border: '1.5px solid',
+                                borderColor: canMakeHarder ? 'brand.500' : 'gray.300',
+                                rounded: 'lg',
+                                cursor: canMakeHarder ? 'pointer' : 'not-allowed',
+                                opacity: canMakeHarder ? 1 : 0.5,
+                                transition: 'all 0.15s',
+                                _hover: canMakeHarder
+                                  ? {
+                                      bg: 'brand.50',
+                                    }
+                                  : {},
                               })}
                             >
-                              Harder problems + less help
-                            </div>
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("challenge", "harder")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              borderBottom: "1px solid",
-                              borderColor: "gray.200",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
-                              })}
-                            >
-                              → More challenge
-                            </div>
-                            <div
-                              className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
-                              })}
-                            >
-                              Harder problems only
-                            </div>
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDifficultyChange("support", "harder")
-                            }
-                            className={css({
-                              w: "full",
-                              px: "3",
-                              py: "2",
-                              fontSize: "xs",
-                              textAlign: "left",
-                              bg: "white",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                              _hover: { bg: "brand.50" },
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontWeight: "semibold",
-                                color: "brand.700",
-                              })}
-                            >
-                              ↓ Less support
-                            </div>
-                            <div
-                              className={css({
-                                fontSize: "2xs",
-                                color: "gray.600",
-                                mt: "0.5",
-                              })}
-                            >
-                              Remove visual aids only
-                            </div>
-                          </button>
-                        </div>
-                      )}
+                              <div
+                                className={css({
+                                  fontSize: 'xs',
+                                  fontWeight: 'semibold',
+                                  flexShrink: 0,
+                                })}
+                              >
+                                Make Harder →
+                              </div>
+                              {canMakeHarder && (
+                                <div
+                                  className={css({
+                                    fontSize: '2xs',
+                                    fontWeight: 'normal',
+                                    lineHeight: '1.3',
+                                    textAlign: 'left',
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                  })}
+                                  style={{ WebkitBoxOrient: 'vertical' } as React.CSSProperties}
+                                >
+                                  {harderResultBoth.changeDescription}
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Alternative Harder Button (35%) */}
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <button
+                                  onClick={() =>
+                                    handleDifficultyChange(harderAlternativeMode, 'harder')
+                                  }
+                                  disabled={!canHarderAlternative}
+                                  data-action={`harder-${harderAlternativeMode}`}
+                                  className={css({
+                                    flex: '0.35',
+                                    px: '2',
+                                    py: '2',
+                                    minH: '10',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '2xs',
+                                    fontWeight: 'medium',
+                                    color: canHarderAlternative ? 'gray.600' : 'gray.400',
+                                    bg: 'white',
+                                    border: '1.5px solid',
+                                    borderColor: canHarderAlternative ? 'gray.300' : 'gray.300',
+                                    rounded: 'lg',
+                                    cursor: canHarderAlternative ? 'pointer' : 'not-allowed',
+                                    opacity: canHarderAlternative ? 1 : 0.5,
+                                    transition: 'all 0.15s',
+                                    _hover: canHarderAlternative
+                                      ? {
+                                          bg: 'gray.50',
+                                          borderColor: 'gray.400',
+                                        }
+                                      : {},
+                                  })}
+                                >
+                                  {harderAlternativeLabel}
+                                </button>
+                              </Tooltip.Trigger>
+                              {canHarderAlternative && (
+                                <Tooltip.Portal>
+                                  <Tooltip.Content
+                                    side="top"
+                                    className={css({
+                                      bg: 'gray.800',
+                                      color: 'white',
+                                      px: '3',
+                                      py: '2',
+                                      rounded: 'md',
+                                      fontSize: 'xs',
+                                      maxW: '250px',
+                                      shadow: 'lg',
+                                      zIndex: 1000,
+                                    })}
+                                  >
+                                    {harderAlternativeResult.changeDescription}
+                                    <Tooltip.Arrow className={css({ fill: 'gray.800' })} />
+                                  </Tooltip.Content>
+                                </Tooltip.Portal>
+                              )}
+                            </Tooltip.Root>
+                          </>
+                        )
+                      })()}
                     </div>
-                  </div>
+                  </Tooltip.Provider>
                 </div>
 
                 {/* Progressive Difficulty toggle */}
                 <div
                   className={css({
-                    pt: "1",
-                    borderTop: "1px solid",
-                    borderColor: "gray.200",
+                    pt: '1',
+                    borderTop: '1px solid',
+                    borderColor: 'gray.200',
                   })}
                 >
                   <div
                     className={css({
-                      fontSize: "xs",
-                      fontWeight: "semibold",
-                      color: "gray.500",
-                      mb: "1.5",
+                      fontSize: 'xs',
+                      fontWeight: 'semibold',
+                      color: 'gray.500',
+                      mb: '1.5',
                     })}
                   >
                     Progressive Difficulty
                   </div>
-                  <div className={css({ display: "flex", gap: "2" })}>
+                  <div className={css({ display: 'flex', gap: '2' })}>
                     {[
                       {
                         value: false,
-                        label: "Off",
-                        desc: "All problems at the selected difficulty level",
+                        label: 'Off',
+                        desc: 'All problems at the selected difficulty level',
                       },
                       {
                         value: true,
-                        label: "On",
-                        desc: "Start easier and gradually build up, helping students warm up",
+                        label: 'On',
+                        desc: 'Start easier and gradually build up, helping students warm up',
                       },
                     ].map(({ value, label, desc }) => {
-                      const isSelected =
-                        (formState.interpolate ?? true) === value;
+                      const isSelected = (formState.interpolate ?? true) === value
 
                       return (
                         <button
@@ -1668,47 +1443,47 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           onClick={() => onChange({ interpolate: value })}
                           className={css({
                             flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5",
-                            p: "2.5",
-                            border: "2px solid",
-                            borderColor: isSelected ? "brand.500" : "gray.300",
-                            bg: isSelected ? "brand.50" : "white",
-                            rounded: "lg",
-                            cursor: "pointer",
-                            transition: "all 0.15s",
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5',
+                            p: '2.5',
+                            border: '2px solid',
+                            borderColor: isSelected ? 'brand.500' : 'gray.300',
+                            bg: isSelected ? 'brand.50' : 'white',
+                            rounded: 'lg',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
                             _hover: {
-                              borderColor: "brand.400",
-                              transform: "translateY(-1px)",
+                              borderColor: 'brand.400',
+                              transform: 'translateY(-1px)',
                             },
                           })}
                         >
                           <div
                             className={css({
-                              fontSize: "xs",
-                              fontWeight: "bold",
-                              color: isSelected ? "brand.700" : "gray.700",
+                              fontSize: 'xs',
+                              fontWeight: 'bold',
+                              color: isSelected ? 'brand.700' : 'gray.700',
                             })}
                           >
                             {label}
                           </div>
                           <div
                             className={css({
-                              fontSize: "2xs",
-                              color: isSelected ? "brand.600" : "gray.500",
-                              lineHeight: "1.3",
+                              fontSize: '2xs',
+                              color: isSelected ? 'brand.600' : 'gray.500',
+                              lineHeight: '1.3',
                             })}
                           >
                             {desc}
                           </div>
                         </button>
-                      );
+                      )
                     })}
                   </div>
                 </div>
               </>
-            );
+            )
           })()}
         </div>
       </div>
@@ -1717,33 +1492,33 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
       <div
         data-section="display"
         className={css({
-          bg: "gray.50",
-          border: "1px solid",
-          borderColor: "gray.200",
-          rounded: "xl",
-          p: "3",
+          bg: 'gray.50',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'xl',
+          p: '3',
         })}
       >
-        <div className={stack({ gap: "3" })}>
+        <div className={stack({ gap: '3' })}>
           <div
             className={css({
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             })}
           >
             <div
               className={css({
-                fontSize: "xs",
-                fontWeight: "semibold",
-                color: "gray.500",
-                textTransform: "uppercase",
-                letterSpacing: "wider",
+                fontSize: 'xs',
+                fontWeight: 'semibold',
+                color: 'gray.500',
+                textTransform: 'uppercase',
+                letterSpacing: 'wider',
               })}
             >
               Display Options
             </div>
-            <div className={css({ display: "flex", gap: "1.5" })}>
+            <div className={css({ display: 'flex', gap: '1.5' })}>
               <button
                 onClick={() =>
                   onChange({
@@ -1756,16 +1531,16 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   })
                 }
                 className={css({
-                  px: "2",
-                  py: "0.5",
-                  fontSize: "2xs",
-                  color: "brand.600",
-                  border: "1px solid",
-                  borderColor: "brand.300",
-                  bg: "white",
-                  rounded: "md",
-                  cursor: "pointer",
-                  _hover: { bg: "brand.50" },
+                  px: '2',
+                  py: '0.5',
+                  fontSize: '2xs',
+                  color: 'brand.600',
+                  border: '1px solid',
+                  borderColor: 'brand.300',
+                  bg: 'white',
+                  rounded: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'brand.50' },
                 })}
               >
                 Check All
@@ -1782,16 +1557,16 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   })
                 }
                 className={css({
-                  px: "2",
-                  py: "0.5",
-                  fontSize: "2xs",
-                  color: "gray.600",
-                  border: "1px solid",
-                  borderColor: "gray.300",
-                  bg: "white",
-                  rounded: "md",
-                  cursor: "pointer",
-                  _hover: { bg: "gray.50" },
+                  px: '2',
+                  py: '0.5',
+                  fontSize: '2xs',
+                  color: 'gray.600',
+                  border: '1px solid',
+                  borderColor: 'gray.300',
+                  bg: 'white',
+                  rounded: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'gray.50' },
                 })}
               >
                 Uncheck All
@@ -1802,18 +1577,18 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           {/* Two-column grid: toggle options on left, preview on right */}
           <div
             className={css({
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr",
-              gap: "3",
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr',
+              gap: '3',
             })}
           >
             {/* Toggle Options in 2-column grid */}
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "2",
-                alignItems: "start",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '2',
+                alignItems: 'start',
               })}
             >
               <ToggleOption
@@ -1832,18 +1607,14 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
               <ToggleOption
                 checked={formState.showPlaceValueColors ?? true}
-                onChange={(checked) =>
-                  onChange({ showPlaceValueColors: checked })
-                }
+                onChange={(checked) => onChange({ showPlaceValueColors: checked })}
                 label="Place Value Colors"
                 description="Reinforce place value understanding visually"
               />
 
               <ToggleOption
                 checked={formState.showProblemNumbers ?? true}
-                onChange={(checked) =>
-                  onChange({ showProblemNumbers: checked })
-                }
+                onChange={(checked) => onChange({ showProblemNumbers: checked })}
                 label="Problem Numbers"
                 description="Help students track progress and reference problems"
               />
@@ -1858,10 +1629,10 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               <ToggleOption
                 checked={formState.showTenFrames ?? false}
                 onChange={(checked) => {
-                  onChange({ showTenFrames: checked });
+                  onChange({ showTenFrames: checked })
                   // Auto-disable "for all" when disabling ten-frames
                   if (!checked) {
-                    onChange({ showTenFramesForAll: false });
+                    onChange({ showTenFramesForAll: false })
                   }
                 }}
                 label="Ten-Frames"
@@ -1870,17 +1641,17 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 {/* Sub-option: Show ten-frames for all - always rendered but hidden when parent is unchecked */}
                 <div
                   className={css({
-                    display: "flex",
-                    gap: "2",
-                    alignItems: "center",
-                    pt: "2",
-                    mt: "1.5",
-                    borderTop: "1px solid",
-                    borderColor: "brand.300",
+                    display: 'flex',
+                    gap: '2',
+                    alignItems: 'center',
+                    pt: '2',
+                    mt: '1.5',
+                    borderTop: '1px solid',
+                    borderColor: 'brand.300',
                     opacity: formState.showTenFrames ? 1 : 0,
-                    visibility: formState.showTenFrames ? "visible" : "hidden",
-                    pointerEvents: formState.showTenFrames ? "auto" : "none",
-                    transition: "opacity 0.15s",
+                    visibility: formState.showTenFrames ? 'visible' : 'hidden',
+                    pointerEvents: formState.showTenFrames ? 'auto' : 'none',
+                    transition: 'opacity 0.15s',
                   })}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -1892,20 +1663,18 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     onClick={(e) => e.stopPropagation()}
                     data-element="ten-frames-all-checkbox"
                     className={css({
-                      w: "3.5",
-                      h: "3.5",
-                      cursor: "pointer",
+                      w: '3.5',
+                      h: '3.5',
+                      cursor: 'pointer',
                       flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      bg: formState.showTenFramesForAll ? "brand.500" : "white",
-                      border: "2px solid",
-                      borderColor: formState.showTenFramesForAll
-                        ? "brand.500"
-                        : "gray.300",
-                      rounded: "sm",
-                      transition: "all 0.15s",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bg: formState.showTenFramesForAll ? 'brand.500' : 'white',
+                      border: '2px solid',
+                      borderColor: formState.showTenFramesForAll ? 'brand.500' : 'gray.300',
+                      rounded: 'sm',
+                      transition: 'all 0.15s',
                     })}
                   >
                     <Checkbox.Indicator>
@@ -1925,16 +1694,16 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   </Checkbox.Root>
                   <label
                     className={css({
-                      fontSize: "2xs",
-                      fontWeight: "medium",
-                      color: "brand.700",
-                      cursor: "pointer",
+                      fontSize: '2xs',
+                      fontWeight: 'medium',
+                      color: 'brand.700',
+                      cursor: 'pointer',
                     })}
                     onClick={(e) => {
-                      e.stopPropagation();
+                      e.stopPropagation()
                       onChange({
                         showTenFramesForAll: !formState.showTenFramesForAll,
-                      });
+                      })
                     }}
                   >
                     Show for all problems (not just regrouping)
@@ -1949,5 +1718,5 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -7,7 +7,7 @@ import { ComplementRaceProvider } from '@/arcade-games/complement-race/Provider'
 export default function PracticeModePage() {
   return (
     <PageWithNav navTitle="Practice Mode" navEmoji="🏁">
-      <ComplementRaceProvider initialStyle="practice">
+      <ComplementRaceProvider>
         <ComplementRaceGame />
       </ComplementRaceProvider>
     </PageWithNav>

@@ -7,7 +7,7 @@ import { ComplementRaceProvider } from '@/arcade-games/complement-race/Provider'
 export default function SurvivalModePage() {
   return (
     <PageWithNav navTitle="Survival Mode" navEmoji="🔄">
-      <ComplementRaceProvider initialStyle="survival">
+      <ComplementRaceProvider>
         <ComplementRaceGame />
       </ComplementRaceProvider>
     </PageWithNav>

@@ -37,6 +37,7 @@ export interface FlashcardConfig {
   hideInactiveBeads?: boolean
   beadShape?: 'diamond' | 'circle' | 'square'
   colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating'
+  colorPalette?: 'default' | 'pastel' | 'vibrant' | 'earth-tones'
   coloredNumerals?: boolean
   scaleFactor?: number
   format?: 'pdf' | 'html' | 'png' | 'svg'
@@ -67,6 +68,7 @@ export interface FlashcardFormState {
   hideInactiveBeads?: boolean
   beadShape?: 'diamond' | 'circle' | 'square'
   colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating'
+  colorPalette?: 'default' | 'pastel' | 'vibrant' | 'earth-tones'
   coloredNumerals?: boolean
   scaleFactor?: number
   format?: 'pdf' | 'html' | 'png' | 'svg'

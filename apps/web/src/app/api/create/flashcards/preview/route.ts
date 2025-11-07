@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       colorPalette,
       hideInactiveBeads,
       showEmptyColumns,
-      columns: columns === 'auto' ? 'auto' : Number(columns),
+      columns: (columns === 'auto' ? 'auto' : Number(columns)) as number | 'auto',
       scaleFactor,
       coloredNumerals,
     }
