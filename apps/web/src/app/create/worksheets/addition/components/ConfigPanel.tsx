@@ -415,8 +415,27 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
-                const scaffoldingLevel = Math.round(currentScaffolding)
-                customDescription = `${regroupingPercent}% regrouping, ${scaffoldingLevel}/10 scaffolding`
+
+                // Summarize which scaffolding is enabled
+                const scaffoldingParts: string[] = []
+                if (displayRules.carryBoxes === 'always' || displayRules.carryBoxes === 'whenRegrouping') {
+                  scaffoldingParts.push('carry boxes')
+                }
+                if (displayRules.answerBoxes === 'always' || displayRules.answerBoxes === 'whenRegrouping') {
+                  scaffoldingParts.push('answer boxes')
+                }
+                if (displayRules.placeValueColors === 'always' || displayRules.placeValueColors === 'whenRegrouping') {
+                  scaffoldingParts.push('place value colors')
+                }
+                if (displayRules.tenFrames === 'always' || displayRules.tenFrames === 'whenRegrouping') {
+                  scaffoldingParts.push('ten-frames')
+                }
+
+                const scaffoldingSummary = scaffoldingParts.length > 0
+                  ? scaffoldingParts.join(', ')
+                  : 'no scaffolding'
+
+                customDescription = `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
               }
 
               // Calculate current difficulty position
