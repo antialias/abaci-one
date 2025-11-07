@@ -639,9 +639,10 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
           {/* Get current profile and state */}
           {(() => {
-            const currentProfile = (formState.difficultyProfile ||
-              'earlyLearner') as DifficultyLevel
-            const profile = DIFFICULTY_PROFILES[currentProfile]
+            const currentProfile = formState.difficultyProfile as DifficultyLevel | undefined
+            const profile = currentProfile
+              ? DIFFICULTY_PROFILES[currentProfile]
+              : DIFFICULTY_PROFILES.earlyLearner
 
             // Use defaults from profile if form state values are undefined
             const pAnyStart = formState.pAnyStart ?? profile.regrouping.pAnyStart
