@@ -476,26 +476,46 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                             bg: isCustom ? 'orange.50' : 'white',
                             rounded: 'lg',
                             cursor: 'pointer',
-                            fontSize: 'sm',
-                            fontWeight: 'medium',
-                            color: 'gray.700',
                             transition: 'all 0.15s',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
+                            textAlign: 'left',
+                            gap: '2',
                             _hover: {
                               borderColor: isCustom ? 'orange.500' : 'brand.400',
                             },
                           })}
                         >
-                          <span>
-                            {isCustom
-                              ? '✨ Custom'
-                              : currentProfile
-                                ? DIFFICULTY_PROFILES[currentProfile].label
-                                : 'Early Learner'}
-                          </span>
-                          <span className={css({ fontSize: 'xs', color: 'gray.400' })}>▼</span>
+                          <div className={css({ flex: 1, display: 'flex', flexDirection: 'column', gap: '1' })}>
+                            <div
+                              className={css({
+                                fontSize: 'sm',
+                                fontWeight: 'semibold',
+                                color: 'gray.700',
+                              })}
+                            >
+                              {isCustom
+                                ? '✨ Custom'
+                                : currentProfile
+                                  ? DIFFICULTY_PROFILES[currentProfile].label
+                                  : 'Early Learner'}
+                            </div>
+                            <div
+                              className={css({
+                                fontSize: 'xs',
+                                color: isCustom ? 'orange.600' : 'gray.500',
+                                lineHeight: '1.3',
+                              })}
+                            >
+                              {isCustom
+                                ? 'Settings modified from preset'
+                                : currentProfile
+                                  ? DIFFICULTY_PROFILES[currentProfile].description
+                                  : 'Scaffolds appear when needed. Introduces occasional regrouping.'}
+                            </div>
+                          </div>
+                          <span className={css({ fontSize: 'xs', color: 'gray.400', flexShrink: 0 })}>▼</span>
                         </button>
                       </DropdownMenu.Trigger>
 
@@ -1074,72 +1094,6 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                         return `${reg.toFixed(2)}, ${scaf.toFixed(2)}`
                       })()})
                     </div>
-                  </div>
-
-                  {/* Difficulty level buttons */}
-                  <div
-                    className={css({
-                      display: 'flex',
-                      gap: '2',
-                      flexWrap: 'wrap',
-                    })}
-                  >
-                    {DIFFICULTY_PROGRESSION.map((profileName) => {
-                      const p = DIFFICULTY_PROFILES[profileName]
-                      const isSelected = currentProfile === profileName
-
-                      return (
-                        <button
-                          key={profileName}
-                          onClick={() => {
-                            const selectedProfile = DIFFICULTY_PROFILES[profileName]
-                            onChange({
-                              difficultyProfile: profileName,
-                              pAllStart: selectedProfile.regrouping.pAllStart,
-                              pAnyStart: selectedProfile.regrouping.pAnyStart,
-                              displayRules: selectedProfile.displayRules,
-                            })
-                          }}
-                          className={css({
-                            flex: 1,
-                            minWidth: '120px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5',
-                            p: '2.5',
-                            border: '2px solid',
-                            borderColor: isSelected ? 'brand.500' : 'gray.300',
-                            bg: isSelected ? 'brand.50' : 'white',
-                            rounded: 'lg',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                            _hover: {
-                              borderColor: 'brand.400',
-                              transform: 'translateY(-1px)',
-                            },
-                          })}
-                        >
-                          <div
-                            className={css({
-                              fontSize: 'xs',
-                              fontWeight: 'bold',
-                              color: isSelected ? 'brand.700' : 'gray.700',
-                            })}
-                          >
-                            {p.label}
-                          </div>
-                          <div
-                            className={css({
-                              fontSize: '2xs',
-                              color: isSelected ? 'brand.600' : 'gray.500',
-                              lineHeight: '1.3',
-                            })}
-                          >
-                            {p.description}
-                          </div>
-                        </button>
-                      )
-                    })}
                   </div>
 
                   {/* Make Easier/Harder buttons with preview */}

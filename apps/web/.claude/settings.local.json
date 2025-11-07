@@ -169,7 +169,9 @@
       "Bash(do echo \"=== Check $i ===\")",
       "Bash(pnpm panda codegen:*)",
       "Bash(npx biome lint:*)",
-      "Bash(TZ=America/Chicago date:*)"
+      "Bash(TZ=America/Chicago date:*)",
+      "Bash(git hash-object:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []
