@@ -67,7 +67,8 @@ export default async function BlogIndex() {
               fontSize: { base: '2.5rem', md: '3.5rem' },
               fontWeight: 'bold',
               mb: '1rem',
-              background: 'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
+              background:
+                'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
               backgroundClip: 'text',
               color: 'transparent',
             })}

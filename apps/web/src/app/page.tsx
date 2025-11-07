@@ -80,7 +80,8 @@ function HeroSection() {
           className={css({
             fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
             fontWeight: 'bold',
-            background: 'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
+            background:
+              'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
             backgroundClip: 'text',
             color: 'transparent',
           })}
@@ -554,7 +555,9 @@ export default function HomePage() {
               >
                 {t('arcade.title')}
               </h2>
-              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>{t('arcade.subtitle')}</p>
+              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>
+                {t('arcade.subtitle')}
+              </p>
             </div>
 
             <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
@@ -595,7 +598,9 @@ export default function HomePage() {
               >
                 {t('journey.title')}
               </h2>
-              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>{t('journey.subtitle')}</p>
+              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>
+                {t('journey.subtitle')}
+              </p>
             </div>
 
             <LevelSliderDisplay />

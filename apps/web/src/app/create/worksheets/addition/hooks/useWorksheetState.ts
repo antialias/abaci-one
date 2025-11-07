@@ -69,7 +69,10 @@ export function useWorksheetState(
   useEffect(() => {
     console.log('[useWorksheetState Debounce] Triggered')
     console.log('[useWorksheetState Debounce] Current formState seed:', formState.seed)
-    console.log('[useWorksheetState Debounce] Previous formState seed:', prevFormStateRef.current.seed)
+    console.log(
+      '[useWorksheetState Debounce] Previous formState seed:',
+      prevFormStateRef.current.seed
+    )
 
     // Skip if formState hasn't actually changed (handles StrictMode double-render)
     if (formState === prevFormStateRef.current) {

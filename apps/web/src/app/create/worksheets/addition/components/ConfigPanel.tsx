@@ -35,33 +35,106 @@ interface ConfigPanelProps {
 }
 
 /**
- * Generate a human-readable summary of enabled scaffolding aids
+ * Get display label for a rule mode
  */
-function getScaffoldingSummary(displayRules: any): string {
+function getRuleModeLabel(mode: string): string {
+  switch (mode) {
+    case 'always':
+      return 'always'
+    case 'whenRegrouping':
+      return 'when regrouping'
+    case 'whenMultipleRegroups':
+      return '2+ regroups'
+    case 'when3PlusDigits':
+      return '3+ digits'
+    default:
+      return mode
+  }
+}
+
+/**
+ * Get badge color for a rule mode
+ */
+function getRuleModeColor(mode: string): { bg: string; text: string } {
+  switch (mode) {
+    case 'always':
+      return { bg: 'green.100', text: 'green.700' }
+    case 'whenRegrouping':
+      return { bg: 'yellow.100', text: 'yellow.700' }
+    case 'whenMultipleRegroups':
+      return { bg: 'orange.100', text: 'orange.700' }
+    case 'when3PlusDigits':
+      return { bg: 'blue.100', text: 'blue.700' }
+    default:
+      return { bg: 'gray.100', text: 'gray.700' }
+  }
+}
+
+/**
+ * Generate a human-readable summary of enabled scaffolding aids with mode badges
+ */
+function getScaffoldingSummary(displayRules: any): React.ReactNode {
   console.log('[getScaffoldingSummary] displayRules:', displayRules)
 
-  const scaffoldingParts: string[] = []
+  const scaffoldingItems: Array<{ name: string; mode: string }> = []
+
   if (displayRules.carryBoxes !== 'never') {
-    scaffoldingParts.push('carry boxes')
+    scaffoldingItems.push({ name: 'carry boxes', mode: displayRules.carryBoxes })
     console.log('[getScaffoldingSummary] Adding carry boxes:', displayRules.carryBoxes)
   }
   if (displayRules.answerBoxes !== 'never') {
-    scaffoldingParts.push('answer boxes')
+    scaffoldingItems.push({ name: 'answer boxes', mode: displayRules.answerBoxes })
     console.log('[getScaffoldingSummary] Adding answer boxes:', displayRules.answerBoxes)
   }
   if (displayRules.placeValueColors !== 'never') {
-    scaffoldingParts.push('place value colors')
+    scaffoldingItems.push({ name: 'place value colors', mode: displayRules.placeValueColors })
     console.log('[getScaffoldingSummary] Adding place value colors:', displayRules.placeValueColors)
   }
   if (displayRules.tenFrames !== 'never') {
-    scaffoldingParts.push('ten-frames')
+    scaffoldingItems.push({ name: 'ten-frames', mode: displayRules.tenFrames })
     console.log('[getScaffoldingSummary] Adding ten-frames:', displayRules.tenFrames)
   }
 
-  const summary = scaffoldingParts.length > 0 ? scaffoldingParts.join(', ') : 'no scaffolding'
-  console.log('[getScaffoldingSummary] Final summary:', summary)
+  if (scaffoldingItems.length === 0) {
+    console.log('[getScaffoldingSummary] Final summary: no scaffolding')
+    return <span className={css({ color: 'gray.500', fontStyle: 'italic' })}>no scaffolding</span>
+  }
 
-  return summary
+  console.log('[getScaffoldingSummary] Final summary:', scaffoldingItems)
+
+  return (
+    <span className={css({ display: 'flex', flexWrap: 'wrap', gap: '1.5', alignItems: 'center' })}>
+      {scaffoldingItems.map((item, index) => {
+        const colors = getRuleModeColor(item.mode)
+        return (
+          <span
+            key={item.name}
+            className={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+          >
+            <span className={css({ fontSize: 'sm' })}>{item.name}</span>
+            <span
+              className={css({
+                display: 'inline-block',
+                px: '1.5',
+                py: '0.5',
+                bg: colors.bg,
+                color: colors.text,
+                fontSize: 'xs',
+                fontWeight: 'medium',
+                rounded: 'md',
+                whiteSpace: 'nowrap',
+              })}
+            >
+              {getRuleModeLabel(item.mode)}
+            </span>
+            {index < scaffoldingItems.length - 1 && (
+              <span className={css({ color: 'gray.400', mx: '0.5' })}>·</span>
+            )}
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 interface ToggleOptionProps {
@@ -402,11 +475,14 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               // Find nearest presets for custom configurations
               let nearestEasier: DifficultyLevel | null = null
               let nearestHarder: DifficultyLevel | null = null
-              let customDescription = ''
+              let customDescription: React.ReactNode = ''
 
               if (isCustom) {
                 const currentRegrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
-                const currentScaffolding = calculateScaffoldingLevel(displayRules, currentRegrouping)
+                const currentScaffolding = calculateScaffoldingLevel(
+                  displayRules,
+                  currentRegrouping
+                )
 
                 // Calculate distances to all presets
                 const distances = DIFFICULTY_PROGRESSION.map((presetName) => {
@@ -423,11 +499,15 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     (currentRegrouping - presetRegrouping) ** 2 +
                       (currentScaffolding - presetScaffolding) ** 2
                   )
-                  return { presetName, distance, difficulty: calculateOverallDifficulty(
-                    preset.regrouping.pAnyStart,
-                    preset.regrouping.pAllStart,
-                    preset.displayRules
-                  )}
+                  return {
+                    presetName,
+                    distance,
+                    difficulty: calculateOverallDifficulty(
+                      preset.regrouping.pAnyStart,
+                      preset.regrouping.pAllStart,
+                      preset.displayRules
+                    ),
+                  }
                 }).sort((a, b) => a.distance - b.distance)
 
                 const currentDifficultyValue = calculateOverallDifficulty(
@@ -437,16 +517,32 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 )
 
                 // Find closest easier and harder presets
-                const easierPresets = distances.filter(d => d.difficulty < currentDifficultyValue)
-                const harderPresets = distances.filter(d => d.difficulty > currentDifficultyValue)
+                const easierPresets = distances.filter((d) => d.difficulty < currentDifficultyValue)
+                const harderPresets = distances.filter((d) => d.difficulty > currentDifficultyValue)
 
-                nearestEasier = easierPresets.length > 0 ? easierPresets[0].presetName : distances[0].presetName
-                nearestHarder = harderPresets.length > 0 ? harderPresets[0].presetName : distances[distances.length - 1].presetName
+                nearestEasier =
+                  easierPresets.length > 0 ? easierPresets[0].presetName : distances[0].presetName
+                nearestHarder =
+                  harderPresets.length > 0
+                    ? harderPresets[0].presetName
+                    : distances[distances.length - 1].presetName
 
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
                 const scaffoldingSummary = getScaffoldingSummary(displayRules)
-                customDescription = `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
+                customDescription = (
+                  <span
+                    className={css({
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '1',
+                      alignItems: 'center',
+                    })}
+                  >
+                    <span>{regroupingPercent}% regrouping,</span>
+                    {scaffoldingSummary}
+                  </span>
+                )
               }
 
               // Calculate current difficulty position
@@ -567,7 +663,14 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                             },
                           })}
                         >
-                          <div className={css({ flex: 1, display: 'flex', flexDirection: 'column', gap: '1' })}>
+                          <div
+                            className={css({
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1',
+                            })}
+                          >
                             <div
                               className={css({
                                 fontSize: 'sm',
@@ -598,26 +701,42 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 lineHeight: '1.3',
                               })}
                             >
-                              {isCustom ? (
-                                customDescription
-                              ) : currentProfile ? (
-                                (() => {
-                                  const preset = DIFFICULTY_PROFILES[currentProfile]
-                                  const regroupingPercent = Math.round(
-                                    calculateRegroupingIntensity(
-                                      preset.regrouping.pAnyStart,
-                                      preset.regrouping.pAllStart
-                                    ) * 10
-                                  )
-                                  const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
-                                  return `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
-                                })()
-                              ) : (
-                                '25% regrouping, carry boxes, answer boxes, place value colors, ten-frames'
-                              )}
+                              {isCustom
+                                ? customDescription
+                                : currentProfile
+                                  ? (() => {
+                                      const preset = DIFFICULTY_PROFILES[currentProfile]
+                                      const regroupingPercent = Math.round(
+                                        calculateRegroupingIntensity(
+                                          preset.regrouping.pAnyStart,
+                                          preset.regrouping.pAllStart
+                                        ) * 10
+                                      )
+                                      const scaffoldingSummary = getScaffoldingSummary(
+                                        preset.displayRules
+                                      )
+                                      return (
+                                        <span
+                                          className={css({
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: '1',
+                                            alignItems: 'center',
+                                          })}
+                                        >
+                                          <span>{regroupingPercent}% regrouping,</span>
+                                          {scaffoldingSummary}
+                                        </span>
+                                      )
+                                    })()
+                                  : '25% regrouping, carry boxes, answer boxes, place value colors, ten-frames'}
                             </div>
                           </div>
-                          <span className={css({ fontSize: 'xs', color: 'gray.400', flexShrink: 0 })}>▼</span>
+                          <span
+                            className={css({ fontSize: 'xs', color: 'gray.400', flexShrink: 0 })}
+                          >
+                            ▼
+                          </span>
                         </button>
                       </DropdownMenu.Trigger>
 
@@ -649,7 +768,19 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                               ) * 10
                             )
                             const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
-                            const presetDescription = `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
+                            const presetDescription = (
+                              <span
+                                className={css({
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '1',
+                                  alignItems: 'center',
+                                })}
+                              >
+                                <span>{regroupingPercent}% regrouping,</span>
+                                {scaffoldingSummary}
+                              </span>
+                            )
 
                             return (
                               <DropdownMenu.Item
@@ -1607,14 +1738,238 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               p: '3',
             })}
           >
-          <div className={stack({ gap: '3' })}>
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              })}
-            >
+            <div className={stack({ gap: '3' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'gray.500',
+                    textTransform: 'uppercase',
+                    letterSpacing: 'wider',
+                  })}
+                >
+                  Display Options
+                </div>
+                <div className={css({ display: 'flex', gap: '1.5' })}>
+                  <button
+                    onClick={() =>
+                      onChange({
+                        showCarryBoxes: true,
+                        showAnswerBoxes: true,
+                        showPlaceValueColors: true,
+                        showProblemNumbers: true,
+                        showCellBorder: true,
+                        showTenFrames: true,
+                      })
+                    }
+                    className={css({
+                      px: '2',
+                      py: '0.5',
+                      fontSize: '2xs',
+                      color: 'brand.600',
+                      border: '1px solid',
+                      borderColor: 'brand.300',
+                      bg: 'white',
+                      rounded: 'md',
+                      cursor: 'pointer',
+                      _hover: { bg: 'brand.50' },
+                    })}
+                  >
+                    Check All
+                  </button>
+                  <button
+                    onClick={() =>
+                      onChange({
+                        showCarryBoxes: false,
+                        showAnswerBoxes: false,
+                        showPlaceValueColors: false,
+                        showProblemNumbers: false,
+                        showCellBorder: false,
+                        showTenFrames: false,
+                      })
+                    }
+                    className={css({
+                      px: '2',
+                      py: '0.5',
+                      fontSize: '2xs',
+                      color: 'gray.600',
+                      border: '1px solid',
+                      borderColor: 'gray.300',
+                      bg: 'white',
+                      rounded: 'md',
+                      cursor: 'pointer',
+                      _hover: { bg: 'gray.50' },
+                    })}
+                  >
+                    Uncheck All
+                  </button>
+                </div>
+              </div>
+
+              {/* Two-column grid: toggle options on left, preview on right */}
+              <div
+                className={css({
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr',
+                  gap: '3',
+                })}
+              >
+                {/* Toggle Options in 2-column grid */}
+                <div
+                  className={css({
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '2',
+                    alignItems: 'start',
+                  })}
+                >
+                  <ToggleOption
+                    checked={formState.showCarryBoxes ?? true}
+                    onChange={(checked) => onChange({ showCarryBoxes: checked })}
+                    label="Carry Boxes"
+                    description="Help students track regrouping during addition"
+                  />
+
+                  <ToggleOption
+                    checked={formState.showAnswerBoxes ?? true}
+                    onChange={(checked) => onChange({ showAnswerBoxes: checked })}
+                    label="Answer Boxes"
+                    description="Guide students to write organized, aligned answers"
+                  />
+
+                  <ToggleOption
+                    checked={formState.showPlaceValueColors ?? true}
+                    onChange={(checked) => onChange({ showPlaceValueColors: checked })}
+                    label="Place Value Colors"
+                    description="Reinforce place value understanding visually"
+                  />
+
+                  <ToggleOption
+                    checked={formState.showProblemNumbers ?? true}
+                    onChange={(checked) => onChange({ showProblemNumbers: checked })}
+                    label="Problem Numbers"
+                    description="Help students track progress and reference problems"
+                  />
+
+                  <ToggleOption
+                    checked={formState.showCellBorder ?? true}
+                    onChange={(checked) => onChange({ showCellBorder: checked })}
+                    label="Cell Borders"
+                    description="Organize problems visually for easier focus"
+                  />
+
+                  <ToggleOption
+                    checked={formState.showTenFrames ?? false}
+                    onChange={(checked) => {
+                      onChange({ showTenFrames: checked })
+                      // Auto-disable "for all" when disabling ten-frames
+                      if (!checked) {
+                        onChange({ showTenFramesForAll: false })
+                      }
+                    }}
+                    label="Ten-Frames"
+                    description="Visualize regrouping with concrete counting tools"
+                  >
+                    {/* Sub-option: Show ten-frames for all - always rendered but hidden when parent is unchecked */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        gap: '2',
+                        alignItems: 'center',
+                        pt: '2',
+                        mt: '1.5',
+                        borderTop: '1px solid',
+                        borderColor: 'brand.300',
+                        opacity: formState.showTenFrames ? 1 : 0,
+                        visibility: formState.showTenFrames ? 'visible' : 'hidden',
+                        pointerEvents: formState.showTenFrames ? 'auto' : 'none',
+                        transition: 'opacity 0.15s',
+                      })}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox.Root
+                        checked={formState.showTenFramesForAll ?? false}
+                        onCheckedChange={(checked) =>
+                          onChange({ showTenFramesForAll: checked as boolean })
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        data-element="ten-frames-all-checkbox"
+                        className={css({
+                          w: '3.5',
+                          h: '3.5',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          bg: formState.showTenFramesForAll ? 'brand.500' : 'white',
+                          border: '2px solid',
+                          borderColor: formState.showTenFramesForAll ? 'brand.500' : 'gray.300',
+                          rounded: 'sm',
+                          transition: 'all 0.15s',
+                        })}
+                      >
+                        <Checkbox.Indicator>
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 15 15"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
+                              fill="white"
+                            />
+                          </svg>
+                        </Checkbox.Indicator>
+                      </Checkbox.Root>
+                      <label
+                        className={css({
+                          fontSize: '2xs',
+                          fontWeight: 'medium',
+                          color: 'brand.700',
+                          cursor: 'pointer',
+                        })}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onChange({
+                            showTenFramesForAll: !formState.showTenFramesForAll,
+                          })
+                        }}
+                      >
+                        Show for all problems (not just regrouping)
+                      </label>
+                    </div>
+                  </ToggleOption>
+                </div>
+
+                {/* Live Preview */}
+                <DisplayOptionsPreview formState={formState} />
+              </div>
+            </div>
+          </div>
+
+          {/* Regrouping Frequency Card - Manual Mode Only */}
+          <div
+            data-section="regrouping"
+            className={css({
+              bg: 'gray.50',
+              border: '1px solid',
+              borderColor: 'gray.200',
+              rounded: 'xl',
+              p: '3',
+              mt: '3',
+            })}
+          >
+            <div className={stack({ gap: '2.5' })}>
               <div
                 className={css({
                   fontSize: 'xs',
@@ -1624,359 +1979,133 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   letterSpacing: 'wider',
                 })}
               >
-                Display Options
+                Regrouping Frequency
               </div>
-              <div className={css({ display: 'flex', gap: '1.5' })}>
-                <button
-                  onClick={() =>
-                    onChange({
-                      showCarryBoxes: true,
-                      showAnswerBoxes: true,
-                      showPlaceValueColors: true,
-                      showProblemNumbers: true,
-                      showCellBorder: true,
-                      showTenFrames: true,
-                    })
-                  }
-                  className={css({
-                    px: '2',
-                    py: '0.5',
-                    fontSize: '2xs',
-                    color: 'brand.600',
-                    border: '1px solid',
-                    borderColor: 'brand.300',
-                    bg: 'white',
-                    rounded: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'brand.50' },
-                  })}
-                >
-                  Check All
-                </button>
-                <button
-                  onClick={() =>
-                    onChange({
-                      showCarryBoxes: false,
-                      showAnswerBoxes: false,
-                      showPlaceValueColors: false,
-                      showProblemNumbers: false,
-                      showCellBorder: false,
-                      showTenFrames: false,
-                    })
-                  }
-                  className={css({
-                    px: '2',
-                    py: '0.5',
-                    fontSize: '2xs',
-                    color: 'gray.600',
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    bg: 'white',
-                    rounded: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'gray.50' },
-                  })}
-                >
-                  Uncheck All
-                </button>
-              </div>
-            </div>
 
-            {/* Two-column grid: toggle options on left, preview on right */}
-            <div
-              className={css({
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr',
-                gap: '3',
-              })}
-            >
-              {/* Toggle Options in 2-column grid */}
+              {/* Current values display */}
               <div
                 className={css({
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '2',
-                  alignItems: 'start',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 'xs',
+                  color: 'gray.600',
                 })}
               >
-                <ToggleOption
-                  checked={formState.showCarryBoxes ?? true}
-                  onChange={(checked) => onChange({ showCarryBoxes: checked })}
-                  label="Carry Boxes"
-                  description="Help students track regrouping during addition"
-                />
-
-                <ToggleOption
-                  checked={formState.showAnswerBoxes ?? true}
-                  onChange={(checked) => onChange({ showAnswerBoxes: checked })}
-                  label="Answer Boxes"
-                  description="Guide students to write organized, aligned answers"
-                />
-
-                <ToggleOption
-                  checked={formState.showPlaceValueColors ?? true}
-                  onChange={(checked) => onChange({ showPlaceValueColors: checked })}
-                  label="Place Value Colors"
-                  description="Reinforce place value understanding visually"
-                />
-
-                <ToggleOption
-                  checked={formState.showProblemNumbers ?? true}
-                  onChange={(checked) => onChange({ showProblemNumbers: checked })}
-                  label="Problem Numbers"
-                  description="Help students track progress and reference problems"
-                />
-
-                <ToggleOption
-                  checked={formState.showCellBorder ?? true}
-                  onChange={(checked) => onChange({ showCellBorder: checked })}
-                  label="Cell Borders"
-                  description="Organize problems visually for easier focus"
-                />
-
-                <ToggleOption
-                  checked={formState.showTenFrames ?? false}
-                  onChange={(checked) => {
-                    onChange({ showTenFrames: checked })
-                    // Auto-disable "for all" when disabling ten-frames
-                    if (!checked) {
-                      onChange({ showTenFramesForAll: false })
-                    }
-                  }}
-                  label="Ten-Frames"
-                  description="Visualize regrouping with concrete counting tools"
-                >
-                  {/* Sub-option: Show ten-frames for all - always rendered but hidden when parent is unchecked */}
-                  <div
-                    className={css({
-                      display: 'flex',
-                      gap: '2',
-                      alignItems: 'center',
-                      pt: '2',
-                      mt: '1.5',
-                      borderTop: '1px solid',
-                      borderColor: 'brand.300',
-                      opacity: formState.showTenFrames ? 1 : 0,
-                      visibility: formState.showTenFrames ? 'visible' : 'hidden',
-                      pointerEvents: formState.showTenFrames ? 'auto' : 'none',
-                      transition: 'opacity 0.15s',
-                    })}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox.Root
-                      checked={formState.showTenFramesForAll ?? false}
-                      onCheckedChange={(checked) =>
-                        onChange({ showTenFramesForAll: checked as boolean })
-                      }
-                      onClick={(e) => e.stopPropagation()}
-                      data-element="ten-frames-all-checkbox"
-                      className={css({
-                        w: '3.5',
-                        h: '3.5',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bg: formState.showTenFramesForAll ? 'brand.500' : 'white',
-                        border: '2px solid',
-                        borderColor: formState.showTenFramesForAll ? 'brand.500' : 'gray.300',
-                        rounded: 'sm',
-                        transition: 'all 0.15s',
-                      })}
-                    >
-                      <Checkbox.Indicator>
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 15 15"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
-                            fill="white"
-                          />
-                        </svg>
-                      </Checkbox.Indicator>
-                    </Checkbox.Root>
-                    <label
-                      className={css({
-                        fontSize: '2xs',
-                        fontWeight: 'medium',
-                        color: 'brand.700',
-                        cursor: 'pointer',
-                      })}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onChange({
-                          showTenFramesForAll: !formState.showTenFramesForAll,
-                        })
-                      }}
-                    >
-                      Show for all problems (not just regrouping)
-                    </label>
-                  </div>
-                </ToggleOption>
+                <div>
+                  Both:{' '}
+                  <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
+                    {Math.round((formState.pAllStart || 0) * 100)}%
+                  </span>
+                </div>
+                <div>
+                  Any:{' '}
+                  <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
+                    {Math.round((formState.pAnyStart || 0.25) * 100)}%
+                  </span>
+                </div>
               </div>
 
-              {/* Live Preview */}
-              <DisplayOptionsPreview formState={formState} />
-            </div>
-          </div>
-        </div>
-
-        {/* Regrouping Frequency Card - Manual Mode Only */}
-        <div
-          data-section="regrouping"
-          className={css({
-            bg: 'gray.50',
-            border: '1px solid',
-            borderColor: 'gray.200',
-            rounded: 'xl',
-            p: '3',
-            mt: '3',
-          })}
-        >
-          <div className={stack({ gap: '2.5' })}>
-            <div
-              className={css({
-                fontSize: 'xs',
-                fontWeight: 'semibold',
-                color: 'gray.500',
-                textTransform: 'uppercase',
-                letterSpacing: 'wider',
-              })}
-            >
-              Regrouping Frequency
-            </div>
-
-            {/* Current values display */}
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 'xs',
-                color: 'gray.600',
-              })}
-            >
-              <div>
-                Both:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
-                  {Math.round((formState.pAllStart || 0) * 100)}%
-                </span>
-              </div>
-              <div>
-                Any:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
-                  {Math.round((formState.pAnyStart || 0.25) * 100)}%
-                </span>
-              </div>
-            </div>
-
-            {/* Double-thumbed range slider */}
-            <Slider.Root
-              className={css({
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                userSelect: 'none',
-                touchAction: 'none',
-                width: 'full',
-                height: '6',
-              })}
-              value={[(formState.pAllStart || 0) * 100, (formState.pAnyStart || 0.25) * 100]}
-              onValueChange={(values) => {
-                onChange({
-                  pAllStart: values[0] / 100,
-                  pAnyStart: values[1] / 100,
-                })
-              }}
-              min={0}
-              max={100}
-              step={5}
-              minStepsBetweenThumbs={0}
-            >
-              <Slider.Track
+              {/* Double-thumbed range slider */}
+              <Slider.Root
                 className={css({
                   position: 'relative',
-                  flexGrow: 1,
-                  bg: 'gray.200',
-                  rounded: 'full',
-                  height: '1.5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  userSelect: 'none',
+                  touchAction: 'none',
+                  width: 'full',
+                  height: '6',
                 })}
+                value={[(formState.pAllStart || 0) * 100, (formState.pAnyStart || 0.25) * 100]}
+                onValueChange={(values) => {
+                  onChange({
+                    pAllStart: values[0] / 100,
+                    pAnyStart: values[1] / 100,
+                  })
+                }}
+                min={0}
+                max={100}
+                step={5}
+                minStepsBetweenThumbs={0}
               >
-                <Slider.Range
+                <Slider.Track
                   className={css({
-                    position: 'absolute',
-                    bg: 'brand.500',
+                    position: 'relative',
+                    flexGrow: 1,
+                    bg: 'gray.200',
                     rounded: 'full',
-                    height: 'full',
+                    height: '1.5',
+                  })}
+                >
+                  <Slider.Range
+                    className={css({
+                      position: 'absolute',
+                      bg: 'brand.500',
+                      rounded: 'full',
+                      height: 'full',
+                    })}
+                  />
+                </Slider.Track>
+                <Slider.Thumb
+                  className={css({
+                    display: 'block',
+                    width: '3.5',
+                    height: '3.5',
+                    bg: 'white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                    rounded: 'full',
+                    border: '2px solid',
+                    borderColor: 'brand.500',
+                    cursor: 'pointer',
+                    _hover: { transform: 'scale(1.1)' },
+                    _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
                   })}
                 />
-              </Slider.Track>
-              <Slider.Thumb
-                className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.500',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                })}
-              />
-              <Slider.Thumb
-                className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.600',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                })}
-              />
-            </Slider.Root>
+                <Slider.Thumb
+                  className={css({
+                    display: 'block',
+                    width: '3.5',
+                    height: '3.5',
+                    bg: 'white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                    rounded: 'full',
+                    border: '2px solid',
+                    borderColor: 'brand.600',
+                    cursor: 'pointer',
+                    _hover: { transform: 'scale(1.1)' },
+                    _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
+                  })}
+                />
+              </Slider.Root>
 
-            <div
-              className={css({ fontSize: '2xs', color: 'gray.500', lineHeight: '1.3' })}
-            >
-              Regrouping difficulty at worksheet start (Both = all columns regroup, Any = at least
-              one column regroups)
-            </div>
+              <div className={css({ fontSize: '2xs', color: 'gray.500', lineHeight: '1.3' })}>
+                Regrouping difficulty at worksheet start (Both = all columns regroup, Any = at least
+                one column regroups)
+              </div>
 
-            {/* Progressive difficulty checkbox */}
-            <div className={css({ display: 'flex', gap: '2', alignItems: 'center', mt: '1' })}>
-              <input
-                id="interpolate-manual"
-                type="checkbox"
-                checked={formState.interpolate ?? true}
-                onChange={(e) => onChange({ interpolate: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="interpolate-manual"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Progressive difficulty (easy → hard throughout worksheet)
-              </label>
+              {/* Progressive difficulty checkbox */}
+              <div className={css({ display: 'flex', gap: '2', alignItems: 'center', mt: '1' })}>
+                <input
+                  id="interpolate-manual"
+                  type="checkbox"
+                  checked={formState.interpolate ?? true}
+                  onChange={(e) => onChange({ interpolate: e.target.checked })}
+                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+                />
+                <label
+                  htmlFor="interpolate-manual"
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    cursor: 'pointer',
+                  })}
+                >
+                  Progressive difficulty (easy → hard throughout worksheet)
+                </label>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
     </div>

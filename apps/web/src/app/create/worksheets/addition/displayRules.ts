@@ -70,7 +70,12 @@ export function resolveDisplayForProblem(
   }
 
   console.log('[resolveDisplayForProblem] Resolved display options:', resolved)
-  console.log('[resolveDisplayForProblem] Ten-frames rule:', rules.tenFrames, '-> showTenFrames:', resolved.showTenFrames)
+  console.log(
+    '[resolveDisplayForProblem] Ten-frames rule:',
+    rules.tenFrames,
+    '-> showTenFrames:',
+    resolved.showTenFrames
+  )
 
   return resolved
 }
