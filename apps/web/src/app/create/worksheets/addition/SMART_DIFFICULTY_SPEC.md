@@ -2197,6 +2197,8 @@ If validated, this could be publishable in:
 - International Journal of Artificial Intelligence in Education
 - Learning Analytics & Knowledge Conference
 
+**📄 For detailed publication strategy, timelines, and execution plan, see [PUBLICATION_PLAN.md](./PUBLICATION_PLAN.md)**
+
 ## Notes
 
 - Always test with both new and migrated configs
