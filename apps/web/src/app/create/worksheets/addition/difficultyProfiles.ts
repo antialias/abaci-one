@@ -583,8 +583,7 @@ export function calculateOverallDifficulty(
 
   // Distance from start to current position
   const distFromStart = Math.sqrt(
-    (regrouping - startPoint.regrouping) ** 2 +
-      (scaffolding - startPoint.scaffolding) ** 2
+    (regrouping - startPoint.regrouping) ** 2 + (scaffolding - startPoint.scaffolding) ** 2
   )
 
   // Distance from end to current position

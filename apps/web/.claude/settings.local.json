@@ -166,7 +166,9 @@
       "Bash(npx prettier:*)",
       "Bash(timeout 180 npm run build:*)",
       "Bash(.dockerignore.test)",
-      "Bash(do echo \"=== Check $i ===\")"
+      "Bash(do echo \"=== Check $i ===\")",
+      "Bash(pnpm panda codegen:*)",
+      "Bash(npx biome lint:*)"
     ],
     "deny": [],
     "ask": []

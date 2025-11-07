@@ -6,7 +6,6 @@ import {
   parseAdditionConfig,
   serializeAdditionConfig,
   defaultAdditionConfig,
-  type AdditionConfigV1,
 } from '@/app/create/worksheets/config-schemas'
 
 /**
