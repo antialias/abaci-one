@@ -35,106 +35,53 @@ interface ConfigPanelProps {
 }
 
 /**
- * Get display label for a rule mode
+ * Generate a human-readable summary of enabled scaffolding aids
+ * Groups by frequency: "Always: x, y  •  When needed: z"
  */
-function getRuleModeLabel(mode: string): string {
-  switch (mode) {
-    case 'always':
-      return 'always'
-    case 'whenRegrouping':
-      return 'when regrouping'
-    case 'whenMultipleRegroups':
-      return '2+ regroups'
-    case 'when3PlusDigits':
-      return '3+ digits'
-    default:
-      return mode
-  }
-}
-
-/**
- * Get badge color for a rule mode
- */
-function getRuleModeColor(mode: string): { bg: string; text: string } {
-  switch (mode) {
-    case 'always':
-      return { bg: 'green.100', text: 'green.700' }
-    case 'whenRegrouping':
-      return { bg: 'yellow.100', text: 'yellow.700' }
-    case 'whenMultipleRegroups':
-      return { bg: 'orange.100', text: 'orange.700' }
-    case 'when3PlusDigits':
-      return { bg: 'blue.100', text: 'blue.700' }
-    default:
-      return { bg: 'gray.100', text: 'gray.700' }
-  }
-}
-
-/**
- * Generate a human-readable summary of enabled scaffolding aids with mode badges
- */
-function getScaffoldingSummary(displayRules: any): React.ReactNode {
+function getScaffoldingSummary(displayRules: any): string {
   console.log('[getScaffoldingSummary] displayRules:', displayRules)
 
-  const scaffoldingItems: Array<{ name: string; mode: string }> = []
+  const alwaysItems: string[] = []
+  const conditionalItems: string[] = []
 
-  if (displayRules.carryBoxes !== 'never') {
-    scaffoldingItems.push({ name: 'carry boxes', mode: displayRules.carryBoxes })
-    console.log('[getScaffoldingSummary] Adding carry boxes:', displayRules.carryBoxes)
-  }
-  if (displayRules.answerBoxes !== 'never') {
-    scaffoldingItems.push({ name: 'answer boxes', mode: displayRules.answerBoxes })
-    console.log('[getScaffoldingSummary] Adding answer boxes:', displayRules.answerBoxes)
-  }
-  if (displayRules.placeValueColors !== 'never') {
-    scaffoldingItems.push({ name: 'place value colors', mode: displayRules.placeValueColors })
-    console.log('[getScaffoldingSummary] Adding place value colors:', displayRules.placeValueColors)
-  }
-  if (displayRules.tenFrames !== 'never') {
-    scaffoldingItems.push({ name: 'ten-frames', mode: displayRules.tenFrames })
-    console.log('[getScaffoldingSummary] Adding ten-frames:', displayRules.tenFrames)
+  if (displayRules.carryBoxes === 'always') {
+    alwaysItems.push('carry boxes')
+  } else if (displayRules.carryBoxes !== 'never') {
+    conditionalItems.push('carry boxes')
   }
 
-  if (scaffoldingItems.length === 0) {
-    console.log('[getScaffoldingSummary] Final summary: no scaffolding')
-    return <span className={css({ color: 'gray.500', fontStyle: 'italic' })}>no scaffolding</span>
+  if (displayRules.answerBoxes === 'always') {
+    alwaysItems.push('answer boxes')
+  } else if (displayRules.answerBoxes !== 'never') {
+    conditionalItems.push('answer boxes')
   }
 
-  console.log('[getScaffoldingSummary] Final summary:', scaffoldingItems)
+  if (displayRules.placeValueColors === 'always') {
+    alwaysItems.push('place value colors')
+  } else if (displayRules.placeValueColors !== 'never') {
+    conditionalItems.push('place value colors')
+  }
 
-  return (
-    <span className={css({ display: 'flex', flexWrap: 'wrap', gap: '1.5', alignItems: 'center' })}>
-      {scaffoldingItems.map((item, index) => {
-        const colors = getRuleModeColor(item.mode)
-        return (
-          <span
-            key={item.name}
-            className={css({ display: 'flex', alignItems: 'center', gap: '1' })}
-          >
-            <span className={css({ fontSize: 'sm' })}>{item.name}</span>
-            <span
-              className={css({
-                display: 'inline-block',
-                px: '1.5',
-                py: '0.5',
-                bg: colors.bg,
-                color: colors.text,
-                fontSize: 'xs',
-                fontWeight: 'medium',
-                rounded: 'md',
-                whiteSpace: 'nowrap',
-              })}
-            >
-              {getRuleModeLabel(item.mode)}
-            </span>
-            {index < scaffoldingItems.length - 1 && (
-              <span className={css({ color: 'gray.400', mx: '0.5' })}>·</span>
-            )}
-          </span>
-        )
-      })}
-    </span>
-  )
+  if (displayRules.tenFrames === 'always') {
+    alwaysItems.push('ten-frames')
+  } else if (displayRules.tenFrames !== 'never') {
+    conditionalItems.push('ten-frames')
+  }
+
+  const parts: string[] = []
+
+  if (alwaysItems.length > 0) {
+    parts.push(`Always: ${alwaysItems.join(', ')}`)
+  }
+
+  if (conditionalItems.length > 0) {
+    parts.push(`When needed: ${conditionalItems.join(', ')}`)
+  }
+
+  const summary = parts.length > 0 ? parts.join('  •  ') : 'no scaffolding'
+  console.log('[getScaffoldingSummary] Final summary:', summary)
+
+  return summary
 }
 
 interface ToggleOptionProps {
@@ -475,7 +422,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               // Find nearest presets for custom configurations
               let nearestEasier: DifficultyLevel | null = null
               let nearestHarder: DifficultyLevel | null = null
-              let customDescription: React.ReactNode = ''
+              let customDescription = ''
 
               if (isCustom) {
                 const currentRegrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
@@ -530,19 +477,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
                 const scaffoldingSummary = getScaffoldingSummary(displayRules)
-                customDescription = (
-                  <span
-                    className={css({
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '1',
-                      alignItems: 'center',
-                    })}
-                  >
-                    <span>{regroupingPercent}% regrouping,</span>
-                    {scaffoldingSummary}
-                  </span>
-                )
+                customDescription = `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
               }
 
               // Calculate current difficulty position
@@ -715,21 +650,9 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                       const scaffoldingSummary = getScaffoldingSummary(
                                         preset.displayRules
                                       )
-                                      return (
-                                        <span
-                                          className={css({
-                                            display: 'flex',
-                                            flexWrap: 'wrap',
-                                            gap: '1',
-                                            alignItems: 'center',
-                                          })}
-                                        >
-                                          <span>{regroupingPercent}% regrouping,</span>
-                                          {scaffoldingSummary}
-                                        </span>
-                                      )
+                                      return `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
                                     })()
-                                  : '25% regrouping, carry boxes, answer boxes, place value colors, ten-frames'}
+                                  : '25% regrouping  •  Always: carry boxes, answer boxes, place value colors, ten-frames'}
                             </div>
                           </div>
                           <span
@@ -768,19 +691,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                               ) * 10
                             )
                             const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
-                            const presetDescription = (
-                              <span
-                                className={css({
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: '1',
-                                  alignItems: 'center',
-                                })}
-                              >
-                                <span>{regroupingPercent}% regrouping,</span>
-                                {scaffoldingSummary}
-                              </span>
-                            )
+                            const presetDescription = `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
 
                             return (
                               <DropdownMenu.Item

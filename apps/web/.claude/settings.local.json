@@ -172,7 +172,8 @@
       "Bash(TZ=America/Chicago date:*)",
       "Bash(git hash-object:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/src/app/icon/route.tsx)"
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/src/app/icon/route.tsx)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/package.json)"
     ],
     "deny": [],
     "ask": []
