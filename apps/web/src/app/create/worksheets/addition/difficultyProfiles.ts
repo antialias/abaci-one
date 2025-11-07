@@ -856,19 +856,20 @@ export function makeHarder(
     }
 
     // Fallback: If we couldn't move toward preset, try any valid harder move
+    // Per spec: makeHarder should increase complexity (regrouping) first, then reduce support (scaffolding)
     if (!moved) {
-      // Try increasing scaffolding (removing help) first
-      if (
+      // Try increasing regrouping (complexity) first
+      if (newRegroupingIdx < REGROUPING_PROGRESSION.length - 1) {
+        newRegroupingIdx++
+        newScaffoldingIdx = clampScaffoldingToValidRange(newRegroupingIdx, newScaffoldingIdx)
+        moved = true
+      }
+      // Otherwise try increasing scaffolding (removing help)
+      else if (
         newScaffoldingIdx < SCAFFOLDING_PROGRESSION.length - 1 &&
         isValidCombination(newRegroupingIdx, newScaffoldingIdx + 1)
       ) {
         newScaffoldingIdx++
-        moved = true
-      }
-      // Otherwise try increasing regrouping
-      else if (newRegroupingIdx < REGROUPING_PROGRESSION.length - 1) {
-        newRegroupingIdx++
-        newScaffoldingIdx = clampScaffoldingToValidRange(newRegroupingIdx, newScaffoldingIdx)
         moved = true
       }
     }
