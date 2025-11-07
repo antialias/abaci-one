@@ -45,7 +45,7 @@ async function loadWorksheetSettings(): Promise<
       return {
         ...defaultAdditionConfig,
         seed: Date.now() % 2147483647,
-      }
+      } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
     }
 
     // Parse and validate config (auto-migrates to latest version)
@@ -53,14 +53,14 @@ async function loadWorksheetSettings(): Promise<
     return {
       ...config,
       seed: Date.now() % 2147483647,
-    }
+    } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   } catch (error) {
     console.error('Failed to load worksheet settings:', error)
     // Return defaults on error with a stable seed
     return {
       ...defaultAdditionConfig,
       seed: Date.now() % 2147483647,
-    }
+    } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   }
 }
 

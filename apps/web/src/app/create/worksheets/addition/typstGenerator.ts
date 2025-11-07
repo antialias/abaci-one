@@ -25,13 +25,27 @@ function generatePageTypst(
   problemOffset: number,
   rowsPerPage: number
 ): string {
-  // Analyze each problem and resolve display options
+  // Enrich problems with display options based on mode
   const enrichedProblems = pageProblems.map((p) => {
-    const meta = analyzeProblem(p.a, p.b)
-    const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
-    return {
-      ...p,
-      ...displayOptions,
+    if (config.mode === 'smart') {
+      // Smart mode: Per-problem conditional display based on problem complexity
+      const meta = analyzeProblem(p.a, p.b)
+      const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
+      return {
+        ...p,
+        ...displayOptions,
+      }
+    } else {
+      // Manual mode: Uniform display across all problems
+      return {
+        ...p,
+        showCarryBoxes: config.showCarryBoxes,
+        showAnswerBoxes: config.showAnswerBoxes,
+        showPlaceValueColors: config.showPlaceValueColors,
+        showTenFrames: config.showTenFrames,
+        showProblemNumbers: config.showProblemNumbers,
+        showCellBorder: config.showCellBorder,
+      }
     }
   })
 
@@ -82,7 +96,7 @@ function generatePageTypst(
 #block(breakable: false)[
 
 #let heavy-stroke = 0.8pt
-#let show-ten-frames-for-all = ${config.showTenFramesForAll ? 'true' : 'false'}
+#let show-ten-frames-for-all = ${config.mode === 'manual' && config.showTenFramesForAll ? 'true' : 'false'}
 
 ${generateTypstHelpers(cellSize)}
 
