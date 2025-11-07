@@ -1,103 +1,87 @@
 // Type definitions for double-digit addition worksheet creator
 
+import type { AdditionConfigV2 } from "../config-schemas";
+
 /**
  * Complete, validated configuration for worksheet generation
- * All fields have concrete values (no undefined/null)
+ * Extends V2 config with additional derived fields needed for rendering
+ *
+ * Note: Includes V1 compatibility fields during migration period
  */
-export interface WorksheetConfig {
-  // Problem set - PRIMARY state
-  problemsPerPage: number // Number of problems per page (6, 8, 10, 12, 15, 16, 20)
-  cols: number // Column count
-  pages: number // Number of pages
-
+export type WorksheetConfig = AdditionConfigV2 & {
   // Problem set - DERIVED state
-  total: number // total = problemsPerPage * pages
-  rows: number // rows = (problemsPerPage / cols) * pages
+  total: number; // total = problemsPerPage * pages
+  rows: number; // rows = (problemsPerPage / cols) * pages
 
   // Personalization
-  name: string
-  date: string
-
-  // Difficulty controls
-  pAnyStart: number // Share of problems requiring any regrouping at start (0-1)
-  pAllStart: number // Share requiring both ones and tens regrouping at start (0-1)
-  interpolate: boolean // Whether to linearly decay difficulty across sheet
+  date: string;
+  seed: number;
 
   // Layout
   page: {
-    wIn: number
-    hIn: number
-  }
+    wIn: number;
+    hIn: number;
+  };
   margins: {
-    left: number
-    right: number
-    top: number
-    bottom: number
-  }
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  };
 
-  // Display options
-  showCarryBoxes: boolean
-  showAnswerBoxes: boolean
-  showPlaceValueColors: boolean
-  showProblemNumbers: boolean
-  showCellBorder: boolean
-  showTenFrames: boolean // Show empty ten-frames
-  showTenFramesForAll: boolean // Show ten-frames for all place values (not just regrouping)
-  fontSize: number
-  seed: number
-}
+  // V1 compatibility: Include individual boolean flags during migration
+  // These will be derived from displayRules during validation
+  showCarryBoxes: boolean;
+  showAnswerBoxes: boolean;
+  showPlaceValueColors: boolean;
+  showProblemNumbers: boolean;
+  showCellBorder: boolean;
+  showTenFrames: boolean;
+};
 
 /**
  * Partial form state - user may be editing, fields optional
- * PRIMARY state: problemsPerPage, cols, pages (what user controls)
- * DERIVED state: rows, total (calculated from primary)
+ * Based on V2 config with additional derived state
+ *
+ * Note: For backwards compatibility during migration, this type accepts either:
+ * - V2 displayRules (preferred)
+ * - V1 individual boolean flags (will be converted to displayRules)
  */
-export interface WorksheetFormState {
-  // PRIMARY state (what user selects in UI)
-  problemsPerPage?: number // 6, 8, 10, 12, 15, 16, 20
-  cols?: number // 2, 3, 4, 5 - column count for layout
-  pages?: number // 1, 2, 3, 4
-  orientation?: 'portrait' | 'landscape'
+export type WorksheetFormState = Partial<Omit<AdditionConfigV2, "version">> & {
+  // DERIVED state (calculated from primary state)
+  rows?: number;
+  total?: number;
+  date?: string;
+  seed?: number;
 
-  // DERIVED state (calculated: rows = (problemsPerPage / cols) * pages, total = problemsPerPage * pages)
-  rows?: number
-  total?: number
-
-  // Other settings
-  name?: string
-  date?: string
-  pAnyStart?: number
-  pAllStart?: number
-  interpolate?: boolean
-  showCarryBoxes?: boolean
-  showAnswerBoxes?: boolean
-  showPlaceValueColors?: boolean
-  showProblemNumbers?: boolean
-  showCellBorder?: boolean
-  showTenFrames?: boolean
-  showTenFramesForAll?: boolean
-  fontSize?: number
-  seed?: number
-}
+  // V1 compatibility: Accept individual boolean flags
+  // These will be converted to displayRules internally
+  showCarryBoxes?: boolean;
+  showAnswerBoxes?: boolean;
+  showPlaceValueColors?: boolean;
+  showProblemNumbers?: boolean;
+  showCellBorder?: boolean;
+  showTenFrames?: boolean;
+};
 
 /**
  * A single addition problem
  */
 export interface AdditionProblem {
-  a: number
-  b: number
+  a: number;
+  b: number;
 }
 
 /**
  * Validation result
  */
 export interface ValidationResult {
-  isValid: boolean
-  config?: WorksheetConfig
-  errors?: string[]
+  isValid: boolean;
+  config?: WorksheetConfig;
+  errors?: string[];
 }
 
 /**
  * Problem category for difficulty control
  */
-export type ProblemCategory = 'non' | 'onesOnly' | 'both'
+export type ProblemCategory = "non" | "onesOnly" | "both";
