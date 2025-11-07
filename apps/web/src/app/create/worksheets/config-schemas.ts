@@ -21,7 +21,7 @@ import { getProfileFromConfig } from './addition/difficultyProfiles'
 // =============================================================================
 
 /** Current schema version for addition worksheets */
-const ADDITION_CURRENT_VERSION = 2
+const ADDITION_CURRENT_VERSION = 3
 
 /**
  * Addition worksheet config - Version 1
@@ -120,19 +120,128 @@ export const additionConfigV2Schema = z.object({
 
 export type AdditionConfigV2 = z.infer<typeof additionConfigV2Schema>
 
+/**
+ * Addition worksheet config - Version 3
+ * Two-mode system: Smart Difficulty vs Manual Control
+ */
+
+// Shared base fields for both modes
+const additionConfigV3BaseSchema = z.object({
+  version: z.literal(3),
+
+  // Core worksheet settings
+  problemsPerPage: z.number().int().min(1).max(100),
+  cols: z.number().int().min(1).max(10),
+  pages: z.number().int().min(1).max(20),
+  orientation: z.enum(['portrait', 'landscape']),
+  name: z.string(),
+  fontSize: z.number().int().min(8).max(32),
+
+  // Regrouping probabilities (shared between modes)
+  pAnyStart: z.number().min(0).max(1),
+  pAllStart: z.number().min(0).max(1),
+  interpolate: z.boolean(),
+})
+
+// Smart Difficulty Mode
+const additionConfigV3SmartSchema = additionConfigV3BaseSchema.extend({
+  mode: z.literal('smart'),
+
+  // Conditional display rules
+  displayRules: z.object({
+    carryBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    answerBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    placeValueColors: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    tenFrames: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    problemNumbers: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    cellBorders: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+  }),
+
+  // Optional: Which smart difficulty profile is selected
+  difficultyProfile: z.string().optional(),
+
+  // showTenFramesForAll is deprecated in V3 smart mode
+  // (controlled by displayRules.tenFrames)
+})
+
+// Manual Control Mode
+const additionConfigV3ManualSchema = additionConfigV3BaseSchema.extend({
+  mode: z.literal('manual'),
+
+  // Simple boolean toggles
+  showCarryBoxes: z.boolean(),
+  showAnswerBoxes: z.boolean(),
+  showPlaceValueColors: z.boolean(),
+  showTenFrames: z.boolean(),
+  showProblemNumbers: z.boolean(),
+  showCellBorder: z.boolean(),
+  showTenFramesForAll: z.boolean(),
+
+  // Optional: Which manual preset is selected
+  manualPreset: z.string().optional(),
+})
+
+// V3 uses discriminated union on 'mode'
+export const additionConfigV3Schema = z.discriminatedUnion('mode', [
+  additionConfigV3SmartSchema,
+  additionConfigV3ManualSchema,
+])
+
+export type AdditionConfigV3 = z.infer<typeof additionConfigV3Schema>
+export type AdditionConfigV3Smart = z.infer<typeof additionConfigV3SmartSchema>
+export type AdditionConfigV3Manual = z.infer<typeof additionConfigV3ManualSchema>
+
 /** Union of all addition config versions (add new versions here) */
 export const additionConfigSchema = z.discriminatedUnion('version', [
   additionConfigV1Schema,
   additionConfigV2Schema,
+  additionConfigV3Schema,
 ])
 
 export type AdditionConfig = z.infer<typeof additionConfigSchema>
 
 /**
- * Default addition config (always latest version)
+ * Default addition config (always latest version - V3 Smart Mode)
  */
-export const defaultAdditionConfig: AdditionConfigV2 = {
-  version: 2,
+export const defaultAdditionConfig: AdditionConfigV3Smart = {
+  version: 3,
+  mode: 'smart',
   problemsPerPage: 20,
   cols: 5,
   pages: 1,
@@ -150,7 +259,6 @@ export const defaultAdditionConfig: AdditionConfigV2 = {
     cellBorders: 'always',
   },
   difficultyProfile: 'earlyLearner',
-  showTenFramesForAll: false,
   fontSize: 16,
 }
 
@@ -191,10 +299,58 @@ function migrateAdditionV1toV2(v1: AdditionConfigV1): AdditionConfigV2 {
 }
 
 /**
- * Migrate addition config from any version to latest
+ * Migrate V2 config to V3
+ * Determines mode based on whether difficultyProfile is set
+ */
+function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
+  // If user has a difficultyProfile set, they're using smart mode
+  if (v2.difficultyProfile) {
+    return {
+      version: 3,
+      mode: 'smart',
+      problemsPerPage: v2.problemsPerPage,
+      cols: v2.cols,
+      pages: v2.pages,
+      orientation: v2.orientation,
+      name: v2.name,
+      fontSize: v2.fontSize,
+      pAnyStart: v2.pAnyStart,
+      pAllStart: v2.pAllStart,
+      interpolate: v2.interpolate,
+      displayRules: v2.displayRules,
+      difficultyProfile: v2.difficultyProfile,
+    }
+  }
+
+  // No preset → Manual mode
+  // Convert displayRules to boolean flags
+  return {
+    version: 3,
+    mode: 'manual',
+    problemsPerPage: v2.problemsPerPage,
+    cols: v2.cols,
+    pages: v2.pages,
+    orientation: v2.orientation,
+    name: v2.name,
+    fontSize: v2.fontSize,
+    pAnyStart: v2.pAnyStart,
+    pAllStart: v2.pAllStart,
+    interpolate: v2.interpolate,
+    showCarryBoxes: v2.displayRules.carryBoxes === 'always',
+    showAnswerBoxes: v2.displayRules.answerBoxes === 'always',
+    showPlaceValueColors: v2.displayRules.placeValueColors === 'always',
+    showTenFrames: v2.displayRules.tenFrames === 'always',
+    showProblemNumbers: v2.displayRules.problemNumbers === 'always',
+    showCellBorder: v2.displayRules.cellBorders === 'always',
+    showTenFramesForAll: v2.showTenFramesForAll,
+  }
+}
+
+/**
+ * Migrate addition config from any version to latest (V3)
  * @throws {Error} if config is invalid or migration fails
  */
-export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV2 {
+export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV3 {
   // First, try to parse as any known version
   const parsed = additionConfigSchema.safeParse(rawConfig)
 
@@ -209,16 +365,16 @@ export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV2 {
   // Migrate to latest version
   switch (config.version) {
     case 1:
-      // Migrate V1 to V2
-      return migrateAdditionV1toV2(config)
+      // Migrate V1 → V2 → V3
+      return migrateAdditionV2toV3(migrateAdditionV1toV2(config))
 
     case 2:
+      // Migrate V2 → V3
+      return migrateAdditionV2toV3(config)
+
+    case 3:
       // Already latest version
       return config
-
-    // Future migrations:
-    // case 3:
-    //   return migrateAdditionV2toV3(config)
 
     default:
       // Unknown version, return defaults
@@ -229,9 +385,9 @@ export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV2 {
 
 /**
  * Parse and validate addition config from JSON string
- * Automatically migrates old versions to latest
+ * Automatically migrates old versions to latest (V3)
  */
-export function parseAdditionConfig(jsonString: string): AdditionConfigV2 {
+export function parseAdditionConfig(jsonString: string): AdditionConfigV3 {
   try {
     const raw = JSON.parse(jsonString)
     return migrateAdditionConfig(raw)
@@ -243,13 +399,13 @@ export function parseAdditionConfig(jsonString: string): AdditionConfigV2 {
 
 /**
  * Serialize addition config to JSON string
- * Ensures version field is set to current version
+ * Ensures version field is set to current version (V3)
  */
-export function serializeAdditionConfig(config: Omit<AdditionConfigV2, 'version'>): string {
-  const versioned: AdditionConfigV2 = {
+export function serializeAdditionConfig(config: Omit<AdditionConfigV3, 'version'>): string {
+  const versioned: AdditionConfigV3 = {
     ...config,
     version: ADDITION_CURRENT_VERSION,
-  }
+  } as AdditionConfigV3
   return JSON.stringify(versioned)
 }
 

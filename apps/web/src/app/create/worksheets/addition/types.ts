@@ -1,14 +1,20 @@
 // Type definitions for double-digit addition worksheet creator
 
-import type { AdditionConfigV2 } from '../config-schemas'
+import type {
+  AdditionConfigV3,
+  AdditionConfigV3Smart,
+  AdditionConfigV3Manual,
+} from '../config-schemas'
 
 /**
  * Complete, validated configuration for worksheet generation
- * Extends V2 config with additional derived fields needed for rendering
+ * Extends V3 config with additional derived fields needed for rendering
  *
- * Note: Includes V1 compatibility fields during migration period
+ * V3 uses discriminated union on 'mode':
+ * - Smart mode: Uses displayRules for conditional per-problem scaffolding
+ * - Manual mode: Uses boolean flags for uniform display across all problems
  */
-export type WorksheetConfig = AdditionConfigV2 & {
+export type WorksheetConfig = AdditionConfigV3 & {
   // Problem set - DERIVED state
   total: number // total = problemsPerPage * pages
   rows: number // rows = (problemsPerPage / cols) * pages
@@ -28,41 +34,30 @@ export type WorksheetConfig = AdditionConfigV2 & {
     top: number
     bottom: number
   }
-
-  // V1 compatibility: Include individual boolean flags during migration
-  // These will be derived from displayRules during validation
-  showCarryBoxes: boolean
-  showAnswerBoxes: boolean
-  showPlaceValueColors: boolean
-  showProblemNumbers: boolean
-  showCellBorder: boolean
-  showTenFrames: boolean
 }
 
 /**
  * Partial form state - user may be editing, fields optional
- * Based on V2 config with additional derived state
+ * Based on V3 config with additional derived state
  *
- * Note: For backwards compatibility during migration, this type accepts either:
- * - V2 displayRules (preferred)
- * - V1 individual boolean flags (will be converted to displayRules)
+ * V3 supports two modes via discriminated union:
+ * - Smart mode: Has displayRules and optional difficultyProfile
+ * - Manual mode: Has boolean display flags and optional manualPreset
+ *
+ * During editing, mode field may be present to indicate which mode is active.
+ * If mode is absent, defaults to 'smart' mode.
+ *
+ * This type is intentionally permissive during form editing to allow fields from
+ * both modes to exist temporarily. Validation will enforce mode consistency.
  */
-export type WorksheetFormState = Partial<Omit<AdditionConfigV2, 'version'>> & {
-  // DERIVED state (calculated from primary state)
-  rows?: number
-  total?: number
-  date?: string
-  seed?: number
-
-  // V1 compatibility: Accept individual boolean flags
-  // These will be converted to displayRules internally
-  showCarryBoxes?: boolean
-  showAnswerBoxes?: boolean
-  showPlaceValueColors?: boolean
-  showProblemNumbers?: boolean
-  showCellBorder?: boolean
-  showTenFrames?: boolean
-}
+export type WorksheetFormState = Partial<Omit<AdditionConfigV3Smart, 'version'>> &
+  Partial<Omit<AdditionConfigV3Manual, 'version'>> & {
+    // DERIVED state (calculated from primary state)
+    rows?: number
+    total?: number
+    date?: string
+    seed?: number
+  }
 
 /**
  * A single addition problem
