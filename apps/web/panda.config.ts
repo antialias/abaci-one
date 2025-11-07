@@ -71,6 +71,122 @@ export default defineConfig({
           glow: { value: 'glow 1s ease-in-out infinite alternate' },
         },
       },
+      // Semantic color tokens for light/dark theme support
+      semanticTokens: {
+        colors: {
+          // Background colors
+          'bg.canvas': {
+            value: {
+              base: '#ffffff',
+              _dark: '#0f172a',
+            },
+          },
+          'bg.surface': {
+            value: {
+              base: '#f8fafc',
+              _dark: '#1e293b',
+            },
+          },
+          'bg.subtle': {
+            value: {
+              base: '#f1f5f9',
+              _dark: '#334155',
+            },
+          },
+          'bg.muted': {
+            value: {
+              base: '#e2e8f0',
+              _dark: '#475569',
+            },
+          },
+
+          // Text colors
+          'text.primary': {
+            value: {
+              base: '#0f172a',
+              _dark: '#f1f5f9',
+            },
+          },
+          'text.secondary': {
+            value: {
+              base: '#475569',
+              _dark: '#cbd5e1',
+            },
+          },
+          'text.muted': {
+            value: {
+              base: '#64748b',
+              _dark: '#94a3b8',
+            },
+          },
+          'text.inverse': {
+            value: {
+              base: '#ffffff',
+              _dark: '#0f172a',
+            },
+          },
+
+          // Border colors
+          'border.default': {
+            value: {
+              base: '#e2e8f0',
+              _dark: '#334155',
+            },
+          },
+          'border.muted': {
+            value: {
+              base: '#f1f5f9',
+              _dark: '#1e293b',
+            },
+          },
+          'border.emphasis': {
+            value: {
+              base: '#cbd5e1',
+              _dark: '#475569',
+            },
+          },
+
+          // Accent colors (purple theme)
+          'accent.default': {
+            value: {
+              base: '#7c3aed',
+              _dark: '#a78bfa',
+            },
+          },
+          'accent.emphasis': {
+            value: {
+              base: '#6d28d9',
+              _dark: '#c4b5fd',
+            },
+          },
+          'accent.muted': {
+            value: {
+              base: '#f5f3ff',
+              _dark: 'rgba(139, 92, 246, 0.15)',
+            },
+          },
+          'accent.subtle': {
+            value: {
+              base: '#ede9fe',
+              _dark: 'rgba(139, 92, 246, 0.1)',
+            },
+          },
+
+          // Interactive states
+          'interactive.hover': {
+            value: {
+              base: '#f8fafc',
+              _dark: '#334155',
+            },
+          },
+          'interactive.active': {
+            value: {
+              base: '#f1f5f9',
+              _dark: '#475569',
+            },
+          },
+        },
+      },
       keyframes: {
         // Shake - horizontal oscillation for errors (line 3419)
         shake: {
@@ -113,6 +229,14 @@ export default defineConfig({
           },
         },
       },
+    },
+  },
+
+  // Enable dark mode support via data-theme attribute
+  conditions: {
+    extend: {
+      dark: '[data-theme="dark"] &, .dark &',
+      light: '[data-theme="light"] &, .light &',
     },
   },
 })

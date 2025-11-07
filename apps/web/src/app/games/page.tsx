@@ -118,7 +118,7 @@ function GamesPageContent() {
     <div
       className={css({
         minH: 'screen',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        bg: 'bg.canvas',
         py: '8',
         position: 'relative',
         overflowX: 'hidden',
@@ -331,7 +331,7 @@ function GamesPageContent() {
                         className={css({
                           fontSize: 'xl',
                           fontWeight: 'bold',
-                          color: 'white',
+                          color: 'text.inverse',
                           textAlign: 'center',
                           mb: '2',
                           textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
@@ -358,7 +358,7 @@ function GamesPageContent() {
                             fontSize: 'xs',
                             fontWeight: 'semibold',
                             background: 'rgba(255, 255, 255, 0.2)',
-                            color: 'white',
+                            color: 'text.inverse',
                             textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
                           })}
                         >
@@ -372,7 +372,7 @@ function GamesPageContent() {
                             fontSize: 'xs',
                             fontWeight: 'semibold',
                             background: 'rgba(255, 255, 255, 0.2)',
-                            color: 'white',
+                            color: 'text.inverse',
                             textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
                           })}
                         >
@@ -386,7 +386,7 @@ function GamesPageContent() {
                       <p
                         className={css({
                           fontSize: 'sm',
-                          color: 'white',
+                          color: 'text.inverse',
                           textAlign: 'center',
                           lineHeight: '1.4',
                           textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
@@ -467,7 +467,7 @@ function GamesPageContent() {
                 className={css({
                   fontSize: { base: '2xl', md: '3xl' },
                   fontWeight: 'bold',
-                  color: 'gray.800',
+                  color: 'text.primary',
                   mb: '2',
                 })}
               >
@@ -475,7 +475,7 @@ function GamesPageContent() {
               </h2>
               <p
                 className={css({
-                  color: 'gray.600',
+                  color: 'text.secondary',
                   fontSize: 'lg',
                 })}
               >
@@ -777,7 +777,7 @@ function GamesPageContent() {
                             justifyContent: 'center',
                             fontSize: { base: 'md', md: 'sm' },
                             border: '1px solid',
-                            borderColor: 'gray.300',
+                            borderColor: 'border.default',
                             cursor: 'pointer',
                             touchAction: 'manipulation',
                             transition: 'all 0.3s ease',
@@ -869,17 +869,17 @@ function GamesPageContent() {
             {/* Head-to-Head Stats */}
             <div
               className={css({
-                background: 'white',
+                background: 'bg.surface',
                 backdropFilter: 'blur(10px)',
                 rounded: '2xl',
                 p: '6',
                 border: '1px solid',
-                borderColor: 'gray.200',
-                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
@@ -893,7 +893,7 @@ function GamesPageContent() {
                   className={css({
                     fontSize: 'xl',
                     fontWeight: 'bold',
-                    color: 'gray.800',
+                    color: 'text.primary',
                     mb: '2',
                   })}
                 >
@@ -902,7 +902,7 @@ function GamesPageContent() {
                 <p
                   className={css({
                     fontSize: 'sm',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                   })}
                 >
                   {t('dashboard.headToHead.subtitle')}
@@ -966,7 +966,7 @@ function GamesPageContent() {
                           <div
                             className={css({
                               fontSize: 'sm',
-                              color: 'gray.500',
+                              color: 'text.muted',
                               fontWeight: 'semibold',
                             })}
                           >
@@ -983,7 +983,7 @@ function GamesPageContent() {
                 className={css({
                   textAlign: 'center',
                   fontSize: 'sm',
-                  color: 'gray.600',
+                  color: 'text.secondary',
                 })}
               >
                 {t('dashboard.headToHead.lastPlayed')}
@@ -993,17 +993,17 @@ function GamesPageContent() {
             {/* Recent Achievements */}
             <div
               className={css({
-                background: 'white',
+                background: 'bg.surface',
                 backdropFilter: 'blur(10px)',
                 rounded: '2xl',
                 p: '6',
                 border: '1px solid',
-                borderColor: 'gray.200',
-                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
@@ -1017,7 +1017,7 @@ function GamesPageContent() {
                   className={css({
                     fontSize: 'xl',
                     fontWeight: 'bold',
-                    color: 'gray.800',
+                    color: 'text.primary',
                     mb: '2',
                   })}
                 >
@@ -1026,7 +1026,7 @@ function GamesPageContent() {
                 <p
                   className={css({
                     fontSize: 'sm',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                   })}
                 >
                   {t('dashboard.achievements.subtitle')}
@@ -1091,17 +1091,17 @@ function GamesPageContent() {
             {/* Challenge System */}
             <div
               className={css({
-                background: 'white',
+                background: 'bg.surface',
                 backdropFilter: 'blur(10px)',
                 rounded: '2xl',
                 p: '6',
                 border: '1px solid',
-                borderColor: 'gray.200',
-                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
@@ -1115,7 +1115,7 @@ function GamesPageContent() {
                   className={css({
                     fontSize: 'xl',
                     fontWeight: 'bold',
-                    color: 'gray.800',
+                    color: 'text.primary',
                     mb: '2',
                   })}
                 >
@@ -1124,7 +1124,7 @@ function GamesPageContent() {
                 <p
                   className={css({
                     fontSize: 'sm',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                   })}
                 >
                   {t('dashboard.challenges.subtitle')}

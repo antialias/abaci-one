@@ -8,6 +8,13 @@
   /* Navigation bar heights - used by both the nav itself and content padding */
   --app-nav-height-full: 72px;
   --app-nav-height-minimal: 92px;
+
+  /* Theme color scheme - defaults to light, overridden by [data-theme="dark"] */
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* Utility class for pages with fixed nav */

@@ -70,7 +70,7 @@ export default function RoomPage() {
           justifyContent: 'center',
           height: '100vh',
           fontSize: '18px',
-          color: '#666',
+          color: 'token(colors.text.secondary)',
         }}
       >
         {isCreatingRoom ? 'Creating solo room...' : 'Loading room...'}
@@ -90,7 +90,7 @@ export default function RoomPage() {
           justifyContent: 'center',
           height: '100vh',
           fontSize: '18px',
-          color: '#666',
+          color: 'token(colors.text.secondary)',
           gap: '1rem',
         }}
       >
@@ -175,7 +175,7 @@ export default function RoomPage() {
             className={css({
               fontSize: { base: '2xl', md: '3xl' },
               fontWeight: 'bold',
-              color: 'white',
+              color: 'text.inverse',
               mb: '4',
               textAlign: 'center',
             })}
@@ -287,7 +287,7 @@ export default function RoomPage() {
                     className={css({
                       fontSize: 'xl',
                       fontWeight: 'bold',
-                      color: 'gray.900',
+                      color: 'text.primary',
                       mb: '2',
                     })}
                   >
@@ -296,7 +296,7 @@ export default function RoomPage() {
                   <p
                     className={css({
                       fontSize: 'sm',
-                      color: 'gray.600',
+                      color: 'text.secondary',
                     })}
                   >
                     {config.description}
@@ -345,7 +345,7 @@ export default function RoomPage() {
                     className={css({
                       fontSize: 'xl',
                       fontWeight: 'bold',
-                      color: 'gray.900',
+                      color: 'text.primary',
                       mb: '2',
                     })}
                   >
@@ -354,7 +354,7 @@ export default function RoomPage() {
                   <p
                     className={css({
                       fontSize: 'sm',
-                      color: 'gray.600',
+                      color: 'text.secondary',
                     })}
                   >
                     {gameDef.manifest.description}
@@ -386,7 +386,7 @@ export default function RoomPage() {
               justifyContent: 'center',
               height: '100vh',
               fontSize: '18px',
-              color: '#666',
+              color: 'token(colors.text.secondary)',
             }}
           >
             Game "{roomData.gameName}" not found in registry
@@ -422,7 +422,7 @@ export default function RoomPage() {
               justifyContent: 'center',
               height: '100vh',
               fontSize: '18px',
-              color: '#666',
+              color: 'token(colors.text.secondary)',
             }}
           >
             Game "{roomData.gameName}" not yet supported

@@ -9,6 +9,7 @@ import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { LocaleProvider, useLocaleContext } from '@/contexts/LocaleContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { createQueryClient } from '@/lib/queryClient'
 import type { Locale } from '@/i18n/messages'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
@@ -60,9 +61,11 @@ export function ClientProviders({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
-        <InnerProviders>{children}</InnerProviders>
-      </LocaleProvider>
+      <ThemeProvider>
+        <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
+          <InnerProviders>{children}</InnerProviders>
+        </LocaleProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

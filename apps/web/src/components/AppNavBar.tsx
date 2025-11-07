@@ -12,6 +12,7 @@ import { useFullscreen } from '../contexts/FullscreenContext'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { LanguageSelector } from './LanguageSelector'
+import { ThemeToggle } from './ThemeToggle'
 
 // Import HomeHeroContext for optional usage
 import type { Subtitle } from '../data/abaciOneSubtitles'
@@ -761,6 +762,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
 
               {/* Language Selector */}
               <LanguageSelector variant="inline" isFullscreen={false} />
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
             </div>
           </div>
         </div>

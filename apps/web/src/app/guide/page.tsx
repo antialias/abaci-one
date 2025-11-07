@@ -16,12 +16,12 @@ export default function GuidePage() {
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="📖">
-      <div className={`with-fixed-nav ${css({ minHeight: '100vh', bg: 'gray.50' })}`}>
+      <div className={`with-fixed-nav ${css({ minHeight: '100vh', bg: 'bg.canvas' })}`}>
         {/* Hero Section */}
         <div
           className={css({
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
+            color: 'text.inverse',
             textAlign: 'center',
             py: '20',
           })}
@@ -54,9 +54,9 @@ export default function GuidePage() {
         {/* Navigation Tabs */}
         <div
           className={css({
-            bg: 'white',
+            bg: 'bg.surface',
             borderBottom: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: 'border.default',
           })}
         >
           <div className={container({ maxW: '7xl', px: '4' })}>
@@ -68,14 +68,14 @@ export default function GuidePage() {
                   py: '4',
                   fontWeight: 'medium',
                   borderBottom: '2px solid',
-                  borderColor: activeTab === 'reading' ? 'brand.600' : 'transparent',
-                  color: activeTab === 'reading' ? 'brand.600' : 'gray.600',
-                  bg: activeTab === 'reading' ? 'brand.50' : 'transparent',
+                  borderColor: activeTab === 'reading' ? 'accent.emphasis' : 'transparent',
+                  color: activeTab === 'reading' ? 'accent.emphasis' : 'text.secondary',
+                  bg: activeTab === 'reading' ? 'accent.subtle' : 'transparent',
                   transition: 'all',
                   cursor: 'pointer',
                   _hover: {
-                    bg: activeTab === 'reading' ? 'brand.50' : 'gray.50',
-                    color: activeTab === 'reading' ? 'brand.600' : 'gray.800',
+                    bg: activeTab === 'reading' ? 'accent.subtle' : 'bg.muted',
+                    color: activeTab === 'reading' ? 'accent.emphasis' : 'text.primary',
                   },
                 })}
               >
@@ -88,14 +88,14 @@ export default function GuidePage() {
                   py: '4',
                   fontWeight: 'medium',
                   borderBottom: '2px solid',
-                  borderColor: activeTab === 'arithmetic' ? 'brand.600' : 'transparent',
-                  color: activeTab === 'arithmetic' ? 'brand.600' : 'gray.600',
-                  bg: activeTab === 'arithmetic' ? 'brand.50' : 'transparent',
+                  borderColor: activeTab === 'arithmetic' ? 'accent.emphasis' : 'transparent',
+                  color: activeTab === 'arithmetic' ? 'accent.emphasis' : 'text.secondary',
+                  bg: activeTab === 'arithmetic' ? 'accent.subtle' : 'transparent',
                   transition: 'all',
                   cursor: 'pointer',
                   _hover: {
-                    bg: activeTab === 'arithmetic' ? 'brand.50' : 'gray.50',
-                    color: activeTab === 'arithmetic' ? 'brand.600' : 'gray.800',
+                    bg: activeTab === 'arithmetic' ? 'accent.subtle' : 'bg.muted',
+                    color: activeTab === 'arithmetic' ? 'accent.emphasis' : 'text.primary',
                   },
                 })}
               >

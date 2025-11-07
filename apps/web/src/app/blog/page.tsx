@@ -26,7 +26,7 @@ export default async function BlogIndex() {
       data-component="blog-index-page"
       className={css({
         minH: '100vh',
-        bg: 'gray.900',
+        bg: 'bg.canvas',
         pt: 'var(--app-nav-height-full)',
       })}
     >
@@ -67,7 +67,7 @@ export default async function BlogIndex() {
               fontSize: { base: '2.5rem', md: '3.5rem' },
               fontWeight: 'bold',
               mb: '1rem',
-              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+              background: 'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
               backgroundClip: 'text',
               color: 'transparent',
             })}
@@ -77,7 +77,7 @@ export default async function BlogIndex() {
           <p
             className={css({
               fontSize: { base: '1.125rem', md: '1.25rem' },
-              color: 'rgba(209, 213, 219, 0.8)',
+              color: 'text.secondary',
               maxW: '42rem',
               mx: 'auto',
             })}
@@ -99,7 +99,7 @@ export default async function BlogIndex() {
                 fontSize: { base: '1.5rem', md: '1.875rem' },
                 fontWeight: 'bold',
                 mb: '1.5rem',
-                color: 'rgba(196, 181, 253, 1)',
+                color: 'accent.emphasis',
               })}
             >
               Featured
@@ -126,17 +126,17 @@ export default async function BlogIndex() {
                     className={css({
                       display: 'block',
                       p: '1.5rem',
-                      bg: 'rgba(139, 92, 246, 0.1)',
+                      bg: 'accent.subtle',
                       backdropFilter: 'blur(10px)',
                       borderRadius: '0.75rem',
                       border: '1px solid',
-                      borderColor: 'rgba(139, 92, 246, 0.3)',
+                      borderColor: 'accent.default',
                       transition: 'all 0.3s',
                       _hover: {
-                        bg: 'rgba(139, 92, 246, 0.15)',
-                        borderColor: 'rgba(139, 92, 246, 0.5)',
+                        bg: 'accent.muted',
+                        borderColor: 'accent.emphasis',
                         transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 24px rgba(139, 92, 246, 0.2)',
+                        boxShadow: '0 8px 24px token(colors.accent.muted)',
                       },
                     })}
                   >
@@ -145,14 +145,14 @@ export default async function BlogIndex() {
                         fontSize: { base: '1.25rem', md: '1.5rem' },
                         fontWeight: '600',
                         mb: '0.5rem',
-                        color: 'white',
+                        color: 'text.primary',
                       })}
                     >
                       {post.title}
                     </h3>
                     <p
                       className={css({
-                        color: 'rgba(209, 213, 219, 0.8)',
+                        color: 'text.secondary',
                         mb: '1rem',
                         lineHeight: '1.6',
                       })}
@@ -166,7 +166,7 @@ export default async function BlogIndex() {
                         gap: '0.75rem',
                         alignItems: 'center',
                         fontSize: '0.875rem',
-                        color: 'rgba(196, 181, 253, 0.8)',
+                        color: 'text.muted',
                       })}
                     >
                       <span>{post.author}</span>
@@ -188,8 +188,8 @@ export default async function BlogIndex() {
                             className={css({
                               px: '0.5rem',
                               py: '0.125rem',
-                              bg: 'rgba(139, 92, 246, 0.2)',
-                              color: 'rgba(196, 181, 253, 1)',
+                              bg: 'accent.muted',
+                              color: 'accent.emphasis',
                               borderRadius: '0.25rem',
                               fontSize: '0.75rem',
                               fontWeight: '500',
@@ -214,7 +214,7 @@ export default async function BlogIndex() {
               fontSize: { base: '1.5rem', md: '1.875rem' },
               fontWeight: 'bold',
               mb: '1.5rem',
-              color: 'rgba(196, 181, 253, 1)',
+              color: 'accent.emphasis',
             })}
           >
             All Posts
@@ -240,7 +240,7 @@ export default async function BlogIndex() {
                   className={css({
                     pb: '2rem',
                     borderBottom: '1px solid',
-                    borderColor: 'rgba(75, 85, 99, 0.5)',
+                    borderColor: 'border.muted',
                     _last: {
                       borderBottom: 'none',
                     },
@@ -253,7 +253,7 @@ export default async function BlogIndex() {
                       display: 'block',
                       _hover: {
                         '& h3': {
-                          color: 'rgba(196, 181, 253, 1)',
+                          color: 'accent.emphasis',
                         },
                       },
                     })}
@@ -263,7 +263,7 @@ export default async function BlogIndex() {
                         fontSize: { base: '1.5rem', md: '1.875rem' },
                         fontWeight: '600',
                         mb: '0.5rem',
-                        color: 'white',
+                        color: 'text.primary',
                         transition: 'color 0.2s',
                       })}
                     >
@@ -278,7 +278,7 @@ export default async function BlogIndex() {
                       gap: '0.75rem',
                       alignItems: 'center',
                       fontSize: '0.875rem',
-                      color: 'rgba(196, 181, 253, 0.7)',
+                      color: 'text.muted',
                       mb: '1rem',
                     })}
                   >
@@ -289,7 +289,7 @@ export default async function BlogIndex() {
 
                   <p
                     className={css({
-                      color: 'rgba(209, 213, 219, 0.8)',
+                      color: 'text.secondary',
                       lineHeight: '1.6',
                       mb: '1rem',
                     })}
@@ -311,8 +311,8 @@ export default async function BlogIndex() {
                           className={css({
                             px: '0.5rem',
                             py: '0.125rem',
-                            bg: 'rgba(75, 85, 99, 0.5)',
-                            color: 'rgba(209, 213, 219, 0.8)',
+                            bg: 'bg.muted',
+                            color: 'text.secondary',
                             borderRadius: '0.25rem',
                             fontSize: '0.75rem',
                             fontWeight: '500',

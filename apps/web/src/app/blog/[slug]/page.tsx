@@ -77,7 +77,7 @@ export default async function BlogPost({ params }: Props) {
       data-component="blog-post-page"
       className={css({
         minH: '100vh',
-        bg: 'gray.900',
+        bg: 'bg.canvas',
         pt: 'var(--app-nav-height-full)',
       })}
     >
@@ -113,13 +113,13 @@ export default async function BlogPost({ params }: Props) {
             alignItems: 'center',
             gap: '0.5rem',
             mb: '2rem',
-            color: 'rgba(196, 181, 253, 0.8)',
+            color: 'accent.default',
             fontSize: '0.875rem',
             fontWeight: '500',
             textDecoration: 'none',
             transition: 'color 0.2s',
             _hover: {
-              color: 'rgba(196, 181, 253, 1)',
+              color: 'accent.emphasis',
             },
           })}
         >
@@ -135,7 +135,7 @@ export default async function BlogPost({ params }: Props) {
               mb: '3rem',
               pb: '2rem',
               borderBottom: '1px solid',
-              borderColor: 'rgba(75, 85, 99, 0.5)',
+              borderColor: 'border.muted',
             })}
           >
             <h1
@@ -144,7 +144,7 @@ export default async function BlogPost({ params }: Props) {
                 fontWeight: 'bold',
                 lineHeight: '1.2',
                 mb: '1rem',
-                color: 'white',
+                color: 'text.primary',
               })}
             >
               {post.title}
@@ -153,7 +153,7 @@ export default async function BlogPost({ params }: Props) {
             <p
               className={css({
                 fontSize: { base: '1.125rem', md: '1.25rem' },
-                color: 'rgba(209, 213, 219, 0.8)',
+                color: 'text.secondary',
                 lineHeight: '1.6',
                 mb: '1.5rem',
               })}
@@ -169,7 +169,7 @@ export default async function BlogPost({ params }: Props) {
                 gap: '1rem',
                 alignItems: 'center',
                 fontSize: '0.875rem',
-                color: 'rgba(196, 181, 253, 0.8)',
+                color: 'text.muted',
               })}
             >
               <span data-element="author">{post.author}</span>
@@ -199,8 +199,8 @@ export default async function BlogPost({ params }: Props) {
                     className={css({
                       px: '0.75rem',
                       py: '0.25rem',
-                      bg: 'rgba(139, 92, 246, 0.2)',
-                      color: 'rgba(196, 181, 253, 1)',
+                      bg: 'accent.muted',
+                      color: 'accent.emphasis',
                       borderRadius: '0.25rem',
                       fontSize: '0.875rem',
                       fontWeight: '500',
@@ -219,7 +219,7 @@ export default async function BlogPost({ params }: Props) {
             className={css({
               fontSize: { base: '1rem', md: '1.125rem' },
               lineHeight: '1.75',
-              color: 'rgba(229, 231, 235, 0.95)',
+              color: 'text.primary',
 
               // Typography styles for markdown content
               '& h1': {
@@ -228,7 +228,7 @@ export default async function BlogPost({ params }: Props) {
                 mt: '2.5rem',
                 mb: '1rem',
                 lineHeight: '1.25',
-                color: 'white',
+                color: 'text.primary',
               },
               '& h2': {
                 fontSize: { base: '1.5rem', md: '1.875rem' },
@@ -236,7 +236,7 @@ export default async function BlogPost({ params }: Props) {
                 mt: '2rem',
                 mb: '0.875rem',
                 lineHeight: '1.3',
-                color: 'rgba(196, 181, 253, 1)',
+                color: 'accent.emphasis',
               },
               '& h3': {
                 fontSize: { base: '1.25rem', md: '1.5rem' },
@@ -244,20 +244,20 @@ export default async function BlogPost({ params }: Props) {
                 mt: '1.75rem',
                 mb: '0.75rem',
                 lineHeight: '1.4',
-                color: 'rgba(196, 181, 253, 0.9)',
+                color: 'accent.default',
               },
               '& p': {
                 mb: '1.25rem',
               },
               '& strong': {
                 fontWeight: '600',
-                color: 'white',
+                color: 'text.primary',
               },
               '& a': {
-                color: 'rgba(147, 197, 253, 1)',
+                color: 'accent.emphasis',
                 textDecoration: 'underline',
                 _hover: {
-                  color: 'rgba(59, 130, 246, 1)',
+                  color: 'accent.default',
                 },
               },
               '& ul, & ol': {
@@ -268,21 +268,21 @@ export default async function BlogPost({ params }: Props) {
                 mb: '0.5rem',
               },
               '& code': {
-                bg: 'rgba(0, 0, 0, 0.4)',
+                bg: 'bg.muted',
                 px: '0.375rem',
                 py: '0.125rem',
                 borderRadius: '0.25rem',
                 fontSize: '0.875em',
                 fontFamily: 'monospace',
-                color: 'rgba(196, 181, 253, 1)',
+                color: 'accent.emphasis',
                 border: '1px solid',
-                borderColor: 'rgba(139, 92, 246, 0.3)',
+                borderColor: 'accent.default',
               },
               '& pre': {
-                bg: 'rgba(0, 0, 0, 0.5)',
+                bg: 'bg.surface',
                 border: '1px solid',
-                borderColor: 'rgba(139, 92, 246, 0.3)',
-                color: 'rgba(229, 231, 235, 0.95)',
+                borderColor: 'border.default',
+                color: 'text.primary',
                 p: '1rem',
                 borderRadius: '0.5rem',
                 overflow: 'auto',
@@ -297,18 +297,18 @@ export default async function BlogPost({ params }: Props) {
               },
               '& blockquote': {
                 borderLeft: '4px solid',
-                borderColor: 'rgba(139, 92, 246, 0.5)',
+                borderColor: 'accent.default',
                 pl: '1rem',
                 py: '0.5rem',
                 my: '1.5rem',
-                color: 'rgba(209, 213, 219, 0.8)',
+                color: 'text.secondary',
                 fontStyle: 'italic',
-                bg: 'rgba(139, 92, 246, 0.05)',
+                bg: 'accent.subtle',
                 borderRadius: '0 0.25rem 0.25rem 0',
               },
               '& hr': {
                 my: '2rem',
-                borderColor: 'rgba(75, 85, 99, 0.5)',
+                borderColor: 'border.muted',
               },
               '& table': {
                 width: '100%',
@@ -316,24 +316,24 @@ export default async function BlogPost({ params }: Props) {
                 borderCollapse: 'collapse',
               },
               '& th': {
-                bg: 'rgba(139, 92, 246, 0.2)',
+                bg: 'accent.muted',
                 px: '1rem',
                 py: '0.75rem',
                 textAlign: 'left',
                 fontWeight: '600',
                 borderBottom: '2px solid',
-                borderColor: 'rgba(139, 92, 246, 0.5)',
-                color: 'rgba(196, 181, 253, 1)',
+                borderColor: 'accent.default',
+                color: 'accent.emphasis',
               },
               '& td': {
                 px: '1rem',
                 py: '0.75rem',
                 borderBottom: '1px solid',
-                borderColor: 'rgba(75, 85, 99, 0.3)',
-                color: 'rgba(209, 213, 219, 0.9)',
+                borderColor: 'border.muted',
+                color: 'text.secondary',
               },
               '& tr:hover td': {
-                bg: 'rgba(139, 92, 246, 0.05)',
+                bg: 'accent.subtle',
               },
             })}
             dangerouslySetInnerHTML={{ __html: post.html }}

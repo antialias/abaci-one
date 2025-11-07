@@ -46,7 +46,7 @@ function HeroSection() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
-        bg: 'gray.900',
+        bg: 'bg.canvas',
         position: 'relative',
         overflow: 'hidden',
         px: '4',
@@ -80,7 +80,7 @@ function HeroSection() {
           className={css({
             fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
             fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+            background: 'linear-gradient(135deg, token(colors.amber.400) 0%, token(colors.amber.500) 50%, token(colors.amber.400) 100%)',
             backgroundClip: 'text',
             color: 'transparent',
           })}
@@ -91,7 +91,7 @@ function HeroSection() {
           className={css({
             fontSize: { base: 'xl', md: '2xl' },
             fontWeight: 'medium',
-            color: 'purple.300',
+            color: 'accent.emphasis',
             fontStyle: 'italic',
             marginBottom: '8',
             opacity: isSubtitleLoaded ? 1 : 0,
@@ -110,7 +110,7 @@ function HeroSection() {
         className={css({
           position: 'relative',
           fontSize: 'sm',
-          color: 'gray.400',
+          color: 'text.muted',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -254,7 +254,7 @@ export default function HomePage() {
 
   return (
     <PageWithNav>
-      <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
+      <div className={css({ bg: 'bg.canvas', minHeight: '100vh' })}>
         {/* Hero Section - abacus rendered by MyAbacus in hero mode */}
         <HeroSection />
 
@@ -284,7 +284,7 @@ export default function HomePage() {
                 className={css({
                   fontSize: { base: '2xl', md: '3xl' },
                   fontWeight: 'bold',
-                  color: 'white',
+                  color: 'text.primary',
                   mb: '2',
                 })}
               >
@@ -293,7 +293,7 @@ export default function HomePage() {
               <p
                 data-element="section-subtitle"
                 className={css({
-                  color: 'gray.400',
+                  color: 'text.secondary',
                   fontSize: 'md',
                   maxW: '2xl',
                   mx: 'auto',
@@ -307,11 +307,11 @@ export default function HomePage() {
             <div
               data-element="tutorial-container"
               className={css({
-                bg: 'rgba(0, 0, 0, 0.4)',
+                bg: 'bg.surface',
                 rounded: 'xl',
                 p: '8',
                 border: '1px solid',
-                borderColor: 'gray.700',
+                borderColor: 'border.default',
                 shadow: 'lg',
                 w: '100%',
                 maxW: '100%',
@@ -416,31 +416,23 @@ export default function HomePage() {
                           data-selected={isSelected}
                           onClick={() => setSelectedSkillIndex(i)}
                           className={css({
-                            bg: isSelected
-                              ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(250, 204, 21, 0.08))'
-                              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03))',
+                            bg: isSelected ? 'accent.subtle' : 'bg.surface',
                             borderRadius: 'xl',
                             p: { base: '4', lg: '5' },
                             border: '1px solid',
-                            borderColor: isSelected
-                              ? 'rgba(250, 204, 21, 0.4)'
-                              : 'rgba(255, 255, 255, 0.15)',
+                            borderColor: isSelected ? 'accent.default' : 'border.default',
                             boxShadow: isSelected
-                              ? '0 6px 16px rgba(250, 204, 21, 0.2)'
-                              : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                              ? '0 6px 16px token(colors.accent.muted)'
+                              : '0 4px 12px token(colors.bg.muted)',
                             transition: 'all 0.2s',
                             cursor: 'pointer',
                             _hover: {
-                              bg: isSelected
-                                ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.12))'
-                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
-                              borderColor: isSelected
-                                ? 'rgba(250, 204, 21, 0.5)'
-                                : 'rgba(255, 255, 255, 0.25)',
+                              bg: isSelected ? 'accent.muted' : 'interactive.hover',
+                              borderColor: isSelected ? 'accent.emphasis' : 'border.emphasis',
                               transform: 'translateY(-2px)',
                               boxShadow: isSelected
-                                ? '0 8px 20px rgba(250, 204, 21, 0.3)'
-                                : '0 6px 16px rgba(0, 0, 0, 0.4)',
+                                ? '0 8px 20px token(colors.accent.muted)'
+                                : '0 6px 16px token(colors.bg.muted)',
                             },
                           })}
                         >
@@ -461,9 +453,7 @@ export default function HomePage() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 textAlign: 'center',
-                                bg: isSelected
-                                  ? 'rgba(250, 204, 21, 0.15)'
-                                  : 'rgba(255, 255, 255, 0.1)',
+                                bg: isSelected ? 'accent.muted' : 'bg.muted',
                                 borderRadius: 'lg',
                               })}
                             >
@@ -488,7 +478,7 @@ export default function HomePage() {
                                 <div
                                   data-element="skill-title"
                                   className={css({
-                                    color: 'white',
+                                    color: 'text.primary',
                                     fontSize: 'md',
                                     fontWeight: 'bold',
                                   })}
@@ -498,8 +488,8 @@ export default function HomePage() {
                                 <div
                                   data-element="skill-badge"
                                   className={css({
-                                    bg: 'rgba(250, 204, 21, 0.2)',
-                                    color: 'yellow.400',
+                                    bg: 'accent.muted',
+                                    color: 'accent.emphasis',
                                     fontSize: '2xs',
                                     fontWeight: 'semibold',
                                     px: '2',
@@ -513,7 +503,7 @@ export default function HomePage() {
                               <div
                                 data-element="skill-description"
                                 className={css({
-                                  color: 'gray.300',
+                                  color: 'text.secondary',
                                   fontSize: 'xs',
                                   lineHeight: '1.5',
                                 })}
@@ -523,12 +513,12 @@ export default function HomePage() {
                               <div
                                 data-element="skill-example"
                                 className={css({
-                                  color: 'yellow.400',
+                                  color: 'accent.emphasis',
                                   fontSize: 'xs',
                                   fontFamily: 'mono',
                                   fontWeight: 'semibold',
                                   mt: '1',
-                                  bg: 'rgba(250, 204, 21, 0.1)',
+                                  bg: 'accent.subtle',
                                   px: '2',
                                   py: '1',
                                   borderRadius: 'md',
@@ -558,13 +548,13 @@ export default function HomePage() {
                 className={css({
                   fontSize: { base: '2xl', md: '3xl' },
                   fontWeight: 'bold',
-                  color: 'white',
+                  color: 'text.primary',
                   mb: '2',
                 })}
               >
                 {t('arcade.title')}
               </h2>
-              <p className={css({ color: 'gray.400', fontSize: 'md' })}>{t('arcade.subtitle')}</p>
+              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>{t('arcade.subtitle')}</p>
             </div>
 
             <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
@@ -599,13 +589,13 @@ export default function HomePage() {
                 className={css({
                   fontSize: { base: '2xl', md: '3xl' },
                   fontWeight: 'bold',
-                  color: 'white',
+                  color: 'text.primary',
                   mb: '2',
                 })}
               >
                 {t('journey.title')}
               </h2>
-              <p style={{ color: '#e5e7eb', fontSize: '16px' }}>{t('journey.subtitle')}</p>
+              <p className={css({ color: 'text.secondary', fontSize: 'md' })}>{t('journey.subtitle')}</p>
             </div>
 
             <LevelSliderDisplay />
@@ -814,7 +804,7 @@ function GameCard({
             className={css({
               fontSize: 'lg',
               fontWeight: 'bold',
-              color: 'white',
+              color: 'text.inverse',
               mb: '2',
               textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
             })}
@@ -824,7 +814,7 @@ function GameCard({
           <p
             className={css({
               fontSize: 'sm',
-              color: 'rgba(255, 255, 255, 0.95)',
+              color: 'text.inverse',
               mb: '2',
               textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
             })}
@@ -834,7 +824,7 @@ function GameCard({
           <p
             className={css({
               fontSize: 'xs',
-              color: 'rgba(255, 255, 255, 0.85)',
+              color: 'text.inverse',
               mb: '3',
               textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
             })}
@@ -850,7 +840,7 @@ function GameCard({
                   px: '2',
                   py: '1',
                   bg: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
+                  color: 'text.inverse',
                   rounded: 'full',
                   fontWeight: 'semibold',
                   textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
