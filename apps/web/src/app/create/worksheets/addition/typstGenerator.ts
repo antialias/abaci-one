@@ -25,18 +25,45 @@ function generatePageTypst(
   problemOffset: number,
   rowsPerPage: number
 ): string {
+  console.log('[typstGenerator] generatePageTypst called with config:', {
+    mode: config.mode,
+    displayRules: config.mode === 'smart' ? config.displayRules : 'N/A (manual mode)',
+    showTenFrames: config.mode === 'manual' ? config.showTenFrames : 'N/A (smart mode)',
+  })
+
   // Enrich problems with display options based on mode
-  const enrichedProblems = pageProblems.map((p) => {
+  const enrichedProblems = pageProblems.map((p, index) => {
     if (config.mode === 'smart') {
       // Smart mode: Per-problem conditional display based on problem complexity
       const meta = analyzeProblem(p.a, p.b)
       const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
+
+      if (index === 0) {
+        console.log('[typstGenerator] Smart mode - First problem display options:', {
+          problem: `${p.a} + ${p.b}`,
+          meta,
+          displayOptions,
+        })
+      }
+
       return {
         ...p,
         ...displayOptions,
       }
     } else {
       // Manual mode: Uniform display across all problems
+      if (index === 0) {
+        console.log('[typstGenerator] Manual mode - Uniform display options:', {
+          problem: `${p.a} + ${p.b}`,
+          showCarryBoxes: config.showCarryBoxes,
+          showAnswerBoxes: config.showAnswerBoxes,
+          showPlaceValueColors: config.showPlaceValueColors,
+          showTenFrames: config.showTenFrames,
+          showProblemNumbers: config.showProblemNumbers,
+          showCellBorder: config.showCellBorder,
+        })
+      }
+
       return {
         ...p,
         showCarryBoxes: config.showCarryBoxes,

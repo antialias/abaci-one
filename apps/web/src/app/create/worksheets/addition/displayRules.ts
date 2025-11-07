@@ -57,7 +57,10 @@ export function resolveDisplayForProblem(
   rules: DisplayRules,
   problem: ProblemMeta
 ): ResolvedDisplayOptions {
-  return {
+  console.log('[resolveDisplayForProblem] Input rules:', rules)
+  console.log('[resolveDisplayForProblem] Problem meta:', problem)
+
+  const resolved = {
     showCarryBoxes: evaluateRule(rules.carryBoxes, problem),
     showAnswerBoxes: evaluateRule(rules.answerBoxes, problem),
     showPlaceValueColors: evaluateRule(rules.placeValueColors, problem),
@@ -65,4 +68,9 @@ export function resolveDisplayForProblem(
     showProblemNumbers: evaluateRule(rules.problemNumbers, problem),
     showCellBorder: evaluateRule(rules.cellBorders, problem),
   }
+
+  console.log('[resolveDisplayForProblem] Resolved display options:', resolved)
+  console.log('[resolveDisplayForProblem] Ten-frames rule:', rules.tenFrames, '-> showTenFrames:', resolved.showTenFrames)
+
+  return resolved
 }

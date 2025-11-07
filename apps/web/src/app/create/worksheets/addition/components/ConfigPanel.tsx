@@ -38,21 +38,30 @@ interface ConfigPanelProps {
  * Generate a human-readable summary of enabled scaffolding aids
  */
 function getScaffoldingSummary(displayRules: any): string {
+  console.log('[getScaffoldingSummary] displayRules:', displayRules)
+
   const scaffoldingParts: string[] = []
   if (displayRules.carryBoxes === 'always' || displayRules.carryBoxes === 'whenRegrouping') {
     scaffoldingParts.push('carry boxes')
+    console.log('[getScaffoldingSummary] Adding carry boxes:', displayRules.carryBoxes)
   }
   if (displayRules.answerBoxes === 'always' || displayRules.answerBoxes === 'whenRegrouping') {
     scaffoldingParts.push('answer boxes')
+    console.log('[getScaffoldingSummary] Adding answer boxes:', displayRules.answerBoxes)
   }
   if (displayRules.placeValueColors === 'always' || displayRules.placeValueColors === 'whenRegrouping') {
     scaffoldingParts.push('place value colors')
+    console.log('[getScaffoldingSummary] Adding place value colors:', displayRules.placeValueColors)
   }
   if (displayRules.tenFrames === 'always' || displayRules.tenFrames === 'whenRegrouping') {
     scaffoldingParts.push('ten-frames')
+    console.log('[getScaffoldingSummary] Adding ten-frames:', displayRules.tenFrames)
   }
 
-  return scaffoldingParts.length > 0 ? scaffoldingParts.join(', ') : 'no scaffolding'
+  const summary = scaffoldingParts.length > 0 ? scaffoldingParts.join(', ') : 'no scaffolding'
+  console.log('[getScaffoldingSummary] Final summary:', summary)
+
+  return summary
 }
 
 interface ToggleOptionProps {
