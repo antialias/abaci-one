@@ -30,6 +30,7 @@ import {
   type DifficultyMode,
 } from '../difficultyProfiles'
 import { defaultAdditionConfig } from '../../config-schemas'
+import type { DisplayRules } from '../displayRules'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -380,6 +381,174 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           _placeholder: { color: 'gray.400' },
         })}
       />
+
+      {/* Digit Range Selector */}
+      <div
+        data-section="digit-range"
+        className={css({
+          bg: 'gray.50',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'xl',
+          p: '4',
+        })}
+      >
+        <div className={css({ mb: '3' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            })}
+          >
+            <label className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'gray.700' })}>
+              Problem Size (Digits per Number)
+            </label>
+            <span className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'brand.600' })}>
+              {(() => {
+                const min = formState.digitRange?.min ?? 2
+                const max = formState.digitRange?.max ?? 2
+                return min === max ? `${min}` : `${min}-${max}`
+              })()}
+            </span>
+          </div>
+          <p className={css({ fontSize: 'xs', color: 'gray.500', mt: '1' })}>
+            {(() => {
+              const min = formState.digitRange?.min ?? 2
+              const max = formState.digitRange?.max ?? 2
+              return min === max
+                ? `All problems: exactly ${min} digit${min > 1 ? 's' : ''}`
+                : `Mixed problem sizes from ${min} to ${max} digits`
+            })()}
+          </p>
+        </div>
+
+        {/* Range Slider with Tick Marks */}
+        <div className={css({ position: 'relative', px: '3', py: '4' })}>
+          {/* Tick marks */}
+          <div
+            className={css({
+              position: 'absolute',
+              width: 'full',
+              top: '0',
+              left: '0',
+              px: '3',
+              display: 'flex',
+              justifyContent: 'space-between',
+            })}
+          >
+            {[1, 2, 3, 4, 5].map((digit) => (
+              <div
+                key={`tick-${digit}`}
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  width: '0',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: '2xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    mb: '1',
+                  })}
+                >
+                  {digit}
+                </div>
+                <div
+                  className={css({
+                    width: '1px',
+                    height: '2',
+                    bg: 'gray.300',
+                  })}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Double-thumbed range slider */}
+          <Slider.Root
+            className={css({
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              userSelect: 'none',
+              touchAction: 'none',
+              width: 'full',
+              height: '6',
+              mt: '8',
+            })}
+            value={[formState.digitRange?.min ?? 2, formState.digitRange?.max ?? 2]}
+            onValueChange={(values) => {
+              onChange({
+                digitRange: {
+                  min: values[0],
+                  max: values[1],
+                },
+              })
+            }}
+            min={1}
+            max={5}
+            step={1}
+            minStepsBetweenThumbs={0}
+          >
+            <Slider.Track
+              className={css({
+                position: 'relative',
+                flexGrow: 1,
+                bg: 'gray.200',
+                rounded: 'full',
+                height: '2',
+              })}
+            >
+              <Slider.Range
+                className={css({
+                  position: 'absolute',
+                  bg: 'brand.500',
+                  rounded: 'full',
+                  height: 'full',
+                })}
+              />
+            </Slider.Track>
+            <Slider.Thumb
+              className={css({
+                display: 'block',
+                width: '4',
+                height: '4',
+                bg: 'white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                rounded: 'full',
+                border: '2px solid',
+                borderColor: 'brand.500',
+                cursor: 'grab',
+                transition: 'transform 0.15s',
+                _hover: { transform: 'scale(1.15)' },
+                _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
+                _active: { cursor: 'grabbing' },
+              })}
+            />
+            <Slider.Thumb
+              className={css({
+                display: 'block',
+                width: '4',
+                height: '4',
+                bg: 'white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                rounded: 'full',
+                border: '2px solid',
+                borderColor: 'brand.600',
+                cursor: 'grab',
+                transition: 'transform 0.15s',
+                _hover: { transform: 'scale(1.15)' },
+                _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
+                _active: { cursor: 'grabbing' },
+              })}
+            />
+          </Slider.Root>
+        </div>
+      </div>
 
       {/* Mode Selector */}
       <ModeSelector currentMode={formState.mode ?? 'smart'} onChange={handleModeChange} />
@@ -1544,8 +1713,8 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                               const y = clientY - rect.top
 
                               // Convert to difficulty space (0-10)
-                              let regroupingIntensity = fromX(x)
-                              let scaffoldingLevel = fromY(y)
+                              const regroupingIntensity = fromX(x)
+                              const scaffoldingLevel = fromY(y)
 
                               // Check if we're near a preset (within snap threshold)
                               const snapThreshold = 1.0 // 1.0 units in 0-10 scale
@@ -1567,8 +1736,8 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
                                 // Calculate Euclidean distance
                                 const distance = Math.sqrt(
-                                  Math.pow(regroupingIntensity - presetReg, 2) +
-                                    Math.pow(scaffoldingLevel - presetScaf, 2)
+                                  (regroupingIntensity - presetReg) ** 2 +
+                                    (scaffoldingLevel - presetScaf) ** 2
                                 )
 
                                 if (distance <= snapThreshold) {
