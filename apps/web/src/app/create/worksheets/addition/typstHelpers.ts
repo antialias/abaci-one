@@ -441,25 +441,35 @@ export function generateSubtractionProblemStackFunction(
             let reduced-digit = original-digit - 1
 
             (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
-              #stack(
-                dir: ttb,
-                spacing: 1pt,
-                // Show the calculation hint with arrow
-                align(center)[
-                  #box[
-                    #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − ]
-                    #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
-                    #h(2pt)
-                    #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[→]
-                  ]
-                ],
-                // Show the borrow box
-                if show-colors {
-                  diagonal-split-box(${(cellSize * 0.7).toFixed(2)}in, source-color, dest-color)
-                } else {
-                  box(width: ${(cellSize * 0.7).toFixed(2)}in, height: ${(cellSize * 0.7).toFixed(2)}in, stroke: 0.5pt)[]
-                }
-              )
+              // Show the borrow box with hint text at top
+              #if show-colors {
+                box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+                  #diagonal-split-box(${cellSizeIn}, source-color, dest-color)
+                  #place(
+                    top + center,
+                    dy: 2pt,
+                    box[
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[#str(original-digit) − ]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
+                      #h(1pt)
+                      #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: white, stroke: 0.3pt + black)[→]
+                    ]
+                  )
+                ]
+              } else {
+                box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt)[
+                  #place(
+                    top + center,
+                    dy: 2pt,
+                    box[
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(original-digit) − ]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
+                      #h(1pt)
+                      #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[→]
+                    ]
+                  )
+                ]
+              }
             ],)
           } else if show-colors {
             (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
