@@ -819,23 +819,23 @@ function NavLink({
         fontWeight: 'medium',
         color: isTransparent
           ? isActive
-            ? 'white'
-            : 'rgba(255, 255, 255, 0.8)'
+            ? 'text.primary'
+            : 'text.secondary'
           : isActive
             ? 'rgba(196, 181, 253, 1)'
             : 'rgba(209, 213, 219, 0.9)',
         bg: isTransparent
           ? isActive
-            ? 'rgba(255, 255, 255, 0.2)'
-            : 'rgba(255, 255, 255, 0.08)'
+            ? 'bg.muted'
+            : 'bg.subtle'
           : isActive
             ? 'rgba(139, 92, 246, 0.2)'
             : 'transparent',
         border: isTransparent ? '1px solid' : 'none',
         borderColor: isTransparent
           ? isActive
-            ? 'rgba(255, 255, 255, 0.3)'
-            : 'rgba(255, 255, 255, 0.15)'
+            ? 'border.default'
+            : 'border.subtle'
           : 'transparent',
         rounded: 'lg',
         transition: 'all',
@@ -845,9 +845,9 @@ function NavLink({
         justifyContent: 'center',
         boxShadow: isTransparent ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
         _hover: {
-          color: isTransparent ? 'white' : 'rgba(196, 181, 253, 1)',
-          bg: isTransparent ? 'rgba(255, 255, 255, 0.25)' : 'rgba(139, 92, 246, 0.25)',
-          borderColor: isTransparent ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+          color: isTransparent ? 'text.primary' : 'rgba(196, 181, 253, 1)',
+          bg: isTransparent ? 'interactive.hover' : 'rgba(139, 92, 246, 0.25)',
+          borderColor: isTransparent ? 'border.emphasis' : 'transparent',
           boxShadow: isTransparent ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
         },
       })}
