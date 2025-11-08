@@ -75,11 +75,11 @@ function MenuContent({
   const linkStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '10px 14px',
-    borderRadius: '8px',
+    gap: isMobile ? '16px' : '10px',
+    padding: isMobile ? '16px 20px' : '10px 14px',
+    borderRadius: isMobile ? '12px' : '8px',
     color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-    fontSize: '14px',
+    fontSize: isMobile ? '18px' : '14px',
     fontWeight: '500',
     textDecoration: 'none',
     transition: 'all 0.2s ease',
@@ -88,16 +88,16 @@ function MenuContent({
   const separatorStyle = {
     height: '1px',
     background: isDark ? 'rgba(75, 85, 99, 0.5)' : 'rgba(229, 231, 235, 0.8)',
-    margin: '6px 0',
+    margin: isMobile ? '20px 0' : '6px 0',
   }
 
   const sectionHeaderStyle = {
-    fontSize: '10px',
+    fontSize: isMobile ? '13px' : '10px',
     fontWeight: '600',
     color: isDark ? 'rgba(196, 181, 253, 0.7)' : 'rgba(139, 92, 246, 0.7)',
-    marginBottom: '6px',
-    marginLeft: '12px',
-    marginTop: '6px',
+    marginBottom: isMobile ? '12px' : '6px',
+    marginLeft: isMobile ? '20px' : '12px',
+    marginTop: isMobile ? '12px' : '6px',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   }
@@ -133,7 +133,7 @@ function MenuContent({
           e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
         }}
       >
-        <span style={{ fontSize: '16px' }}>{icon}</span>
+        <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{icon}</span>
         <span>{label}</span>
       </Link>
     )
@@ -141,8 +141,29 @@ function MenuContent({
     return isMobile ? linkElement : <DropdownMenu.Item asChild>{linkElement}</DropdownMenu.Item>
   }
 
+  const containerStyle = isMobile
+    ? {
+        maxWidth: '600px',
+        margin: '0 auto',
+        padding: '60px 16px 24px',
+      }
+    : {}
+
+  const controlButtonStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: isMobile ? '16px' : '10px',
+    padding: isMobile ? '16px 20px' : '10px 14px',
+    borderRadius: isMobile ? '12px' : '8px',
+    color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+    fontSize: isMobile ? '18px' : '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  }
+
   return (
-    <>
+    <div style={containerStyle}>
       {/* Site Navigation Section */}
       <div style={sectionHeaderStyle}>Navigation</div>
 
@@ -167,55 +188,37 @@ function MenuContent({
             toggleFullscreen()
             onNavigate?.()
           }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            color: 'rgba(209, 213, 219, 1)',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
+          style={controlButtonStyle}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'
-            e.currentTarget.style.color = 'rgba(147, 197, 253, 1)'
+            e.currentTarget.style.background = isDark
+              ? 'rgba(59, 130, 246, 0.2)'
+              : 'rgba(59, 130, 246, 0.1)'
+            e.currentTarget.style.color = isDark ? 'rgba(147, 197, 253, 1)' : 'rgba(29, 78, 216, 1)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+            e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
           }}
         >
-          <span style={{ fontSize: '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
+          <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
           <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
         </div>
       ) : (
         <DropdownMenu.Item
           onSelect={toggleFullscreen}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            color: 'rgba(209, 213, 219, 1)',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
+          style={controlButtonStyle}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'
-            e.currentTarget.style.color = 'rgba(147, 197, 253, 1)'
+            e.currentTarget.style.background = isDark
+              ? 'rgba(59, 130, 246, 0.2)'
+              : 'rgba(59, 130, 246, 0.1)'
+            e.currentTarget.style.color = isDark ? 'rgba(147, 197, 253, 1)' : 'rgba(29, 78, 216, 1)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+            e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
           }}
         >
-          <span style={{ fontSize: '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
+          <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
           <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
         </DropdownMenu.Item>
       )}
@@ -227,55 +230,45 @@ function MenuContent({
               router.push('/games')
               onNavigate?.()
             }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              color: 'rgba(209, 213, 219, 1)',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            style={controlButtonStyle}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
-              e.currentTarget.style.color = 'rgba(252, 165, 165, 1)'
+              e.currentTarget.style.background = isDark
+                ? 'rgba(239, 68, 68, 0.2)'
+                : 'rgba(239, 68, 68, 0.1)'
+              e.currentTarget.style.color = isDark
+                ? 'rgba(252, 165, 165, 1)'
+                : 'rgba(185, 28, 28, 1)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+              e.currentTarget.style.color = isDark
+                ? 'rgba(209, 213, 219, 1)'
+                : 'rgba(55, 65, 81, 1)'
             }}
           >
-            <span style={{ fontSize: '16px' }}>🚪</span>
+            <span style={{ fontSize: isMobile ? '24px' : '16px' }}>🚪</span>
             <span>Exit Arcade</span>
           </div>
         ) : (
           <DropdownMenu.Item
             onSelect={() => router.push('/games')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              color: 'rgba(209, 213, 219, 1)',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            style={controlButtonStyle}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
-              e.currentTarget.style.color = 'rgba(252, 165, 165, 1)'
+              e.currentTarget.style.background = isDark
+                ? 'rgba(239, 68, 68, 0.2)'
+                : 'rgba(239, 68, 68, 0.1)'
+              e.currentTarget.style.color = isDark
+                ? 'rgba(252, 165, 165, 1)'
+                : 'rgba(185, 28, 28, 1)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+              e.currentTarget.style.color = isDark
+                ? 'rgba(209, 213, 219, 1)'
+                : 'rgba(55, 65, 81, 1)'
             }}
           >
-            <span style={{ fontSize: '16px' }}>🚪</span>
+            <span style={{ fontSize: isMobile ? '24px' : '16px' }}>🚪</span>
             <span>Exit Arcade</span>
           </DropdownMenu.Item>
         ))}
@@ -325,7 +318,7 @@ function MenuContent({
           <ThemeToggle />
         </DropdownMenu.Item>
       )}
-    </>
+    </div>
   )
 }
 
