@@ -17,6 +17,24 @@ function chunkProblems(problems: AdditionProblem[], pageSize: number): AdditionP
 }
 
 /**
+ * Calculate maximum number of digits in any problem on this page
+ * Returns max digits across all addends (handles 1-6 digit sums)
+ */
+function calculateMaxDigits(problems: AdditionProblem[]): number {
+  let maxDigits = 1
+  for (const problem of problems) {
+    const digitsA = problem.a.toString().length
+    const digitsB = problem.b.toString().length
+    const maxProblemDigits = Math.max(digitsA, digitsB)
+    maxDigits = Math.max(maxDigits, maxProblemDigits)
+  }
+  // Sum might have one more digit than the largest addend
+  // e.g., 99999 + 99999 = 199998 (5 digits + 5 digits = 6 digits)
+  // But we render based on addend size, not sum size
+  return maxDigits
+}
+
+/**
  * Generate Typst source code for a single page
  */
 function generatePageTypst(
@@ -30,6 +48,10 @@ function generatePageTypst(
     displayRules: config.mode === 'smart' ? config.displayRules : 'N/A (manual mode)',
     showTenFrames: config.mode === 'manual' ? config.showTenFrames : 'N/A (smart mode)',
   })
+
+  // Calculate maximum digits for proper column layout
+  const maxDigits = calculateMaxDigits(pageProblems)
+  console.log('[typstGenerator] Max digits on this page:', maxDigits)
 
   // Enrich problems with display options based on mode
   const enrichedProblems = pageProblems.map((p, index) => {
@@ -103,10 +125,19 @@ function generatePageTypst(
   const anyProblemMayShowTenFrames = enrichedProblems.some((p) => p.showTenFrames)
 
   // Calculate cell size to fill the entire problem box
-  // Without ten-frames: 5 rows (carry, first number, second number, line, answer)
-  // With ten-frames: 5 rows + ten-frames row (0.8 * cellSize for square cells)
-  // Total with ten-frames: 5.8 rows, reduced breathing room to maximize size
-  const cellSize = anyProblemMayShowTenFrames ? problemBoxHeight / 6.0 : problemBoxHeight / 4.5
+  // Base vertical stack: carry row + addend1 + addend2 + line + answer = 5 rows
+  // With ten-frames: add 0.8 * cellSize row
+  // Total with ten-frames: ~5.8 rows
+  //
+  // Horizontal constraint: maxDigits columns + 1 for + sign
+  // Cell size must fit: (maxDigits + 1) * cellSize <= problemBoxWidth
+  const maxCellSizeForWidth = problemBoxWidth / (maxDigits + 1)
+  const maxCellSizeForHeight = anyProblemMayShowTenFrames
+    ? problemBoxHeight / 6.0
+    : problemBoxHeight / 4.5
+
+  // Use the smaller of width/height constraints
+  const cellSize = Math.min(maxCellSizeForWidth, maxCellSizeForHeight)
 
   return String.raw`
 // addition-worksheet-page.typ (auto-generated)
@@ -135,15 +166,11 @@ function generatePageTypst(
 
 ${generateTypstHelpers(cellSize)}
 
-${generateProblemStackFunction(cellSize)}
+${generateProblemStackFunction(cellSize, maxDigits)}
 
 #let problem-box(problem, index) = {
   let a = problem.a
   let b = problem.b
-  let aT = calc.floor(calc.rem(a, 100) / 10)
-  let aO = calc.rem(a, 10)
-  let bT = calc.floor(calc.rem(b, 100) / 10)
-  let bO = calc.rem(b, 10)
 
   // Extract per-problem display flags
   let grid-stroke = if problem.showCellBorder { (thickness: 1pt, dash: "dashed", paint: gray.darken(20%)) } else { none }
@@ -156,7 +183,7 @@ ${generateProblemStackFunction(cellSize)}
   )[
     #align(center + horizon)[
       #problem-stack(
-        a, b, aT, aO, bT, bO, index,
+        a, b, index,
         problem.showCarryBoxes,
         problem.showAnswerBoxes,
         problem.showPlaceValueColors,
