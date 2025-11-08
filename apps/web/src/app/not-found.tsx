@@ -194,6 +194,7 @@ const STATUS_CODE_EASTER_EGGS: Record<
 export default function NotFound() {
   const [abacusValue, setAbacusValue] = useState(404);
   const [activeEasterEgg, setActiveEasterEgg] = useState<number | null>(null);
+  const [fadeKey, setFadeKey] = useState(0);
   const { updateConfig, resetToDefaults } = useAbacusDisplay();
 
   // Easter egg activation - update global abacus config when special codes are entered
@@ -202,6 +203,7 @@ export default function NotFound() {
 
     if (easterEgg && activeEasterEgg !== abacusValue) {
       setActiveEasterEgg(abacusValue);
+      setFadeKey((prev) => prev + 1); // Trigger fade animation
 
       // Update global abacus display config to use custom beads
       // This affects ALL abaci rendered in the app until page reload!
@@ -215,6 +217,7 @@ export default function NotFound() {
     } else if (!easterEgg && activeEasterEgg !== null) {
       // User changed away from an easter egg code - reset to defaults
       setActiveEasterEgg(null);
+      setFadeKey((prev) => prev + 1); // Trigger fade animation
       resetToDefaults();
       (window as any).__easterEggMode = null;
     }
@@ -227,14 +230,29 @@ export default function NotFound() {
 
   return (
     <PageWithNav>
+      <style>
+        {`
+          @keyframes fadeInText {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
       <div
         className={css({
-          minHeight: "calc(100vh - 64px)",
+          minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           background: currentTheme?.bgGradient || "bg.canvas",
           padding: { base: "1rem", sm: "2rem" },
+          paddingTop: { base: "10rem", sm: "12rem", md: "14rem", lg: "16rem" },
           transition: "background 0.6s ease-in-out",
           position: "relative",
           overflow: "hidden",
@@ -303,6 +321,7 @@ export default function NotFound() {
             })}
           >
             <h1
+              key={fadeKey}
               className={css({
                 fontSize: {
                   base: "1.75rem",
@@ -316,10 +335,22 @@ export default function NotFound() {
                 textShadow: currentTheme?.glowColor
                   ? `0 0 20px ${currentTheme.glowColor}, 0 0 40px ${currentTheme.glowColor}`
                   : "none",
-                transition: "all 0.6s ease-in-out",
+                transition: "color 0.6s ease-in-out, text-shadow 0.6s ease-in-out",
                 letterSpacing: "-0.02em",
                 px: { base: "1rem", sm: "2rem" },
+                minHeight: {
+                  base: "calc(1.75rem * 1.1 * 2)",
+                  sm: "calc(2.5rem * 1.1 * 2)",
+                  md: "calc(3.5rem * 1.1 * 2)",
+                  lg: "calc(4rem * 1.1 * 2)",
+                },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               })}
+              style={{
+                animation: "fadeInText 0.5s ease-out",
+              }}
             >
               {activeEasterEgg
                 ? STATUS_CODE_EASTER_EGGS[activeEasterEgg].message
