@@ -415,8 +415,66 @@ export function generateOnesOnlyBorrow(
 }
 
 /**
+ * Count the number of actual borrow operations needed for subtraction
+ * Simulates the standard borrowing algorithm
+ *
+ * Examples:
+ * - 52 - 17: ones digit 2 < 7, borrow from tens → 1 borrow
+ * - 534 - 178: ones 4 < 8 (borrow from tens), tens becomes 2 < 7 (borrow from hundreds) → 2 borrows
+ * - 100 - 1: ones 0 < 1, borrow across zeros (hundreds → tens → ones) → 2 borrows
+ * - 1000 - 1: ones 0 < 1, borrow across 3 zeros → 3 borrows
+ */
+function countBorrows(minuend: number, subtrahend: number): number {
+  const maxPlaces = Math.max(countDigits(minuend), countDigits(subtrahend))
+  let borrowCount = 0
+  const minuendDigits: number[] = []
+
+  // Extract all digits of minuend into array
+  for (let pos = 0; pos < maxPlaces; pos++) {
+    minuendDigits[pos] = getDigit(minuend, pos)
+  }
+
+  // Simulate subtraction with borrowing
+  for (let pos = 0; pos < maxPlaces; pos++) {
+    const digitS = getDigit(subtrahend, pos)
+    let digitM = minuendDigits[pos]
+
+    if (digitM < digitS) {
+      // Need to borrow
+      borrowCount++
+
+      // Find next non-zero digit to borrow from
+      let borrowPos = pos + 1
+      while (borrowPos < maxPlaces && minuendDigits[borrowPos] === 0) {
+        borrowCount++ // Borrowing across a zero counts as an additional borrow
+        borrowPos++
+      }
+
+      // Perform the borrow operation
+      if (borrowPos < maxPlaces) {
+        minuendDigits[borrowPos]-- // Take 1 from higher place
+
+        // Set intermediate zeros to 9
+        for (let p = borrowPos - 1; p > pos; p--) {
+          minuendDigits[p] = 9
+        }
+
+        // Add 10 to current position
+        minuendDigits[pos] += 10
+      }
+    }
+  }
+
+  return borrowCount
+}
+
+/**
  * Generate a subtraction problem with borrowing in BOTH ones and tens
- * Borrows in at least two different place values
+ * Requires actual borrowing operations in at least two different place values
+ *
+ * NOTE: For 1-2 digit numbers, it's mathematically impossible to have 2+ borrows
+ * without the result being negative. This function requires minDigits >= 3 or
+ * will fall back to a ones-only borrow problem.
  *
  * @param minDigits Minimum number of digits
  * @param maxDigits Maximum number of digits
@@ -426,35 +484,33 @@ export function generateBothBorrow(
   minDigits: number = 2,
   maxDigits: number = 2
 ): [number, number] {
+  // For 1-2 digit ranges, 2+ borrows are impossible
+  // Fall back to ones-only borrowing
+  if (maxDigits <= 2) {
+    return generateOnesOnlyBorrow(rand, minDigits, maxDigits)
+  }
+
   for (let i = 0; i < 5000; i++) {
-    const digitsMinuend = randint(minDigits, maxDigits, rand)
-    const digitsSubtrahend = randint(minDigits, maxDigits, rand)
+    // Favor higher digit counts for better chance of 2+ borrows
+    const digitsMinuend = randint(Math.max(minDigits, 3), maxDigits, rand)
+    const digitsSubtrahend = randint(Math.max(minDigits, 2), maxDigits, rand)
     const minuend = generateNumber(digitsMinuend, rand)
     const subtrahend = generateNumber(digitsSubtrahend, rand)
 
     // Ensure minuend > subtrahend
     if (minuend <= subtrahend) continue
 
-    // Count how many places require borrowing
-    const maxPlaces = Math.max(countDigits(minuend), countDigits(subtrahend))
-    let borrowCount = 0
+    // Count actual borrow operations
+    const borrowCount = countBorrows(minuend, subtrahend)
 
-    for (let pos = 0; pos < maxPlaces; pos++) {
-      const digitM = getDigit(minuend, pos)
-      const digitS = getDigit(subtrahend, pos)
-
-      if (digitM < digitS) {
-        borrowCount++
-      }
-    }
-
-    // Need at least 2 borrows
+    // Need at least 2 actual borrow operations
     if (borrowCount >= 2) {
       return [minuend, subtrahend]
     }
   }
   // Fallback: 534 - 178 requires borrowing in ones and tens
-  return minDigits <= 3 && maxDigits >= 3 ? [534, 178] : [93, 57]
+  // 100 - 1 requires borrowing across zero (2 borrows)
+  return [534, 178]
 }
 
 /**
