@@ -5,18 +5,18 @@
  * All tables, relations, and types are exported from here.
  */
 
-export * from './abacus-settings'
-export * from './arcade-rooms'
-export * from './arcade-sessions'
-export * from './players'
-export * from './player-stats'
-export * from './room-members'
-export * from './room-member-history'
-export * from './room-invitations'
-export * from './room-reports'
-export * from './room-bans'
-export * from './room-join-requests'
-export * from './room-game-configs'
-export * from './user-stats'
-export * from './users'
-export * from './worksheet-settings'
+export * from "./abacus-settings";
+export * from "./arcade-rooms";
+export * from "./arcade-sessions";
+export * from "./players";
+export * from "./player-stats";
+export * from "./room-members";
+export * from "./room-member-history";
+export * from "./room-invitations";
+export * from "./room-reports";
+export * from "./room-bans";
+export * from "./room-join-requests";
+export * from "./room-game-configs";
+export * from "./user-stats";
+export * from "./users";
+export * from "./worksheet-settings";

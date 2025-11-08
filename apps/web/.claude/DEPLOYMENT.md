@@ -39,6 +39,7 @@ This deployment uses **two separate Docker Compose projects**:
 - No manual intervention required for deployments after pushing to main
 
 **Key advantages over Watchtower:**
+
 - Respects docker-compose.yaml configuration
 - Re-reads `.env` file on every update
 - Can manage multiple docker-compose projects
@@ -47,7 +48,7 @@ This deployment uses **two separate Docker Compose projects**:
   labels:
     - "docker-compose-watcher.watch=1"
     - "docker-compose-watcher.dir=/volume1/homes/antialias/projects/abaci.one"
-    - "com.centurylinklabs.watchtower.enable=false"  # Disables Watchtower for this container
+    - "com.centurylinklabs.watchtower.enable=false" # Disables Watchtower for this container
   ```
 
 ## Database Management

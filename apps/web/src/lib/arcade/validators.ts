@@ -10,13 +10,13 @@
  * 3. GameName type will auto-update
  */
 
-import { matchingGameValidator } from '@/arcade-games/matching/Validator'
-import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
-import { complementRaceValidator } from '@/arcade-games/complement-race/Validator'
-import { cardSortingValidator } from '@/arcade-games/card-sorting/Validator'
-import { yjsDemoValidator } from '@/arcade-games/yjs-demo/Validator'
-import { rithmomachiaValidator } from '@/arcade-games/rithmomachia/Validator'
-import type { GameValidator } from './validation/types'
+import { matchingGameValidator } from "@/arcade-games/matching/Validator";
+import { memoryQuizGameValidator } from "@/arcade-games/memory-quiz/Validator";
+import { complementRaceValidator } from "@/arcade-games/complement-race/Validator";
+import { cardSortingValidator } from "@/arcade-games/card-sorting/Validator";
+import { yjsDemoValidator } from "@/arcade-games/yjs-demo/Validator";
+import { rithmomachiaValidator } from "@/arcade-games/rithmomachia/Validator";
+import type { GameValidator } from "./validation/types";
 
 /**
  * Central registry of all game validators
@@ -25,47 +25,47 @@ import type { GameValidator } from './validation/types'
  */
 export const validatorRegistry = {
   matching: matchingGameValidator,
-  'memory-quiz': memoryQuizGameValidator,
-  'complement-race': complementRaceValidator,
-  'card-sorting': cardSortingValidator,
-  'yjs-demo': yjsDemoValidator,
+  "memory-quiz": memoryQuizGameValidator,
+  "complement-race": complementRaceValidator,
+  "card-sorting": cardSortingValidator,
+  "yjs-demo": yjsDemoValidator,
   rithmomachia: rithmomachiaValidator,
   // Add new games here - GameName type will auto-update
-} as const
+} as const;
 
 /**
  * Auto-derived game name type from registry
  * No need to manually update this!
  */
-export type GameName = keyof typeof validatorRegistry
+export type GameName = keyof typeof validatorRegistry;
 
 /**
  * Get validator for a game
  * @throws Error if game not found (fail fast)
  */
 export function getValidator(gameName: string): GameValidator {
-  const validator = validatorRegistry[gameName as GameName]
+  const validator = validatorRegistry[gameName as GameName];
   if (!validator) {
     throw new Error(
       `No validator found for game: ${gameName}. ` +
-        `Available games: ${Object.keys(validatorRegistry).join(', ')}`
-    )
+        `Available games: ${Object.keys(validatorRegistry).join(", ")}`,
+    );
   }
-  return validator
+  return validator;
 }
 
 /**
  * Check if a game has a registered validator
  */
 export function hasValidator(gameName: string): gameName is GameName {
-  return gameName in validatorRegistry
+  return gameName in validatorRegistry;
 }
 
 /**
  * Get all registered game names
  */
 export function getRegisteredGameNames(): GameName[] {
-  return Object.keys(validatorRegistry) as GameName[]
+  return Object.keys(validatorRegistry) as GameName[];
 }
 
 /**
@@ -76,7 +76,7 @@ export function getRegisteredGameNames(): GameName[] {
  * @returns true if game has a registered validator
  */
 export function isValidGameName(gameName: unknown): gameName is GameName {
-  return typeof gameName === 'string' && hasValidator(gameName)
+  return typeof gameName === "string" && hasValidator(gameName);
 }
 
 /**
@@ -85,11 +85,13 @@ export function isValidGameName(gameName: unknown): gameName is GameName {
  * @param gameName - Game name to validate
  * @throws Error if game name is invalid
  */
-export function assertValidGameName(gameName: unknown): asserts gameName is GameName {
+export function assertValidGameName(
+  gameName: unknown,
+): asserts gameName is GameName {
   if (!isValidGameName(gameName)) {
     throw new Error(
-      `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(', ')}`
-    )
+      `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(", ")}`,
+    );
   }
 }
 
@@ -103,4 +105,4 @@ export {
   cardSortingValidator,
   yjsDemoValidator,
   rithmomachiaValidator,
-}
+};

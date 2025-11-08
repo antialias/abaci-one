@@ -19,11 +19,13 @@ We have **two new subtraction-specific scaffolding options**:
 ### Current Integration Status
 
 **✅ Works in Manual Mode:**
+
 - Both options available in manual mode schema (config-schemas.ts:332-333)
 - Both options properly passed to Typst rendering (typstGenerator.ts:114-115, 225-226)
 - Defaults: `showBorrowNotation: true`, `showBorrowingHints: false`
 
 **❌ NOT Available in Smart Mode:**
+
 - Smart mode explicitly sets both to `false` (typstGenerator.ts:88-89)
 - Comments say: "Smart mode doesn't have borrow notation (yet)"
 - No conditional rules for these options in `DisplayRules` interface
@@ -44,6 +46,7 @@ The subtraction scaffolding is **completely absent from smart difficulty mode**.
 ### 2. **Missing Display Rules**
 
 The `DisplayRules` interface (displayRules.ts:14-21) only includes:
+
 - `carryBoxes` (addition-focused)
 - `answerBoxes`
 - `placeValueColors`
@@ -52,12 +55,14 @@ The `DisplayRules` interface (displayRules.ts:14-21) only includes:
 - `cellBorders`
 
 **Missing:**
+
 - `borrowNotation` - Conditional rules for scratch boxes
 - `borrowingHints` - Conditional rules for visual hints
 
 ### 3. **Problem Analysis is Good** ✅
 
 `SubtractionProblemMeta` (problemAnalysis.ts:84-95) properly tracks:
+
 - `requiresBorrowing: boolean`
 - `borrowCount: number`
 - `borrowPlaces: PlaceValue[]`
@@ -67,6 +72,7 @@ This gives us the data we need to make smart decisions about when to show scaffo
 ### 4. **Rule Evaluation Works** ✅
 
 The `evaluateRule()` function (displayRules.ts:36-57) already handles both addition and subtraction:
+
 - Line 45-48: Maps `requiresRegrouping` (addition) OR `requiresBorrowing` (subtraction)
 - Line 50-52: Maps `regroupCount` (addition) OR `borrowCount` (subtraction)
 
@@ -81,14 +87,14 @@ So the **infrastructure is ready** - we just need to add the rules.
 ```typescript
 // displayRules.ts
 export interface DisplayRules {
-  carryBoxes: RuleMode
-  answerBoxes: RuleMode
-  placeValueColors: RuleMode
-  tenFrames: RuleMode
-  problemNumbers: RuleMode
-  cellBorders: RuleMode
-  borrowNotation: RuleMode       // NEW: Scratch boxes for borrowing work
-  borrowingHints: RuleMode       // NEW: Visual hints (arrows, "n-1")
+  carryBoxes: RuleMode;
+  answerBoxes: RuleMode;
+  placeValueColors: RuleMode;
+  tenFrames: RuleMode;
+  problemNumbers: RuleMode;
+  cellBorders: RuleMode;
+  borrowNotation: RuleMode; // NEW: Scratch boxes for borrowing work
+  borrowingHints: RuleMode; // NEW: Visual hints (arrows, "n-1")
 }
 ```
 
@@ -97,14 +103,14 @@ export interface DisplayRules {
 ```typescript
 // displayRules.ts
 export interface ResolvedDisplayOptions {
-  showCarryBoxes: boolean
-  showAnswerBoxes: boolean
-  showPlaceValueColors: boolean
-  showTenFrames: boolean
-  showProblemNumbers: boolean
-  showCellBorder: boolean
-  showBorrowNotation: boolean    // NEW
-  showBorrowingHints: boolean    // NEW
+  showCarryBoxes: boolean;
+  showAnswerBoxes: boolean;
+  showPlaceValueColors: boolean;
+  showTenFrames: boolean;
+  showProblemNumbers: boolean;
+  showCellBorder: boolean;
+  showBorrowNotation: boolean; // NEW
+  showBorrowingHints: boolean; // NEW
 }
 ```
 
@@ -119,9 +125,9 @@ const resolved = {
   showTenFrames: evaluateRule(rules.tenFrames, problem),
   showProblemNumbers: evaluateRule(rules.problemNumbers, problem),
   showCellBorder: evaluateRule(rules.cellBorders, problem),
-  showBorrowNotation: evaluateRule(rules.borrowNotation, problem),    // NEW
-  showBorrowingHints: evaluateRule(rules.borrowingHints, problem),    // NEW
-}
+  showBorrowNotation: evaluateRule(rules.borrowNotation, problem), // NEW
+  showBorrowingHints: evaluateRule(rules.borrowingHints, problem), // NEW
+};
 ```
 
 ### Phase 2: Update Config Schemas
@@ -179,29 +185,29 @@ Add subtraction scaffolding to the pedagogical progression:
 export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
   // Level 0: Maximum scaffolding
   {
-    carryBoxes: 'always',
-    answerBoxes: 'always',
-    placeValueColors: 'always',
-    tenFrames: 'always',
-    problemNumbers: 'always',
-    cellBorders: 'always',
-    borrowNotation: 'always',       // NEW: Always show scratch boxes
-    borrowingHints: 'always',       // NEW: Always show hints
+    carryBoxes: "always",
+    answerBoxes: "always",
+    placeValueColors: "always",
+    tenFrames: "always",
+    problemNumbers: "always",
+    cellBorders: "always",
+    borrowNotation: "always", // NEW: Always show scratch boxes
+    borrowingHints: "always", // NEW: Always show hints
   },
 
   // Level 1: Carry/borrow boxes become conditional
   {
-    carryBoxes: 'whenRegrouping',
-    borrowNotation: 'whenRegrouping',  // NEW: Only when borrowing
-    borrowingHints: 'always',          // Still show hints
+    carryBoxes: "whenRegrouping",
+    borrowNotation: "whenRegrouping", // NEW: Only when borrowing
+    borrowingHints: "always", // Still show hints
     // ... rest
   },
 
   // Level 2: Hints become conditional
   {
-    carryBoxes: 'whenRegrouping',
-    borrowNotation: 'whenRegrouping',
-    borrowingHints: 'whenRegrouping',  // NEW: Only when borrowing
+    carryBoxes: "whenRegrouping",
+    borrowNotation: "whenRegrouping",
+    borrowingHints: "whenRegrouping", // NEW: Only when borrowing
     // ... rest
   },
 
@@ -210,25 +216,25 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
 
   // Level 6: Hints become more conditional
   {
-    borrowNotation: 'whenRegrouping',
-    borrowingHints: 'whenMultipleRegroups',  // NEW: Only complex problems
+    borrowNotation: "whenRegrouping",
+    borrowingHints: "whenMultipleRegroups", // NEW: Only complex problems
     // ... rest
   },
 
   // Level 7+: Remove hints, keep notation
   {
-    borrowNotation: 'whenRegrouping',
-    borrowingHints: 'never',           // NEW: No hints
+    borrowNotation: "whenRegrouping",
+    borrowingHints: "never", // NEW: No hints
     // ... rest
   },
 
   // Level 10+: Remove all subtraction scaffolding
   {
-    borrowNotation: 'never',
-    borrowingHints: 'never',
+    borrowNotation: "never",
+    borrowingHints: "never",
     // ... rest
   },
-]
+];
 ```
 
 ### Phase 4: Update Typst Generator
@@ -249,13 +255,15 @@ showBorrowingHints: displayOptions.showBorrowingHints,  // Use resolved value
 ### Phase 5: Update UI Components
 
 **1. Add controls in ConfigPanel** (if using smart mode):
-   - Add "Borrow Notation" dropdown (always/never/whenBorrowing/etc.)
-   - Add "Borrowing Hints" dropdown (always/never/whenBorrowing/etc.)
-   - Only show when `operator` is 'subtraction' or 'mixed'
+
+- Add "Borrow Notation" dropdown (always/never/whenBorrowing/etc.)
+- Add "Borrowing Hints" dropdown (always/never/whenBorrowing/etc.)
+- Only show when `operator` is 'subtraction' or 'mixed'
 
 **2. Add preview in DisplayOptionsPreview:**
-   - Show subtraction example with borrow notation enabled
-   - Show subtraction example with borrowing hints enabled
+
+- Show subtraction example with borrow notation enabled
+- Show subtraction example with borrowing hints enabled
 
 ## Pedagogical Rationale
 
@@ -284,6 +292,7 @@ showBorrowingHints: displayOptions.showBorrowingHints,  // Use resolved value
 ### Parallel with Addition
 
 This mirrors the addition progression:
+
 - Carry boxes fade from "always" → "whenRegrouping" → "whenMultipleRegroups" → "never"
 - Borrow notation should follow the same path
 - Borrowing hints are MORE specific than carry boxes (like ten-frames), so fade faster
@@ -291,18 +300,15 @@ This mirrors the addition progression:
 ## Implementation Priority
 
 **High Priority:**
+
 1. ✅ Add `borrowNotation` and `borrowingHints` to `DisplayRules` interface
 2. ✅ Update schemas to include these rules in smart mode
 3. ✅ Remove hardcoded `false` values in typstGenerator
 4. ✅ Add to default config with sensible defaults
 
-**Medium Priority:**
-5. ✅ Update scaffolding progression
-6. ✅ Add to difficulty profiles (earlyLearner, intermediate, etc.)
+**Medium Priority:** 5. ✅ Update scaffolding progression 6. ✅ Add to difficulty profiles (earlyLearner, intermediate, etc.)
 
-**Lower Priority:**
-7. ⚠️ Update UI components (ConfigPanel, DisplayOptionsPreview)
-8. ⚠️ Update documentation/help text
+**Lower Priority:** 7. ⚠️ Update UI components (ConfigPanel, DisplayOptionsPreview) 8. ⚠️ Update documentation/help text
 
 ## Migration Strategy
 
@@ -340,6 +346,7 @@ After implementation:
 **Solution:** Extend the existing display rules system to include `borrowNotation` and `borrowingHints` as conditional options, following the same pedagogical progression as addition scaffolding.
 
 **Effort:** Medium (2-3 hours)
+
 - Schema updates: 30 min
 - Display rules updates: 30 min
 - Scaffolding progression: 1 hour

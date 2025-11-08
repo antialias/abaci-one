@@ -1,48 +1,49 @@
-'use client'
+"use client";
 
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import * as Tooltip from '@radix-ui/react-tooltip'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import React, { useContext, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { css } from '../../styled-system/css'
-import { container, hstack } from '../../styled-system/patterns'
-import { Z_INDEX } from '../constants/zIndex'
-import { useFullscreen } from '../contexts/FullscreenContext'
-import { useTheme } from '../contexts/ThemeContext'
-import { getRandomSubtitle } from '../data/abaciOneSubtitles'
-import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
-import { LanguageSelector } from './LanguageSelector'
-import { ThemeToggle } from './ThemeToggle'
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useContext, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { css } from "../../styled-system/css";
+import { container, hstack } from "../../styled-system/patterns";
+import { Z_INDEX } from "../constants/zIndex";
+import { useFullscreen } from "../contexts/FullscreenContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { getRandomSubtitle } from "../data/abaciOneSubtitles";
+import { AbacusDisplayDropdown } from "./AbacusDisplayDropdown";
+import { LanguageSelector } from "./LanguageSelector";
+import { ThemeToggle } from "./ThemeToggle";
 
 // Import HomeHeroContext for optional usage
-import type { Subtitle } from '../data/abaciOneSubtitles'
+import type { Subtitle } from "../data/abaciOneSubtitles";
 
 type HomeHeroContextValue = {
-  subtitle: Subtitle
-  isHeroVisible: boolean
-} | null
+  subtitle: Subtitle;
+  isHeroVisible: boolean;
+} | null;
 
 // HomeHeroContext - imported dynamically to avoid circular deps
-let HomeHeroContextModule: any = null
+let HomeHeroContextModule: any = null;
 try {
-  HomeHeroContextModule = require('../contexts/HomeHeroContext')
+  HomeHeroContextModule = require("../contexts/HomeHeroContext");
 } catch {
   // Context not available
 }
 
 const HomeHeroContext: React.Context<HomeHeroContextValue> =
-  HomeHeroContextModule?.HomeHeroContext || React.createContext<HomeHeroContextValue>(null)
+  HomeHeroContextModule?.HomeHeroContext ||
+  React.createContext<HomeHeroContextValue>(null);
 
 // Use HomeHeroContext without requiring it
 function useOptionalHomeHero(): HomeHeroContextValue {
-  return useContext(HomeHeroContext)
+  return useContext(HomeHeroContext);
 }
 
 interface AppNavBarProps {
-  variant?: 'full' | 'minimal'
-  navSlot?: React.ReactNode
+  variant?: "full" | "minimal";
+  navSlot?: React.ReactNode;
 }
 
 /**
@@ -60,54 +61,54 @@ function MenuContent({
   isMobile,
   resolvedTheme,
 }: {
-  isFullscreen: boolean
-  isArcadePage: boolean
-  pathname: string | null
-  toggleFullscreen: () => void
-  router: any
-  onNavigate?: () => void
-  handleNestedDropdownChange?: (isOpen: boolean) => void
-  isMobile?: boolean
-  resolvedTheme?: 'light' | 'dark'
+  isFullscreen: boolean;
+  isArcadePage: boolean;
+  pathname: string | null;
+  toggleFullscreen: () => void;
+  router: any;
+  onNavigate?: () => void;
+  handleNestedDropdownChange?: (isOpen: boolean) => void;
+  isMobile?: boolean;
+  resolvedTheme?: "light" | "dark";
 }) {
-  const isDark = resolvedTheme === 'dark'
+  const isDark = resolvedTheme === "dark";
 
   const linkStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: isMobile ? '10px' : '10px',
-    padding: isMobile ? '8px 12px' : '10px 14px',
-    borderRadius: '8px',
-    color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-    fontSize: isMobile ? '14px' : '14px',
-    fontWeight: '500',
-    textDecoration: 'none',
-    transition: 'all 0.2s ease',
-  }
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? "10px" : "10px",
+    padding: isMobile ? "8px 12px" : "10px 14px",
+    borderRadius: "8px",
+    color: isDark ? "rgba(209, 213, 219, 1)" : "rgba(55, 65, 81, 1)",
+    fontSize: isMobile ? "14px" : "14px",
+    fontWeight: "500",
+    textDecoration: "none",
+    transition: "all 0.2s ease",
+  };
 
   const separatorStyle = {
-    height: '1px',
-    background: isDark ? 'rgba(75, 85, 99, 0.5)' : 'rgba(229, 231, 235, 0.8)',
-    margin: isMobile ? '8px 0' : '6px 0',
-  }
+    height: "1px",
+    background: isDark ? "rgba(75, 85, 99, 0.5)" : "rgba(229, 231, 235, 0.8)",
+    margin: isMobile ? "8px 0" : "6px 0",
+  };
 
   const sectionHeaderStyle = {
-    fontSize: isMobile ? '10px' : '10px',
-    fontWeight: '600',
-    color: isDark ? 'rgba(196, 181, 253, 0.7)' : 'rgba(139, 92, 246, 0.7)',
-    marginBottom: isMobile ? '6px' : '6px',
-    marginLeft: isMobile ? '12px' : '12px',
-    marginTop: isMobile ? '6px' : '6px',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
-  }
+    fontSize: isMobile ? "10px" : "10px",
+    fontWeight: "600",
+    color: isDark ? "rgba(196, 181, 253, 0.7)" : "rgba(139, 92, 246, 0.7)",
+    marginBottom: isMobile ? "6px" : "6px",
+    marginLeft: isMobile ? "12px" : "12px",
+    marginTop: isMobile ? "6px" : "6px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.5px",
+  };
 
   const handleLinkClick = (href: string) => {
     if (isMobile) {
-      router.push(href)
-      onNavigate?.()
+      router.push(href);
+      onNavigate?.();
     }
-  }
+  };
 
   const renderNavLink = (href: string, icon: string, label: string) => {
     const linkElement = (
@@ -116,77 +117,85 @@ function MenuContent({
         onClick={
           isMobile
             ? (e) => {
-                e.preventDefault()
-                handleLinkClick(href)
+                e.preventDefault();
+                handleLinkClick(href);
               }
             : undefined
         }
         style={linkStyle}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = isDark
-            ? 'rgba(139, 92, 246, 0.2)'
-            : 'rgba(139, 92, 246, 0.1)'
-          e.currentTarget.style.color = isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)'
+            ? "rgba(139, 92, 246, 0.2)"
+            : "rgba(139, 92, 246, 0.1)";
+          e.currentTarget.style.color = isDark
+            ? "rgba(196, 181, 253, 1)"
+            : "rgba(109, 40, 217, 1)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = isDark
+            ? "rgba(209, 213, 219, 1)"
+            : "rgba(55, 65, 81, 1)";
         }}
       >
-        <span style={{ fontSize: isMobile ? '18px' : '16px' }}>{icon}</span>
+        <span style={{ fontSize: isMobile ? "18px" : "16px" }}>{icon}</span>
         <span>{label}</span>
       </Link>
-    )
+    );
 
-    return isMobile ? linkElement : <DropdownMenu.Item asChild>{linkElement}</DropdownMenu.Item>
-  }
+    return isMobile ? (
+      linkElement
+    ) : (
+      <DropdownMenu.Item asChild>{linkElement}</DropdownMenu.Item>
+    );
+  };
 
   const containerStyle = isMobile
     ? {
-        width: '100%',
-        maxWidth: '1000px',
-        margin: '0 auto',
-        padding: '60px 16px 16px',
-        boxSizing: 'border-box' as const,
+        width: "100%",
+        maxWidth: "1000px",
+        margin: "0 auto",
+        padding: "60px 16px 16px",
+        boxSizing: "border-box" as const,
         minHeight: 0, // Allow flex children to shrink
-        flex: '1 1 auto',
-        display: 'flex',
-        flexDirection: 'column' as const,
+        flex: "1 1 auto",
+        display: "flex",
+        flexDirection: "column" as const,
       }
-    : {}
+    : {};
 
   const controlButtonStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: isMobile ? '10px' : '10px',
-    padding: isMobile ? '8px 12px' : '10px 14px',
-    borderRadius: '8px',
-    color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-    fontSize: isMobile ? '14px' : '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  }
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? "10px" : "10px",
+    padding: isMobile ? "8px 12px" : "10px 14px",
+    borderRadius: "8px",
+    color: isDark ? "rgba(209, 213, 219, 1)" : "rgba(55, 65, 81, 1)",
+    fontSize: isMobile ? "14px" : "14px",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  };
 
   return (
     <div style={containerStyle}>
       {isMobile ? (
         <div
           className={css({
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: '16px',
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: "16px",
             minHeight: 0, // Allow grid to shrink
-            flex: '1 1 auto',
-            alignContent: 'start',
-            overflowY: 'auto',
-            '@media (min-width: 480px) and (orientation: landscape)': {
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '20px',
-              gridTemplateRows: 'min-content',
+            flex: "1 1 auto",
+            alignContent: "start",
+            overflowY: "auto",
+            "@media (min-width: 480px) and (orientation: landscape)": {
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "20px",
+              gridTemplateRows: "min-content",
             },
-            '@media (max-height: 600px)': {
-              gap: '8px',
+            "@media (max-height: 600px)": {
+              gap: "8px",
             },
           })}
         >
@@ -195,11 +204,11 @@ function MenuContent({
             {/* Site Navigation Section */}
             <div style={sectionHeaderStyle}>Navigation</div>
 
-            {renderNavLink('/', '🧮', 'Home')}
-            {renderNavLink('/create', '✏️', 'Create')}
-            {renderNavLink('/guide', '📖', 'Guide')}
-            {renderNavLink('/games', '🎮', 'Games')}
-            {renderNavLink('/blog', '📝', 'Blog')}
+            {renderNavLink("/", "🧮", "Home")}
+            {renderNavLink("/create", "✏️", "Create")}
+            {renderNavLink("/guide", "📖", "Guide")}
+            {renderNavLink("/games", "🎮", "Games")}
+            {renderNavLink("/blog", "📝", "Blog")}
 
             <div style={separatorStyle} />
 
@@ -208,52 +217,56 @@ function MenuContent({
 
             <div
               onClick={() => {
-                toggleFullscreen()
-                onNavigate?.()
+                toggleFullscreen();
+                onNavigate?.();
               }}
               style={controlButtonStyle}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = isDark
-                  ? 'rgba(59, 130, 246, 0.2)'
-                  : 'rgba(59, 130, 246, 0.1)'
+                  ? "rgba(59, 130, 246, 0.2)"
+                  : "rgba(59, 130, 246, 0.1)";
                 e.currentTarget.style.color = isDark
-                  ? 'rgba(147, 197, 253, 1)'
-                  : 'rgba(29, 78, 216, 1)'
+                  ? "rgba(147, 197, 253, 1)"
+                  : "rgba(29, 78, 216, 1)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.background = "transparent";
                 e.currentTarget.style.color = isDark
-                  ? 'rgba(209, 213, 219, 1)'
-                  : 'rgba(55, 65, 81, 1)'
+                  ? "rgba(209, 213, 219, 1)"
+                  : "rgba(55, 65, 81, 1)";
               }}
             >
-              <span style={{ fontSize: '18px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
-              <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+              <span style={{ fontSize: "18px" }}>
+                {isFullscreen ? "🪟" : "⛶"}
+              </span>
+              <span>
+                {isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              </span>
             </div>
 
             {isArcadePage && (
               <div
                 onClick={() => {
-                  router.push('/games')
-                  onNavigate?.()
+                  router.push("/games");
+                  onNavigate?.();
                 }}
                 style={controlButtonStyle}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = isDark
-                    ? 'rgba(239, 68, 68, 0.2)'
-                    : 'rgba(239, 68, 68, 0.1)'
+                    ? "rgba(239, 68, 68, 0.2)"
+                    : "rgba(239, 68, 68, 0.1)";
                   e.currentTarget.style.color = isDark
-                    ? 'rgba(252, 165, 165, 1)'
-                    : 'rgba(185, 28, 28, 1)'
+                    ? "rgba(252, 165, 165, 1)"
+                    : "rgba(185, 28, 28, 1)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.background = "transparent";
                   e.currentTarget.style.color = isDark
-                    ? 'rgba(209, 213, 219, 1)'
-                    : 'rgba(55, 65, 81, 1)'
+                    ? "rgba(209, 213, 219, 1)"
+                    : "rgba(55, 65, 81, 1)";
                 }}
               >
-                <span style={{ fontSize: '18px' }}>🚪</span>
+                <span style={{ fontSize: "18px" }}>🚪</span>
                 <span>Exit Arcade</span>
               </div>
             )}
@@ -264,7 +277,7 @@ function MenuContent({
             {/* Style Section */}
             <div style={sectionHeaderStyle}>Abacus Style</div>
 
-            <div style={{ padding: '0 6px' }}>
+            <div style={{ padding: "0 6px" }}>
               <AbacusDisplayDropdown
                 isFullscreen={isFullscreen}
                 onOpenChange={handleNestedDropdownChange}
@@ -276,14 +289,17 @@ function MenuContent({
             {/* Language Section */}
             <div style={sectionHeaderStyle}>Language</div>
 
-            <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
+            <LanguageSelector
+              variant="dropdown-item"
+              isFullscreen={isFullscreen}
+            />
 
             <div style={separatorStyle} />
 
             {/* Theme Section */}
             <div style={sectionHeaderStyle}>Theme</div>
 
-            <div style={{ padding: '0 6px' }}>
+            <div style={{ padding: "0 6px" }}>
               <ThemeToggle />
             </div>
           </div>
@@ -294,11 +310,11 @@ function MenuContent({
           {/* Site Navigation Section */}
           <div style={sectionHeaderStyle}>Navigation</div>
 
-          {renderNavLink('/', '🧮', 'Home')}
-          {renderNavLink('/create', '✏️', 'Create')}
-          {renderNavLink('/guide', '📖', 'Guide')}
-          {renderNavLink('/games', '🎮', 'Games')}
-          {renderNavLink('/blog', '📝', 'Blog')}
+          {renderNavLink("/", "🧮", "Home")}
+          {renderNavLink("/create", "✏️", "Create")}
+          {renderNavLink("/guide", "📖", "Guide")}
+          {renderNavLink("/games", "🎮", "Games")}
+          {renderNavLink("/blog", "📝", "Blog")}
 
           <DropdownMenu.Separator style={separatorStyle} />
 
@@ -310,43 +326,45 @@ function MenuContent({
             style={controlButtonStyle}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = isDark
-                ? 'rgba(59, 130, 246, 0.2)'
-                : 'rgba(59, 130, 246, 0.1)'
+                ? "rgba(59, 130, 246, 0.2)"
+                : "rgba(59, 130, 246, 0.1)";
               e.currentTarget.style.color = isDark
-                ? 'rgba(147, 197, 253, 1)'
-                : 'rgba(29, 78, 216, 1)'
+                ? "rgba(147, 197, 253, 1)"
+                : "rgba(29, 78, 216, 1)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.background = "transparent";
               e.currentTarget.style.color = isDark
-                ? 'rgba(209, 213, 219, 1)'
-                : 'rgba(55, 65, 81, 1)'
+                ? "rgba(209, 213, 219, 1)"
+                : "rgba(55, 65, 81, 1)";
             }}
           >
-            <span style={{ fontSize: '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
-            <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+            <span style={{ fontSize: "16px" }}>
+              {isFullscreen ? "🪟" : "⛶"}
+            </span>
+            <span>{isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}</span>
           </DropdownMenu.Item>
 
           {isArcadePage && (
             <DropdownMenu.Item
-              onSelect={() => router.push('/games')}
+              onSelect={() => router.push("/games")}
               style={controlButtonStyle}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = isDark
-                  ? 'rgba(239, 68, 68, 0.2)'
-                  : 'rgba(239, 68, 68, 0.1)'
+                  ? "rgba(239, 68, 68, 0.2)"
+                  : "rgba(239, 68, 68, 0.1)";
                 e.currentTarget.style.color = isDark
-                  ? 'rgba(252, 165, 165, 1)'
-                  : 'rgba(185, 28, 28, 1)'
+                  ? "rgba(252, 165, 165, 1)"
+                  : "rgba(185, 28, 28, 1)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.background = "transparent";
                 e.currentTarget.style.color = isDark
-                  ? 'rgba(209, 213, 219, 1)'
-                  : 'rgba(55, 65, 81, 1)'
+                  ? "rgba(209, 213, 219, 1)"
+                  : "rgba(55, 65, 81, 1)";
               }}
             >
-              <span style={{ fontSize: '16px' }}>🚪</span>
+              <span style={{ fontSize: "16px" }}>🚪</span>
               <span>Exit Arcade</span>
             </DropdownMenu.Item>
           )}
@@ -356,7 +374,7 @@ function MenuContent({
           {/* Style Section */}
           <div style={sectionHeaderStyle}>Abacus Style</div>
 
-          <div style={{ padding: '0 6px' }}>
+          <div style={{ padding: "0 6px" }}>
             <AbacusDisplayDropdown
               isFullscreen={isFullscreen}
               onOpenChange={handleNestedDropdownChange}
@@ -368,20 +386,26 @@ function MenuContent({
           {/* Language Section */}
           <div style={sectionHeaderStyle}>Language</div>
 
-          <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
+          <LanguageSelector
+            variant="dropdown-item"
+            isFullscreen={isFullscreen}
+          />
 
           <DropdownMenu.Separator style={separatorStyle} />
 
           {/* Theme Section */}
           <div style={sectionHeaderStyle}>Theme</div>
 
-          <DropdownMenu.Item onSelect={(e) => e.preventDefault()} style={{ padding: '0 6px' }}>
+          <DropdownMenu.Item
+            onSelect={(e) => e.preventDefault()}
+            style={{ padding: "0 6px" }}
+          >
             <ThemeToggle />
           </DropdownMenu.Item>
         </>
       )}
     </div>
-  )
+  );
 }
 
 function HamburgerMenu({
@@ -391,43 +415,43 @@ function HamburgerMenu({
   toggleFullscreen,
   router,
 }: {
-  isFullscreen: boolean
-  isArcadePage: boolean
-  pathname: string | null
-  toggleFullscreen: () => void
-  router: any
+  isFullscreen: boolean;
+  isArcadePage: boolean;
+  pathname: string | null;
+  toggleFullscreen: () => void;
+  router: any;
 }) {
-  const [open, setOpen] = useState(false)
-  const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const { resolvedTheme } = useTheme()
+  const [open, setOpen] = useState(false);
+  const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const { resolvedTheme } = useTheme();
 
   // Detect mobile viewport - check the smaller dimension to catch landscape orientation
   React.useEffect(() => {
     const checkMobile = () => {
       // Mobile if the smaller dimension is less than 640px (catches both portrait and landscape)
-      const smallerDimension = Math.min(window.innerWidth, window.innerHeight)
-      setIsMobile(smallerDimension < 640)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+      const smallerDimension = Math.min(window.innerWidth, window.innerHeight);
+      setIsMobile(smallerDimension < 640);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Open on click OR if nested dropdown is open
-  const isOpen = open || nestedDropdownOpen
+  const isOpen = open || nestedDropdownOpen;
 
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen)
-  }
+    setOpen(newOpen);
+  };
 
   const handleNestedDropdownChange = (isNestedOpen: boolean) => {
-    setNestedDropdownOpen(isNestedOpen)
-  }
+    setNestedDropdownOpen(isNestedOpen);
+  };
 
   const handleClose = () => {
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   // Mobile full-screen menu
   if (isMobile) {
@@ -437,54 +461,56 @@ function HamburgerMenu({
           type="button"
           onClick={() => setOpen(!open)}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '44px',
-            height: '44px',
-            padding: '8px',
-            background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
-            border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "44px",
+            height: "44px",
+            padding: "8px",
+            background: isFullscreen ? "rgba(0, 0, 0, 0.85)" : "white",
+            border: isFullscreen
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid #e5e7eb",
+            borderRadius: "8px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            backdropFilter: isFullscreen ? "blur(15px)" : "none",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
           }}
         >
           <span
             style={{
-              fontSize: '20px',
-              color: isFullscreen ? 'white' : '#374151',
+              fontSize: "20px",
+              color: isFullscreen ? "white" : "#374151",
             }}
           >
-            {open ? '✕' : '☰'}
+            {open ? "✕" : "☰"}
           </span>
         </button>
 
         {open &&
-          typeof document !== 'undefined' &&
+          typeof document !== "undefined" &&
           createPortal(
             <>
               <div
                 className={css({
-                  position: 'fixed',
+                  position: "fixed",
                   inset: 0,
                   background:
-                    resolvedTheme === 'dark'
-                      ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))'
-                      : 'linear-gradient(135deg, rgba(249, 250, 251, 0.97), rgba(243, 244, 246, 0.97))',
-                  backdropFilter: 'blur(12px)',
+                    resolvedTheme === "dark"
+                      ? "linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))"
+                      : "linear-gradient(135deg, rgba(249, 250, 251, 0.97), rgba(243, 244, 246, 0.97))",
+                  backdropFilter: "blur(12px)",
                   zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
-                  display: 'flex',
-                  flexDirection: 'column',
+                  display: "flex",
+                  flexDirection: "column",
                   minHeight: 0,
-                  animation: 'mobileMenuFadeIn 0.2s ease-out',
+                  animation: "mobileMenuFadeIn 0.2s ease-out",
                 })}
                 onClick={(e) => {
                   // Close if clicking the backdrop
                   if (e.target === e.currentTarget) {
-                    handleClose()
+                    handleClose();
                   }
                 }}
               >
@@ -493,35 +519,41 @@ function HamburgerMenu({
                   type="button"
                   onClick={handleClose}
                   className={css({
-                    position: 'fixed',
-                    top: '16px',
-                    right: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '44px',
-                    height: '44px',
-                    padding: '8px',
-                    background: resolvedTheme === 'dark' ? 'rgba(31, 41, 55, 0.9)' : 'white',
+                    position: "fixed",
+                    top: "16px",
+                    right: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "44px",
+                    height: "44px",
+                    padding: "8px",
+                    background:
+                      resolvedTheme === "dark"
+                        ? "rgba(31, 41, 55, 0.9)"
+                        : "white",
                     border:
-                      resolvedTheme === 'dark'
-                        ? '1px solid rgba(255, 255, 255, 0.1)'
-                        : '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                      resolvedTheme === "dark"
+                        ? "1px solid rgba(255, 255, 255, 0.1)"
+                        : "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
                     zIndex: 1,
                     _hover: {
-                      background: resolvedTheme === 'dark' ? 'rgba(55, 65, 81, 0.9)' : '#f9fafb',
+                      background:
+                        resolvedTheme === "dark"
+                          ? "rgba(55, 65, 81, 0.9)"
+                          : "#f9fafb",
                     },
                   })}
                   aria-label="Close menu"
                 >
                   <span
                     style={{
-                      fontSize: '20px',
-                      color: resolvedTheme === 'dark' ? 'white' : '#374151',
+                      fontSize: "20px",
+                      color: resolvedTheme === "dark" ? "white" : "#374151",
                     }}
                   >
                     ✕
@@ -556,10 +588,10 @@ function HamburgerMenu({
                 }}
               />
             </>,
-            document.body
+            document.body,
           )}
       </>
-    )
+    );
   }
 
   // Desktop dropdown menu
@@ -569,37 +601,37 @@ function HamburgerMenu({
         <button
           type="button"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '44px',
-            height: '44px',
-            padding: '8px',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "44px",
+            height: "44px",
+            padding: "8px",
             background: isFullscreen
-              ? 'rgba(0, 0, 0, 0.85)'
-              : resolvedTheme === 'dark'
-                ? 'rgba(31, 41, 55, 0.9)'
-                : 'white',
+              ? "rgba(0, 0, 0, 0.85)"
+              : resolvedTheme === "dark"
+                ? "rgba(31, 41, 55, 0.9)"
+                : "white",
             border: isFullscreen
-              ? '1px solid rgba(255, 255, 255, 0.1)'
-              : resolvedTheme === 'dark'
-                ? '1px solid rgba(75, 85, 99, 0.5)'
-                : '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : resolvedTheme === "dark"
+                ? "1px solid rgba(75, 85, 99, 0.5)"
+                : "1px solid #e5e7eb",
+            borderRadius: "8px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            backdropFilter: isFullscreen ? "blur(15px)" : "none",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
           }}
         >
           <span
             style={{
-              fontSize: '20px',
+              fontSize: "20px",
               color: isFullscreen
-                ? 'white'
-                : resolvedTheme === 'dark'
-                  ? 'rgba(209, 213, 219, 1)'
-                  : '#374151',
+                ? "white"
+                : resolvedTheme === "dark"
+                  ? "rgba(209, 213, 219, 1)"
+                  : "#374151",
             }}
           >
             ☰
@@ -614,29 +646,29 @@ function HamburgerMenu({
           sideOffset={8}
           onInteractOutside={(e) => {
             // Don't close the hamburger menu when clicking inside the nested style dropdown
-            const target = e.target as HTMLElement
+            const target = e.target as HTMLElement;
             if (
               target.closest('[role="dialog"]') ||
-              target.closest('[data-radix-popper-content-wrapper]')
+              target.closest("[data-radix-popper-content-wrapper]")
             ) {
-              e.preventDefault()
+              e.preventDefault();
             }
           }}
           className={css({
             background:
-              resolvedTheme === 'dark'
-                ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))'
-                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(249, 250, 251, 0.97))',
-            backdropFilter: 'blur(12px)',
-            borderRadius: '12px',
-            padding: '8px',
+              resolvedTheme === "dark"
+                ? "linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))"
+                : "linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(249, 250, 251, 0.97))",
+            backdropFilter: "blur(12px)",
+            borderRadius: "12px",
+            padding: "8px",
             boxShadow:
-              resolvedTheme === 'dark'
-                ? '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)'
-                : '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.2)',
-            minWidth: '220px',
+              resolvedTheme === "dark"
+                ? "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)"
+                : "0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.2)",
+            minWidth: "220px",
             zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
-            animation: 'dropdownFadeIn 0.2s ease-out',
+            animation: "dropdownFadeIn 0.2s ease-out",
           })}
         >
           <MenuContent
@@ -669,7 +701,7 @@ function HamburgerMenu({
         }}
       />
     </DropdownMenu.Root>
-  )
+  );
 }
 
 /**
@@ -684,39 +716,39 @@ function MinimalNav({
   exitFullscreen,
   router,
 }: {
-  isFullscreen: boolean
-  isArcadePage: boolean
-  pathname: string | null
-  navSlot: React.ReactNode
-  toggleFullscreen: () => void
-  exitFullscreen: () => void
-  router: any
+  isFullscreen: boolean;
+  isArcadePage: boolean;
+  pathname: string | null;
+  navSlot: React.ReactNode;
+  toggleFullscreen: () => void;
+  exitFullscreen: () => void;
+  router: any;
 }) {
   return (
     <header
       style={{
-        position: 'fixed',
-        top: '16px',
-        left: '16px',
-        right: '16px',
+        position: "fixed",
+        top: "16px",
+        left: "16px",
+        right: "16px",
         zIndex: Z_INDEX.NAV_BAR,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        pointerEvents: 'none',
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        pointerEvents: "none",
         // Set active nav height for content to use
-        ['--app-nav-height' as any]: 'var(--app-nav-height-minimal)',
+        ["--app-nav-height" as any]: "var(--app-nav-height-minimal)",
         // Use the variable for min-height to ensure consistency
-        minHeight: 'var(--app-nav-height-minimal)',
+        minHeight: "var(--app-nav-height-minimal)",
       }}
     >
       {/* Hamburger Menu - positioned absolutely on left */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           left: 0,
           top: 0,
-          pointerEvents: 'auto',
+          pointerEvents: "auto",
         }}
       >
         <HamburgerMenu
@@ -732,40 +764,42 @@ function MinimalNav({
       {navSlot && (
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '8px 16px',
-            background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
-            border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
-            opacity: '0.95',
-            transition: 'opacity 0.3s ease',
-            pointerEvents: 'auto',
-            maxWidth: 'calc(100% - 128px)', // Leave space for hamburger + margin
-            whiteSpace: 'nowrap',
-            overflow: 'visible',
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "8px 16px",
+            background: isFullscreen ? "rgba(0, 0, 0, 0.85)" : "white",
+            border: isFullscreen
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid #e5e7eb",
+            borderRadius: "8px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            backdropFilter: isFullscreen ? "blur(15px)" : "none",
+            opacity: "0.95",
+            transition: "opacity 0.3s ease",
+            pointerEvents: "auto",
+            maxWidth: "calc(100% - 128px)", // Leave space for hamburger + margin
+            whiteSpace: "nowrap",
+            overflow: "visible",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '1'
+            e.currentTarget.style.opacity = "1";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '0.95'
+            e.currentTarget.style.opacity = "0.95";
           }}
         >
           {navSlot}
           {isFullscreen && (
             <div
               style={{
-                padding: '4px 8px',
-                background: 'rgba(34, 197, 94, 0.2)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                borderRadius: '9999px',
-                fontSize: '12px',
-                color: 'rgb(134, 239, 172)',
-                fontWeight: '600',
+                padding: "4px 8px",
+                background: "rgba(34, 197, 94, 0.2)",
+                border: "1px solid rgba(34, 197, 94, 0.3)",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                color: "rgb(134, 239, 172)",
+                fontWeight: "600",
               }}
             >
               ✨ FULLSCREEN
@@ -774,33 +808,34 @@ function MinimalNav({
         </div>
       )}
     </header>
-  )
+  );
 }
 
-export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const isArcadePage = pathname?.startsWith('/arcade')
-  const isHomePage = pathname === '/'
-  const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
+export function AppNavBar({ variant = "full", navSlot }: AppNavBarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isArcadePage = pathname?.startsWith("/arcade");
+  const isHomePage = pathname === "/";
+  const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen();
 
   // Try to get home hero context (if on homepage)
-  const homeHero = useOptionalHomeHero()
+  const homeHero = useOptionalHomeHero();
 
   // Select a random subtitle once on mount (performance: won't change on re-renders)
   // Use homeHero subtitle if available, otherwise generate one
-  const fallbackSubtitle = useMemo(() => getRandomSubtitle(), [])
-  const subtitle = homeHero?.subtitle || fallbackSubtitle
+  const fallbackSubtitle = useMemo(() => getRandomSubtitle(), []);
+  const subtitle = homeHero?.subtitle || fallbackSubtitle;
 
   // Show branding unless we're on homepage with visible hero
-  const showBranding = !isHomePage || !homeHero || !homeHero.isHeroVisible
+  const showBranding = !isHomePage || !homeHero || !homeHero.isHeroVisible;
 
   // Auto-detect variant based on context
   // Only arcade pages (not /games) should use minimal nav
-  const actualVariant = variant === 'full' && isArcadePage ? 'minimal' : variant
+  const actualVariant =
+    variant === "full" && isArcadePage ? "minimal" : variant;
 
   // Mini nav for games/arcade (both fullscreen and non-fullscreen)
-  if (actualVariant === 'minimal') {
+  if (actualVariant === "minimal") {
     return (
       <MinimalNav
         isFullscreen={isFullscreen}
@@ -811,40 +846,42 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         exitFullscreen={exitFullscreen}
         router={router}
       />
-    )
+    );
   }
 
   // Check if we should use transparent styling (when hero is visible on home page)
-  const isTransparent = isHomePage && homeHero?.isHeroVisible
+  const isTransparent = isHomePage && homeHero?.isHeroVisible;
 
   return (
     <Tooltip.Provider delayDuration={200}>
       <header
         style={{
           // Set active nav height for content to use
-          ['--app-nav-height' as any]: 'var(--app-nav-height-full)',
+          ["--app-nav-height" as any]: "var(--app-nav-height-full)",
           // Use the variable for min-height to ensure consistency
-          minHeight: 'var(--app-nav-height-full)',
+          minHeight: "var(--app-nav-height-full)",
         }}
         className={css({
-          bg: isTransparent ? 'transparent' : 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: isTransparent ? 'none' : 'blur(12px)',
-          shadow: isTransparent ? 'none' : 'lg',
-          borderBottom: isTransparent ? 'none' : '1px solid',
-          borderColor: isTransparent ? 'transparent' : 'rgba(139, 92, 246, 0.2)',
-          position: 'fixed',
+          bg: isTransparent ? "transparent" : "rgba(0, 0, 0, 0.5)",
+          backdropFilter: isTransparent ? "none" : "blur(12px)",
+          shadow: isTransparent ? "none" : "lg",
+          borderBottom: isTransparent ? "none" : "1px solid",
+          borderColor: isTransparent
+            ? "transparent"
+            : "rgba(139, 92, 246, 0.2)",
+          position: "fixed",
           top: 0,
           left: 0,
           right: 0,
           zIndex: Z_INDEX.NAV_BAR,
-          transition: 'all 0.3s ease',
+          transition: "all 0.3s ease",
         })}
       >
-        <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
+        <div className={container({ maxW: "7xl", px: "4", py: "3" })}>
           <div
             className={hstack({
-              justify: 'space-between',
-              alignItems: 'center',
+              justify: "space-between",
+              alignItems: "center",
             })}
           >
             {/* Logo - conditionally shown based on hero visibility */}
@@ -852,22 +889,22 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               <Link
                 href="/"
                 className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0',
-                  textDecoration: 'none',
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0",
+                  textDecoration: "none",
                   _hover: {
-                    '& > .brand-name': { color: 'rgba(196, 181, 253, 1)' },
+                    "& > .brand-name": { color: "rgba(196, 181, 253, 1)" },
                   },
                   opacity: 0,
-                  animation: 'fadeIn 0.3s ease-out forwards',
+                  animation: "fadeIn 0.3s ease-out forwards",
                 })}
               >
                 <span
                   className={css({
-                    fontSize: 'xl',
-                    fontWeight: 'bold',
-                    color: 'rgba(255, 255, 255, 0.95)',
+                    fontSize: "xl",
+                    fontWeight: "bold",
+                    color: "rgba(255, 255, 255, 0.95)",
                   })}
                 >
                   Abaci One
@@ -876,13 +913,13 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   <Tooltip.Trigger asChild>
                     <span
                       className={css({
-                        fontSize: 'xs',
-                        fontWeight: 'medium',
-                        color: 'rgba(196, 181, 253, 0.8)',
-                        fontStyle: 'italic',
-                        cursor: 'help',
-                        whiteSpace: 'nowrap',
-                        _hover: { color: 'rgba(196, 181, 253, 1)' },
+                        fontSize: "xs",
+                        fontWeight: "medium",
+                        color: "rgba(196, 181, 253, 0.8)",
+                        fontStyle: "italic",
+                        cursor: "help",
+                        whiteSpace: "nowrap",
+                        _hover: { color: "rgba(196, 181, 253, 1)" },
                       })}
                     >
                       {subtitle.text}
@@ -894,21 +931,21 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                       align="start"
                       sideOffset={4}
                       className={css({
-                        bg: 'gray.900',
-                        color: 'white',
-                        px: '3',
-                        py: '2',
-                        rounded: 'md',
-                        fontSize: 'sm',
-                        maxW: '250px',
-                        shadow: 'lg',
+                        bg: "gray.900",
+                        color: "white",
+                        px: "3",
+                        py: "2",
+                        rounded: "md",
+                        fontSize: "sm",
+                        maxW: "250px",
+                        shadow: "lg",
                         zIndex: Z_INDEX.TOOLTIP,
                       })}
                     >
                       {subtitle.description}
                       <Tooltip.Arrow
                         className={css({
-                          fill: 'gray.900',
+                          fill: "gray.900",
                         })}
                       />
                     </Tooltip.Content>
@@ -919,33 +956,57 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               <div />
             )}
 
-            <div className={hstack({ gap: '6', alignItems: 'center' })}>
+            <div className={hstack({ gap: "6", alignItems: "center" })}>
               {/* Navigation Links - progressively hide as viewport narrows */}
-              <nav className={hstack({ gap: '4' })}>
+              <nav className={hstack({ gap: "4" })}>
                 {/* Create - always visible when nav is shown */}
-                <div className={css({ display: { base: 'none', sm: 'block' } })}>
-                  <NavLink href="/create" currentPath={pathname} isTransparent={isTransparent}>
+                <div
+                  className={css({ display: { base: "none", sm: "block" } })}
+                >
+                  <NavLink
+                    href="/create"
+                    currentPath={pathname}
+                    isTransparent={isTransparent}
+                  >
                     Create
                   </NavLink>
                 </div>
 
                 {/* Guide - hidden below md breakpoint */}
-                <div className={css({ display: { base: 'none', md: 'block' } })}>
-                  <NavLink href="/guide" currentPath={pathname} isTransparent={isTransparent}>
+                <div
+                  className={css({ display: { base: "none", md: "block" } })}
+                >
+                  <NavLink
+                    href="/guide"
+                    currentPath={pathname}
+                    isTransparent={isTransparent}
+                  >
                     Guide
                   </NavLink>
                 </div>
 
                 {/* Games - hidden below lg breakpoint */}
-                <div className={css({ display: { base: 'none', lg: 'block' } })}>
-                  <NavLink href="/games" currentPath={pathname} isTransparent={isTransparent}>
+                <div
+                  className={css({ display: { base: "none", lg: "block" } })}
+                >
+                  <NavLink
+                    href="/games"
+                    currentPath={pathname}
+                    isTransparent={isTransparent}
+                  >
                     Games
                   </NavLink>
                 </div>
 
                 {/* Blog - hidden below xl breakpoint */}
-                <div className={css({ display: { base: 'none', xl: 'block' } })}>
-                  <NavLink href="/blog" currentPath={pathname} isTransparent={isTransparent}>
+                <div
+                  className={css({ display: { base: "none", xl: "block" } })}
+                >
+                  <NavLink
+                    href="/blog"
+                    currentPath={pathname}
+                    isTransparent={isTransparent}
+                  >
                     Blog
                   </NavLink>
                 </div>
@@ -982,7 +1043,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         }}
       />
     </Tooltip.Provider>
-  )
+  );
 }
 
 function NavLink({
@@ -991,62 +1052,63 @@ function NavLink({
   children,
   isTransparent,
 }: {
-  href: string
-  currentPath: string | null
-  children: React.ReactNode
-  isTransparent?: boolean
+  href: string;
+  currentPath: string | null;
+  children: React.ReactNode;
+  isTransparent?: boolean;
 }) {
-  const isActive = currentPath === href || (href !== '/' && currentPath?.startsWith(href))
+  const isActive =
+    currentPath === href || (href !== "/" && currentPath?.startsWith(href));
 
   return (
     <Link
       href={href}
       style={{
-        backdropFilter: isTransparent ? 'blur(8px)' : 'none',
+        backdropFilter: isTransparent ? "blur(8px)" : "none",
       }}
       className={css({
-        px: { base: '4', md: '3' },
-        py: { base: '3', md: '2' },
-        minH: { base: '44px', md: 'auto' },
-        minW: { base: '44px', md: 'auto' },
-        fontSize: 'sm',
-        fontWeight: 'medium',
+        px: { base: "4", md: "3" },
+        py: { base: "3", md: "2" },
+        minH: { base: "44px", md: "auto" },
+        minW: { base: "44px", md: "auto" },
+        fontSize: "sm",
+        fontWeight: "medium",
         color: isTransparent
           ? isActive
-            ? 'text.primary'
-            : 'text.secondary'
+            ? "text.primary"
+            : "text.secondary"
           : isActive
-            ? 'rgba(196, 181, 253, 1)'
-            : 'rgba(209, 213, 219, 0.9)',
+            ? "rgba(196, 181, 253, 1)"
+            : "rgba(209, 213, 219, 0.9)",
         bg: isTransparent
           ? isActive
-            ? 'bg.muted'
-            : 'bg.subtle'
+            ? "bg.muted"
+            : "bg.subtle"
           : isActive
-            ? 'rgba(139, 92, 246, 0.2)'
-            : 'transparent',
-        border: isTransparent ? '1px solid' : 'none',
+            ? "rgba(139, 92, 246, 0.2)"
+            : "transparent",
+        border: isTransparent ? "1px solid" : "none",
         borderColor: isTransparent
           ? isActive
-            ? 'border.default'
-            : 'border.subtle'
-          : 'transparent',
-        rounded: 'lg',
-        transition: 'all',
-        textDecoration: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: isTransparent ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
+            ? "border.default"
+            : "border.subtle"
+          : "transparent",
+        rounded: "lg",
+        transition: "all",
+        textDecoration: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: isTransparent ? "0 2px 8px rgba(0, 0, 0, 0.2)" : "none",
         _hover: {
-          color: isTransparent ? 'text.primary' : 'rgba(196, 181, 253, 1)',
-          bg: isTransparent ? 'interactive.hover' : 'rgba(139, 92, 246, 0.25)',
-          borderColor: isTransparent ? 'border.emphasis' : 'transparent',
-          boxShadow: isTransparent ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
+          color: isTransparent ? "text.primary" : "rgba(196, 181, 253, 1)",
+          bg: isTransparent ? "interactive.hover" : "rgba(139, 92, 246, 0.25)",
+          borderColor: isTransparent ? "border.emphasis" : "transparent",
+          boxShadow: isTransparent ? "0 4px 12px rgba(0, 0, 0, 0.3)" : "none",
         },
       })}
     >
       {children}
     </Link>
-  )
+  );
 }

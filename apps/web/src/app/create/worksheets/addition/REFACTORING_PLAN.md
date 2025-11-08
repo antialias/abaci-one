@@ -3,6 +3,7 @@
 ## Problem Statement
 
 `AdditionWorksheetClient.tsx` has grown to **971 lines** and contains multiple concerns:
+
 - State management (form state, debounced state, generation status, auto-save)
 - UI layout (orientation panel, generate button, preview)
 - Business logic (validation, PDF generation, settings persistence)
@@ -52,22 +53,25 @@ AdditionWorksheetClient (971 lines)
 ### Phase 1: Extract UI Components (Low Risk)
 
 #### 1.1 Extract `OrientationPanel.tsx`
+
 **Lines to extract**: 392-828 (437 lines)
 **Responsibility**: Orientation, pages, problems per page controls
 **Props**:
+
 ```typescript
 interface OrientationPanelProps {
-  orientation: 'portrait' | 'landscape'
-  problemsPerPage: number
-  pages: number
-  cols: number
-  onOrientationChange: (orientation: 'portrait' | 'landscape') => void
-  onProblemsPerPageChange: (count: number) => void
-  onPagesChange: (pages: number) => void
+  orientation: "portrait" | "landscape";
+  problemsPerPage: number;
+  pages: number;
+  cols: number;
+  onOrientationChange: (orientation: "portrait" | "landscape") => void;
+  onProblemsPerPageChange: (count: number) => void;
+  onPagesChange: (pages: number) => void;
 }
 ```
 
 **Extracted logic**:
+
 - `getDefaultColsForProblemsPerPage()` helper → move to this component
 - Orientation button click handlers
 - Pages button click handlers
@@ -75,40 +79,47 @@ interface OrientationPanelProps {
 - Total problems badge calculation
 
 **Benefits**:
+
 - Removes 437 lines from main component
 - Encapsulates all orientation/layout controls
 - Easier to test grid layout logic
 - Reusable for other worksheet types
 
 #### 1.2 Extract `GenerateButton.tsx`
+
 **Lines to extract**: 830-891 (62 lines)
 **Responsibility**: Trigger worksheet generation
 **Props**:
+
 ```typescript
 interface GenerateButtonProps {
-  status: 'idle' | 'generating' | 'error'
-  onGenerate: () => void
+  status: "idle" | "generating" | "error";
+  onGenerate: () => void;
 }
 ```
 
 **Benefits**:
+
 - Removes 62 lines from main component
 - Cleaner separation of generation UI from logic
 - Easier to add loading states, progress indicators
 
 #### 1.3 Extract `GenerationErrorDisplay.tsx`
+
 **Lines to extract**: 908-965 (58 lines)
 **Responsibility**: Show generation errors
 **Props**:
+
 ```typescript
 interface GenerationErrorDisplayProps {
-  error: string | null
-  visible: boolean
-  onRetry: () => void
+  error: string | null;
+  visible: boolean;
+  onRetry: () => void;
 }
 ```
 
 **Benefits**:
+
 - Removes 58 lines from main component
 - Encapsulates error UI
 - Reusable for other error scenarios
@@ -116,49 +127,56 @@ interface GenerationErrorDisplayProps {
 ### Phase 2: Extract Business Logic (Medium Risk)
 
 #### 2.1 Create `useWorksheetState.ts` Hook
+
 **Lines to extract**: 46-231 (186 lines)
 **Responsibility**: Manage worksheet state with debouncing and seed regeneration
 **Interface**:
+
 ```typescript
 interface UseWorksheetStateReturn {
-  formState: WorksheetFormState
-  debouncedFormState: WorksheetFormState
-  updateFormState: (updates: Partial<WorksheetFormState>) => void
+  formState: WorksheetFormState;
+  debouncedFormState: WorksheetFormState;
+  updateFormState: (updates: Partial<WorksheetFormState>) => void;
 }
 
 function useWorksheetState(
-  initialSettings: Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
-): UseWorksheetStateReturn
+  initialSettings: Omit<WorksheetFormState, "date" | "rows" | "total">,
+): UseWorksheetStateReturn;
 ```
 
 **Extracted logic**:
+
 - Form state initialization with derived calculations (rows, total)
 - Debounced state for preview updates (500ms delay)
 - Seed regeneration when problem settings change
 - StrictMode double-render handling with refs
 
 **Benefits**:
+
 - Removes 186 lines from main component
 - Separates state management from UI
 - Easier to test state transitions
 - Can be reused for other worksheet types
 
 #### 2.2 Create `useWorksheetGeneration.ts` Hook
+
 **Lines to extract**: 256-315 (60 lines)
 **Responsibility**: Handle PDF generation workflow
 **Interface**:
+
 ```typescript
 interface UseWorksheetGenerationReturn {
-  status: 'idle' | 'generating' | 'error'
-  error: string | null
-  generate: (config: WorksheetFormState) => Promise<void>
-  reset: () => void
+  status: "idle" | "generating" | "error";
+  error: string | null;
+  generate: (config: WorksheetFormState) => Promise<void>;
+  reset: () => void;
 }
 
-function useWorksheetGeneration(): UseWorksheetGenerationReturn
+function useWorksheetGeneration(): UseWorksheetGenerationReturn;
 ```
 
 **Extracted logic**:
+
 - Generation status state ('idle', 'generating', 'error')
 - Error state management
 - Validation before generation
@@ -167,28 +185,32 @@ function useWorksheetGeneration(): UseWorksheetGenerationReturn
 - Error handling
 
 **Benefits**:
+
 - Removes 60 lines from main component
 - Encapsulates generation workflow
 - Easier to test API interactions
 - Can add retry logic, progress tracking
 
 #### 2.3 Create `useWorksheetAutoSave.ts` Hook
+
 **Lines to extract**: 122-209 (88 lines)
 **Responsibility**: Auto-save worksheet settings to server
 **Interface**:
+
 ```typescript
 interface UseWorksheetAutoSaveReturn {
-  isSaving: boolean
-  lastSaved: Date | null
+  isSaving: boolean;
+  lastSaved: Date | null;
 }
 
 function useWorksheetAutoSave(
   formState: WorksheetFormState,
-  worksheetType: 'addition'
-): UseWorksheetAutoSaveReturn
+  worksheetType: "addition",
+): UseWorksheetAutoSaveReturn;
 ```
 
 **Extracted logic**:
+
 - Auto-save timer (1000ms debounce)
 - Settings persistence API call
 - Save status tracking (isSaving, lastSaved)
@@ -196,6 +218,7 @@ function useWorksheetAutoSave(
 - Silent error handling
 
 **Benefits**:
+
 - Removes 88 lines from main component
 - Separates persistence concerns
 - Easier to test auto-save behavior
@@ -204,35 +227,41 @@ function useWorksheetAutoSave(
 ### Phase 3: Extract Utility Functions (Low Risk)
 
 #### 3.1 Create `src/app/create/worksheets/addition/utils/dateFormatting.ts`
+
 **Lines to extract**: 18-27 (10 lines)
 **Exports**:
+
 ```typescript
-export function getDefaultDate(): string
+export function getDefaultDate(): string;
 ```
 
 **Benefits**:
+
 - Removes 10 lines from main component
 - Reusable date formatting utility
 - Easier to test date formatting
 - Centralized date formatting logic
 
 #### 3.2 Create `src/app/create/worksheets/addition/utils/layoutCalculations.ts`
+
 **Lines to extract**: 233-254 (22 lines)
 **Exports**:
+
 ```typescript
 export function getDefaultColsForProblemsPerPage(
   problemsPerPage: number,
-  orientation: 'portrait' | 'landscape'
-): number
+  orientation: "portrait" | "landscape",
+): number;
 
 export function calculateDerivedState(
   problemsPerPage: number,
   pages: number,
-  cols: number
-): { rows: number; total: number }
+  cols: number,
+): { rows: number; total: number };
 ```
 
 **Benefits**:
+
 - Removes 22 lines from main component
 - Encapsulates layout calculation logic
 - Easier to test grid calculations
@@ -358,6 +387,7 @@ export function AdditionWorksheetClient({
 ## Implementation Steps
 
 ### Step 1: Create Directory Structure
+
 ```bash
 src/app/create/worksheets/addition/
 ├── components/
@@ -397,6 +427,7 @@ src/app/create/worksheets/addition/
 ### Step 3: Testing Strategy
 
 For each extraction:
+
 1. Create new file
 2. Move code to new file
 3. Update imports in main component
@@ -410,6 +441,7 @@ For each extraction:
 ### Step 4: Post-Refactoring Verification
 
 After all extractions:
+
 1. Run full test suite (if exists)
 2. Manual testing of all features:
    - Orientation switching
@@ -439,18 +471,21 @@ After all extractions:
 ## Expected Benefits
 
 ### Code Quality
+
 - **Reduced complexity**: Main component from 971 → ~100 lines
 - **Single Responsibility**: Each component/hook has one clear purpose
 - **Better testability**: Isolated logic easier to unit test
 - **Improved readability**: Clear separation of concerns
 
 ### Developer Experience
+
 - **Easier maintenance**: Smaller files easier to understand
 - **Faster iteration**: Changes isolated to specific files
 - **Better IntelliSense**: Smaller files load faster in editor
 - **Clearer git diffs**: Changes don't touch massive files
 
 ### Future Enhancements
+
 - **Reusability**: Hooks and utils can be used for other worksheet types
 - **Extensibility**: Easy to add new features to specific sections
 - **Parallel development**: Different developers can work on different components
@@ -459,18 +494,23 @@ After all extractions:
 ## Risks and Mitigations
 
 ### Risk 1: Breaking existing functionality
+
 **Mitigation**: Extract one piece at a time, test thoroughly, commit frequently
 
 ### Risk 2: State synchronization issues
+
 **Mitigation**: Keep state management hooks simple, avoid complex dependencies
 
 ### Risk 3: Props drilling
+
 **Mitigation**: Use custom hooks to encapsulate state, pass minimal props
 
 ### Risk 4: Regression in auto-save behavior
+
 **Mitigation**: Test auto-save thoroughly, keep debounce logic identical
 
 ### Risk 5: Loss of debug logging
+
 **Mitigation**: Keep console.log statements in extracted hooks during development
 
 ## Success Criteria

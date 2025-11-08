@@ -2435,7 +2435,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                         fontFamily: "monospace",
                         fontWeight: "bold",
                         fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
-                        color: themeAwareCustomStyles?.numerals?.color || "rgba(0, 0, 0, 0.8)",
+                        color:
+                          themeAwareCustomStyles?.numerals?.color ||
+                          "rgba(0, 0, 0, 0.8)",
                       }}
                     />
                   </div>

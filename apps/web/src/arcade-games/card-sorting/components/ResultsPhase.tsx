@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { css } from '../../../../styled-system/css'
-import { useCardSorting } from '../Provider'
-import { useState, useEffect } from 'react'
-import type { SortingCard } from '../types'
+import { css } from "../../../../styled-system/css";
+import { useCardSorting } from "../Provider";
+import { useState, useEffect } from "react";
+import type { SortingCard } from "../types";
 
 // Add result animations
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style')
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
   style.textContent = `
     @keyframes scoreReveal {
       0% {
@@ -27,155 +27,167 @@ if (typeof document !== 'undefined') {
       25% { transform: scale(1.1) rotate(-5deg); }
       75% { transform: scale(1.1) rotate(5deg); }
     }
-  `
-  document.head.appendChild(style)
+  `;
+  document.head.appendChild(style);
 }
 
 export function ResultsPhase() {
-  const { state, startGame, goToSetup, exitSession, players } = useCardSorting()
-  const { scoreBreakdown } = state
-  const [showCorrections, setShowCorrections] = useState(false)
+  const { state, startGame, goToSetup, exitSession, players } =
+    useCardSorting();
+  const { scoreBreakdown } = state;
+  const [showCorrections, setShowCorrections] = useState(false);
 
   // Determine if this is a collaborative game
-  const isCollaborative = state.gameMode === 'collaborative'
+  const isCollaborative = state.gameMode === "collaborative";
 
   // Get user's sequence from placedCards
-  const userSequence = state.placedCards.filter((c): c is SortingCard => c !== null)
+  const userSequence = state.placedCards.filter(
+    (c): c is SortingCard => c !== null,
+  );
 
   // Show corrections after a delay
   useEffect(() => {
     const timer = setTimeout(() => {
-      setShowCorrections(true)
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [])
+      setShowCorrections(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!scoreBreakdown) {
     return (
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          fontSize: '18px',
-          color: '#666',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          fontSize: "18px",
+          color: "#666",
         })}
       >
         No score data available
       </div>
-    )
+    );
   }
 
-  const isPerfect = scoreBreakdown.finalScore === 100
-  const isExcellent = scoreBreakdown.finalScore >= 80
+  const isPerfect = scoreBreakdown.finalScore === 100;
+  const isExcellent = scoreBreakdown.finalScore >= 80;
 
   const getMessage = (score: number) => {
     if (isCollaborative) {
-      if (score === 100) return 'Perfect teamwork! All cards in correct order!'
-      if (score >= 80) return 'Excellent collaboration! Very close to perfect!'
-      if (score >= 60) return 'Good team effort! You worked well together!'
-      return 'Keep working together! Communication is key.'
+      if (score === 100) return "Perfect teamwork! All cards in correct order!";
+      if (score >= 80) return "Excellent collaboration! Very close to perfect!";
+      if (score >= 60) return "Good team effort! You worked well together!";
+      return "Keep working together! Communication is key.";
     }
-    if (score === 100) return 'Perfect! All cards in correct order!'
-    if (score >= 80) return 'Excellent! Very close to perfect!'
-    if (score >= 60) return 'Good job! You understand the pattern!'
-    return 'Keep practicing! Focus on reading each abacus carefully.'
-  }
+    if (score === 100) return "Perfect! All cards in correct order!";
+    if (score >= 80) return "Excellent! Very close to perfect!";
+    if (score >= 60) return "Good job! You understand the pattern!";
+    return "Keep practicing! Focus on reading each abacus carefully.";
+  };
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
 
   return (
     <div
       className={css({
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: { base: 'column', md: 'row' },
-        position: 'fixed',
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: { base: "column", md: "row" },
+        position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
-        overflow: 'auto',
-        paddingTop: { base: '130px', md: 0 },
-        paddingBottom: { base: '70px', md: 0 },
+        background: "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
+        overflow: "auto",
+        paddingTop: { base: "130px", md: 0 },
+        paddingBottom: { base: "70px", md: 0 },
       })}
     >
       {/* Cards Grid Area */}
       <div
         className={css({
-          flex: { base: '0 0 auto', md: 1 },
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: { base: '8px', md: '40px' },
-          overflow: { base: 'auto', md: 'auto' },
+          flex: { base: "0 0 auto", md: 1 },
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: { base: "8px", md: "40px" },
+          overflow: { base: "auto", md: "auto" },
           order: { base: 2, md: 1 },
-          maxHeight: { base: '50vh', md: 'none' },
+          maxHeight: { base: "50vh", md: "none" },
         })}
       >
         <div
           className={css({
-            display: 'grid',
+            display: "grid",
             gridTemplateColumns: {
-              base: 'repeat(3, 1fr)',
-              sm: 'repeat(3, 1fr)',
-              md: 'repeat(3, 1fr)',
+              base: "repeat(3, 1fr)",
+              sm: "repeat(3, 1fr)",
+              md: "repeat(3, 1fr)",
             },
-            gap: state.cardCount <= 5 ? { base: '8px', md: '16px' } : { base: '6px', md: '16px' },
-            maxWidth: '600px',
-            width: '100%',
+            gap:
+              state.cardCount <= 5
+                ? { base: "8px", md: "16px" }
+                : { base: "6px", md: "16px" },
+            maxWidth: "600px",
+            width: "100%",
           })}
         >
           {userSequence.map((card, userIndex) => {
-            const isCorrect = state.correctOrder[userIndex]?.id === card.id
-            const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+            const isCorrect = state.correctOrder[userIndex]?.id === card.id;
+            const correctIndex = state.correctOrder.findIndex(
+              (c) => c.id === card.id,
+            );
 
             return (
               <div
                 key={card.id}
                 style={{
-                  position: 'relative',
-                  width: '100%',
+                  position: "relative",
+                  width: "100%",
                   paddingBottom:
                     state.cardCount <= 5
-                      ? '130%'
+                      ? "130%"
                       : state.cardCount <= 8
-                        ? '120%'
+                        ? "120%"
                         : state.cardCount <= 12
-                          ? '110%'
-                          : '105%',
+                          ? "110%"
+                          : "105%",
                 }}
               >
                 {/* Card */}
                 <div
                   className={css({
-                    position: 'absolute',
+                    position: "absolute",
                     top: 0,
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'white',
-                    borderRadius: { base: '6px', md: '8px' },
-                    border: { base: '2px solid', md: '3px solid' },
-                    borderColor: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: { base: '4px', md: '8px' },
-                    boxSizing: 'border-box',
-                    boxShadow: isCorrect
-                      ? '0 0 20px rgba(34, 197, 94, 0.4)'
+                    background: "white",
+                    borderRadius: { base: "6px", md: "8px" },
+                    border: { base: "2px solid", md: "3px solid" },
+                    borderColor: isCorrect
+                      ? "#22c55e"
                       : showCorrections
-                        ? '0 0 20px rgba(239, 68, 68, 0.4)'
-                        : '0 4px 8px rgba(0, 0, 0, 0.1)',
-                    animation: 'scoreReveal 0.5s ease-out',
+                        ? "#ef4444"
+                        : "#0369a1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: { base: "4px", md: "8px" },
+                    boxSizing: "border-box",
+                    boxShadow: isCorrect
+                      ? "0 0 20px rgba(34, 197, 94, 0.4)"
+                      : showCorrections
+                        ? "0 0 20px rgba(239, 68, 68, 0.4)"
+                        : "0 4px 8px rgba(0, 0, 0, 0.1)",
+                    animation: "scoreReveal 0.5s ease-out",
                   })}
                   dangerouslySetInnerHTML={{ __html: card.svgContent }}
                 />
@@ -184,71 +196,75 @@ export function ResultsPhase() {
                 {showCorrections && (
                   <div
                     className={css({
-                      position: 'absolute',
+                      position: "absolute",
                       top:
                         state.cardCount > 8
-                          ? { base: '-6px', md: '-12px' }
-                          : { base: '-8px', md: '-12px' },
+                          ? { base: "-6px", md: "-12px" }
+                          : { base: "-8px", md: "-12px" },
                       right:
                         state.cardCount > 8
-                          ? { base: '-6px', md: '-12px' }
-                          : { base: '-8px', md: '-12px' },
+                          ? { base: "-6px", md: "-12px" }
+                          : { base: "-8px", md: "-12px" },
                       width:
                         state.cardCount > 8
-                          ? { base: '20px', md: '32px' }
-                          : { base: '24px', md: '32px' },
+                          ? { base: "20px", md: "32px" }
+                          : { base: "24px", md: "32px" },
                       height:
                         state.cardCount > 8
-                          ? { base: '20px', md: '32px' }
-                          : { base: '24px', md: '32px' },
-                      borderRadius: '50%',
-                      background: isCorrect ? '#22c55e' : '#ef4444',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                          ? { base: "20px", md: "32px" }
+                          : { base: "24px", md: "32px" },
+                      borderRadius: "50%",
+                      background: isCorrect ? "#22c55e" : "#ef4444",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       fontSize:
                         state.cardCount > 8
-                          ? { base: '12px', md: '20px' }
-                          : { base: '16px', md: '20px' },
-                      color: 'white',
-                      fontWeight: 'bold',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                      animation: 'scoreReveal 0.4s ease-out',
+                          ? { base: "12px", md: "20px" }
+                          : { base: "16px", md: "20px" },
+                      color: "white",
+                      fontWeight: "bold",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                      animation: "scoreReveal 0.4s ease-out",
                     })}
                   >
-                    {isCorrect ? '✓' : '✗'}
+                    {isCorrect ? "✓" : "✗"}
                   </div>
                 )}
 
                 {/* Position number */}
                 <div
                   className={css({
-                    position: 'absolute',
+                    position: "absolute",
                     bottom:
                       state.cardCount > 8
-                        ? { base: '-5px', md: '-8px' }
-                        : { base: '-6px', md: '-8px' },
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
-                    color: 'white',
+                        ? { base: "-5px", md: "-8px" }
+                        : { base: "-6px", md: "-8px" },
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: isCorrect
+                      ? "#22c55e"
+                      : showCorrections
+                        ? "#ef4444"
+                        : "#0369a1",
+                    color: "white",
                     padding:
                       state.cardCount > 8
-                        ? { base: '2px 5px', md: '4px 8px' }
-                        : { base: '3px 6px', md: '4px 8px' },
-                    borderRadius: { base: '6px', md: '12px' },
+                        ? { base: "2px 5px", md: "4px 8px" }
+                        : { base: "3px 6px", md: "4px 8px" },
+                    borderRadius: { base: "6px", md: "12px" },
                     fontSize:
                       state.cardCount > 8
-                        ? { base: '9px', md: '12px' }
-                        : { base: '10px', md: '12px' },
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                        ? { base: "9px", md: "12px" }
+                        : { base: "10px", md: "12px" },
+                    fontWeight: "bold",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
                   })}
                 >
                   #{showCorrections ? correctIndex + 1 : userIndex + 1}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </div>
@@ -256,21 +272,21 @@ export function ResultsPhase() {
       {/* Score panel */}
       <div
         className={css({
-          width: { base: '100%', md: '400px' },
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderLeft: { base: 'none', md: '3px solid rgba(59, 130, 246, 0.3)' },
+          width: { base: "100%", md: "400px" },
+          background: "rgba(255, 255, 255, 0.95)",
+          borderLeft: { base: "none", md: "3px solid rgba(59, 130, 246, 0.3)" },
           borderBottom: {
-            base: '3px solid rgba(59, 130, 246, 0.3)',
-            md: 'none',
+            base: "3px solid rgba(59, 130, 246, 0.3)",
+            md: "none",
           },
-          padding: { base: '12px', md: '40px' },
-          overflow: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: { base: '10px', md: '24px' },
+          padding: { base: "12px", md: "40px" },
+          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: { base: "10px", md: "24px" },
           boxShadow: {
-            base: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            md: '-4px 0 20px rgba(0, 0, 0, 0.1)',
+            base: "0 4px 20px rgba(0, 0, 0, 0.1)",
+            md: "-4px 0 20px rgba(0, 0, 0, 0.1)",
           },
           order: { base: 1, md: 2 },
         })}
@@ -278,84 +294,84 @@ export function ResultsPhase() {
         {/* Score Circle */}
         <div
           className={css({
-            display: 'flex',
-            flexDirection: { base: 'row', md: 'column' },
-            alignItems: 'center',
-            justifyContent: { base: 'space-between', md: 'center' },
-            gap: { base: '10px', md: '16px' },
+            display: "flex",
+            flexDirection: { base: "row", md: "column" },
+            alignItems: "center",
+            justifyContent: { base: "space-between", md: "center" },
+            gap: { base: "10px", md: "16px" },
           })}
         >
           <div
             className={css({
-              width: { base: '80px', md: '160px' },
-              height: { base: '80px', md: '160px' },
-              borderRadius: '50%',
+              width: { base: "80px", md: "160px" },
+              height: { base: "80px", md: "160px" },
+              borderRadius: "50%",
               background: isPerfect
-                ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
+                ? "linear-gradient(135deg, #fbbf24, #f59e0b)"
                 : isExcellent
-                  ? 'linear-gradient(135deg, #86efac, #22c55e)'
-                  : 'linear-gradient(135deg, #93c5fd, #3b82f6)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
+                  ? "linear-gradient(135deg, #86efac, #22c55e)"
+                  : "linear-gradient(135deg, #93c5fd, #3b82f6)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
               boxShadow: isPerfect
-                ? '0 0 40px rgba(245, 158, 11, 0.5), 0 10px 30px rgba(0, 0, 0, 0.2)'
-                : '0 10px 30px rgba(0, 0, 0, 0.15)',
+                ? "0 0 40px rgba(245, 158, 11, 0.5), 0 10px 30px rgba(0, 0, 0, 0.2)"
+                : "0 10px 30px rgba(0, 0, 0, 0.15)",
               animation: isPerfect
-                ? 'perfectCelebrate 0.6s ease-in-out'
-                : 'scoreReveal 0.6s ease-out',
+                ? "perfectCelebrate 0.6s ease-in-out"
+                : "scoreReveal 0.6s ease-out",
               flexShrink: 0,
             })}
             style={{
-              animationName: isPerfect ? 'perfectCelebrate' : 'scoreReveal',
+              animationName: isPerfect ? "perfectCelebrate" : "scoreReveal",
             }}
           >
             <div
               className={css({
-                fontSize: { base: '32px', md: '64px' },
-                fontWeight: 'bold',
-                color: 'white',
+                fontSize: { base: "32px", md: "64px" },
+                fontWeight: "bold",
+                color: "white",
                 lineHeight: 1,
-                textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+                textShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
               })}
             >
               {scoreBreakdown.finalScore}
             </div>
             <div
               className={css({
-                fontSize: { base: '12px', md: '20px' },
-                fontWeight: '600',
-                color: 'white',
+                fontSize: { base: "12px", md: "20px" },
+                fontWeight: "600",
+                color: "white",
                 opacity: 0.9,
               })}
             >
-              {isPerfect ? '🏆' : isExcellent ? '⭐' : '%'}
+              {isPerfect ? "🏆" : isExcellent ? "⭐" : "%"}
             </div>
           </div>
 
           <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: { base: 'flex-start', md: 'center' },
-              gap: { base: '6px', md: '12px' },
-              flex: { base: 1, md: 'none' },
+              display: "flex",
+              flexDirection: "column",
+              alignItems: { base: "flex-start", md: "center" },
+              gap: { base: "6px", md: "12px" },
+              flex: { base: 1, md: "none" },
             })}
           >
             {/* Team/Solo Label */}
             {isCollaborative && (
               <div
                 className={css({
-                  padding: { base: '4px 10px', md: '6px 16px' },
-                  background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
-                  borderRadius: '20px',
-                  fontSize: { base: '11px', md: '13px' },
-                  fontWeight: '700',
-                  color: 'white',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+                  padding: { base: "4px 10px", md: "6px 16px" },
+                  background: "linear-gradient(135deg, #a78bfa, #8b5cf6)",
+                  borderRadius: "20px",
+                  fontSize: { base: "11px", md: "13px" },
+                  fontWeight: "700",
+                  color: "white",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)",
                 })}
               >
                 👥 Team Score
@@ -364,12 +380,12 @@ export function ResultsPhase() {
 
             <div
               className={css({
-                textAlign: { base: 'left', md: 'center' },
-                fontSize: { base: '13px', md: '18px' },
-                fontWeight: '600',
-                color: '#0c4a6e',
+                textAlign: { base: "left", md: "center" },
+                fontSize: { base: "13px", md: "18px" },
+                fontWeight: "600",
+                color: "#0c4a6e",
                 lineHeight: 1.2,
-                display: { base: 'none', md: 'block' },
+                display: { base: "none", md: "block" },
               })}
             >
               {getMessage(scoreBreakdown.finalScore)}
@@ -378,13 +394,13 @@ export function ResultsPhase() {
             {/* Time Badge */}
             <div
               className={css({
-                padding: { base: '4px 12px', md: '8px 20px' },
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '2px solid rgba(59, 130, 246, 0.3)',
-                borderRadius: '20px',
-                fontSize: { base: '12px', md: '16px' },
-                fontWeight: '600',
-                color: '#0c4a6e',
+                padding: { base: "4px 12px", md: "8px 20px" },
+                background: "rgba(59, 130, 246, 0.1)",
+                border: "2px solid rgba(59, 130, 246, 0.3)",
+                borderRadius: "20px",
+                fontSize: { base: "12px", md: "16px" },
+                fontWeight: "600",
+                color: "#0c4a6e",
               })}
             >
               ⏱️ {formatTime(scoreBreakdown.elapsedTime)}
@@ -396,52 +412,55 @@ export function ResultsPhase() {
         {isCollaborative && state.activePlayers.length > 0 && (
           <div
             className={css({
-              background: 'white',
-              borderRadius: { base: '10px', md: '12px' },
-              padding: { base: '12px', md: '16px' },
-              border: '2px solid rgba(139, 92, 246, 0.2)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              background: "white",
+              borderRadius: { base: "10px", md: "12px" },
+              padding: { base: "12px", md: "16px" },
+              border: "2px solid rgba(139, 92, 246, 0.2)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
             })}
           >
             <div
               className={css({
-                fontSize: { base: '11px', md: '13px' },
-                fontWeight: '700',
-                color: '#64748b',
-                marginBottom: { base: '8px', md: '12px' },
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                fontSize: { base: "11px", md: "13px" },
+                fontWeight: "700",
+                color: "#64748b",
+                marginBottom: { base: "8px", md: "12px" },
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
               })}
             >
               Team Members ({state.activePlayers.length})
             </div>
             <div
               className={css({
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: { base: '6px', md: '8px' },
+                display: "flex",
+                flexWrap: "wrap",
+                gap: { base: "6px", md: "8px" },
               })}
             >
               {state.activePlayers
                 .map((playerId) => players.get(playerId))
-                .filter((player): player is NonNullable<typeof player> => player !== undefined)
+                .filter(
+                  (player): player is NonNullable<typeof player> =>
+                    player !== undefined,
+                )
                 .map((player) => (
                   <div
                     key={player.id}
                     className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: { base: '4px', md: '6px' },
-                      padding: { base: '5px 10px', md: '6px 12px' },
-                      background: 'rgba(139, 92, 246, 0.1)',
-                      border: '1px solid rgba(139, 92, 246, 0.2)',
-                      borderRadius: '20px',
-                      fontSize: { base: '13px', md: '14px' },
-                      fontWeight: '500',
-                      color: '#5b21b6',
+                      display: "flex",
+                      alignItems: "center",
+                      gap: { base: "4px", md: "6px" },
+                      padding: { base: "5px 10px", md: "6px 12px" },
+                      background: "rgba(139, 92, 246, 0.1)",
+                      border: "1px solid rgba(139, 92, 246, 0.2)",
+                      borderRadius: "20px",
+                      fontSize: { base: "13px", md: "14px" },
+                      fontWeight: "500",
+                      color: "#5b21b6",
                     })}
                   >
-                    <span style={{ fontSize: '16px' }}>{player.emoji}</span>
+                    <span style={{ fontSize: "16px" }}>{player.emoji}</span>
                     <span>{player.name}</span>
                   </div>
                 ))}
@@ -452,46 +471,46 @@ export function ResultsPhase() {
         {/* Score Details - Compact Cards */}
         <div
           className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: { base: '8px', md: '12px' },
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: { base: "8px", md: "12px" },
           })}
         >
           {/* Exact Matches */}
           <div
             className={css({
-              background: 'white',
-              borderRadius: { base: '10px', md: '12px' },
-              padding: { base: '10px 8px', md: '12px' },
-              border: '2px solid rgba(59, 130, 246, 0.2)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              background: "white",
+              borderRadius: { base: "10px", md: "12px" },
+              padding: { base: "10px 8px", md: "12px" },
+              border: "2px solid rgba(59, 130, 246, 0.2)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
             })}
           >
             <div
               className={css({
-                fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
-                color: '#64748b',
-                marginBottom: { base: '3px', md: '4px' },
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                fontSize: { base: "9px", md: "11px" },
+                fontWeight: "600",
+                color: "#64748b",
+                marginBottom: { base: "3px", md: "4px" },
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
               })}
             >
               Exact
             </div>
             <div
               className={css({
-                fontSize: { base: '22px', md: '28px' },
-                fontWeight: 'bold',
-                color: '#0c4a6e',
+                fontSize: { base: "22px", md: "28px" },
+                fontWeight: "bold",
+                color: "#0c4a6e",
               })}
             >
               {scoreBreakdown.exactMatches}
               <span
                 className={css({
-                  fontSize: { base: '12px', md: '14px' },
-                  color: '#64748b',
-                  fontWeight: '500',
+                  fontSize: { base: "12px", md: "14px" },
+                  color: "#64748b",
+                  fontWeight: "500",
                 })}
               >
                 /{state.cardCount}
@@ -502,38 +521,38 @@ export function ResultsPhase() {
           {/* Sequence */}
           <div
             className={css({
-              background: 'white',
-              borderRadius: { base: '10px', md: '12px' },
-              padding: { base: '10px 8px', md: '12px' },
-              border: '2px solid rgba(59, 130, 246, 0.2)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              background: "white",
+              borderRadius: { base: "10px", md: "12px" },
+              padding: { base: "10px 8px", md: "12px" },
+              border: "2px solid rgba(59, 130, 246, 0.2)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
             })}
           >
             <div
               className={css({
-                fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
-                color: '#64748b',
-                marginBottom: { base: '3px', md: '4px' },
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                fontSize: { base: "9px", md: "11px" },
+                fontWeight: "600",
+                color: "#64748b",
+                marginBottom: { base: "3px", md: "4px" },
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
               })}
             >
               Sequence
             </div>
             <div
               className={css({
-                fontSize: { base: '22px', md: '28px' },
-                fontWeight: 'bold',
-                color: '#0c4a6e',
+                fontSize: { base: "22px", md: "28px" },
+                fontWeight: "bold",
+                color: "#0c4a6e",
               })}
             >
               {scoreBreakdown.lcsLength}
               <span
                 className={css({
-                  fontSize: { base: '12px', md: '14px' },
-                  color: '#64748b',
-                  fontWeight: '500',
+                  fontSize: { base: "12px", md: "14px" },
+                  color: "#64748b",
+                  fontWeight: "500",
                 })}
               >
                 /{state.cardCount}
@@ -544,30 +563,30 @@ export function ResultsPhase() {
           {/* Misplaced */}
           <div
             className={css({
-              background: 'white',
-              borderRadius: { base: '10px', md: '12px' },
-              padding: { base: '10px 8px', md: '12px' },
-              border: '2px solid rgba(59, 130, 246, 0.2)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              background: "white",
+              borderRadius: { base: "10px", md: "12px" },
+              padding: { base: "10px 8px", md: "12px" },
+              border: "2px solid rgba(59, 130, 246, 0.2)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
             })}
           >
             <div
               className={css({
-                fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
-                color: '#64748b',
-                marginBottom: { base: '3px', md: '4px' },
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                fontSize: { base: "9px", md: "11px" },
+                fontWeight: "600",
+                color: "#64748b",
+                marginBottom: { base: "3px", md: "4px" },
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
               })}
             >
               Wrong
             </div>
             <div
               className={css({
-                fontSize: { base: '22px', md: '28px' },
-                fontWeight: 'bold',
-                color: '#0c4a6e',
+                fontSize: { base: "22px", md: "28px" },
+                fontWeight: "bold",
+                color: "#0c4a6e",
               })}
             >
               {scoreBreakdown.inversions}
@@ -578,36 +597,38 @@ export function ResultsPhase() {
         {/* Action Buttons */}
         <div
           className={css({
-            display: 'flex',
-            flexDirection: { base: 'row', md: 'column' },
-            gap: { base: '6px', md: '10px' },
-            marginTop: 'auto',
+            display: "flex",
+            flexDirection: { base: "row", md: "column" },
+            gap: { base: "6px", md: "10px" },
+            marginTop: "auto",
           })}
         >
           <button
             type="button"
             onClick={startGame}
             className={css({
-              padding: { base: '10px 8px', md: '14px 24px' },
-              background: 'linear-gradient(135deg, #86efac, #22c55e)',
-              border: { base: '2px solid #22c55e', md: '3px solid #22c55e' },
-              borderRadius: { base: '8px', md: '12px' },
-              fontSize: { base: '11px', md: '16px' },
-              fontWeight: '700',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              flex: { base: 1, md: 'none' },
+              padding: { base: "10px 8px", md: "14px 24px" },
+              background: "linear-gradient(135deg, #86efac, #22c55e)",
+              border: { base: "2px solid #22c55e", md: "3px solid #22c55e" },
+              borderRadius: { base: "8px", md: "12px" },
+              fontSize: { base: "11px", md: "16px" },
+              fontWeight: "700",
+              color: "white",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              flex: { base: 1, md: "none" },
               _hover: {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 20px rgba(34, 197, 94, 0.4)',
+                transform: "translateY(-2px)",
+                boxShadow: "0 6px 20px rgba(34, 197, 94, 0.4)",
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>🎮 </span>
+            <span className={css({ display: { base: "none", md: "inline" } })}>
+              🎮{" "}
+            </span>
             Play
           </button>
 
@@ -615,25 +636,27 @@ export function ResultsPhase() {
             type="button"
             onClick={goToSetup}
             className={css({
-              padding: { base: '10px 8px', md: '12px 20px' },
-              background: 'white',
-              border: '2px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: { base: '8px', md: '12px' },
-              fontSize: { base: '11px', md: '14px' },
-              fontWeight: '700',
-              color: '#0c4a6e',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              flex: { base: 1, md: 'none' },
+              padding: { base: "10px 8px", md: "12px 20px" },
+              background: "white",
+              border: "2px solid rgba(59, 130, 246, 0.3)",
+              borderRadius: { base: "8px", md: "12px" },
+              fontSize: { base: "11px", md: "14px" },
+              fontWeight: "700",
+              color: "#0c4a6e",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              flex: { base: 1, md: "none" },
               _hover: {
-                borderColor: 'rgba(59, 130, 246, 0.5)',
-                background: 'rgba(59, 130, 246, 0.05)',
+                borderColor: "rgba(59, 130, 246, 0.5)",
+                background: "rgba(59, 130, 246, 0.05)",
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>⚙️ </span>
+            <span className={css({ display: { base: "none", md: "inline" } })}>
+              ⚙️{" "}
+            </span>
             Settings
           </button>
 
@@ -641,29 +664,31 @@ export function ResultsPhase() {
             type="button"
             onClick={exitSession}
             className={css({
-              padding: { base: '10px 8px', md: '12px 20px' },
-              background: 'white',
-              border: '2px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: { base: '8px', md: '12px' },
-              fontSize: { base: '11px', md: '14px' },
-              fontWeight: '700',
-              color: '#991b1b',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              flex: { base: 1, md: 'none' },
+              padding: { base: "10px 8px", md: "12px 20px" },
+              background: "white",
+              border: "2px solid rgba(239, 68, 68, 0.3)",
+              borderRadius: { base: "8px", md: "12px" },
+              fontSize: { base: "11px", md: "14px" },
+              fontWeight: "700",
+              color: "#991b1b",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              flex: { base: 1, md: "none" },
               _hover: {
-                borderColor: 'rgba(239, 68, 68, 0.5)',
-                background: 'rgba(239, 68, 68, 0.05)',
+                borderColor: "rgba(239, 68, 68, 0.5)",
+                background: "rgba(239, 68, 68, 0.05)",
               },
             })}
           >
-            <span className={css({ display: { base: 'none', md: 'inline' } })}>🚪 </span>
+            <span className={css({ display: { base: "none", md: "inline" } })}>
+              🚪{" "}
+            </span>
             Exit
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

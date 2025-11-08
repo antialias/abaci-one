@@ -1,67 +1,71 @@
-'use client'
+"use client";
 
-import { useContext, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-react'
-import { css } from '../../styled-system/css'
-import { useMyAbacus } from '@/contexts/MyAbacusContext'
-import { HomeHeroContext } from '@/contexts/HomeHeroContext'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import {
+  AbacusReact,
+  useAbacusConfig,
+  ABACUS_THEMES,
+} from "@soroban/abacus-react";
+import { css } from "../../styled-system/css";
+import { useMyAbacus } from "@/contexts/MyAbacusContext";
+import { HomeHeroContext } from "@/contexts/HomeHeroContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function MyAbacus() {
-  const { isOpen, close, toggle } = useMyAbacus()
-  const appConfig = useAbacusConfig()
-  const pathname = usePathname()
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { isOpen, close, toggle } = useMyAbacus();
+  const appConfig = useAbacusConfig();
+  const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   // Sync with hero context if on home page
-  const homeHeroContext = useContext(HomeHeroContext)
-  const [localAbacusValue, setLocalAbacusValue] = useState(1234)
-  const abacusValue = homeHeroContext?.abacusValue ?? localAbacusValue
-  const setAbacusValue = homeHeroContext?.setAbacusValue ?? setLocalAbacusValue
+  const homeHeroContext = useContext(HomeHeroContext);
+  const [localAbacusValue, setLocalAbacusValue] = useState(1234);
+  const abacusValue = homeHeroContext?.abacusValue ?? localAbacusValue;
+  const setAbacusValue = homeHeroContext?.setAbacusValue ?? setLocalAbacusValue;
 
   // Determine display mode - only hero mode on actual home page
   const isOnHomePage =
-    pathname === '/' ||
-    pathname === '/en' ||
-    pathname === '/de' ||
-    pathname === '/ja' ||
-    pathname === '/hi' ||
-    pathname === '/es' ||
-    pathname === '/la'
-  const isHeroVisible = homeHeroContext?.isHeroVisible ?? false
-  const isHeroMode = isOnHomePage && isHeroVisible && !isOpen
+    pathname === "/" ||
+    pathname === "/en" ||
+    pathname === "/de" ||
+    pathname === "/ja" ||
+    pathname === "/hi" ||
+    pathname === "/es" ||
+    pathname === "/la";
+  const isHeroVisible = homeHeroContext?.isHeroVisible ?? false;
+  const isHeroMode = isOnHomePage && isHeroVisible && !isOpen;
 
   // Close on Escape key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        close()
+      if (e.key === "Escape") {
+        close();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [isOpen, close])
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, close]);
 
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = ''
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   // Use theme presets from abacus-react instead of manual definitions
-  const structuralStyles = ABACUS_THEMES.light
-  const trophyStyles = ABACUS_THEMES.trophy
+  const structuralStyles = ABACUS_THEMES.light;
+  const trophyStyles = ABACUS_THEMES.trophy;
 
   return (
     <>
@@ -70,15 +74,15 @@ export function MyAbacus() {
         <div
           data-component="my-abacus-backdrop"
           style={{
-            WebkitBackdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: "blur(12px)",
           }}
           className={css({
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            bg: 'rgba(0, 0, 0, 0.8)',
-            backdropFilter: 'blur(12px)',
+            bg: "rgba(0, 0, 0, 0.8)",
+            backdropFilter: "blur(12px)",
             zIndex: 101,
-            animation: 'backdropFadeIn 0.4s ease-out',
+            animation: "backdropFadeIn 0.4s ease-out",
           })}
           onClick={close}
         />
@@ -90,29 +94,29 @@ export function MyAbacus() {
           data-action="close-my-abacus"
           onClick={close}
           className={css({
-            position: 'fixed',
-            top: { base: '4', md: '8' },
-            right: { base: '4', md: '8' },
-            w: '12',
-            h: '12',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bg: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(8px)',
-            border: '2px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: 'full',
-            color: 'white',
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
+            position: "fixed",
+            top: { base: "4", md: "8" },
+            right: { base: "4", md: "8" },
+            w: "12",
+            h: "12",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bg: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(8px)",
+            border: "2px solid rgba(255, 255, 255, 0.2)",
+            borderRadius: "full",
+            color: "white",
+            fontSize: "2xl",
+            fontWeight: "bold",
+            cursor: "pointer",
+            transition: "all 0.2s",
             zIndex: 103,
-            animation: 'fadeIn 0.3s ease-out 0.2s both',
+            animation: "fadeIn 0.3s ease-out 0.2s both",
             _hover: {
-              bg: 'rgba(255, 255, 255, 0.2)',
-              borderColor: 'rgba(255, 255, 255, 0.4)',
-              transform: 'scale(1.1)',
+              bg: "rgba(255, 255, 255, 0.2)",
+              borderColor: "rgba(255, 255, 255, 0.4)",
+              transform: "scale(1.1)",
             },
           })}
         >
@@ -123,71 +127,73 @@ export function MyAbacus() {
       {/* Single abacus element that morphs between states */}
       <div
         data-component="my-abacus"
-        data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
+        data-mode={isOpen ? "open" : isHeroMode ? "hero" : "button"}
         onClick={isOpen || isHeroMode ? undefined : toggle}
         className={css({
-          position: isHeroMode ? 'absolute' : 'fixed',
+          position: isHeroMode ? "absolute" : "fixed",
           zIndex: 102,
-          cursor: isOpen || isHeroMode ? 'default' : 'pointer',
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: isOpen || isHeroMode ? "default" : "pointer",
+          transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
           // Three modes: hero (absolute - scrolls with document), button (fixed), open (fixed)
           ...(isOpen
             ? {
                 // Open mode: fixed to center of viewport
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
               }
             : isHeroMode
               ? {
                   // Hero mode: absolute positioning - scrolls naturally with document
-                  top: '60vh',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  top: "60vh",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
                 }
               : {
                   // Button mode: fixed to bottom-right corner
-                  bottom: { base: '4', md: '6' },
-                  right: { base: '4', md: '6' },
-                  transform: 'translate(0, 0)',
+                  bottom: { base: "4", md: "6" },
+                  right: { base: "4", md: "6" },
+                  transform: "translate(0, 0)",
                 }),
         })}
       >
         {/* Container that changes between hero, button, and open states */}
         <div
           className={css({
-            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
             ...(isOpen || isHeroMode
               ? {
                   // Open/Hero state: no background, just the abacus
-                  bg: 'transparent',
-                  border: 'none',
-                  boxShadow: 'none',
-                  borderRadius: '0',
+                  bg: "transparent",
+                  border: "none",
+                  boxShadow: "none",
+                  borderRadius: "0",
                 }
               : {
                   // Button state: button styling
-                  bg: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.9)',
-                  backdropFilter: 'blur(8px)',
+                  bg: isDark
+                    ? "rgba(0, 0, 0, 0.7)"
+                    : "rgba(255, 255, 255, 0.9)",
+                  backdropFilter: "blur(8px)",
                   border: isDark
-                    ? '3px solid rgba(251, 191, 36, 0.5)'
-                    : '3px solid rgba(251, 191, 36, 0.6)',
+                    ? "3px solid rgba(251, 191, 36, 0.5)"
+                    : "3px solid rgba(251, 191, 36, 0.6)",
                   boxShadow: isDark
-                    ? '0 8px 32px rgba(251, 191, 36, 0.4)'
-                    : '0 8px 32px rgba(251, 191, 36, 0.5)',
-                  borderRadius: 'xl',
-                  w: { base: '80px', md: '100px' },
-                  h: { base: '80px', md: '100px' },
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'pulse 2s ease-in-out infinite',
+                    ? "0 8px 32px rgba(251, 191, 36, 0.4)"
+                    : "0 8px 32px rgba(251, 191, 36, 0.5)",
+                  borderRadius: "xl",
+                  w: { base: "80px", md: "100px" },
+                  h: { base: "80px", md: "100px" },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  animation: "pulse 2s ease-in-out infinite",
                   _hover: {
-                    transform: 'scale(1.1)',
+                    transform: "scale(1.1)",
                     boxShadow: isDark
-                      ? '0 12px 48px rgba(251, 191, 36, 0.6)'
-                      : '0 12px 48px rgba(251, 191, 36, 0.7)',
-                    borderColor: 'rgba(251, 191, 36, 0.8)',
+                      ? "0 12px 48px rgba(251, 191, 36, 0.6)"
+                      : "0 12px 48px rgba(251, 191, 36, 0.7)",
+                    borderColor: "rgba(251, 191, 36, 0.8)",
                   },
                 }),
           })}
@@ -197,21 +203,22 @@ export function MyAbacus() {
             data-element="abacus-display"
             className={css({
               transform: isOpen
-                ? { base: 'scale(2.5)', md: 'scale(3.5)', lg: 'scale(4.5)' }
+                ? { base: "scale(2.5)", md: "scale(3.5)", lg: "scale(4.5)" }
                 : isHeroMode
-                  ? { base: 'scale(3)', md: 'scale(3.5)', lg: 'scale(4.25)' }
-                  : 'scale(0.35)',
-              transformOrigin: 'center center',
-              transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.6s ease',
+                  ? { base: "scale(3)", md: "scale(3.5)", lg: "scale(4.25)" }
+                  : "scale(0.35)",
+              transformOrigin: "center center",
+              transition:
+                "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.6s ease",
               filter:
                 isOpen || isHeroMode
-                  ? 'drop-shadow(0 10px 40px rgba(251, 191, 36, 0.3))'
-                  : 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.2))',
-              pointerEvents: isOpen || isHeroMode ? 'auto' : 'none',
+                  ? "drop-shadow(0 10px 40px rgba(251, 191, 36, 0.3))"
+                  : "drop-shadow(0 4px 12px rgba(251, 191, 36, 0.2))",
+              pointerEvents: isOpen || isHeroMode ? "auto" : "none",
             })}
           >
             <AbacusReact
-              key={isHeroMode ? 'hero' : isOpen ? 'open' : 'closed'}
+              key={isHeroMode ? "hero" : isOpen ? "open" : "closed"}
               value={abacusValue}
               columns={isHeroMode ? 4 : 5}
               beadShape={appConfig.beadShape}
@@ -221,13 +228,13 @@ export function MyAbacus() {
               customStyles={isHeroMode ? structuralStyles : trophyStyles}
               onValueChange={setAbacusValue}
               // 3D Enhancement - realistic mode for hero and open states
-              enhanced3d={isOpen || isHeroMode ? 'realistic' : undefined}
+              enhanced3d={isOpen || isHeroMode ? "realistic" : undefined}
               material3d={
                 isOpen || isHeroMode
                   ? {
-                      heavenBeads: 'glossy',
-                      earthBeads: 'satin',
-                      lighting: 'dramatic',
+                      heavenBeads: "glossy",
+                      earthBeads: "satin",
+                      lighting: "dramatic",
                       woodGrain: true,
                     }
                   : undefined
@@ -257,5 +264,5 @@ export function MyAbacus() {
         }}
       />
     </>
-  )
+  );
 }

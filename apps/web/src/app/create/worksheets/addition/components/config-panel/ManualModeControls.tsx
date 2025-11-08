@@ -1,53 +1,57 @@
-'use client'
+"use client";
 
-import * as Slider from '@radix-ui/react-slider'
-import { css } from '../../../../../../../styled-system/css'
-import { stack } from '../../../../../../../styled-system/patterns'
-import type { WorksheetFormState } from '../../types'
-import { DisplayOptionsPreview } from '../DisplayOptionsPreview'
-import { ToggleOption } from './ToggleOption'
-import { SubOption } from './SubOption'
+import * as Slider from "@radix-ui/react-slider";
+import { css } from "../../../../../../../styled-system/css";
+import { stack } from "../../../../../../../styled-system/patterns";
+import type { WorksheetFormState } from "../../types";
+import { DisplayOptionsPreview } from "../DisplayOptionsPreview";
+import { ToggleOption } from "./ToggleOption";
+import { SubOption } from "./SubOption";
 
 export interface ManualModeControlsProps {
-  formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean
+  formState: WorksheetFormState;
+  onChange: (updates: Partial<WorksheetFormState>) => void;
+  isDark?: boolean;
 }
 
-export function ManualModeControls({ formState, onChange, isDark = false }: ManualModeControlsProps) {
+export function ManualModeControls({
+  formState,
+  onChange,
+  isDark = false,
+}: ManualModeControlsProps) {
   return (
     <>
       <>
         <div
           data-section="display"
           className={css({
-            bg: 'gray.50',
-            border: '1px solid',
-            borderColor: 'gray.200',
-            rounded: 'xl',
-            p: '3',
+            bg: "gray.50",
+            border: "1px solid",
+            borderColor: "gray.200",
+            rounded: "xl",
+            p: "3",
           })}
         >
-          <div className={stack({ gap: '3' })}>
+          <div className={stack({ gap: "3" })}>
             <div
               className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               })}
             >
               <div
                 className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'semibold',
-                  color: 'gray.500',
-                  textTransform: 'uppercase',
-                  letterSpacing: 'wider',
+                  fontSize: "xs",
+                  fontWeight: "semibold",
+                  color: "gray.500",
+                  textTransform: "uppercase",
+                  letterSpacing: "wider",
                 })}
               >
                 Display Options
               </div>
-              <div className={css({ display: 'flex', gap: '1.5' })}>
+              <div className={css({ display: "flex", gap: "1.5" })}>
                 <button
                   onClick={() =>
                     onChange({
@@ -60,16 +64,16 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
                     })
                   }
                   className={css({
-                    px: '2',
-                    py: '0.5',
-                    fontSize: '2xs',
-                    color: 'brand.600',
-                    border: '1px solid',
-                    borderColor: 'brand.300',
-                    bg: 'white',
-                    rounded: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'brand.50' },
+                    px: "2",
+                    py: "0.5",
+                    fontSize: "2xs",
+                    color: "brand.600",
+                    border: "1px solid",
+                    borderColor: "brand.300",
+                    bg: "white",
+                    rounded: "md",
+                    cursor: "pointer",
+                    _hover: { bg: "brand.50" },
                   })}
                 >
                   Check All
@@ -86,16 +90,16 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
                     })
                   }
                   className={css({
-                    px: '2',
-                    py: '0.5',
-                    fontSize: '2xs',
-                    color: 'gray.600',
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    bg: 'white',
-                    rounded: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'gray.50' },
+                    px: "2",
+                    py: "0.5",
+                    fontSize: "2xs",
+                    color: "gray.600",
+                    border: "1px solid",
+                    borderColor: "gray.300",
+                    bg: "white",
+                    rounded: "md",
+                    cursor: "pointer",
+                    _hover: { bg: "gray.50" },
                   })}
                 >
                   Uncheck All
@@ -106,18 +110,18 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
             {/* Two-column grid: toggle options on left, preview on right */}
             <div
               className={css({
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr',
-                gap: '3',
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr",
+                gap: "3",
               })}
             >
               {/* Toggle Options in 2-column grid */}
               <div
                 className={css({
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '2',
-                  alignItems: 'start',
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "2",
+                  alignItems: "start",
                 })}
               >
                 <ToggleOption
@@ -130,7 +134,9 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
 
                 <ToggleOption
                   checked={formState.showPlaceValueColors ?? true}
-                  onChange={(checked) => onChange({ showPlaceValueColors: checked })}
+                  onChange={(checked) =>
+                    onChange({ showPlaceValueColors: checked })
+                  }
                   label="Place Value Colors"
                   description="Reinforce place value understanding visually"
                   isDark={isDark}
@@ -138,7 +144,9 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
 
                 <ToggleOption
                   checked={formState.showProblemNumbers ?? true}
-                  onChange={(checked) => onChange({ showProblemNumbers: checked })}
+                  onChange={(checked) =>
+                    onChange({ showProblemNumbers: checked })
+                  }
                   label="Problem Numbers"
                   description="Help students track progress and reference problems"
                   isDark={isDark}
@@ -155,39 +163,45 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
                 <ToggleOption
                   checked={formState.showCarryBoxes ?? true}
                   onChange={(checked) => {
-                    onChange({ showCarryBoxes: checked })
+                    onChange({ showCarryBoxes: checked });
                   }}
                   label={
-                    formState.operator === 'subtraction'
-                      ? 'Borrow Boxes'
-                      : formState.operator === 'mixed'
-                        ? 'Carry/Borrow Boxes'
-                        : 'Carry Boxes'
+                    formState.operator === "subtraction"
+                      ? "Borrow Boxes"
+                      : formState.operator === "mixed"
+                        ? "Carry/Borrow Boxes"
+                        : "Carry Boxes"
                   }
                   description={
-                    formState.operator === 'subtraction'
-                      ? 'Help students track borrowing during subtraction'
-                      : formState.operator === 'mixed'
-                        ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
-                        : 'Help students track regrouping during addition'
+                    formState.operator === "subtraction"
+                      ? "Help students track borrowing during subtraction"
+                      : formState.operator === "mixed"
+                        ? "Help students track regrouping (carrying in addition, borrowing in subtraction)"
+                        : "Help students track regrouping during addition"
                   }
                   isDark={isDark}
                 />
 
-                {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                {(formState.operator === "subtraction" ||
+                  formState.operator === "mixed") && (
                   <ToggleOption
                     checked={formState.showBorrowNotation ?? true}
-                    onChange={(checked) => onChange({ showBorrowNotation: checked })}
+                    onChange={(checked) =>
+                      onChange({ showBorrowNotation: checked })
+                    }
                     label="Borrowed 10s Box"
                     description="Box for adding 10 to borrowing digit"
                     isDark={isDark}
                   />
                 )}
 
-                {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                {(formState.operator === "subtraction" ||
+                  formState.operator === "mixed") && (
                   <ToggleOption
                     checked={formState.showBorrowingHints ?? false}
-                    onChange={(checked) => onChange({ showBorrowingHints: checked })}
+                    onChange={(checked) =>
+                      onChange({ showBorrowingHints: checked })
+                    }
                     label="Borrowing Hints"
                     description="Show arrows and calculations guiding the borrowing process"
                     isDark={isDark}
@@ -197,7 +211,7 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
                 <ToggleOption
                   checked={formState.showTenFrames ?? false}
                   onChange={(checked) => {
-                    onChange({ showTenFrames: checked })
+                    onChange({ showTenFrames: checked });
                   }}
                   label="Ten-Frames"
                   description="Visualize regrouping with concrete counting tools"
@@ -205,7 +219,9 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
                 >
                   <SubOption
                     checked={formState.showTenFramesForAll ?? false}
-                    onChange={(checked) => onChange({ showTenFramesForAll: checked })}
+                    onChange={(checked) =>
+                      onChange({ showTenFramesForAll: checked })
+                    }
                     label="Show for all problems (not just regrouping)"
                     parentEnabled={formState.showTenFrames ?? false}
                   />
@@ -222,22 +238,22 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
         <div
           data-section="regrouping"
           className={css({
-            bg: 'gray.50',
-            border: '1px solid',
-            borderColor: 'gray.200',
-            rounded: 'xl',
-            p: '3',
-            mt: '3',
+            bg: "gray.50",
+            border: "1px solid",
+            borderColor: "gray.200",
+            rounded: "xl",
+            p: "3",
+            mt: "3",
           })}
         >
-          <div className={stack({ gap: '2.5' })}>
+          <div className={stack({ gap: "2.5" })}>
             <div
               className={css({
-                fontSize: 'xs',
-                fontWeight: 'semibold',
-                color: 'gray.500',
-                textTransform: 'uppercase',
-                letterSpacing: 'wider',
+                fontSize: "xs",
+                fontWeight: "semibold",
+                color: "gray.500",
+                textTransform: "uppercase",
+                letterSpacing: "wider",
               })}
             >
               Regrouping Frequency
@@ -246,21 +262,31 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
             {/* Current values display */}
             <div
               className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 'xs',
-                color: 'gray.600',
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "xs",
+                color: "gray.600",
               })}
             >
               <div>
-                Both:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
+                Both:{" "}
+                <span
+                  className={css({
+                    color: "brand.600",
+                    fontWeight: "semibold",
+                  })}
+                >
                   {Math.round((formState.pAllStart || 0) * 100)}%
                 </span>
               </div>
               <div>
-                Any:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
+                Any:{" "}
+                <span
+                  className={css({
+                    color: "brand.600",
+                    fontWeight: "semibold",
+                  })}
+                >
                   {Math.round((formState.pAnyStart || 0.25) * 100)}%
                 </span>
               </div>
@@ -269,20 +295,23 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
             {/* Double-thumbed range slider */}
             <Slider.Root
               className={css({
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                userSelect: 'none',
-                touchAction: 'none',
-                width: 'full',
-                height: '6',
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                userSelect: "none",
+                touchAction: "none",
+                width: "full",
+                height: "6",
               })}
-              value={[(formState.pAllStart || 0) * 100, (formState.pAnyStart || 0.25) * 100]}
+              value={[
+                (formState.pAllStart || 0) * 100,
+                (formState.pAnyStart || 0.25) * 100,
+              ]}
               onValueChange={(values) => {
                 onChange({
                   pAllStart: values[0] / 100,
                   pAnyStart: values[1] / 100,
-                })
+                });
               }}
               min={0}
               max={100}
@@ -291,61 +320,73 @@ export function ManualModeControls({ formState, onChange, isDark = false }: Manu
             >
               <Slider.Track
                 className={css({
-                  position: 'relative',
+                  position: "relative",
                   flexGrow: 1,
-                  bg: 'gray.200',
-                  rounded: 'full',
-                  height: '1.5',
+                  bg: "gray.200",
+                  rounded: "full",
+                  height: "1.5",
                 })}
               >
                 <Slider.Range
                   className={css({
-                    position: 'absolute',
-                    bg: 'brand.500',
-                    rounded: 'full',
-                    height: 'full',
+                    position: "absolute",
+                    bg: "brand.500",
+                    rounded: "full",
+                    height: "full",
                   })}
                 />
               </Slider.Track>
               <Slider.Thumb
                 className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.500',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
+                  display: "block",
+                  width: "3.5",
+                  height: "3.5",
+                  bg: "white",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                  rounded: "full",
+                  border: "2px solid",
+                  borderColor: "brand.500",
+                  cursor: "pointer",
+                  _hover: { transform: "scale(1.1)" },
+                  _focus: {
+                    outline: "none",
+                    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.3)",
+                  },
                 })}
               />
               <Slider.Thumb
                 className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.600',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
+                  display: "block",
+                  width: "3.5",
+                  height: "3.5",
+                  bg: "white",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                  rounded: "full",
+                  border: "2px solid",
+                  borderColor: "brand.600",
+                  cursor: "pointer",
+                  _hover: { transform: "scale(1.1)" },
+                  _focus: {
+                    outline: "none",
+                    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.3)",
+                  },
                 })}
               />
             </Slider.Root>
 
-            <div className={css({ fontSize: '2xs', color: 'gray.500', lineHeight: '1.3' })}>
-              Regrouping difficulty at worksheet start (Both = all columns regroup, Any = at least
-              one column regroups)
+            <div
+              className={css({
+                fontSize: "2xs",
+                color: "gray.500",
+                lineHeight: "1.3",
+              })}
+            >
+              Regrouping difficulty at worksheet start (Both = all columns
+              regroup, Any = at least one column regroups)
             </div>
           </div>
         </div>
       </>
     </>
-  )
+  );
 }

@@ -36,7 +36,14 @@ export type CustomBeadContent =
   | { type: "emoji"; value: string } // e.g., { type: "emoji", value: "🫖" }
   | { type: "emoji-function"; value: (bead: CustomBeadContext) => string } // e.g., { type: "emoji-function", value: (bead) => bead.active ? "✅" : "⭕" }
   | { type: "image"; url: string; width?: number; height?: number } // e.g., { type: "image", url: "/star.png" }
-  | { type: "image-function"; value: (bead: CustomBeadContext) => { url: string; width?: number; height?: number } } // Dynamic images
+  | {
+      type: "image-function";
+      value: (bead: CustomBeadContext) => {
+        url: string;
+        width?: number;
+        height?: number;
+      };
+    } // Dynamic images
   | { type: "svg"; content: string } // e.g., { type: "svg", content: "<path d='...' />" }
   | { type: "svg-function"; value: (bead: CustomBeadContext) => string }; // Dynamic SVG
 

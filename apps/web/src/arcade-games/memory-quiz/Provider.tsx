@@ -1,73 +1,86 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { useGameMode } from '@/contexts/GameModeContext'
-import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useGameMode } from "@/contexts/GameModeContext";
+import { useArcadeSession } from "@/hooks/useArcadeSession";
+import { useRoomData, useUpdateGameConfig } from "@/hooks/useRoomData";
+import { useViewerId } from "@/hooks/useViewerId";
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
-} from '@/lib/arcade/player-ownership.client'
-import { TEAM_MOVE } from '@/lib/arcade/validation/types'
-import type { QuizCard, MemoryQuizState, MemoryQuizMove } from './types'
+} from "@/lib/arcade/player-ownership.client";
+import { TEAM_MOVE } from "@/lib/arcade/validation/types";
+import type { QuizCard, MemoryQuizState, MemoryQuizMove } from "./types";
 
-import type { GameMove } from '@/lib/arcade/validation'
+import type { GameMove } from "@/lib/arcade/validation";
 
 /**
  * Optimistic move application (client-side prediction)
  * The server will validate and send back the authoritative state
  */
-function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): MemoryQuizState {
-  const typedMove = move as MemoryQuizMove
+function applyMoveOptimistically(
+  state: MemoryQuizState,
+  move: GameMove,
+): MemoryQuizState {
+  const typedMove = move as MemoryQuizMove;
   switch (typedMove.type) {
-    case 'START_QUIZ': {
+    case "START_QUIZ": {
       // Handle both client-generated moves (with quizCards) and server-generated moves (with numbers only)
-      const clientQuizCards = typedMove.data.quizCards
-      const serverNumbers = typedMove.data.numbers
+      const clientQuizCards = typedMove.data.quizCards;
+      const serverNumbers = typedMove.data.numbers;
 
-      let quizCards: QuizCard[]
-      let correctAnswers: number[]
+      let quizCards: QuizCard[];
+      let correctAnswers: number[];
 
       if (clientQuizCards) {
         // Client-side optimistic update: use the full quizCards with React components
-        quizCards = clientQuizCards
-        correctAnswers = clientQuizCards.map((card: QuizCard) => card.number)
+        quizCards = clientQuizCards;
+        correctAnswers = clientQuizCards.map((card: QuizCard) => card.number);
       } else if (serverNumbers) {
         // Server update: create minimal quizCards from numbers
         quizCards = serverNumbers.map((number: number) => ({
           number,
           svgComponent: null,
           element: null,
-        }))
-        correctAnswers = serverNumbers
+        }));
+        correctAnswers = serverNumbers;
       } else {
-        quizCards = state.quizCards
-        correctAnswers = state.correctAnswers
+        quizCards = state.quizCards;
+        correctAnswers = state.correctAnswers;
       }
 
-      const cardCount = quizCards.length
+      const cardCount = quizCards.length;
 
       // Initialize player scores for all active players (by userId)
-      const activePlayers = typedMove.data.activePlayers || []
-      const playerMetadata = typedMove.data.playerMetadata || {}
+      const activePlayers = typedMove.data.activePlayers || [];
+      const playerMetadata = typedMove.data.playerMetadata || {};
 
-      const uniqueUserIds = new Set<string>()
+      const uniqueUserIds = new Set<string>();
       for (const playerId of activePlayers) {
-        const metadata = playerMetadata[playerId]
+        const metadata = playerMetadata[playerId];
         if (metadata?.userId) {
-          uniqueUserIds.add(metadata.userId)
+          uniqueUserIds.add(metadata.userId);
         }
       }
 
       const playerScores = Array.from(uniqueUserIds).reduce(
-        (acc: Record<string, { correct: number; incorrect: number }>, userId: string) => {
-          acc[userId] = { correct: 0, incorrect: 0 }
-          return acc
+        (
+          acc: Record<string, { correct: number; incorrect: number }>,
+          userId: string,
+        ) => {
+          acc[userId] = { correct: 0, incorrect: 0 };
+          return acc;
         },
-        {}
-      )
+        {},
+      );
 
       return {
         ...state,
@@ -76,156 +89,156 @@ function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): Memory
         currentCardIndex: 0,
         foundNumbers: [],
         guessesRemaining: cardCount + Math.floor(cardCount / 2),
-        gamePhase: 'display',
+        gamePhase: "display",
         incorrectGuesses: 0,
-        currentInput: '',
+        currentInput: "",
         wrongGuessAnimations: [],
         prefixAcceptanceTimeout: null,
         activePlayers,
         playerMetadata,
         playerScores,
         numberFoundBy: {},
-      }
+      };
     }
 
-    case 'NEXT_CARD':
+    case "NEXT_CARD":
       return {
         ...state,
         currentCardIndex: state.currentCardIndex + 1,
-      }
+      };
 
-    case 'SHOW_INPUT_PHASE':
+    case "SHOW_INPUT_PHASE":
       return {
         ...state,
-        gamePhase: 'input',
-      }
+        gamePhase: "input",
+      };
 
-    case 'ACCEPT_NUMBER': {
-      const playerScores = state.playerScores || {}
-      const foundNumbers = state.foundNumbers || []
-      const numberFoundBy = state.numberFoundBy || {}
+    case "ACCEPT_NUMBER": {
+      const playerScores = state.playerScores || {};
+      const foundNumbers = state.foundNumbers || [];
+      const numberFoundBy = state.numberFoundBy || {};
 
-      const newPlayerScores = { ...playerScores }
-      const newNumberFoundBy = { ...numberFoundBy }
+      const newPlayerScores = { ...playerScores };
+      const newNumberFoundBy = { ...numberFoundBy };
 
       if (typedMove.userId) {
         const currentScore = newPlayerScores[typedMove.userId] || {
           correct: 0,
           incorrect: 0,
-        }
+        };
         newPlayerScores[typedMove.userId] = {
           ...currentScore,
           correct: currentScore.correct + 1,
-        }
-        newNumberFoundBy[typedMove.data.number] = typedMove.userId
+        };
+        newNumberFoundBy[typedMove.data.number] = typedMove.userId;
       }
 
       return {
         ...state,
         foundNumbers: [...foundNumbers, typedMove.data.number],
-        currentInput: '',
+        currentInput: "",
         playerScores: newPlayerScores,
         numberFoundBy: newNumberFoundBy,
-      }
+      };
     }
 
-    case 'REJECT_NUMBER': {
-      const playerScores = state.playerScores || {}
-      const newPlayerScores = { ...playerScores }
+    case "REJECT_NUMBER": {
+      const playerScores = state.playerScores || {};
+      const newPlayerScores = { ...playerScores };
 
       if (typedMove.userId) {
         const currentScore = newPlayerScores[typedMove.userId] || {
           correct: 0,
           incorrect: 0,
-        }
+        };
         newPlayerScores[typedMove.userId] = {
           ...currentScore,
           incorrect: currentScore.incorrect + 1,
-        }
+        };
       }
 
       return {
         ...state,
         guessesRemaining: state.guessesRemaining - 1,
         incorrectGuesses: state.incorrectGuesses + 1,
-        currentInput: '',
+        currentInput: "",
         playerScores: newPlayerScores,
-      }
+      };
     }
 
-    case 'SET_INPUT':
+    case "SET_INPUT":
       return {
         ...state,
         currentInput: typedMove.data.input,
-      }
+      };
 
-    case 'SHOW_RESULTS':
+    case "SHOW_RESULTS":
       return {
         ...state,
-        gamePhase: 'results',
-      }
+        gamePhase: "results",
+      };
 
-    case 'RESET_QUIZ':
+    case "RESET_QUIZ":
       return {
         ...state,
-        gamePhase: 'setup',
+        gamePhase: "setup",
         quizCards: [],
         correctAnswers: [],
         currentCardIndex: 0,
         foundNumbers: [],
         guessesRemaining: 0,
-        currentInput: '',
+        currentInput: "",
         incorrectGuesses: 0,
         wrongGuessAnimations: [],
         prefixAcceptanceTimeout: null,
         finishButtonsBound: false,
-      }
+      };
 
-    case 'SET_CONFIG': {
-      const { field, value } = typedMove.data
+    case "SET_CONFIG": {
+      const { field, value } = typedMove.data;
       return {
         ...state,
         [field]: value,
-      }
+      };
     }
 
     default:
-      return state
+      return state;
   }
 }
 
 // Context interface
 export interface MemoryQuizContextValue {
-  state: MemoryQuizState
-  isGameActive: boolean
-  isRoomCreator: boolean
-  resetGame: () => void
-  exitSession?: () => void
-  startQuiz: (quizCards: QuizCard[]) => void
-  nextCard: () => void
-  showInputPhase: () => void
-  acceptNumber: (number: number) => void
-  rejectNumber: () => void
-  setInput: (input: string) => void
-  showResults: () => void
+  state: MemoryQuizState;
+  isGameActive: boolean;
+  isRoomCreator: boolean;
+  resetGame: () => void;
+  exitSession?: () => void;
+  startQuiz: (quizCards: QuizCard[]) => void;
+  nextCard: () => void;
+  showInputPhase: () => void;
+  acceptNumber: (number: number) => void;
+  rejectNumber: () => void;
+  setInput: (input: string) => void;
+  showResults: () => void;
   setConfig: (
-    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
-    value: unknown
-  ) => void
+    field: "selectedCount" | "displayTime" | "selectedDifficulty" | "playMode",
+    value: unknown,
+  ) => void;
   // Legacy dispatch for UI-only actions (to be migrated to local state)
-  dispatch: (action: unknown) => void
+  dispatch: (action: unknown) => void;
 }
 
 // Create context
-const MemoryQuizContext = createContext<MemoryQuizContextValue | null>(null)
+const MemoryQuizContext = createContext<MemoryQuizContextValue | null>(null);
 
 // Hook to use the context
 export function useMemoryQuiz(): MemoryQuizContextValue {
-  const context = useContext(MemoryQuizContext)
+  const context = useContext(MemoryQuizContext);
   if (!context) {
-    throw new Error('useMemoryQuiz must be used within MemoryQuizProvider')
+    throw new Error("useMemoryQuiz must be used within MemoryQuizProvider");
   }
-  return context
+  return context;
 }
 
 /**
@@ -235,21 +248,27 @@ export function useMemoryQuiz(): MemoryQuizContextValue {
  * All state changes are sent as moves and validated on the server.
  */
 export function MemoryQuizProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
-  const { mutate: updateGameConfig } = useUpdateGameConfig()
+  const { data: viewerId } = useViewerId();
+  const { roomData } = useRoomData();
+  const { activePlayers: activePlayerIds, players } = useGameMode();
+  const { mutate: updateGameConfig } = useUpdateGameConfig();
 
-  const activePlayers = Array.from(activePlayerIds)
+  const activePlayers = Array.from(activePlayerIds);
 
   // LOCAL-ONLY state for current input (not synced over network)
-  const [localCurrentInput, setLocalCurrentInput] = useState('')
+  const [localCurrentInput, setLocalCurrentInput] = useState("");
 
   // Merge saved game config from room with default initial state
   const mergedInitialState = useMemo(() => {
-    const gameConfig = roomData?.gameConfig as Record<string, unknown> | null | undefined
+    const gameConfig = roomData?.gameConfig as
+      | Record<string, unknown>
+      | null
+      | undefined;
 
-    const savedConfig = gameConfig?.['memory-quiz'] as Record<string, unknown> | null | undefined
+    const savedConfig = gameConfig?.["memory-quiz"] as
+      | Record<string, unknown>
+      | null
+      | undefined;
 
     // Default initial state
     const defaultState: MemoryQuizState = {
@@ -259,279 +278,290 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
       currentCardIndex: 0,
       displayTime: 2.0,
       selectedCount: 5,
-      selectedDifficulty: 'easy',
+      selectedDifficulty: "easy",
       foundNumbers: [],
       guessesRemaining: 0,
-      currentInput: '',
+      currentInput: "",
       incorrectGuesses: 0,
       activePlayers: [],
       playerMetadata: {},
       playerScores: {},
-      playMode: 'cooperative',
+      playMode: "cooperative",
       numberFoundBy: {},
-      gamePhase: 'setup',
+      gamePhase: "setup",
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],
       hasPhysicalKeyboard: null,
       testingMode: false,
       showOnScreenKeyboard: false,
-    }
+    };
 
     if (!savedConfig) {
-      return defaultState
+      return defaultState;
     }
 
     return {
       ...defaultState,
       selectedCount:
-        (savedConfig.selectedCount as 2 | 5 | 8 | 12 | 15) ?? defaultState.selectedCount,
-      displayTime: (savedConfig.displayTime as number) ?? defaultState.displayTime,
+        (savedConfig.selectedCount as 2 | 5 | 8 | 12 | 15) ??
+        defaultState.selectedCount,
+      displayTime:
+        (savedConfig.displayTime as number) ?? defaultState.displayTime,
       selectedDifficulty:
-        (savedConfig.selectedDifficulty as MemoryQuizState['selectedDifficulty']) ??
+        (savedConfig.selectedDifficulty as MemoryQuizState["selectedDifficulty"]) ??
         defaultState.selectedDifficulty,
-      playMode: (savedConfig.playMode as 'cooperative' | 'competitive') ?? defaultState.playMode,
-    }
-  }, [roomData?.gameConfig])
+      playMode:
+        (savedConfig.playMode as "cooperative" | "competitive") ??
+        defaultState.playMode,
+    };
+  }, [roomData?.gameConfig]);
 
   // Arcade session integration
   const { state, sendMove, exitSession } = useArcadeSession<MemoryQuizState>({
-    userId: viewerId || '',
+    userId: viewerId || "",
     roomId: roomData?.id || undefined,
     initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
-  })
+  });
 
   // Clear local input when game phase changes
   useEffect(() => {
-    if (state.gamePhase !== 'input') {
-      setLocalCurrentInput('')
+    if (state.gamePhase !== "input") {
+      setLocalCurrentInput("");
     }
-  }, [state.gamePhase])
+  }, [state.gamePhase]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (state.prefixAcceptanceTimeout) {
-        clearTimeout(state.prefixAcceptanceTimeout)
+        clearTimeout(state.prefixAcceptanceTimeout);
       }
-    }
-  }, [state.prefixAcceptanceTimeout])
+    };
+  }, [state.prefixAcceptanceTimeout]);
 
   // Detect state corruption
   const hasStateCorruption =
     !state.quizCards ||
     !state.correctAnswers ||
     !state.foundNumbers ||
-    !Array.isArray(state.quizCards)
+    !Array.isArray(state.quizCards);
 
   // Computed values
-  const isGameActive = state.gamePhase === 'display' || state.gamePhase === 'input'
+  const isGameActive =
+    state.gamePhase === "display" || state.gamePhase === "input";
 
   // Build player metadata
   const buildPlayerMetadata = useCallback(() => {
-    const playerOwnership = buildPlayerOwnershipFromRoomData(roomData)
+    const playerOwnership = buildPlayerOwnershipFromRoomData(roomData);
     const metadata = buildPlayerMetadataUtil(
       activePlayers,
       playerOwnership,
       players,
-      viewerId || undefined
-    )
-    return metadata
-  }, [activePlayers, players, roomData, viewerId])
+      viewerId || undefined,
+    );
+    return metadata;
+  }, [activePlayers, players, roomData, viewerId]);
 
   // Action creators
   const startQuiz = useCallback(
     (quizCards: QuizCard[]) => {
-      const numbers = quizCards.map((card) => card.number)
-      const playerMetadata = buildPlayerMetadata()
+      const numbers = quizCards.map((card) => card.number);
+      const playerMetadata = buildPlayerMetadata();
 
       sendMove({
-        type: 'START_QUIZ',
+        type: "START_QUIZ",
         playerId: TEAM_MOVE,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: {
           numbers,
           quizCards,
           activePlayers,
           playerMetadata,
         },
-      })
+      });
     },
-    [viewerId, sendMove, activePlayers, buildPlayerMetadata]
-  )
+    [viewerId, sendMove, activePlayers, buildPlayerMetadata],
+  );
 
   const nextCard = useCallback(() => {
     sendMove({
-      type: 'NEXT_CARD',
+      type: "NEXT_CARD",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [viewerId, sendMove])
+    });
+  }, [viewerId, sendMove]);
 
   const showInputPhase = useCallback(() => {
     sendMove({
-      type: 'SHOW_INPUT_PHASE',
+      type: "SHOW_INPUT_PHASE",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [viewerId, sendMove])
+    });
+  }, [viewerId, sendMove]);
 
   const acceptNumber = useCallback(
     (number: number) => {
-      setLocalCurrentInput('')
+      setLocalCurrentInput("");
       sendMove({
-        type: 'ACCEPT_NUMBER',
+        type: "ACCEPT_NUMBER",
         playerId: TEAM_MOVE,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { number },
-      })
+      });
     },
-    [viewerId, sendMove]
-  )
+    [viewerId, sendMove],
+  );
 
   const rejectNumber = useCallback(() => {
-    setLocalCurrentInput('')
+    setLocalCurrentInput("");
     sendMove({
-      type: 'REJECT_NUMBER',
+      type: "REJECT_NUMBER",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [viewerId, sendMove])
+    });
+  }, [viewerId, sendMove]);
 
   const setInput = useCallback((input: string) => {
     // LOCAL ONLY - no network sync for instant typing
-    setLocalCurrentInput(input)
-  }, [])
+    setLocalCurrentInput(input);
+  }, []);
 
   const showResults = useCallback(() => {
     sendMove({
-      type: 'SHOW_RESULTS',
+      type: "SHOW_RESULTS",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [viewerId, sendMove])
+    });
+  }, [viewerId, sendMove]);
 
   const resetGame = useCallback(() => {
     sendMove({
-      type: 'RESET_QUIZ',
+      type: "RESET_QUIZ",
       playerId: TEAM_MOVE,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [viewerId, sendMove])
+    });
+  }, [viewerId, sendMove]);
 
   const setConfig = useCallback(
     (
-      field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
-      value: unknown
+      field:
+        | "selectedCount"
+        | "displayTime"
+        | "selectedDifficulty"
+        | "playMode",
+      value: unknown,
     ) => {
       sendMove({
-        type: 'SET_CONFIG',
+        type: "SET_CONFIG",
         playerId: TEAM_MOVE,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { field, value },
-      })
+      });
 
       // Save to room config for persistence
       if (roomData?.id) {
-        const currentGameConfig = (roomData.gameConfig as Record<string, unknown>) || {}
+        const currentGameConfig =
+          (roomData.gameConfig as Record<string, unknown>) || {};
         const currentMemoryQuizConfig =
-          (currentGameConfig['memory-quiz'] as Record<string, unknown>) || {}
+          (currentGameConfig["memory-quiz"] as Record<string, unknown>) || {};
 
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: {
             ...currentGameConfig,
-            'memory-quiz': {
+            "memory-quiz": {
               ...currentMemoryQuizConfig,
               [field]: value,
             },
           },
-        })
+        });
       }
     },
-    [viewerId, sendMove, roomData?.id, roomData?.gameConfig, updateGameConfig]
-  )
+    [viewerId, sendMove, roomData?.id, roomData?.gameConfig, updateGameConfig],
+  );
 
   // Legacy dispatch stub for UI-only actions
   // TODO: Migrate these to local component state
   const dispatch = useCallback((action: unknown) => {
     console.warn(
-      '[MemoryQuizProvider] dispatch() is deprecated for UI-only actions. These should be migrated to local component state:',
-      action
-    )
+      "[MemoryQuizProvider] dispatch() is deprecated for UI-only actions. These should be migrated to local component state:",
+      action,
+    );
     // No-op - UI-only state changes should be handled locally
-  }, [])
+  }, []);
 
   // Merge network state with local input
   const mergedState = {
     ...state,
     currentInput: localCurrentInput,
-  }
+  };
 
   // Determine if current user is room creator
   const isRoomCreator =
-    roomData?.members.find((member) => member.userId === viewerId)?.isCreator || false
+    roomData?.members.find((member) => member.userId === viewerId)?.isCreator ||
+    false;
 
   // Handle state corruption
   if (hasStateCorruption) {
     return (
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px',
-          textAlign: 'center',
-          minHeight: '400px',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "40px",
+          textAlign: "center",
+          minHeight: "400px",
         }}
       >
-        <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
+        <div style={{ fontSize: "48px", marginBottom: "20px" }}>⚠️</div>
         <h2
           style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            marginBottom: '12px',
-            color: '#dc2626',
+            fontSize: "24px",
+            fontWeight: "bold",
+            marginBottom: "12px",
+            color: "#dc2626",
           }}
         >
           Game State Mismatch
         </h2>
         <p
           style={{
-            fontSize: '16px',
-            color: '#6b7280',
-            marginBottom: '24px',
-            maxWidth: '500px',
+            fontSize: "16px",
+            color: "#6b7280",
+            marginBottom: "24px",
+            maxWidth: "500px",
           }}
         >
-          There's a mismatch between game types in this room. This usually happens when room members
-          are playing different games.
+          There's a mismatch between game types in this room. This usually
+          happens when room members are playing different games.
         </p>
         <button
           type="button"
           onClick={() => window.location.reload()}
           style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
+            padding: "10px 20px",
+            background: "#3b82f6",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
           }}
         >
           Refresh Page
         </button>
       </div>
-    )
+    );
   }
 
   const contextValue: MemoryQuizContextValue = {
@@ -549,7 +579,11 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
     showResults,
     setConfig,
     dispatch,
-  }
+  };
 
-  return <MemoryQuizContext.Provider value={contextValue}>{children}</MemoryQuizContext.Provider>
+  return (
+    <MemoryQuizContext.Provider value={contextValue}>
+      {children}
+    </MemoryQuizContext.Provider>
+  );
 }

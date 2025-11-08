@@ -16,6 +16,7 @@ Before starting implementation, verify these items:
 ## Phase 1: Foundation (Week 1)
 
 ### Configuration Files
+
 - [ ] Extend `panda.config.ts` with light/dark color tokens
   - [ ] Add theme tokens object with light/dark variants
   - [ ] Define all color scales (text, background, accent)
@@ -23,6 +24,7 @@ Before starting implementation, verify these items:
   - [ ] Test token generation: `npm run build`
 
 ### Global Styling
+
 - [ ] Update `src/app/globals.css`
   - [ ] Add CSS custom properties for theme colors
   - [ ] Add `:root[data-theme="light"]` selector
@@ -30,6 +32,7 @@ Before starting implementation, verify these items:
   - [ ] Ensure animation/motion properties work with both themes
 
 ### Theme Provider
+
 - [ ] Create/extend theme provider in `src/contexts/`
   - [ ] Extend GameThemeContext or create new ThemeProvider
   - [ ] Add theme detection (system preference, localStorage)
@@ -38,6 +41,7 @@ Before starting implementation, verify these items:
   - [ ] Add `data-theme` attribute to root element
 
 ### Integration
+
 - [ ] Update `src/components/ClientProviders.tsx`
   - [ ] Add theme provider to provider stack
   - [ ] Ensure proper provider ordering
@@ -54,6 +58,7 @@ Before starting implementation, verify these items:
   - [ ] Test hamburger menu in both modes
 
 ### Testing Phase 1
+
 - [ ] Theme detection works (system preference)
 - [ ] Theme toggle works and persists
 - [ ] No console errors in browser dev tools
@@ -63,6 +68,7 @@ Before starting implementation, verify these items:
 ## Phase 2: Core Pages (Week 1-2)
 
 ### Homepage
+
 - [ ] Update `src/app/page.tsx`
   - [ ] Update hero section styling
   - [ ] Update skill card styling (gradients, borders)
@@ -76,6 +82,7 @@ Before starting implementation, verify these items:
   - [ ] Text colors and contrast
 
 ### Blog Pages
+
 - [ ] Update `src/app/blog/page.tsx`
   - [ ] Blog index page styling
   - [ ] Featured posts carousel
@@ -93,12 +100,14 @@ Before starting implementation, verify these items:
   - [ ] Game card styling
 
 ### Components
+
 - [ ] Update `src/components/TutorialPlayer.tsx`
   - [ ] Verify `theme="dark"` prop works
   - [ ] Add `theme="light"` support if needed
   - [ ] Test tutorial display in both themes
 
 ### Testing Phase 2
+
 - [ ] All pages render in light mode
 - [ ] All pages render in dark mode
 - [ ] Text contrast passes WCAG AA (4.5:1)
@@ -109,6 +118,7 @@ Before starting implementation, verify these items:
 ## Phase 3: Complex Content (Week 2-3)
 
 ### Blog Post Markdown (HIGHEST PRIORITY - COMPLEX)
+
 - [ ] Update `src/app/blog/[slug]/page.tsx` markdown styling
   - [ ] Update h1, h2, h3 styling for light mode
   - [ ] Update paragraph text colors
@@ -127,6 +137,7 @@ Before starting implementation, verify these items:
   - Option C: Create wrapper with theme-specific class
 
 ### Arcade Games - Complement Race
+
 - [ ] Update `src/app/arcade/complement-race/components/GameDisplay.tsx`
   - [ ] Update background gradient
   - [ ] Update text colors
@@ -156,6 +167,7 @@ Before starting implementation, verify these items:
   - [ ] Marker colors
 
 ### Arcade Games - Rithmomachia
+
 - [ ] Update `src/arcade-games/rithmomachia/components/RithmomachiaGame.tsx`
   - [ ] Player badge styling
   - [ ] Board background
@@ -167,6 +179,7 @@ Before starting implementation, verify these items:
   - [ ] Component styling
 
 ### SVG Graphics Strategy
+
 - [ ] Decide on approach for blog SVGs:
   - Option A: Generate light/dark variants (tedious but reliable)
   - Option B: Use CSS filter inversion (lossy but quick)
@@ -178,6 +191,7 @@ Before starting implementation, verify these items:
   - [ ] `/public/blog/ten-frame-examples/` (3 files)
 
 ### Testing Phase 3
+
 - [ ] Blog markdown displays correctly in both themes
 - [ ] All markdown element colors contrast properly
 - [ ] Arcade games playable in both themes
@@ -188,6 +202,7 @@ Before starting implementation, verify these items:
 ## Phase 4: Testing & Polish (Week 3-4)
 
 ### Visual Testing
+
 - [ ] Manual review of all pages
   - [ ] Homepage
   - [ ] Blog index
@@ -209,6 +224,7 @@ Before starting implementation, verify these items:
   - [ ] Mobile Chrome/Safari
 
 ### Accessibility Testing
+
 - [ ] Color contrast audit
   - [ ] Use WAVE WebAIM checker
   - [ ] Use Axe DevTools
@@ -228,6 +244,7 @@ Before starting implementation, verify these items:
   - [ ] Check for jarring transitions
 
 ### Functionality Testing
+
 - [ ] Theme toggle functionality
   - [ ] Toggle switches theme immediately
   - [ ] Settings persist across page reloads
@@ -246,18 +263,21 @@ Before starting implementation, verify these items:
   - [ ] Modals display correctly
 
 ### Performance Testing
+
 - [ ] No layout shift on theme change
 - [ ] Theme switch is instant (no flicker)
 - [ ] No performance regression
 - [ ] Bundle size unchanged significantly
 
 ### Documentation
+
 - [ ] Update THEME_AUDIT.md with implementation notes
 - [ ] Document color palette choices
 - [ ] Document any deviations from plan
 - [ ] Create theme customization guide for future work
 
 ### Final Quality Check
+
 - [ ] Run `npm run pre-commit` (all checks pass)
 - [ ] No console errors or warnings
 - [ ] No TypeScript errors
@@ -267,12 +287,14 @@ Before starting implementation, verify these items:
 ## Deployment & Communication
 
 ### Pre-Launch
+
 - [ ] Get stakeholder review and approval
 - [ ] Test on staging environment
 - [ ] Get final accessibility sign-off
 - [ ] Prepare release notes
 
 ### Launch
+
 - [ ] Create git commit with all changes
 - [ ] Push to main branch
 - [ ] Monitor GitHub Actions build
@@ -280,6 +302,7 @@ Before starting implementation, verify these items:
 - [ ] Manual smoke test on production
 
 ### Post-Launch
+
 - [ ] Monitor error logs for issues
 - [ ] Gather user feedback
 - [ ] Document any issues found
@@ -288,18 +311,21 @@ Before starting implementation, verify these items:
 ## Risk Mitigation
 
 ### Known Challenges
+
 - [ ] Blog markdown styling complexity - plan extra time
 - [ ] SVG color handling - test multiple browsers
 - [ ] SSR hydration - test server vs client rendering
 - [ ] Third-party component theming - verify compatibility
 
 ### Contingency Plans
+
 - [ ] If SVG strategy fails: use PNG variants as fallback
 - [ ] If markdown styling breaks: revert to inline styles temporarily
 - [ ] If performance issues: consider lazy-loading theme CSS
 - [ ] If accessibility fails: adjust color palette before launch
 
 ### Rollback Plan
+
 - [ ] Keep previous version in git history
 - [ ] Test rollback procedure before launch
 - [ ] Have quick revert command ready
@@ -319,13 +345,13 @@ Before starting implementation, verify these items:
 
 ## Timeline
 
-| Phase | Duration | Status |
-|-------|----------|--------|
-| Phase 1: Foundation | 1 week | Not started |
-| Phase 2: Core Pages | 1-2 weeks | Not started |
-| Phase 3: Complex Content | 1-2 weeks | Not started |
-| Phase 4: Testing & Polish | 1 week | Not started |
-| **Total** | **2-3 weeks** | **Not started** |
+| Phase                     | Duration      | Status          |
+| ------------------------- | ------------- | --------------- |
+| Phase 1: Foundation       | 1 week        | Not started     |
+| Phase 2: Core Pages       | 1-2 weeks     | Not started     |
+| Phase 3: Complex Content  | 1-2 weeks     | Not started     |
+| Phase 4: Testing & Polish | 1 week        | Not started     |
+| **Total**                 | **2-3 weeks** | **Not started** |
 
 ---
 

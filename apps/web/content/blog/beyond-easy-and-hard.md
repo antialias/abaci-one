@@ -25,6 +25,7 @@ Imagine you're a teacher working with two students:
 **Student B**: Comfortable working independently without scaffolding, but struggles with complex regrouping and needs simpler problems.
 
 With a traditional "easy/medium/hard" system, you're stuck:
+
 - Setting difficulty to "hard" gives Student A complex problems... but removes all the visual support they still need
 - Setting it to "easy" gives Student B the scaffolding-free experience they want... but the problems are too simple
 
@@ -35,7 +36,9 @@ With a traditional "easy/medium/hard" system, you're stuck:
 We split difficulty into two independent dimensions:
 
 ### Challenge Axis (Regrouping Complexity)
+
 How complex is the problem itself?
+
 - **Low**: Simple addition, no carrying (23 + 15)
 - **Medium**: Some regrouping in ones or tens place (47 + 38)
 - **High**: Frequent regrouping across multiple place values (587 + 798)
@@ -43,7 +46,9 @@ How complex is the problem itself?
 This is **intrinsic cognitive load** — the inherent difficulty of the problem regardless of how it's presented.
 
 ### Support Axis (Scaffolding Level)
+
 How much instructional support is shown?
+
 - **High support**: Carry boxes, answer boxes, place value colors, ten-frames
 - **Medium support**: Carry boxes when needed, colors for larger numbers
 - **Low support**: Minimal or no scaffolding, student works independently
@@ -77,20 +82,24 @@ Challenge  High   ✓            ✓           ✗
 Here's what this looks like in practice. Below are actual worksheet examples showing **the same problem complexity** (problems with moderate regrouping) but with **different levels of scaffolding**:
 
 #### Full Scaffolding
+
 ![Worksheet with full scaffolding](/blog/difficulty-examples/full-scaffolding.svg)
-*Maximum visual support: carry boxes always shown, answer boxes, place value colors, and ten-frames for every step.*
+_Maximum visual support: carry boxes always shown, answer boxes, place value colors, and ten-frames for every step._
 
 #### Medium Scaffolding
+
 ![Worksheet with medium scaffolding](/blog/difficulty-examples/medium-scaffolding.svg)
-*Strategic support: carry boxes appear when regrouping occurs, answer boxes provided, place value colors for 3+ digit numbers.*
+_Strategic support: carry boxes appear when regrouping occurs, answer boxes provided, place value colors for 3+ digit numbers._
 
 #### Minimal Scaffolding
+
 ![Worksheet with minimal scaffolding](/blog/difficulty-examples/minimal-scaffolding.svg)
-*Minimal scaffolding: carry boxes only for complex problems with multiple regroups, no answer boxes or colors.*
+_Minimal scaffolding: carry boxes only for complex problems with multiple regroups, no answer boxes or colors._
 
 #### No Scaffolding
+
 ![Worksheet with no scaffolding](/blog/difficulty-examples/no-scaffolding.svg)
-*Zero scaffolding: students work completely independently with no visual aids.*
+_Zero scaffolding: students work completely independently with no visual aids._
 
 Notice how the **problem complexity stays constant** (all use the same regrouping probability), but the **scaffolding progressively fades**. This demonstrates how support can be adjusted independently from problem difficulty, allowing teachers to precisely target their students' needs.
 
@@ -109,11 +118,13 @@ This isn't just intuition — it maps to established learning theory:
 The UI provides three ways to adjust difficulty:
 
 ### 1. Default: "Make Harder" / "Make Easier"
+
 The main buttons adjust **both dimensions** simultaneously, moving diagonally through the valid space toward appropriate preset levels (Beginner → Early Learner → Intermediate → Advanced → Expert).
 
 This is the simple, no-thought-required option that works for most cases.
 
 ### 2. Challenge-Only Adjustment
+
 Click the dropdown arrow, select "More challenge" or "Less challenge".
 
 This moves **horizontally** — changing problem complexity while maintaining current scaffolding level.
@@ -121,6 +132,7 @@ This moves **horizontally** — changing problem complexity while maintaining cu
 **Use case**: Student A above. They're ready for harder problems but still need the visual aids. Click "More challenge" to increase regrouping while keeping support constant.
 
 ### 3. Support-Only Adjustment
+
 Click the dropdown arrow, select "More support" or "Less support".
 
 This moves **vertically** — changing scaffolding level while maintaining current problem complexity.
@@ -136,6 +148,7 @@ Under the hood, we use a **hybrid discrete/continuous architecture**:
 - **Constraint validation** at every step: The system auto-corrects invalid states
 
 This gives us:
+
 - Predictable, testable behavior (discrete states)
 - Smooth visualization (continuous scores)
 - Guaranteed pedagogical validity (constraint enforcement)
@@ -154,6 +167,7 @@ Try these scenarios:
 4. **Click on the 2D graph** (the orange debug visualization) → jump directly to any valid difficulty point
 
 The graph shows:
+
 - Gray diagonal band: Valid pedagogical combinations
 - Colored dots: Preset profiles (B=Beginner, I=Intermediate, etc.)
 - Blue cross: Your current position
@@ -164,6 +178,7 @@ The graph shows:
 Traditional 1D difficulty forces teachers into a one-size-fits-all progression. Every student moves along the same path from "easy" to "hard", regardless of their individual needs.
 
 **Our 2D constrained space enables precise differentiation**:
+
 - Students who grasp concepts quickly can reduce support while maintaining challenge
 - Students who need more time get continued support while still progressing to harder problems
 - Students can move through the space at different angles, not just along a single path
@@ -173,6 +188,7 @@ And because the constraints encode pedagogical principles, teachers can't accide
 ## What's Next
 
 This is currently implemented for addition worksheets, but the approach generalizes:
+
 - Subtraction, multiplication, division
 - Other domains entirely (reading comprehension, programming exercises, etc.)
 - Any learning task where you can separate intrinsic difficulty from instructional support
@@ -184,6 +200,7 @@ Technical details: [SMART_DIFFICULTY_SPEC.md](https://github.com/antialias/sorob
 ## Feedback Welcome
 
 We'd love to hear from educators using this system:
+
 - Does the 2D model match your mental model of difficulty?
 - Are the dimension-specific controls useful?
 - What other domains would benefit from this approach?
@@ -192,4 +209,4 @@ Reach out via [GitHub issues](https://github.com/antialias/soroban-abacus-flashc
 
 ---
 
-*This post describes research-in-progress. We're exploring publication in learning sciences venues (ACM Learning @ Scale, IJAIED). If you're interested in collaboration or want to cite this work, see our [publication plan](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/app/create/worksheets/addition/PUBLICATION_PLAN.md).*
+_This post describes research-in-progress. We're exploring publication in learning sciences venues (ACM Learning @ Scale, IJAIED). If you're interested in collaboration or want to cite this work, see our [publication plan](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/app/create/worksheets/addition/PUBLICATION_PLAN.md)._

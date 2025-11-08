@@ -1,15 +1,15 @@
-import { css } from '../../../styled-system/css'
-import { stack } from '../../../styled-system/patterns'
-import type { TutorialEvent } from '../../types/tutorial'
+import { css } from "../../../styled-system/css";
+import { stack } from "../../../styled-system/patterns";
+import type { TutorialEvent } from "../../types/tutorial";
 
 interface TutorialDebugPanelProps {
-  currentStepIndex: number
-  totalSteps: number
-  currentValue: number
-  targetValue: number
-  isStepCompleted: boolean
-  stepStartTime: number
-  events: TutorialEvent[]
+  currentStepIndex: number;
+  totalSteps: number;
+  currentValue: number;
+  targetValue: number;
+  isStepCompleted: boolean;
+  stepStartTime: number;
+  events: TutorialEvent[];
 }
 
 export function TutorialDebugPanel({
@@ -24,10 +24,10 @@ export function TutorialDebugPanel({
   return (
     <div
       className={css({
-        w: '400px',
-        borderLeft: '1px solid',
-        borderColor: 'gray.200',
-        bg: 'gray.50',
+        w: "400px",
+        borderLeft: "1px solid",
+        borderColor: "gray.200",
+        bg: "gray.50",
         p: 4,
       })}
     >
@@ -36,11 +36,11 @@ export function TutorialDebugPanel({
           <h3>Step Debug Info</h3>
           <div
             className={css({
-              fontSize: 'sm',
-              fontFamily: 'mono',
-              bg: 'white',
+              fontSize: "sm",
+              fontFamily: "mono",
+              bg: "white",
               p: 2,
-              borderRadius: 'md',
+              borderRadius: "md",
             })}
           >
             <div>
@@ -48,7 +48,7 @@ export function TutorialDebugPanel({
             </div>
             <div>Value: {currentValue}</div>
             <div>Target: {targetValue}</div>
-            <div>Completed: {isStepCompleted ? 'Yes' : 'No'}</div>
+            <div>Completed: {isStepCompleted ? "Yes" : "No"}</div>
             <div>Time: {Math.round((Date.now() - stepStartTime) / 1000)}s</div>
           </div>
         </div>
@@ -57,10 +57,10 @@ export function TutorialDebugPanel({
           <h3>Event Log</h3>
           <div
             className={css({
-              bg: 'white',
-              borderRadius: 'md',
-              maxH: '200px',
-              overflowY: 'auto',
+              bg: "white",
+              borderRadius: "md",
+              maxH: "200px",
+              overflowY: "auto",
             })}
           >
             {events.slice(-10).map((event, index) => (
@@ -68,21 +68,23 @@ export function TutorialDebugPanel({
                 key={index}
                 className={css({
                   p: 2,
-                  borderBottom: '1px solid',
-                  borderColor: 'gray.100',
+                  borderBottom: "1px solid",
+                  borderColor: "gray.100",
                 })}
               >
-                <div className={css({ fontWeight: 'bold', color: 'blue.600' })}>{event.type}</div>
-                <div className={css({ color: 'gray.600' })}>
+                <div className={css({ fontWeight: "bold", color: "blue.600" })}>
+                  {event.type}
+                </div>
+                <div className={css({ color: "gray.600" })}>
                   {new Date(event.timestamp).toLocaleTimeString()}
                 </div>
-                {event.type === 'VALUE_CHANGED' && (
+                {event.type === "VALUE_CHANGED" && (
                   <div>
                     {event.oldValue} → {event.newValue}
                   </div>
                 )}
-                {event.type === 'ERROR_OCCURRED' && (
-                  <div className={css({ color: 'red.600' })}>{event.error}</div>
+                {event.type === "ERROR_OCCURRED" && (
+                  <div className={css({ color: "red.600" })}>{event.error}</div>
                 )}
               </div>
             ))}
@@ -90,5 +92,5 @@ export function TutorialDebugPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }

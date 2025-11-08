@@ -1,70 +1,70 @@
 interface TypstMonthlyConfig {
-  month: number
-  year: number
-  paperSize: 'us-letter' | 'a4' | 'a3' | 'tabloid'
-  daysInMonth: number
+  month: number;
+  year: number;
+  paperSize: "us-letter" | "a4" | "a3" | "tabloid";
+  daysInMonth: number;
 }
 
 interface TypstDailyConfig {
-  month: number
-  year: number
-  paperSize: 'us-letter' | 'a4' | 'a3' | 'tabloid'
-  daysInMonth: number
+  month: number;
+  year: number;
+  paperSize: "us-letter" | "a4" | "a3" | "tabloid";
+  daysInMonth: number;
 }
 
 const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 export function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate()
+  return new Date(year, month, 0).getDate();
 }
 
 function getFirstDayOfWeek(year: number, month: number): number {
-  return new Date(year, month - 1, 1).getDay() // 0 = Sunday
+  return new Date(year, month - 1, 1).getDay(); // 0 = Sunday
 }
 
 function getDayOfWeek(year: number, month: number, day: number): string {
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("en-US", { weekday: "long" });
 }
 
-type PaperSize = 'us-letter' | 'a4' | 'a3' | 'tabloid'
+type PaperSize = "us-letter" | "a4" | "a3" | "tabloid";
 
 interface PaperConfig {
-  typstName: string
-  marginX: string
-  marginY: string
+  typstName: string;
+  marginX: string;
+  marginY: string;
 }
 
 function getPaperConfig(size: string): PaperConfig {
   const configs: Record<PaperSize, PaperConfig> = {
     // Tight margins to maximize space for calendar grid
-    'us-letter': { typstName: 'us-letter', marginX: '0.5in', marginY: '0.5in' },
+    "us-letter": { typstName: "us-letter", marginX: "0.5in", marginY: "0.5in" },
     // A4 is slightly taller/narrower than US Letter - adjust margins proportionally
-    a4: { typstName: 'a4', marginX: '1.3cm', marginY: '1.3cm' },
+    a4: { typstName: "a4", marginX: "1.3cm", marginY: "1.3cm" },
     // A3 is 2x area of A4 - can use same margins but will scale content larger
-    a3: { typstName: 'a3', marginX: '1.5cm', marginY: '1.5cm' },
+    a3: { typstName: "a3", marginX: "1.5cm", marginY: "1.5cm" },
     // Tabloid (11" × 17") is larger - can use more margin
-    tabloid: { typstName: 'us-tabloid', marginX: '0.75in', marginY: '0.75in' },
-  }
-  return configs[size as PaperSize] || configs['us-letter']
+    tabloid: { typstName: "us-tabloid", marginX: "0.75in", marginY: "0.75in" },
+  };
+  return configs[size as PaperSize] || configs["us-letter"];
 }
 
 export function generateMonthlyTypst(config: TypstMonthlyConfig): string {
-  const { paperSize } = config
-  const paperConfig = getPaperConfig(paperSize)
+  const { paperSize } = config;
+  const paperConfig = getPaperConfig(paperSize);
 
   // Single-page design: use one composite SVG that scales to fit
   // This prevents overflow - Typst will scale the image to fit available space
@@ -77,18 +77,18 @@ export function generateMonthlyTypst(config: TypstMonthlyConfig): string {
 #align(center + horizon)[
   #image("calendar.svg", width: 100%, fit: "contain")
 ]
-`
+`;
 }
 
 export function generateDailyTypst(config: TypstDailyConfig): string {
-  const { month, year, paperSize, daysInMonth } = config
-  const paperConfig = getPaperConfig(paperSize)
-  const monthName = MONTH_NAMES[month - 1]
+  const { month, year, paperSize, daysInMonth } = config;
+  const paperConfig = getPaperConfig(paperSize);
+  const monthName = MONTH_NAMES[month - 1];
 
-  let pages = ''
+  let pages = "";
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const dayOfWeek = getDayOfWeek(year, month, day)
+    const dayOfWeek = getDayOfWeek(year, month, day);
 
     pages += `
 #page(
@@ -184,12 +184,12 @@ export function generateDailyTypst(config: TypstDailyConfig): string {
   ]
 ]
 
-${day < daysInMonth ? '' : ''}`
+${day < daysInMonth ? "" : ""}`;
 
     if (day < daysInMonth) {
-      pages += '\n'
+      pages += "\n";
     }
   }
 
-  return pages
+  return pages;
 }

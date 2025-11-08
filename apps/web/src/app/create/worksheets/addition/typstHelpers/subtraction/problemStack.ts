@@ -1,12 +1,16 @@
 // Main subtraction problem stack function
 // Composes all row components into the complete problem rendering
 
-import { getPlaceValueColorNames } from '../shared/colors'
-import type { CellDimensions } from '../shared/types'
-import { generateBorrowBoxesRow } from './borrowBoxes'
-import { generateMinuendRow } from './minuendRow'
-import { generateSubtrahendRow } from './subtrahendRow'
-import { generateLineRow, generateTenFramesRow, generateAnswerBoxesRow } from './answerRow'
+import { getPlaceValueColorNames } from "../shared/colors";
+import type { CellDimensions } from "../shared/types";
+import { generateBorrowBoxesRow } from "./borrowBoxes";
+import { generateMinuendRow } from "./minuendRow";
+import { generateSubtrahendRow } from "./subtrahendRow";
+import {
+  generateLineRow,
+  generateTenFramesRow,
+  generateAnswerBoxesRow,
+} from "./answerRow";
 
 /**
  * Generate the main subtraction problem stack function for Typst
@@ -26,18 +30,18 @@ import { generateLineRow, generateTenFramesRow, generateAnswerBoxesRow } from '.
  */
 export function generateSubtractionProblemStackFunction(
   cellSize: number,
-  maxDigits: number = 3
+  maxDigits: number = 3,
 ): string {
-  const cellSizeIn = `${cellSize}in`
-  const cellSizePt = cellSize * 72
+  const cellSizeIn = `${cellSize}in`;
+  const cellSizePt = cellSize * 72;
 
   const cellDimensions: CellDimensions = {
     cellSize,
     cellSizeIn,
     cellSizePt,
-  }
+  };
 
-  const placeColors = getPlaceValueColorNames()
+  const placeColors = getPlaceValueColorNames();
 
   return String.raw`
 // Subtraction problem rendering function (supports 1-${maxDigits} digit problems)
@@ -45,7 +49,7 @@ export function generateSubtractionProblemStackFunction(
 // Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation, show-borrowing-hints
 #let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation, show-borrowing-hints) = {
   // Place value colors array for dynamic lookup
-  let place-colors = (${placeColors.join(', ')})
+  let place-colors = (${placeColors.join(", ")})
 
   // Extract digits dynamically based on problem size
   let max-digits = ${maxDigits}
@@ -133,5 +137,5 @@ ${generateAnswerBoxesRow(cellDimensions)}
     )
   )
 }
-`
+`;
 }

@@ -1,38 +1,43 @@
-'use client'
+"use client";
 
-import { stack } from '../../../../../../styled-system/patterns'
-import type { WorksheetFormState } from '../types'
-import { defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
-import { ModeSelector } from './ModeSelector'
-import { StudentNameInput } from './config-panel/StudentNameInput'
-import { DigitRangeSection } from './config-panel/DigitRangeSection'
-import { OperatorSection } from './config-panel/OperatorSection'
-import { ProgressiveDifficultyToggle } from './config-panel/ProgressiveDifficultyToggle'
-import { SmartModeControls } from './config-panel/SmartModeControls'
-import { ManualModeControls } from './config-panel/ManualModeControls'
+import { stack } from "../../../../../../styled-system/patterns";
+import type { WorksheetFormState } from "../types";
+import { defaultAdditionConfig } from "@/app/create/worksheets/config-schemas";
+import { ModeSelector } from "./ModeSelector";
+import { StudentNameInput } from "./config-panel/StudentNameInput";
+import { DigitRangeSection } from "./config-panel/DigitRangeSection";
+import { OperatorSection } from "./config-panel/OperatorSection";
+import { ProgressiveDifficultyToggle } from "./config-panel/ProgressiveDifficultyToggle";
+import { SmartModeControls } from "./config-panel/SmartModeControls";
+import { ManualModeControls } from "./config-panel/ManualModeControls";
 
 interface ConfigPanelProps {
-  formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean
+  formState: WorksheetFormState;
+  onChange: (updates: Partial<WorksheetFormState>) => void;
+  isDark?: boolean;
 }
 
-export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanelProps) {
+export function ConfigPanel({
+  formState,
+  onChange,
+  isDark = false,
+}: ConfigPanelProps) {
   // Handler for mode switching
-  const handleModeChange = (newMode: 'smart' | 'manual') => {
+  const handleModeChange = (newMode: "smart" | "manual") => {
     if (formState.mode === newMode) {
-      return // No change needed
+      return; // No change needed
     }
 
-    if (newMode === 'smart') {
+    if (newMode === "smart") {
       // Switching to Smart mode
       // Use current displayRules if available, otherwise default to earlyLearner
-      const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
+      const displayRules =
+        formState.displayRules ?? defaultAdditionConfig.displayRules;
       onChange({
-        mode: 'smart',
+        mode: "smart",
         displayRules,
-        difficultyProfile: 'earlyLearner',
-      } as unknown as Partial<WorksheetFormState>)
+        difficultyProfile: "earlyLearner",
+      } as unknown as Partial<WorksheetFormState>);
     } else {
       // Switching to Manual mode
       // Convert current displayRules to boolean flags if available
@@ -44,30 +49,32 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         showProblemNumbers: true,
         showCellBorder: true,
         showTenFramesForAll: false,
-      }
+      };
 
       if (formState.displayRules) {
         // Convert 'always' to true, everything else to false
         booleanFlags = {
-          showCarryBoxes: formState.displayRules.carryBoxes === 'always',
-          showAnswerBoxes: formState.displayRules.answerBoxes === 'always',
-          showPlaceValueColors: formState.displayRules.placeValueColors === 'always',
-          showTenFrames: formState.displayRules.tenFrames === 'always',
-          showProblemNumbers: formState.displayRules.problemNumbers === 'always',
-          showCellBorder: formState.displayRules.cellBorders === 'always',
+          showCarryBoxes: formState.displayRules.carryBoxes === "always",
+          showAnswerBoxes: formState.displayRules.answerBoxes === "always",
+          showPlaceValueColors:
+            formState.displayRules.placeValueColors === "always",
+          showTenFrames: formState.displayRules.tenFrames === "always",
+          showProblemNumbers:
+            formState.displayRules.problemNumbers === "always",
+          showCellBorder: formState.displayRules.cellBorders === "always",
           showTenFramesForAll: false,
-        }
+        };
       }
 
       onChange({
-        mode: 'manual',
+        mode: "manual",
         ...booleanFlags,
-      } as unknown as Partial<WorksheetFormState>)
+      } as unknown as Partial<WorksheetFormState>);
     }
-  }
+  };
 
   return (
-    <div data-component="config-panel" className={stack({ gap: '3' })}>
+    <div data-component="config-panel" className={stack({ gap: "3" })}>
       {/* Student Name */}
       <StudentNameInput
         value={formState.name}
@@ -91,7 +98,7 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
 
       {/* Mode Selector */}
       <ModeSelector
-        currentMode={formState.mode ?? 'smart'}
+        currentMode={formState.mode ?? "smart"}
         onChange={handleModeChange}
         isDark={isDark}
       />
@@ -104,14 +111,22 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
       />
 
       {/* Smart Mode Controls */}
-      {(!formState.mode || formState.mode === 'smart') && (
-        <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
+      {(!formState.mode || formState.mode === "smart") && (
+        <SmartModeControls
+          formState={formState}
+          onChange={onChange}
+          isDark={isDark}
+        />
       )}
 
       {/* Manual Mode Controls */}
-      {formState.mode === 'manual' && (
-        <ManualModeControls formState={formState} onChange={onChange} isDark={isDark} />
+      {formState.mode === "manual" && (
+        <ManualModeControls
+          formState={formState}
+          onChange={onChange}
+          isDark={isDark}
+        />
       )}
     </div>
-  )
+  );
 }

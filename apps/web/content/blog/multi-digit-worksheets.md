@@ -44,6 +44,7 @@ When we add a third digit, the worksheet automatically adapts:
 ![3-digit addition with place value colors](/blog/multi-digit-examples/three-digit-colors.svg)
 
 **Notice the changes:**
+
 - **Place value colors** now appear: blue (ones), green (tens), yellow (hundreds)
 - **Wider grid** accommodates the extra digit
 - **Carry boxes** still appear at the bottom for regrouping
@@ -60,6 +61,7 @@ As problems get larger, the scaffolding stays consistent:
 **New place value**: Pink for thousands
 
 The beauty of this system is **consistency**. Whether it's 2 digits or 4 digits, the pattern is the same:
+
 1. Add the ones (blue)
 2. Add the tens (green)
 3. Add the hundreds (yellow)
@@ -88,6 +90,7 @@ Here's where it gets interesting. In the real world, problems aren't all the sam
 ![Mixed 2-4 digit problems](/blog/multi-digit-examples/mixed-range.svg)
 
 **What you see:**
+
 - Problem 1: 2-digit (27 + 72)
 - Problem 2: 3-digit (568 + 310)
 - Problem 3: 4-digit (3,568 + 2,610)
@@ -104,6 +107,7 @@ Multi-digit support isn't just for addition. Subtraction with borrowing works th
 ![3-digit subtraction](/blog/multi-digit-examples/three-digit-subtraction.svg)
 
 **Subtraction features:**
+
 - **Borrow notation boxes** scale to any digit count
 - **Place value colors** help track which column is borrowing FROM and TO
 - **Cascading borrows** (like 1000 − 1) are handled automatically
@@ -112,16 +116,17 @@ Multi-digit support isn't just for addition. Subtraction with borrowing works th
 
 Our place value colors follow a consistent pattern across all digit ranges:
 
-| Place Value | Color | Hex |
-|------------|-------|-----|
-| **Ones** | Light Blue | #BAE6FD |
-| **Tens** | Green | #BBF7D0 |
-| **Hundreds** | Yellow | #FEF08A |
-| **Thousands** | Pink | #FBCFE8 |
-| **Ten-Thousands** | Purple | #DDD6FE |
-| **Hundred-Thousands** | Orange | #FED7AA |
+| Place Value           | Color      | Hex     |
+| --------------------- | ---------- | ------- |
+| **Ones**              | Light Blue | #BAE6FD |
+| **Tens**              | Green      | #BBF7D0 |
+| **Hundreds**          | Yellow     | #FEF08A |
+| **Thousands**         | Pink       | #FBCFE8 |
+| **Ten-Thousands**     | Purple     | #DDD6FE |
+| **Hundred-Thousands** | Orange     | #FED7AA |
 
 These colors are:
+
 - **High contrast** for visibility
 - **Pastel tones** that don't distract
 - **Consistent across all worksheets**
@@ -136,6 +141,7 @@ In the worksheet creator, you'll find a **dual-thumb slider** that lets you set 
 **Mixed size:** Set a range (e.g., 2-5) for varied problem sizes
 
 **Examples:**
+
 - `1-1`: Single digit (0-9) - perfect for beginners
 - `2-2`: Standard 2-digit (10-99) - classic worksheets
 - `3-3`: All 3-digit (100-999) - focused practice
@@ -151,6 +157,7 @@ One of our most powerful features is **conditional scaffolding based on digit co
 ```
 
 This means you can create a worksheet that:
+
 - Shows **no place colors** on simple 2-digit problems
 - **Automatically adds colors** when problems reach 3+ digits
 - Adapts per-problem within the same worksheet
@@ -162,6 +169,7 @@ Perfect for differentiated instruction where some students need more support tha
 One tricky detail: when you add 99,999 + 99,999, the result is 199,998 - that's **6 digits**, not 5!
 
 Our layout engine automatically accounts for this:
+
 - **Grid columns** expand to accommodate overflow
 - **Place value colors** include a 6th color (orange) for hundred-thousands
 - **Answer boxes** adjust spacing to fit
@@ -173,21 +181,25 @@ Students see that addition can sometimes produce an answer with more digits than
 You can combine digit range with regrouping difficulty:
 
 **Beginner:** 2-digit, 0% regrouping
+
 ```
 23 + 45 = 68 (no carries)
 ```
 
 **Intermediate:** 3-digit, 50% regrouping
+
 ```
 245 + 378 = 623 (some carries)
 ```
 
 **Advanced:** 4-digit, 80% regrouping
+
 ```
 3,456 + 2,789 = 6,245 (multiple carries)
 ```
 
 **Expert:** 5-digit, 100% regrouping
+
 ```
 48,532 + 61,749 = 110,281 (maximum complexity)
 ```

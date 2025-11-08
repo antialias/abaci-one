@@ -11,6 +11,7 @@ We have a **reusable pattern for generating single-problem worksheet examples** 
 **Location**: `src/app/api/create/worksheets/addition/example/route.ts`
 
 This API route contains the `generateExampleTypst()` function that:
+
 - Takes display options (showCarryBoxes, showTenFrames, etc.)
 - Takes specific addends (addend1, addend2)
 - Generates a single compact problem using the same Typst helpers as full worksheets
@@ -19,6 +20,7 @@ This API route contains the `generateExampleTypst()` function that:
 ### 2. Blog Post Generator Scripts
 
 **Pattern**: Copy the `generateExampleTypst()` logic into a script that:
+
 1. Imports `generateTypstHelpers` and `generateProblemStackFunction` from `typstHelpers.ts`
 2. Defines examples with specific problems and display options
 3. Generates Typst source for each example
@@ -28,12 +30,14 @@ This API route contains the `generateExampleTypst()` function that:
 ### 3. Existing Examples
 
 **Ten-frames blog post**:
+
 - Script: `scripts/generateTenFrameExamples.ts`
 - Output: `public/blog/ten-frame-examples/`
 - Usage: Shows same problem (47 + 38) with/without ten-frames
 - Blog post: `content/blog/ten-frames-for-regrouping.md`
 
 **Difficulty progression blog post**:
+
 - Script: `scripts/generateBlogExamples.ts`
 - Output: `public/blog/difficulty-examples/`
 - Usage: Shows same regrouping level with different scaffolding
@@ -62,41 +66,46 @@ This API route contains the `generateExampleTypst()` function that:
 
 ```typescript
 // scripts/generateYourFeatureExamples.ts
-import fs from 'fs'
-import path from 'path'
-import { execSync } from 'child_process'
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 import {
   generateTypstHelpers,
   generateProblemStackFunction,
-} from '../src/app/create/worksheets/addition/typstHelpers'
+} from "../src/app/create/worksheets/addition/typstHelpers";
 
-const outputDir = path.join(process.cwd(), 'public', 'blog', 'your-feature-examples')
+const outputDir = path.join(
+  process.cwd(),
+  "public",
+  "blog",
+  "your-feature-examples",
+);
 if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true })
+  fs.mkdirSync(outputDir, { recursive: true });
 }
 
 interface ExampleOptions {
-  showCarryBoxes?: boolean
-  showAnswerBoxes?: boolean
-  showPlaceValueColors?: boolean
-  showTenFrames?: boolean
-  showProblemNumbers?: boolean
-  fontSize?: number
-  addend1: number
-  addend2: number
+  showCarryBoxes?: boolean;
+  showAnswerBoxes?: boolean;
+  showPlaceValueColors?: boolean;
+  showTenFrames?: boolean;
+  showProblemNumbers?: boolean;
+  fontSize?: number;
+  addend1: number;
+  addend2: number;
 }
 
 function generateExampleTypst(config: ExampleOptions): string {
-  const a = config.addend1
-  const b = config.addend2
-  const fontSize = config.fontSize || 16
-  const cellSize = 0.45 // Larger than UI preview (0.35) for blog readability
+  const a = config.addend1;
+  const b = config.addend2;
+  const fontSize = config.fontSize || 16;
+  const cellSize = 0.45; // Larger than UI preview (0.35) for blog readability
 
-  const showCarries = config.showCarryBoxes ?? false
-  const showAnswers = config.showAnswerBoxes ?? false
-  const showColors = config.showPlaceValueColors ?? false
-  const showNumbers = config.showProblemNumbers ?? false
-  const showTenFrames = config.showTenFrames ?? false
+  const showCarries = config.showCarryBoxes ?? false;
+  const showAnswers = config.showAnswerBoxes ?? false;
+  const showColors = config.showPlaceValueColors ?? false;
+  const showNumbers = config.showProblemNumbers ?? false;
+  const showTenFrames = config.showTenFrames ?? false;
 
   return String.raw`
 #set page(width: auto, height: auto, margin: 12pt, fill: white)
@@ -118,7 +127,7 @@ ${generateProblemStackFunction(cellSize)}
 #align(center + horizon)[
   #problem-stack(
     a, b, aT, aO, bT, bO,
-    ${showNumbers ? '0' : 'none'},
+    ${showNumbers ? "0" : "none"},
     ${showCarries},
     ${showAnswers},
     ${showColors},
@@ -126,13 +135,13 @@ ${generateProblemStackFunction(cellSize)}
     ${showNumbers}
   )
 ]
-`
+`;
 }
 
 const examples = [
   {
-    filename: 'example-1.svg',
-    description: 'Your feature demonstrated',
+    filename: "example-1.svg",
+    description: "Your feature demonstrated",
     options: {
       addend1: 47,
       addend2: 38,
@@ -144,16 +153,16 @@ const examples = [
     },
   },
   // Add more examples...
-] as const
+] as const;
 
 for (const example of examples) {
-  const typstSource = generateExampleTypst(example.options)
-  const svg = execSync('typst compile --format svg - -', {
+  const typstSource = generateExampleTypst(example.options);
+  const svg = execSync("typst compile --format svg - -", {
     input: typstSource,
-    encoding: 'utf8',
+    encoding: "utf8",
     maxBuffer: 2 * 1024 * 1024,
-  })
-  fs.writeFileSync(path.join(outputDir, example.filename), svg, 'utf-8')
+  });
+  fs.writeFileSync(path.join(outputDir, example.filename), svg, "utf-8");
 }
 ```
 
@@ -173,7 +182,7 @@ title: "Your Feature Title"
 ## Feature Overview
 
 ![Example showing feature](/blog/your-feature-examples/example-1.svg)
-*Caption explaining what the example demonstrates.*
+_Caption explaining what the example demonstrates._
 ```
 
 ## Tips for Good Examples
@@ -219,6 +228,7 @@ npx tsx scripts/generateTenFrameExamples.ts
 See `scripts/generateTenFrameExamples.ts` for a complete, documented example of this pattern.
 
 Key features demonstrated:
+
 - Clear header documentation explaining the pattern
 - Reusable `generateExampleTypst()` function
 - Declarative example definitions

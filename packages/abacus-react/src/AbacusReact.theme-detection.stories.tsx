@@ -104,9 +104,7 @@ function AutomaticThemeDemo() {
             Abacus frame adapts (translucent white in dark, solid white in
             light)
           </li>
-          <li>
-            ✨ Numerals stay dark (readable) regardless of page theme
-          </li>
+          <li>✨ Numerals stay dark (readable) regardless of page theme</li>
         </ul>
       </div>
     </div>
@@ -178,9 +176,7 @@ function SystemThemeHookDemo() {
             borderRadius: "6px",
           }}
         >
-          <code>
-            const systemTheme = useSystemTheme(); // "{systemTheme}"
-          </code>
+          <code>const systemTheme = useSystemTheme(); // "{systemTheme}"</code>
         </div>
       </div>
 
@@ -320,7 +316,9 @@ function ManualOverrideDemo() {
           columns={3}
           showNumbers={true}
           customStyles={{
-            ...(pageTheme === "dark" ? ABACUS_THEMES.dark : ABACUS_THEMES.light),
+            ...(pageTheme === "dark"
+              ? ABACUS_THEMES.dark
+              : ABACUS_THEMES.light),
             numerals: {
               color: "#ef4444", // Red
               fontWeight: "700",
@@ -352,7 +350,9 @@ function ManualOverrideDemo() {
           columns={3}
           showNumbers={true}
           customStyles={{
-            ...(pageTheme === "dark" ? ABACUS_THEMES.dark : ABACUS_THEMES.light),
+            ...(pageTheme === "dark"
+              ? ABACUS_THEMES.dark
+              : ABACUS_THEMES.light),
             numerals: {
               color: "#3b82f6", // Blue
               fontWeight: "600",

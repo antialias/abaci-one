@@ -7,6 +7,7 @@ Add support for subtraction problems and allow users to choose between addition,
 ## Phase 1: Operator Selection UI
 
 ### UI Component Location
+
 `src/app/create/worksheets/addition/components/ConfigPanel.tsx`
 
 ### New Setting: `operator`
@@ -14,13 +15,14 @@ Add support for subtraction problems and allow users to choose between addition,
 Add operator selector control in the Basic Settings section, right after the digit range slider.
 
 **Type Definition:**
+
 ```typescript
 // types.ts
-export type WorksheetOperator = 'addition' | 'subtraction' | 'mixed'
+export type WorksheetOperator = "addition" | "subtraction" | "mixed";
 
 export interface WorksheetFormState {
   // ... existing fields
-  operator: WorksheetOperator  // NEW
+  operator: WorksheetOperator; // NEW
 }
 ```
 
@@ -29,46 +31,49 @@ export interface WorksheetFormState {
 **UI Design:**
 
 ```tsx
-{/* Operator Selection */}
-<div className={stack({ gap: '2' })}>
-  <label className={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
-    {t('config.operator.label')}
+{
+  /* Operator Selection */
+}
+<div className={stack({ gap: "2" })}>
+  <label className={css({ fontSize: "sm", fontWeight: "semibold" })}>
+    {t("config.operator.label")}
   </label>
 
-  <div className={hstack({ gap: '2' })}>
+  <div className={hstack({ gap: "2" })}>
     <Button
-      variant={formState.operator === 'addition' ? 'primary' : 'secondary'}
-      onClick={() => onChange({ operator: 'addition' })}
+      variant={formState.operator === "addition" ? "primary" : "secondary"}
+      onClick={() => onChange({ operator: "addition" })}
     >
       Addition Only (+)
     </Button>
 
     <Button
-      variant={formState.operator === 'subtraction' ? 'primary' : 'secondary'}
-      onClick={() => onChange({ operator: 'subtraction' })}
+      variant={formState.operator === "subtraction" ? "primary" : "secondary"}
+      onClick={() => onChange({ operator: "subtraction" })}
     >
       Subtraction Only (−)
     </Button>
 
     <Button
-      variant={formState.operator === 'mixed' ? 'primary' : 'secondary'}
-      onClick={() => onChange({ operator: 'mixed' })}
+      variant={formState.operator === "mixed" ? "primary" : "secondary"}
+      onClick={() => onChange({ operator: "mixed" })}
     >
       Mixed (+/−)
     </Button>
   </div>
 
-  <p className={css({ fontSize: 'xs', color: 'gray.600' })}>
-    {formState.operator === 'mixed'
-      ? 'Problems will randomly use addition or subtraction'
-      : formState.operator === 'addition'
-      ? 'All problems will be addition'
-      : 'All problems will be subtraction'}
+  <p className={css({ fontSize: "xs", color: "gray.600" })}>
+    {formState.operator === "mixed"
+      ? "Problems will randomly use addition or subtraction"
+      : formState.operator === "addition"
+        ? "All problems will be addition"
+        : "All problems will be subtraction"}
   </p>
-</div>
+</div>;
 ```
 
 **Considerations:**
+
 - When operator is 'subtraction' or 'mixed', ensure minuend ≥ subtrahend (no negative answers)
 - Update `difficultyProfiles.ts` if needed to account for subtraction difficulty
 - Mixed mode: Should alternate or randomize? → **Randomize** for variety
@@ -80,11 +85,12 @@ export interface WorksheetFormState {
 ### File: `problemGenerator.ts`
 
 **New Function:**
+
 ```typescript
 export interface SubtractionProblem {
-  minuend: number
-  subtrahend: number
-  operator: '-'
+  minuend: number;
+  subtrahend: number;
+  operator: "-";
 }
 
 /**
@@ -93,54 +99,57 @@ export interface SubtractionProblem {
 export function generateSubtractionProblems(
   count: number,
   digitRange: { min: number; max: number },
-  pAnyBorrow: number,    // Probability any place needs borrowing
-  pAllBorrow: number,    // Probability all places need borrowing
+  pAnyBorrow: number, // Probability any place needs borrowing
+  pAllBorrow: number, // Probability all places need borrowing
   interpolate: boolean,
-  seed: number
-): SubtractionProblem[]
+  seed: number,
+): SubtractionProblem[];
 ```
 
 **Key Constraints:**
+
 1. `minuend ≥ subtrahend` (prevent negative results)
 2. `minuend > 0` (no zero minuends)
 3. Both numbers within digit range
 4. Control borrowing probability similar to carry probability for addition
 
 **Borrowing Detection:**
+
 ```typescript
 function requiresBorrowing(minuend: number, subtrahend: number): boolean {
-  let m = minuend
-  let s = subtrahend
+  let m = minuend;
+  let s = subtrahend;
 
   while (m > 0 || s > 0) {
-    const mDigit = m % 10
-    const sDigit = s % 10
+    const mDigit = m % 10;
+    const sDigit = s % 10;
 
-    if (mDigit < sDigit) return true
+    if (mDigit < sDigit) return true;
 
-    m = Math.floor(m / 10)
-    s = Math.floor(s / 10)
+    m = Math.floor(m / 10);
+    s = Math.floor(s / 10);
   }
 
-  return false
+  return false;
 }
 ```
 
 **Mixed Mode Generation:**
+
 ```typescript
 export function generateMixedProblems(
   count: number,
   digitRange: { min: number; max: number },
-  pAnyRegroup: number,   // Probability any place needs regrouping (carry OR borrow)
-  pAllRegroup: number,   // Probability all places need regrouping
+  pAnyRegroup: number, // Probability any place needs regrouping (carry OR borrow)
+  pAllRegroup: number, // Probability all places need regrouping
   interpolate: boolean,
-  seed: number
+  seed: number,
 ): (AdditionProblem | SubtractionProblem)[] {
-  const rng = seedrandom(seed.toString())
-  const problems: (AdditionProblem | SubtractionProblem)[] = []
+  const rng = seedrandom(seed.toString());
+  const problems: (AdditionProblem | SubtractionProblem)[] = [];
 
   for (let i = 0; i < count; i++) {
-    const useAddition = rng() < 0.5  // 50/50 mix
+    const useAddition = rng() < 0.5; // 50/50 mix
 
     if (useAddition) {
       // Generate addition problem
@@ -149,7 +158,7 @@ export function generateMixedProblems(
     }
   }
 
-  return problems
+  return problems;
 }
 ```
 
@@ -160,14 +169,16 @@ export function generateMixedProblems(
 ### File: `typstHelpers.ts`
 
 **New Function:**
+
 ```typescript
 export function generateSubtractionProblemStackFunction(
   cellSize: number,
-  maxDigits: number = 3
-): string
+  maxDigits: number = 3,
+): string;
 ```
 
 **Typst Function Signature:**
+
 ```typst
 #let subtraction-problem-stack(
   minuend,           // e.g., 52
@@ -190,11 +201,13 @@ export function generateSubtractionProblemStackFunction(
 Position: Above the minuend row
 
 Visual:
+
 - Top triangle: Source place value color (giving the 10)
 - Bottom triangle: Destination place value color (receiving the 10)
 - Direction: RIGHT to LEFT (opposite of addition)
 
 Example for 52 - 17:
+
 ```
 [Borrow boxes]     [  ] [B1→0]
 [Minuend]          [ 5] [ 2]
@@ -288,6 +301,7 @@ for i in range(0, grid-digits) {
 Show ten-frames for places where borrowing occurs.
 
 Visual concept for ones place of 52 - 17:
+
 - Need to compute: (2 + 10) - 7 = 5
 - Top frame: Show 10 (borrowed from tens)
 - Bottom frame: Show the 5 filled dots (result after borrowing)
@@ -379,32 +393,32 @@ box(width: cellSizeIn, height: cellSizeIn)[
 
 ```typescript
 // types.ts
-export type WorksheetProblem = AdditionProblem | SubtractionProblem
+export type WorksheetProblem = AdditionProblem | SubtractionProblem;
 
 export interface AdditionProblem {
-  a: number
-  b: number
-  operator: '+'
+  a: number;
+  b: number;
+  operator: "+";
   // Display flags added by enrichment
-  showCarryBoxes?: boolean
-  showAnswerBoxes?: boolean
-  showPlaceValueColors?: boolean
-  showTenFrames?: boolean
-  showProblemNumbers?: boolean
-  showCellBorder?: boolean
+  showCarryBoxes?: boolean;
+  showAnswerBoxes?: boolean;
+  showPlaceValueColors?: boolean;
+  showTenFrames?: boolean;
+  showProblemNumbers?: boolean;
+  showCellBorder?: boolean;
 }
 
 export interface SubtractionProblem {
-  minuend: number
-  subtrahend: number
-  operator: '−'  // Use proper minus sign
+  minuend: number;
+  subtrahend: number;
+  operator: "−"; // Use proper minus sign
   // Display flags added by enrichment
-  showBorrowBoxes?: boolean
-  showAnswerBoxes?: boolean
-  showPlaceValueColors?: boolean
-  showTenFrames?: boolean
-  showProblemNumbers?: boolean
-  showCellBorder?: boolean
+  showBorrowBoxes?: boolean;
+  showAnswerBoxes?: boolean;
+  showPlaceValueColors?: boolean;
+  showTenFrames?: boolean;
+  showProblemNumbers?: boolean;
+  showCellBorder?: boolean;
 }
 ```
 
@@ -413,56 +427,64 @@ export interface SubtractionProblem {
 ```typescript
 function generatePageTypst(
   config: WorksheetConfig,
-  pageProblems: WorksheetProblem[],  // Can be addition or subtraction
+  pageProblems: WorksheetProblem[], // Can be addition or subtraction
   problemOffset: number,
-  rowsPerPage: number
+  rowsPerPage: number,
 ): string {
   // Enrich problems based on operator type
   const enrichedProblems = pageProblems.map((p, index) => {
-    if (p.operator === '+') {
+    if (p.operator === "+") {
       // Addition enrichment (existing logic)
-      if (config.mode === 'smart') {
-        const meta = analyzeProblem(p.a, p.b)
-        const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
-        return { ...p, ...displayOptions }
+      if (config.mode === "smart") {
+        const meta = analyzeProblem(p.a, p.b);
+        const displayOptions = resolveDisplayForProblem(
+          config.displayRules,
+          meta,
+        );
+        return { ...p, ...displayOptions };
       } else {
         return {
           ...p,
           showCarryBoxes: config.showCarryBoxes,
           showAnswerBoxes: config.showAnswerBoxes,
           // ... etc
-        }
+        };
       }
     } else {
       // Subtraction enrichment (NEW)
-      if (config.mode === 'smart') {
-        const meta = analyzeSubtractionProblem(p.minuend, p.subtrahend)
-        const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
+      if (config.mode === "smart") {
+        const meta = analyzeSubtractionProblem(p.minuend, p.subtrahend);
+        const displayOptions = resolveDisplayForProblem(
+          config.displayRules,
+          meta,
+        );
         return {
           ...p,
-          showBorrowBoxes: displayOptions.showCarryBoxes,  // Map carry → borrow
+          showBorrowBoxes: displayOptions.showCarryBoxes, // Map carry → borrow
           showAnswerBoxes: displayOptions.showAnswerBoxes,
           // ... etc
-        }
+        };
       } else {
         return {
           ...p,
-          showBorrowBoxes: config.showCarryBoxes,  // Use same setting
+          showBorrowBoxes: config.showCarryBoxes, // Use same setting
           showAnswerBoxes: config.showAnswerBoxes,
           // ... etc
-        }
+        };
       }
     }
-  })
+  });
 
   // Generate Typst with correct function calls
-  const problemsTypst = enrichedProblems.map((p) => {
-    if (p.operator === '+') {
-      return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, ...),`
-    } else {
-      return `  (operator: "-", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showBorrowBoxes: ${p.showBorrowBoxes}, ...),`
-    }
-  }).join('\n')
+  const problemsTypst = enrichedProblems
+    .map((p) => {
+      if (p.operator === "+") {
+        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, ...),`;
+      } else {
+        return `  (operator: "-", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showBorrowBoxes: ${p.showBorrowBoxes}, ...),`;
+      }
+    })
+    .join("\n");
 
   // In Typst template:
   return String.raw`
@@ -495,7 +517,7 @@ function generatePageTypst(
     }
 
     // ... rest of template
-  `
+  `;
 }
 ```
 
@@ -506,54 +528,58 @@ function generatePageTypst(
 ### File: `problemAnalysis.ts`
 
 **New Function:**
+
 ```typescript
 export interface SubtractionProblemMeta {
-  minuend: number
-  subtrahend: number
-  digitsMinuend: number
-  digitsSubtrahend: number
-  maxDigits: number
-  difference: number
-  digitsDifference: number
-  requiresBorrowing: boolean
-  borrowCount: number
-  borrowPlaces: Array<'ones' | 'tens' | 'hundreds' | 'thousands' | 'ten-thousands'>
+  minuend: number;
+  subtrahend: number;
+  digitsMinuend: number;
+  digitsSubtrahend: number;
+  maxDigits: number;
+  difference: number;
+  digitsDifference: number;
+  requiresBorrowing: boolean;
+  borrowCount: number;
+  borrowPlaces: Array<
+    "ones" | "tens" | "hundreds" | "thousands" | "ten-thousands"
+  >;
 }
 
 export function analyzeSubtractionProblem(
   minuend: number,
-  subtrahend: number
+  subtrahend: number,
 ): SubtractionProblemMeta {
-  const digitsMinuend = Math.floor(Math.log10(minuend)) + 1
-  const digitsSubtrahend = Math.floor(Math.log10(subtrahend)) + 1
-  const maxDigits = Math.max(digitsMinuend, digitsSubtrahend)
-  const difference = minuend - subtrahend
-  const digitsDifference = difference === 0 ? 1 : Math.floor(Math.log10(difference)) + 1
+  const digitsMinuend = Math.floor(Math.log10(minuend)) + 1;
+  const digitsSubtrahend = Math.floor(Math.log10(subtrahend)) + 1;
+  const maxDigits = Math.max(digitsMinuend, digitsSubtrahend);
+  const difference = minuend - subtrahend;
+  const digitsDifference =
+    difference === 0 ? 1 : Math.floor(Math.log10(difference)) + 1;
 
   // Detect borrowing
-  const borrowPlaces: SubtractionProblemMeta['borrowPlaces'] = []
-  let m = minuend
-  let s = subtrahend
-  let placeNames: SubtractionProblemMeta['borrowPlaces'][number][] = [
-    'ones',
-    'tens',
-    'hundreds',
-    'thousands',
-    'ten-thousands',
-  ]
+  const borrowPlaces: SubtractionProblemMeta["borrowPlaces"] = [];
+  let m = minuend;
+  let s = subtrahend;
+  let placeNames: SubtractionProblemMeta["borrowPlaces"][number][] = [
+    "ones",
+    "tens",
+    "hundreds",
+    "thousands",
+    "ten-thousands",
+  ];
 
-  let placeIndex = 0
+  let placeIndex = 0;
   while (m > 0 || s > 0) {
-    const mDigit = m % 10
-    const sDigit = s % 10
+    const mDigit = m % 10;
+    const sDigit = s % 10;
 
     if (mDigit < sDigit) {
-      borrowPlaces.push(placeNames[placeIndex])
+      borrowPlaces.push(placeNames[placeIndex]);
     }
 
-    m = Math.floor(m / 10)
-    s = Math.floor(s / 10)
-    placeIndex++
+    m = Math.floor(m / 10);
+    s = Math.floor(s / 10);
+    placeIndex++;
   }
 
   return {
@@ -567,7 +593,7 @@ export function analyzeSubtractionProblem(
     requiresBorrowing: borrowPlaces.length > 0,
     borrowCount: borrowPlaces.length,
     borrowPlaces,
-  }
+  };
 }
 ```
 
@@ -582,27 +608,29 @@ export function analyzeSubtractionProblem(
 ```typescript
 export function resolveDisplayForProblem(
   rules: DisplayRules,
-  meta: ProblemMeta | SubtractionProblemMeta
+  meta: ProblemMeta | SubtractionProblemMeta,
 ): DisplayOptions {
   // Detect problem type
-  const isSubtraction = 'minuend' in meta
-  const requiresRegrouping = isSubtraction ? meta.requiresBorrowing : meta.requiresRegrouping
+  const isSubtraction = "minuend" in meta;
+  const requiresRegrouping = isSubtraction
+    ? meta.requiresBorrowing
+    : meta.requiresRegrouping;
 
   // Borrow boxes / Carry boxes
   const showCarryBoxes =
-    rules.carryBoxes === 'always' ||
-    (rules.carryBoxes === 'whenRegrouping' && requiresRegrouping)
+    rules.carryBoxes === "always" ||
+    (rules.carryBoxes === "whenRegrouping" && requiresRegrouping);
 
   // ... rest of resolution logic (same for both operations)
 
   return {
-    showCarryBoxes,  // For subtraction, this means "show borrow boxes"
+    showCarryBoxes, // For subtraction, this means "show borrow boxes"
     showAnswerBoxes,
     showPlaceValueColors,
     showTenFrames,
     showProblemNumbers,
     showCellBorder,
-  }
+  };
 }
 ```
 
@@ -619,20 +647,20 @@ Add `operator` to persisted fields:
 ```typescript
 const {
   // ... existing fields
-  operator,  // NEW
-} = formState
+  operator, // NEW
+} = formState;
 
-const response = await fetch('/api/worksheets/settings', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/worksheets/settings", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     type: worksheetType,
     config: {
       // ... existing fields
-      operator,  // NEW
+      operator, // NEW
     },
   }),
-})
+});
 ```
 
 ---
@@ -643,11 +671,12 @@ const response = await fetch('/api/worksheets/settings', {
 
 ```typescript
 // Support operator field in config
-const problems = config.operator === 'addition'
-  ? generateProblems(/* ... */)
-  : config.operator === 'subtraction'
-  ? generateSubtractionProblems(/* ... */)
-  : generateMixedProblems(/* ... */)
+const problems =
+  config.operator === "addition"
+    ? generateProblems(/* ... */)
+    : config.operator === "subtraction"
+      ? generateSubtractionProblems(/* ... */)
+      : generateMixedProblems(/* ... */);
 ```
 
 ### Update `/api/create/worksheets/addition/example`
@@ -657,19 +686,19 @@ Add operator selection for display options preview:
 ```typescript
 interface ExampleRequest {
   // ... existing fields
-  operator?: 'addition' | 'subtraction'  // NEW
+  operator?: "addition" | "subtraction"; // NEW
 }
 
 function generateExampleTypst(config: ExampleRequest): string {
-  const operator = config.operator || 'addition'
+  const operator = config.operator || "addition";
 
   // Generate appropriate problem type
-  if (operator === 'addition') {
+  if (operator === "addition") {
     // ... existing addition logic
   } else {
     // Generate subtraction problem
-    const minuend = config.addend1 ?? 52
-    const subtrahend = config.addend2 ?? 17
+    const minuend = config.addend1 ?? 52;
+    const subtrahend = config.addend2 ?? 17;
 
     return String.raw`
       // ... setup
@@ -690,7 +719,7 @@ function generateExampleTypst(config: ExampleRequest): string {
           show-numbers
         )
       ]
-    `
+    `;
   }
 }
 ```
@@ -704,42 +733,47 @@ function generateExampleTypst(config: ExampleRequest): string {
 Add operator selector to preview component:
 
 ```tsx
-export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps) {
+export function DisplayOptionsPreview({
+  formState,
+}: DisplayOptionsPreviewProps) {
   // Local state for operands
-  const [operands, setOperands] = useState([45, 27])
-  const [operator, setOperator] = useState<'addition' | 'subtraction'>(
-    formState.operator === 'subtraction' ? 'subtraction' : 'addition'
-  )
+  const [operands, setOperands] = useState([45, 27]);
+  const [operator, setOperator] = useState<"addition" | "subtraction">(
+    formState.operator === "subtraction" ? "subtraction" : "addition",
+  );
 
   // Sync with formState.operator changes
   useEffect(() => {
-    if (formState.operator === 'subtraction' || formState.operator === 'addition') {
-      setOperator(formState.operator)
+    if (
+      formState.operator === "subtraction" ||
+      formState.operator === "addition"
+    ) {
+      setOperator(formState.operator);
     }
-  }, [formState.operator])
+  }, [formState.operator]);
 
   const [debouncedOptions, setDebouncedOptions] = useState({
     // ... existing fields
-    operator,  // NEW
-  })
+    operator, // NEW
+  });
 
   return (
     <div data-component="display-options-preview">
-      <div className={hstack({ gap: '2', align: 'center' })}>
+      <div className={hstack({ gap: "2", align: "center" })}>
         <div>Preview</div>
 
         {/* Operator toggle (only show if formState is mixed) */}
-        {formState.operator === 'mixed' && (
-          <div className={hstack({ gap: '1' })}>
+        {formState.operator === "mixed" && (
+          <div className={hstack({ gap: "1" })}>
             <button
-              onClick={() => setOperator('addition')}
-              className={operator === 'addition' ? 'active' : ''}
+              onClick={() => setOperator("addition")}
+              className={operator === "addition" ? "active" : ""}
             >
               +
             </button>
             <button
-              onClick={() => setOperator('subtraction')}
-              className={operator === 'subtraction' ? 'active' : ''}
+              onClick={() => setOperator("subtraction")}
+              className={operator === "subtraction" ? "active" : ""}
             >
               −
             </button>
@@ -748,14 +782,14 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
 
         <MathSentence
           operands={operands}
-          operator={operator === 'addition' ? '+' : '−'}
+          operator={operator === "addition" ? "+" : "−"}
           onChange={setOperands}
         />
       </div>
 
       {/* SVG preview */}
     </div>
-  )
+  );
 }
 ```
 
@@ -770,13 +804,14 @@ Add operator validation:
 ```typescript
 export const worksheetConfigSchema = z.object({
   // ... existing fields
-  operator: z.enum(['addition', 'subtraction', 'mixed']).default('addition'),
-})
+  operator: z.enum(["addition", "subtraction", "mixed"]).default("addition"),
+});
 ```
 
 Ensure subtraction constraints:
+
 ```typescript
-if (config.operator === 'subtraction' || config.operator === 'mixed') {
+if (config.operator === "subtraction" || config.operator === "mixed") {
   // Validate that we can generate valid subtraction problems
   // (minuend ≥ subtrahend within digit range)
 }
@@ -838,6 +873,7 @@ if (config.operator === 'subtraction' || config.operator === 'mixed') {
 ### Database Migration
 
 If storing worksheet templates:
+
 ```sql
 ALTER TABLE worksheet_settings
 ADD COLUMN operator VARCHAR(20) DEFAULT 'addition';

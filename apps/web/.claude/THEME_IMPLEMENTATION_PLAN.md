@@ -55,6 +55,7 @@ This document outlines the complete plan for implementing auto-switching light/d
 **Current State:** Only the theme toggle button uses semantic tokens. Rest of site still hardcoded to dark colors.
 
 **What to Test:**
+
 - Theme toggle button appears in nav bar (top-right)
 - Clicking toggles between light/dark
 - Theme persists on page reload
@@ -72,12 +73,14 @@ This document outlines the complete plan for implementing auto-switching light/d
 **Complexity:** MEDIUM - Gradients and hero section need careful adjustment
 
 **Current Issues:**
+
 - Background: `rgba(15, 23, 42, 1)` hardcoded
 - Hero gradient: Dark purple/blue hardcoded
 - Skill cards: Dark backgrounds with light borders
 - Game cards: `rgba(30, 41, 59, 1)` backgrounds
 
 **Changes Needed:**
+
 ```typescript
 // Hero section background
 bg: 'bg.canvas'  // instead of rgba(15, 23, 42, 1)
@@ -97,6 +100,7 @@ color: 'text.primary'  // instead of white/#f1f5f9
 ```
 
 **Lines to Change:**
+
 - Line 45-50: Main container background
 - Line 88-95: Hero gradient
 - Line 182-190: Skill cards
@@ -104,6 +108,7 @@ color: 'text.primary'  // instead of white/#f1f5f9
 - Line 156: Main heading color
 
 **Testing Checklist:**
+
 - [ ] Hero gradient looks good in both modes
 - [ ] Skill cards have proper contrast
 - [ ] Game preview cards are readable
@@ -117,35 +122,38 @@ color: 'text.primary'  // instead of white/#f1f5f9
 **Complexity:** LOW - Straightforward color replacements
 
 **Current Issues:**
+
 - Background: `gray.900` (`#111827`)
 - Card backgrounds: `rgba(30, 41, 59, 0.6)`
 - Text colors: Hardcoded light grays
 - Borders: `rgba(75, 85, 99, 0.5)`
 
 **Changes Needed:**
+
 ```typescript
 // Main container
-bg: 'bg.canvas'
+bg: "bg.canvas";
 
 // Blog cards
-bg: 'bg.surface'
-borderColor: 'border.default'
+bg: "bg.surface";
+borderColor: "border.default";
 
 // Title
-color: 'text.primary'
+color: "text.primary";
 
 // Description
-color: 'text.secondary'
+color: "text.secondary";
 
 // Meta text (date, author)
-color: 'text.muted'
+color: "text.muted";
 
 // Tags
-bg: 'accent.muted'
-color: 'accent.emphasis'
+bg: "accent.muted";
+color: "accent.emphasis";
 ```
 
 **Lines to Change:**
+
 - Line 31: Container background
 - Line 55-65: Card styling
 - Line 82: Title color
@@ -153,6 +161,7 @@ color: 'accent.emphasis'
 - Line 107-115: Tag styling
 
 **Testing Checklist:**
+
 - [ ] Card backgrounds visible in both modes
 - [ ] Text readable with proper contrast
 - [ ] Hover states clear
@@ -165,6 +174,7 @@ color: 'accent.emphasis'
 **Complexity:** HIGH - Complex markdown styling with 10+ nested selectors
 
 **Current Issues:**
+
 - Background pattern: Assumes dark background
 - Markdown content: 100+ lines of nested CSS (h1, h2, p, code, tables, blockquotes, etc.)
 - Code blocks: Dark background required
@@ -232,16 +242,19 @@ color: 'text.primary'
 ```
 
 **Lines to Change:**
+
 - Line 78-82: Main container background
 - Line 86-96: Background pattern (may need two versions)
 - Line 217-357: ALL markdown content styles
 
 **Special Considerations:**
+
 - Background pattern might need `opacity` adjustment for light mode
 - Code syntax highlighting might need separate light/dark themes
 - SVG custom properties already work (done in earlier work) ✅
 
 **Testing Checklist:**
+
 - [ ] All heading levels readable
 - [ ] Links have proper contrast
 - [ ] Code blocks readable in both modes
@@ -257,29 +270,33 @@ color: 'text.primary'
 **Complexity:** LOW - Already has light styling, needs refactoring for consistency
 
 **Current Issues:**
+
 - Uses isolated light mode styling
 - Doesn't use semantic tokens
 - Needs integration with theme system
 
 **Changes Needed:**
+
 ```typescript
 // Convert existing light styles to semantic tokens
-bg: 'bg.canvas'  // instead of white
-color: 'text.primary'  // instead of gray.900
+bg: "bg.canvas"; // instead of white
+color: "text.primary"; // instead of gray.900
 
 // Section backgrounds
-bg: 'bg.surface'
+bg: "bg.surface";
 
 // Borders
-borderColor: 'border.default'
+borderColor: "border.default";
 ```
 
 **Lines to Change:**
+
 - Line 28: Main background
 - Line 45-50: Section cards
 - Line 72: Text colors
 
 **Testing Checklist:**
+
 - [ ] Maintains current light mode appearance
 - [ ] Works in dark mode too
 - [ ] Consistent with other pages
@@ -291,28 +308,32 @@ borderColor: 'border.default'
 **Complexity:** LOW - Similar to blog index
 
 **Current Issues:**
+
 - Background: Dark hardcoded
 - Game cards: Dark backgrounds
 - Text: Light grays hardcoded
 
 **Changes Needed:**
+
 ```typescript
-bg: 'bg.canvas'
+bg: "bg.canvas";
 
 // Game cards
-bg: 'bg.surface'
-borderColor: 'border.default'
+bg: "bg.surface";
+borderColor: "border.default";
 
 // Card hover
-bg: 'interactive.hover'
+bg: "interactive.hover";
 ```
 
 **Lines to Change:**
+
 - Line 35: Main background
 - Line 58-65: Game card styling
 - Line 88: Title colors
 
 **Testing Checklist:**
+
 - [ ] Cards visible in both modes
 - [ ] Hover states work
 - [ ] Game thumbnails look good
@@ -326,6 +347,7 @@ bg: 'interactive.hover'
 ### 3.1: Arcade Games
 
 **Affected Files (5+ games):**
+
 - `src/arcade-games/complement-race/`
 - `src/arcade-games/card-sorting/`
 - `src/arcade-games/memory-quiz/`
@@ -333,6 +355,7 @@ bg: 'interactive.hover'
 - `src/arcade-games/rithmomachia/`
 
 **Common Issues:**
+
 - Inline SVGs with hardcoded colors (#7cb342, #d97757, #6366f1, etc.)
 - Game board backgrounds assume dark theme
 - Score displays, timers hardcoded
@@ -341,6 +364,7 @@ bg: 'interactive.hover'
 **Strategy:**
 
 1. **Create game-specific theme tokens** (extend Panda config):
+
 ```typescript
 semanticTokens: {
   colors: {
@@ -374,6 +398,7 @@ semanticTokens: {
    - Finally Rithmomachia (largest, but well-structured)
 
 **Per-Game Checklist Template:**
+
 - [ ] Convert background colors
 - [ ] Update text colors
 - [ ] Fix SVG colors
@@ -387,30 +412,34 @@ semanticTokens: {
 ### 3.2: Navigation Components
 
 **Affected Files:**
+
 - `src/components/AppNavBar.tsx` (partially done ✅)
 - `src/components/nav/*.tsx` (dropdowns, modals)
 
 **Current Issues:**
+
 - Dropdowns use hardcoded dark backgrounds
 - Room creation modal dark themed
 - Player indicators hardcoded colors
 
 **Changes Needed:**
+
 ```typescript
 // Dropdown menus
-bg: 'bg.surface'
-borderColor: 'border.default'
+bg: "bg.surface";
+borderColor: "border.default";
 
 // Modal overlays
-bg: 'rgba(0, 0, 0, 0.5)'  // Keep semi-transparent overlay
+bg: "rgba(0, 0, 0, 0.5)"; // Keep semi-transparent overlay
 // Modal content
-bg: 'bg.canvas'
+bg: "bg.canvas";
 
 // Player status indicators
 // Need semantic tokens: online/offline/away colors
 ```
 
 **Files to Update:**
+
 - `CreateRoomModal.tsx`
 - `JoinRoomModal.tsx`
 - `RoomInfo.tsx`
@@ -429,6 +458,7 @@ bg: 'bg.canvas'
 **Future Options:**
 
 **Option 1: Dual SVG Versions** (Recommended)
+
 ```typescript
 // Generate both versions
 generateTenFrameExamples.ts produces:
@@ -440,11 +470,13 @@ generateTenFrameExamples.ts produces:
 ```
 
 **Option 2: Inline SVGs in Markdown**
+
 - Embed SVG code directly (larger file size)
 - CSS variables work
 - More maintainable
 
 **Option 3: Dynamic SVG Loading**
+
 - Use React component to load and theme SVGs
 - Requires converting blog posts to MDX
 
@@ -459,21 +491,25 @@ generateTenFrameExamples.ts produces:
 ### 4.1: Accessibility Audit
 
 **WCAG AA Requirements:**
+
 - Contrast ratio ≥ 4.5:1 for normal text
 - Contrast ratio ≥ 3:1 for large text (18pt+)
 - Contrast ratio ≥ 3:1 for UI components
 
 **Testing Tools:**
+
 - Chrome DevTools Lighthouse
 - axe DevTools
 - WebAIM Contrast Checker
 
 **Critical Areas:**
+
 - Purple accent on light backgrounds (may need darker shade)
 - Gold/amber accents (check contrast)
 - Game board elements (must be distinguishable)
 
 **Token Adjustments Needed:**
+
 ```typescript
 // If contrast fails, adjust:
 'accent.default': {
@@ -489,12 +525,14 @@ generateTenFrameExamples.ts produces:
 ### 4.2: Cross-Browser Testing
 
 **Browsers to Test:**
+
 - Chrome/Edge (Chromium)
 - Firefox
 - Safari (macOS + iOS)
 - Mobile browsers
 
 **Known Issues:**
+
 - Safari has different `prefers-color-scheme` behavior
 - Firefox may handle `color-scheme` differently
 - Mobile browsers: test on actual devices
@@ -502,9 +540,9 @@ generateTenFrameExamples.ts produces:
 **Test Matrix:**
 | Browser | Light Mode | Dark Mode | System Auto |
 |---------|-----------|-----------|-------------|
-| Chrome  | ⬜ | ⬜ | ⬜ |
+| Chrome | ⬜ | ⬜ | ⬜ |
 | Firefox | ⬜ | ⬜ | ⬜ |
-| Safari  | ⬜ | ⬜ | ⬜ |
+| Safari | ⬜ | ⬜ | ⬜ |
 | iOS Safari | ⬜ | ⬜ | ⬜ |
 | Android Chrome | ⬜ | ⬜ | ⬜ |
 
@@ -515,6 +553,7 @@ generateTenFrameExamples.ts produces:
 **Considerations:**
 
 1. **Initial Render Flash Prevention:**
+
 ```typescript
 // Add script to <head> to set theme before render
 <script dangerouslySetInnerHTML={{
@@ -532,11 +571,13 @@ generateTenFrameExamples.ts produces:
 ```
 
 2. **CSS Variable Performance:**
+
 - Semantic tokens compile to CSS vars
 - Modern browsers handle this efficiently
 - No measurable perf impact expected
 
 3. **SVG Loading:**
+
 - Dual SVG versions add minimal overhead
 - Consider lazy loading for below-fold content
 
@@ -547,12 +588,14 @@ generateTenFrameExamples.ts produces:
 **Current:** Simple button with emoji
 
 **Enhanced Version:**
+
 - Three-state toggle (Light / System / Dark)
 - Animated transition
 - Keyboard accessible
 - Show current system preference
 
 **Design:**
+
 ```
 ┌─────────────────────────┐
 │ ☀️  Light    System  🌙 Dark │
@@ -561,6 +604,7 @@ generateTenFrameExamples.ts produces:
 ```
 
 **Implementation:**
+
 ```typescript
 <SegmentedControl>
   <Option value="light">☀️ Light</Option>
@@ -577,31 +621,31 @@ generateTenFrameExamples.ts produces:
 
 ```typescript
 // Backgrounds
-bg.canvas      // Main page background
-bg.surface     // Card/panel backgrounds
-bg.subtle      // Subtle backgrounds (hover states)
-bg.muted       // Muted backgrounds (disabled states)
+bg.canvas; // Main page background
+bg.surface; // Card/panel backgrounds
+bg.subtle; // Subtle backgrounds (hover states)
+bg.muted; // Muted backgrounds (disabled states)
 
 // Text
-text.primary   // Main text color
-text.secondary // Secondary/helper text
-text.muted     // Muted text (metadata, captions)
-text.inverse   // Text on colored backgrounds
+text.primary; // Main text color
+text.secondary; // Secondary/helper text
+text.muted; // Muted text (metadata, captions)
+text.inverse; // Text on colored backgrounds
 
 // Borders
-border.default  // Standard borders
-border.muted    // Subtle borders
-border.emphasis // Emphasized borders
+border.default; // Standard borders
+border.muted; // Subtle borders
+border.emphasis; // Emphasized borders
 
 // Accents (Purple theme)
-accent.default  // Primary accent color
-accent.emphasis // Stronger accent (hover, active)
-accent.muted    // Very subtle accent (backgrounds)
-accent.subtle   // Subtle accent (highlights)
+accent.default; // Primary accent color
+accent.emphasis; // Stronger accent (hover, active)
+accent.muted; // Very subtle accent (backgrounds)
+accent.subtle; // Subtle accent (highlights)
 
 // Interactive
-interactive.hover  // Hover state backgrounds
-interactive.active // Active/pressed state backgrounds
+interactive.hover; // Hover state backgrounds
+interactive.active; // Active/pressed state backgrounds
 ```
 
 ### Usage Examples
@@ -635,11 +679,13 @@ interactive.active // Active/pressed state backgrounds
 Use this checklist when converting each page:
 
 ### Before Starting
+
 - [ ] Read page code, note all hardcoded colors
 - [ ] Identify special cases (gradients, SVGs, animations)
 - [ ] Check for any inline styles or !important overrides
 
 ### During Conversion
+
 - [ ] Replace background colors with `bg.*` tokens
 - [ ] Replace text colors with `text.*` tokens
 - [ ] Replace border colors with `border.*` tokens
@@ -650,6 +696,7 @@ Use this checklist when converting each page:
 - [ ] Test system auto-switch
 
 ### After Conversion
+
 - [ ] Run `npm run pre-commit` (type-check, format, lint)
 - [ ] Visual regression test (compare before/after screenshots)
 - [ ] Verify no console errors
@@ -666,13 +713,15 @@ Use this checklist when converting each page:
 **Problem:** Tokens in conditions need specific syntax.
 
 **Wrong:**
+
 ```typescript
-color: theme === 'dark' ? 'text.primary' : 'gray.900'
+color: theme === "dark" ? "text.primary" : "gray.900";
 ```
 
 **Right:**
+
 ```typescript
-color: 'text.primary'  // Token handles both modes
+color: "text.primary"; // Token handles both modes
 ```
 
 ---
@@ -682,6 +731,7 @@ color: 'text.primary'  // Token handles both modes
 **Problem:** CSS gradients can't directly use semantic tokens in string templates.
 
 **Workaround:**
+
 ```typescript
 // Use token() function
 background: `linear-gradient(135deg,
@@ -701,6 +751,7 @@ background: 'linear-gradient(135deg,
 **Problem:** Some components (Radix UI, etc.) have their own theming.
 
 **Strategy:**
+
 - Use CSS variables to style Radix components
 - Override with Panda tokens where possible
 - Some components may need separate light/dark styling
@@ -779,14 +830,16 @@ background: 'linear-gradient(135deg,
 If major issues arise:
 
 1. **Quick Rollback:**
+
 ```bash
 git revert <commit-hash>
 ```
 
 2. **Feature Flag (Future):**
+
 ```typescript
 // Add environment variable
-NEXT_PUBLIC_ENABLE_THEME_SWITCHING=true
+NEXT_PUBLIC_ENABLE_THEME_SWITCHING = true;
 
 // In ThemeProvider
 if (!process.env.NEXT_PUBLIC_ENABLE_THEME_SWITCHING) {
@@ -795,6 +848,7 @@ if (!process.env.NEXT_PUBLIC_ENABLE_THEME_SWITCHING) {
 ```
 
 3. **Gradual Rollout:**
+
 - Deploy with theme system disabled by default
 - Enable per-page using URL param: `?theme=light`
 - Monitor for issues
@@ -828,11 +882,13 @@ if (!process.env.NEXT_PUBLIC_ENABLE_THEME_SWITCHING) {
 ## Resources
 
 ### Documentation
+
 - [Panda CSS Themes](https://panda-css.com/docs/theming/tokens)
 - [Next.js Dark Mode](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts#with-tailwind-css)
 - [WCAG Contrast Guidelines](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html)
 
 ### Tools
+
 - [Coolors Contrast Checker](https://coolors.co/contrast-checker)
 - [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 - [Chrome DevTools Color Picker](https://developer.chrome.com/docs/devtools/accessibility/contrast/)

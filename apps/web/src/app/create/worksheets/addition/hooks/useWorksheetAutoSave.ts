@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
-import type { WorksheetFormState } from '../types'
+import { useState, useEffect, useRef } from "react";
+import type { WorksheetFormState } from "../types";
 
 interface UseWorksheetAutoSaveReturn {
-  isSaving: boolean
-  lastSaved: Date | null
+  isSaving: boolean;
+  lastSaved: Date | null;
 }
 
 /**
@@ -20,29 +20,31 @@ interface UseWorksheetAutoSaveReturn {
  */
 export function useWorksheetAutoSave(
   formState: WorksheetFormState,
-  worksheetType: 'addition'
+  worksheetType: "addition",
 ): UseWorksheetAutoSaveReturn {
-  const [isSaving, setIsSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Store the previous formState for auto-save to detect real changes
-  const prevAutoSaveFormStateRef = useRef(formState)
+  const prevAutoSaveFormStateRef = useRef(formState);
 
   // Auto-save settings when they change (debounced) - skip on initial mount
   useEffect(() => {
     // Skip auto-save if formState hasn't actually changed (handles StrictMode double-render)
     if (formState === prevAutoSaveFormStateRef.current) {
-      console.log('[useWorksheetAutoSave] Skipping auto-save - formState reference unchanged')
-      return
+      console.log(
+        "[useWorksheetAutoSave] Skipping auto-save - formState reference unchanged",
+      );
+      return;
     }
 
-    prevAutoSaveFormStateRef.current = formState
+    prevAutoSaveFormStateRef.current = formState;
 
-    console.log('[useWorksheetAutoSave] Settings changed, will save in 1s...')
+    console.log("[useWorksheetAutoSave] Settings changed, will save in 1s...");
 
     const timer = setTimeout(async () => {
-      console.log('[useWorksheetAutoSave] Attempting to save settings...')
-      setIsSaving(true)
+      console.log("[useWorksheetAutoSave] Attempting to save settings...");
+      setIsSaving(true);
       try {
         // Extract only the fields we want to persist (exclude date, seed, derived state)
         const {
@@ -70,11 +72,11 @@ export function useWorksheetAutoSave(
           difficultyProfile,
           displayRules,
           manualPreset,
-        } = formState
+        } = formState;
 
-        const response = await fetch('/api/worksheets/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/worksheets/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: worksheetType,
             config: {
@@ -104,33 +106,36 @@ export function useWorksheetAutoSave(
               manualPreset,
             },
           }),
-        })
+        });
 
         if (response.ok) {
-          const data = await response.json()
-          console.log('[useWorksheetAutoSave] Save response:', data)
+          const data = await response.json();
+          console.log("[useWorksheetAutoSave] Save response:", data);
           if (data.success) {
-            console.log('[useWorksheetAutoSave] ✓ Settings saved successfully')
-            setLastSaved(new Date())
+            console.log("[useWorksheetAutoSave] ✓ Settings saved successfully");
+            setLastSaved(new Date());
           } else {
-            console.log('[useWorksheetAutoSave] Save skipped')
+            console.log("[useWorksheetAutoSave] Save skipped");
           }
         } else {
-          console.error('[useWorksheetAutoSave] Save failed with status:', response.status)
+          console.error(
+            "[useWorksheetAutoSave] Save failed with status:",
+            response.status,
+          );
         }
       } catch (error) {
         // Silently fail - settings persistence is not critical
-        console.error('[useWorksheetAutoSave] Settings save error:', error)
+        console.error("[useWorksheetAutoSave] Settings save error:", error);
       } finally {
-        setIsSaving(false)
+        setIsSaving(false);
       }
-    }, 1000) // 1 second debounce for auto-save
+    }, 1000); // 1 second debounce for auto-save
 
-    return () => clearTimeout(timer)
-  }, [formState, worksheetType])
+    return () => clearTimeout(timer);
+  }, [formState, worksheetType]);
 
   return {
     isSaving,
     lastSaved,
-  }
+  };
 }

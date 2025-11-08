@@ -40,6 +40,7 @@ Before adding scaffolding, let's see what borrowing problems look like in their 
 ![Subtraction without notation](/blog/subtraction-examples/comparison-no-notation.svg)
 
 **The challenge:** Students must mentally track:
+
 - Which columns need borrowing
 - What the modified values become
 - Where to write scratch work
@@ -54,6 +55,7 @@ Now watch what happens when we add **borrow notation boxes** to the exact same p
 ![Subtraction with borrow notation](/blog/subtraction-examples/comparison-with-notation.svg)
 
 **Immediate improvements:**
+
 - **Dotted scratch boxes** appear to the left of digits that need modification
 - **Designated space** for writing the borrowed value (like "12" when borrowing from tens)
 - **Visual structure** keeps work organized and legible
@@ -68,6 +70,7 @@ For targeted practice on the borrowing mechanism, use problems that require exac
 ![Single borrow in ones place](/blog/subtraction-examples/single-borrow-ones.svg)
 
 **Place value colors help students see:**
+
 - Blue box = borrowing from the **tens** place to help the **ones** place
 - Green tens digit decreases by 1
 - Blue ones digit becomes 10 + original value
@@ -81,11 +84,13 @@ For students who need step-by-step guidance, enable **borrowing hints**:
 ![Detailed borrowing hints](/blog/subtraction-examples/hints-detail.svg)
 
 **Borrowing hints show:**
+
 - **Curved arrows** pointing from the borrow source to the scratch box
 - **The calculation** needed (showing "n-1" or the specific transformation)
 - **Visual flow** of the borrowing process from left to right
 
 This is particularly powerful when:
+
 - Introducing borrowing for the first time
 - Working with students who struggle with the concept
 - Providing remedial support
@@ -100,6 +105,7 @@ Once students master single-column borrowing, challenge them with problems that 
 ![Complex subtraction with multiple borrows](/blog/subtraction-examples/multiple-borrows.svg)
 
 **The same scaffolding system scales up:**
+
 - Each place that needs borrowing gets its own notation box
 - Place value colors extend to hundreds (yellow), thousands (pink), and beyond
 - Students can track multiple borrows without getting overwhelmed
@@ -112,11 +118,13 @@ The trickiest type of borrowing is when it **cascades** across multiple place va
 ![Cascading borrows across places](/blog/subtraction-examples/cascading-borrows.svg)
 
 **Examples of cascading borrows:**
+
 - 1000 − 1 requires borrowing through thousands → hundreds → tens → ones
 - 5000 − 2367 creates a chain reaction of borrows
 - Each borrow triggers the next, moving from left to right
 
 Our scaffolding handles these complex cases automatically:
+
 - Borrow notation boxes appear wherever needed
 - Place value colors show the chain reaction
 - Students can work through each step methodically
@@ -147,31 +155,37 @@ Prefer to control exactly what students see? Use **Manual Mode** to set uniform 
 Here's how you might use these scaffolding levels to teach subtraction:
 
 **Week 1: Build Confidence**
+
 - Use Level 1 (no borrowing) worksheets
 - Focus on basic subtraction mechanics
 - Ensure understanding of place value
 
 **Week 2: Introduce Borrowing**
+
 - Show Level 2 (no scaffolding) to highlight the challenge
 - Introduce Level 3 (borrow notation boxes)
 - Explain: "This is where we'll write our scratch work"
 
 **Week 3: Deepen Understanding**
+
 - Level 4 (single borrow focus) for targeted practice
 - Use Level 5 (borrowing hints) for struggling students
 - Begin mixed practice with some no-borrow problems
 
 **Week 4: Increase Complexity**
+
 - Level 6 (multiple borrows) for advancing students
 - Continue Level 4-5 for students who need more time
 - Introduce 3-digit problems
 
 **Week 5-6: Master Cascading Borrows**
+
 - Level 7 (cascading borrows) for ready students
 - Use place value colors to show the chain reaction
 - Mix all levels for spiral review
 
 **Week 7+: Fade Scaffolding**
+
 - Gradually reduce scaffolding (turn off hints, then notation boxes)
 - Smart Mode can automate this transition
 - Move toward Level 2 style problems without support

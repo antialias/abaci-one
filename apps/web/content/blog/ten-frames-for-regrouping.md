@@ -4,7 +4,15 @@ description: "How visual scaffolding with ten-frames helps students understand t
 author: "Abaci.one Team"
 publishedAt: "2025-11-07"
 updatedAt: "2025-11-07"
-tags: ["education", "ten-frames", "regrouping", "pedagogy", "scaffolding", "worksheets"]
+tags:
+  [
+    "education",
+    "ten-frames",
+    "regrouping",
+    "pedagogy",
+    "scaffolding",
+    "worksheets",
+  ]
 featured: true
 ---
 
@@ -73,7 +81,8 @@ When you add 5 more dots and the frame fills up, you physically see the creation
   <circle cx="158" cy="65" r="12" fill="#86efac"/>
 
   <!-- Plus sign -->
-  <text x="190" y="50" font-family="sans-serif" font-size="24" text-anchor="middle">+</text>
+
+<text x="190" y="50" font-family="sans-serif" font-size="24" text-anchor="middle">+</text>
 
   <!-- Second frame (2 remaining) -->
   <rect x="205" y="5" width="170" height="80" fill="none" stroke="black" stroke-width="2"/>
@@ -86,8 +95,8 @@ When you add 5 more dots and the frame fills up, you physically see the creation
   <circle cx="222" cy="25" r="12" fill="#93c5fd"/>
   <circle cx="256" cy="25" r="12" fill="#93c5fd"/>
 
-  <text x="190" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">1 ten (green)</text>
-  <text x="290" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">+ 2 ones (blue) = 12</text>
+<text x="190" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">1 ten (green)</text>
+<text x="290" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">+ 2 ones (blue) = 12</text>
 </svg>
 
 ## Why Ten-Frames Matter for Regrouping
@@ -95,15 +104,17 @@ When you add 5 more dots and the frame fills up, you physically see the creation
 Regrouping in addition—the concept that when you add numbers and get more than 10 in a place value, you "carry" to the next column—is one of the first abstract mathematical concepts children encounter. And it's hard.
 
 Consider the problem **47 + 38**:
+
 - When adding the ones place: 7 + 8 = 15
 - That's "1 ten and 5 ones"
 - The ten gets carried to the tens place
 
-This is abstract. What does it *mean* that 15 is "1 ten and 5 ones"? Why does the "1" move to the tens column? For many students, this becomes a mechanical procedure they follow without understanding.
+This is abstract. What does it _mean_ that 15 is "1 ten and 5 ones"? Why does the "1" move to the tens column? For many students, this becomes a mechanical procedure they follow without understanding.
 
 **Ten-frames make this visible.**
 
 When you represent 7 + 8 with ten-frames:
+
 1. You have a ten-frame with 7 filled boxes
 2. You have 8 more to add
 3. First, 3 boxes fill up the remaining spaces in the ten-frame → **you made a ten!**
@@ -125,24 +136,28 @@ The worksheets show **stacked ten-frames** below each place value column that ne
 - **Color-coded**: Place value colors (blue for ones, green for tens, yellow for hundreds) help connect the frames to their respective columns
 
 For example, in **47 + 38**:
+
 - When adding the ones column (7 + 8), a ten-frame appears below the ones column
 - The bottom portion shows the 5 extra ones (in blue) that remain after making a ten
 - The top portion shows the 1 ten (in green) that gets carried to the tens column
-- Students can literally *see* how the overflow becomes a carry
+- Students can literally _see_ how the overflow becomes a carry
 
 ### Visual Examples
 
 Let's compare the same problem with and without ten-frames to see the difference:
 
 #### With Ten-Frames: Visual Support for Regrouping
+
 ![Problem 47 + 38 with ten-frames](/blog/ten-frame-examples/with-ten-frames.svg)
-*Ten-frames appear below the ones column, showing how 7 + 8 = 15 breaks down into 1 ten (carried) and 5 ones (remaining). The bottom frame (blue) shows the 5 ones that stay, while the top frame (green) shows the 1 ten that gets carried.*
+_Ten-frames appear below the ones column, showing how 7 + 8 = 15 breaks down into 1 ten (carried) and 5 ones (remaining). The bottom frame (blue) shows the 5 ones that stay, while the top frame (green) shows the 1 ten that gets carried._
 
 #### Without Ten-Frames: Abstract Representation
+
 ![Problem 47 + 38 without ten-frames](/blog/ten-frame-examples/without-ten-frames.svg)
-*The same problem without ten-frames requires students to mentally visualize the regrouping process.*
+_The same problem without ten-frames requires students to mentally visualize the regrouping process._
 
 Notice how the ten-frames make the invisible visible. In 47 + 38, when adding the ones column:
+
 - Students see 7 + 8 creates enough to fill one complete ten-frame (10) with 5 left over
 - The filled frame (green, top) represents the carry to the tens place
 - The 5 remaining boxes (blue, bottom) stay in the ones place
@@ -157,9 +172,10 @@ Like all scaffolding, ten-frames should be **introduced when needed and faded wh
 **Use when**: Introducing regrouping for the first time
 
 ![Beginner problem 28 + 15 with ten-frames](/blog/ten-frame-examples/beginner-ten-frames.svg)
-*A simpler problem (28 + 15) with ten-frames. Students see 8 + 5 = 13, which requires regrouping. The ten-frame shows this as 1 full ten (carried) plus 3 ones (remaining).*
+_A simpler problem (28 + 15) with ten-frames. Students see 8 + 5 = 13, which requires regrouping. The ten-frame shows this as 1 full ten (carried) plus 3 ones (remaining)._
 
 At this level, ten-frames appear when problems involve regrouping. This helps students:
+
 - Build visual familiarity with the ten-frame representation
 - Practice the "make ten" strategy with concrete support
 - Develop number sense about what sums greater than 10 look like
@@ -172,9 +188,10 @@ At this level, ten-frames appear when problems involve regrouping. This helps st
 **Use when**: Students understand basic regrouping but need support for complex problems
 
 ![Problem with ten-frames in multiple columns](/blog/ten-frame-examples/ten-frames-both-columns.svg)
-*A more complex problem (57 + 68) that requires regrouping in BOTH place values. Ten-frames appear below both the ones column (7 + 8 = 15) and the tens column (5 + 6 + 1 = 12), showing students how each overflow creates a carry.*
+_A more complex problem (57 + 68) that requires regrouping in BOTH place values. Ten-frames appear below both the ones column (7 + 8 = 15) and the tens column (5 + 6 + 1 = 12), showing students how each overflow creates a carry._
 
 This is the "smart scaffolding" level. Ten-frames appear only when they're needed—when a column sum exceeds 10. This:
+
 - Reduces visual clutter on simpler problems
 - Draws attention to where regrouping is happening
 - Lets students practice both with and without visual support
@@ -211,7 +228,7 @@ Ten-frames teach more than just regrouping—they teach a fundamental mental mat
   <text x="90" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">"I have 7... I need 3 more to fill the frame!"</text>
 </svg>
 
-*Child sees: The top row is full (5), bottom row has 2. Three empty boxes remain to make a complete ten.*
+_Child sees: The top row is full (5), bottom row has 2. Three empty boxes remain to make a complete ten._
 
 ### Step 2: "I can take 3 from the 8 to fill my frame"
 
@@ -259,7 +276,7 @@ Ten-frames teach more than just regrouping—they teach a fundamental mental mat
   <text x="290" y="105" font-family="sans-serif" font-size="14" text-anchor="middle">5 left over</text>
 </svg>
 
-*Child thinks: "8 is really 3 and 5. I'll use the 3 to complete my ten-frame, and I have 5 extras."*
+_Child thinks: "8 is really 3 and 5. I'll use the 3 to complete my ten-frame, and I have 5 extras."_
 
 ### Step 3: "Now I have 10 + 5 = 15!"
 
@@ -282,7 +299,7 @@ Ten-frames teach more than just regrouping—they teach a fundamental mental mat
   <circle cx="124" cy="65" r="12" fill="#86efac"/>
   <circle cx="158" cy="65" r="12" fill="#86efac"/>
 
-  <text x="190" y="50" font-family="sans-serif" font-size="24" text-anchor="middle">+</text>
+<text x="190" y="50" font-family="sans-serif" font-size="24" text-anchor="middle">+</text>
 
   <!-- Partial frame (5) -->
   <rect x="205" y="5" width="170" height="80" fill="none" stroke="black" stroke-width="2"/>
@@ -297,11 +314,11 @@ Ten-frames teach more than just regrouping—they teach a fundamental mental mat
   <circle cx="324" cy="25" r="12" fill="#93c5fd"/>
   <circle cx="358" cy="25" r="12" fill="#93c5fd"/>
 
-  <text x="190" y="105" font-family="sans-serif" font-size="14" text-anchor="middle" font-weight="bold">10</text>
-  <text x="290" y="105" font-family="sans-serif" font-size="14" text-anchor="middle" font-weight="bold">+ 5 = 15</text>
+<text x="190" y="105" font-family="sans-serif" font-size="14" text-anchor="middle" font-weight="bold">10</text>
+<text x="290" y="105" font-family="sans-serif" font-size="14" text-anchor="middle" font-weight="bold">+ 5 = 15</text>
 </svg>
 
-*Child concludes: "One complete frame is 10, plus 5 more makes 15. So 7 + 8 = 15!"*
+_Child concludes: "One complete frame is 10, plus 5 more makes 15. So 7 + 8 = 15!"_
 
 This strategy becomes automatic through ten-frame practice. Eventually, students can mentally visualize the frames without seeing them, dramatically improving addition fluency.
 
@@ -331,16 +348,19 @@ Our scaffold fading system automates this progression: use the "Less support" di
 Our worksheet generator at **[abaci.one/create/worksheets/addition](https://abaci.one/create/worksheets/addition)** gives you complete control over ten-frame scaffolding:
 
 **For early learners**:
+
 - Set difficulty to "Beginner" or "Early Learner"
 - Ten-frames will appear when problems involve regrouping
 - Problems start simple to build confidence
 
 **To practice the "make ten" strategy**:
+
 - Use "More support" to set ten-frames to "always"
 - Generate problems with moderate regrouping (pAnyStart = 0.5-0.7)
 - Students see ten-frames on every problem to build pattern recognition
 
 **To fade scaffolding gradually**:
+
 - Start at "Early Learner" (ten-frames when regrouping)
 - Use "Less support" to reduce other scaffolds first (carry boxes, colors)
 - Finally use "Less support" again to remove ten-frames
@@ -360,6 +380,7 @@ This creates worksheets that provide just enough support for each problem's comp
 ## What's Next
 
 We're exploring extensions of the ten-frame approach to:
+
 - **Subtraction with borrowing**: Showing how taking away requires "breaking" a ten
 - **Decimal addition**: Using ten-frames to show regrouping across the decimal point
 - **Fraction concepts**: Visual representation of part-whole relationships
@@ -371,6 +392,7 @@ See the technical details in our [typstHelpers.ts](https://github.com/antialias/
 ## Feedback Welcome
 
 We'd love to hear from teachers using ten-frames:
+
 - Are the stacked frames (showing both the overflow and the carry) helpful or confusing?
 - Should we add configuration for single vs. double ten-frames?
 - What other visual representations would support regrouping?
@@ -379,4 +401,4 @@ Share your thoughts via [GitHub issues](https://github.com/antialias/soroban-aba
 
 ---
 
-*The ten-frame scaffolding system described here is part of our 2D difficulty research. Students progress through a pedagogically-constrained space where problem complexity and instructional support balance appropriately for each learner. Read more in our [2D difficulty post](/blog/beyond-easy-and-hard).*
+_The ten-frame scaffolding system described here is part of our 2D difficulty research. Students progress through a pedagogically-constrained space where problem complexity and instructional support balance appropriately for each learner. Read more in our [2D difficulty post](/blog/beyond-easy-and-hard)._

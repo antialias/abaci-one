@@ -1,8 +1,8 @@
 // Borrow boxes row rendering for subtraction problems
 // This row shows where borrows occur (FROM higher place TO lower place)
 
-import type { CellDimensions } from '../shared/types'
-import { TYPST_CONSTANTS } from '../shared/types'
+import type { CellDimensions } from "../shared/types";
+import { TYPST_CONSTANTS } from "../shared/types";
 
 /**
  * Generate Typst code for the borrow boxes row
@@ -18,19 +18,23 @@ import { TYPST_CONSTANTS } from '../shared/types'
  * @returns Typst code for borrow boxes row
  */
 export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
-  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions
+  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions;
 
-  const hintTextSize = (cellSizePt * TYPST_CONSTANTS.HINT_TEXT_SIZE_FACTOR).toFixed(1)
-  const arrowheadSize = (cellSizePt * TYPST_CONSTANTS.ARROWHEAD_SIZE_FACTOR).toFixed(1)
+  const hintTextSize = (
+    cellSizePt * TYPST_CONSTANTS.HINT_TEXT_SIZE_FACTOR
+  ).toFixed(1);
+  const arrowheadSize = (
+    cellSizePt * TYPST_CONSTANTS.ARROWHEAD_SIZE_FACTOR
+  ).toFixed(1);
 
-  const arrowStartDx = (cellSize * TYPST_CONSTANTS.ARROW_START_DX).toFixed(2)
-  const arrowStartDy = (cellSize * TYPST_CONSTANTS.ARROW_START_DY).toFixed(2)
-  const arrowEndX = (cellSize * 0.24).toFixed(2)
-  const arrowEndY = (cellSize * 0.7).toFixed(2)
-  const arrowControlX = (cellSize * 0.11).toFixed(2)
-  const arrowControlY = (cellSize * -0.5).toFixed(2)
-  const arrowheadDx = (cellSize * TYPST_CONSTANTS.ARROWHEAD_DX).toFixed(2)
-  const arrowheadDy = (cellSize * TYPST_CONSTANTS.ARROWHEAD_DY).toFixed(2)
+  const arrowStartDx = (cellSize * TYPST_CONSTANTS.ARROW_START_DX).toFixed(2);
+  const arrowStartDy = (cellSize * TYPST_CONSTANTS.ARROW_START_DY).toFixed(2);
+  const arrowEndX = (cellSize * 0.24).toFixed(2);
+  const arrowEndY = (cellSize * 0.7).toFixed(2);
+  const arrowControlX = (cellSize * 0.11).toFixed(2);
+  const arrowControlY = (cellSize * -0.5).toFixed(2);
+  const arrowheadDx = (cellSize * TYPST_CONSTANTS.ARROWHEAD_DX).toFixed(2);
+  const arrowheadDy = (cellSize * TYPST_CONSTANTS.ARROWHEAD_DY).toFixed(2);
 
   return String.raw`
       // Borrow boxes row (shows borrows FROM higher place TO lower place)
@@ -100,5 +104,5 @@ export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
           ],)
         }
       },
-`
+`;
 }

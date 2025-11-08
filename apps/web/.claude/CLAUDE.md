@@ -182,6 +182,7 @@ We have a **single-problem example generator** used for both the UI preview and 
 See `.claude/BLOG_EXAMPLES_PATTERN.md` for complete documentation.
 
 **Quick reference:**
+
 - UI preview API: `src/app/api/create/worksheets/addition/example/route.ts`
 - Blog generators: `scripts/generateTenFrameExamples.ts`, `scripts/generateBlogExamples.ts`
 - Shared code: `src/app/create/worksheets/addition/typstHelpers.ts`
@@ -679,6 +680,7 @@ When monitoring deployments to production (NAS at abaci.one):
    - Note that compose-updater should pick it up within 5 minutes
 
 **Force immediate deployment:**
+
 ```bash
 # Restart compose-updater to trigger immediate check (instead of waiting up to 5 minutes)
 ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"

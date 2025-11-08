@@ -87,7 +87,8 @@ export const EmojiBeads_Fruit: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Count apples, oranges, or any fruit! Great for early math education.",
+        story:
+          "Count apples, oranges, or any fruit! Great for early math education.",
       },
     },
   },
@@ -134,7 +135,8 @@ export const EmojiBeads_Hearts: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Hearts for Valentine's Day or expressing love! 143 = 'I Love You'.",
+        story:
+          "Hearts for Valentine's Day or expressing love! 143 = 'I Love You'.",
       },
     },
   },

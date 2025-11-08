@@ -27,12 +27,13 @@ typstHelpers.ts (793 lines)
    - Hard to edit without breaking bracket matching
 
 2. **Template literal hell** - Mixing TypeScript and Typst syntax:
+
    ```typescript
    `#if show-colors {
      box[#diagonal-split-box(${cellSize}, ...)]  // TypeScript interpolation
    } else {
      box[...]
-   }`
+   }`;
    ```
 
 3. **Duplicate code** between addition and subtraction functions
@@ -68,6 +69,7 @@ typstHelpers/
 ```
 
 **Benefits**:
+
 - Each file is 50-150 lines instead of 350+
 - Easier to locate and edit specific features
 - Can share common components (answer rows, cell rendering)
@@ -81,10 +83,10 @@ typstHelpers/
 // Example: Render a cell with optional color and stroke
 export function generateCellBox(
   cellSize: number,
-  options: { showColor: boolean; showStroke: boolean }
+  options: { showColor: boolean; showStroke: boolean },
 ): string {
-  const stroke = options.showStroke ? ', stroke: 0.5pt' : ''
-  return `box(width: ${cellSize}in, height: ${cellSize}in${stroke})`
+  const stroke = options.showStroke ? ", stroke: 0.5pt" : "";
+  return `box(width: ${cellSize}in, height: ${cellSize}in${stroke})`;
 }
 
 // Example: Render place() helper
@@ -92,18 +94,19 @@ export function generatePlaceBlock(
   position: string,
   dx: number,
   dy: number,
-  content: string
+  content: string,
 ): string {
   return `#place(
     ${position},
     dx: ${dx}in,
     dy: ${dy}in,
     ${content}
-  )`
+  )`;
 }
 ```
 
 **Benefits**:
+
 - Reduces duplication
 - Consistent formatting across all Typst generation
 - Easier to change common patterns (e.g., cell styling)
@@ -114,22 +117,23 @@ export function generatePlaceBlock(
 
 ```typescript
 // tests/typstHelpers/borrowBoxes.test.ts
-describe('generateBorrowBoxes', () => {
-  it('renders arrow when showBorrowingHints is true', () => {
-    const typst = generateBorrowBoxes({ showBorrowingHints: true })
-    expect(typst).toContain('path(')
-    expect(typst).toContain('[▼]')
-  })
+describe("generateBorrowBoxes", () => {
+  it("renders arrow when showBorrowingHints is true", () => {
+    const typst = generateBorrowBoxes({ showBorrowingHints: true });
+    expect(typst).toContain("path(");
+    expect(typst).toContain("[▼]");
+  });
 
-  it('does not use place value colors (fixed per design)', () => {
-    const typst = generateBorrowBoxes({ showPlaceValueColors: true })
-    expect(typst).not.toContain('diagonal-split-box')
-    expect(typst).toContain('stroke: 0.5pt')
-  })
-})
+  it("does not use place value colors (fixed per design)", () => {
+    const typst = generateBorrowBoxes({ showPlaceValueColors: true });
+    expect(typst).not.toContain("diagonal-split-box");
+    expect(typst).toContain("stroke: 0.5pt");
+  });
+});
 ```
 
 **Benefits**:
+
 - Catch regressions when editing Typst templates
 - Document expected behavior
 - Faster feedback than manual worksheet generation
@@ -155,10 +159,11 @@ export const TYPST_CONSTANTS = {
   // Sizing
   HINT_TEXT_SIZE_FACTOR: 0.25,
   ARROWHEAD_SIZE_FACTOR: 0.35,
-} as const
+} as const;
 ```
 
 **Benefits**:
+
 - Easier to adjust visual parameters
 - Self-documenting code
 - Reduces magic number proliferation
@@ -166,17 +171,20 @@ export const TYPST_CONSTANTS = {
 ## Implementation Plan
 
 ### Step 1: Create Directory Structure
+
 ```bash
 mkdir -p src/app/create/worksheets/addition/typstHelpers/{shared,addition,subtraction}
 touch src/app/create/worksheets/addition/typstHelpers/index.ts
 ```
 
 ### Step 2: Extract Shared Components (Week 1)
+
 1. Move `color-*` definitions to `shared/colors.ts`
 2. Move `ten-frames-stacked`, `diagonal-split-box` to `shared/helpers.ts`
 3. Create `shared/types.ts` for TypeScript interfaces
 
 ### Step 3: Split Subtraction Function (Week 1-2)
+
 1. Extract borrow box rendering to `subtraction/borrowBoxes.ts`
    - Keep arrow rendering self-contained
    - Document the "no place value colors" decision
@@ -186,17 +194,20 @@ touch src/app/create/worksheets/addition/typstHelpers/index.ts
 5. Refactor `generateSubtractionProblemStackFunction` to compose these pieces
 
 ### Step 4: Split Addition Function (Week 2)
+
 1. Extract carry box rendering to `addition/carryBoxes.ts`
 2. Extract addend rows to `addition/addendRows.ts`
 3. Extract answer row to `addition/answerRow.ts`
 4. Refactor `generateProblemStackFunction` to compose these pieces
 
 ### Step 5: Update Imports (Week 2)
+
 1. Update `typstGenerator.ts` to import from new structure
 2. Update `example/route.ts` to import from new structure
 3. Ensure all existing consumers work unchanged (backward compatibility)
 
 ### Step 6: Add Tests (Week 3)
+
 1. Add unit tests for each extracted component
 2. Add integration tests for full problem stack generation
 3. Verify output matches current worksheets byte-for-byte
@@ -206,11 +217,13 @@ touch src/app/create/worksheets/addition/typstHelpers/index.ts
 ### Backward Compatibility
 
 **Option A: Maintain Old Exports**
+
 - Keep `typstHelpers.ts` as a facade that re-exports from new structure
 - Consumers don't need to change imports immediately
 - Can gradually migrate to new imports
 
 **Option B: Update All Consumers**
+
 - Change all imports to use new structure immediately
 - More disruptive but cleaner
 
@@ -218,12 +231,12 @@ touch src/app/create/worksheets/addition/typstHelpers/index.ts
 
 ```typescript
 // typstHelpers.ts (old file becomes facade)
-export * from './typstHelpers/index'
+export * from "./typstHelpers/index";
 
 // typstHelpers/index.ts (new entry point)
-export { generateTypstHelpers } from './shared/helpers'
-export { generateProblemStackFunction } from './addition/problemStack'
-export { generateSubtractionProblemStackFunction } from './subtraction/problemStack'
+export { generateTypstHelpers } from "./shared/helpers";
+export { generateProblemStackFunction } from "./addition/problemStack";
+export { generateSubtractionProblemStackFunction } from "./subtraction/problemStack";
 ```
 
 ### Validation

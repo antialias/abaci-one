@@ -112,7 +112,7 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
   if (v2.difficultyProfile) {
     return {
       version: 3,
-      mode: 'smart',
+      mode: "smart",
       ...v2,
       // Ensure manual fields are undefined
       showCarryBoxes: undefined,
@@ -121,14 +121,14 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
       showTenFrames: undefined,
       showProblemNumbers: undefined,
       showCellBorder: undefined,
-    }
+    };
   }
 
   // Otherwise, migrate to manual mode
   // Convert displayRules to boolean flags
   return {
     version: 3,
-    mode: 'manual',
+    mode: "manual",
     problemsPerPage: v2.problemsPerPage,
     cols: v2.cols,
     pages: v2.pages,
@@ -140,18 +140,18 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
     interpolate: v2.interpolate,
 
     // Convert displayRules to booleans
-    showCarryBoxes: v2.displayRules.carryBoxes === 'always',
-    showAnswerBoxes: v2.displayRules.answerBoxes === 'always',
-    showPlaceValueColors: v2.displayRules.placeValueColors === 'always',
-    showTenFrames: v2.displayRules.tenFrames === 'always',
-    showProblemNumbers: v2.displayRules.problemNumbers === 'always',
-    showCellBorder: v2.displayRules.cellBorders === 'always',
+    showCarryBoxes: v2.displayRules.carryBoxes === "always",
+    showAnswerBoxes: v2.displayRules.answerBoxes === "always",
+    showPlaceValueColors: v2.displayRules.placeValueColors === "always",
+    showTenFrames: v2.displayRules.tenFrames === "always",
+    showProblemNumbers: v2.displayRules.problemNumbers === "always",
+    showCellBorder: v2.displayRules.cellBorders === "always",
     showTenFramesForAll: false, // Not tracked in V2
 
     // Undefined smart mode fields
     displayRules: undefined,
     difficultyProfile: undefined,
-  }
+  };
 }
 ```
 
@@ -207,6 +207,7 @@ function generatePageTypst(config: WorksheetConfig, pageProblems: AdditionProble
 ```
 
 **Implementation:**
+
 - Radio buttons or segmented control
 - Changing modes shows confirmation dialog if settings would be lost
 - Switching from Smart → Manual: Convert current displayRules to closest boolean equivalent
@@ -215,6 +216,7 @@ function generatePageTypst(config: WorksheetConfig, pageProblems: AdditionProble
 #### Smart Difficulty Mode UI
 
 Shows current UI:
+
 - Difficulty Level section (with preset buttons, 2D graph, make harder/easier)
 - Display Options section **HIDDEN** (controlled by difficulty preset)
 
@@ -241,20 +243,21 @@ Shows current UI:
 ```typescript
 // In database schema
 interface WorksheetSettings {
-  userId: string
-  worksheetType: 'addition' | 'subtraction' // etc
+  userId: string;
+  worksheetType: "addition" | "subtraction"; // etc
 
   // Store V3 config with mode
-  config: AdditionConfigV3
+  config: AdditionConfigV3;
 
   // Track which mode user prefers (for new worksheets)
-  preferredMode: 'smart' | 'manual'
+  preferredMode: "smart" | "manual";
 
-  updatedAt: Date
+  updatedAt: Date;
 }
 ```
 
 **Behavior:**
+
 - Load user's last config (migrates V1/V2 → V3 automatically)
 - Remember which mode they were in
 - Default new users to 'smart' mode
@@ -268,11 +271,13 @@ interface WorksheetSettings {
 **Heading:** "Smart Difficulty - Research-Backed Progressive Learning"
 
 **Description:**
+
 > Let the system intelligently adjust scaffolding based on each problem's complexity.
 > Scaffolds like carry boxes and ten-frames appear only when needed, gradually
 > fading as students build confidence.
 
 **Use when:**
+
 - Following research-backed pedagogical progression
 - Working with students at different skill levels
 - Want automatic scaffolding that adapts to problem complexity
@@ -282,11 +287,13 @@ interface WorksheetSettings {
 **Heading:** "Manual Control - Full Display Customization"
 
 **Description:**
+
 > Take complete control over which visual aids appear on your worksheets.
 > All problems will show the same scaffolding - perfect for targeted practice
 > or specific classroom needs.
 
 **Use when:**
+
 - Need consistent display across all problems
 - Have specific curriculum requirements
 - Want predictable worksheets for assessment
@@ -296,6 +303,7 @@ interface WorksheetSettings {
 ### 7. Implementation Checklist
 
 **Phase 1: Data Model**
+
 - [ ] Create V3 schema with discriminated union
 - [ ] Write V2→V3 migration function
 - [ ] Update `validateWorksheetConfig()` to handle both modes
@@ -303,30 +311,35 @@ interface WorksheetSettings {
 - [ ] Write tests for migration
 
 **Phase 2: Generation Logic**
+
 - [ ] Update `typstGenerator.ts` to check mode
 - [ ] Keep `resolveDisplayForProblem()` for smart mode
 - [ ] Add uniform display logic for manual mode
 - [ ] Ensure both paths produce valid Typst
 
 **Phase 3: UI - Mode Selector**
+
 - [ ] Add mode selector at top of ConfigPanel
 - [ ] Implement mode switching logic
 - [ ] Add confirmation dialog when switching modes
 - [ ] Provide sensible defaults when switching
 
 **Phase 4: UI - Conditional Sections**
+
 - [ ] Hide/show Difficulty Level based on mode
 - [ ] Hide/show Display Options based on mode
 - [ ] Update Display Options to be read-only in smart mode (or hidden)
 - [ ] Ensure Regrouping Frequency is shared
 
 **Phase 5: Settings Persistence**
+
 - [ ] Update database schema to store mode
 - [ ] Update save/load logic to preserve mode
 - [ ] Add `preferredMode` tracking
 - [ ] Test settings persistence
 
 **Phase 6: Polish & Testing**
+
 - [ ] Add tooltips/help text explaining modes
 - [ ] Test all migration paths (V1→V3, V2→V3)
 - [ ] Test mode switching in both directions
@@ -338,25 +351,30 @@ interface WorksheetSettings {
 ## Benefits of This Design
 
 ### ✅ Preserves Both Systems
+
 - Smart mode keeps the pedagogically-sound 2D difficulty system
 - Manual mode preserves simple teacher control
 
 ### ✅ Clear Separation of Concerns
+
 - No more conflicts between preset rules and manual overrides
 - Each mode has its own dedicated UI
 - Impossible to be in an inconsistent state
 
 ### ✅ Backward Compatible
+
 - V1 configs → Manual mode (what they're used to)
 - V2 configs with presets → Smart mode
 - V2 configs without presets → Manual mode
 
 ### ✅ Future-Proof
+
 - Easy to add new modes (e.g., "Template Library" mode)
 - Clear migration path if we deprecate old versions
 - Discriminated union catches type errors at compile time
 
 ### ✅ User-Friendly
+
 - Teachers explicitly choose their workflow
 - No hidden magic or surprising behavior
 - Clear mental model: "Am I using presets or toggles?"
@@ -395,9 +413,9 @@ Add preset buttons in Manual mode similar to Smart mode presets:
 ```typescript
 export const MANUAL_MODE_PRESETS = {
   fullScaffolding: {
-    name: 'fullScaffolding',
-    label: 'Full Scaffolding',
-    description: 'All visual aids enabled for maximum support',
+    name: "fullScaffolding",
+    label: "Full Scaffolding",
+    description: "All visual aids enabled for maximum support",
     showCarryBoxes: true,
     showAnswerBoxes: true,
     showPlaceValueColors: true,
@@ -408,9 +426,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   minimalScaffolding: {
-    name: 'minimalScaffolding',
-    label: 'Minimal Scaffolding',
-    description: 'Basic structure only - for students building independence',
+    name: "minimalScaffolding",
+    label: "Minimal Scaffolding",
+    description: "Basic structure only - for students building independence",
     showCarryBoxes: false,
     showAnswerBoxes: false,
     showPlaceValueColors: false,
@@ -421,9 +439,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   assessmentMode: {
-    name: 'assessmentMode',
-    label: 'Assessment Mode',
-    description: 'Clean layout for testing - minimal visual aids',
+    name: "assessmentMode",
+    label: "Assessment Mode",
+    description: "Clean layout for testing - minimal visual aids",
     showCarryBoxes: false,
     showAnswerBoxes: false,
     showPlaceValueColors: false,
@@ -434,9 +452,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   tenFramesFocus: {
-    name: 'tenFramesFocus',
-    label: 'Ten-Frames Focus',
-    description: 'All aids plus ten-frames for concrete visualization',
+    name: "tenFramesFocus",
+    label: "Ten-Frames Focus",
+    description: "All aids plus ten-frames for concrete visualization",
     showCarryBoxes: true,
     showAnswerBoxes: true,
     showPlaceValueColors: true,
@@ -445,7 +463,7 @@ export const MANUAL_MODE_PRESETS = {
     showCellBorder: true,
     showTenFramesForAll: false,
   },
-} as const
+} as const;
 ```
 
 ---
@@ -453,11 +471,13 @@ export const MANUAL_MODE_PRESETS = {
 ## Migration Timeline
 
 **Immediate (V3):**
+
 - Implement discriminated union
 - Add mode selector
 - Keep both systems working
 
 **Future (V4+):**
+
 - Could deprecate one mode if usage data shows clear preference
 - Could add "Hybrid" mode that allows manual overrides on smart presets
 - Could add template library for common manual configurations

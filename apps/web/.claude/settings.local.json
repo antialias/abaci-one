@@ -8,7 +8,9 @@
       "Bash(git commit:*)",
       "Bash(git stash show:*)",
       "Bash(npm run type-check:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,7 @@
 ## User Report
 
 User noticed that even with regrouping frequency cranked up to 100% for all places (pAllStart = 1.0, pAnyStart = 1.0), subtraction worksheets were NOT generating many problems that require borrowing. This affected both:
+
 - Manual mode (direct slider control)
 - Smart difficulty mode (preset-based control)
 
@@ -19,17 +20,17 @@ The `generateBothBorrow()` function in `problemGenerator.ts` (lines 424-458) use
 ```typescript
 // OLD BUGGY CODE
 for (let pos = 0; pos < maxPlaces; pos++) {
-  const digitM = getDigit(minuend, pos)
-  const digitS = getDigit(subtrahend, pos)
+  const digitM = getDigit(minuend, pos);
+  const digitS = getDigit(subtrahend, pos);
 
   if (digitM < digitS) {
-    borrowCount++
+    borrowCount++;
   }
 }
 
 // Need at least 2 borrows
 if (borrowCount >= 2) {
-  return [minuend, subtrahend]
+  return [minuend, subtrahend];
 }
 ```
 
@@ -38,12 +39,14 @@ if (borrowCount >= 2) {
 #### Problem 1: Doesn't Handle Cascading Borrows
 
 Example: `100 - 1`
+
 - Ones: `0 < 1` → naive count = 1
 - Tens: `0 < 0` → no increment
 - Hundreds: `1 < 0` → no increment
 - **Naive count: 1 borrow**
 
 But the **actual subtraction algorithm** requires:
+
 1. Borrow from hundreds to tens (hundreds becomes 0, tens becomes 10)
 2. Borrow from tens to ones (tens becomes 9, ones becomes 10)
 3. **Actual borrows: 2**
@@ -53,6 +56,7 @@ But the **actual subtraction algorithm** requires:
 **Mathematical proof**: For 2-digit numbers where `minuend >= subtrahend`:
 
 If `tensM < tensS`, then:
+
 - Minuend = `tensM * 10 + onesM` where `tensM < tensS`
 - Subtrahend = `tensS * 10 + onesS`
 - Therefore: `minuend < tensS * 10 <= subtrahend`
@@ -61,6 +65,7 @@ If `tensM < tensS`, then:
 **Result**: There are ZERO 2-digit subtraction problems where both `onesM < onesS` AND `tensM < tensS`.
 
 I verified this empirically:
+
 ```bash
 # Tested all 4095 valid 2-digit subtractions (10-99 where minuend >= subtrahend)
 No borrowing: 2475 problems (60.4%)
@@ -123,6 +128,7 @@ function countBorrows(minuend: number, subtrahend: number): number {
 ```
 
 **Test cases**:
+
 - `52 - 17`: 1 borrow ✓
 - `100 - 1`: 2 borrows ✓ (hundreds → tens → ones)
 - `534 - 178`: 2 borrows ✓ (ones and tens both < subtrahend)
@@ -136,33 +142,33 @@ Updated `generateBothBorrow()` to recognize when 2+ borrows are mathematically i
 export function generateBothBorrow(
   rand: () => number,
   minDigits: number = 2,
-  maxDigits: number = 2
+  maxDigits: number = 2,
 ): [number, number] {
   // For 1-2 digit ranges, 2+ borrows are impossible
   // Fall back to ones-only borrowing (maximum difficulty for 2-digit)
   if (maxDigits <= 2) {
-    return generateOnesOnlyBorrow(rand, minDigits, maxDigits)
+    return generateOnesOnlyBorrow(rand, minDigits, maxDigits);
   }
 
   // For 3+ digits, use correct borrow counting
   for (let i = 0; i < 5000; i++) {
     // Favor higher digit counts for better chance of 2+ borrows
-    const digitsMinuend = randint(Math.max(minDigits, 3), maxDigits, rand)
-    const digitsSubtrahend = randint(Math.max(minDigits, 2), maxDigits, rand)
-    const minuend = generateNumber(digitsMinuend, rand)
-    const subtrahend = generateNumber(digitsSubtrahend, rand)
+    const digitsMinuend = randint(Math.max(minDigits, 3), maxDigits, rand);
+    const digitsSubtrahend = randint(Math.max(minDigits, 2), maxDigits, rand);
+    const minuend = generateNumber(digitsMinuend, rand);
+    const subtrahend = generateNumber(digitsSubtrahend, rand);
 
-    if (minuend <= subtrahend) continue
+    if (minuend <= subtrahend) continue;
 
-    const borrowCount = countBorrows(minuend, subtrahend)
+    const borrowCount = countBorrows(minuend, subtrahend);
 
     if (borrowCount >= 2) {
-      return [minuend, subtrahend]
+      return [minuend, subtrahend];
     }
   }
 
   // Fallback: guaranteed 2+ borrow problem
-  return [534, 178]  // Changed from [93, 57] which only had 1 borrow!
+  return [534, 178]; // Changed from [93, 57] which only had 1 borrow!
 }
 ```
 
@@ -175,10 +181,12 @@ Changed fallback from `[93, 57]` (1 borrow) to `[534, 178]` (2 borrows).
 After the fix, with `pAllStart = 100%` and `pAnyStart = 100%`:
 
 **2-digit subtraction**:
+
 - All problems have ones-only borrowing (maximum difficulty possible)
 - Expected: ~100% problems with borrowing ✓
 
 **3-digit subtraction**:
+
 - Problems have 2+ actual borrow operations
 - Includes cases like:
   - `534 - 178` (ones and tens both borrow)

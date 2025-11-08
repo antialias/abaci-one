@@ -4,7 +4,7 @@ import type {
   AdditionConfigV4,
   AdditionConfigV4Smart,
   AdditionConfigV4Manual,
-} from '../config-schemas'
+} from "../config-schemas";
 
 /**
  * Complete, validated configuration for worksheet generation
@@ -18,25 +18,25 @@ import type {
  */
 export type WorksheetConfig = AdditionConfigV4 & {
   // Problem set - DERIVED state
-  total: number // total = problemsPerPage * pages
-  rows: number // rows = (problemsPerPage / cols) * pages
+  total: number; // total = problemsPerPage * pages
+  rows: number; // rows = (problemsPerPage / cols) * pages
 
   // Personalization
-  date: string
-  seed: number
+  date: string;
+  seed: number;
 
   // Layout
   page: {
-    wIn: number
-    hIn: number
-  }
+    wIn: number;
+    hIn: number;
+  };
   margins: {
-    left: number
-    right: number
-    top: number
-    bottom: number
-  }
-}
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  };
+};
 
 /**
  * Partial form state - user may be editing, fields optional
@@ -52,53 +52,55 @@ export type WorksheetConfig = AdditionConfigV4 & {
  * This type is intentionally permissive during form editing to allow fields from
  * both modes to exist temporarily. Validation will enforce mode consistency.
  */
-export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>> &
-  Partial<Omit<AdditionConfigV4Manual, 'version'>> & {
+export type WorksheetFormState = Partial<
+  Omit<AdditionConfigV4Smart, "version">
+> &
+  Partial<Omit<AdditionConfigV4Manual, "version">> & {
     // DERIVED state (calculated from primary state)
-    rows?: number
-    total?: number
-    date?: string
-    seed?: number
-  }
+    rows?: number;
+    total?: number;
+    date?: string;
+    seed?: number;
+  };
 
 /**
  * Worksheet operator type
  */
-export type WorksheetOperator = 'addition' | 'subtraction' | 'mixed'
+export type WorksheetOperator = "addition" | "subtraction" | "mixed";
 
 /**
  * A single addition problem
  */
 export interface AdditionProblem {
-  a: number
-  b: number
-  operator: '+'
+  a: number;
+  b: number;
+  operator: "+";
 }
 
 /**
  * A single subtraction problem
  */
 export interface SubtractionProblem {
-  minuend: number
-  subtrahend: number
-  operator: '−' // Proper minus sign (U+2212)
+  minuend: number;
+  subtrahend: number;
+  operator: "−"; // Proper minus sign (U+2212)
 }
 
 /**
  * Unified problem type (addition or subtraction)
  */
-export type WorksheetProblem = AdditionProblem | SubtractionProblem
+export type WorksheetProblem = AdditionProblem | SubtractionProblem;
 
 /**
  * Validation result
  */
 export interface ValidationResult {
-  isValid: boolean
-  config?: WorksheetConfig
-  errors?: string[]
+  isValid: boolean;
+  config?: WorksheetConfig;
+  errors?: string[];
 }
 
 /**
  * Problem category for difficulty control
  */
-export type ProblemCategory = 'non' | 'onesOnly' | 'both'
+export type ProblemCategory = "non" | "onesOnly" | "both";

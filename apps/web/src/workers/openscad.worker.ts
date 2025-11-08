@@ -1,98 +1,109 @@
 /// <reference lib="webworker" />
 
-import { createOpenSCAD } from 'openscad-wasm-prebuilt'
+import { createOpenSCAD } from "openscad-wasm-prebuilt";
 
-declare const self: DedicatedWorkerGlobalScope
+declare const self: DedicatedWorkerGlobalScope;
 
-let openscad: Awaited<ReturnType<typeof createOpenSCAD>> | null = null
-let simplifiedStlData: ArrayBuffer | null = null
-let isInitializing = false
-let initPromise: Promise<void> | null = null
+let openscad: Awaited<ReturnType<typeof createOpenSCAD>> | null = null;
+let simplifiedStlData: ArrayBuffer | null = null;
+let isInitializing = false;
+let initPromise: Promise<void> | null = null;
 
 // Message types
 interface RenderRequest {
-  type: 'render'
-  columns: number
-  scaleFactor: number
+  type: "render";
+  columns: number;
+  scaleFactor: number;
 }
 
 interface InitRequest {
-  type: 'init'
+  type: "init";
 }
 
-type WorkerRequest = RenderRequest | InitRequest
+type WorkerRequest = RenderRequest | InitRequest;
 
 // Initialize OpenSCAD instance and load base STL file
 async function initialize() {
-  if (openscad) return // Already initialized
-  if (isInitializing) return initPromise // Already initializing, return existing promise
+  if (openscad) return; // Already initialized
+  if (isInitializing) return initPromise; // Already initializing, return existing promise
 
-  isInitializing = true
+  isInitializing = true;
   initPromise = (async () => {
     try {
-      console.log('[OpenSCAD Worker] Initializing...')
+      console.log("[OpenSCAD Worker] Initializing...");
 
       // Create OpenSCAD instance
-      openscad = await createOpenSCAD()
-      console.log('[OpenSCAD Worker] OpenSCAD WASM loaded')
+      openscad = await createOpenSCAD();
+      console.log("[OpenSCAD Worker] OpenSCAD WASM loaded");
 
       // Fetch the simplified STL file once
-      const stlResponse = await fetch('/3d-models/simplified.abacus.stl')
+      const stlResponse = await fetch("/3d-models/simplified.abacus.stl");
       if (!stlResponse.ok) {
-        throw new Error(`Failed to fetch STL: ${stlResponse.statusText}`)
+        throw new Error(`Failed to fetch STL: ${stlResponse.statusText}`);
       }
-      simplifiedStlData = await stlResponse.arrayBuffer()
-      console.log('[OpenSCAD Worker] Simplified STL loaded', simplifiedStlData.byteLength, 'bytes')
+      simplifiedStlData = await stlResponse.arrayBuffer();
+      console.log(
+        "[OpenSCAD Worker] Simplified STL loaded",
+        simplifiedStlData.byteLength,
+        "bytes",
+      );
 
-      self.postMessage({ type: 'ready' })
+      self.postMessage({ type: "ready" });
     } catch (error) {
-      console.error('[OpenSCAD Worker] Initialization failed:', error)
+      console.error("[OpenSCAD Worker] Initialization failed:", error);
       self.postMessage({
-        type: 'error',
-        error: error instanceof Error ? error.message : 'Initialization failed',
-      })
-      throw error
+        type: "error",
+        error: error instanceof Error ? error.message : "Initialization failed",
+      });
+      throw error;
     } finally {
-      isInitializing = false
+      isInitializing = false;
     }
-  })()
+  })();
 
-  return initPromise
+  return initPromise;
 }
 
 async function render(columns: number, scaleFactor: number) {
   // Wait for initialization if not ready
   if (!openscad || !simplifiedStlData) {
-    await initialize()
+    await initialize();
   }
 
   if (!openscad || !simplifiedStlData) {
-    throw new Error('Worker not initialized')
+    throw new Error("Worker not initialized");
   }
 
   try {
-    console.log(`[OpenSCAD Worker] Rendering with columns=${columns}, scaleFactor=${scaleFactor}`)
+    console.log(
+      `[OpenSCAD Worker] Rendering with columns=${columns}, scaleFactor=${scaleFactor}`,
+    );
 
     // Get low-level instance for filesystem access
-    const instance = openscad.getInstance()
+    const instance = openscad.getInstance();
 
     // Create directory if it doesn't exist
     try {
-      instance.FS.mkdir('/3d-models')
-      console.log('[OpenSCAD Worker] Created /3d-models directory')
+      instance.FS.mkdir("/3d-models");
+      console.log("[OpenSCAD Worker] Created /3d-models directory");
     } catch (e: any) {
       // Check if it's EEXIST (directory already exists) - errno 20
       if (e.errno === 20) {
-        console.log('[OpenSCAD Worker] /3d-models directory already exists')
+        console.log("[OpenSCAD Worker] /3d-models directory already exists");
       } else {
-        console.error('[OpenSCAD Worker] Failed to create directory:', e)
-        throw new Error(`Failed to create /3d-models directory: ${e.message || e}`)
+        console.error("[OpenSCAD Worker] Failed to create directory:", e);
+        throw new Error(
+          `Failed to create /3d-models directory: ${e.message || e}`,
+        );
       }
     }
 
     // Write STL file
-    instance.FS.writeFile('/3d-models/simplified.abacus.stl', new Uint8Array(simplifiedStlData))
-    console.log('[OpenSCAD Worker] Wrote simplified STL to filesystem')
+    instance.FS.writeFile(
+      "/3d-models/simplified.abacus.stl",
+      new Uint8Array(simplifiedStlData),
+    );
+    console.log("[OpenSCAD Worker] Wrote simplified STL to filesystem");
 
     // Generate the SCAD code with parameters
     const scadCode = `
@@ -134,76 +145,80 @@ scale([scale_factor, scale_factor, scale_factor]) {
     translate([column_spacing, 0, 0]) mirror([1,0,0]) half_abacus();
     half_abacus();
 }
-`
+`;
 
     // Use high-level renderToStl API
-    console.log('[OpenSCAD Worker] Calling renderToStl...')
-    const stlBuffer = await openscad.renderToStl(scadCode)
-    console.log('[OpenSCAD Worker] Rendering complete:', stlBuffer.byteLength, 'bytes')
+    console.log("[OpenSCAD Worker] Calling renderToStl...");
+    const stlBuffer = await openscad.renderToStl(scadCode);
+    console.log(
+      "[OpenSCAD Worker] Rendering complete:",
+      stlBuffer.byteLength,
+      "bytes",
+    );
 
     // Send the result back
     self.postMessage(
       {
-        type: 'result',
+        type: "result",
         stl: stlBuffer,
       },
-      [stlBuffer]
-    ) // Transfer ownership of the buffer
+      [stlBuffer],
+    ); // Transfer ownership of the buffer
 
     // Clean up STL file
     try {
-      instance.FS.unlink('/3d-models/simplified.abacus.stl')
+      instance.FS.unlink("/3d-models/simplified.abacus.stl");
     } catch (e) {
       // Ignore cleanup errors
     }
   } catch (error) {
-    console.error('[OpenSCAD Worker] Rendering failed:', error)
+    console.error("[OpenSCAD Worker] Rendering failed:", error);
 
     // Try to get more error details
-    let errorMessage = 'Rendering failed'
+    let errorMessage = "Rendering failed";
     if (error instanceof Error) {
-      errorMessage = error.message
-      console.error('[OpenSCAD Worker] Error stack:', error.stack)
+      errorMessage = error.message;
+      console.error("[OpenSCAD Worker] Error stack:", error.stack);
     }
 
     // Check if it's an Emscripten FS error
-    if (error && typeof error === 'object' && 'errno' in error) {
-      console.error('[OpenSCAD Worker] FS errno:', (error as any).errno)
-      console.error('[OpenSCAD Worker] FS error details:', error)
+    if (error && typeof error === "object" && "errno" in error) {
+      console.error("[OpenSCAD Worker] FS errno:", (error as any).errno);
+      console.error("[OpenSCAD Worker] FS error details:", error);
     }
 
     self.postMessage({
-      type: 'error',
+      type: "error",
       error: errorMessage,
-    })
+    });
   }
 }
 
 // Message handler
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-  const { data } = event
+  const { data } = event;
 
   try {
     switch (data.type) {
-      case 'init':
-        await initialize()
-        break
+      case "init":
+        await initialize();
+        break;
 
-      case 'render':
-        await render(data.columns, data.scaleFactor)
-        break
+      case "render":
+        await render(data.columns, data.scaleFactor);
+        break;
 
       default:
-        console.error('[OpenSCAD Worker] Unknown message type:', data)
+        console.error("[OpenSCAD Worker] Unknown message type:", data);
     }
   } catch (error) {
-    console.error('[OpenSCAD Worker] Message handler error:', error)
+    console.error("[OpenSCAD Worker] Message handler error:", error);
     self.postMessage({
-      type: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
+      type: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-}
+};
 
 // Auto-initialize on worker start
-initialize()
+initialize();

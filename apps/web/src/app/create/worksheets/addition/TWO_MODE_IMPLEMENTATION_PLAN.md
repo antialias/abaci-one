@@ -13,6 +13,7 @@ This document breaks down the implementation into small, incremental steps that 
 ## Phase 1: Foundation (2-3 hours)
 
 ### Step 1.1: Create Manual Mode Presets File ✅
+
 **File:** `src/app/create/worksheets/addition/manualModePresets.ts`
 **Complexity:** Low
 **Dependencies:** None
@@ -38,27 +39,31 @@ export const MANUAL_MODE_PRESETS = { ... }
 
 ###
 
- Step 1.2: Add V3 Schema to config-schemas.ts
+Step 1.2: Add V3 Schema to config-schemas.ts
 **File:** `src/app/create/worksheets/config-schemas.ts`
 **Complexity:** Medium
 **Dependencies:** None
 
 Add after additionConfigV2Schema (line ~121):
+
 - Define `additionConfigV3SmartSchema`
 - Define `additionConfigV3ManualSchema`
 - Create `additionConfigV3Schema = z.discriminatedUnion('mode', [smart, manual])`
 - Add to union: `additionConfigSchema = z.discriminatedUnion('version', [v1, v2, v3])`
 
 **Test:**
+
 - Import schemas and verify Zod parsing works
 - Test discriminated union catches invalid combos
 
 ### Step 1.3: Add V2→V3 Migration Function
+
 **File:** `src/app/create/worksheets/config-schemas.ts`
 **Complexity:** Medium
 **Dependencies:** Step 1.2
 
 Add migration logic:
+
 ```typescript
 function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
   if (v2.difficultyProfile) {
@@ -79,6 +84,7 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
 Update `migrateAdditionConfig()` to handle case 3
 
 **Test:**
+
 - Unit test V2 smart config → V3 smart
 - Unit test V2 manual config → V3 manual
 - Verify no data loss
@@ -88,11 +94,13 @@ Update `migrateAdditionConfig()` to handle case 3
 ## Phase 2: Types & Validation (1-2 hours)
 
 ### Step 2.1: Update WorksheetConfig Type
+
 **File:** `src/app/create/worksheets/addition/types.ts`
 **Complexity:** Low
 **Dependencies:** Phase 1
 
 Change `WorksheetConfig` to support V3:
+
 ```typescript
 export type WorksheetConfig = AdditionConfigV3 & {
   // Derived state
@@ -108,17 +116,20 @@ export type WorksheetConfig = AdditionConfigV3 & {
 **Test:** Check that types compile
 
 ### Step 2.2: Update Validation Function
+
 **File:** `src/app/create/worksheets/addition/validation.ts`
 **Complexity:** Medium
 **Dependencies:** Step 2.1
 
 Update `validateWorksheetConfig()`:
+
 - Accept `WorksheetFormState` that can have either mode
 - Determine mode from formState
 - Branch validation logic based on mode
 - Build correct WorksheetConfig with mode
 
 **Test:**
+
 - Validate smart mode config
 - Validate manual mode config
 - Verify errors caught correctly
@@ -128,31 +139,34 @@ Update `validateWorksheetConfig()`:
 ## Phase 3: Generation Logic (1-2 hours)
 
 ### Step 3.1: Update typstGenerator for Mode Awareness
+
 **File:** `src/app/create/worksheets/addition/typstGenerator.ts`
 **Complexity:** Medium
 **Dependencies:** Phase 2
 
 In `generatePageTypst()`:
+
 ```typescript
-if (config.mode === 'smart') {
+if (config.mode === "smart") {
   // Per-problem conditional display
-  enrichedProblems = pageProblems.map(p => {
-    const meta = analyzeProblem(p.a, p.b)
-    const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
-    return { ...p, ...displayOptions }
-  })
+  enrichedProblems = pageProblems.map((p) => {
+    const meta = analyzeProblem(p.a, p.b);
+    const displayOptions = resolveDisplayForProblem(config.displayRules, meta);
+    return { ...p, ...displayOptions };
+  });
 } else {
   // Uniform display
-  enrichedProblems = pageProblems.map(p => ({
+  enrichedProblems = pageProblems.map((p) => ({
     ...p,
     showCarryBoxes: config.showCarryBoxes,
     showAnswerBoxes: config.showAnswerBoxes,
     // ... etc
-  }))
+  }));
 }
 ```
 
 **Test:**
+
 - Generate worksheet in smart mode
 - Generate worksheet in manual mode
 - Compare outputs visually
@@ -162,15 +176,17 @@ if (config.mode === 'smart') {
 ## Phase 4: UI - Mode Selector (2-3 hours)
 
 ### Step 4.1: Create ModeSelector Component
+
 **File:** `src/app/create/worksheets/addition/components/ModeSelector.tsx`
 **Complexity:** Medium
 **Dependencies:** None (pure UI)
 
 Create component:
+
 ```typescript
 interface ModeSelectorProps {
-  currentMode: 'smart' | 'manual'
-  onChange: (mode: 'smart' | 'manual') => void
+  currentMode: "smart" | "manual";
+  onChange: (mode: "smart" | "manual") => void;
 }
 
 export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
@@ -181,16 +197,19 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
 ```
 
 **Test:**
+
 - Render in Storybook
 - Test mode switching
 - Test confirmation dialog
 
 ### Step 4.2: Add ModeSelector to ConfigPanel
+
 **File:** `src/app/create/worksheets/addition/components/ConfigPanel.tsx`
 **Complexity:** Low
 **Dependencies:** Step 4.1
 
 Add at top of ConfigPanel (before Difficulty Level section):
+
 ```typescript
 <ModeSelector
   currentMode={formState.mode ?? 'smart'}
@@ -199,11 +218,13 @@ Add at top of ConfigPanel (before Difficulty Level section):
 ```
 
 Implement `handleModeChange()`:
+
 - Show confirmation if switching would change settings
 - Convert settings to new mode
 - Call `onChange()`
 
 **Test:**
+
 - Switch modes and verify UI updates
 - Verify confirmation dialog shows
 
@@ -212,11 +233,13 @@ Implement `handleModeChange()`:
 ## Phase 5: UI - Conditional Sections (2-3 hours)
 
 ### Step 5.1: Add Manual Mode Preset Buttons
+
 **File:** `src/app/create/worksheets/addition/components/ConfigPanel.tsx`
 **Complexity:** Low
 **Dependencies:** Step 1.1
 
 Add new section (shown only in manual mode):
+
 ```typescript
 {formState.mode === 'manual' && (
   <div>
@@ -234,15 +257,18 @@ Add new section (shown only in manual mode):
 ```
 
 **Test:**
+
 - Click preset buttons
 - Verify display options update
 
 ### Step 5.2: Make Sections Conditional on Mode
+
 **File:** `src/app/create/worksheets/addition/components/ConfigPanel.tsx`
 **Complexity:** Low
 **Dependencies:** Step 4.2
 
 Wrap sections in conditionals:
+
 ```typescript
 {/* Smart mode only */}
 {formState.mode === 'smart' && (
@@ -259,15 +285,18 @@ Wrap sections in conditionals:
 ```
 
 **Test:**
+
 - Switch modes
 - Verify correct sections show/hide
 
 ### Step 5.3: Add "Copy to Manual Mode" Button
+
 **File:** `src/app/create/worksheets/addition/components/ConfigPanel.tsx`
 **Complexity:** Low
 **Dependencies:** Step 5.2
 
 Add button in Smart mode section:
+
 ```typescript
 {formState.mode === 'smart' && (
   <button onClick={handleCopyToManual}>
@@ -277,11 +306,13 @@ Add button in Smart mode section:
 ```
 
 Implement `handleCopyToManual()`:
+
 - Convert current displayRules to booleans
 - Switch to manual mode
 - Apply converted settings
 
 **Test:**
+
 - Click button from various smart presets
 - Verify manual toggles match smart behavior
 
@@ -290,15 +321,18 @@ Implement `handleCopyToManual()`:
 ## Phase 6: Settings Persistence (1 hour)
 
 ### Step 6.1: Update Database Queries
+
 **File:** Check where settings are saved/loaded
 **Complexity:** Low
 **Dependencies:** All previous
 
 Update save/load to handle V3 configs:
+
 - Migration happens automatically via `migrateAdditionConfig()`
 - Just ensure we're saving complete V3 configs
 
 **Test:**
+
 - Save smart mode config
 - Reload page, verify mode preserved
 - Save manual mode config
@@ -335,6 +369,7 @@ Fix any TypeScript/lint errors
 ### Step 7.3: Create Commits
 
 One commit per phase:
+
 - Phase 1: "feat(worksheets): add V3 schema with mode discrimination"
 - Phase 2: "feat(worksheets): update validation for two-mode system"
 - Phase 3: "feat(worksheets): add mode-aware worksheet generation"
