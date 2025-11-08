@@ -5,6 +5,7 @@ import {
   generateTypstHelpers,
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
+  generatePlaceValueColors,
 } from './typstHelpers'
 import { analyzeProblem, analyzeSubtractionProblem } from './problemAnalysis'
 import { resolveDisplayForProblem } from './displayRules'
@@ -184,6 +185,8 @@ function generatePageTypst(
         ? 'true'
         : 'false'
   }
+
+${generatePlaceValueColors()}
 
 ${generateTypstHelpers(cellSize)}
 

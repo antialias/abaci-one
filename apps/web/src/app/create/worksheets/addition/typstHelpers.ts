@@ -4,6 +4,9 @@
 // NOTE: This file now re-exports from the modular typstHelpers/ directory
 // for backward compatibility. New code should import from typstHelpers/ directly.
 
+// Import types for internal use
+import type { DisplayOptions } from './typstHelpers/shared/types'
+
 // Re-export everything from modular structure
 export type { DisplayOptions, CellDimensions } from './typstHelpers/shared/types'
 export { generateTypstHelpers } from './typstHelpers/shared/helpers'

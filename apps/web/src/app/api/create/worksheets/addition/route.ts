@@ -3,9 +3,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { validateWorksheetConfig } from '@/app/create/worksheets/addition/validation'
-import { generateProblems } from '@/app/create/worksheets/addition/problemGenerator'
+import {
+  generateProblems,
+  generateSubtractionProblems,
+  generateMixedProblems,
+} from '@/app/create/worksheets/addition/problemGenerator'
 import { generateTypstSource } from '@/app/create/worksheets/addition/typstGenerator'
-import type { WorksheetFormState } from '@/app/create/worksheets/addition/types'
+import type { WorksheetFormState, WorksheetProblem } from '@/app/create/worksheets/addition/types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,14 +26,37 @@ export async function POST(request: NextRequest) {
 
     const config = validation.config
 
-    // Generate problems
-    const problems = generateProblems(
-      config.total,
-      config.pAnyStart,
-      config.pAllStart,
-      config.interpolate,
-      config.seed
-    )
+    // Generate problems based on operator type
+    let problems: WorksheetProblem[]
+    if (config.operator === 'addition') {
+      problems = generateProblems(
+        config.total,
+        config.pAnyStart,
+        config.pAllStart,
+        config.interpolate,
+        config.seed,
+        config.digitRange
+      )
+    } else if (config.operator === 'subtraction') {
+      problems = generateSubtractionProblems(
+        config.total,
+        config.digitRange,
+        config.pAnyStart,
+        config.pAllStart,
+        config.interpolate,
+        config.seed
+      )
+    } else {
+      // mixed
+      problems = generateMixedProblems(
+        config.total,
+        config.digitRange,
+        config.pAnyStart,
+        config.pAllStart,
+        config.interpolate,
+        config.seed
+      )
+    }
 
     // Generate Typst sources (one per page)
     const typstSources = generateTypstSource(config, problems)
