@@ -448,78 +448,40 @@ export function generateSubtractionProblemStackFunction(
             // The display value is either the original digit or 10 (if cascading)
             let display-value = if is-cascade { 10 } else { original-digit }
 
-            (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
-              // Show the borrow box with hint text at top
-              #if show-colors {
-                box(width: ${cellSizeIn}, height: ${cellSizeIn})[
-                  #diagonal-split-box(${cellSizeIn}, source-color, dest-color)
-                  #place(
-                    top + center,
-                    dy: 2pt,
-                    box[
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(40%), weight: "bold")[#str(display-value) − ]
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(40%), weight: "bold")[1]
-                    ]
-                  )
-                  // Draw curved line using Typst bezier with control point
-                  #place(
-                    top + left,
-                    dx: ${(cellSize * 0.9).toFixed(2)}in,
-                    dy: ${(cellSize * 0.15).toFixed(2)}in,
-                    path(
-                      stroke: (paint: gray.darken(40%), thickness: 1.5pt),
-                      // Start vertex (near the "1" in borrow box)
-                      (0pt, 0pt),
-                      // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
-                      ((${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.70).toFixed(2)}in), (${(cellSize * 0.11).toFixed(2)}in, ${(cellSize * -0.5).toFixed(2)}in)),
-                    )
-                  )
-                  // Arrowhead pointing down at the top edge of borrowed 10s box
-                  #place(
-                    top + left,
-                    dx: ${(cellSize * 0.96).toFixed(2)}in,
-                    dy: ${(cellSize * 0.62).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: gray.darken(40%))[▼]
-                  )
+            // Borrow boxes never use place value colors (always stroke-only)
+            // to avoid arrow layering issues
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt)[
+              #place(
+                top + center,
+                dy: 2pt,
+                box[
+                  #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(display-value) − ]
+                  #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                 ]
-              } else {
-                box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt)[
-                  #place(
-                    top + center,
-                    dy: 2pt,
-                    box[
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(display-value) − ]
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
-                    ]
-                  )
-                  // Draw curved line using Typst bezier with control point
-                  #place(
-                    top + left,
-                    dx: ${(cellSize * 0.9).toFixed(2)}in,
-                    dy: ${(cellSize * 0.15).toFixed(2)}in,
-                    path(
-                      stroke: (paint: gray.darken(30%), thickness: 1.5pt),
-                      // Start vertex (near the "1" in borrow box)
-                      (0pt, 0pt),
-                      // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
-                      ((${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.70).toFixed(2)}in), (${(cellSize * 0.11).toFixed(2)}in, ${(cellSize * -0.5).toFixed(2)}in)),
-                    )
-                  )
-                  // Arrowhead pointing down at the top edge of borrowed 10s box
-                  #place(
-                    top + left,
-                    dx: ${(cellSize * 0.96).toFixed(2)}in,
-                    dy: ${(cellSize * 0.62).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: gray.darken(30%))[▼]
-                  )
-                ]
-              }
-            ],)
-          } else if show-colors {
-            (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
-              #diagonal-split-box(${cellSizeIn}, source-color, dest-color)
+              )
+              // Draw curved line using Typst bezier with control point
+              #place(
+                top + left,
+                dx: ${(cellSize * 0.9).toFixed(2)}in,
+                dy: ${(cellSize * 0.15).toFixed(2)}in,
+                path(
+                  stroke: (paint: gray.darken(30%), thickness: 1.5pt),
+                  // Start vertex (near the "1" in borrow box)
+                  (0pt, 0pt),
+                  // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
+                  ((${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.7).toFixed(2)}in), (${(cellSize * 0.11).toFixed(2)}in, ${(cellSize * -0.5).toFixed(2)}in)),
+                )
+              )
+              // Arrowhead pointing down at the top edge of borrowed 10s box
+              #place(
+                top + left,
+                dx: ${(cellSize * 0.96).toFixed(2)}in,
+                dy: ${(cellSize * 0.62).toFixed(2)}in,
+                text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: gray.darken(30%))[▼]
+              )
             ],)
           } else {
+            // No hints - just show diagonal split box or stroke box
             (box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt)[],)
           }
         } else {
