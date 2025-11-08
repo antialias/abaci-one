@@ -453,24 +453,25 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
                     ]
                   )
-                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box
+                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box (one cell to the RIGHT visually)
                   #place(
-                    top + right,
+                    top + left,
+                    dx: ${cellSizeIn},
                     path(
                       stroke: (paint: white, thickness: 1pt),
-                      // Start at top-right corner of borrow box
+                      // Start at top-right corner of borrow box (0,0 since we're already positioned there)
                       (0pt, 0pt),
                       // Bezier curve - convex on upper right
                       // Control point above and to the right
                       (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
-                      // End at top-center of borrowed 10s box (one cell right, one cell down)
-                      (${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in, ${cellSizeIn}),
+                      // End at top-left of borrowed 10s box (one cell right visually, one cell down)
+                      (${cellSizeIn}, ${cellSizeIn}),
                     )
                   )
                   // Arrowhead at the end
                   #place(
-                    top + right,
-                    dx: ${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in,
+                    top + left,
+                    dx: ${(cellSize * 2.0).toFixed(2)}in,
                     dy: ${(cellSize * 0.95).toFixed(2)}in,
                     text(size: ${(cellSizePt * 0.4).toFixed(1)}pt, fill: white, weight: "bold")[▼]
                   )
@@ -485,24 +486,25 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                     ]
                   )
-                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box
+                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box (one cell to the RIGHT visually)
                   #place(
-                    top + right,
+                    top + left,
+                    dx: ${cellSizeIn},
                     path(
                       stroke: (paint: gray.darken(30%), thickness: 1pt),
-                      // Start at top-right corner of borrow box
+                      // Start at top-right corner of borrow box (0,0 since we're already positioned there)
                       (0pt, 0pt),
                       // Bezier curve - convex on upper right
                       // Control point above and to the right
                       (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
-                      // End at top-center of borrowed 10s box (one cell right, one cell down)
-                      (${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in, ${cellSizeIn}),
+                      // End at top-left of borrowed 10s box (one cell right visually, one cell down)
+                      (${cellSizeIn}, ${cellSizeIn}),
                     )
                   )
                   // Arrowhead at the end
                   #place(
-                    top + right,
-                    dx: ${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in,
+                    top + left,
+                    dx: ${(cellSize * 2.0).toFixed(2)}in,
                     dy: ${(cellSize * 0.95).toFixed(2)}in,
                     text(size: ${(cellSizePt * 0.4).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[▼]
                   )
