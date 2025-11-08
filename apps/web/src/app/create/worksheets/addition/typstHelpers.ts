@@ -435,10 +435,18 @@ export function generateSubtractionProblemStackFunction(
           let source-color = place-colors.at(i)      // This place (giving)
           let dest-color = place-colors.at(i - 1)    // Lower place (receiving)
 
-          // When showing hints, add small text showing what value to write
+          // When showing hints, determine what to display based on cascading
           if show-borrowing-hints and i <= m-highest {
+            // Determine the actual value to show in the hint
+            // For cascading: if this digit is 0, it received 10 from left and gives 1 to right
+            // So it shows "10 - 1". Otherwise it shows "original - 1"
             let original-digit = m-digits.at(i)
-            let reduced-digit = original-digit - 1
+
+            // Check if this is part of a cascade (is it 0 and needs to borrow?)
+            let is-cascade = original-digit == 0
+
+            // The display value is either the original digit or 10 (if cascading)
+            let display-value = if is-cascade { 10 } else { original-digit }
 
             (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
               // Show the borrow box with hint text at top
@@ -449,7 +457,7 @@ export function generateSubtractionProblemStackFunction(
                     top + center,
                     dy: 2pt,
                     box[
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[#str(original-digit) − ]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[#str(display-value) − ]
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
                     ]
                   )
@@ -480,7 +488,7 @@ export function generateSubtractionProblemStackFunction(
                     top + center,
                     dy: 2pt,
                     box[
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(original-digit) − ]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(display-value) − ]
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                     ]
                   )
