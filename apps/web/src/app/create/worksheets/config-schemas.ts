@@ -21,7 +21,7 @@ import { getProfileFromConfig } from './addition/difficultyProfiles'
 // =============================================================================
 
 /** Current schema version for addition worksheets */
-const ADDITION_CURRENT_VERSION = 3
+const ADDITION_CURRENT_VERSION = 4
 
 /**
  * Addition worksheet config - Version 1
@@ -227,26 +227,145 @@ export type AdditionConfigV3 = z.infer<typeof additionConfigV3Schema>
 export type AdditionConfigV3Smart = z.infer<typeof additionConfigV3SmartSchema>
 export type AdditionConfigV3Manual = z.infer<typeof additionConfigV3ManualSchema>
 
+/**
+ * Addition worksheet config - Version 4
+ * Adds support for variable digit ranges (1-5 digits per number)
+ */
+
+// Shared base fields for V4
+const additionConfigV4BaseSchema = z.object({
+  version: z.literal(4),
+
+  // Core worksheet settings
+  problemsPerPage: z.number().int().min(1).max(100),
+  cols: z.number().int().min(1).max(10),
+  pages: z.number().int().min(1).max(20),
+  orientation: z.enum(['portrait', 'landscape']),
+  name: z.string(),
+  fontSize: z.number().int().min(8).max(32),
+
+  // V4: Digit range for problem generation
+  digitRange: z
+    .object({
+      min: z.number().int().min(1).max(5),
+      max: z.number().int().min(1).max(5),
+    })
+    .refine((data) => data.min <= data.max, {
+      message: 'min must be less than or equal to max',
+    }),
+
+  // V4: Operator selection (addition, subtraction, or mixed)
+  operator: z.enum(['addition', 'subtraction', 'mixed']).default('addition'),
+
+  // Regrouping probabilities (shared between modes)
+  pAnyStart: z.number().min(0).max(1),
+  pAllStart: z.number().min(0).max(1),
+  interpolate: z.boolean(),
+})
+
+// Smart Difficulty Mode for V4
+const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
+  mode: z.literal('smart'),
+
+  // Conditional display rules
+  displayRules: z.object({
+    carryBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    answerBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    placeValueColors: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    tenFrames: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    problemNumbers: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    cellBorders: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+  }),
+
+  // Optional: Which smart difficulty profile is selected
+  difficultyProfile: z.string().optional(),
+})
+
+// Manual Control Mode for V4
+const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
+  mode: z.literal('manual'),
+
+  // Simple boolean toggles
+  showCarryBoxes: z.boolean(),
+  showAnswerBoxes: z.boolean(),
+  showPlaceValueColors: z.boolean(),
+  showTenFrames: z.boolean(),
+  showProblemNumbers: z.boolean(),
+  showCellBorder: z.boolean(),
+  showTenFramesForAll: z.boolean(),
+
+  // Optional: Which manual preset is selected
+  manualPreset: z.string().optional(),
+})
+
+// V4 uses discriminated union on 'mode'
+export const additionConfigV4Schema = z.discriminatedUnion('mode', [
+  additionConfigV4SmartSchema,
+  additionConfigV4ManualSchema,
+])
+
+export type AdditionConfigV4 = z.infer<typeof additionConfigV4Schema>
+export type AdditionConfigV4Smart = z.infer<typeof additionConfigV4SmartSchema>
+export type AdditionConfigV4Manual = z.infer<typeof additionConfigV4ManualSchema>
+
 /** Union of all addition config versions (add new versions here) */
 export const additionConfigSchema = z.discriminatedUnion('version', [
   additionConfigV1Schema,
   additionConfigV2Schema,
   additionConfigV3Schema,
+  additionConfigV4Schema,
 ])
 
 export type AdditionConfig = z.infer<typeof additionConfigSchema>
 
 /**
- * Default addition config (always latest version - V3 Smart Mode)
+ * Default addition config (always latest version - V4 Smart Mode)
  */
-export const defaultAdditionConfig: AdditionConfigV3Smart = {
-  version: 3,
+export const defaultAdditionConfig: AdditionConfigV4Smart = {
+  version: 4,
   mode: 'smart',
   problemsPerPage: 20,
   cols: 5,
   pages: 1,
   orientation: 'landscape',
   name: '',
+  digitRange: { min: 2, max: 2 }, // V4: Default to 2-digit problems (backward compatible)
   pAnyStart: 0.25,
   pAllStart: 0,
   interpolate: true,
@@ -347,10 +466,53 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
 }
 
 /**
- * Migrate addition config from any version to latest (V3)
+ * Migrate V3 config to V4
+ * Adds digitRange field with default of { min: 2, max: 2 } for backward compatibility
+ */
+function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
+  // V3 configs didn't have digitRange, so default to 2-digit problems
+  const baseFields = {
+    version: 4 as const,
+    problemsPerPage: v3.problemsPerPage,
+    cols: v3.cols,
+    pages: v3.pages,
+    orientation: v3.orientation,
+    name: v3.name,
+    fontSize: v3.fontSize,
+    digitRange: { min: 2, max: 2 }, // V4: Default to 2-digit for backward compatibility
+    pAnyStart: v3.pAnyStart,
+    pAllStart: v3.pAllStart,
+    interpolate: v3.interpolate,
+  }
+
+  if (v3.mode === 'smart') {
+    return {
+      ...baseFields,
+      mode: 'smart',
+      displayRules: v3.displayRules,
+      difficultyProfile: v3.difficultyProfile,
+    }
+  } else {
+    return {
+      ...baseFields,
+      mode: 'manual',
+      showCarryBoxes: v3.showCarryBoxes,
+      showAnswerBoxes: v3.showAnswerBoxes,
+      showPlaceValueColors: v3.showPlaceValueColors,
+      showTenFrames: v3.showTenFrames,
+      showProblemNumbers: v3.showProblemNumbers,
+      showCellBorder: v3.showCellBorder,
+      showTenFramesForAll: v3.showTenFramesForAll,
+      manualPreset: v3.manualPreset,
+    }
+  }
+}
+
+/**
+ * Migrate addition config from any version to latest (V4)
  * @throws {Error} if config is invalid or migration fails
  */
-export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV3 {
+export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV4 {
   // First, try to parse as any known version
   const parsed = additionConfigSchema.safeParse(rawConfig)
 
@@ -365,14 +527,18 @@ export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV3 {
   // Migrate to latest version
   switch (config.version) {
     case 1:
-      // Migrate V1 → V2 → V3
-      return migrateAdditionV2toV3(migrateAdditionV1toV2(config))
+      // Migrate V1 → V2 → V3 → V4
+      return migrateAdditionV3toV4(migrateAdditionV2toV3(migrateAdditionV1toV2(config)))
 
     case 2:
-      // Migrate V2 → V3
-      return migrateAdditionV2toV3(config)
+      // Migrate V2 → V3 → V4
+      return migrateAdditionV3toV4(migrateAdditionV2toV3(config))
 
     case 3:
+      // Migrate V3 → V4
+      return migrateAdditionV3toV4(config)
+
+    case 4:
       // Already latest version
       return config
 
@@ -385,9 +551,9 @@ export function migrateAdditionConfig(rawConfig: unknown): AdditionConfigV3 {
 
 /**
  * Parse and validate addition config from JSON string
- * Automatically migrates old versions to latest (V3)
+ * Automatically migrates old versions to latest (V4)
  */
-export function parseAdditionConfig(jsonString: string): AdditionConfigV3 {
+export function parseAdditionConfig(jsonString: string): AdditionConfigV4 {
   try {
     const raw = JSON.parse(jsonString)
     return migrateAdditionConfig(raw)
@@ -399,13 +565,13 @@ export function parseAdditionConfig(jsonString: string): AdditionConfigV3 {
 
 /**
  * Serialize addition config to JSON string
- * Ensures version field is set to current version (V3)
+ * Ensures version field is set to current version (V4)
  */
-export function serializeAdditionConfig(config: Omit<AdditionConfigV3, 'version'>): string {
-  const versioned: AdditionConfigV3 = {
+export function serializeAdditionConfig(config: Omit<AdditionConfigV4, 'version'>): string {
+  const versioned: AdditionConfigV4 = {
     ...config,
     version: ADDITION_CURRENT_VERSION,
-  } as AdditionConfigV3
+  } as AdditionConfigV4
   return JSON.stringify(versioned)
 }
 

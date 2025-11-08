@@ -1,20 +1,22 @@
-// Type definitions for double-digit addition worksheet creator
+// Type definitions for addition worksheet creator (supports 1-5 digit problems)
 
 import type {
-  AdditionConfigV3,
-  AdditionConfigV3Smart,
-  AdditionConfigV3Manual,
+  AdditionConfigV4,
+  AdditionConfigV4Smart,
+  AdditionConfigV4Manual,
 } from '../config-schemas'
 
 /**
  * Complete, validated configuration for worksheet generation
- * Extends V3 config with additional derived fields needed for rendering
+ * Extends V4 config with additional derived fields needed for rendering
  *
- * V3 uses discriminated union on 'mode':
+ * V4 uses discriminated union on 'mode':
  * - Smart mode: Uses displayRules for conditional per-problem scaffolding
  * - Manual mode: Uses boolean flags for uniform display across all problems
+ *
+ * V4 adds digitRange field to support 1-5 digit problems
  */
-export type WorksheetConfig = AdditionConfigV3 & {
+export type WorksheetConfig = AdditionConfigV4 & {
   // Problem set - DERIVED state
   total: number // total = problemsPerPage * pages
   rows: number // rows = (problemsPerPage / cols) * pages
@@ -38,9 +40,9 @@ export type WorksheetConfig = AdditionConfigV3 & {
 
 /**
  * Partial form state - user may be editing, fields optional
- * Based on V3 config with additional derived state
+ * Based on V4 config with additional derived state
  *
- * V3 supports two modes via discriminated union:
+ * V4 supports two modes via discriminated union:
  * - Smart mode: Has displayRules and optional difficultyProfile
  * - Manual mode: Has boolean display flags and optional manualPreset
  *
@@ -50,8 +52,8 @@ export type WorksheetConfig = AdditionConfigV3 & {
  * This type is intentionally permissive during form editing to allow fields from
  * both modes to exist temporarily. Validation will enforce mode consistency.
  */
-export type WorksheetFormState = Partial<Omit<AdditionConfigV3Smart, 'version'>> &
-  Partial<Omit<AdditionConfigV3Manual, 'version'>> & {
+export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>> &
+  Partial<Omit<AdditionConfigV4Manual, 'version'>> & {
     // DERIVED state (calculated from primary state)
     rows?: number
     total?: number
@@ -60,12 +62,32 @@ export type WorksheetFormState = Partial<Omit<AdditionConfigV3Smart, 'version'>>
   }
 
 /**
+ * Worksheet operator type
+ */
+export type WorksheetOperator = 'addition' | 'subtraction' | 'mixed'
+
+/**
  * A single addition problem
  */
 export interface AdditionProblem {
   a: number
   b: number
+  operator: '+'
 }
+
+/**
+ * A single subtraction problem
+ */
+export interface SubtractionProblem {
+  minuend: number
+  subtrahend: number
+  operator: '−' // Proper minus sign (U+2212)
+}
+
+/**
+ * Unified problem type (addition or subtraction)
+ */
+export type WorksheetProblem = AdditionProblem | SubtractionProblem
 
 /**
  * Validation result
