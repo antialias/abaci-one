@@ -219,7 +219,7 @@ function uniquePush(list: AdditionProblem[], a: number, b: number, seen: Set<str
     return false
   }
   seen.add(key)
-  list.push({ a, b })
+  list.push({ a, b, operator: '+' })
   return true
 }
 
@@ -383,7 +383,7 @@ export function generateOnesOnlyBorrow(
 
     // Simulate the subtraction place by place
     for (let pos = 0; pos < maxPlaces; pos++) {
-      let digitM = getDigit(tempMinuend, pos)
+      const digitM = getDigit(tempMinuend, pos)
       const digitS = getDigit(subtrahend, pos)
 
       if (digitM < digitS) {

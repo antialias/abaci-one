@@ -55,6 +55,18 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     errors.push('Font size must be between 8 and 32')
   }
 
+  // V4: Validate digitRange (min and max must be 1-5, min <= max)
+  const digitRange = formState.digitRange ?? { min: 2, max: 2 }
+  if (!digitRange.min || digitRange.min < 1 || digitRange.min > 5) {
+    errors.push('Digit range min must be between 1 and 5')
+  }
+  if (!digitRange.max || digitRange.max < 1 || digitRange.max > 5) {
+    errors.push('Digit range max must be between 1 and 5')
+  }
+  if (digitRange.min > digitRange.max) {
+    errors.push('Digit range min cannot be greater than max')
+  }
+
   // Validate seed (must be positive integer)
   const seed = formState.seed ?? Date.now() % 2147483647
   if (!Number.isInteger(seed) || seed < 0) {
@@ -94,6 +106,12 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     pAllStart,
     interpolate: formState.interpolate ?? true,
 
+    // V4: Digit range for problem generation
+    digitRange,
+
+    // V4: Operator selection (addition, subtraction, or mixed)
+    operator: formState.operator ?? 'addition',
+
     // Layout
     page: {
       wIn: orientation === 'portrait' ? 8.5 : 11,
@@ -125,7 +143,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     }
 
     config = {
-      version: 3,
+      version: 4,
       mode: 'smart',
       displayRules,
       difficultyProfile: formState.difficultyProfile,
@@ -134,7 +152,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   } else {
     // Manual mode: Use boolean flags for uniform display
     config = {
-      version: 3,
+      version: 4,
       mode: 'manual',
       showCarryBoxes: formState.showCarryBoxes ?? true,
       showAnswerBoxes: formState.showAnswerBoxes ?? true,

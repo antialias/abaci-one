@@ -1,6 +1,8 @@
 // Display rules for conditional per-problem scaffolding
 
-import type { ProblemMeta } from './problemAnalysis'
+import type { ProblemMeta, SubtractionProblemMeta } from './problemAnalysis'
+
+export type AnyProblemMeta = ProblemMeta | SubtractionProblemMeta
 
 export type RuleMode =
   | 'always' // Always show this display option
@@ -29,8 +31,9 @@ export interface ResolvedDisplayOptions {
 
 /**
  * Evaluate a single display rule against a problem's metadata
+ * Works for both addition (regrouping = carrying) and subtraction (regrouping = borrowing)
  */
-export function evaluateRule(mode: RuleMode, problem: ProblemMeta): boolean {
+export function evaluateRule(mode: RuleMode, problem: AnyProblemMeta): boolean {
   switch (mode) {
     case 'always':
       return true
@@ -39,10 +42,14 @@ export function evaluateRule(mode: RuleMode, problem: ProblemMeta): boolean {
       return false
 
     case 'whenRegrouping':
-      return problem.requiresRegrouping
+      // Works for both: requiresRegrouping (addition) or requiresBorrowing (subtraction)
+      return 'requiresRegrouping' in problem
+        ? problem.requiresRegrouping
+        : problem.requiresBorrowing
 
     case 'whenMultipleRegroups':
-      return problem.regroupCount >= 2
+      // Works for both: regroupCount (addition) or borrowCount (subtraction)
+      return 'regroupCount' in problem ? problem.regroupCount >= 2 : problem.borrowCount >= 2
 
     case 'when3PlusDigits':
       return problem.maxDigits >= 3
@@ -55,7 +62,7 @@ export function evaluateRule(mode: RuleMode, problem: ProblemMeta): boolean {
  */
 export function resolveDisplayForProblem(
   rules: DisplayRules,
-  problem: ProblemMeta
+  problem: AnyProblemMeta
 ): ResolvedDisplayOptions {
   console.log('[resolveDisplayForProblem] Input rules:', rules)
   console.log('[resolveDisplayForProblem] Problem meta:', problem)

@@ -323,6 +323,255 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
 }
 
 /**
+ * Generate Typst function for rendering subtraction problem stack/grid
+ * Parallel to generateProblemStackFunction but for subtraction
+ *
+ * Key differences from addition:
+ * - Borrow boxes (instead of carry boxes) show borrows FROM higher TO lower
+ * - Operator is minus sign (−)
+ * - Difference can have fewer digits than minuend (hide leading zeros)
+ * - Ten-frames show borrowing visualization
+ *
+ * @param cellSize Size of each digit cell in inches
+ * @param maxDigits Maximum number of digits in any problem on this page (1-6)
+ */
+export function generateSubtractionProblemStackFunction(
+  cellSize: number,
+  maxDigits: number = 3
+): string {
+  const cellSizeIn = `${cellSize}in`
+  const cellSizePt = cellSize * 72
+
+  // Same place value colors as addition
+  const placeColors = [
+    'color-ones',
+    'color-tens',
+    'color-hundreds',
+    'color-thousands',
+    'color-ten-thousands',
+    'color-hundred-thousands',
+  ]
+
+  return String.raw`
+// Subtraction problem rendering function (supports 1-${maxDigits} digit problems)
+// Returns the stack/grid structure for rendering a single subtraction problem
+// Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers
+#let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers) = {
+  // Place value colors array for dynamic lookup
+  let place-colors = (${placeColors.join(', ')})
+
+  // Extract digits dynamically based on problem size
+  let max-digits = ${maxDigits}
+  // Allow one extra digit for potential carry in difference check
+  let max-extraction = max-digits + 1
+  let m-digits = ()
+  let s-digits = ()
+  let temp-m = minuend
+  let temp-s = subtrahend
+
+  // Extract digits from right to left (ones, tens, hundreds, ...)
+  for i in range(0, max-extraction) {
+    m-digits.push(calc.rem(temp-m, 10))
+    s-digits.push(calc.rem(temp-s, 10))
+    temp-m = calc.floor(temp-m / 10)
+    temp-s = calc.floor(temp-s / 10)
+  }
+
+  // Find highest non-zero digit position for each number
+  let m-highest = 0
+  let s-highest = 0
+  for i in range(0, max-extraction) {
+    if m-digits.at(i) > 0 { m-highest = i }
+    if s-digits.at(i) > 0 { s-highest = i }
+  }
+
+  // Calculate difference and its highest digit
+  let difference = minuend - subtrahend
+  let diff-highest = 0
+  let temp-diff = difference
+  for i in range(0, max-extraction) {
+    if calc.rem(temp-diff, 10) > 0 { diff-highest = i }
+    temp-diff = calc.floor(temp-diff / 10)
+  }
+
+  // Grid is sized for minuend/subtrahend, not difference
+  let grid-digits = calc.max(m-highest, s-highest) + 1
+
+  // Answer boxes only show up to difference digits
+  let answer-digits = diff-highest + 1
+
+  // Generate column list dynamically based on grid digits
+  let column-list = (0.5em,)
+  for i in range(0, grid-digits) {
+    column-list.push(${cellSizeIn})
+  }
+
+  // Show problem number (only if problem numbers are enabled)
+  let problem-number-display = if show-numbers and index-or-none != none {
+    align(top + left)[
+      #box(inset: (left: 0.08in, top: 0.05in))[
+        #text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\##(index-or-none + 1).]
+      ]
+    ]
+  }
+
+  stack(
+    dir: ttb,
+    spacing: 0pt,
+    problem-number-display,
+    grid(
+      columns: column-list,
+      gutter: 0pt,
+
+      // Borrow boxes row (shows borrows FROM higher place TO lower place)
+      [],  // Empty cell for operator column
+      ..for i in range(0, grid-digits).rev() {
+        // Check if we need to borrow FROM this place (to give to i-1)
+        // We borrow when m-digit < s-digit at position i-1
+        let shows-borrow = show-borrows and i > 0 and (m-digits.at(i - 1) < s-digits.at(i - 1))
+
+        if shows-borrow {
+          // This place borrowed FROM to give to lower place
+          let source-color = place-colors.at(i)      // This place (giving)
+          let dest-color = place-colors.at(i - 1)    // Lower place (receiving)
+
+          if show-colors {
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+              #diagonal-split-box(${cellSizeIn}, source-color, dest-color)
+            ],)
+          } else {
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt)[],)
+          }
+        } else {
+          // No borrow from this position
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+            #v(${cellSizeIn})
+          ],)
+        }
+      },
+
+      // Minuend row (top number)
+      [],  // Empty cell for operator column
+      ..for i in range(0, grid-digits).rev() {
+        let digit = m-digits.at(i)
+        let place-color = place-colors.at(i)
+        let fill-color = if show-colors { place-color } else { color-none }
+
+        // Show digit if within minuend's actual range
+        if i <= m-highest {
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
+            #align(center + horizon)[
+              #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
+            ]
+          ],)
+        } else {
+          // Leading zero position - don't show
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+            #h(0pt)
+          ],)
+        }
+      },
+
+      // Subtrahend row with − sign
+      box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+        #align(center + horizon)[
+          #text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[−]
+        ]
+      ],
+      ..for i in range(0, grid-digits).rev() {
+        let digit = s-digits.at(i)
+        let place-color = place-colors.at(i)
+        let fill-color = if show-colors { place-color } else { color-none }
+
+        // Show digit if within subtrahend's actual range
+        if i <= s-highest {
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
+            #align(center + horizon)[
+              #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
+            ]
+          ],)
+        } else {
+          // Leading zero position - don't show
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+            #h(0pt)
+          ],)
+        }
+      },
+
+      // Line row
+      [],  // Empty cell for operator column
+      ..for i in range(0, grid-digits) {
+        (line(length: ${cellSizeIn}, stroke: heavy-stroke),)
+      },
+
+      // Ten-frames row (show borrowing visualization)
+      ..if show-ten-frames {
+        // Detect which places need borrowing
+        let borrow-places = ()
+        for i in range(0, grid-digits) {
+          if m-digits.at(i) < s-digits.at(i) {
+            borrow-places.push(i)
+          }
+        }
+
+        if borrow-places.len() > 0 {
+          (
+            [],  // Empty cell for operator column
+            ..for i in range(0, grid-digits).rev() {
+              let shows-frame = show-ten-frames-for-all or (i in borrow-places)
+
+              if shows-frame {
+                // Show borrowed amount visualization
+                let top-color = if i + 1 < grid-digits { place-colors.at(i + 1) } else { color-none }
+                let bottom-color = place-colors.at(i)
+
+                (box(width: ${cellSizeIn}, height: ${cellSizeIn} * 0.8)[
+                  #align(center + top)[
+                    #ten-frames-stacked(
+                      ${cellSizeIn} * 0.90,
+                      if show-colors { top-color } else { color-none },
+                      if show-colors { bottom-color } else { color-none }
+                    )
+                  ]
+                  #place(top, line(length: ${cellSizeIn} * 0.90, stroke: heavy-stroke))
+                ],)
+              } else {
+                (v(${cellSizeIn} * 0.8),)
+              }
+            },
+          )
+        } else {
+          ()
+        }
+      } else {
+        ()
+      },
+
+      // Answer boxes (only for actual difference digits, hiding leading zeros)
+      [],  // Empty cell for operator column
+      ..for i in range(0, grid-digits).rev() {
+        let place-color = place-colors.at(i)
+        let fill-color = if show-colors { place-color } else { color-none }
+
+        // Only show answer box if within actual difference digits
+        let shows-answer = show-answers and i < answer-digits
+
+        if shows-answer {
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn}, stroke: 0.5pt, fill: fill-color)[],)
+        } else {
+          // No answer box for leading zero positions
+          (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+            #v(${cellSizeIn})
+          ],)
+        }
+      },
+    )
+  )
+}
+`
+}
+
+/**
  * DEPRECATED: Old generateProblemTypst function - use generateProblemStackFunction() instead
  * This function is kept for backwards compatibility but should not be used
  * Generate Typst code for rendering a single addition problem

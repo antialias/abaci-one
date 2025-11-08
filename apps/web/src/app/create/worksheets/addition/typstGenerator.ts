@@ -1,15 +1,19 @@
 // Typst document generator for addition worksheets
 
-import type { AdditionProblem, WorksheetConfig } from './types'
-import { generateTypstHelpers, generateProblemStackFunction } from './typstHelpers'
-import { analyzeProblem } from './problemAnalysis'
+import type { WorksheetProblem, WorksheetConfig } from './types'
+import {
+  generateTypstHelpers,
+  generateProblemStackFunction,
+  generateSubtractionProblemStackFunction,
+} from './typstHelpers'
+import { analyzeProblem, analyzeSubtractionProblem } from './problemAnalysis'
 import { resolveDisplayForProblem } from './displayRules'
 
 /**
  * Chunk array into pages of specified size
  */
-function chunkProblems(problems: AdditionProblem[], pageSize: number): AdditionProblem[][] {
-  const pages: AdditionProblem[][] = []
+function chunkProblems(problems: WorksheetProblem[], pageSize: number): WorksheetProblem[][] {
+  const pages: WorksheetProblem[][] = []
   for (let i = 0; i < problems.length; i += pageSize) {
     pages.push(problems.slice(i, i + pageSize))
   }
@@ -18,19 +22,24 @@ function chunkProblems(problems: AdditionProblem[], pageSize: number): AdditionP
 
 /**
  * Calculate maximum number of digits in any problem on this page
- * Returns max digits across all addends (handles 1-6 digit sums)
+ * Returns max digits across all operands (handles both addition and subtraction)
  */
-function calculateMaxDigits(problems: AdditionProblem[]): number {
+function calculateMaxDigits(problems: WorksheetProblem[]): number {
   let maxDigits = 1
   for (const problem of problems) {
-    const digitsA = problem.a.toString().length
-    const digitsB = problem.b.toString().length
-    const maxProblemDigits = Math.max(digitsA, digitsB)
-    maxDigits = Math.max(maxDigits, maxProblemDigits)
+    if (problem.operator === '+') {
+      const digitsA = problem.a.toString().length
+      const digitsB = problem.b.toString().length
+      const maxProblemDigits = Math.max(digitsA, digitsB)
+      maxDigits = Math.max(maxDigits, maxProblemDigits)
+    } else {
+      // Subtraction
+      const digitsMinuend = problem.minuend.toString().length
+      const digitsSubtrahend = problem.subtrahend.toString().length
+      const maxProblemDigits = Math.max(digitsMinuend, digitsSubtrahend)
+      maxDigits = Math.max(maxDigits, maxProblemDigits)
+    }
   }
-  // Sum might have one more digit than the largest addend
-  // e.g., 99999 + 99999 = 199998 (5 digits + 5 digits = 6 digits)
-  // But we render based on addend size, not sum size
   return maxDigits
 }
 
@@ -39,7 +48,7 @@ function calculateMaxDigits(problems: AdditionProblem[]): number {
  */
 function generatePageTypst(
   config: WorksheetConfig,
-  pageProblems: AdditionProblem[],
+  pageProblems: WorksheetProblem[],
   problemOffset: number,
   rowsPerPage: number
 ): string {
@@ -57,12 +66,16 @@ function generatePageTypst(
   const enrichedProblems = pageProblems.map((p, index) => {
     if (config.mode === 'smart') {
       // Smart mode: Per-problem conditional display based on problem complexity
-      const meta = analyzeProblem(p.a, p.b)
+      const meta =
+        p.operator === '+'
+          ? analyzeProblem(p.a, p.b)
+          : analyzeSubtractionProblem(p.minuend, p.subtrahend)
       const displayOptions = resolveDisplayForProblem(config.displayRules, meta)
 
       if (index === 0) {
+        const problemStr = p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`
         console.log('[typstGenerator] Smart mode - First problem display options:', {
-          problem: `${p.a} + ${p.b}`,
+          problem: problemStr,
           meta,
           displayOptions,
         })
@@ -75,8 +88,9 @@ function generatePageTypst(
     } else {
       // Manual mode: Uniform display across all problems
       if (index === 0) {
+        const problemStr = p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`
         console.log('[typstGenerator] Manual mode - Uniform display options:', {
-          problem: `${p.a} + ${p.b}`,
+          problem: problemStr,
           showCarryBoxes: config.showCarryBoxes,
           showAnswerBoxes: config.showAnswerBoxes,
           showPlaceValueColors: config.showPlaceValueColors,
@@ -100,10 +114,13 @@ function generatePageTypst(
 
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems
-    .map(
-      (p) =>
-        `  (a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
-    )
+    .map((p) => {
+      if (p.operator === '+') {
+        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
+      } else {
+        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
+      }
+    })
     .join('\n')
 
   // Calculate actual number of rows on this page
@@ -168,10 +185,9 @@ ${generateTypstHelpers(cellSize)}
 
 ${generateProblemStackFunction(cellSize, maxDigits)}
 
-#let problem-box(problem, index) = {
-  let a = problem.a
-  let b = problem.b
+${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
 
+#let problem-box(problem, index) = {
   // Extract per-problem display flags
   let grid-stroke = if problem.showCellBorder { (thickness: 1pt, dash: "dashed", paint: gray.darken(20%)) } else { none }
 
@@ -182,14 +198,25 @@ ${generateProblemStackFunction(cellSize, maxDigits)}
     stroke: grid-stroke
   )[
     #align(center + horizon)[
-      #problem-stack(
-        a, b, index,
-        problem.showCarryBoxes,
-        problem.showAnswerBoxes,
-        problem.showPlaceValueColors,
-        problem.showTenFrames,
-        problem.showProblemNumbers
-      )
+      #if problem.operator == "+" {
+        problem-stack(
+          problem.a, problem.b, index,
+          problem.showCarryBoxes,
+          problem.showAnswerBoxes,
+          problem.showPlaceValueColors,
+          problem.showTenFrames,
+          problem.showProblemNumbers
+        )
+      } else {
+        subtraction-problem-stack(
+          problem.minuend, problem.subtrahend, index,
+          problem.showCarryBoxes,
+          problem.showAnswerBoxes,
+          problem.showPlaceValueColors,
+          problem.showTenFrames,
+          problem.showProblemNumbers
+        )
+      }
     ]
   ]
 }
@@ -233,7 +260,7 @@ ${problemsTypst}
  */
 export function generateTypstSource(
   config: WorksheetConfig,
-  problems: AdditionProblem[]
+  problems: WorksheetProblem[]
 ): string[] {
   // Use the problemsPerPage directly from config (primary state)
   const problemsPerPage = config.problemsPerPage

@@ -37,7 +37,8 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
       validatedConfig.pAnyStart,
       validatedConfig.pAllStart,
       validatedConfig.interpolate,
-      validatedConfig.seed
+      validatedConfig.seed,
+      validatedConfig.digitRange // V4: Pass digit range
     )
 
     // Generate Typst sources (one per page)
