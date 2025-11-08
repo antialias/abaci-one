@@ -56,6 +56,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   }
 
   // V4: Validate digitRange (min and max must be 1-5, min <= max)
+  // Note: Same range applies to both addition and subtraction
   const digitRange = formState.digitRange ?? { min: 2, max: 2 }
   if (!digitRange.min || digitRange.min < 1 || digitRange.min > 5) {
     errors.push('Digit range min must be between 1 and 5')
@@ -65,6 +66,12 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   }
   if (digitRange.min > digitRange.max) {
     errors.push('Digit range min cannot be greater than max')
+  }
+
+  // V4: Validate operator (addition, subtraction, or mixed)
+  const operator = formState.operator ?? 'addition'
+  if (!['addition', 'subtraction', 'mixed'].includes(operator)) {
+    errors.push('Operator must be "addition", "subtraction", or "mixed"')
   }
 
   // Validate seed (must be positive integer)
