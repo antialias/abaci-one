@@ -66,7 +66,7 @@ export function HomeBlogSection() {
         <p
           className={css({
             fontSize: { base: 'sm', md: 'md' },
-            color: 'rgba(209, 213, 219, 0.8)',
+            color: 'text.secondary',
           })}
         >
           Insights on ed-tech and pedagogy
@@ -95,17 +95,17 @@ export function HomeBlogSection() {
               className={css({
                 display: 'block',
                 p: '4',
-                bg: 'rgba(139, 92, 246, 0.1)',
+                bg: 'accent.subtle',
                 backdropFilter: 'blur(10px)',
                 borderRadius: '0.5rem',
                 border: '1px solid',
-                borderColor: 'rgba(139, 92, 246, 0.3)',
+                borderColor: 'accent.muted',
                 transition: 'all 0.3s',
                 _hover: {
-                  bg: 'rgba(139, 92, 246, 0.15)',
-                  borderColor: 'rgba(139, 92, 246, 0.5)',
+                  bg: 'accent.muted',
+                  borderColor: 'accent.default',
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 24px rgba(139, 92, 246, 0.2)',
+                  boxShadow: '0 8px 24px token(colors.accent.muted)',
                 },
               })}
             >
@@ -114,7 +114,7 @@ export function HomeBlogSection() {
                   fontSize: { base: 'lg', md: 'xl' },
                   fontWeight: '600',
                   mb: '2',
-                  color: 'white',
+                  color: 'text.primary',
                   lineHeight: '1.3',
                 })}
               >
@@ -122,7 +122,7 @@ export function HomeBlogSection() {
               </h3>
               <p
                 className={css({
-                  color: 'rgba(209, 213, 219, 0.8)',
+                  color: 'text.secondary',
                   mb: '3',
                   lineHeight: '1.5',
                   fontSize: 'sm',
@@ -137,7 +137,7 @@ export function HomeBlogSection() {
                   gap: '2',
                   alignItems: 'center',
                   fontSize: 'xs',
-                  color: 'rgba(196, 181, 253, 0.8)',
+                  color: 'text.muted',
                 })}
               >
                 <span>{post.author}</span>
@@ -159,8 +159,8 @@ export function HomeBlogSection() {
                       className={css({
                         px: '1.5',
                         py: '0.25',
-                        bg: 'rgba(139, 92, 246, 0.2)',
-                        color: 'rgba(196, 181, 253, 1)',
+                        bg: 'accent.muted',
+                        color: 'accent.emphasis',
                         borderRadius: '0.25rem',
                         fontSize: '2xs',
                         fontWeight: '500',
@@ -190,17 +190,17 @@ export function HomeBlogSection() {
             gap: '2',
             px: '4',
             py: '2',
-            bg: 'rgba(139, 92, 246, 0.2)',
-            color: 'rgba(196, 181, 253, 1)',
+            bg: 'accent.subtle',
+            color: 'accent.emphasis',
             fontWeight: '600',
             fontSize: 'sm',
             borderRadius: '0.5rem',
             border: '1px solid',
-            borderColor: 'rgba(139, 92, 246, 0.3)',
+            borderColor: 'accent.muted',
             transition: 'all 0.2s',
             _hover: {
-              bg: 'rgba(139, 92, 246, 0.3)',
-              borderColor: 'rgba(139, 92, 246, 0.5)',
+              bg: 'accent.muted',
+              borderColor: 'accent.default',
             },
           })}
         >
