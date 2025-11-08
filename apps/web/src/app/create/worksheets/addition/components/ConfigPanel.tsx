@@ -2285,6 +2285,15 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     description="Organize problems visually for easier focus"
                   />
 
+                  {formState.operator === 'subtraction' || formState.operator === 'mixed' ? (
+                    <ToggleOption
+                      checked={formState.showBorrowNotation ?? false}
+                      onChange={(checked) => onChange({ showBorrowNotation: checked })}
+                      label="Borrow Notation Boxes"
+                      description="Empty scratch boxes for students to write borrowing work (cross out source, write modified values)"
+                    />
+                  ) : null}
+
                   <ToggleOption
                     checked={formState.showTenFrames ?? false}
                     onChange={(checked) => {

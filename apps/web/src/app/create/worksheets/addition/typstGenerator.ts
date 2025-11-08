@@ -108,6 +108,7 @@ function generatePageTypst(
         showTenFrames: config.showTenFrames,
         showProblemNumbers: config.showProblemNumbers,
         showCellBorder: config.showCellBorder,
+        showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : false,
       }
     }
   })
@@ -116,9 +117,9 @@ function generatePageTypst(
   const problemsTypst = enrichedProblems
     .map((p) => {
       if (p.operator === '+') {
-        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
+        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}),`
       } else {
-        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}),`
+        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}),`
       }
     })
     .join('\n')
@@ -214,7 +215,8 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
           problem.showAnswerBoxes,
           problem.showPlaceValueColors,
           problem.showTenFrames,
-          problem.showProblemNumbers
+          problem.showProblemNumbers,
+          problem.showBorrowNotation
         )
       }
     ]

@@ -134,7 +134,7 @@ ${generateSubtractionProblemStackFunction(cellSize, 3)}
 #let subtrahend = ${subtrahend}
 
 #align(center + horizon)[
-  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers)
+  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, false)
 ]
 `
   }

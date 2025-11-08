@@ -355,8 +355,8 @@ export function generateSubtractionProblemStackFunction(
   return String.raw`
 // Subtraction problem rendering function (supports 1-${maxDigits} digit problems)
 // Returns the stack/grid structure for rendering a single subtraction problem
-// Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers
-#let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers) = {
+// Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation
+#let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation) = {
   // Place value colors array for dynamic lookup
   let place-colors = (${placeColors.join(', ')})
 
@@ -450,20 +450,74 @@ export function generateSubtractionProblemStackFunction(
         }
       },
 
-      // Minuend row (top number)
+      // Borrow notation row (scratch boxes for student work)
+      ..if show-borrow-notation {
+        (
+          [],  // Empty cell for operator column
+          ..for i in range(0, grid-digits).rev() {
+            // Check if this place needs borrowing FROM (source)
+            // We borrow FROM position i when position i-1 needs to borrow
+            let is-source = i > 0 and (m-digits.at(i - 1) < s-digits.at(i - 1))
+
+            if is-source and i <= m-highest {
+              // Small dotted box above this digit for student to write reduced value
+              (box(width: ${cellSizeIn}, height: ${cellSizeIn} * 0.4)[
+                #align(center + bottom)[
+                  #box(
+                    width: ${cellSizeIn} * 0.5,
+                    height: ${cellSizeIn} * 0.35,
+                    stroke: (dash: "dotted", thickness: 0.5pt, paint: gray)
+                  )[]
+                ]
+              ],)
+            } else {
+              // No notation needed
+              (v(${cellSizeIn} * 0.4),)
+            }
+          },
+        )
+      } else {
+        ()
+      },
+
+      // Minuend row (top number with optional borrow notation)
       [],  // Empty cell for operator column
       ..for i in range(0, grid-digits).rev() {
         let digit = m-digits.at(i)
         let place-color = place-colors.at(i)
         let fill-color = if show-colors { place-color } else { color-none }
 
+        // Check if this place needs to borrow (destination)
+        let needs-borrow = i < grid-digits and (m-digits.at(i) < s-digits.at(i))
+
         // Show digit if within minuend's actual range
         if i <= m-highest {
-          (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
-            #align(center + horizon)[
-              #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
-            ]
-          ],)
+          if show-borrow-notation and needs-borrow {
+            // Show digit with small scratch box to the left for modified value (e.g., "12")
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
+              #stack(
+                dir: ltr,
+                spacing: 2pt,
+                // Small dotted box for student to write modified digit
+                box(
+                  width: ${cellSizeIn} * 0.35,
+                  height: ${cellSizeIn} * 0.35,
+                  stroke: (dash: "dotted", thickness: 0.5pt, paint: gray)
+                )[],
+                // Original digit
+                align(center + horizon)[
+                  #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
+                ]
+              )
+            ],)
+          } else {
+            // Normal digit display
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
+              #align(center + horizon)[
+                #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
+              ]
+            ],)
+          }
         } else {
           // Leading zero position - don't show
           (box(width: ${cellSizeIn}, height: ${cellSizeIn})[

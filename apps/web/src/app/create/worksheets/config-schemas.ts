@@ -329,6 +329,7 @@ const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   showProblemNumbers: z.boolean(),
   showCellBorder: z.boolean(),
   showTenFramesForAll: z.boolean(),
+  showBorrowNotation: z.boolean(), // Scratch boxes for borrowing work
 
   // Optional: Which manual preset is selected
   manualPreset: z.string().optional(),

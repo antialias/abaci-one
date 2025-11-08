@@ -168,6 +168,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       showProblemNumbers: formState.showProblemNumbers ?? true,
       showCellBorder: formState.showCellBorder ?? true,
       showTenFramesForAll: formState.showTenFramesForAll ?? false,
+      showBorrowNotation: formState.showBorrowNotation ?? false,
       manualPreset: formState.manualPreset,
       ...sharedFields,
     }
