@@ -2,7 +2,11 @@
 
 import { execSync } from 'child_process'
 import { validateWorksheetConfig } from './validation'
-import { generateProblems } from './problemGenerator'
+import {
+  generateProblems,
+  generateSubtractionProblems,
+  generateMixedProblems,
+} from './problemGenerator'
 import { generateTypstSource } from './typstGenerator'
 import type { WorksheetFormState } from './types'
 
@@ -31,15 +35,35 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
 
     const validatedConfig = validation.config
 
-    // Generate all problems for full preview
-    const problems = generateProblems(
-      validatedConfig.total,
-      validatedConfig.pAnyStart,
-      validatedConfig.pAllStart,
-      validatedConfig.interpolate,
-      validatedConfig.seed,
-      validatedConfig.digitRange // V4: Pass digit range
-    )
+    // Generate all problems for full preview based on operator
+    const operator = validatedConfig.operator ?? 'addition'
+    const problems =
+      operator === 'addition'
+        ? generateProblems(
+            validatedConfig.total,
+            validatedConfig.pAnyStart,
+            validatedConfig.pAllStart,
+            validatedConfig.interpolate,
+            validatedConfig.seed,
+            validatedConfig.digitRange
+          )
+        : operator === 'subtraction'
+          ? generateSubtractionProblems(
+              validatedConfig.total,
+              validatedConfig.digitRange,
+              validatedConfig.pAnyStart,
+              validatedConfig.pAllStart,
+              validatedConfig.interpolate,
+              validatedConfig.seed
+            )
+          : generateMixedProblems(
+              validatedConfig.total,
+              validatedConfig.digitRange,
+              validatedConfig.pAnyStart,
+              validatedConfig.pAllStart,
+              validatedConfig.interpolate,
+              validatedConfig.seed
+            )
 
     // Generate Typst sources (one per page)
     const typstSources = generateTypstSource(validatedConfig, problems)

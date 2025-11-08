@@ -10,11 +10,16 @@
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
-import { generateProblems } from '@/app/create/worksheets/addition/problemGenerator'
+import {
+  generateProblems,
+  generateSubtractionProblems,
+} from '@/app/create/worksheets/addition/problemGenerator'
 import {
   generateTypstHelpers,
   generateProblemStackFunction,
+  generateSubtractionProblemStackFunction,
 } from '@/app/create/worksheets/addition/typstHelpers'
+import type { WorksheetOperator } from '@/app/create/worksheets/addition/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,8 +32,13 @@ interface ExampleRequest {
   showTenFrames?: boolean
   showTenFramesForAll?: boolean
   fontSize?: number
+  operator?: WorksheetOperator
+  // For addition
   addend1?: number
   addend2?: number
+  // For subtraction
+  minuend?: number
+  subtrahend?: number
 }
 
 /**
@@ -36,21 +46,7 @@ interface ExampleRequest {
  * Uses the EXACT same Typst structure as the full worksheet generator
  */
 function generateExampleTypst(config: ExampleRequest): string {
-  // Use custom addends if provided, otherwise generate a problem
-  let a: number
-  let b: number
-
-  if (config.addend1 !== undefined && config.addend2 !== undefined) {
-    a = config.addend1
-    b = config.addend2
-  } else {
-    // Generate a simple 2-digit + 2-digit problem with carries
-    const problems = generateProblems(1, 0.8, 0.5, false, 12345)
-    const problem = problems[0]
-    a = problem.a
-    b = problem.b
-  }
-
+  const operator = config.operator ?? 'addition'
   const fontSize = config.fontSize || 14
   const cellSize = 0.35 // Compact cell size for examples
 
@@ -62,7 +58,23 @@ function generateExampleTypst(config: ExampleRequest): string {
   const showTenFrames = config.showTenFrames ?? false
   const showTenFramesForAll = config.showTenFramesForAll ?? false
 
-  return String.raw`
+  if (operator === 'addition') {
+    // Use custom addends if provided, otherwise generate a problem
+    let a: number
+    let b: number
+
+    if (config.addend1 !== undefined && config.addend2 !== undefined) {
+      a = config.addend1
+      b = config.addend2
+    } else {
+      // Generate a simple 2-digit + 2-digit problem with carries
+      const problems = generateProblems(1, 0.8, 0.5, false, 12345)
+      const problem = problems[0]
+      a = problem.a
+      b = problem.b
+    }
+
+    return String.raw`
 #set page(width: auto, height: auto, margin: 8pt, fill: white)
 #set text(size: ${fontSize}pt, font: "New Computer Modern Math")
 
@@ -85,6 +97,47 @@ ${generateProblemStackFunction(cellSize, 3)}
   #problem-stack(a, b, if show-numbers { 0 } else { none }, show-carries, show-answers, show-colors, show-ten-frames, show-numbers)
 ]
 `
+  } else {
+    // Subtraction
+    let minuend: number
+    let subtrahend: number
+
+    if (config.minuend !== undefined && config.subtrahend !== undefined) {
+      minuend = config.minuend
+      subtrahend = config.subtrahend
+    } else {
+      // Generate a simple 2-digit - 2-digit problem with borrows
+      const digitRange = { min: 2, max: 2 }
+      const problems = generateSubtractionProblems(1, digitRange, 0.8, 0.5, false, 12345)
+      const problem = problems[0]
+      minuend = problem.minuend
+      subtrahend = problem.subtrahend
+    }
+
+    return String.raw`
+#set page(width: auto, height: auto, margin: 8pt, fill: white)
+#set text(size: ${fontSize}pt, font: "New Computer Modern Math")
+
+#let heavy-stroke = 0.8pt
+#let show-borrows = ${showCarries ? 'true' : 'false'}
+#let show-answers = ${showAnswers ? 'true' : 'false'}
+#let show-colors = ${showColors ? 'true' : 'false'}
+#let show-numbers = ${showNumbers ? 'true' : 'false'}
+#let show-ten-frames = ${showTenFrames ? 'true' : 'false'}
+#let show-ten-frames-for-all = ${showTenFramesForAll ? 'true' : 'false'}
+
+${generateTypstHelpers(cellSize)}
+
+${generateSubtractionProblemStackFunction(cellSize, 3)}
+
+#let minuend = ${minuend}
+#let subtrahend = ${subtrahend}
+
+#align(center + horizon)[
+  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers)
+]
+`
+  }
 }
 
 export async function POST(request: NextRequest) {
