@@ -14,6 +14,7 @@ import {
 } from "./AbacusUtils";
 import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
 import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
+import { useSystemTheme } from "./hooks/useSystemTheme";
 import "./Abacus3D.css";
 
 // Types
@@ -1663,6 +1664,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     return columns;
   }, [columns, value, showEmptyColumns]);
 
+  // Detect system theme for automatic numeral color adjustment
+  const systemTheme = useSystemTheme();
+
   // Switch to place-value architecture!
   const maxPlaceValue = (effectiveColumns - 1) as ValidPlaceValues;
   const {
@@ -2247,6 +2251,26 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     ],
   );
 
+  // Merge theme-aware numeral colors into customStyles
+  // Default numeral color is dark (rgba(0,0,0,0.8)) which works on white/light abacus frames
+  // Only override if user hasn't explicitly set numeral color
+  const themeAwareCustomStyles = useMemo(() => {
+    if (!customStyles?.numerals?.color) {
+      // User hasn't set a custom numeral color, so we use theme-aware default
+      // Keep numerals dark regardless of theme, since abacus frame is typically white/light
+      return {
+        ...customStyles,
+        numerals: {
+          ...customStyles?.numerals,
+          color: "rgba(0, 0, 0, 0.8)",
+          fontWeight: customStyles?.numerals?.fontWeight || "600",
+        },
+      };
+    }
+    // User has set custom color, respect it
+    return customStyles;
+  }, [customStyles, systemTheme]);
+
   return (
     <div
       className={containerClasses}
@@ -2289,7 +2313,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         hideInactiveBeads={finalConfig.hideInactiveBeads}
         frameVisible={finalConfig.frameVisible}
         showNumbers={false}
-        customStyles={customStyles}
+        customStyles={themeAwareCustomStyles}
         interactive={finalConfig.interactive}
         highlightColumns={highlightColumns}
         columnLabels={columnLabels}

@@ -68,3 +68,6 @@ export type {
 } from "./AbacusUtils";
 
 export { useAbacusDiff, useAbacusState } from "./AbacusHooks";
+
+export { useSystemTheme } from "./hooks/useSystemTheme";
+export type { SystemTheme } from "./hooks/useSystemTheme";
