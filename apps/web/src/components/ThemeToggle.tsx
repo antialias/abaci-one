@@ -6,15 +6,37 @@ import { css } from '../../styled-system/css'
 export function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme()
 
-  const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+  const cycleTheme = () => {
+    // Cycle: light → dark → system → light
+    if (theme === 'light') {
+      setTheme('dark')
+    } else if (theme === 'dark') {
+      setTheme('system')
+    } else {
+      setTheme('light')
+    }
+  }
+
+  const getThemeLabel = () => {
+    if (theme === 'system') {
+      return `Auto (${resolvedTheme === 'dark' ? 'Dark' : 'Light'})`
+    }
+    return theme === 'dark' ? 'Dark' : 'Light'
+  }
+
+  const getThemeIcon = () => {
+    if (theme === 'system') {
+      return '🌗' // Half moon for system/auto
+    }
+    return resolvedTheme === 'dark' ? '🌙' : '☀️'
   }
 
   return (
     <button
       type="button"
-      onClick={toggleTheme}
-      aria-label="Toggle theme"
+      onClick={cycleTheme}
+      aria-label={`Current theme: ${getThemeLabel()}. Click to cycle.`}
+      title={`Current: ${getThemeLabel()}. Click to cycle themes.`}
       className={css({
         display: 'flex',
         alignItems: 'center',
@@ -36,8 +58,8 @@ export function ThemeToggle() {
         },
       })}
     >
-      {resolvedTheme === 'dark' ? '☀️' : '🌙'}
-      <span>{resolvedTheme === 'dark' ? 'Light' : 'Dark'}</span>
+      {getThemeIcon()}
+      <span>{getThemeLabel()}</span>
     </button>
   )
 }

@@ -88,9 +88,11 @@ export default function CreateHubPage() {
               <div
                 data-element="flashcards-card"
                 className={css({
-                  bg: 'bg.default',
+                  bg: 'bg.surface',
                   borderRadius: '3xl',
                   p: 8,
+                  border: '1px solid',
+                  borderColor: 'border.default',
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
                   cursor: 'pointer',
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -99,6 +101,7 @@ export default function CreateHubPage() {
                   _hover: {
                     transform: 'translateY(-12px) scale(1.02)',
                     boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
+                    borderColor: 'border.emphasized',
                   },
                   _before: {
                     content: '""',
@@ -284,9 +287,11 @@ export default function CreateHubPage() {
               <div
                 data-element="worksheets-card"
                 className={css({
-                  bg: 'bg.default',
+                  bg: 'bg.surface',
                   borderRadius: '3xl',
                   p: 8,
+                  border: '1px solid',
+                  borderColor: 'border.default',
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
                   cursor: 'pointer',
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -295,6 +300,7 @@ export default function CreateHubPage() {
                   _hover: {
                     transform: 'translateY(-12px) scale(1.02)',
                     boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
+                    borderColor: 'border.emphasized',
                   },
                   _before: {
                     content: '""',
@@ -480,9 +486,11 @@ export default function CreateHubPage() {
               <div
                 data-element="calendar-card"
                 className={css({
-                  bg: 'bg.default',
+                  bg: 'bg.surface',
                   borderRadius: '3xl',
                   p: 8,
+                  border: '1px solid',
+                  borderColor: 'border.default',
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
                   cursor: 'pointer',
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -491,6 +499,7 @@ export default function CreateHubPage() {
                   _hover: {
                     transform: 'translateY(-12px) scale(1.02)',
                     boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
+                    borderColor: 'border.emphasized',
                   },
                   _before: {
                     content: '""',
