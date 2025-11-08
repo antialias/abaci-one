@@ -364,8 +364,20 @@ export interface DifficultyProfile {
  * Each profile balances problem complexity (regrouping) with scaffolding support
  */
 /**
- * Color palette for difficulty levels
+ * Color palette for difficulty levels (RGB values for interpolation)
  * Subtle progression from green (easy) to red (hard)
+ */
+const DIFFICULTY_RGB = {
+  beginner: { bg: [220, 252, 231], border: [34, 197, 94], text: [22, 101, 52] }, // green
+  earlyLearner: { bg: [219, 234, 254], border: [59, 130, 246], text: [30, 64, 175] }, // blue
+  intermediate: { bg: [254, 249, 195], border: [234, 179, 8], text: [133, 77, 14] }, // yellow
+  advanced: { bg: [255, 237, 213], border: [249, 115, 22], text: [154, 52, 18] }, // orange
+  expert: { bg: [254, 226, 226], border: [239, 68, 68], text: [153, 27, 27] }, // red
+} as const
+
+/**
+ * Color palette for difficulty levels (Panda CSS tokens)
+ * Used for preset buttons in dropdown menu
  */
 export const DIFFICULTY_COLORS = {
   beginner: { bg: 'green.100', border: 'green.500', text: 'green.800' },
@@ -374,6 +386,24 @@ export const DIFFICULTY_COLORS = {
   advanced: { bg: 'orange.100', border: 'orange.500', text: 'orange.800' },
   expert: { bg: 'red.100', border: 'red.500', text: 'red.800' },
 } as const
+
+/**
+ * Linearly interpolate between two RGB colors
+ */
+function interpolateRGB(color1: number[], color2: number[], weight: number): number[] {
+  return [
+    Math.round(color1[0] + (color2[0] - color1[0]) * weight),
+    Math.round(color1[1] + (color2[1] - color1[1]) * weight),
+    Math.round(color1[2] + (color2[2] - color1[2]) * weight),
+  ]
+}
+
+/**
+ * Convert RGB array to CSS string
+ */
+function rgbToString(rgb: number[]): string {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+}
 
 /**
  * Get interpolated color between two presets based on distance
@@ -413,9 +443,20 @@ export function getInterpolatedColor(
   const totalDistance = distanceToEasier + distanceToHarder
   const weight = totalDistance > 0 ? distanceToEasier / totalDistance : 0.5
 
-  // For now, use discrete color based on which is closer
-  // (True color interpolation would require RGB conversion)
-  return weight < 0.5 ? DIFFICULTY_COLORS[nearestEasier] : DIFFICULTY_COLORS[nearestHarder]
+  // Get RGB values for both presets
+  const easierRGB = DIFFICULTY_RGB[nearestEasier]
+  const harderRGB = DIFFICULTY_RGB[nearestHarder]
+
+  // Interpolate each color channel
+  const bgRGB = interpolateRGB(easierRGB.bg, harderRGB.bg, weight)
+  const borderRGB = interpolateRGB(easierRGB.border, harderRGB.border, weight)
+  const textRGB = interpolateRGB(easierRGB.text, harderRGB.text, weight)
+
+  return {
+    bg: rgbToString(bgRGB),
+    border: rgbToString(borderRGB),
+    text: rgbToString(textRGB),
+  }
 }
 
 export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
