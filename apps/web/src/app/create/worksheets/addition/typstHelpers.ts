@@ -453,26 +453,24 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
                     ]
                   )
-                  // Draw curved arrow from top-right of borrow box to top-left of borrowed 10s box
+                  // Draw straight line from top of borrow box to center of arrowhead
                   #place(
                     top + left,
                     dx: ${cellSizeIn},
                     path(
-                      stroke: (paint: white, thickness: 1pt),
-                      // Start at top-right corner of borrow box
+                      stroke: (paint: white, thickness: 1.5pt),
+                      // Start at top of borrow box
                       (0pt, 0pt),
-                      // Bezier curve - convex on upper right
-                      (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
-                      // End at top-left of borrowed 10s box (one cell right, one cell down)
-                      (${cellSizeIn}, ${cellSizeIn}),
+                      // End at center of arrowhead (moved down significantly)
+                      (${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.75).toFixed(2)}in),
                     )
                   )
-                  // Arrowhead pointing down at the top-left of borrowed 10s box
+                  // Arrowhead pointing down at the top edge of borrowed 10s box
                   #place(
                     top + left,
-                    dx: ${(cellSize * 2.0 - 0.03).toFixed(2)}in,
-                    dy: ${(cellSize * 1.0 - 0.05).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.5).toFixed(1)}pt, fill: white)[▼]
+                    dx: ${(cellSize * 0.96).toFixed(2)}in,
+                    dy: ${(cellSize * 0.45).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, fill: white)[▼]
                   )
                 ]
               } else {
@@ -485,26 +483,24 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                     ]
                   )
-                  // Draw curved arrow from top-right of borrow box to top-left of borrowed 10s box
+                  // Draw straight line from top of borrow box to center of arrowhead
                   #place(
                     top + left,
                     dx: ${cellSizeIn},
                     path(
-                      stroke: (paint: gray.darken(30%), thickness: 1pt),
-                      // Start at top-right corner of borrow box
+                      stroke: (paint: gray.darken(30%), thickness: 1.5pt),
+                      // Start at top of borrow box
                       (0pt, 0pt),
-                      // Bezier curve - convex on upper right
-                      (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
-                      // End at top-left of borrowed 10s box (one cell right, one cell down)
-                      (${cellSizeIn}, ${cellSizeIn}),
+                      // End at center of arrowhead (moved down significantly)
+                      (${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.75).toFixed(2)}in),
                     )
                   )
-                  // Arrowhead pointing down at the top-left of borrowed 10s box
+                  // Arrowhead pointing down at the top edge of borrowed 10s box
                   #place(
                     top + left,
-                    dx: ${(cellSize * 2.0 - 0.03).toFixed(2)}in,
-                    dy: ${(cellSize * 1.0 - 0.05).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.5).toFixed(1)}pt, fill: gray.darken(30%))[▼]
+                    dx: ${(cellSize * 0.96).toFixed(2)}in,
+                    dy: ${(cellSize * 0.45).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, fill: gray.darken(30%))[▼]
                   )
                 ]
               }
