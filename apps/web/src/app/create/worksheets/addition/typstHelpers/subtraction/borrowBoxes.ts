@@ -64,9 +64,8 @@ export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
               #place(
                 top + center,
                 dy: 2pt,
-                box[
-                  #text(size: ${hintTextSize}pt, fill: gray.darken(30%), weight: "bold")[#str(display-value) − ]
-                  #text(size: ${hintTextSize}pt, fill: gray.darken(30%), weight: "bold")[1]
+                text(size: ${hintTextSize}pt, fill: gray.darken(30%), weight: "bold")[
+                  #display-value#h(0.1em)−#h(0.1em)1
                 ]
               )
               // Draw curved line using Typst bezier with control point

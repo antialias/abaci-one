@@ -71,6 +71,18 @@ function getScaffoldingSummary(displayRules: any): React.ReactNode {
     conditionalItems.push('ten-frames')
   }
 
+  if (displayRules.borrowNotation === 'always') {
+    alwaysItems.push('borrow notation')
+  } else if (displayRules.borrowNotation !== 'never') {
+    conditionalItems.push('borrow notation')
+  }
+
+  if (displayRules.borrowingHints === 'always') {
+    alwaysItems.push('borrowing hints')
+  } else if (displayRules.borrowingHints !== 'never') {
+    conditionalItems.push('borrowing hints')
+  }
+
   if (alwaysItems.length === 0 && conditionalItems.length === 0) {
     console.log('[getScaffoldingSummary] Final summary: no scaffolding')
     return <span className={css({ color: 'gray.500', fontStyle: 'italic' })}>no scaffolding</span>

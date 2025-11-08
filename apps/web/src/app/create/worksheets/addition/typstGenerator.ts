@@ -217,13 +217,13 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
       } else {
         subtraction-problem-stack(
           problem.minuend, problem.subtrahend, index,
-          problem.showCarryBoxes,
+          problem.showBorrowNotation,  // show-borrows (whether to show borrow boxes)
           problem.showAnswerBoxes,
           problem.showPlaceValueColors,
           problem.showTenFrames,
           problem.showProblemNumbers,
-          problem.showBorrowNotation,
-          problem.showBorrowingHints
+          problem.showBorrowNotation,  // show-borrow-notation (scratch work boxes in minuend)
+          problem.showBorrowingHints   // show-borrowing-hints (hints with arrows)
         )
       }
     ]
