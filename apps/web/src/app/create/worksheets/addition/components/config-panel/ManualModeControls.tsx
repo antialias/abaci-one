@@ -1,5 +1,6 @@
 'use client'
 
+import * as Slider from '@radix-ui/react-slider'
 import { css } from '../../../../../../../styled-system/css'
 import { stack } from '../../../../../../../styled-system/patterns'
 import type { WorksheetFormState } from '../../types'

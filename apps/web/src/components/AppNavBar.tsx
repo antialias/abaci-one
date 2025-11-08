@@ -470,6 +470,38 @@ function HamburgerMenu({
           <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
           </div>
+
+          <DropdownMenu.Separator
+            style={{
+              height: '1px',
+              background: 'rgba(75, 85, 99, 0.5)',
+              margin: '6px 0',
+            }}
+          />
+
+          {/* Theme Section */}
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: 'rgba(196, 181, 253, 0.7)',
+              marginBottom: '6px',
+              marginLeft: '12px',
+              marginTop: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            Theme
+          </div>
+
+          <div
+            style={{ padding: '0 6px' }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <ThemeToggle />
+          </div>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
 
@@ -757,14 +789,14 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 </NavLink>
               </nav>
 
-              {/* Abacus Style Dropdown */}
-              <AbacusDisplayDropdown isFullscreen={false} />
-
-              {/* Language Selector */}
-              <LanguageSelector variant="inline" isFullscreen={false} />
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
+              {/* Hamburger Menu */}
+              <HamburgerMenu
+                isFullscreen={false}
+                isArcadePage={false}
+                pathname={pathname}
+                toggleFullscreen={toggleFullscreen}
+                router={router}
+              />
             </div>
           </div>
         </div>
