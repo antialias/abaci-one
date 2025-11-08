@@ -451,9 +451,24 @@ export function generateSubtractionProblemStackFunction(
                     box[
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[#str(original-digit) − ]
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
-                      #h(1pt)
-                      #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: white, stroke: 0.3pt + black)[→]
                     ]
+                  )
+                  // Draw diagonal arrow from "1" to borrowed 10s box
+                  #place(
+                    top + center,
+                    dx: 0.08in,
+                    dy: 2pt,
+                    line(
+                      start: (0pt, 0pt),
+                      end: (${cellSizeIn}, ${cellSizeIn}),
+                      stroke: (paint: white, thickness: 0.8pt, dash: "solid")
+                    )
+                  )
+                  #place(
+                    top + center,
+                    dx: ${cellSizeIn},
+                    dy: ${cellSizeIn},
+                    text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: white)[▼]
                   )
                 ]
               } else {
@@ -464,9 +479,24 @@ export function generateSubtractionProblemStackFunction(
                     box[
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[#str(original-digit) − ]
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
-                      #h(1pt)
-                      #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[→]
                     ]
+                  )
+                  // Draw diagonal arrow from "1" to borrowed 10s box
+                  #place(
+                    top + center,
+                    dx: 0.08in,
+                    dy: 2pt,
+                    line(
+                      start: (0pt, 0pt),
+                      end: (${cellSizeIn}, ${cellSizeIn}),
+                      stroke: (paint: gray.darken(30%), thickness: 0.8pt, dash: "solid")
+                    )
+                  )
+                  #place(
+                    top + center,
+                    dx: ${cellSizeIn},
+                    dy: ${cellSizeIn},
+                    text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[▼]
                   )
                 ]
               }
