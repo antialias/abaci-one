@@ -4,19 +4,21 @@ import { css } from '../../../../../../../styled-system/css'
 export interface ProgressiveDifficultyToggleProps {
   interpolate: boolean | undefined
   onChange: (interpolate: boolean) => void
+  isDark?: boolean
 }
 
 export function ProgressiveDifficultyToggle({
   interpolate,
   onChange,
+  isDark = false,
 }: ProgressiveDifficultyToggleProps) {
   return (
     <div
       data-section="progressive-difficulty"
       className={css({
-        bg: 'gray.50',
+        bg: isDark ? 'gray.700' : 'gray.50',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
         rounded: 'xl',
         p: '3',
       })}
@@ -34,7 +36,7 @@ export function ProgressiveDifficultyToggle({
           className={css({
             fontSize: 'sm',
             fontWeight: 'medium',
-            color: 'gray.700',
+            color: isDark ? 'gray.200' : 'gray.700',
             cursor: 'pointer',
           })}
         >
@@ -47,7 +49,7 @@ export function ProgressiveDifficultyToggle({
           className={css({
             width: '11',
             height: '6',
-            bg: 'gray.300',
+            bg: isDark ? 'gray.600' : 'gray.300',
             rounded: 'full',
             position: 'relative',
             cursor: 'pointer',
@@ -76,7 +78,7 @@ export function ProgressiveDifficultyToggle({
       <div
         className={css({
           fontSize: 'xs',
-          color: 'gray.500',
+          color: isDark ? 'gray.400' : 'gray.500',
           mt: '1',
         })}
       >

@@ -28,9 +28,10 @@ import { getScaffoldingSummary } from './utils'
 export interface SmartModeControlsProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
+  isDark?: boolean
 }
 
-export function SmartModeControls({ formState, onChange }: SmartModeControlsProps) {
+export function SmartModeControls({ formState, onChange, isDark = false }: SmartModeControlsProps) {
   const [showDebugPlot, setShowDebugPlot] = useState(false)
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
   const [hoverPreview, setHoverPreview] = useState<{

@@ -3,16 +3,17 @@ import { css } from '../../../../../../../styled-system/css'
 export interface OperatorSectionProps {
   operator: 'addition' | 'subtraction' | 'mixed' | undefined
   onChange: (operator: 'addition' | 'subtraction' | 'mixed') => void
+  isDark?: boolean
 }
 
-export function OperatorSection({ operator, onChange }: OperatorSectionProps) {
+export function OperatorSection({ operator, onChange, isDark = false }: OperatorSectionProps) {
   return (
     <div
       data-section="operator-selection"
       className={css({
-        bg: 'gray.50',
+        bg: isDark ? 'gray.700' : 'gray.50',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
         rounded: 'xl',
         p: '4',
       })}
@@ -21,7 +22,7 @@ export function OperatorSection({ operator, onChange }: OperatorSectionProps) {
         className={css({
           fontSize: 'sm',
           fontWeight: 'semibold',
-          color: 'gray.700',
+          color: isDark ? 'gray.200' : 'gray.700',
           mb: '2',
           display: 'block',
         })}
@@ -49,10 +50,10 @@ export function OperatorSection({ operator, onChange }: OperatorSectionProps) {
                   color: 'white',
                 }
               : {
-                  bg: 'white',
-                  borderColor: 'gray.300',
-                  color: 'gray.700',
-                  _hover: { borderColor: 'gray.400' },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >
@@ -78,10 +79,10 @@ export function OperatorSection({ operator, onChange }: OperatorSectionProps) {
                   color: 'white',
                 }
               : {
-                  bg: 'white',
-                  borderColor: 'gray.300',
-                  color: 'gray.700',
-                  _hover: { borderColor: 'gray.400' },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >
@@ -107,10 +108,10 @@ export function OperatorSection({ operator, onChange }: OperatorSectionProps) {
                   color: 'white',
                 }
               : {
-                  bg: 'white',
-                  borderColor: 'gray.300',
-                  color: 'gray.700',
-                  _hover: { borderColor: 'gray.400' },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >

@@ -5,30 +5,31 @@ import { css } from '../../../../../../styled-system/css'
 interface ModeSelectorProps {
   currentMode: 'smart' | 'manual'
   onChange: (mode: 'smart' | 'manual') => void
+  isDark?: boolean
 }
 
 /**
  * Mode selector for worksheet generation
  * Allows switching between Smart Difficulty and Manual Control modes
  */
-export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
+export function ModeSelector({ currentMode, onChange, isDark = false }: ModeSelectorProps) {
   return (
     <div
       data-component="mode-selector"
       className={css({
         marginBottom: '1.5rem',
         padding: '1rem',
-        backgroundColor: 'gray.50',
+        backgroundColor: isDark ? 'gray.700' : 'gray.50',
         borderRadius: '8px',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
       })}
     >
       <h3
         className={css({
           fontSize: '0.875rem',
           fontWeight: '600',
-          color: 'gray.700',
+          color: isDark ? 'gray.200' : 'gray.700',
           marginBottom: '0.75rem',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
@@ -55,8 +56,8 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
             padding: '1rem',
             borderRadius: '6px',
             border: '2px solid',
-            borderColor: currentMode === 'smart' ? 'blue.500' : 'gray.300',
-            backgroundColor: currentMode === 'smart' ? 'blue.50' : 'white',
+            borderColor: currentMode === 'smart' ? 'blue.500' : isDark ? 'gray.500' : 'gray.300',
+            backgroundColor: currentMode === 'smart' ? 'blue.50' : isDark ? 'gray.600' : 'white',
             cursor: 'pointer',
             transition: 'all 0.2s',
             textAlign: 'left',
@@ -85,7 +86,7 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
               className={css({
                 fontSize: '0.875rem',
                 fontWeight: '600',
-                color: currentMode === 'smart' ? 'blue.700' : 'gray.700',
+                color: currentMode === 'smart' ? 'blue.700' : isDark ? 'gray.200' : 'gray.700',
               })}
             >
               Smart Difficulty
@@ -94,7 +95,7 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
           <p
             className={css({
               fontSize: '0.75rem',
-              color: currentMode === 'smart' ? 'blue.600' : 'gray.600',
+              color: currentMode === 'smart' ? 'blue.600' : isDark ? 'gray.400' : 'gray.600',
               lineHeight: '1.4',
             })}
           >
@@ -113,8 +114,8 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
             padding: '1rem',
             borderRadius: '6px',
             border: '2px solid',
-            borderColor: currentMode === 'manual' ? 'blue.500' : 'gray.300',
-            backgroundColor: currentMode === 'manual' ? 'blue.50' : 'white',
+            borderColor: currentMode === 'manual' ? 'blue.500' : isDark ? 'gray.500' : 'gray.300',
+            backgroundColor: currentMode === 'manual' ? 'blue.50' : isDark ? 'gray.600' : 'white',
             cursor: 'pointer',
             transition: 'all 0.2s',
             textAlign: 'left',
@@ -143,7 +144,7 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
               className={css({
                 fontSize: '0.875rem',
                 fontWeight: '600',
-                color: currentMode === 'manual' ? 'blue.700' : 'gray.700',
+                color: currentMode === 'manual' ? 'blue.700' : isDark ? 'gray.200' : 'gray.700',
               })}
             >
               Manual Control
@@ -152,7 +153,7 @@ export function ModeSelector({ currentMode, onChange }: ModeSelectorProps) {
           <p
             className={css({
               fontSize: '0.75rem',
-              color: currentMode === 'manual' ? 'blue.600' : 'gray.600',
+              color: currentMode === 'manual' ? 'blue.600' : isDark ? 'gray.400' : 'gray.600',
               lineHeight: '1.4',
             })}
           >

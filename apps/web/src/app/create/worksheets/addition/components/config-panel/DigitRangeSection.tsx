@@ -4,9 +4,14 @@ import { css } from '../../../../../../../styled-system/css'
 export interface DigitRangeSectionProps {
   digitRange: { min: number; max: number } | undefined
   onChange: (digitRange: { min: number; max: number }) => void
+  isDark?: boolean
 }
 
-export function DigitRangeSection({ digitRange, onChange }: DigitRangeSectionProps) {
+export function DigitRangeSection({
+  digitRange,
+  onChange,
+  isDark = false,
+}: DigitRangeSectionProps) {
   const min = digitRange?.min ?? 2
   const max = digitRange?.max ?? 2
 
@@ -14,9 +19,9 @@ export function DigitRangeSection({ digitRange, onChange }: DigitRangeSectionPro
     <div
       data-section="digit-range"
       className={css({
-        bg: 'gray.50',
+        bg: isDark ? 'gray.700' : 'gray.50',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
         rounded: 'xl',
         p: '4',
       })}
@@ -29,14 +34,20 @@ export function DigitRangeSection({ digitRange, onChange }: DigitRangeSectionPro
             alignItems: 'center',
           })}
         >
-          <label className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'gray.700' })}>
+          <label
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'semibold',
+              color: isDark ? 'gray.200' : 'gray.700',
+            })}
+          >
             Problem Size (Digits per Number)
           </label>
           <span className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'brand.600' })}>
             {min === max ? `${min}` : `${min}-${max}`}
           </span>
         </div>
-        <p className={css({ fontSize: 'xs', color: 'gray.500', mt: '1' })}>
+        <p className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.500', mt: '1' })}>
           {min === max
             ? `All problems: exactly ${min} digit${min > 1 ? 's' : ''}`
             : `Mixed problem sizes from ${min} to ${max} digits`}

@@ -8,6 +8,7 @@ export interface ToggleOptionProps {
   label: string
   description: string
   children?: React.ReactNode
+  isDark?: boolean
 }
 
 export function ToggleOption({
@@ -16,6 +17,7 @@ export function ToggleOption({
   label,
   description,
   children,
+  isDark = false,
 }: ToggleOptionProps) {
   return (
     <div
@@ -24,14 +26,14 @@ export function ToggleOption({
         display: 'flex',
         flexDirection: 'column',
         h: children ? 'auto' : '20',
-        bg: checked ? 'brand.50' : 'white',
+        bg: checked ? 'brand.50' : isDark ? 'gray.700' : 'white',
         border: '2px solid',
-        borderColor: checked ? 'brand.500' : 'gray.200',
+        borderColor: checked ? 'brand.500' : isDark ? 'gray.600' : 'gray.200',
         rounded: 'lg',
         transition: 'all 0.15s',
         _hover: {
-          borderColor: checked ? 'brand.600' : 'gray.300',
-          bg: checked ? 'brand.100' : 'gray.50',
+          borderColor: checked ? 'brand.600' : isDark ? 'gray.500' : 'gray.300',
+          bg: checked ? 'brand.100' : isDark ? 'gray.600' : 'gray.50',
         },
       })}
     >
@@ -70,7 +72,7 @@ export function ToggleOption({
             className={css({
               fontSize: 'xs',
               fontWeight: 'semibold',
-              color: checked ? 'brand.700' : 'gray.700',
+              color: checked ? 'brand.700' : isDark ? 'gray.200' : 'gray.700',
             })}
           >
             {label}
@@ -104,7 +106,7 @@ export function ToggleOption({
         <div
           className={css({
             fontSize: '2xs',
-            color: checked ? 'brand.600' : 'gray.500',
+            color: checked ? 'brand.600' : isDark ? 'gray.400' : 'gray.500',
             lineHeight: '1.3',
           })}
         >

@@ -14,9 +14,10 @@ import { ManualModeControls } from './config-panel/ManualModeControls'
 interface ConfigPanelProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
+  isDark?: boolean
 }
 
-export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
+export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanelProps) {
   // Handler for mode switching
   const handleModeChange = (newMode: 'smart' | 'manual') => {
     if (formState.mode === newMode) {
@@ -68,37 +69,48 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
   return (
     <div data-component="config-panel" className={stack({ gap: '3' })}>
       {/* Student Name */}
-      <StudentNameInput value={formState.name} onChange={(name) => onChange({ name })} />
+      <StudentNameInput
+        value={formState.name}
+        onChange={(name) => onChange({ name })}
+        isDark={isDark}
+      />
 
       {/* Digit Range Selector */}
       <DigitRangeSection
         digitRange={formState.digitRange}
         onChange={(digitRange) => onChange({ digitRange })}
+        isDark={isDark}
       />
 
       {/* Operator Selector */}
       <OperatorSection
         operator={formState.operator}
         onChange={(operator) => onChange({ operator })}
+        isDark={isDark}
       />
 
       {/* Mode Selector */}
-      <ModeSelector currentMode={formState.mode ?? 'smart'} onChange={handleModeChange} />
+      <ModeSelector
+        currentMode={formState.mode ?? 'smart'}
+        onChange={handleModeChange}
+        isDark={isDark}
+      />
 
       {/* Progressive Difficulty Toggle - Available for both modes */}
       <ProgressiveDifficultyToggle
         interpolate={formState.interpolate}
         onChange={(interpolate) => onChange({ interpolate })}
+        isDark={isDark}
       />
 
       {/* Smart Mode Controls */}
       {(!formState.mode || formState.mode === 'smart') && (
-        <SmartModeControls formState={formState} onChange={onChange} />
+        <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
       )}
 
       {/* Manual Mode Controls */}
       {formState.mode === 'manual' && (
-        <ManualModeControls formState={formState} onChange={onChange} />
+        <ManualModeControls formState={formState} onChange={onChange} isDark={isDark} />
       )}
     </div>
   )

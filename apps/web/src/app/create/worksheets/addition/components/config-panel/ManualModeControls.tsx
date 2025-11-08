@@ -11,9 +11,10 @@ import { SubOption } from './SubOption'
 export interface ManualModeControlsProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
+  isDark?: boolean
 }
 
-export function ManualModeControls({ formState, onChange }: ManualModeControlsProps) {
+export function ManualModeControls({ formState, onChange, isDark = false }: ManualModeControlsProps) {
   return (
     <>
       <>
@@ -124,6 +125,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                   onChange={(checked) => onChange({ showAnswerBoxes: checked })}
                   label="Answer Boxes"
                   description="Guide students to write organized, aligned answers"
+                  isDark={isDark}
                 />
 
                 <ToggleOption
@@ -131,6 +133,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                   onChange={(checked) => onChange({ showPlaceValueColors: checked })}
                   label="Place Value Colors"
                   description="Reinforce place value understanding visually"
+                  isDark={isDark}
                 />
 
                 <ToggleOption
@@ -138,6 +141,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                   onChange={(checked) => onChange({ showProblemNumbers: checked })}
                   label="Problem Numbers"
                   description="Help students track progress and reference problems"
+                  isDark={isDark}
                 />
 
                 <ToggleOption
@@ -145,6 +149,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                   onChange={(checked) => onChange({ showCellBorder: checked })}
                   label="Cell Borders"
                   description="Organize problems visually for easier focus"
+                  isDark={isDark}
                 />
 
                 <ToggleOption
@@ -166,6 +171,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                         ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
                         : 'Help students track regrouping during addition'
                   }
+                  isDark={isDark}
                 />
 
                 {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
@@ -174,6 +180,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                     onChange={(checked) => onChange({ showBorrowNotation: checked })}
                     label="Borrowed 10s Box"
                     description="Box for adding 10 to borrowing digit"
+                    isDark={isDark}
                   />
                 )}
 
@@ -183,6 +190,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                     onChange={(checked) => onChange({ showBorrowingHints: checked })}
                     label="Borrowing Hints"
                     description="Show arrows and calculations guiding the borrowing process"
+                    isDark={isDark}
                   />
                 )}
 
@@ -193,6 +201,7 @@ export function ManualModeControls({ formState, onChange }: ManualModeControlsPr
                   }}
                   label="Ten-Frames"
                   description="Visualize regrouping with concrete counting tools"
+                  isDark={isDark}
                 >
                   <SubOption
                     checked={formState.showTenFramesForAll ?? false}
