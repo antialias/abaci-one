@@ -2241,8 +2241,20 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   <ToggleOption
                     checked={formState.showCarryBoxes ?? true}
                     onChange={(checked) => onChange({ showCarryBoxes: checked })}
-                    label="Carry Boxes"
-                    description="Help students track regrouping during addition"
+                    label={
+                      formState.operator === 'subtraction'
+                        ? 'Borrow Boxes'
+                        : formState.operator === 'mixed'
+                          ? 'Carry/Borrow Boxes'
+                          : 'Carry Boxes'
+                    }
+                    description={
+                      formState.operator === 'subtraction'
+                        ? 'Help students track borrowing during subtraction'
+                        : formState.operator === 'mixed'
+                          ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
+                          : 'Help students track regrouping during addition'
+                    }
                   />
 
                   <ToggleOption

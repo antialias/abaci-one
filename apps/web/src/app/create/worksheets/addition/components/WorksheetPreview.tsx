@@ -92,6 +92,8 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
       // V4: Problem size (CRITICAL - affects column layout and problem generation)
       formState.digitRange?.min,
       formState.digitRange?.max,
+      // V4: Operator selection (addition, subtraction, or mixed)
+      formState.operator,
       // V4: Mode and conditional display settings
       formState.mode,
       formState.displayRules, // Smart mode: conditional scaffolding
