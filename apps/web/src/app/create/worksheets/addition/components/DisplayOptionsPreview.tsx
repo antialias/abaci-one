@@ -139,8 +139,11 @@ async function fetchExample(options: {
   showCellBorder: boolean
   showTenFrames: boolean
   showTenFramesForAll: boolean
-  addend1: number
-  addend2: number
+  operator: 'addition' | 'subtraction' | 'mixed'
+  addend1?: number
+  addend2?: number
+  minuend?: number
+  subtrahend?: number
 }): Promise<string> {
   const response = await fetch('/api/create/worksheets/addition/example', {
     method: 'POST',
@@ -160,35 +163,46 @@ async function fetchExample(options: {
 }
 
 export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps) {
+  const operator = formState.operator ?? 'addition'
+
   // Local state for operands (not debounced - we want immediate feedback)
   const [operands, setOperands] = useState([45, 27])
 
+  // Build options based on operator type
+  const buildOptions = () => {
+    const base = {
+      showCarryBoxes: formState.showCarryBoxes ?? true,
+      showAnswerBoxes: formState.showAnswerBoxes ?? true,
+      showPlaceValueColors: formState.showPlaceValueColors ?? true,
+      showProblemNumbers: formState.showProblemNumbers ?? true,
+      showCellBorder: formState.showCellBorder ?? true,
+      showTenFrames: formState.showTenFrames ?? false,
+      showTenFramesForAll: formState.showTenFramesForAll ?? false,
+      operator,
+    }
+
+    if (operator === 'addition') {
+      return {
+        ...base,
+        addend1: operands[0],
+        addend2: operands[1],
+      }
+    } else {
+      // Subtraction (mixed mode shows subtraction in preview)
+      return {
+        ...base,
+        minuend: operands[0],
+        subtrahend: operands[1],
+      }
+    }
+  }
+
   // Debounce the display options to avoid hammering the server
-  const [debouncedOptions, setDebouncedOptions] = useState({
-    showCarryBoxes: formState.showCarryBoxes ?? true,
-    showAnswerBoxes: formState.showAnswerBoxes ?? true,
-    showPlaceValueColors: formState.showPlaceValueColors ?? true,
-    showProblemNumbers: formState.showProblemNumbers ?? true,
-    showCellBorder: formState.showCellBorder ?? true,
-    showTenFrames: formState.showTenFrames ?? false,
-    showTenFramesForAll: formState.showTenFramesForAll ?? false,
-    addend1: operands[0],
-    addend2: operands[1],
-  })
+  const [debouncedOptions, setDebouncedOptions] = useState(buildOptions())
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedOptions({
-        showCarryBoxes: formState.showCarryBoxes ?? true,
-        showAnswerBoxes: formState.showAnswerBoxes ?? true,
-        showPlaceValueColors: formState.showPlaceValueColors ?? true,
-        showProblemNumbers: formState.showProblemNumbers ?? true,
-        showCellBorder: formState.showCellBorder ?? true,
-        showTenFrames: formState.showTenFrames ?? false,
-        showTenFramesForAll: formState.showTenFramesForAll ?? false,
-        addend1: operands[0],
-        addend2: operands[1],
-      })
+      setDebouncedOptions(buildOptions())
     }, 300) // 300ms debounce
 
     return () => clearTimeout(timer)
@@ -200,6 +214,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
     formState.showCellBorder,
     formState.showTenFrames,
     formState.showTenFramesForAll,
+    formState.operator,
     operands,
   ])
 
@@ -245,9 +260,9 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
         </div>
         <MathSentence
           operands={operands}
-          operator="+"
+          operator={operator === 'addition' ? '+' : '−'}
           onChange={setOperands}
-          labels={['addend', 'addend']}
+          labels={operator === 'addition' ? ['addend', 'addend'] : ['minuend', 'subtrahend']}
         />
       </div>
 
