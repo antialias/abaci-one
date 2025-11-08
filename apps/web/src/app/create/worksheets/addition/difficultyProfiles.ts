@@ -363,6 +363,61 @@ export interface DifficultyProfile {
  * Pre-defined difficulty profiles that map to pedagogical progression
  * Each profile balances problem complexity (regrouping) with scaffolding support
  */
+/**
+ * Color palette for difficulty levels
+ * Subtle progression from green (easy) to red (hard)
+ */
+export const DIFFICULTY_COLORS = {
+  beginner: { bg: 'green.50', border: 'green.400', text: 'green.700' },
+  earlyLearner: { bg: 'cyan.50', border: 'cyan.400', text: 'cyan.700' },
+  intermediate: { bg: 'yellow.50', border: 'yellow.400', text: 'yellow.700' },
+  advanced: { bg: 'orange.50', border: 'orange.400', text: 'orange.700' },
+  expert: { bg: 'red.50', border: 'red.400', text: 'red.700' },
+} as const
+
+/**
+ * Get interpolated color between two presets based on distance
+ * Uses pythagorean distance in 2D difficulty space to blend colors
+ */
+export function getInterpolatedColor(
+  nearestEasier: DifficultyLevel,
+  nearestHarder: DifficultyLevel,
+  currentRegrouping: number,
+  currentScaffolding: number
+): { bg: string; border: string; text: string } {
+  const easierProfile = DIFFICULTY_PROFILES[nearestEasier]
+  const harderProfile = DIFFICULTY_PROFILES[nearestHarder]
+
+  // Calculate positions in 2D space
+  const easierRegrouping = calculateRegroupingIntensity(
+    easierProfile.regrouping.pAnyStart,
+    easierProfile.regrouping.pAllStart
+  )
+  const easierScaffolding = calculateScaffoldingLevel(easierProfile.displayRules, easierRegrouping)
+
+  const harderRegrouping = calculateRegroupingIntensity(
+    harderProfile.regrouping.pAnyStart,
+    harderProfile.regrouping.pAllStart
+  )
+  const harderScaffolding = calculateScaffoldingLevel(harderProfile.displayRules, harderRegrouping)
+
+  // Calculate distances
+  const distanceToEasier = Math.sqrt(
+    (currentRegrouping - easierRegrouping) ** 2 + (currentScaffolding - easierScaffolding) ** 2
+  )
+  const distanceToHarder = Math.sqrt(
+    (currentRegrouping - harderRegrouping) ** 2 + (currentScaffolding - harderScaffolding) ** 2
+  )
+
+  // Calculate interpolation weight (0 = easier, 1 = harder)
+  const totalDistance = distanceToEasier + distanceToHarder
+  const weight = totalDistance > 0 ? distanceToEasier / totalDistance : 0.5
+
+  // For now, use discrete color based on which is closer
+  // (True color interpolation would require RGB conversion)
+  return weight < 0.5 ? DIFFICULTY_COLORS[nearestEasier] : DIFFICULTY_COLORS[nearestHarder]
+}
+
 export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
   beginner: {
     name: 'beginner',

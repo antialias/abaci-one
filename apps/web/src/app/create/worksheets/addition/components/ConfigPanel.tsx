@@ -14,6 +14,7 @@ import { ModeSelector } from './ModeSelector'
 import {
   DIFFICULTY_PROFILES,
   DIFFICULTY_PROGRESSION,
+  DIFFICULTY_COLORS,
   makeHarder,
   makeEasier,
   calculateOverallDifficulty,
@@ -24,6 +25,7 @@ import {
   SCAFFOLDING_PROGRESSION,
   findNearestValidState,
   getProfileFromConfig,
+  getInterpolatedColor,
   type DifficultyLevel,
   type DifficultyMode,
 } from '../difficultyProfiles'
@@ -422,6 +424,15 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               let nearestEasier: DifficultyLevel | null = null
               let nearestHarder: DifficultyLevel | null = null
               let customDescription: React.ReactNode = ''
+              let buttonColors = isCustom
+                ? {
+                    bg: 'orange.50' as const,
+                    border: 'orange.400' as const,
+                    text: 'orange.600' as const,
+                  }
+                : currentProfile
+                  ? DIFFICULTY_COLORS[currentProfile]
+                  : DIFFICULTY_COLORS.earlyLearner
 
               if (isCustom) {
                 const currentRegrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
@@ -472,6 +483,14 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   harderPresets.length > 0
                     ? harderPresets[0].presetName
                     : distances[distances.length - 1].presetName
+
+                // Get interpolated color based on position between nearest presets
+                buttonColors = getInterpolatedColor(
+                  nearestEasier,
+                  nearestHarder,
+                  currentRegrouping,
+                  currentScaffolding
+                )
 
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
@@ -588,8 +607,8 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                             px: '3',
                             py: '2.5',
                             border: '2px solid',
-                            borderColor: isCustom ? 'orange.400' : 'gray.300',
-                            bg: isCustom ? 'orange.50' : 'white',
+                            borderColor: buttonColors.border,
+                            bg: buttonColors.bg,
                             rounded: 'lg',
                             cursor: 'pointer',
                             transition: 'all 0.15s',
@@ -599,7 +618,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                             textAlign: 'left',
                             gap: '2',
                             _hover: {
-                              borderColor: isCustom ? 'orange.500' : 'brand.400',
+                              opacity: 0.9,
                             },
                           })}
                         >
@@ -637,7 +656,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                             <div
                               className={css({
                                 fontSize: 'xs',
-                                color: isCustom ? 'orange.600' : 'gray.500',
+                                color: buttonColors.text,
                                 lineHeight: '1.3',
                                 h: '14',
                                 display: 'flex',
@@ -705,6 +724,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           {DIFFICULTY_PROGRESSION.map((presetName) => {
                             const preset = DIFFICULTY_PROFILES[presetName]
                             const isSelected = currentProfile === presetName && !isCustom
+                            const presetColors = DIFFICULTY_COLORS[presetName]
 
                             // Generate preset description
                             const regroupingPercent = Math.round(
@@ -743,12 +763,14 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                   rounded: 'md',
                                   cursor: 'pointer',
                                   outline: 'none',
-                                  bg: isSelected ? 'brand.50' : 'transparent',
+                                  bg: isSelected ? presetColors.bg : 'transparent',
+                                  borderLeft: '3px solid',
+                                  borderColor: presetColors.border,
                                   _hover: {
-                                    bg: 'brand.50',
+                                    bg: presetColors.bg,
                                   },
                                   _focus: {
-                                    bg: 'brand.100',
+                                    bg: presetColors.bg,
                                   },
                                 })}
                               >
@@ -756,7 +778,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                   className={css({
                                     fontSize: 'sm',
                                     fontWeight: 'semibold',
-                                    color: isSelected ? 'brand.700' : 'gray.700',
+                                    color: presetColors.text,
                                   })}
                                 >
                                   {preset.label}
@@ -764,7 +786,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 <div
                                   className={css({
                                     fontSize: 'xs',
-                                    color: isSelected ? 'brand.600' : 'gray.500',
+                                    color: presetColors.text,
                                     lineHeight: '1.3',
                                   })}
                                 >
