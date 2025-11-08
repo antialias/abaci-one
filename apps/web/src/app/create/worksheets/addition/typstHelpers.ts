@@ -435,7 +435,28 @@ export function generateSubtractionProblemStackFunction(
           let source-color = place-colors.at(i)      // This place (giving)
           let dest-color = place-colors.at(i - 1)    // Lower place (receiving)
 
-          if show-colors {
+          // When showing hints, add small text showing what value to write
+          if show-borrowing-hints and i <= m-highest {
+            let original-digit = m-digits.at(i)
+            let reduced-digit = original-digit - 1
+
+            (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+              #stack(
+                dir: ttb,
+                spacing: 1pt,
+                // Show the calculation hint
+                align(center)[
+                  #text(size: ${(cellSizePt * 0.5).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − 1]
+                ],
+                // Show the borrow box
+                if show-colors {
+                  diagonal-split-box(${cellSizeIn * 0.7}, source-color, dest-color)
+                } else {
+                  box(width: ${cellSizeIn * 0.7}, height: ${cellSizeIn * 0.7}, stroke: 0.5pt)[]
+                }
+              )
+            ],)
+          } else if show-colors {
             (box(width: ${cellSizeIn}, height: ${cellSizeIn})[
               #diagonal-split-box(${cellSizeIn}, source-color, dest-color)
             ],)
@@ -487,7 +508,14 @@ export function generateSubtractionProblemStackFunction(
                       height: ${cellSizeIn} * 0.95,
                       stroke: (dash: "dotted", thickness: 1pt, paint: gray),
                       fill: borrow-source-color
-                    )[],
+                    )[
+                      // When showing hints, add calculation hint inside the box
+                      #if show-borrowing-hints {
+                        align(center + horizon)[
+                          #text(size: ${(cellSizePt * 0.45).toFixed(1)}pt, fill: gray.darken(30%))[#str(digit) + 10]
+                        ]
+                      }
+                    ],
                     // Original digit
                     text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
                   )
