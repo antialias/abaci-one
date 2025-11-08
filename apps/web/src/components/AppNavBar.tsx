@@ -575,8 +575,16 @@ function HamburgerMenu({
             width: '44px',
             height: '44px',
             padding: '8px',
-            background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
-            border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
+            background: isFullscreen
+              ? 'rgba(0, 0, 0, 0.85)'
+              : resolvedTheme === 'dark'
+                ? 'rgba(31, 41, 55, 0.9)'
+                : 'white',
+            border: isFullscreen
+              ? '1px solid rgba(255, 255, 255, 0.1)'
+              : resolvedTheme === 'dark'
+                ? '1px solid rgba(75, 85, 99, 0.5)'
+                : '1px solid #e5e7eb',
             borderRadius: '8px',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
             backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
@@ -587,7 +595,11 @@ function HamburgerMenu({
           <span
             style={{
               fontSize: '20px',
-              color: isFullscreen ? 'white' : '#374151',
+              color: isFullscreen
+                ? 'white'
+                : resolvedTheme === 'dark'
+                  ? 'rgba(209, 213, 219, 1)'
+                  : '#374151',
             }}
           >
             ☰
@@ -611,11 +623,17 @@ function HamburgerMenu({
             }
           }}
           className={css({
-            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
+            background:
+              resolvedTheme === 'dark'
+                ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(249, 250, 251, 0.97))',
             backdropFilter: 'blur(12px)',
             borderRadius: '12px',
             padding: '8px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)',
+            boxShadow:
+              resolvedTheme === 'dark'
+                ? '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)'
+                : '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.2)',
             minWidth: '220px',
             zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
             animation: 'dropdownFadeIn 0.2s ease-out',
