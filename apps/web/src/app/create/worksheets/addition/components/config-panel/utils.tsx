@@ -4,19 +4,34 @@ import { css } from '../../../../../../../styled-system/css'
 /**
  * Generate a human-readable summary of enabled scaffolding aids
  * Returns JSX with each frequency group on its own line
+ * @param displayRules - Display rules to summarize
+ * @param operator - Current worksheet operator (filters out irrelevant scaffolds)
  */
-export function getScaffoldingSummary(displayRules: any): React.ReactNode {
-  console.log('[getScaffoldingSummary] displayRules:', displayRules)
+export function getScaffoldingSummary(
+  displayRules: any,
+  operator?: 'addition' | 'subtraction' | 'mixed'
+): React.ReactNode {
+  console.log('[getScaffoldingSummary] displayRules:', displayRules, 'operator:', operator)
 
   const alwaysItems: string[] = []
   const conditionalItems: string[] = []
 
-  if (displayRules.carryBoxes === 'always') {
-    alwaysItems.push('carry boxes')
-  } else if (displayRules.carryBoxes !== 'never') {
-    conditionalItems.push('carry boxes')
+  // Addition-specific scaffolds (skip for subtraction-only)
+  if (operator !== 'subtraction') {
+    if (displayRules.carryBoxes === 'always') {
+      alwaysItems.push('carry boxes')
+    } else if (displayRules.carryBoxes !== 'never') {
+      conditionalItems.push('carry boxes')
+    }
+
+    if (displayRules.tenFrames === 'always') {
+      alwaysItems.push('ten-frames')
+    } else if (displayRules.tenFrames !== 'never') {
+      conditionalItems.push('ten-frames')
+    }
   }
 
+  // Universal scaffolds (always show)
   if (displayRules.answerBoxes === 'always') {
     alwaysItems.push('answer boxes')
   } else if (displayRules.answerBoxes !== 'never') {
@@ -29,22 +44,19 @@ export function getScaffoldingSummary(displayRules: any): React.ReactNode {
     conditionalItems.push('place value colors')
   }
 
-  if (displayRules.tenFrames === 'always') {
-    alwaysItems.push('ten-frames')
-  } else if (displayRules.tenFrames !== 'never') {
-    conditionalItems.push('ten-frames')
-  }
+  // Subtraction-specific scaffolds (skip for addition-only)
+  if (operator !== 'addition') {
+    if (displayRules.borrowNotation === 'always') {
+      alwaysItems.push('borrow notation')
+    } else if (displayRules.borrowNotation !== 'never') {
+      conditionalItems.push('borrow notation')
+    }
 
-  if (displayRules.borrowNotation === 'always') {
-    alwaysItems.push('borrow notation')
-  } else if (displayRules.borrowNotation !== 'never') {
-    conditionalItems.push('borrow notation')
-  }
-
-  if (displayRules.borrowingHints === 'always') {
-    alwaysItems.push('borrowing hints')
-  } else if (displayRules.borrowingHints !== 'never') {
-    conditionalItems.push('borrowing hints')
+    if (displayRules.borrowingHints === 'always') {
+      alwaysItems.push('borrowing hints')
+    } else if (displayRules.borrowingHints !== 'never') {
+      conditionalItems.push('borrowing hints')
+    }
   }
 
   if (alwaysItems.length === 0 && conditionalItems.length === 0) {
