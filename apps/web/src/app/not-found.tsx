@@ -177,17 +177,32 @@ export default function NotFound() {
           {/* Interactive Abacus */}
           <div
             className={css({
-              transform: 'scale(1.2)',
-              transformOrigin: 'center',
               position: 'relative',
+              width: '100%',
+              maxWidth: { base: '90vw', sm: '500px', md: '600px', lg: '700px' },
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             })}
           >
-            <AbacusReact
-              value={abacusValue}
-              columns={3}
-              showNumbers={false}
-              onValueChange={setAbacusValue}
-            />
+            <div
+              className={css({
+                transform: {
+                  base: 'scale(1.5)',
+                  sm: 'scale(2)',
+                  md: 'scale(2.5)',
+                  lg: 'scale(3)',
+                },
+                transformOrigin: 'center',
+              })}
+            >
+              <AbacusReact
+                value={abacusValue}
+                columns={3}
+                showNumbers={false}
+                onValueChange={setAbacusValue}
+              />
+            </div>
           </div>
 
           {/* Main message */}
