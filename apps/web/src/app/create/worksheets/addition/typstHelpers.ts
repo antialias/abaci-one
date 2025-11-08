@@ -444,9 +444,14 @@ export function generateSubtractionProblemStackFunction(
               #stack(
                 dir: ttb,
                 spacing: 1pt,
-                // Show the calculation hint
+                // Show the calculation hint with arrow
                 align(center)[
-                  #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − 1]
+                  #box[
+                    #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − ]
+                    #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
+                    #h(2pt)
+                    #text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[→]
+                  ]
                 ],
                 // Show the borrow box
                 if show-colors {
@@ -508,14 +513,7 @@ export function generateSubtractionProblemStackFunction(
                       height: ${cellSizeIn} * 0.95,
                       stroke: (dash: "dotted", thickness: 1pt, paint: gray),
                       fill: borrow-source-color
-                    )[
-                      // When showing hints, add calculation hint inside the box
-                      #if show-borrowing-hints {
-                        align(center + horizon)[
-                          #text(size: ${(cellSizePt * 0.45).toFixed(1)}pt, fill: gray.darken(30%))[#str(digit) + 10]
-                        ]
-                      }
-                    ],
+                    )[],
                     // Original digit
                     text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
                   )
