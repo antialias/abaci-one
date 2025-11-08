@@ -467,6 +467,13 @@ export function generateSubtractionProblemStackFunction(
         if i <= m-highest {
           if show-borrow-notation and column-has-borrow {
             if needs-borrow {
+              // Get the color from the place we're borrowing FROM (one position to the left, i.e., i+1)
+              let borrow-source-color = if show-colors and (i + 1) < place-colors.len() {
+                place-colors.at(i + 1)
+              } else {
+                color-none
+              }
+
               // Show digit with visible scratch box to the left for modified value (e.g., "12")
               (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
                 #align(center + horizon)[
@@ -474,10 +481,12 @@ export function generateSubtractionProblemStackFunction(
                     dir: ltr,
                     spacing: 3pt,
                     // Visible dotted box for student to write modified digit (same height as cell)
+                    // Background color is from the place we're borrowing FROM
                     box(
                       width: ${cellSizeIn} * 0.45,
                       height: ${cellSizeIn} * 0.95,
-                      stroke: (dash: "dotted", thickness: 1pt, paint: gray)
+                      stroke: (dash: "dotted", thickness: 1pt, paint: gray),
+                      fill: borrow-source-color
                     )[],
                     // Original digit
                     text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]

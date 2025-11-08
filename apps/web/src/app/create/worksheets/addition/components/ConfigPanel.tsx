@@ -2361,16 +2361,16 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
                           : 'Help students track regrouping during addition'
                     }
-                  >
-                    {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
-                      <SubOption
-                        checked={!(formState.showBorrowNotation ?? true)}
-                        onChange={(checked) => onChange({ showBorrowNotation: !checked })}
-                        label="Hide Borrowed 10s Box"
-                        parentEnabled={formState.showCarryBoxes ?? true}
-                      />
-                    )}
-                  </ToggleOption>
+                  />
+
+                  {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                    <ToggleOption
+                      checked={formState.showBorrowNotation ?? true}
+                      onChange={(checked) => onChange({ showBorrowNotation: checked })}
+                      label="Borrowed 10s Box"
+                      description="Box for adding 10 to borrowing digit"
+                    />
+                  )}
 
                   <ToggleOption
                     checked={formState.showTenFrames ?? false}

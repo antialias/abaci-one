@@ -109,7 +109,7 @@ function generatePageTypst(
         showTenFrames: config.showTenFrames,
         showProblemNumbers: config.showProblemNumbers,
         showCellBorder: config.showCellBorder,
-        showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : false,
+        showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : true,
       }
     }
   })

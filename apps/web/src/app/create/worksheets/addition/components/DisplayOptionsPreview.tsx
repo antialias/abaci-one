@@ -179,7 +179,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
       showCellBorder: formState.showCellBorder ?? true,
       showTenFrames: formState.showTenFrames ?? false,
       showTenFramesForAll: formState.showTenFramesForAll ?? false,
-      showBorrowNotation: formState.showBorrowNotation ?? false,
+      showBorrowNotation: formState.showBorrowNotation ?? true,
       operator,
     }
 

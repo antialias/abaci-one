@@ -367,6 +367,7 @@ export const defaultAdditionConfig: AdditionConfigV4Smart = {
   orientation: 'landscape',
   name: '',
   digitRange: { min: 2, max: 2 }, // V4: Default to 2-digit problems (backward compatible)
+  operator: 'addition',
   pAnyStart: 0.25,
   pAllStart: 0,
   interpolate: true,
@@ -471,7 +472,7 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
  * Adds digitRange field with default of { min: 2, max: 2 } for backward compatibility
  */
 function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
-  // V3 configs didn't have digitRange, so default to 2-digit problems
+  // V3 configs didn't have digitRange or operator, so default to 2-digit addition problems
   const baseFields = {
     version: 4 as const,
     problemsPerPage: v3.problemsPerPage,
@@ -481,6 +482,7 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
     name: v3.name,
     fontSize: v3.fontSize,
     digitRange: { min: 2, max: 2 }, // V4: Default to 2-digit for backward compatibility
+    operator: 'addition' as const, // V4: Default to addition for backward compatibility
     pAnyStart: v3.pAnyStart,
     pAllStart: v3.pAllStart,
     interpolate: v3.interpolate,
@@ -504,6 +506,7 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
       showProblemNumbers: v3.showProblemNumbers,
       showCellBorder: v3.showCellBorder,
       showTenFramesForAll: v3.showTenFramesForAll,
+      showBorrowNotation: true, // V4: Default to true for backward compatibility
       manualPreset: v3.manualPreset,
     }
   }
