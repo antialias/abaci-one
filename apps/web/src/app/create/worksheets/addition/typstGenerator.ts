@@ -77,7 +77,7 @@ function generatePageTypst(
           ? analyzeProblem(p.a, p.b)
           : analyzeSubtractionProblem(p.minuend, p.subtrahend);
       const displayOptions = resolveDisplayForProblem(
-        config.displayRules,
+        config.displayRules as any, // Cast for backward compatibility with configs missing new fields
         meta,
       );
 
