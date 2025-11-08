@@ -23,6 +23,7 @@ import {
   type DifficultyLevel,
   type DifficultyMode,
 } from '../../difficultyProfiles'
+import type { DisplayRules } from '../../displayRules'
 import { getScaffoldingSummary } from './utils'
 
 export interface SmartModeControlsProps {
@@ -37,7 +38,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
   const [hoverPreview, setHoverPreview] = useState<{
     pAnyStart: number
     pAllStart: number
-    displayRules: any
+    displayRules: DisplayRules
     matchedProfile: string | 'custom'
   } | null>(null)
 
@@ -50,13 +51,16 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
     }
 
     const result =
-      direction === 'harder' ? makeHarder(currentState, mode) : makeEasier(currentState, mode)
+      direction === 'harder'
+        ? makeHarder(currentState, mode, formState.operator)
+        : makeEasier(currentState, mode, formState.operator)
 
     onChange({
       pAnyStart: result.pAnyStart,
       pAllStart: result.pAllStart,
       displayRules: result.displayRules,
-      difficultyProfile: result.matchedProfile !== 'custom' ? result.matchedProfile : undefined,
+      difficultyProfile:
+        result.difficultyProfile !== 'custom' ? result.difficultyProfile : undefined,
     })
   }
 
@@ -157,7 +161,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
 
             // Generate custom description
             const regroupingPercent = Math.round(pAnyStart * 100)
-            const scaffoldingSummary = getScaffoldingSummary(displayRules)
+            const scaffoldingSummary = getScaffoldingSummary(displayRules, formState.operator)
             customDescription = (
               <>
                 <div>{regroupingPercent}% regrouping</div>
@@ -176,7 +180,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'both'
+            'both',
+            formState.operator
           )
 
           const easierResultChallenge = makeEasier(
@@ -185,7 +190,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'challenge'
+            'challenge',
+            formState.operator
           )
 
           const easierResultSupport = makeEasier(
@@ -194,7 +200,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'support'
+            'support',
+            formState.operator
           )
 
           const harderResultBoth = makeHarder(
@@ -203,7 +210,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'both'
+            'both',
+            formState.operator
           )
 
           const harderResultChallenge = makeHarder(
@@ -212,7 +220,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'challenge'
+            'challenge',
+            formState.operator
           )
 
           const harderResultSupport = makeHarder(
@@ -221,7 +230,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               pAllStart,
               displayRules,
             },
-            'support'
+            'support',
+            formState.operator
           )
 
           const canMakeEasierBoth =
@@ -350,7 +360,8 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                             (() => {
                               const regroupingPercent = Math.round(hoverPreview.pAnyStart * 100)
                               const scaffoldingSummary = getScaffoldingSummary(
-                                hoverPreview.displayRules
+                                hoverPreview.displayRules,
+                                formState.operator
                               )
                               return (
                                 <>
@@ -367,7 +378,10 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               const regroupingPercent = Math.round(
                                 preset.regrouping.pAnyStart * 100
                               )
-                              const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
+                              const scaffoldingSummary = getScaffoldingSummary(
+                                preset.displayRules,
+                                formState.operator
+                              )
                               return (
                                 <>
                                   <div>{regroupingPercent}% regrouping</div>
@@ -418,7 +432,10 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                             preset.regrouping.pAllStart
                           ) * 10
                         )
-                        const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
+                        const scaffoldingSummary = getScaffoldingSummary(
+                          preset.displayRules,
+                          formState.operator
+                        )
                         const presetDescription = (
                           <>
                             <div>{regroupingPercent}% regrouping</div>

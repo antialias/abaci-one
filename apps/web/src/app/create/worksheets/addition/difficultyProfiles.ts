@@ -24,6 +24,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'always',
+    borrowingHints: 'always',
   },
 
   // Level 1: Carry boxes become conditional
@@ -34,6 +36,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'always',
   },
 
   // Level 2: Place value colors become conditional
@@ -44,6 +48,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'whenRegrouping',
   },
 
   // Level 3: Answer boxes become conditional
@@ -54,6 +60,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'whenRegrouping',
   },
 
   // Level 4: Multiple helpers become more conditional
@@ -64,6 +72,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'whenMultipleRegroups',
   },
 
   // Level 5: More helpers get more conditional
@@ -74,6 +84,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'whenMultipleRegroups',
   },
 
   // Level 6: Ten frames become conditional (only when regrouping)
@@ -84,6 +96,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'whenRegrouping',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'whenMultipleRegroups',
   },
 
   // Level 7: Ten frames become more conditional
@@ -94,6 +108,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'whenMultipleRegroups',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
 
   // Level 8: Carry boxes removed
@@ -104,6 +120,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'whenMultipleRegroups',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
 
   // Level 9: Answer boxes removed
@@ -114,6 +132,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'whenMultipleRegroups',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
 
   // Level 10: Ten frames removed
@@ -124,6 +144,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'never',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
 
   // Level 11: Place value colors only for large numbers
@@ -134,6 +156,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'never',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
 
   // Level 12: Minimal scaffolding - place value colors removed
@@ -144,6 +168,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     tenFrames: 'never',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'never',
+    borrowingHints: 'never',
   },
 ]
 
@@ -236,11 +262,16 @@ export function findRegroupingIndex(pAnyStart: number, pAllStart: number): numbe
 
 /**
  * Describe what changed between two scaffolding levels
+ * @param fromRules - Previous display rules
+ * @param toRules - New display rules
+ * @param direction - Whether scaffolding was 'added' or 'reduced'
+ * @param operator - Current worksheet operator (filters out irrelevant scaffolds)
  */
 function describeScaffoldingChange(
   fromRules: DisplayRules,
   toRules: DisplayRules,
-  direction: 'added' | 'reduced'
+  direction: 'added' | 'reduced',
+  operator?: 'addition' | 'subtraction' | 'mixed'
 ): string {
   const changes: string[] = []
 
@@ -251,10 +282,25 @@ function describeScaffoldingChange(
     tenFrames: 'ten frames',
     problemNumbers: 'problem numbers',
     cellBorders: 'cell borders',
+    borrowNotation: 'borrow notation',
+    borrowingHints: 'borrowing hints',
   }
+
+  // Operator-specific scaffolds to filter
+  const additionOnlyScaffolds: Array<keyof DisplayRules> = ['carryBoxes', 'tenFrames']
+  const subtractionOnlyScaffolds: Array<keyof DisplayRules> = ['borrowNotation', 'borrowingHints']
 
   for (const key of Object.keys(ruleNames) as Array<keyof DisplayRules>) {
     if (fromRules[key] !== toRules[key]) {
+      // Filter out operator-specific scaffolds when not relevant
+      if (operator === 'addition' && subtractionOnlyScaffolds.includes(key)) {
+        continue // Skip subtraction scaffolds for addition-only worksheets
+      }
+      if (operator === 'subtraction' && additionOnlyScaffolds.includes(key)) {
+        continue // Skip addition scaffolds for subtraction-only worksheets
+      }
+      // For 'mixed' or undefined operator, show all scaffolds
+
       changes.push(ruleNames[key])
     }
   }
@@ -377,6 +423,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'always', // Visual aid for understanding place value
       problemNumbers: 'always', // Help track progress
       cellBorders: 'always', // Visual organization
+      borrowNotation: 'always', // Subtraction: show scratch work
+      borrowingHints: 'always', // Subtraction: show visual hints
     },
   },
 
@@ -392,6 +440,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'whenRegrouping', // Visual aid for new concept
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
+      borrowingHints: 'always', // Subtraction: keep hints visible
     },
   },
 
@@ -408,6 +458,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'whenRegrouping', // Visual aid for regrouping
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
+      borrowingHints: 'whenRegrouping', // Subtraction: show hints during practice
     },
   },
 
@@ -423,6 +475,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'whenRegrouping', // Concrete aid when needed
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
+      borrowingHints: 'whenMultipleRegroups', // Subtraction: only for complex problems
     },
   },
 
@@ -438,6 +492,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'never', // Beyond concrete representations
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping', // Subtraction: still helpful
+      borrowingHints: 'never', // Subtraction: no hints
     },
   },
 
@@ -453,6 +509,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       tenFrames: 'never',
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'never', // Subtraction: no scaffolding
+      borrowingHints: 'never', // Subtraction: no hints
     },
   },
 }
@@ -638,6 +696,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       tenFrames: level < 1 ? 'never' : 'whenRegrouping', // Ten-frames only when regrouping introduced
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'always',
+      borrowingHints: 'always',
     }
   }
 
@@ -650,6 +710,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       tenFrames: 'whenRegrouping',
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping',
+      borrowingHints: 'always',
     }
   }
 
@@ -662,6 +724,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       tenFrames: 'whenRegrouping',
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping',
+      borrowingHints: level < 5.5 ? 'whenRegrouping' : 'whenMultipleRegroups',
     }
   }
 
@@ -674,6 +738,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       tenFrames: 'never',
       problemNumbers: 'always',
       cellBorders: 'always',
+      borrowNotation: 'whenRegrouping',
+      borrowingHints: 'never',
     }
   }
 
@@ -685,6 +751,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
     tenFrames: 'never',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: level < 9 ? 'whenRegrouping' : 'never',
+    borrowingHints: 'never',
   }
 }
 
@@ -763,6 +831,7 @@ export type DifficultyMode = 'both' | 'challenge' | 'support'
  * 5. Ensure resulting state respects pedagogical constraints
  *
  * @param mode - 'both' (default smart diagonal), 'challenge' (regrouping only), 'support' (scaffolding only)
+ * @param operator - Current worksheet operator (filters scaffolding descriptions)
  */
 export function makeHarder(
   currentState: {
@@ -770,7 +839,8 @@ export function makeHarder(
     pAllStart: number
     displayRules: DisplayRules
   },
-  mode: DifficultyMode = 'both'
+  mode: DifficultyMode = 'both',
+  operator?: 'addition' | 'subtraction' | 'mixed'
 ): {
   pAnyStart: number
   pAllStart: number
@@ -913,7 +983,8 @@ export function makeHarder(
     const scaffoldingChange = describeScaffoldingChange(
       currentState.displayRules,
       newRules,
-      'reduced'
+      'reduced',
+      operator
     )
     description = `Increase regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}% + ${scaffoldingChange.toLowerCase()}`
   } else if (newRegroupingIdx > validCurrent.regroupingIdx) {
@@ -922,12 +993,18 @@ export function makeHarder(
       const scaffoldingChange = describeScaffoldingChange(
         currentState.displayRules,
         newRules,
-        newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced'
+        newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced',
+        operator
       )
       description += ` (auto-adjust: ${scaffoldingChange.toLowerCase()})`
     }
   } else if (newScaffoldingIdx > validCurrent.scaffoldingIdx) {
-    description = describeScaffoldingChange(currentState.displayRules, newRules, 'reduced')
+    description = describeScaffoldingChange(
+      currentState.displayRules,
+      newRules,
+      'reduced',
+      operator
+    )
   }
 
   // Check if result matches a preset
@@ -957,6 +1034,7 @@ export function makeHarder(
  * 5. Ensure resulting state respects pedagogical constraints
  *
  * @param mode - 'both' (default smart diagonal), 'challenge' (regrouping only), 'support' (scaffolding only)
+ * @param operator - Current worksheet operator (filters scaffolding descriptions)
  */
 export function makeEasier(
   currentState: {
@@ -964,7 +1042,8 @@ export function makeEasier(
     pAllStart: number
     displayRules: DisplayRules
   },
-  mode: DifficultyMode = 'both'
+  mode: DifficultyMode = 'both',
+  operator?: 'addition' | 'subtraction' | 'mixed'
 ): {
   pAnyStart: number
   pAllStart: number
@@ -1096,7 +1175,8 @@ export function makeEasier(
     const scaffoldingChange = describeScaffoldingChange(
       currentState.displayRules,
       newRules,
-      'added'
+      'added',
+      operator
     )
     description = `Reduce regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}% + ${scaffoldingChange.toLowerCase()}`
   } else if (newRegroupingIdx < validCurrent.regroupingIdx) {
@@ -1105,12 +1185,13 @@ export function makeEasier(
       const scaffoldingChange = describeScaffoldingChange(
         currentState.displayRules,
         newRules,
-        newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced'
+        newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced',
+        operator
       )
       description += ` (auto-adjust: ${scaffoldingChange.toLowerCase()})`
     }
   } else if (newScaffoldingIdx < validCurrent.scaffoldingIdx) {
-    description = describeScaffoldingChange(currentState.displayRules, newRules, 'added')
+    description = describeScaffoldingChange(currentState.displayRules, newRules, 'added', operator)
   }
 
   // Check if result matches a preset
