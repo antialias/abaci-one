@@ -75,11 +75,11 @@ function MenuContent({
   const linkStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: isMobile ? '16px' : '10px',
-    padding: isMobile ? '16px 20px' : '10px 14px',
-    borderRadius: isMobile ? '12px' : '8px',
+    gap: isMobile ? '10px' : '10px',
+    padding: isMobile ? '8px 12px' : '10px 14px',
+    borderRadius: '8px',
     color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-    fontSize: isMobile ? '18px' : '14px',
+    fontSize: isMobile ? '14px' : '14px',
     fontWeight: '500',
     textDecoration: 'none',
     transition: 'all 0.2s ease',
@@ -88,16 +88,16 @@ function MenuContent({
   const separatorStyle = {
     height: '1px',
     background: isDark ? 'rgba(75, 85, 99, 0.5)' : 'rgba(229, 231, 235, 0.8)',
-    margin: isMobile ? '20px 0' : '6px 0',
+    margin: isMobile ? '8px 0' : '6px 0',
   }
 
   const sectionHeaderStyle = {
-    fontSize: isMobile ? '13px' : '10px',
+    fontSize: isMobile ? '10px' : '10px',
     fontWeight: '600',
     color: isDark ? 'rgba(196, 181, 253, 0.7)' : 'rgba(139, 92, 246, 0.7)',
-    marginBottom: isMobile ? '12px' : '6px',
-    marginLeft: isMobile ? '20px' : '12px',
-    marginTop: isMobile ? '12px' : '6px',
+    marginBottom: isMobile ? '6px' : '6px',
+    marginLeft: isMobile ? '12px' : '12px',
+    marginTop: isMobile ? '6px' : '6px',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   }
@@ -133,7 +133,7 @@ function MenuContent({
           e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
         }}
       >
-        <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{icon}</span>
+        <span style={{ fontSize: isMobile ? '18px' : '16px' }}>{icon}</span>
         <span>{label}</span>
       </Link>
     )
@@ -143,20 +143,26 @@ function MenuContent({
 
   const containerStyle = isMobile
     ? {
-        maxWidth: '600px',
+        width: '100%',
+        maxWidth: '1000px',
         margin: '0 auto',
-        padding: '60px 16px 24px',
+        padding: '60px 16px 16px',
+        boxSizing: 'border-box' as const,
+        minHeight: 0, // Allow flex children to shrink
+        flex: '1 1 auto',
+        display: 'flex',
+        flexDirection: 'column' as const,
       }
     : {}
 
   const controlButtonStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: isMobile ? '16px' : '10px',
-    padding: isMobile ? '16px 20px' : '10px 14px',
-    borderRadius: isMobile ? '12px' : '8px',
+    gap: isMobile ? '10px' : '10px',
+    padding: isMobile ? '8px 12px' : '10px 14px',
+    borderRadius: '8px',
     color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-    fontSize: isMobile ? '18px' : '14px',
+    fontSize: isMobile ? '14px' : '14px',
     fontWeight: '500',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
@@ -164,102 +170,151 @@ function MenuContent({
 
   return (
     <div style={containerStyle}>
-      {/* Site Navigation Section */}
-      <div style={sectionHeaderStyle}>Navigation</div>
-
-      {renderNavLink('/', '🧮', 'Home')}
-      {renderNavLink('/create', '✏️', 'Create')}
-      {renderNavLink('/guide', '📖', 'Guide')}
-      {renderNavLink('/games', '🎮', 'Games')}
-      {renderNavLink('/blog', '📝', 'Blog')}
-
-      {isMobile ? (
-        <div style={separatorStyle} />
-      ) : (
-        <DropdownMenu.Separator style={separatorStyle} />
-      )}
-
-      {/* Controls Section */}
-      <div style={sectionHeaderStyle}>Controls</div>
-
       {isMobile ? (
         <div
-          onClick={() => {
-            toggleFullscreen()
-            onNavigate?.()
-          }}
-          style={controlButtonStyle}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDark
-              ? 'rgba(59, 130, 246, 0.2)'
-              : 'rgba(59, 130, 246, 0.1)'
-            e.currentTarget.style.color = isDark ? 'rgba(147, 197, 253, 1)' : 'rgba(29, 78, 216, 1)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
-          }}
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: '16px',
+            minHeight: 0, // Allow grid to shrink
+            flex: '1 1 auto',
+            alignContent: 'start',
+            overflowY: 'auto',
+            '@media (min-width: 480px) and (orientation: landscape)': {
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '20px',
+              gridTemplateRows: 'min-content',
+            },
+            '@media (max-height: 600px)': {
+              gap: '8px',
+            },
+          })}
         >
-          <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
-          <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
-        </div>
-      ) : (
-        <DropdownMenu.Item
-          onSelect={toggleFullscreen}
-          style={controlButtonStyle}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDark
-              ? 'rgba(59, 130, 246, 0.2)'
-              : 'rgba(59, 130, 246, 0.1)'
-            e.currentTarget.style.color = isDark ? 'rgba(147, 197, 253, 1)' : 'rgba(29, 78, 216, 1)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
-          }}
-        >
-          <span style={{ fontSize: isMobile ? '24px' : '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
-          <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
-        </DropdownMenu.Item>
-      )}
+          {/* Column 1: Navigation + Controls */}
+          <div>
+            {/* Site Navigation Section */}
+            <div style={sectionHeaderStyle}>Navigation</div>
 
-      {isArcadePage &&
-        (isMobile ? (
-          <div
-            onClick={() => {
-              router.push('/games')
-              onNavigate?.()
-            }}
-            style={controlButtonStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = isDark
-                ? 'rgba(239, 68, 68, 0.2)'
-                : 'rgba(239, 68, 68, 0.1)'
-              e.currentTarget.style.color = isDark
-                ? 'rgba(252, 165, 165, 1)'
-                : 'rgba(185, 28, 28, 1)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = isDark
-                ? 'rgba(209, 213, 219, 1)'
-                : 'rgba(55, 65, 81, 1)'
-            }}
-          >
-            <span style={{ fontSize: isMobile ? '24px' : '16px' }}>🚪</span>
-            <span>Exit Arcade</span>
+            {renderNavLink('/', '🧮', 'Home')}
+            {renderNavLink('/create', '✏️', 'Create')}
+            {renderNavLink('/guide', '📖', 'Guide')}
+            {renderNavLink('/games', '🎮', 'Games')}
+            {renderNavLink('/blog', '📝', 'Blog')}
+
+            <div style={separatorStyle} />
+
+            {/* Controls Section */}
+            <div style={sectionHeaderStyle}>Controls</div>
+
+            <div
+              onClick={() => {
+                toggleFullscreen()
+                onNavigate?.()
+              }}
+              style={controlButtonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark
+                  ? 'rgba(59, 130, 246, 0.2)'
+                  : 'rgba(59, 130, 246, 0.1)'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(147, 197, 253, 1)'
+                  : 'rgba(29, 78, 216, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(209, 213, 219, 1)'
+                  : 'rgba(55, 65, 81, 1)'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
+              <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+            </div>
+
+            {isArcadePage && (
+              <div
+                onClick={() => {
+                  router.push('/games')
+                  onNavigate?.()
+                }}
+                style={controlButtonStyle}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(239, 68, 68, 0.2)'
+                    : 'rgba(239, 68, 68, 0.1)'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(252, 165, 165, 1)'
+                    : 'rgba(185, 28, 28, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(209, 213, 219, 1)'
+                    : 'rgba(55, 65, 81, 1)'
+                }}
+              >
+                <span style={{ fontSize: '18px' }}>🚪</span>
+                <span>Exit Arcade</span>
+              </div>
+            )}
           </div>
-        ) : (
+
+          {/* Column 2: Style + Language + Theme */}
+          <div>
+            {/* Style Section */}
+            <div style={sectionHeaderStyle}>Abacus Style</div>
+
+            <div style={{ padding: '0 6px' }}>
+              <AbacusDisplayDropdown
+                isFullscreen={isFullscreen}
+                onOpenChange={handleNestedDropdownChange}
+              />
+            </div>
+
+            <div style={separatorStyle} />
+
+            {/* Language Section */}
+            <div style={sectionHeaderStyle}>Language</div>
+
+            <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
+
+            <div style={separatorStyle} />
+
+            {/* Theme Section */}
+            <div style={sectionHeaderStyle}>Theme</div>
+
+            <div style={{ padding: '0 6px' }}>
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Desktop: Single column layout */}
+          {/* Site Navigation Section */}
+          <div style={sectionHeaderStyle}>Navigation</div>
+
+          {renderNavLink('/', '🧮', 'Home')}
+          {renderNavLink('/create', '✏️', 'Create')}
+          {renderNavLink('/guide', '📖', 'Guide')}
+          {renderNavLink('/games', '🎮', 'Games')}
+          {renderNavLink('/blog', '📝', 'Blog')}
+
+          <DropdownMenu.Separator style={separatorStyle} />
+
+          {/* Controls Section */}
+          <div style={sectionHeaderStyle}>Controls</div>
+
           <DropdownMenu.Item
-            onSelect={() => router.push('/games')}
+            onSelect={toggleFullscreen}
             style={controlButtonStyle}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = isDark
-                ? 'rgba(239, 68, 68, 0.2)'
-                : 'rgba(239, 68, 68, 0.1)'
+                ? 'rgba(59, 130, 246, 0.2)'
+                : 'rgba(59, 130, 246, 0.1)'
               e.currentTarget.style.color = isDark
-                ? 'rgba(252, 165, 165, 1)'
-                : 'rgba(185, 28, 28, 1)'
+                ? 'rgba(147, 197, 253, 1)'
+                : 'rgba(29, 78, 216, 1)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent'
@@ -268,55 +323,62 @@ function MenuContent({
                 : 'rgba(55, 65, 81, 1)'
             }}
           >
-            <span style={{ fontSize: isMobile ? '24px' : '16px' }}>🚪</span>
-            <span>Exit Arcade</span>
+            <span style={{ fontSize: '16px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
+            <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
           </DropdownMenu.Item>
-        ))}
 
-      {isMobile ? (
-        <div style={separatorStyle} />
-      ) : (
-        <DropdownMenu.Separator style={separatorStyle} />
-      )}
+          {isArcadePage && (
+            <DropdownMenu.Item
+              onSelect={() => router.push('/games')}
+              style={controlButtonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark
+                  ? 'rgba(239, 68, 68, 0.2)'
+                  : 'rgba(239, 68, 68, 0.1)'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(252, 165, 165, 1)'
+                  : 'rgba(185, 28, 28, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(209, 213, 219, 1)'
+                  : 'rgba(55, 65, 81, 1)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>🚪</span>
+              <span>Exit Arcade</span>
+            </DropdownMenu.Item>
+          )}
 
-      {/* Style Section */}
-      <div style={sectionHeaderStyle}>Abacus Style</div>
+          <DropdownMenu.Separator style={separatorStyle} />
 
-      <div style={{ padding: '0 6px' }}>
-        <AbacusDisplayDropdown
-          isFullscreen={isFullscreen}
-          onOpenChange={handleNestedDropdownChange}
-        />
-      </div>
+          {/* Style Section */}
+          <div style={sectionHeaderStyle}>Abacus Style</div>
 
-      {isMobile ? (
-        <div style={separatorStyle} />
-      ) : (
-        <DropdownMenu.Separator style={separatorStyle} />
-      )}
+          <div style={{ padding: '0 6px' }}>
+            <AbacusDisplayDropdown
+              isFullscreen={isFullscreen}
+              onOpenChange={handleNestedDropdownChange}
+            />
+          </div>
 
-      {/* Language Section */}
-      <div style={sectionHeaderStyle}>Language</div>
+          <DropdownMenu.Separator style={separatorStyle} />
 
-      <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
+          {/* Language Section */}
+          <div style={sectionHeaderStyle}>Language</div>
 
-      {isMobile ? (
-        <div style={separatorStyle} />
-      ) : (
-        <DropdownMenu.Separator style={separatorStyle} />
-      )}
+          <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
 
-      {/* Theme Section */}
-      <div style={sectionHeaderStyle}>Theme</div>
+          <DropdownMenu.Separator style={separatorStyle} />
 
-      {isMobile ? (
-        <div style={{ padding: '0 6px' }}>
-          <ThemeToggle />
-        </div>
-      ) : (
-        <DropdownMenu.Item onSelect={(e) => e.preventDefault()} style={{ padding: '0 6px' }}>
-          <ThemeToggle />
-        </DropdownMenu.Item>
+          {/* Theme Section */}
+          <div style={sectionHeaderStyle}>Theme</div>
+
+          <DropdownMenu.Item onSelect={(e) => e.preventDefault()} style={{ padding: '0 6px' }}>
+            <ThemeToggle />
+          </DropdownMenu.Item>
+        </>
       )}
     </div>
   )
@@ -340,10 +402,12 @@ function HamburgerMenu({
   const [isMobile, setIsMobile] = useState(false)
   const { resolvedTheme } = useTheme()
 
-  // Detect mobile viewport
+  // Detect mobile viewport - check the smaller dimension to catch landscape orientation
   React.useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640)
+      // Mobile if the smaller dimension is less than 640px (catches both portrait and landscape)
+      const smallerDimension = Math.min(window.innerWidth, window.innerHeight)
+      setIsMobile(smallerDimension < 640)
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
@@ -412,8 +476,9 @@ function HamburgerMenu({
                       : 'linear-gradient(135deg, rgba(249, 250, 251, 0.97), rgba(243, 244, 246, 0.97))',
                   backdropFilter: 'blur(12px)',
                   zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
-                  overflowY: 'auto',
-                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
                   animation: 'mobileMenuFadeIn 0.2s ease-out',
                 })}
                 onClick={(e) => {
