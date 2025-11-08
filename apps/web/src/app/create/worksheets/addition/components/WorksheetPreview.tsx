@@ -89,6 +89,14 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
       formState.cols,
       formState.pages,
       formState.orientation,
+      // V4: Problem size (CRITICAL - affects column layout and problem generation)
+      formState.digitRange?.min,
+      formState.digitRange?.max,
+      // V4: Mode and conditional display settings
+      formState.mode,
+      formState.displayRules, // Smart mode: conditional scaffolding
+      formState.difficultyProfile, // Smart mode: difficulty preset
+      formState.manualPreset, // Manual mode: manual preset
       // Other settings that affect appearance
       formState.name,
       formState.pAnyStart,
