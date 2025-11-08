@@ -365,14 +365,14 @@ export interface DifficultyProfile {
  */
 /**
  * Color palette for difficulty levels (RGB values for interpolation)
- * Subtle progression from green (easy) to red (hard)
+ * Vibrant, distinct progression: emerald → cyan → purple → amber → crimson
  */
 const DIFFICULTY_RGB = {
-  beginner: { bg: [220, 252, 231], border: [34, 197, 94], text: [22, 101, 52] }, // green
-  earlyLearner: { bg: [219, 234, 254], border: [59, 130, 246], text: [30, 64, 175] }, // blue
-  intermediate: { bg: [254, 249, 195], border: [234, 179, 8], text: [133, 77, 14] }, // yellow
-  advanced: { bg: [255, 237, 213], border: [249, 115, 22], text: [154, 52, 18] }, // orange
-  expert: { bg: [254, 226, 226], border: [239, 68, 68], text: [153, 27, 27] }, // red
+  beginner: { bg: [209, 250, 229], border: [16, 185, 129], text: [4, 120, 87] }, // emerald - fresh, encouraging
+  earlyLearner: { bg: [207, 250, 254], border: [6, 182, 212], text: [8, 145, 178] }, // cyan - calm, learning
+  intermediate: { bg: [243, 232, 255], border: [168, 85, 247], text: [107, 33, 168] }, // purple - transitional
+  advanced: { bg: [254, 243, 199], border: [245, 158, 11], text: [146, 64, 14] }, // amber - warming up
+  expert: { bg: [254, 226, 226], border: [220, 38, 38], text: [153, 27, 27] }, // crimson - intense
 } as const
 
 /**
@@ -380,11 +380,11 @@ const DIFFICULTY_RGB = {
  * Used for preset buttons in dropdown menu
  */
 export const DIFFICULTY_COLORS = {
-  beginner: { bg: 'green.100', border: 'green.500', text: 'green.800' },
-  earlyLearner: { bg: 'blue.100', border: 'blue.500', text: 'blue.800' },
-  intermediate: { bg: 'yellow.100', border: 'yellow.500', text: 'yellow.800' },
-  advanced: { bg: 'orange.100', border: 'orange.500', text: 'orange.800' },
-  expert: { bg: 'red.100', border: 'red.500', text: 'red.800' },
+  beginner: { bg: 'emerald.100', border: 'emerald.500', text: 'emerald.700' },
+  earlyLearner: { bg: 'cyan.100', border: 'cyan.500', text: 'cyan.700' },
+  intermediate: { bg: 'purple.100', border: 'purple.500', text: 'purple.700' },
+  advanced: { bg: 'amber.100', border: 'amber.500', text: 'amber.700' },
+  expert: { bg: 'red.100', border: 'red.600', text: 'red.800' },
 } as const
 
 /**
