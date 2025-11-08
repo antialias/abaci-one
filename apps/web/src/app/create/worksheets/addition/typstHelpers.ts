@@ -453,22 +453,26 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
                     ]
                   )
-                  // Draw diagonal arrow from "1" to borrowed 10s box
+                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box
                   #place(
-                    top + center,
-                    dx: 0.08in,
-                    dy: 2pt,
-                    line(
-                      start: (0pt, 0pt),
-                      end: (${cellSizeIn}, ${cellSizeIn}),
-                      stroke: (paint: white, thickness: 0.8pt, dash: "solid")
+                    top + right,
+                    path(
+                      stroke: (paint: white, thickness: 1pt),
+                      // Start at top-right corner of borrow box
+                      (0pt, 0pt),
+                      // Bezier curve - convex on upper right
+                      // Control point above and to the right
+                      (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
+                      // End at top-center of borrowed 10s box (one cell right, one cell down)
+                      (${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in, ${cellSizeIn}),
                     )
                   )
+                  // Arrowhead at the end
                   #place(
-                    top + center,
-                    dx: ${cellSizeIn},
-                    dy: ${cellSizeIn},
-                    text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: white)[▼]
+                    top + right,
+                    dx: ${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in,
+                    dy: ${(cellSize * 0.95).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.4).toFixed(1)}pt, fill: white, weight: "bold")[▼]
                   )
                 ]
               } else {
@@ -481,22 +485,26 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                     ]
                   )
-                  // Draw diagonal arrow from "1" to borrowed 10s box
+                  // Draw curved arrow from top-right of borrow box to top of borrowed 10s box
                   #place(
-                    top + center,
-                    dx: 0.08in,
-                    dy: 2pt,
-                    line(
-                      start: (0pt, 0pt),
-                      end: (${cellSizeIn}, ${cellSizeIn}),
-                      stroke: (paint: gray.darken(30%), thickness: 0.8pt, dash: "solid")
+                    top + right,
+                    path(
+                      stroke: (paint: gray.darken(30%), thickness: 1pt),
+                      // Start at top-right corner of borrow box
+                      (0pt, 0pt),
+                      // Bezier curve - convex on upper right
+                      // Control point above and to the right
+                      (${(cellSize * 0.3).toFixed(2)}in, ${(cellSize * 0.2).toFixed(2)}in),
+                      // End at top-center of borrowed 10s box (one cell right, one cell down)
+                      (${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in, ${cellSizeIn}),
                     )
                   )
+                  // Arrowhead at the end
                   #place(
-                    top + center,
-                    dx: ${cellSizeIn},
-                    dy: ${cellSizeIn},
-                    text(size: ${(cellSizePt * 0.3).toFixed(1)}pt, fill: gray.darken(30%))[▼]
+                    top + right,
+                    dx: ${(cellSize * 1.0 + cellSize * 0.225).toFixed(2)}in,
+                    dy: ${(cellSize * 0.95).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.4).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[▼]
                   )
                 ]
               }
