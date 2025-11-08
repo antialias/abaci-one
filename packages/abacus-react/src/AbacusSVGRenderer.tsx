@@ -431,7 +431,9 @@ export function AbacusSVGRenderer({
       })}
 
       {/* Column numbers */}
-      {showNumbers &&
+      {/* NumberFlow numerals are now rendered in AbacusReact.tsx, not here */}
+      {/* Keeping this code commented for reference - SVG text numerals replaced by NumberFlow */}
+      {false && showNumbers &&
         beadConfigs.map((_, colIndex) => {
           const placeValue = columns - 1 - colIndex;
           const columnState = state[placeValue] || {
