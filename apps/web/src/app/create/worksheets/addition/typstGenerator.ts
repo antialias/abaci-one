@@ -84,6 +84,7 @@ function generatePageTypst(
       return {
         ...p,
         ...displayOptions,
+        showBorrowNotation: false, // Smart mode doesn't have borrow notation (yet)
       }
     } else {
       // Manual mode: Uniform display across all problems
