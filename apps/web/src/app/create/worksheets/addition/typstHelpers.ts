@@ -457,8 +457,8 @@ export function generateSubtractionProblemStackFunction(
                     top + center,
                     dy: 2pt,
                     box[
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[#str(display-value) − ]
-                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(40%), weight: "bold")[#str(display-value) − ]
+                      #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(40%), weight: "bold")[1]
                     ]
                   )
                   // Draw curved line using Typst bezier with control point
@@ -467,7 +467,7 @@ export function generateSubtractionProblemStackFunction(
                     dx: ${(cellSize * 0.9).toFixed(2)}in,
                     dy: ${(cellSize * 0.15).toFixed(2)}in,
                     path(
-                      stroke: (paint: white, thickness: 1.5pt),
+                      stroke: (paint: gray.darken(40%), thickness: 1.5pt),
                       // Start vertex (near the "1" in borrow box)
                       (0pt, 0pt),
                       // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
@@ -479,7 +479,7 @@ export function generateSubtractionProblemStackFunction(
                     top + left,
                     dx: ${(cellSize * 0.96).toFixed(2)}in,
                     dy: ${(cellSize * 0.62).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: white)[▼]
+                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: gray.darken(40%))[▼]
                   )
                 ]
               } else {
