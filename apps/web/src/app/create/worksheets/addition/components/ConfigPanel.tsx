@@ -36,9 +36,9 @@ interface ConfigPanelProps {
 
 /**
  * Generate a human-readable summary of enabled scaffolding aids
- * Groups by frequency: "Always: x, y  •  When needed: z"
+ * Returns JSX with each frequency group on its own line
  */
-function getScaffoldingSummary(displayRules: any): string {
+function getScaffoldingSummary(displayRules: any): React.ReactNode {
   console.log('[getScaffoldingSummary] displayRules:', displayRules)
 
   const alwaysItems: string[] = []
@@ -68,20 +68,19 @@ function getScaffoldingSummary(displayRules: any): string {
     conditionalItems.push('ten-frames')
   }
 
-  const parts: string[] = []
-
-  if (alwaysItems.length > 0) {
-    parts.push(`Always: ${alwaysItems.join(', ')}`)
+  if (alwaysItems.length === 0 && conditionalItems.length === 0) {
+    console.log('[getScaffoldingSummary] Final summary: no scaffolding')
+    return <span className={css({ color: 'gray.500', fontStyle: 'italic' })}>no scaffolding</span>
   }
 
-  if (conditionalItems.length > 0) {
-    parts.push(`When needed: ${conditionalItems.join(', ')}`)
-  }
+  console.log('[getScaffoldingSummary] Final summary:', { alwaysItems, conditionalItems })
 
-  const summary = parts.length > 0 ? parts.join('  •  ') : 'no scaffolding'
-  console.log('[getScaffoldingSummary] Final summary:', summary)
-
-  return summary
+  return (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
+      {alwaysItems.length > 0 && <div>Always: {alwaysItems.join(', ')}</div>}
+      {conditionalItems.length > 0 && <div>When needed: {conditionalItems.join(', ')}</div>}
+    </div>
+  )
 }
 
 interface ToggleOptionProps {
@@ -422,7 +421,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               // Find nearest presets for custom configurations
               let nearestEasier: DifficultyLevel | null = null
               let nearestHarder: DifficultyLevel | null = null
-              let customDescription = ''
+              let customDescription: React.ReactNode = ''
 
               if (isCustom) {
                 const currentRegrouping = calculateRegroupingIntensity(pAnyStart, pAllStart)
@@ -477,7 +476,12 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
                 const scaffoldingSummary = getScaffoldingSummary(displayRules)
-                customDescription = `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
+                customDescription = (
+                  <>
+                    <div>{regroupingPercent}% regrouping</div>
+                    {scaffoldingSummary}
+                  </>
+                )
               }
 
               // Calculate current difficulty position
@@ -580,6 +584,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           data-action="open-preset-dropdown"
                           className={css({
                             w: 'full',
+                            minH: '20',
                             px: '3',
                             py: '2.5',
                             border: '2px solid',
@@ -636,23 +641,36 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 lineHeight: '1.3',
                               })}
                             >
-                              {isCustom
-                                ? customDescription
-                                : currentProfile
-                                  ? (() => {
-                                      const preset = DIFFICULTY_PROFILES[currentProfile]
-                                      const regroupingPercent = Math.round(
-                                        calculateRegroupingIntensity(
-                                          preset.regrouping.pAnyStart,
-                                          preset.regrouping.pAllStart
-                                        ) * 10
-                                      )
-                                      const scaffoldingSummary = getScaffoldingSummary(
-                                        preset.displayRules
-                                      )
-                                      return `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
-                                    })()
-                                  : '25% regrouping  •  Always: carry boxes, answer boxes, place value colors, ten-frames'}
+                              {isCustom ? (
+                                customDescription
+                              ) : currentProfile ? (
+                                (() => {
+                                  const preset = DIFFICULTY_PROFILES[currentProfile]
+                                  const regroupingPercent = Math.round(
+                                    calculateRegroupingIntensity(
+                                      preset.regrouping.pAnyStart,
+                                      preset.regrouping.pAllStart
+                                    ) * 10
+                                  )
+                                  const scaffoldingSummary = getScaffoldingSummary(
+                                    preset.displayRules
+                                  )
+                                  return (
+                                    <>
+                                      <div>{regroupingPercent}% regrouping</div>
+                                      {scaffoldingSummary}
+                                    </>
+                                  )
+                                })()
+                              ) : (
+                                <>
+                                  <div>25% regrouping</div>
+                                  <div>
+                                    Always: carry boxes, answer boxes, place value colors,
+                                    ten-frames
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                           <span
@@ -691,7 +709,12 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                               ) * 10
                             )
                             const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
-                            const presetDescription = `${regroupingPercent}% regrouping  •  ${scaffoldingSummary}`
+                            const presetDescription = (
+                              <>
+                                <div>{regroupingPercent}% regrouping</div>
+                                {scaffoldingSummary}
+                              </>
+                            )
 
                             return (
                               <DropdownMenu.Item
