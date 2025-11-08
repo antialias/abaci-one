@@ -447,22 +447,6 @@ export default function NotFound() {
             </Link>
           </div>
 
-          {/* Easter egg hint */}
-          {activeEasterEgg && (
-            <p
-              className={css({
-                fontSize: { base: "0.75rem", sm: "0.875rem" },
-                color: currentTheme?.textColor || "text.secondary",
-                opacity: 0.8,
-                marginTop: { base: "1.5rem", sm: "2rem" },
-                fontStyle: "italic",
-                transition: "all 0.6s ease-in-out",
-                fontWeight: "medium",
-              })}
-            >
-              ✨ Click the beads to discover more codes...
-            </p>
-          )}
         </div>
       </div>
     </PageWithNav>
