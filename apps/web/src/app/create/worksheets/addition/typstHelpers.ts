@@ -355,8 +355,8 @@ export function generateSubtractionProblemStackFunction(
   return String.raw`
 // Subtraction problem rendering function (supports 1-${maxDigits} digit problems)
 // Returns the stack/grid structure for rendering a single subtraction problem
-// Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation
-#let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation) = {
+// Per-problem display flags: show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation, show-borrowing-hints
+#let subtraction-problem-stack(minuend, subtrahend, index-or-none, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation, show-borrowing-hints) = {
   // Place value colors array for dynamic lookup
   let place-colors = (${placeColors.join(', ')})
 

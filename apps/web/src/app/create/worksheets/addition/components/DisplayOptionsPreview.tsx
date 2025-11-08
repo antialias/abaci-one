@@ -180,6 +180,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
       showTenFrames: formState.showTenFrames ?? false,
       showTenFramesForAll: formState.showTenFramesForAll ?? false,
       showBorrowNotation: formState.showBorrowNotation ?? true,
+      showBorrowingHints: formState.showBorrowingHints ?? false,
       operator,
     }
 
@@ -217,6 +218,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
     formState.showTenFrames,
     formState.showTenFramesForAll,
     formState.showBorrowNotation,
+    formState.showBorrowingHints,
     formState.operator,
     operands,
   ])

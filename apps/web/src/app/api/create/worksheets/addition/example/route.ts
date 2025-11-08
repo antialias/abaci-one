@@ -32,6 +32,7 @@ interface ExampleRequest {
   showTenFrames?: boolean
   showTenFramesForAll?: boolean
   showBorrowNotation?: boolean
+  showBorrowingHints?: boolean
   fontSize?: number
   operator?: WorksheetOperator
   // For addition
@@ -59,6 +60,7 @@ function generateExampleTypst(config: ExampleRequest): string {
   const showTenFrames = config.showTenFrames ?? false
   const showTenFramesForAll = config.showTenFramesForAll ?? false
   const showBorrowNotation = config.showBorrowNotation ?? true
+  const showBorrowingHints = config.showBorrowingHints ?? false
 
   if (operator === 'addition') {
     // Use custom addends if provided, otherwise generate a problem
@@ -128,6 +130,7 @@ ${generateProblemStackFunction(cellSize, 3)}
 #let show-ten-frames = ${showTenFrames ? 'true' : 'false'}
 #let show-ten-frames-for-all = ${showTenFramesForAll ? 'true' : 'false'}
 #let show-borrow-notation = ${showBorrowNotation ? 'true' : 'false'}
+#let show-borrowing-hints = ${showBorrowingHints ? 'true' : 'false'}
 
 ${generateTypstHelpers(cellSize)}
 
@@ -137,7 +140,7 @@ ${generateSubtractionProblemStackFunction(cellSize, 3)}
 #let subtrahend = ${subtrahend}
 
 #align(center + horizon)[
-  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation)
+  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation, show-borrowing-hints)
 ]
 `
   }

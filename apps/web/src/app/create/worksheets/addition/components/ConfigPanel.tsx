@@ -2372,6 +2372,15 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     />
                   )}
 
+                  {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                    <ToggleOption
+                      checked={formState.showBorrowingHints ?? false}
+                      onChange={(checked) => onChange({ showBorrowingHints: checked })}
+                      label="Borrowing Hints"
+                      description="Show arrows and calculations guiding the borrowing process"
+                    />
+                  )}
+
                   <ToggleOption
                     checked={formState.showTenFrames ?? false}
                     onChange={(checked) => {

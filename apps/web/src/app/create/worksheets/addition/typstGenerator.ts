@@ -85,6 +85,7 @@ function generatePageTypst(
         ...p,
         ...displayOptions,
         showBorrowNotation: false, // Smart mode doesn't have borrow notation (yet)
+        showBorrowingHints: false, // Smart mode doesn't have borrowing hints (yet)
       }
     } else {
       // Manual mode: Uniform display across all problems
@@ -110,6 +111,7 @@ function generatePageTypst(
         showProblemNumbers: config.showProblemNumbers,
         showCellBorder: config.showCellBorder,
         showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : true,
+        showBorrowingHints: 'showBorrowingHints' in config ? config.showBorrowingHints : false,
       }
     }
   })
@@ -118,9 +120,9 @@ function generatePageTypst(
   const problemsTypst = enrichedProblems
     .map((p) => {
       if (p.operator === '+') {
-        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}),`
+        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`
       } else {
-        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}),`
+        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`
       }
     })
     .join('\n')
@@ -217,7 +219,8 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
           problem.showPlaceValueColors,
           problem.showTenFrames,
           problem.showProblemNumbers,
-          problem.showBorrowNotation
+          problem.showBorrowNotation,
+          problem.showBorrowingHints
         )
       }
     ]

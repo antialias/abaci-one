@@ -330,6 +330,7 @@ const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   showCellBorder: z.boolean(),
   showTenFramesForAll: z.boolean(),
   showBorrowNotation: z.boolean(), // Scratch boxes for borrowing work
+  showBorrowingHints: z.boolean(), // Visual hints showing what to write when borrowing
 
   // Optional: Which manual preset is selected
   manualPreset: z.string().optional(),
@@ -507,6 +508,7 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
       showCellBorder: v3.showCellBorder,
       showTenFramesForAll: v3.showTenFramesForAll,
       showBorrowNotation: true, // V4: Default to true for backward compatibility
+      showBorrowingHints: false, // V4: Default to false for backward compatibility
       manualPreset: v3.manualPreset,
     }
   }
