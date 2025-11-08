@@ -123,7 +123,15 @@ function generatePageTypst(
 #block(breakable: false)[
 
 #let heavy-stroke = 0.8pt
-#let show-ten-frames-for-all = ${config.mode === 'manual' && config.showTenFramesForAll ? 'true' : 'false'}
+#let show-ten-frames-for-all = ${
+    config.mode === 'manual'
+      ? config.showTenFramesForAll
+        ? 'true'
+        : 'false'
+      : config.displayRules.tenFrames === 'always'
+        ? 'true'
+        : 'false'
+  }
 
 ${generateTypstHelpers(cellSize)}
 
