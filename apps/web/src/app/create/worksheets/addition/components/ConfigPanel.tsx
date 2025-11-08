@@ -584,7 +584,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           data-action="open-preset-dropdown"
                           className={css({
                             w: 'full',
-                            h: '20',
+                            h: '24',
                             px: '3',
                             py: '2.5',
                             border: '2px solid',
@@ -639,7 +639,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 fontSize: 'xs',
                                 color: isCustom ? 'orange.600' : 'gray.500',
                                 lineHeight: '1.3',
-                                h: '12',
+                                h: '14',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '0.5',
