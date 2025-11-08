@@ -2021,32 +2021,43 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                 Regrouping difficulty at worksheet start (Both = all columns regroup, Any = at least
                 one column regroups)
               </div>
-
-              {/* Progressive difficulty checkbox */}
-              <div className={css({ display: 'flex', gap: '2', alignItems: 'center', mt: '1' })}>
-                <input
-                  id="interpolate-manual"
-                  type="checkbox"
-                  checked={formState.interpolate ?? true}
-                  onChange={(e) => onChange({ interpolate: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="interpolate-manual"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Progressive difficulty (easy → hard throughout worksheet)
-                </label>
-              </div>
             </div>
           </div>
         </>
       )}
+
+      {/* Progressive difficulty checkbox - Available for both Smart and Manual modes */}
+      <div
+        data-section="progressive-difficulty"
+        className={css({
+          bg: 'gray.50',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'xl',
+          p: '3',
+        })}
+      >
+        <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+          <input
+            id="interpolate"
+            type="checkbox"
+            checked={formState.interpolate ?? true}
+            onChange={(e) => onChange({ interpolate: e.target.checked })}
+            className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+          />
+          <label
+            htmlFor="interpolate"
+            className={css({
+              fontSize: 'xs',
+              fontWeight: 'medium',
+              color: 'gray.600',
+              cursor: 'pointer',
+            })}
+          >
+            Progressive difficulty (easy → hard throughout worksheet)
+          </label>
+        </div>
+      </div>
     </div>
   )
 }
