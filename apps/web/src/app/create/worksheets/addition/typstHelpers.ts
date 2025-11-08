@@ -450,9 +450,9 @@ export function generateSubtractionProblemStackFunction(
                 ],
                 // Show the borrow box
                 if show-colors {
-                  diagonal-split-box(${cellSizeIn * 0.7}, source-color, dest-color)
+                  diagonal-split-box(${(cellSize * 0.7).toFixed(2)}in, source-color, dest-color)
                 } else {
-                  box(width: ${cellSizeIn * 0.7}, height: ${cellSizeIn * 0.7}, stroke: 0.5pt)[]
+                  box(width: ${(cellSize * 0.7).toFixed(2)}in, height: ${(cellSize * 0.7).toFixed(2)}in, stroke: 0.5pt)[]
                 }
               )
             ],)
