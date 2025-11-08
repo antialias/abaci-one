@@ -189,7 +189,7 @@ export default function CreatePage() {
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="✨">
-      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+      <div className={css({ minHeight: '100vh', bg: 'bg.canvas' })}>
         {/* Main Content */}
         <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
           <div className={stack({ gap: '6', mb: '8' })}>
@@ -198,7 +198,7 @@ export default function CreatePage() {
                 className={css({
                   fontSize: '3xl',
                   fontWeight: 'bold',
-                  color: 'gray.900',
+                  color: 'text.primary',
                 })}
               >
                 {t('pageTitle')}
@@ -206,7 +206,7 @@ export default function CreatePage() {
               <p
                 className={css({
                   fontSize: 'lg',
-                  color: 'gray.600',
+                  color: 'text.secondary',
                 })}
               >
                 {t('pageSubtitle')}
@@ -225,7 +225,7 @@ export default function CreatePage() {
             {/* Main Configuration Panel */}
             <div
               className={css({
-                bg: 'white',
+                bg: 'bg.default',
                 rounded: '2xl',
                 shadow: 'card',
                 p: '8',
@@ -237,7 +237,7 @@ export default function CreatePage() {
             {/* Style Controls Panel */}
             <div
               className={css({
-                bg: 'white',
+                bg: 'bg.default',
                 rounded: '2xl',
                 shadow: 'card',
                 p: '6',
@@ -249,7 +249,7 @@ export default function CreatePage() {
                     className={css({
                       fontSize: 'lg',
                       fontWeight: 'bold',
-                      color: 'gray.900',
+                      color: 'text.primary',
                     })}
                   >
                     {t('stylePanel.title')}
@@ -257,7 +257,7 @@ export default function CreatePage() {
                   <p
                     className={css({
                       fontSize: 'sm',
-                      color: 'gray.600',
+                      color: 'text.secondary',
                     })}
                   >
                     {t('stylePanel.subtitle')}
@@ -274,7 +274,7 @@ export default function CreatePage() {
             {/* Live Preview Panel */}
             <div
               className={css({
-                bg: 'white',
+                bg: 'bg.default',
                 rounded: '2xl',
                 shadow: 'card',
                 p: '6',
@@ -290,7 +290,7 @@ export default function CreatePage() {
                 <div
                   className={css({
                     borderTop: '1px solid',
-                    borderColor: 'gray.200',
+                    borderColor: 'border.default',
                     pt: '6',
                   })}
                 >
@@ -308,8 +308,8 @@ export default function CreatePage() {
                       w: 'full',
                       px: '6',
                       py: '4',
-                      bg: 'brand.600',
-                      color: 'white',
+                      bg: 'accent.default',
+                      color: 'accent.fg',
                       fontSize: 'lg',
                       fontWeight: 'semibold',
                       rounded: 'xl',
@@ -321,7 +321,7 @@ export default function CreatePage() {
                         generationStatus === 'generating'
                           ? {}
                           : {
-                              bg: 'brand.700',
+                              bg: 'accent.emphasis',
                               transform: 'translateY(-1px)',
                               shadow: 'modal',
                             },
@@ -335,7 +335,7 @@ export default function CreatePage() {
                               w: '5',
                               h: '5',
                               border: '2px solid',
-                              borderColor: 'white',
+                              borderColor: 'accent.fg',
                               borderTopColor: 'transparent',
                               rounded: 'full',
                               animation: 'spin 1s linear infinite',
@@ -375,7 +375,7 @@ export default function CreatePage() {
                     className={css({
                       fontSize: 'xl',
                       fontWeight: 'semibold',
-                      color: 'red.800',
+                      color: 'red.900',
                     })}
                   >
                     {t('error.title')}
@@ -383,7 +383,7 @@ export default function CreatePage() {
                 </div>
                 <p
                   className={css({
-                    color: 'red.700',
+                    color: 'red.800',
                     lineHeight: 'relaxed',
                   })}
                 >
@@ -395,12 +395,12 @@ export default function CreatePage() {
                     alignSelf: 'start',
                     px: '4',
                     py: '2',
-                    bg: 'red.600',
+                    bg: 'red.700',
                     color: 'white',
                     fontWeight: 'medium',
                     rounded: 'lg',
                     transition: 'all',
-                    _hover: { bg: 'red.700' },
+                    _hover: { bg: 'red.800' },
                   })}
                 >
                   {t('error.tryAgain')}

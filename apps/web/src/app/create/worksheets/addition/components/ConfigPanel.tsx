@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import type React from 'react'
-import * as Slider from '@radix-ui/react-slider'
-import * as Switch from '@radix-ui/react-switch'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useTranslations } from 'next-intl'
@@ -33,6 +31,9 @@ import { getScaffoldingSummary } from './config-panel/utils'
 import { SubOption } from './config-panel/SubOption'
 import { ToggleOption } from './config-panel/ToggleOption'
 import { StudentNameInput } from './config-panel/StudentNameInput'
+import { DigitRangeSection } from './config-panel/DigitRangeSection'
+import { OperatorSection } from './config-panel/OperatorSection'
+import { ProgressiveDifficultyToggle } from './config-panel/ProgressiveDifficultyToggle'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -207,370 +208,25 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
       <StudentNameInput value={formState.name} onChange={(name) => onChange({ name })} />
 
       {/* Digit Range Selector */}
-      <div
-        data-section="digit-range"
-        className={css({
-          bg: 'gray.50',
-          border: '1px solid',
-          borderColor: 'gray.200',
-          rounded: 'xl',
-          p: '4',
-        })}
-      >
-        <div className={css({ mb: '3' })}>
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            })}
-          >
-            <label className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'gray.700' })}>
-              Problem Size (Digits per Number)
-            </label>
-            <span className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'brand.600' })}>
-              {(() => {
-                const min = formState.digitRange?.min ?? 2
-                const max = formState.digitRange?.max ?? 2
-                return min === max ? `${min}` : `${min}-${max}`
-              })()}
-            </span>
-          </div>
-          <p className={css({ fontSize: 'xs', color: 'gray.500', mt: '1' })}>
-            {(() => {
-              const min = formState.digitRange?.min ?? 2
-              const max = formState.digitRange?.max ?? 2
-              return min === max
-                ? `All problems: exactly ${min} digit${min > 1 ? 's' : ''}`
-                : `Mixed problem sizes from ${min} to ${max} digits`
-            })()}
-          </p>
-        </div>
-
-        {/* Range Slider with Tick Marks */}
-        <div className={css({ position: 'relative', px: '3', py: '4' })}>
-          {/* Tick marks */}
-          <div
-            className={css({
-              position: 'absolute',
-              width: 'full',
-              top: '0',
-              left: '0',
-              px: '3',
-              display: 'flex',
-              justifyContent: 'space-between',
-            })}
-          >
-            {[1, 2, 3, 4, 5].map((digit) => (
-              <div
-                key={`tick-${digit}`}
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  width: '0',
-                })}
-              >
-                <div
-                  className={css({
-                    fontSize: '2xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    mb: '1',
-                  })}
-                >
-                  {digit}
-                </div>
-                <div
-                  className={css({
-                    width: '1px',
-                    height: '2',
-                    bg: 'gray.300',
-                  })}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Double-thumbed range slider */}
-          <Slider.Root
-            className={css({
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              userSelect: 'none',
-              touchAction: 'none',
-              width: 'full',
-              height: '6',
-              mt: '8',
-            })}
-            value={[formState.digitRange?.min ?? 2, formState.digitRange?.max ?? 2]}
-            onValueChange={(values) => {
-              onChange({
-                digitRange: {
-                  min: values[0],
-                  max: values[1],
-                },
-              })
-            }}
-            min={1}
-            max={5}
-            step={1}
-            minStepsBetweenThumbs={0}
-          >
-            <Slider.Track
-              className={css({
-                position: 'relative',
-                flexGrow: 1,
-                bg: 'gray.200',
-                rounded: 'full',
-                height: '2',
-              })}
-            >
-              <Slider.Range
-                className={css({
-                  position: 'absolute',
-                  bg: 'brand.500',
-                  rounded: 'full',
-                  height: 'full',
-                })}
-              />
-            </Slider.Track>
-            <Slider.Thumb
-              className={css({
-                display: 'block',
-                width: '4',
-                height: '4',
-                bg: 'white',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                rounded: 'full',
-                border: '2px solid',
-                borderColor: 'brand.500',
-                cursor: 'grab',
-                transition: 'transform 0.15s',
-                _hover: { transform: 'scale(1.15)' },
-                _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                _active: { cursor: 'grabbing' },
-              })}
-            />
-            <Slider.Thumb
-              className={css({
-                display: 'block',
-                width: '4',
-                height: '4',
-                bg: 'white',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                rounded: 'full',
-                border: '2px solid',
-                borderColor: 'brand.600',
-                cursor: 'grab',
-                transition: 'transform 0.15s',
-                _hover: { transform: 'scale(1.15)' },
-                _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                _active: { cursor: 'grabbing' },
-              })}
-            />
-          </Slider.Root>
-        </div>
-      </div>
+      <DigitRangeSection
+        digitRange={formState.digitRange}
+        onChange={(digitRange) => onChange({ digitRange })}
+      />
 
       {/* Operator Selector */}
-      <div
-        data-section="operator-selection"
-        className={css({
-          bg: 'gray.50',
-          border: '1px solid',
-          borderColor: 'gray.200',
-          rounded: 'xl',
-          p: '4',
-        })}
-      >
-        <label
-          className={css({
-            fontSize: 'sm',
-            fontWeight: 'semibold',
-            color: 'gray.700',
-            mb: '2',
-            display: 'block',
-          })}
-        >
-          Operation Type
-        </label>
-
-        <div className={css({ display: 'flex', gap: '2', mb: '2' })}>
-          <button
-            type="button"
-            onClick={() => onChange({ operator: 'addition' })}
-            className={css({
-              flex: 1,
-              px: '4',
-              py: '2',
-              rounded: 'lg',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              border: '2px solid',
-              transition: 'all 0.2s',
-              ...(formState.operator === 'addition' || !formState.operator
-                ? {
-                    bg: 'brand.600',
-                    borderColor: 'brand.600',
-                    color: 'white',
-                  }
-                : {
-                    bg: 'white',
-                    borderColor: 'gray.300',
-                    color: 'gray.700',
-                    _hover: { borderColor: 'gray.400' },
-                  }),
-            })}
-          >
-            Addition Only (+)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onChange({ operator: 'subtraction' })}
-            className={css({
-              flex: 1,
-              px: '4',
-              py: '2',
-              rounded: 'lg',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              border: '2px solid',
-              transition: 'all 0.2s',
-              ...(formState.operator === 'subtraction'
-                ? {
-                    bg: 'brand.600',
-                    borderColor: 'brand.600',
-                    color: 'white',
-                  }
-                : {
-                    bg: 'white',
-                    borderColor: 'gray.300',
-                    color: 'gray.700',
-                    _hover: { borderColor: 'gray.400' },
-                  }),
-            })}
-          >
-            Subtraction Only (−)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onChange({ operator: 'mixed' })}
-            className={css({
-              flex: 1,
-              px: '4',
-              py: '2',
-              rounded: 'lg',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              border: '2px solid',
-              transition: 'all 0.2s',
-              ...(formState.operator === 'mixed'
-                ? {
-                    bg: 'brand.600',
-                    borderColor: 'brand.600',
-                    color: 'white',
-                  }
-                : {
-                    bg: 'white',
-                    borderColor: 'gray.300',
-                    color: 'gray.700',
-                    _hover: { borderColor: 'gray.400' },
-                  }),
-            })}
-          >
-            Mixed (+/−)
-          </button>
-        </div>
-
-        <p className={css({ fontSize: 'xs', color: 'gray.600' })}>
-          {formState.operator === 'mixed'
-            ? 'Problems will randomly use addition or subtraction'
-            : formState.operator === 'subtraction'
-              ? 'All problems will be subtraction'
-              : 'All problems will be addition'}
-        </p>
-      </div>
+      <OperatorSection
+        operator={formState.operator}
+        onChange={(operator) => onChange({ operator })}
+      />
 
       {/* Mode Selector */}
       <ModeSelector currentMode={formState.mode ?? 'smart'} onChange={handleModeChange} />
 
       {/* Progressive Difficulty Toggle - Available for both modes */}
-      <div
-        data-section="progressive-difficulty"
-        className={css({
-          bg: 'gray.50',
-          border: '1px solid',
-          borderColor: 'gray.200',
-          rounded: 'xl',
-          p: '3',
-        })}
-      >
-        <div
-          className={css({
-            display: 'flex',
-            gap: '3',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          })}
-        >
-          <label
-            htmlFor="progressive-toggle"
-            className={css({
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'gray.700',
-              cursor: 'pointer',
-            })}
-          >
-            Progressive difficulty
-          </label>
-          <Switch.Root
-            id="progressive-toggle"
-            checked={formState.interpolate ?? true}
-            onCheckedChange={(checked) => onChange({ interpolate: checked })}
-            className={css({
-              width: '11',
-              height: '6',
-              bg: 'gray.300',
-              rounded: 'full',
-              position: 'relative',
-              cursor: 'pointer',
-              '&[data-state="checked"]': {
-                bg: 'brand.500',
-              },
-            })}
-          >
-            <Switch.Thumb
-              className={css({
-                display: 'block',
-                width: '5',
-                height: '5',
-                bg: 'white',
-                rounded: 'full',
-                transition: 'transform 0.1s',
-                transform: 'translateX(1px)',
-                willChange: 'transform',
-                '&[data-state="checked"]': {
-                  transform: 'translateX(23px)',
-                },
-              })}
-            />
-          </Switch.Root>
-        </div>
-        <div
-          className={css({
-            fontSize: 'xs',
-            color: 'gray.500',
-            mt: '1',
-          })}
-        >
-          Start easier and gradually build up throughout the worksheet
-        </div>
-      </div>
+      <ProgressiveDifficultyToggle
+        interpolate={formState.interpolate}
+        onChange={(interpolate) => onChange({ interpolate })}
+      />
 
       {/* Difficulty Level Card - Smart Mode Only */}
       {(!formState.mode || formState.mode === 'smart') && (

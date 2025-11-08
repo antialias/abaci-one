@@ -109,7 +109,7 @@ export default function GuidePage() {
         <div className={container({ maxW: '6xl', px: '4', py: '12' })}>
           <div
             className={css({
-              bg: 'white',
+              bg: 'bg.default',
               rounded: '2xl',
               shadow: 'card',
               p: '10',

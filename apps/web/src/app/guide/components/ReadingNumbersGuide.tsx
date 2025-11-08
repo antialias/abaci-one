@@ -18,7 +18,7 @@ export function ReadingNumbersGuide() {
           className={css({
             fontSize: '3xl',
             fontWeight: 'bold',
-            color: 'gray.900',
+            color: 'text.primary',
             mb: '4',
           })}
         >
@@ -27,7 +27,7 @@ export function ReadingNumbersGuide() {
         <p
           className={css({
             fontSize: 'lg',
-            color: 'gray.600',
+            color: 'text.secondary',
             maxW: '3xl',
             mx: 'auto',
             lineHeight: 'relaxed',
