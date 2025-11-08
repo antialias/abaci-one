@@ -639,6 +639,10 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 fontSize: 'xs',
                                 color: isCustom ? 'orange.600' : 'gray.500',
                                 lineHeight: '1.3',
+                                minH: '12',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5',
                               })}
                             >
                               {isCustom ? (
