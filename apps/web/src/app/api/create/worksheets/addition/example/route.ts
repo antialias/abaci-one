@@ -19,6 +19,7 @@ import {
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
   generateTypstHelpers,
+  generatePlaceValueColors,
 } from '@/app/create/worksheets/addition/typstHelpers'
 
 export const dynamic = 'force-dynamic'
@@ -90,6 +91,8 @@ function generateExampleTypst(config: ExampleRequest): string {
 #let show-ten-frames = ${showTenFrames ? 'true' : 'false'}
 #let show-ten-frames-for-all = ${showTenFramesForAll ? 'true' : 'false'}
 
+${generatePlaceValueColors()}
+
 ${generateTypstHelpers(cellSize)}
 
 ${generateProblemStackFunction(cellSize, 3)}
@@ -131,6 +134,8 @@ ${generateProblemStackFunction(cellSize, 3)}
 #let show-ten-frames-for-all = ${showTenFramesForAll ? 'true' : 'false'}
 #let show-borrow-notation = ${showBorrowNotation ? 'true' : 'false'}
 #let show-borrowing-hints = ${showBorrowingHints ? 'true' : 'false'}
+
+${generatePlaceValueColors()}
 
 ${generateTypstHelpers(cellSize)}
 
