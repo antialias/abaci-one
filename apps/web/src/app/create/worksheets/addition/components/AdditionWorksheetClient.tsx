@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { PageWithNav } from '@/components/PageWithNav'
+import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../../../styled-system/css'
 import { container, grid, stack } from '../../../../../../styled-system/patterns'
 import { ConfigPanel } from './ConfigPanel'
@@ -33,6 +34,8 @@ export function AdditionWorksheetClient({
   })
 
   const t = useTranslations('create.worksheets.addition')
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   // State management (formState, debouncedFormState, updateFormState)
   const { formState, debouncedFormState, updateFormState } = useWorksheetState(initialSettings)
@@ -98,7 +101,7 @@ export function AdditionWorksheetClient({
     <PageWithNav navTitle={t('navTitle')} navEmoji="📝">
       <div
         data-component="addition-worksheet-page"
-        className={css({ minHeight: '100vh', bg: 'gray.50' })}
+        className={css({ minHeight: '100vh', bg: isDark ? 'gray.900' : 'gray.50' })}
       >
         {/* Main Content */}
         <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
@@ -108,7 +111,7 @@ export function AdditionWorksheetClient({
                 className={css({
                   fontSize: '3xl',
                   fontWeight: 'bold',
-                  color: 'gray.900',
+                  color: isDark ? 'gray.100' : 'gray.900',
                 })}
               >
                 {t('pageTitle')}
@@ -116,7 +119,7 @@ export function AdditionWorksheetClient({
               <p
                 className={css({
                   fontSize: 'lg',
-                  color: 'gray.600',
+                  color: isDark ? 'gray.300' : 'gray.600',
                 })}
               >
                 {t('pageSubtitle')}
@@ -137,13 +140,13 @@ export function AdditionWorksheetClient({
               <div
                 data-section="config-panel"
                 className={css({
-                  bg: 'white',
+                  bg: isDark ? 'gray.800' : 'white',
                   rounded: '2xl',
                   shadow: 'card',
                   p: '8',
                 })}
               >
-                <ConfigPanel formState={formState} onChange={updateFormState} />
+                <ConfigPanel formState={formState} onChange={updateFormState} isDark={isDark} />
               </div>
 
               {/* Settings saved indicator */}
@@ -151,15 +154,17 @@ export function AdditionWorksheetClient({
                 data-element="settings-status"
                 className={css({
                   fontSize: 'sm',
-                  color: 'gray.600',
+                  color: isDark ? 'gray.300' : 'gray.600',
                   textAlign: 'center',
                   py: '2',
                 })}
               >
                 {isSaving ? (
-                  <span className={css({ color: 'gray.500' })}>Saving settings...</span>
+                  <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+                    Saving settings...
+                  </span>
                 ) : lastSaved ? (
-                  <span className={css({ color: 'green.600' })}>
+                  <span className={css({ color: isDark ? 'green.400' : 'green.600' })}>
                     ✓ Settings saved at {lastSaved.toLocaleTimeString()}
                   </span>
                 ) : null}
@@ -176,20 +181,25 @@ export function AdditionWorksheetClient({
                 onOrientationChange={handleOrientationChange}
                 onProblemsPerPageChange={handleProblemsPerPageChange}
                 onPagesChange={handlePagesChange}
+                isDark={isDark}
               />
 
-              <GenerateButton status={status} onGenerate={handleGenerate} />
+              <GenerateButton status={status} onGenerate={handleGenerate} isDark={isDark} />
 
               <div
                 data-section="preview-panel"
                 className={css({
-                  bg: 'white',
+                  bg: isDark ? 'gray.800' : 'white',
                   rounded: '2xl',
                   shadow: 'card',
                   p: '6',
                 })}
               >
-                <WorksheetPreview formState={debouncedFormState} initialData={initialPreview} />
+                <WorksheetPreview
+                  formState={debouncedFormState}
+                  initialData={initialPreview}
+                  isDark={isDark}
+                />
               </div>
             </div>
           </div>
