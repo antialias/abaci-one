@@ -52,7 +52,7 @@ export function CalendarConfigPanel({
     <div
       data-component="calendar-config-panel"
       className={css({
-        bg: 'gray.800',
+        bg: 'bg.muted',
         borderRadius: '12px',
         padding: '1.5rem',
         display: 'flex',
@@ -74,7 +74,7 @@ export function CalendarConfigPanel({
             fontSize: '1.125rem',
             fontWeight: '600',
             marginBottom: '0.75rem',
-            color: 'yellow.400',
+            color: 'accent.emphasis',
           })}
         >
           {t('format.title')}
@@ -94,7 +94,7 @@ export function CalendarConfigPanel({
               cursor: 'pointer',
               padding: '0.5rem',
               borderRadius: '6px',
-              _hover: { bg: 'gray.700' },
+              _hover: { bg: 'bg.subtle' },
             })}
           >
             <input
@@ -116,7 +116,7 @@ export function CalendarConfigPanel({
               cursor: 'pointer',
               padding: '0.5rem',
               borderRadius: '6px',
-              _hover: { bg: 'gray.700' },
+              _hover: { bg: 'bg.subtle' },
             })}
           >
             <input
@@ -147,7 +147,7 @@ export function CalendarConfigPanel({
             fontSize: '1.125rem',
             fontWeight: '600',
             marginBottom: '0.75rem',
-            color: 'yellow.400',
+            color: 'accent.emphasis',
           })}
         >
           {t('date.title')}
@@ -166,12 +166,12 @@ export function CalendarConfigPanel({
               flex: '1',
               padding: '0.5rem',
               borderRadius: '6px',
-              bg: 'gray.700',
-              color: 'white',
+              bg: 'bg.subtle',
+              color: 'text.primary',
               border: '1px solid',
-              borderColor: 'gray.600',
+              borderColor: 'border.default',
               cursor: 'pointer',
-              _hover: { borderColor: 'gray.500' },
+              _hover: { borderColor: 'border.emphasized' },
             })}
           >
             {MONTHS.map((monthName, index) => (
@@ -191,11 +191,11 @@ export function CalendarConfigPanel({
               width: '100px',
               padding: '0.5rem',
               borderRadius: '6px',
-              bg: 'gray.700',
-              color: 'white',
+              bg: 'bg.subtle',
+              color: 'text.primary',
               border: '1px solid',
-              borderColor: 'gray.600',
-              _hover: { borderColor: 'gray.500' },
+              borderColor: 'border.default',
+              _hover: { borderColor: 'border.emphasized' },
             })}
           />
         </div>
@@ -215,7 +215,7 @@ export function CalendarConfigPanel({
             fontSize: '1.125rem',
             fontWeight: '600',
             marginBottom: '0.75rem',
-            color: 'yellow.400',
+            color: 'accent.emphasis',
           })}
         >
           {t('paperSize.title')}
@@ -230,12 +230,12 @@ export function CalendarConfigPanel({
             width: '100%',
             padding: '0.5rem',
             borderRadius: '6px',
-            bg: 'gray.700',
-            color: 'white',
+            bg: 'bg.subtle',
+            color: 'text.primary',
             border: '1px solid',
-            borderColor: 'gray.600',
+            borderColor: 'border.default',
             cursor: 'pointer',
-            _hover: { borderColor: 'gray.500' },
+            _hover: { borderColor: 'border.emphasized' },
           })}
         >
           <option value="us-letter">{t('paperSize.usLetter')}</option>
@@ -250,7 +250,7 @@ export function CalendarConfigPanel({
         data-section="styling-info"
         className={css({
           padding: '1rem',
-          bg: 'gray.700',
+          bg: 'bg.subtle',
           borderRadius: '8px',
         })}
       >
@@ -258,7 +258,7 @@ export function CalendarConfigPanel({
           className={css({
             fontSize: '0.875rem',
             marginBottom: '0.75rem',
-            color: 'gray.300',
+            color: 'text.secondary',
           })}
         >
           {t('styling.preview')}
@@ -296,8 +296,8 @@ export function CalendarConfigPanel({
         disabled={isGenerating}
         className={css({
           padding: '1rem',
-          bg: 'yellow.500',
-          color: 'gray.900',
+          bg: 'accent.default',
+          color: 'accent.fg',
           fontWeight: '600',
           fontSize: '1.125rem',
           borderRadius: '8px',
@@ -305,11 +305,11 @@ export function CalendarConfigPanel({
           cursor: 'pointer',
           transition: 'all 0.2s',
           _hover: {
-            bg: 'yellow.400',
+            bg: 'accent.emphasis',
           },
           _disabled: {
-            bg: 'gray.600',
-            color: 'gray.400',
+            bg: 'bg.disabled',
+            color: 'text.disabled',
             cursor: 'not-allowed',
           },
         })}

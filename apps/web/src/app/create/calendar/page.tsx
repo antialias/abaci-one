@@ -83,8 +83,8 @@ export default function CalendarCreatorPage() {
         data-component="calendar-creator"
         className={`with-fixed-nav ${css({
           minHeight: '100vh',
-          bg: 'gray.900',
-          color: 'white',
+          bg: 'bg.canvas',
+          color: 'text.primary',
           padding: '2rem',
         })}`}
       >
@@ -107,7 +107,7 @@ export default function CalendarCreatorPage() {
                 fontSize: '2.5rem',
                 fontWeight: 'bold',
                 marginBottom: '0.5rem',
-                color: 'yellow.400',
+                color: 'accent.emphasis',
               })}
             >
               {t('pageTitle')}
@@ -115,7 +115,7 @@ export default function CalendarCreatorPage() {
             <p
               className={css({
                 fontSize: '1.125rem',
-                color: 'gray.300',
+                color: 'text.secondary',
               })}
             >
               {t('pageSubtitle')}

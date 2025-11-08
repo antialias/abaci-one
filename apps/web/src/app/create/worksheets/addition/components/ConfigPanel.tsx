@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import type React from 'react'
-import * as Checkbox from '@radix-ui/react-checkbox'
 import * as Slider from '@radix-ui/react-slider'
 import * as Switch from '@radix-ui/react-switch'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -21,7 +20,6 @@ import {
   calculateOverallDifficulty,
   calculateRegroupingIntensity,
   calculateScaffoldingLevel,
-  findNearestPreset,
   REGROUPING_PROGRESSION,
   SCAFFOLDING_PROGRESSION,
   findNearestValidState,
@@ -31,255 +29,13 @@ import {
 } from '../difficultyProfiles'
 import { defaultAdditionConfig } from '../../config-schemas'
 import type { DisplayRules } from '../displayRules'
+import { getScaffoldingSummary } from './config-panel/utils'
+import { SubOption } from './config-panel/SubOption'
+import { ToggleOption } from './config-panel/ToggleOption'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
-}
-
-/**
- * Generate a human-readable summary of enabled scaffolding aids
- * Returns JSX with each frequency group on its own line
- */
-function getScaffoldingSummary(displayRules: any): React.ReactNode {
-  console.log('[getScaffoldingSummary] displayRules:', displayRules)
-
-  const alwaysItems: string[] = []
-  const conditionalItems: string[] = []
-
-  if (displayRules.carryBoxes === 'always') {
-    alwaysItems.push('carry boxes')
-  } else if (displayRules.carryBoxes !== 'never') {
-    conditionalItems.push('carry boxes')
-  }
-
-  if (displayRules.answerBoxes === 'always') {
-    alwaysItems.push('answer boxes')
-  } else if (displayRules.answerBoxes !== 'never') {
-    conditionalItems.push('answer boxes')
-  }
-
-  if (displayRules.placeValueColors === 'always') {
-    alwaysItems.push('place value colors')
-  } else if (displayRules.placeValueColors !== 'never') {
-    conditionalItems.push('place value colors')
-  }
-
-  if (displayRules.tenFrames === 'always') {
-    alwaysItems.push('ten-frames')
-  } else if (displayRules.tenFrames !== 'never') {
-    conditionalItems.push('ten-frames')
-  }
-
-  if (displayRules.borrowNotation === 'always') {
-    alwaysItems.push('borrow notation')
-  } else if (displayRules.borrowNotation !== 'never') {
-    conditionalItems.push('borrow notation')
-  }
-
-  if (displayRules.borrowingHints === 'always') {
-    alwaysItems.push('borrowing hints')
-  } else if (displayRules.borrowingHints !== 'never') {
-    conditionalItems.push('borrowing hints')
-  }
-
-  if (alwaysItems.length === 0 && conditionalItems.length === 0) {
-    console.log('[getScaffoldingSummary] Final summary: no scaffolding')
-    return <span className={css({ color: 'gray.500', fontStyle: 'italic' })}>no scaffolding</span>
-  }
-
-  console.log('[getScaffoldingSummary] Final summary:', { alwaysItems, conditionalItems })
-
-  return (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
-      {alwaysItems.length > 0 && <div>Always: {alwaysItems.join(', ')}</div>}
-      {conditionalItems.length > 0 && <div>When needed: {conditionalItems.join(', ')}</div>}
-    </div>
-  )
-}
-
-interface SubOptionProps {
-  checked: boolean
-  onChange: (checked: boolean) => void
-  label: string
-  parentEnabled: boolean
-}
-
-/**
- * Reusable sub-option component for nested toggles
- * Used for options like "Show for all problems" under "Ten-Frames"
- */
-function SubOption({ checked, onChange, label, parentEnabled }: SubOptionProps) {
-  return (
-    <div
-      className={css({
-        display: 'flex',
-        gap: '3',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        pt: '1.5',
-        pb: '2.5',
-        px: '3',
-        mt: '2',
-        borderTop: '1px solid',
-        borderColor: 'brand.300',
-        opacity: parentEnabled ? 1 : 0,
-        visibility: parentEnabled ? 'visible' : 'hidden',
-        pointerEvents: parentEnabled ? 'auto' : 'none',
-        transition: 'opacity 0.15s',
-        cursor: 'pointer',
-      })}
-      onClick={(e) => {
-        e.stopPropagation()
-        onChange(!checked)
-      }}
-    >
-      <label
-        className={css({
-          fontSize: '2xs',
-          fontWeight: 'medium',
-          color: 'brand.700',
-          cursor: 'pointer',
-          flex: 1,
-        })}
-      >
-        {label}
-      </label>
-      <div
-        className={css({
-          w: '7',
-          h: '4',
-          bg: checked ? 'brand.500' : 'gray.300',
-          rounded: 'full',
-          position: 'relative',
-          transition: 'background-color 0.15s',
-          flexShrink: 0,
-        })}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: '0.125rem',
-            left: checked ? '0.875rem' : '0.125rem',
-            width: '0.75rem',
-            height: '0.75rem',
-            background: 'white',
-            borderRadius: '9999px',
-            transition: 'left 0.15s',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-interface ToggleOptionProps {
-  checked: boolean
-  onChange: (checked: boolean) => void
-  label: string
-  description: string
-  children?: React.ReactNode
-}
-
-function ToggleOption({ checked, onChange, label, description, children }: ToggleOptionProps) {
-  return (
-    <div
-      data-element="toggle-option-container"
-      className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        h: children ? 'auto' : '20',
-        bg: checked ? 'brand.50' : 'white',
-        border: '2px solid',
-        borderColor: checked ? 'brand.500' : 'gray.200',
-        rounded: 'lg',
-        transition: 'all 0.15s',
-        _hover: {
-          borderColor: checked ? 'brand.600' : 'gray.300',
-          bg: checked ? 'brand.100' : 'gray.50',
-        },
-      })}
-    >
-      <Checkbox.Root
-        checked={checked}
-        onCheckedChange={onChange}
-        data-element="toggle-option"
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          gap: '1.5',
-          p: '2.5',
-          bg: 'transparent',
-          border: 'none',
-          rounded: 'lg',
-          cursor: 'pointer',
-          textAlign: 'left',
-          w: 'full',
-          _focus: {
-            outline: 'none',
-            ring: '2px',
-            ringColor: 'brand.300',
-          },
-        })}
-      >
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '2',
-          })}
-        >
-          <div
-            className={css({
-              fontSize: 'xs',
-              fontWeight: 'semibold',
-              color: checked ? 'brand.700' : 'gray.700',
-            })}
-          >
-            {label}
-          </div>
-          <div
-            className={css({
-              w: '9',
-              h: '5',
-              bg: checked ? 'brand.500' : 'gray.300',
-              rounded: 'full',
-              position: 'relative',
-              transition: 'background-color 0.15s',
-              flexShrink: 0,
-            })}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: '0.125rem',
-                left: checked ? '1.125rem' : '0.125rem',
-                width: '1rem',
-                height: '1rem',
-                background: 'white',
-                borderRadius: '9999px',
-                transition: 'left 0.15s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }}
-            />
-          </div>
-        </div>
-        <div
-          className={css({
-            fontSize: '2xs',
-            color: checked ? 'brand.600' : 'gray.500',
-            lineHeight: '1.3',
-          })}
-        >
-          {description}
-        </div>
-      </Checkbox.Root>
-      {children}
-    </div>
-  )
 }
 
 export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {

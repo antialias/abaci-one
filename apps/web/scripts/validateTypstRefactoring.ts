@@ -14,7 +14,9 @@ console.log('🔍 Validating typstHelpers refactoring...\n')
 
 // Test 1: Check that functions are exported and callable
 console.log('✓ Test 1: Functions are exported')
-console.log(`  - generateSubtractionProblemStackFunction: ${typeof generateSubtractionProblemStackFunction}`)
+console.log(
+  `  - generateSubtractionProblemStackFunction: ${typeof generateSubtractionProblemStackFunction}`
+)
 console.log(`  - generateTypstHelpers: ${typeof generateTypstHelpers}`)
 console.log(`  - generatePlaceValueColors: ${typeof generatePlaceValueColors}`)
 
