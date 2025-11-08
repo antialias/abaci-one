@@ -41,7 +41,7 @@ export function ReadingNumbersGuide() {
       <div
         className={css({
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
           rounded: 'xl',
           p: '8',
         })}
@@ -68,7 +68,7 @@ export function ReadingNumbersGuide() {
               className={css({
                 fontSize: '2xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: 'text.primary',
               })}
             >
               {t('structure.title')}
@@ -79,7 +79,7 @@ export function ReadingNumbersGuide() {
             <p
               className={css({
                 fontSize: 'lg',
-                color: 'gray.700',
+                color: 'text.secondary',
                 lineHeight: 'relaxed',
               })}
             >
@@ -186,7 +186,7 @@ export function ReadingNumbersGuide() {
       <div
         className={css({
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
           rounded: 'xl',
           p: '8',
         })}
@@ -213,7 +213,7 @@ export function ReadingNumbersGuide() {
               className={css({
                 fontSize: '2xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: 'text.primary',
               })}
             >
               {t('singleDigits.title')}
@@ -223,7 +223,7 @@ export function ReadingNumbersGuide() {
           <p
             className={css({
               fontSize: 'lg',
-              color: 'gray.700',
+              color: 'text.secondary',
               lineHeight: 'relaxed',
             })}
           >
@@ -241,9 +241,9 @@ export function ReadingNumbersGuide() {
               <div
                 key={example.num}
                 className={css({
-                  bg: 'gray.50',
+                  bg: 'bg.subtle',
                   border: '1px solid',
-                  borderColor: 'gray.200',
+                  borderColor: 'border.default',
                   rounded: 'lg',
                   p: '2',
                   textAlign: 'center',
@@ -288,7 +288,7 @@ export function ReadingNumbersGuide() {
                 <p
                   className={css({
                     fontSize: '2xs',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                     lineHeight: 'tight',
                     textAlign: 'center',
                     mt: '2',
@@ -306,7 +306,7 @@ export function ReadingNumbersGuide() {
       <div
         className={css({
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
           rounded: 'xl',
           p: '8',
         })}
@@ -333,7 +333,7 @@ export function ReadingNumbersGuide() {
               className={css({
                 fontSize: '2xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: 'text.primary',
               })}
             >
               {t('multiDigit.title')}
@@ -343,7 +343,7 @@ export function ReadingNumbersGuide() {
           <p
             className={css({
               fontSize: 'lg',
-              color: 'gray.700',
+              color: 'text.secondary',
               lineHeight: 'relaxed',
             })}
           >
@@ -457,7 +457,7 @@ export function ReadingNumbersGuide() {
                 <div
                   key={example.num}
                   className={css({
-                    bg: 'white',
+                    bg: 'bg.default',
                     border: '1px solid',
                     borderColor: 'blue.300',
                     rounded: 'lg',
@@ -523,7 +523,7 @@ export function ReadingNumbersGuide() {
       <div
         className={css({
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
           rounded: 'xl',
           p: '8',
         })}
@@ -550,7 +550,7 @@ export function ReadingNumbersGuide() {
               className={css({
                 fontSize: '2xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: 'text.primary',
               })}
             >
               {t('practice.title')}
@@ -661,7 +661,7 @@ export function ReadingNumbersGuide() {
                 display: 'inline-block',
                 px: '6',
                 py: '3',
-                bg: 'white',
+                bg: 'bg.default',
                 color: 'blue.600',
                 fontWeight: 'semibold',
                 rounded: 'lg',
@@ -680,7 +680,7 @@ export function ReadingNumbersGuide() {
       <div
         className={css({
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
           rounded: 'xl',
           p: '8',
         })}
@@ -707,7 +707,7 @@ export function ReadingNumbersGuide() {
               className={css({
                 fontSize: '2xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: 'text.primary',
               })}
             >
               {t('interactive.title')}
@@ -717,7 +717,7 @@ export function ReadingNumbersGuide() {
           <p
             className={css({
               fontSize: 'lg',
-              color: 'gray.700',
+              color: 'text.secondary',
               lineHeight: 'relaxed',
             })}
           >
@@ -799,7 +799,7 @@ export function ReadingNumbersGuide() {
           {/* Interactive Abacus Component */}
           <div
             className={css({
-              bg: 'white',
+              bg: 'bg.default',
               border: '2px solid',
               borderColor: 'brand.200',
               rounded: 'xl',
@@ -855,7 +855,7 @@ export function ReadingNumbersGuide() {
                 display: 'inline-block',
                 px: '6',
                 py: '3',
-                bg: 'white',
+                bg: 'bg.default',
                 color: 'blue.600',
                 fontWeight: 'semibold',
                 rounded: 'lg',

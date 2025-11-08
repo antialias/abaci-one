@@ -22,6 +22,14 @@ interface ConfigPanelProps {
 
 export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
   const t = useTranslations('create.worksheets.addition')
+  const [showDebugPlot, setShowDebugPlot] = useState(false)
+  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
+  const [hoverPreview, setHoverPreview] = useState<{
+    pAnyStart: number
+    pAllStart: number
+    displayRules: DisplayRules
+    matchedProfile: string | 'custom'
+  } | null>(null)
 
   // Helper to get default column count for a given problemsPerPage (user can override)
   const getDefaultColsForProblemsPerPage = (
@@ -199,6 +207,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
         interpolate={formState.interpolate}
         onChange={(interpolate) => onChange({ interpolate })}
       />
+
 
       {/* Smart Mode Controls */}
       {(!formState.mode || formState.mode === 'smart') && (

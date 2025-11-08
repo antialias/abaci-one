@@ -49,13 +49,13 @@ export function ArithmeticOperationsGuide() {
       {/* Addition Section */}
       <div
         className={css({
-          bg: 'white',
+          bg: 'bg.default',
           rounded: 'xl',
           p: '6',
           mb: '6',
           shadow: 'sm',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
         })}
       >
         <h3
@@ -72,7 +72,7 @@ export function ArithmeticOperationsGuide() {
           {t('addition.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>{t('addition.description')}</p>
+        <p className={css({ mb: '6', color: 'text.secondary' })}>{t('addition.description')}</p>
 
         <div className={css({ mb: '6' })}>
           <h4
@@ -89,7 +89,7 @@ export function ArithmeticOperationsGuide() {
             className={css({
               pl: '6',
               gap: '2',
-              color: 'gray.700',
+              color: 'text.secondary',
             })}
           >
             {(t.raw('addition.basicSteps.steps') as string[]).map((step, i) => (
@@ -128,9 +128,9 @@ export function ArithmeticOperationsGuide() {
                 className={css({
                   width: '160px',
                   height: '240px',
-                  bg: 'white',
+                  bg: 'bg.default',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: 'border.emphasized',
                   rounded: 'md',
                   mb: '3',
                   display: 'flex',
@@ -162,9 +162,9 @@ export function ArithmeticOperationsGuide() {
                 className={css({
                   width: '160px',
                   height: '240px',
-                  bg: 'white',
+                  bg: 'bg.default',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: 'border.emphasized',
                   rounded: 'md',
                   mb: '3',
                   display: 'flex',
@@ -194,13 +194,13 @@ export function ArithmeticOperationsGuide() {
       {/* Guided Addition Tutorial */}
       <div
         className={css({
-          bg: 'white',
+          bg: 'bg.default',
           rounded: 'xl',
           p: '6',
           mb: '6',
           shadow: 'sm',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
         })}
       >
         <h3
@@ -217,7 +217,9 @@ export function ArithmeticOperationsGuide() {
           {t('guidedTutorial.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>{t('guidedTutorial.description')}</p>
+        <p className={css({ mb: '6', color: 'text.secondary' })}>
+          {t('guidedTutorial.description')}
+        </p>
 
         <div
           className={css({
@@ -267,13 +269,13 @@ export function ArithmeticOperationsGuide() {
       {/* Subtraction Section */}
       <div
         className={css({
-          bg: 'white',
+          bg: 'bg.default',
           rounded: 'xl',
           p: '6',
           mb: '6',
           shadow: 'sm',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
         })}
       >
         <h3
@@ -290,7 +292,7 @@ export function ArithmeticOperationsGuide() {
           {t('subtraction.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>{t('subtraction.description')}</p>
+        <p className={css({ mb: '6', color: 'text.secondary' })}>{t('subtraction.description')}</p>
 
         <div className={css({ mb: '6' })}>
           <h4
@@ -307,7 +309,7 @@ export function ArithmeticOperationsGuide() {
             className={css({
               pl: '6',
               gap: '2',
-              color: 'gray.700',
+              color: 'text.secondary',
             })}
           >
             {(t.raw('subtraction.basicSteps.steps') as string[]).map((step, i) => (
@@ -346,9 +348,9 @@ export function ArithmeticOperationsGuide() {
                 className={css({
                   width: '160px',
                   height: '240px',
-                  bg: 'white',
+                  bg: 'bg.default',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: 'border.emphasized',
                   rounded: 'md',
                   mb: '3',
                   display: 'flex',
@@ -380,9 +382,9 @@ export function ArithmeticOperationsGuide() {
                 className={css({
                   width: '160px',
                   height: '240px',
-                  bg: 'white',
+                  bg: 'bg.default',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: 'border.emphasized',
                   rounded: 'md',
                   mb: '3',
                   display: 'flex',
@@ -412,13 +414,13 @@ export function ArithmeticOperationsGuide() {
       {/* Multiplication & Division Section */}
       <div
         className={css({
-          bg: 'white',
+          bg: 'bg.default',
           rounded: 'xl',
           p: '6',
           mb: '6',
           shadow: 'sm',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'border.default',
         })}
       >
         <h3
@@ -435,7 +437,7 @@ export function ArithmeticOperationsGuide() {
           {t('multiplicationDivision.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>
+        <p className={css({ mb: '6', color: 'text.secondary' })}>
           {t('multiplicationDivision.description')}
         </p>
 
@@ -547,7 +549,7 @@ export function ArithmeticOperationsGuide() {
             display: 'inline-block',
             px: '6',
             py: '3',
-            bg: 'white',
+            bg: 'bg.default',
             color: 'purple.600',
             fontWeight: 'semibold',
             rounded: 'lg',

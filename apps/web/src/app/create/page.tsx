@@ -14,41 +14,13 @@ export default function CreateHubPage() {
         data-component="create-hub"
         className={css({
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          bg: 'bg.canvas',
           pt: 24,
           pb: 16,
           position: 'relative',
           overflow: 'hidden',
         })}
       >
-        {/* Decorative background elements */}
-        <div
-          className={css({
-            position: 'absolute',
-            top: '10%',
-            right: '5%',
-            width: '300px',
-            height: '300px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.1)',
-            filter: 'blur(60px)',
-            pointerEvents: 'none',
-          })}
-        />
-        <div
-          className={css({
-            position: 'absolute',
-            bottom: '15%',
-            left: '10%',
-            width: '250px',
-            height: '250px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.08)',
-            filter: 'blur(50px)',
-            pointerEvents: 'none',
-          })}
-        />
-
         <div
           className={css({
             maxWidth: '1200px',
@@ -79,8 +51,7 @@ export default function CreateHubPage() {
                 fontSize: { base: '3xl', md: '5xl' },
                 fontWeight: 'extrabold',
                 mb: 5,
-                color: 'white',
-                textShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                color: 'text.primary',
                 letterSpacing: 'tight',
               })}
             >
@@ -89,11 +60,10 @@ export default function CreateHubPage() {
             <p
               className={css({
                 fontSize: { base: 'lg', md: 'xl' },
-                color: 'rgba(255, 255, 255, 0.95)',
+                color: 'text.secondary',
                 maxWidth: '2xl',
                 mx: 'auto',
                 lineHeight: '1.8',
-                textShadow: '0 1px 3px rgba(0,0,0,0.1)',
               })}
             >
               {t('pageSubtitle')}
@@ -118,7 +88,7 @@ export default function CreateHubPage() {
               <div
                 data-element="flashcards-card"
                 className={css({
-                  bg: 'white',
+                  bg: 'bg.default',
                   borderRadius: '3xl',
                   p: 8,
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -165,7 +135,7 @@ export default function CreateHubPage() {
                     fontSize: '2xl',
                     fontWeight: 'extrabold',
                     mb: 3,
-                    color: 'gray.900',
+                    color: 'text.primary',
                     letterSpacing: 'tight',
                   })}
                 >
@@ -176,7 +146,7 @@ export default function CreateHubPage() {
                 <p
                   className={css({
                     fontSize: 'md',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                     mb: 5,
                     lineHeight: '1.7',
                   })}
@@ -199,7 +169,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -226,7 +196,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -253,7 +223,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -314,7 +284,7 @@ export default function CreateHubPage() {
               <div
                 data-element="worksheets-card"
                 className={css({
-                  bg: 'white',
+                  bg: 'bg.default',
                   borderRadius: '3xl',
                   p: 8,
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -361,7 +331,7 @@ export default function CreateHubPage() {
                     fontSize: '2xl',
                     fontWeight: 'extrabold',
                     mb: 3,
-                    color: 'gray.900',
+                    color: 'text.primary',
                     letterSpacing: 'tight',
                   })}
                 >
@@ -372,7 +342,7 @@ export default function CreateHubPage() {
                 <p
                   className={css({
                     fontSize: 'md',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                     mb: 5,
                     lineHeight: '1.7',
                   })}
@@ -395,7 +365,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -422,7 +392,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -449,7 +419,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -510,7 +480,7 @@ export default function CreateHubPage() {
               <div
                 data-element="calendar-card"
                 className={css({
-                  bg: 'white',
+                  bg: 'bg.default',
                   borderRadius: '3xl',
                   p: 8,
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -557,7 +527,7 @@ export default function CreateHubPage() {
                     fontSize: '2xl',
                     fontWeight: 'extrabold',
                     mb: 3,
-                    color: 'gray.900',
+                    color: 'text.primary',
                     letterSpacing: 'tight',
                   })}
                 >
@@ -568,7 +538,7 @@ export default function CreateHubPage() {
                 <p
                   className={css({
                     fontSize: 'md',
-                    color: 'gray.600',
+                    color: 'text.secondary',
                     mb: 5,
                     lineHeight: '1.7',
                   })}
@@ -591,7 +561,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -618,7 +588,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span
@@ -645,7 +615,7 @@ export default function CreateHubPage() {
                       alignItems: 'center',
                       gap: 3,
                       fontSize: 'sm',
-                      color: 'gray.700',
+                      color: 'text.secondary',
                     })}
                   >
                     <span

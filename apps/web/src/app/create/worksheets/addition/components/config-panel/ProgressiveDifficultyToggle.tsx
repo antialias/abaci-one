@@ -6,7 +6,10 @@ export interface ProgressiveDifficultyToggleProps {
   onChange: (interpolate: boolean) => void
 }
 
-export function ProgressiveDifficultyToggle({ interpolate, onChange }: ProgressiveDifficultyToggleProps) {
+export function ProgressiveDifficultyToggle({
+  interpolate,
+  onChange,
+}: ProgressiveDifficultyToggleProps) {
   return (
     <div
       data-section="progressive-difficulty"
