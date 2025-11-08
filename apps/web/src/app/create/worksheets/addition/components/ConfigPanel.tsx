@@ -32,6 +32,7 @@ import type { DisplayRules } from '../displayRules'
 import { getScaffoldingSummary } from './config-panel/utils'
 import { SubOption } from './config-panel/SubOption'
 import { ToggleOption } from './config-panel/ToggleOption'
+import { StudentNameInput } from './config-panel/StudentNameInput'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -203,28 +204,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
   return (
     <div data-component="config-panel" className={stack({ gap: '3' })}>
       {/* Student Name */}
-      <input
-        type="text"
-        value={formState.name || ''}
-        onChange={(e) => onChange({ name: e.target.value })}
-        placeholder="Student Name"
-        className={css({
-          w: 'full',
-          px: '3',
-          py: '2',
-          border: '1px solid',
-          borderColor: 'gray.300',
-          rounded: 'lg',
-          fontSize: 'sm',
-          _focus: {
-            outline: 'none',
-            borderColor: 'brand.500',
-            ring: '2px',
-            ringColor: 'brand.200',
-          },
-          _placeholder: { color: 'gray.400' },
-        })}
-      />
+      <StudentNameInput value={formState.name} onChange={(name) => onChange({ name })} />
 
       {/* Digit Range Selector */}
       <div
