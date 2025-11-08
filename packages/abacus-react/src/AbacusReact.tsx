@@ -267,7 +267,8 @@ export interface AbacusConfig {
   columns?: number | "auto";
   showEmptyColumns?: boolean;
   hideInactiveBeads?: boolean;
-  beadShape?: "diamond" | "square" | "circle";
+  beadShape?: "diamond" | "square" | "circle" | "custom";
+  customBeadContent?: import("./AbacusContext").CustomBeadContent; // Custom emoji, image, or SVG
   colorScheme?: "monochrome" | "place-value" | "alternating" | "heaven-earth";
   colorPalette?: "default" | "colorblind" | "mnemonic" | "grayscale" | "nature";
   scaleFactor?: number;
@@ -1594,6 +1595,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   showEmptyColumns = false,
   hideInactiveBeads,
   beadShape,
+  customBeadContent,
   colorScheme,
   colorPalette,
   scaleFactor,
@@ -1643,6 +1645,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   const finalConfig = {
     hideInactiveBeads: hideInactiveBeads ?? contextConfig.hideInactiveBeads,
     beadShape: beadShape ?? contextConfig.beadShape,
+    customBeadContent: customBeadContent ?? contextConfig.customBeadContent,
     colorScheme: colorScheme ?? contextConfig.colorScheme,
     colorPalette: colorPalette ?? contextConfig.colorPalette,
     scaleFactor: scaleFactor ?? contextConfig.scaleFactor,
@@ -2308,6 +2311,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         dimensions={standardDims}
         scaleFactor={finalConfig.scaleFactor}
         beadShape={finalConfig.beadShape}
+        customBeadContent={finalConfig.customBeadContent}
         colorScheme={finalConfig.colorScheme}
         colorPalette={finalConfig.colorPalette}
         hideInactiveBeads={finalConfig.hideInactiveBeads}

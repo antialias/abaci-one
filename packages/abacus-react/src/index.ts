@@ -26,6 +26,8 @@ export type {
   ColorScheme,
   BeadShape,
   ColorPalette,
+  CustomBeadContent,
+  CustomBeadContext,
   AbacusDisplayConfig,
   AbacusDisplayContextType,
 } from "./AbacusContext";

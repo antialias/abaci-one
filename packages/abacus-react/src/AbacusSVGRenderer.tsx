@@ -54,9 +54,10 @@ export interface BeadComponentProps {
   x: number;
   y: number;
   size: number;
-  shape: "circle" | "diamond" | "square";
+  shape: "circle" | "diamond" | "square" | "custom";
   color: string;
   hideInactiveBeads: boolean;
+  customBeadContent?: import("./AbacusContext").CustomBeadContent;
   customStyle?: {
     fill?: string;
     stroke?: string;
@@ -84,7 +85,8 @@ export interface AbacusSVGRendererProps {
   scaleFactor?: number;
 
   // Appearance
-  beadShape: "circle" | "diamond" | "square";
+  beadShape: "circle" | "diamond" | "square" | "custom";
+  customBeadContent?: import("./AbacusContext").CustomBeadContent;
   colorScheme: string;
   colorPalette: string;
   hideInactiveBeads: boolean;
@@ -141,6 +143,7 @@ export function AbacusSVGRenderer({
   dimensions,
   scaleFactor = 1,
   beadShape,
+  customBeadContent,
   colorScheme,
   colorPalette,
   hideInactiveBeads,
@@ -405,6 +408,7 @@ export function AbacusSVGRenderer({
                 y: position.y,
                 size: beadSize,
                 shape: beadShape,
+                customBeadContent,
                 color,
                 hideInactiveBeads,
                 customStyle,

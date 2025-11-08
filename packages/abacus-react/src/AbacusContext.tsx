@@ -15,7 +15,31 @@ export type ColorScheme =
   | "place-value"
   | "heaven-earth"
   | "alternating";
-export type BeadShape = "diamond" | "circle" | "square";
+export type BeadShape = "diamond" | "circle" | "square" | "custom";
+
+// Bead info passed to custom bead functions
+export interface CustomBeadContext {
+  // Bead identity
+  type: "heaven" | "earth";
+  value: number;
+  active: boolean;
+  position: number; // 0-based position within its type group
+  placeValue: number; // 0=ones, 1=tens, 2=hundreds, etc.
+
+  // Style context - so custom beads can match abacus theme
+  color: string; // The color that would be used for this bead
+  size: number; // Bead size in pixels
+}
+
+// Custom bead content types
+export type CustomBeadContent =
+  | { type: "emoji"; value: string } // e.g., { type: "emoji", value: "🫖" }
+  | { type: "emoji-function"; value: (bead: CustomBeadContext) => string } // e.g., { type: "emoji-function", value: (bead) => bead.active ? "✅" : "⭕" }
+  | { type: "image"; url: string; width?: number; height?: number } // e.g., { type: "image", url: "/star.png" }
+  | { type: "image-function"; value: (bead: CustomBeadContext) => { url: string; width?: number; height?: number } } // Dynamic images
+  | { type: "svg"; content: string } // e.g., { type: "svg", content: "<path d='...' />" }
+  | { type: "svg-function"; value: (bead: CustomBeadContext) => string }; // Dynamic SVG
+
 export type ColorPalette =
   | "default"
   | "colorblind"
@@ -26,6 +50,7 @@ export type ColorPalette =
 export interface AbacusDisplayConfig {
   colorScheme: ColorScheme;
   beadShape: BeadShape;
+  customBeadContent?: CustomBeadContent; // Custom bead content when beadShape is "custom"
   colorPalette: ColorPalette;
   hideInactiveBeads: boolean;
   coloredNumerals: boolean;
@@ -80,9 +105,12 @@ function loadConfigFromStorage(): AbacusDisplayConfig {
         ].includes(parsed.colorScheme)
           ? parsed.colorScheme
           : DEFAULT_CONFIG.colorScheme,
-        beadShape: ["diamond", "circle", "square"].includes(parsed.beadShape)
+        beadShape: ["diamond", "circle", "square", "custom"].includes(
+          parsed.beadShape,
+        )
           ? parsed.beadShape
           : DEFAULT_CONFIG.beadShape,
+        customBeadContent: parsed.customBeadContent || undefined,
         colorPalette: [
           "default",
           "colorblind",

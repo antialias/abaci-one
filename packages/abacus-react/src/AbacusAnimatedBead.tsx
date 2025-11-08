@@ -31,6 +31,7 @@ import { useSpring, animated, to } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import type { BeadComponentProps } from "./AbacusSVGRenderer";
 import type { BeadConfig } from "./AbacusReact";
+import type { CustomBeadContext } from "./AbacusContext";
 
 interface AnimatedBeadProps extends BeadComponentProps {
   // Animation controls
@@ -65,6 +66,7 @@ export function AbacusAnimatedBead({
   shape,
   color,
   hideInactiveBeads,
+  customBeadContent,
   customStyle,
   onClick,
   onMouseEnter,
@@ -203,16 +205,6 @@ export function AbacusAnimatedBead({
   const renderShape = () => {
     const halfSize = size / 2;
 
-    // Determine fill - use gradient for realistic mode, otherwise use color
-    let fillValue = customStyle?.fill || color;
-    if (enhanced3d === "realistic" && columnIndex !== undefined) {
-      if (bead.type === "heaven") {
-        fillValue = `url(#bead-gradient-${columnIndex}-heaven)`;
-      } else {
-        fillValue = `url(#bead-gradient-${columnIndex}-earth-${bead.position})`;
-      }
-    }
-
     // Calculate opacity based on state and settings
     let opacity: number;
     if (customStyle?.opacity !== undefined) {
@@ -230,6 +222,105 @@ export function AbacusAnimatedBead({
     } else {
       // Inactive beads when hideInactiveBeads is false are full opacity
       opacity = 1;
+    }
+
+    // Custom bead content (emoji, image, or SVG)
+    if (shape === "custom" && customBeadContent) {
+      // Build context for function-based custom beads
+      const beadContext: CustomBeadContext = {
+        type: bead.type,
+        value: bead.value,
+        active: bead.active,
+        position: bead.position,
+        placeValue: bead.placeValue,
+        color,
+        size,
+      };
+
+      switch (customBeadContent.type) {
+        case "emoji":
+          return (
+            <text
+              x={halfSize}
+              y={halfSize}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={size * 1.5}
+              opacity={opacity}
+              style={{ userSelect: "none" }}
+            >
+              {customBeadContent.value}
+            </text>
+          );
+        case "emoji-function": {
+          const emoji = customBeadContent.value(beadContext);
+          return (
+            <text
+              x={halfSize}
+              y={halfSize}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={size * 1.5}
+              opacity={opacity}
+              style={{ userSelect: "none" }}
+            >
+              {emoji}
+            </text>
+          );
+        }
+        case "image":
+          return (
+            <image
+              href={customBeadContent.url}
+              x={0}
+              y={0}
+              width={customBeadContent.width || size}
+              height={customBeadContent.height || size}
+              opacity={opacity}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          );
+        case "image-function": {
+          const imageProps = customBeadContent.value(beadContext);
+          return (
+            <image
+              href={imageProps.url}
+              x={0}
+              y={0}
+              width={imageProps.width || size}
+              height={imageProps.height || size}
+              opacity={opacity}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          );
+        }
+        case "svg":
+          return (
+            <g
+              opacity={opacity}
+              dangerouslySetInnerHTML={{ __html: customBeadContent.content }}
+            />
+          );
+        case "svg-function": {
+          const svgContent = customBeadContent.value(beadContext);
+          return (
+            <g
+              opacity={opacity}
+              dangerouslySetInnerHTML={{ __html: svgContent }}
+            />
+          );
+        }
+      }
+    }
+
+    // Determine fill - use gradient for realistic mode, otherwise use color
+    let fillValue = customStyle?.fill || color;
+    if (enhanced3d === "realistic" && columnIndex !== undefined) {
+      if (bead.type === "heaven") {
+        fillValue = `url(#bead-gradient-${columnIndex}-heaven)`;
+      } else {
+        fillValue = `url(#bead-gradient-${columnIndex}-earth-${bead.position})`;
+      }
     }
 
     const stroke = customStyle?.stroke || "#000";
@@ -276,6 +367,7 @@ export function AbacusAnimatedBead({
 
   // Calculate offsets for shape positioning
   const getXOffset = () => {
+    if (shape === "custom") return size / 2;
     return shape === "diamond" ? size * 0.7 : size / 2;
   };
 
