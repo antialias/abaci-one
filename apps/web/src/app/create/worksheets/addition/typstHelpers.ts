@@ -453,24 +453,25 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: white, stroke: 0.3pt + black, weight: "bold")[1]
                     ]
                   )
-                  // Draw straight line from top of borrow box to center of arrowhead
+                  // Draw curved line using Typst bezier with control point
                   #place(
                     top + left,
-                    dx: ${cellSizeIn},
+                    dx: ${(cellSize * 0.9).toFixed(2)}in,
+                    dy: ${(cellSize * 0.15).toFixed(2)}in,
                     path(
                       stroke: (paint: white, thickness: 1.5pt),
-                      // Start at top of borrow box
+                      // Start vertex (near the "1" in borrow box)
                       (0pt, 0pt),
-                      // End at center of arrowhead (moved down significantly)
-                      (${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.75).toFixed(2)}in),
+                      // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
+                      ((${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.70).toFixed(2)}in), (${(cellSize * 0.11).toFixed(2)}in, ${(cellSize * -0.5).toFixed(2)}in)),
                     )
                   )
                   // Arrowhead pointing down at the top edge of borrowed 10s box
                   #place(
                     top + left,
                     dx: ${(cellSize * 0.96).toFixed(2)}in,
-                    dy: ${(cellSize * 0.45).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, fill: white)[▼]
+                    dy: ${(cellSize * 0.62).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: white)[▼]
                   )
                 ]
               } else {
@@ -483,24 +484,25 @@ export function generateSubtractionProblemStackFunction(
                       #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%), weight: "bold")[1]
                     ]
                   )
-                  // Draw straight line from top of borrow box to center of arrowhead
+                  // Draw curved line using Typst bezier with control point
                   #place(
                     top + left,
-                    dx: ${cellSizeIn},
+                    dx: ${(cellSize * 0.9).toFixed(2)}in,
+                    dy: ${(cellSize * 0.15).toFixed(2)}in,
                     path(
                       stroke: (paint: gray.darken(30%), thickness: 1.5pt),
-                      // Start at top of borrow box
+                      // Start vertex (near the "1" in borrow box)
                       (0pt, 0pt),
-                      // End at center of arrowhead (moved down significantly)
-                      (${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.75).toFixed(2)}in),
+                      // End vertex adjusted up and left to align with arrowhead (vertex, relative-control-point)
+                      ((${(cellSize * 0.24).toFixed(2)}in, ${(cellSize * 0.70).toFixed(2)}in), (${(cellSize * 0.11).toFixed(2)}in, ${(cellSize * -0.5).toFixed(2)}in)),
                     )
                   )
                   // Arrowhead pointing down at the top edge of borrowed 10s box
                   #place(
                     top + left,
                     dx: ${(cellSize * 0.96).toFixed(2)}in,
-                    dy: ${(cellSize * 0.45).toFixed(2)}in,
-                    text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, fill: gray.darken(30%))[▼]
+                    dy: ${(cellSize * 0.62).toFixed(2)}in,
+                    text(size: ${(cellSizePt * 0.35).toFixed(1)}pt, fill: gray.darken(30%))[▼]
                   )
                 ]
               }
