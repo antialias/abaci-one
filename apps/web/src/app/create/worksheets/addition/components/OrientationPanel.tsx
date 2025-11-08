@@ -16,6 +16,7 @@ interface OrientationPanelProps {
   ) => void
   onProblemsPerPageChange: (problemsPerPage: number, cols: number) => void
   onPagesChange: (pages: number) => void
+  isDark?: boolean
 }
 
 /**
@@ -30,6 +31,7 @@ export function OrientationPanel({
   onOrientationChange,
   onProblemsPerPageChange,
   onPagesChange,
+  isDark = false,
 }: OrientationPanelProps) {
   const handleOrientationChange = (newOrientation: 'portrait' | 'landscape') => {
     const newProblemsPerPage = newOrientation === 'portrait' ? 15 : 20
@@ -50,7 +52,7 @@ export function OrientationPanel({
     <div
       data-section="orientation-panel"
       className={css({
-        bg: 'white',
+        bg: isDark ? 'gray.800' : 'white',
         rounded: '2xl',
         shadow: 'card',
         p: '4',
@@ -72,7 +74,7 @@ export function OrientationPanel({
               className={css({
                 fontSize: '2xs',
                 fontWeight: 'semibold',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
                 mb: '1.5',
@@ -93,8 +95,8 @@ export function OrientationPanel({
                   px: '3',
                   py: '2',
                   border: '2px solid',
-                  borderColor: orientation === 'portrait' ? 'brand.500' : 'gray.300',
-                  bg: orientation === 'portrait' ? 'brand.50' : 'white',
+                  borderColor: orientation === 'portrait' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  bg: orientation === 'portrait' ? 'brand.50' : isDark ? 'gray.700' : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -114,7 +116,7 @@ export function OrientationPanel({
                   className={css({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
-                    color: orientation === 'portrait' ? 'brand.700' : 'gray.600',
+                    color: orientation === 'portrait' ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
                   })}
                 >
                   Portrait
@@ -132,8 +134,8 @@ export function OrientationPanel({
                   px: '3',
                   py: '2',
                   border: '2px solid',
-                  borderColor: orientation === 'landscape' ? 'brand.500' : 'gray.300',
-                  bg: orientation === 'landscape' ? 'brand.50' : 'white',
+                  borderColor: orientation === 'landscape' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  bg: orientation === 'landscape' ? 'brand.50' : isDark ? 'gray.700' : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -153,7 +155,7 @@ export function OrientationPanel({
                   className={css({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
-                    color: orientation === 'landscape' ? 'brand.700' : 'gray.600',
+                    color: orientation === 'landscape' ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
                   })}
                 >
                   Landscape
@@ -168,7 +170,7 @@ export function OrientationPanel({
               className={css({
                 fontSize: '2xs',
                 fontWeight: 'semibold',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
                 mb: '1.5',
@@ -189,13 +191,13 @@ export function OrientationPanel({
                       w: '10',
                       h: '10',
                       border: '2px solid',
-                      borderColor: isSelected ? 'brand.500' : 'gray.300',
-                      bg: isSelected ? 'brand.50' : 'white',
+                      borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                      bg: isSelected ? 'brand.50' : isDark ? 'gray.700' : 'white',
                       rounded: 'lg',
                       cursor: 'pointer',
                       fontSize: 'sm',
                       fontWeight: 'bold',
-                      color: isSelected ? 'brand.700' : 'gray.600',
+                      color: isSelected ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
                       transition: 'all 0.15s',
                       display: 'flex',
                       alignItems: 'center',
@@ -227,7 +229,7 @@ export function OrientationPanel({
               className={css({
                 fontSize: '2xs',
                 fontWeight: 'semibold',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
                 display: 'block',
@@ -246,13 +248,13 @@ export function OrientationPanel({
                     px: '3',
                     py: '2',
                     border: '2px solid',
-                    borderColor: 'gray.300',
-                    bg: 'white',
+                    borderColor: isDark ? 'gray.600' : 'gray.300',
+                    bg: isDark ? 'gray.700' : 'white',
                     rounded: 'lg',
                     cursor: 'pointer',
                     fontSize: 'sm',
                     fontWeight: 'medium',
-                    color: 'gray.700',
+                    color: isDark ? 'gray.200' : 'gray.700',
                     transition: 'all 0.15s',
                     display: 'flex',
                     alignItems: 'center',
@@ -266,18 +268,20 @@ export function OrientationPanel({
                     {problemsPerPage} problems ({cols} cols × {Math.ceil(problemsPerPage / cols)}{' '}
                     rows)
                   </span>
-                  <span className={css({ fontSize: 'xs', color: 'gray.400' })}>▼</span>
+                  <span className={css({ fontSize: 'xs', color: isDark ? 'gray.500' : 'gray.400' })}>
+                    ▼
+                  </span>
                 </button>
               </DropdownMenu.Trigger>
 
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
                   className={css({
-                    bg: 'white',
+                    bg: isDark ? 'gray.800' : 'white',
                     rounded: 'lg',
                     shadow: 'modal',
                     border: '1px solid',
-                    borderColor: 'gray.200',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
                     p: '2',
                     minW: '64',
                     maxH: '96',
@@ -354,7 +358,7 @@ export function OrientationPanel({
                               className={css({
                                 fontSize: 'sm',
                                 fontWeight: 'semibold',
-                                color: isSelected ? 'brand.700' : 'gray.700',
+                                color: isSelected ? 'brand.700' : isDark ? 'gray.200' : 'gray.700',
                               })}
                             >
                               {count} problems
@@ -362,7 +366,7 @@ export function OrientationPanel({
                             <div
                               className={css({
                                 fontSize: 'xs',
-                                color: isSelected ? 'brand.600' : 'gray.500',
+                                color: isSelected ? 'brand.600' : isDark ? 'gray.400' : 'gray.500',
                               })}
                             >
                               {itemCols} cols × {rows} rows
@@ -390,7 +394,7 @@ export function OrientationPanel({
               className={css({
                 fontSize: '2xs',
                 fontWeight: 'semibold',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
               })}

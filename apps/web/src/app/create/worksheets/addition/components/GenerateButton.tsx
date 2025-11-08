@@ -9,13 +9,14 @@ type GenerationStatus = 'idle' | 'generating' | 'error'
 interface GenerateButtonProps {
   status: GenerationStatus
   onGenerate: () => void
+  isDark?: boolean
 }
 
 /**
  * Button to trigger worksheet PDF generation
  * Shows loading state during generation
  */
-export function GenerateButton({ status, onGenerate }: GenerateButtonProps) {
+export function GenerateButton({ status, onGenerate, isDark = false }: GenerateButtonProps) {
   const t = useTranslations('create.worksheets.addition')
   const isGenerating = status === 'generating'
 
@@ -23,7 +24,7 @@ export function GenerateButton({ status, onGenerate }: GenerateButtonProps) {
     <div
       data-section="generate-panel"
       className={css({
-        bg: 'white',
+        bg: isDark ? 'gray.800' : 'white',
         rounded: '2xl',
         shadow: 'card',
         p: '6',
