@@ -14,6 +14,7 @@ interface UseWorksheetAutoSaveReturn {
  * Features:
  * - Debounced auto-save (1000ms delay)
  * - Only persists settings, not transient state (date, seed, rows, total)
+ * - Persists V4 fields: mode, digitRange, displayRules, difficultyProfile, manualPreset
  * - Silent error handling (auto-save is not critical)
  * - StrictMode-safe (handles double renders)
  */
@@ -50,6 +51,7 @@ export function useWorksheetAutoSave(
           pages,
           orientation,
           name,
+          digitRange,
           pAnyStart,
           pAllStart,
           interpolate,
@@ -64,6 +66,7 @@ export function useWorksheetAutoSave(
           mode,
           difficultyProfile,
           displayRules,
+          manualPreset,
         } = formState
 
         const response = await fetch('/api/worksheets/settings', {
@@ -77,6 +80,7 @@ export function useWorksheetAutoSave(
               pages,
               orientation,
               name,
+              digitRange,
               pAnyStart,
               pAllStart,
               interpolate,
@@ -91,6 +95,7 @@ export function useWorksheetAutoSave(
               mode,
               difficultyProfile,
               displayRules,
+              manualPreset,
             },
           }),
         })
