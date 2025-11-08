@@ -36,47 +36,47 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     cellBorders: 'always',
   },
 
-  // Level 2: Ten frames become conditional
-  {
-    carryBoxes: 'whenRegrouping',
-    answerBoxes: 'always',
-    placeValueColors: 'always',
-    tenFrames: 'whenRegrouping',
-    problemNumbers: 'always',
-    cellBorders: 'always',
-  },
-
-  // Level 3: Place value colors become conditional
+  // Level 2: Place value colors become conditional
   {
     carryBoxes: 'whenRegrouping',
     answerBoxes: 'always',
     placeValueColors: 'whenRegrouping',
-    tenFrames: 'whenRegrouping',
+    tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
   },
 
-  // Level 4: Answer boxes become conditional
+  // Level 3: Answer boxes become conditional
   {
     carryBoxes: 'whenRegrouping',
     answerBoxes: 'whenRegrouping',
     placeValueColors: 'whenRegrouping',
-    tenFrames: 'whenRegrouping',
+    tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
   },
 
-  // Level 5: Multiple helpers become more conditional
+  // Level 4: Multiple helpers become more conditional
   {
     carryBoxes: 'whenRegrouping',
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenRegrouping',
-    tenFrames: 'whenRegrouping',
+    tenFrames: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',
   },
 
-  // Level 6: More helpers get more conditional
+  // Level 5: More helpers get more conditional
+  {
+    carryBoxes: 'whenMultipleRegroups',
+    answerBoxes: 'whenMultipleRegroups',
+    placeValueColors: 'whenMultipleRegroups',
+    tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
+  },
+
+  // Level 6: Ten frames become conditional (only when regrouping)
   {
     carryBoxes: 'whenMultipleRegroups',
     answerBoxes: 'whenMultipleRegroups',
@@ -259,11 +259,11 @@ function describeScaffoldingChange(
     }
   }
 
-  if (changes.length === 0) return 'Adjusted difficulty'
+  if (changes.length === 0) return 'Adjust difficulty'
   if (changes.length === 1) {
-    return direction === 'added' ? `Added ${changes[0]}` : `Reduced ${changes[0]}`
+    return direction === 'added' ? `Add ${changes[0]}` : `Reduce ${changes[0]}`
   }
-  return direction === 'added' ? `Added ${changes.join(', ')}` : `Reduced ${changes.join(', ')}`
+  return direction === 'added' ? `Add ${changes.join(', ')}` : `Reduce ${changes.join(', ')}`
 }
 
 // =============================================================================
@@ -374,7 +374,7 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       carryBoxes: 'always', // Show structure even when not needed
       answerBoxes: 'always', // Guide digit placement
       placeValueColors: 'always', // Reinforce place value concept
-      tenFrames: 'never', // No regrouping = not needed
+      tenFrames: 'always', // Visual aid for understanding place value
       problemNumbers: 'always', // Help track progress
       cellBorders: 'always', // Visual organization
     },
@@ -896,16 +896,16 @@ export function makeHarder(
       newRules,
       'reduced'
     )
-    description = `More regrouping (${Math.round(newRegrouping.pAnyStart * 100)}%) + ${scaffoldingChange.toLowerCase()}`
+    description = `Increase regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}% + ${scaffoldingChange.toLowerCase()}`
   } else if (newRegroupingIdx > validCurrent.regroupingIdx) {
-    description = `Increased regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}%`
+    description = `Increase regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}%`
     if (newScaffoldingIdx !== validCurrent.scaffoldingIdx) {
       const scaffoldingChange = describeScaffoldingChange(
         currentState.displayRules,
         newRules,
         newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced'
       )
-      description += ` (auto-adjusted: ${scaffoldingChange.toLowerCase()})`
+      description += ` (auto-adjust: ${scaffoldingChange.toLowerCase()})`
     }
   } else if (newScaffoldingIdx > validCurrent.scaffoldingIdx) {
     description = describeScaffoldingChange(currentState.displayRules, newRules, 'reduced')
@@ -1079,16 +1079,16 @@ export function makeEasier(
       newRules,
       'added'
     )
-    description = `Less regrouping (${Math.round(newRegrouping.pAnyStart * 100)}%) + ${scaffoldingChange.toLowerCase()}`
+    description = `Reduce regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}% + ${scaffoldingChange.toLowerCase()}`
   } else if (newRegroupingIdx < validCurrent.regroupingIdx) {
-    description = `Reduced regrouping frequency to ${Math.round(newRegrouping.pAnyStart * 100)}%`
+    description = `Reduce regrouping to ${Math.round(newRegrouping.pAnyStart * 100)}%`
     if (newScaffoldingIdx !== validCurrent.scaffoldingIdx) {
       const scaffoldingChange = describeScaffoldingChange(
         currentState.displayRules,
         newRules,
         newScaffoldingIdx < validCurrent.scaffoldingIdx ? 'added' : 'reduced'
       )
-      description += ` (auto-adjusted: ${scaffoldingChange.toLowerCase()})`
+      description += ` (auto-adjust: ${scaffoldingChange.toLowerCase()})`
     }
   } else if (newScaffoldingIdx < validCurrent.scaffoldingIdx) {
     description = describeScaffoldingChange(currentState.displayRules, newRules, 'added')
