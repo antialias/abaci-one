@@ -8,18 +8,18 @@
 // This ensures blog post examples use the EXACT same rendering as the live UI preview,
 // maintaining consistency between what users see in documentation vs. the actual tool.
 
-import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
+import { type NextRequest, NextResponse } from 'next/server'
 import {
   generateProblems,
   generateSubtractionProblems,
 } from '@/app/create/worksheets/addition/problemGenerator'
+import type { WorksheetOperator } from '@/app/create/worksheets/addition/types'
 import {
-  generateTypstHelpers,
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
+  generateTypstHelpers,
 } from '@/app/create/worksheets/addition/typstHelpers'
-import type { WorksheetOperator } from '@/app/create/worksheets/addition/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +31,7 @@ interface ExampleRequest {
   showCellBorder?: boolean
   showTenFrames?: boolean
   showTenFramesForAll?: boolean
+  showBorrowNotation?: boolean
   fontSize?: number
   operator?: WorksheetOperator
   // For addition
@@ -57,6 +58,7 @@ function generateExampleTypst(config: ExampleRequest): string {
   const showNumbers = config.showProblemNumbers ?? false
   const showTenFrames = config.showTenFrames ?? false
   const showTenFramesForAll = config.showTenFramesForAll ?? false
+  const showBorrowNotation = config.showBorrowNotation ?? false
 
   if (operator === 'addition') {
     // Use custom addends if provided, otherwise generate a problem
@@ -125,6 +127,7 @@ ${generateProblemStackFunction(cellSize, 3)}
 #let show-numbers = ${showNumbers ? 'true' : 'false'}
 #let show-ten-frames = ${showTenFrames ? 'true' : 'false'}
 #let show-ten-frames-for-all = ${showTenFramesForAll ? 'true' : 'false'}
+#let show-borrow-notation = ${showBorrowNotation ? 'true' : 'false'}
 
 ${generateTypstHelpers(cellSize)}
 
@@ -134,7 +137,7 @@ ${generateSubtractionProblemStackFunction(cellSize, 3)}
 #let subtrahend = ${subtrahend}
 
 #align(center + horizon)[
-  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, false)
+  #subtraction-problem-stack(minuend, subtrahend, if show-numbers { 0 } else { none }, show-borrows, show-answers, show-colors, show-ten-frames, show-numbers, show-borrow-notation)
 ]
 `
   }

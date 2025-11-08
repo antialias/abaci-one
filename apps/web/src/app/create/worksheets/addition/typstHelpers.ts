@@ -493,16 +493,16 @@ export function generateSubtractionProblemStackFunction(
         // Show digit if within minuend's actual range
         if i <= m-highest {
           if show-borrow-notation and needs-borrow {
-            // Show digit with small scratch box to the left for modified value (e.g., "12")
+            // Show digit with scratch box to the left for modified value (e.g., "12")
             (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
               #align(center + horizon)[
                 #stack(
                   dir: ltr,
                   spacing: 3pt,
-                  // Small dotted box for student to write modified digit
+                  // Dotted box for student to write modified digit (same height as cell)
                   box(
-                    width: ${cellSizeIn} * 0.4,
-                    height: ${cellSizeIn} * 0.5,
+                    width: ${cellSizeIn} * 0.45,
+                    height: ${cellSizeIn} * 0.95,
                     stroke: (dash: "dotted", thickness: 1pt, paint: gray)
                   )[],
                   // Original digit

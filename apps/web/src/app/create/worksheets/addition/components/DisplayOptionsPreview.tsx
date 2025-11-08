@@ -139,6 +139,7 @@ async function fetchExample(options: {
   showCellBorder: boolean
   showTenFrames: boolean
   showTenFramesForAll: boolean
+  showBorrowNotation: boolean
   operator: 'addition' | 'subtraction' | 'mixed'
   addend1?: number
   addend2?: number
@@ -178,6 +179,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
       showCellBorder: formState.showCellBorder ?? true,
       showTenFrames: formState.showTenFrames ?? false,
       showTenFramesForAll: formState.showTenFramesForAll ?? false,
+      showBorrowNotation: formState.showBorrowNotation ?? false,
       operator,
     }
 
@@ -214,6 +216,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
     formState.showCellBorder,
     formState.showTenFrames,
     formState.showTenFramesForAll,
+    formState.showBorrowNotation,
     formState.operator,
     operands,
   ])
