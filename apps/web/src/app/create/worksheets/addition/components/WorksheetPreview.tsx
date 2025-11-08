@@ -10,6 +10,7 @@ import type { WorksheetFormState } from '../types'
 interface WorksheetPreviewProps {
   formState: WorksheetFormState
   initialData?: string[]
+  isDark?: boolean
 }
 
 function getDefaultDate(): string {
@@ -58,7 +59,7 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   return data.pages
 }
 
-function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
+function PreviewContent({ formState, initialData, isDark = false }: WorksheetPreviewProps) {
   const t = useTranslations('create.worksheets.addition')
   const [currentPage, setCurrentPage] = useState(0)
 
@@ -138,7 +139,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
           className={css({
             fontSize: 'lg',
             fontWeight: 'bold',
-            color: 'gray.900',
+            color: isDark ? 'gray.100' : 'gray.900',
           })}
         >
           {t('preview.title')}
@@ -146,7 +147,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
         <p
           className={css({
             fontSize: 'sm',
-            color: 'gray.600',
+            color: isDark ? 'gray.300' : 'gray.600',
           })}
         >
           {totalPages > 1 ? `${totalPages} pages` : t('preview.subtitle')}
@@ -187,7 +188,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
           <span
             className={css({
               fontSize: 'sm',
-              color: 'gray.700',
+              color: isDark ? 'gray.200' : 'gray.700',
               fontWeight: 'medium',
             })}
           >
@@ -222,11 +223,11 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
       <div
         data-element="svg-preview"
         className={css({
-          bg: 'white',
+          bg: isDark ? 'gray.700' : 'white',
           rounded: 'lg',
           p: '4',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: isDark ? 'gray.600' : 'gray.200',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -274,7 +275,7 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
           <span
             className={css({
               fontSize: 'sm',
-              color: 'gray.700',
+              color: isDark ? 'gray.200' : 'gray.700',
               fontWeight: 'medium',
             })}
           >
@@ -308,13 +309,13 @@ function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
       {/* Info about full worksheet */}
       <div
         className={css({
-          bg: 'blue.50',
+          bg: isDark ? 'rgba(59, 130, 246, 0.1)' : 'blue.50',
           border: '1px solid',
-          borderColor: 'blue.200',
+          borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : 'blue.200',
           rounded: 'lg',
           p: '3',
           fontSize: 'sm',
-          color: 'blue.800',
+          color: isDark ? 'blue.300' : 'blue.800',
         })}
       >
         <strong>Full worksheet:</strong> {formState.total} problems in a {formState.cols}×
@@ -354,10 +355,10 @@ function PreviewFallback() {
   )
 }
 
-export function WorksheetPreview({ formState, initialData }: WorksheetPreviewProps) {
+export function WorksheetPreview({ formState, initialData, isDark = false }: WorksheetPreviewProps) {
   return (
     <Suspense fallback={<PreviewFallback />}>
-      <PreviewContent formState={formState} initialData={initialData} />
+      <PreviewContent formState={formState} initialData={initialData} isDark={isDark} />
     </Suspense>
   )
 }
