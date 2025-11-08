@@ -368,11 +368,11 @@ export interface DifficultyProfile {
  * Subtle progression from green (easy) to red (hard)
  */
 export const DIFFICULTY_COLORS = {
-  beginner: { bg: 'green.50', border: 'green.400', text: 'green.700' },
-  earlyLearner: { bg: 'cyan.50', border: 'cyan.400', text: 'cyan.700' },
-  intermediate: { bg: 'yellow.50', border: 'yellow.400', text: 'yellow.700' },
-  advanced: { bg: 'orange.50', border: 'orange.400', text: 'orange.700' },
-  expert: { bg: 'red.50', border: 'red.400', text: 'red.700' },
+  beginner: { bg: 'green.100', border: 'green.500', text: 'green.800' },
+  earlyLearner: { bg: 'blue.100', border: 'blue.500', text: 'blue.800' },
+  intermediate: { bg: 'yellow.100', border: 'yellow.500', text: 'yellow.800' },
+  advanced: { bg: 'orange.100', border: 'orange.500', text: 'orange.800' },
+  expert: { bg: 'red.100', border: 'red.500', text: 'red.800' },
 } as const
 
 /**
