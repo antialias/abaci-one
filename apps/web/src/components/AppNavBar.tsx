@@ -822,14 +822,14 @@ function NavLink({
             ? 'white'
             : 'rgba(255, 255, 255, 0.8)'
           : isActive
-            ? 'accent.emphasis'
-            : 'text.primary',
+            ? 'rgba(196, 181, 253, 1)'
+            : 'rgba(209, 213, 219, 0.9)',
         bg: isTransparent
           ? isActive
             ? 'rgba(255, 255, 255, 0.2)'
             : 'rgba(255, 255, 255, 0.08)'
           : isActive
-            ? 'accent.subtle'
+            ? 'rgba(139, 92, 246, 0.2)'
             : 'transparent',
         border: isTransparent ? '1px solid' : 'none',
         borderColor: isTransparent
@@ -845,8 +845,8 @@ function NavLink({
         justifyContent: 'center',
         boxShadow: isTransparent ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
         _hover: {
-          color: isTransparent ? 'white' : 'accent.emphasis',
-          bg: isTransparent ? 'rgba(255, 255, 255, 0.25)' : 'accent.muted',
+          color: isTransparent ? 'white' : 'rgba(196, 181, 253, 1)',
+          bg: isTransparent ? 'rgba(255, 255, 255, 0.25)' : 'rgba(139, 92, 246, 0.25)',
           borderColor: isTransparent ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
           boxShadow: isTransparent ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
         },
