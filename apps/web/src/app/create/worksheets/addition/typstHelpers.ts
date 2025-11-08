@@ -446,7 +446,7 @@ export function generateSubtractionProblemStackFunction(
                 spacing: 1pt,
                 // Show the calculation hint
                 align(center)[
-                  #text(size: ${(cellSizePt * 0.5).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − 1]
+                  #text(size: ${(cellSizePt * 0.25).toFixed(1)}pt, fill: gray.darken(30%))[#str(original-digit) − 1]
                 ],
                 // Show the borrow box
                 if show-colors {
