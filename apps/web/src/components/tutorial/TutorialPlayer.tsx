@@ -629,15 +629,19 @@ function TutorialPlayerContent({
                 style={{
                   background: showCelebration
                     ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)'
-                    : '#1e40af',
-                  color: 'white',
+                    : theme === 'dark'
+                      ? '#1e40af'
+                      : '#1e3a8a',
+                  color: '#ffffff',
                   padding: '12px 16px',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '700',
                   boxShadow: showCelebration
                     ? '0 8px 25px rgba(34, 197, 94, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.2)'
-                    : '0 4px 12px rgba(0,0,0,0.3)',
+                    : theme === 'dark'
+                      ? '0 4px 12px rgba(0,0,0,0.3)'
+                      : '0 4px 12px rgba(0,0,0,0.2)',
                   whiteSpace: 'normal',
                   maxWidth: '200px',
                   minWidth: '150px',

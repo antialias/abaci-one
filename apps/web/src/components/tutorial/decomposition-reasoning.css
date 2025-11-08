@@ -63,8 +63,8 @@
 
 /* Reason tooltip styling */
 .reason-tooltip {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: light-dark(#ffffff, #1f2937);
+  border: 1px solid light-dark(#e5e7eb, #374151);
   border-radius: 8px;
   padding: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -101,7 +101,7 @@
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 4px 0;
-  color: #1f2937;
+  color: light-dark(#1f2937, #f3f4f6);
   max-width: 48ch;
   white-space: normal;
 }
@@ -109,14 +109,14 @@
 .reason-tooltip__description {
   font-size: 13px;
   margin: 0;
-  color: #6b7280;
+  color: light-dark(#6b7280, #d1d5db);
   opacity: 0.8;
   max-width: 56ch;
 }
 
 .reason-tooltip__explanation {
   font-size: 14px;
-  color: #374151;
+  color: light-dark(#374151, #e5e7eb);
   line-height: 1.4;
 }
 
@@ -136,7 +136,7 @@
   gap: 8px;
   margin-bottom: 6px;
   font-size: 13px;
-  color: #4b5563;
+  color: light-dark(#4b5563, #d1d5db);
   line-height: 1.4;
 }
 
@@ -198,9 +198,9 @@
 .reason-tooltip__section-title {
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: light-dark(#374151, #e5e7eb);
   margin: 0 0 4px 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid light-dark(#e5e7eb, #4b5563);
   padding-bottom: 2px;
 }
 
@@ -214,7 +214,7 @@
 
 .reason-tooltip__explanation-text {
   font-size: 12px;
-  color: #4b5563;
+  color: light-dark(#4b5563, #d1d5db);
   margin: 0 0 4px 0;
   line-height: 1.4;
 }
@@ -243,19 +243,19 @@
 }
 
 .reason-tooltip__step-term {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background: light-dark(#f3f4f6, #374151);
+  border: 1px solid light-dark(#d1d5db, #4b5563);
   border-radius: 3px;
   padding: 2px 6px;
   font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: 11px;
-  color: #1f2937;
+  color: light-dark(#1f2937, #f3f4f6);
   font-weight: 600;
 }
 
 .reason-tooltip__step-instruction {
   font-size: 11px;
-  color: #6b7280;
+  color: light-dark(#6b7280, #d1d5db);
   line-height: 1.3;
   font-style: italic;
 }
