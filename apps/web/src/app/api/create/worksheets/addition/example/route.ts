@@ -76,17 +76,13 @@ function generateExampleTypst(config: ExampleRequest): string {
 
 ${generateTypstHelpers(cellSize)}
 
-${generateProblemStackFunction(cellSize)}
+${generateProblemStackFunction(cellSize, 3)}
 
 #let a = ${a}
 #let b = ${b}
-#let aT = calc.floor(calc.rem(a, 100) / 10)
-#let aO = calc.rem(a, 10)
-#let bT = calc.floor(calc.rem(b, 100) / 10)
-#let bO = calc.rem(b, 10)
 
 #align(center + horizon)[
-  #problem-stack(a, b, aT, aO, bT, bO, if show-numbers { 0 } else { none }, show-carries, show-answers, show-colors, show-ten-frames, show-numbers)
+  #problem-stack(a, b, if show-numbers { 0 } else { none }, show-carries, show-answers, show-colors, show-ten-frames, show-numbers)
 ]
 `
 }
