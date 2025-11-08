@@ -58,7 +58,7 @@ function generateExampleTypst(config: ExampleRequest): string {
   const showNumbers = config.showProblemNumbers ?? false
   const showTenFrames = config.showTenFrames ?? false
   const showTenFramesForAll = config.showTenFramesForAll ?? false
-  const showBorrowNotation = config.showBorrowNotation ?? false
+  const showBorrowNotation = config.showBorrowNotation ?? true
 
   if (operator === 'addition') {
     // Use custom addends if provided, otherwise generate a problem

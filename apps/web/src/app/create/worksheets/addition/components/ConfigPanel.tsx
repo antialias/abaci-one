@@ -86,6 +86,82 @@ function getScaffoldingSummary(displayRules: any): React.ReactNode {
   )
 }
 
+interface SubOptionProps {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+  parentEnabled: boolean
+}
+
+/**
+ * Reusable sub-option component for nested toggles
+ * Used for options like "Show for all problems" under "Ten-Frames"
+ */
+function SubOption({ checked, onChange, label, parentEnabled }: SubOptionProps) {
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        gap: '3',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        pt: '1.5',
+        pb: '2.5',
+        px: '3',
+        mt: '2',
+        borderTop: '1px solid',
+        borderColor: 'brand.300',
+        opacity: parentEnabled ? 1 : 0,
+        visibility: parentEnabled ? 'visible' : 'hidden',
+        pointerEvents: parentEnabled ? 'auto' : 'none',
+        transition: 'opacity 0.15s',
+        cursor: 'pointer',
+      })}
+      onClick={(e) => {
+        e.stopPropagation()
+        onChange(!checked)
+      }}
+    >
+      <label
+        className={css({
+          fontSize: '2xs',
+          fontWeight: 'medium',
+          color: 'brand.700',
+          cursor: 'pointer',
+          flex: 1,
+        })}
+      >
+        {label}
+      </label>
+      <div
+        className={css({
+          w: '7',
+          h: '4',
+          bg: checked ? 'brand.500' : 'gray.300',
+          rounded: 'full',
+          position: 'relative',
+          transition: 'background-color 0.15s',
+          flexShrink: 0,
+        })}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: '0.125rem',
+            left: checked ? '0.875rem' : '0.125rem',
+            width: '0.75rem',
+            height: '0.75rem',
+            background: 'white',
+            borderRadius: '9999px',
+            transition: 'left 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 interface ToggleOptionProps {
   checked: boolean
   onChange: (checked: boolean) => void
@@ -2239,25 +2315,6 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   })}
                 >
                   <ToggleOption
-                    checked={formState.showCarryBoxes ?? true}
-                    onChange={(checked) => onChange({ showCarryBoxes: checked })}
-                    label={
-                      formState.operator === 'subtraction'
-                        ? 'Borrow Boxes'
-                        : formState.operator === 'mixed'
-                          ? 'Carry/Borrow Boxes'
-                          : 'Carry Boxes'
-                    }
-                    description={
-                      formState.operator === 'subtraction'
-                        ? 'Help students track borrowing during subtraction'
-                        : formState.operator === 'mixed'
-                          ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
-                          : 'Help students track regrouping during addition'
-                    }
-                  />
-
-                  <ToggleOption
                     checked={formState.showAnswerBoxes ?? true}
                     onChange={(checked) => onChange({ showAnswerBoxes: checked })}
                     label="Answer Boxes"
@@ -2285,98 +2342,50 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     description="Organize problems visually for easier focus"
                   />
 
-                  {formState.operator === 'subtraction' || formState.operator === 'mixed' ? (
-                    <ToggleOption
-                      checked={formState.showBorrowNotation ?? false}
-                      onChange={(checked) => onChange({ showBorrowNotation: checked })}
-                      label="Borrow Notation Boxes"
-                      description="Empty scratch boxes for students to write borrowing work (cross out source, write modified values)"
-                    />
-                  ) : null}
+                  <ToggleOption
+                    checked={formState.showCarryBoxes ?? true}
+                    onChange={(checked) => {
+                      onChange({ showCarryBoxes: checked })
+                    }}
+                    label={
+                      formState.operator === 'subtraction'
+                        ? 'Borrow Boxes'
+                        : formState.operator === 'mixed'
+                          ? 'Carry/Borrow Boxes'
+                          : 'Carry Boxes'
+                    }
+                    description={
+                      formState.operator === 'subtraction'
+                        ? 'Help students track borrowing during subtraction'
+                        : formState.operator === 'mixed'
+                          ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
+                          : 'Help students track regrouping during addition'
+                    }
+                  >
+                    {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                      <SubOption
+                        checked={!(formState.showBorrowNotation ?? true)}
+                        onChange={(checked) => onChange({ showBorrowNotation: !checked })}
+                        label="Hide Borrowed 10s Box"
+                        parentEnabled={formState.showCarryBoxes ?? true}
+                      />
+                    )}
+                  </ToggleOption>
 
                   <ToggleOption
                     checked={formState.showTenFrames ?? false}
                     onChange={(checked) => {
                       onChange({ showTenFrames: checked })
-                      // Auto-disable "for all" when disabling ten-frames
-                      if (!checked) {
-                        onChange({ showTenFramesForAll: false })
-                      }
                     }}
                     label="Ten-Frames"
                     description="Visualize regrouping with concrete counting tools"
                   >
-                    {/* Sub-option: Show ten-frames for all - always rendered but hidden when parent is unchecked */}
-                    <div
-                      className={css({
-                        display: 'flex',
-                        gap: '2',
-                        alignItems: 'center',
-                        pt: '2',
-                        mt: '1.5',
-                        borderTop: '1px solid',
-                        borderColor: 'brand.300',
-                        opacity: formState.showTenFrames ? 1 : 0,
-                        visibility: formState.showTenFrames ? 'visible' : 'hidden',
-                        pointerEvents: formState.showTenFrames ? 'auto' : 'none',
-                        transition: 'opacity 0.15s',
-                      })}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox.Root
-                        checked={formState.showTenFramesForAll ?? false}
-                        onCheckedChange={(checked) =>
-                          onChange({ showTenFramesForAll: checked as boolean })
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        data-element="ten-frames-all-checkbox"
-                        className={css({
-                          w: '3.5',
-                          h: '3.5',
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bg: formState.showTenFramesForAll ? 'brand.500' : 'white',
-                          border: '2px solid',
-                          borderColor: formState.showTenFramesForAll ? 'brand.500' : 'gray.300',
-                          rounded: 'sm',
-                          transition: 'all 0.15s',
-                        })}
-                      >
-                        <Checkbox.Indicator>
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 15 15"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
-                              fill="white"
-                            />
-                          </svg>
-                        </Checkbox.Indicator>
-                      </Checkbox.Root>
-                      <label
-                        className={css({
-                          fontSize: '2xs',
-                          fontWeight: 'medium',
-                          color: 'brand.700',
-                          cursor: 'pointer',
-                        })}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onChange({
-                            showTenFramesForAll: !formState.showTenFramesForAll,
-                          })
-                        }}
-                      >
-                        Show for all problems (not just regrouping)
-                      </label>
-                    </div>
+                    <SubOption
+                      checked={formState.showTenFramesForAll ?? false}
+                      onChange={(checked) => onChange({ showTenFramesForAll: checked })}
+                      label="Show for all problems (not just regrouping)"
+                      parentEnabled={formState.showTenFrames ?? false}
+                    />
                   </ToggleOption>
                 </div>
 
