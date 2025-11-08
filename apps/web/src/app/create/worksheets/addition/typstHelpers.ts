@@ -495,20 +495,20 @@ export function generateSubtractionProblemStackFunction(
           if show-borrow-notation and needs-borrow {
             // Show digit with small scratch box to the left for modified value (e.g., "12")
             (box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: fill-color)[
-              #stack(
-                dir: ltr,
-                spacing: 2pt,
-                // Small dotted box for student to write modified digit
-                box(
-                  width: ${cellSizeIn} * 0.35,
-                  height: ${cellSizeIn} * 0.35,
-                  stroke: (dash: "dotted", thickness: 0.5pt, paint: gray)
-                )[],
-                // Original digit
-                align(center + horizon)[
-                  #text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
-                ]
-              )
+              #align(center + horizon)[
+                #stack(
+                  dir: ltr,
+                  spacing: 3pt,
+                  // Small dotted box for student to write modified digit
+                  box(
+                    width: ${cellSizeIn} * 0.4,
+                    height: ${cellSizeIn} * 0.5,
+                    stroke: (dash: "dotted", thickness: 1pt, paint: gray)
+                  )[],
+                  // Original digit
+                  text(size: ${cellSizePt.toFixed(1)}pt, font: "New Computer Modern Math")[#str(digit)]
+                )
+              ]
             ],)
           } else {
             // Normal digit display
