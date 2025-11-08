@@ -6,11 +6,14 @@ import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-rea
 import { css } from '../../styled-system/css'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export function MyAbacus() {
   const { isOpen, close, toggle } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   // Sync with hero context if on home page
   const homeHeroContext = useContext(HomeHeroContext)
@@ -164,10 +167,14 @@ export function MyAbacus() {
                 }
               : {
                   // Button state: button styling
-                  bg: 'rgba(0, 0, 0, 0.7)',
+                  bg: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(8px)',
-                  border: '3px solid rgba(251, 191, 36, 0.5)',
-                  boxShadow: '0 8px 32px rgba(251, 191, 36, 0.4)',
+                  border: isDark
+                    ? '3px solid rgba(251, 191, 36, 0.5)'
+                    : '3px solid rgba(251, 191, 36, 0.6)',
+                  boxShadow: isDark
+                    ? '0 8px 32px rgba(251, 191, 36, 0.4)'
+                    : '0 8px 32px rgba(251, 191, 36, 0.5)',
                   borderRadius: 'xl',
                   w: { base: '80px', md: '100px' },
                   h: { base: '80px', md: '100px' },
@@ -177,7 +184,9 @@ export function MyAbacus() {
                   animation: 'pulse 2s ease-in-out infinite',
                   _hover: {
                     transform: 'scale(1.1)',
-                    boxShadow: '0 12px 48px rgba(251, 191, 36, 0.6)',
+                    boxShadow: isDark
+                      ? '0 12px 48px rgba(251, 191, 36, 0.6)'
+                      : '0 12px 48px rgba(251, 191, 36, 0.7)',
                     borderColor: 'rgba(251, 191, 36, 0.8)',
                   },
                 }),
