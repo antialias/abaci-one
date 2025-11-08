@@ -175,11 +175,16 @@
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/src/app/icon/route.tsx)",
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/package.json)",
       "Bash(git revert:*)",
-      "WebFetch(domain:typst.app)"
+      "WebFetch(domain:typst.app)",
+      "Bash(node /tmp/test_borrows.js:*)",
+      "Bash(node /tmp/test_generation.js:*)",
+      "Bash(as soon as we introduce regrouping, which defeats the whole point\"\n\nUpdated DIFFICULTY_PROGRESSION:\n[''beginner'', ''earlyLearner'', ''practice'', ''intermediate'', ''advanced'', ''expert'']\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

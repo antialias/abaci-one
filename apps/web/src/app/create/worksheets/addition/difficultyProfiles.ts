@@ -395,6 +395,22 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
     },
   },
 
+  practice: {
+    name: 'practice',
+    label: 'Practice',
+    description:
+      'High scaffolding with frequent regrouping. Master regrouping WITH support before training wheels come off.',
+    regrouping: { pAllStart: 0.25, pAnyStart: 0.75 },
+    displayRules: {
+      carryBoxes: 'whenRegrouping', // Show when regrouping happens
+      answerBoxes: 'always', // Keep guiding placement during intensive practice
+      placeValueColors: 'always', // Keep visual support during intensive practice
+      tenFrames: 'whenRegrouping', // Visual aid for regrouping
+      problemNumbers: 'always',
+      cellBorders: 'always',
+    },
+  },
+
   intermediate: {
     name: 'intermediate',
     label: 'Intermediate',
@@ -443,10 +459,13 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
 
 /**
  * Ordered progression of difficulty levels
+ * PEDAGOGICAL NOTE: "practice" phase is critical - students master regrouping
+ * WITH scaffolding before we remove support (intermediate/advanced/expert)
  */
 export const DIFFICULTY_PROGRESSION = [
   'beginner',
   'earlyLearner',
+  'practice', // NEW: High regrouping + high scaffolding
   'intermediate',
   'advanced',
   'expert',
