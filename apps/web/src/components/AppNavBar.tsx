@@ -10,6 +10,7 @@ import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { LanguageSelector } from './LanguageSelector'
@@ -57,6 +58,7 @@ function MenuContent({
   onNavigate,
   handleNestedDropdownChange,
   isMobile,
+  resolvedTheme,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -66,14 +68,17 @@ function MenuContent({
   onNavigate?: () => void
   handleNestedDropdownChange?: (isOpen: boolean) => void
   isMobile?: boolean
+  resolvedTheme?: 'light' | 'dark'
 }) {
+  const isDark = resolvedTheme === 'dark'
+
   const linkStyle = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
     padding: '10px 14px',
     borderRadius: '8px',
-    color: 'rgba(209, 213, 219, 1)',
+    color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
     fontSize: '14px',
     fontWeight: '500',
     textDecoration: 'none',
@@ -82,14 +87,14 @@ function MenuContent({
 
   const separatorStyle = {
     height: '1px',
-    background: 'rgba(75, 85, 99, 0.5)',
+    background: isDark ? 'rgba(75, 85, 99, 0.5)' : 'rgba(229, 231, 235, 0.8)',
     margin: '6px 0',
   }
 
   const sectionHeaderStyle = {
     fontSize: '10px',
     fontWeight: '600',
-    color: 'rgba(196, 181, 253, 0.7)',
+    color: isDark ? 'rgba(196, 181, 253, 0.7)' : 'rgba(139, 92, 246, 0.7)',
     marginBottom: '6px',
     marginLeft: '12px',
     marginTop: '6px',
@@ -118,12 +123,14 @@ function MenuContent({
         }
         style={linkStyle}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'
-          e.currentTarget.style.color = 'rgba(196, 181, 253, 1)'
+          e.currentTarget.style.background = isDark
+            ? 'rgba(139, 92, 246, 0.2)'
+            : 'rgba(139, 92, 246, 0.1)'
+          e.currentTarget.style.color = isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+          e.currentTarget.style.color = isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)'
         }}
       >
         <span style={{ fontSize: '16px' }}>{icon}</span>
@@ -338,6 +345,7 @@ function HamburgerMenu({
   const [open, setOpen] = useState(false)
   const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const { resolvedTheme } = useTheme()
 
   // Detect mobile viewport
   React.useEffect(() => {
@@ -406,7 +414,9 @@ function HamburgerMenu({
                   position: 'fixed',
                   inset: 0,
                   background:
-                    'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
+                    resolvedTheme === 'dark'
+                      ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))'
+                      : 'linear-gradient(135deg, rgba(249, 250, 251, 0.97), rgba(243, 244, 246, 0.97))',
                   backdropFilter: 'blur(12px)',
                   zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
                   overflowY: 'auto',
@@ -420,6 +430,46 @@ function HamburgerMenu({
                   }
                 }}
               >
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className={css({
+                    position: 'fixed',
+                    top: '16px',
+                    right: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '44px',
+                    height: '44px',
+                    padding: '8px',
+                    background: resolvedTheme === 'dark' ? 'rgba(31, 41, 55, 0.9)' : 'white',
+                    border:
+                      resolvedTheme === 'dark'
+                        ? '1px solid rgba(255, 255, 255, 0.1)'
+                        : '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    zIndex: 1,
+                    _hover: {
+                      background: resolvedTheme === 'dark' ? 'rgba(55, 65, 81, 0.9)' : '#f9fafb',
+                    },
+                  })}
+                  aria-label="Close menu"
+                >
+                  <span
+                    style={{
+                      fontSize: '20px',
+                      color: resolvedTheme === 'dark' ? 'white' : '#374151',
+                    }}
+                  >
+                    ✕
+                  </span>
+                </button>
+
                 <MenuContent
                   isFullscreen={isFullscreen}
                   isArcadePage={isArcadePage}
@@ -429,6 +479,7 @@ function HamburgerMenu({
                   onNavigate={handleClose}
                   handleNestedDropdownChange={handleNestedDropdownChange}
                   isMobile={true}
+                  resolvedTheme={resolvedTheme}
                 />
               </div>
 
@@ -520,6 +571,7 @@ function HamburgerMenu({
             router={router}
             handleNestedDropdownChange={handleNestedDropdownChange}
             isMobile={false}
+            resolvedTheme={resolvedTheme}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
