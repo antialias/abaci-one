@@ -287,6 +287,9 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 border: '1px solid',
                 borderColor: isDark ? 'gray.600' : 'gray.300',
                 backgroundColor: isDark ? 'gray.600' : 'white',
+                minHeight: '5.5rem',
+                display: 'flex',
+                flexDirection: 'column',
               })}
             >
               <div
@@ -429,6 +432,9 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 border: '1px solid',
                 borderColor: isDark ? 'gray.600' : 'gray.300',
                 backgroundColor: isDark ? 'gray.600' : 'white',
+                minHeight: '5.5rem',
+                display: 'flex',
+                flexDirection: 'column',
               })}
             >
               <div

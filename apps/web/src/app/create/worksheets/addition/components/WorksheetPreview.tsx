@@ -104,6 +104,10 @@ function PreviewContent({ formState, initialData, isDark = false }: WorksheetPre
       formState.displayRules, // Smart mode: conditional scaffolding
       formState.difficultyProfile, // Smart mode: difficulty preset
       formState.manualPreset, // Manual mode: manual preset
+      // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
+      formState.currentAdditionSkillId,
+      formState.currentSubtractionSkillId,
+      formState.currentStepId,
       // Other settings that affect appearance
       formState.name,
       formState.pAnyStart,
