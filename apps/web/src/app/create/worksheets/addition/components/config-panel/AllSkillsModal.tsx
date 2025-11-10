@@ -466,27 +466,32 @@ export function AllSkillsModal({
                 <Tabs.Trigger
                   key={tab.value}
                   value={tab.value}
-                  className={css({
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    border: 'none',
-                    borderBottom: '2px solid',
-                    borderColor: 'transparent',
-                    color: isDark ? 'gray.400' : 'gray.600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    backgroundColor: 'transparent',
-                    _hover: {
-                      color: isDark ? 'gray.200' : 'gray.900',
-                    },
-                    '&[data-state=active]': {
-                      color: 'blue.600',
-                      borderColor: 'blue.600',
-                    },
-                  })}
+                  asChild
                 >
-                  {tab.label} ({tab.count})
+                  <button
+                    type="button"
+                    className={css({
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      border: 'none',
+                      borderBottom: '2px solid',
+                      borderColor: 'transparent',
+                      color: isDark ? 'gray.400' : 'gray.600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      backgroundColor: 'transparent',
+                      _hover: {
+                        color: isDark ? 'gray.200' : 'gray.900',
+                      },
+                      '&[data-state=active]': {
+                        color: 'blue.600',
+                        borderColor: 'blue.600',
+                      },
+                    })}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
                 </Tabs.Trigger>
               ))}
             </Tabs.List>
