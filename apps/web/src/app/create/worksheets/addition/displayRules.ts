@@ -82,7 +82,8 @@ export function resolveDisplayForProblem(
   // DEBUG: Ten-frames evaluation
   console.log('[TEN-FRAMES DEBUG]', {
     rule: rules.tenFrames,
-    requiresRegrouping: 'requiresRegrouping' in problem ? problem.requiresRegrouping : problem.requiresBorrowing,
+    requiresRegrouping:
+      'requiresRegrouping' in problem ? problem.requiresRegrouping : problem.requiresBorrowing,
     regroupCount: 'regroupCount' in problem ? problem.regroupCount : problem.borrowCount,
     resolved: resolved.showTenFrames,
   })

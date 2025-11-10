@@ -219,7 +219,7 @@ function uniquePush(list: AdditionProblem[], a: number, b: number, seen: Set<str
     return false
   }
   seen.add(key)
-  list.push({ a, b, operator: '+' })
+  list.push({ a, b, operator: 'add' })
   return true
 }
 
@@ -307,7 +307,7 @@ export function generateProblems(
         ;[a, b] = generateNonRegroup(rand, minDigits, maxDigits)
       }
       // Allow duplicate as last resort - add with operator property
-      problems.push({ a, b, operator: '+' })
+      problems.push({ a, b, operator: 'add' })
     }
   }
 
@@ -555,7 +555,7 @@ export function generateSubtractionProblems(
     const key = `${minuend}-${subtrahend}`
     if (!seen.has(key)) {
       seen.add(key)
-      problems.push({ minuend, subtrahend, operator: '−' })
+      problems.push({ minuend, subtrahend, operator: 'sub' })
       return true
     }
     return false

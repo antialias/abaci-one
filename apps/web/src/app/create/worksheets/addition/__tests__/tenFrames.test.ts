@@ -128,8 +128,8 @@ describe('Ten-frames rendering', () => {
       }
 
       const problems: WorksheetProblem[] = [
-        { operator: '+', a: 45, b: 27 }, // Has regrouping
-        { operator: '+', a: 38, b: 54 }, // Has regrouping
+        { operator: 'add', a: 45, b: 27 }, // Has regrouping
+        { operator: 'add', a: 38, b: 54 }, // Has regrouping
       ]
 
       const typstPages = generateTypstSource(config, problems)
@@ -180,7 +180,7 @@ describe('Ten-frames rendering', () => {
       }
 
       const problems: WorksheetProblem[] = [
-        { operator: '+', a: 8, b: 7 }, // 8 + 7 = 15, has regrouping
+        { operator: 'add', a: 8, b: 7 }, // 8 + 7 = 15, has regrouping
       ]
 
       const typstPages = generateTypstSource(config, problems)
@@ -228,8 +228,8 @@ describe('Ten-frames rendering', () => {
       }
 
       const problems: WorksheetProblem[] = [
-        { operator: '+', a: 45, b: 27 },
-        { operator: '+', a: 12, b: 23 }, // No regrouping, but should still show frames
+        { operator: 'add', a: 45, b: 27 },
+        { operator: 'add', a: 12, b: 23 }, // No regrouping, but should still show frames
       ]
 
       const typstPages = generateTypstSource(config, problems)
@@ -277,8 +277,8 @@ describe('Ten-frames rendering', () => {
       }
 
       const problems: WorksheetProblem[] = [
-        { operator: '+', a: 8, b: 7 }, // Has regrouping
-        { operator: '+', a: 9, b: 6 }, // Has regrouping
+        { operator: 'add', a: 8, b: 7 }, // Has regrouping
+        { operator: 'add', a: 9, b: 6 }, // Has regrouping
       ]
 
       const typstPages = generateTypstSource(config, problems)
@@ -323,7 +323,7 @@ describe('Ten-frames rendering', () => {
       }
 
       const problems: WorksheetProblem[] = [
-        { operator: '+', a: 8, b: 7 }, // Has regrouping
+        { operator: 'add', a: 8, b: 7 }, // Has regrouping
       ]
 
       const typstPages = generateTypstSource(config, problems)

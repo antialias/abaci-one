@@ -218,7 +218,8 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
             Grading Failed
           </h2>
           <p className={css({ color: 'yellow.600', mb: 4 })}>
-            {result.errorMessage || 'The image might be too blurry, not a math worksheet, or missing problems. Please try uploading a different image.'}
+            {result.errorMessage ||
+              'The image might be too blurry, not a math worksheet, or missing problems. Please try uploading a different image.'}
           </p>
           <Link
             href="/"

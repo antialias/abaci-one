@@ -38,13 +38,13 @@
       "mcp__sqlite__describe_table",
       "Bash(npm test:*)",
       "mcp__sqlite__read_query",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm run lint:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

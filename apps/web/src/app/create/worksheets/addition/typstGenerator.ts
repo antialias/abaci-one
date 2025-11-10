@@ -28,7 +28,7 @@ function chunkProblems(problems: WorksheetProblem[], pageSize: number): Workshee
 function calculateMaxDigits(problems: WorksheetProblem[]): number {
   let maxDigits = 1
   for (const problem of problems) {
-    if (problem.operator === '+') {
+    if (problem.operator === 'add') {
       const digitsA = problem.a.toString().length
       const digitsB = problem.b.toString().length
       const maxProblemDigits = Math.max(digitsA, digitsB)
@@ -62,7 +62,7 @@ function generatePageTypst(
       // Smart & Mastery modes: Per-problem conditional display based on problem complexity
       // Both modes use displayRules for conditional scaffolding
       const meta =
-        p.operator === '+'
+        p.operator === 'add'
           ? analyzeProblem(p.a, p.b)
           : analyzeSubtractionProblem(p.minuend, p.subtrahend)
 
@@ -72,13 +72,13 @@ function generatePageTypst(
       if (config.mode === 'mastery') {
         const masteryConfig = config as any
         // If we have operator-specific rules (mastery+mixed), use them
-        if (p.operator === '+' && masteryConfig.additionDisplayRules) {
+        if (p.operator === 'add' && masteryConfig.additionDisplayRules) {
           rulesForProblem = masteryConfig.additionDisplayRules
           console.log(
             `[TYPST PROBLEM ${index}] Using additionDisplayRules for ${p.a} + ${p.b}`,
             rulesForProblem
           )
-        } else if (p.operator === '−' && masteryConfig.subtractionDisplayRules) {
+        } else if (p.operator === 'sub' && masteryConfig.subtractionDisplayRules) {
           rulesForProblem = masteryConfig.subtractionDisplayRules
           console.log(
             `[TYPST PROBLEM ${index}] Using subtractionDisplayRules for ${p.minuend} - ${p.subtrahend}`,
@@ -89,7 +89,7 @@ function generatePageTypst(
 
       const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
 
-      if (p.operator === '−') {
+      if (p.operator === 'sub') {
         console.log(`[TYPST PROBLEM ${index}] Subtraction resolved display:`, {
           problem: `${p.minuend} - ${p.subtrahend}`,
           meta,
@@ -123,7 +123,7 @@ function generatePageTypst(
     '[TYPST DEBUG] First 3 enriched problems:',
     enrichedProblems.slice(0, 3).map((p, i) => ({
       index: i,
-      problem: p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
+      problem: p.operator === 'add' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
       showTenFrames: p.showTenFrames,
     }))
   )
@@ -131,7 +131,7 @@ function generatePageTypst(
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems
     .map((p) => {
-      if (p.operator === '+') {
+      if (p.operator === 'add') {
         return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`
       } else {
         return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`

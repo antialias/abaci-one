@@ -75,7 +75,7 @@ export type WorksheetOperator = 'addition' | 'subtraction' | 'mixed'
 export interface AdditionProblem {
   a: number
   b: number
-  operator: '+'
+  operator: 'add'
 }
 
 /**
@@ -84,7 +84,7 @@ export interface AdditionProblem {
 export interface SubtractionProblem {
   minuend: number
   subtrahend: number
-  operator: '−' // Proper minus sign (U+2212)
+  operator: 'sub'
 }
 
 /**
