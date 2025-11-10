@@ -6,8 +6,18 @@ import { NextResponse } from 'next/server'
  *
  * This allows phones on the same network to access the dev server
  * by scanning a QR code with the LAN IP instead of localhost
+ *
+ * SECURITY: Only available in development mode
  */
 export async function GET() {
+  // Only allow in development
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json(
+      { error: 'Not available in production', lanIp: null },
+      { status: 404 }
+    )
+  }
+
   try {
     const nets = networkInterfaces()
     let lanIp: string | null = null
