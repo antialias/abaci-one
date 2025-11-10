@@ -225,12 +225,24 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
         const subSkill = getSkillById(subSkillId as any)
 
         if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
+          console.log('[MIXED MODE SCAFFOLDING]', {
+            additionSkill: addSkill.name,
+            additionRules: addSkill.recommendedScaffolding,
+            subtractionSkill: subSkill.name,
+            subtractionRules: subSkill.recommendedScaffolding,
+          })
           config = {
             ...baseConfig,
             additionDisplayRules: { ...addSkill.recommendedScaffolding },
             subtractionDisplayRules: { ...subSkill.recommendedScaffolding },
           } as any
         } else {
+          console.log('[MIXED MODE SCAFFOLDING] Missing recommendedScaffolding', {
+            addSkill: addSkill?.name,
+            hasAddScaffolding: !!addSkill?.recommendedScaffolding,
+            subSkill: subSkill?.name,
+            hasSubScaffolding: !!subSkill?.recommendedScaffolding,
+          })
           config = baseConfig as any
         }
       } else {
