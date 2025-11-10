@@ -1,8 +1,8 @@
 // Answer row and ten-frames rendering for subtraction problems
 // Shows answer boxes and optional borrowing visualization
 
-import type { CellDimensions } from "../shared/types";
-import { TYPST_CONSTANTS } from "../shared/types";
+import type { CellDimensions } from '../shared/types'
+import { TYPST_CONSTANTS } from '../shared/types'
 
 /**
  * Generate Typst code for the line row (separates problem from answer)
@@ -11,7 +11,7 @@ import { TYPST_CONSTANTS } from "../shared/types";
  * @returns Typst code for line row
  */
 export function generateLineRow(cellDimensions: CellDimensions): string {
-  const { cellSizeIn } = cellDimensions;
+  const { cellSizeIn } = cellDimensions
 
   return String.raw`
       // Line row
@@ -19,7 +19,7 @@ export function generateLineRow(cellDimensions: CellDimensions): string {
       ..for i in range(0, grid-digits) {
         (line(length: ${cellSizeIn}, stroke: heavy-stroke),)
       },
-`;
+`
 }
 
 /**
@@ -32,7 +32,7 @@ export function generateLineRow(cellDimensions: CellDimensions): string {
  * @returns Typst code for ten-frames row
  */
 export function generateTenFramesRow(cellDimensions: CellDimensions): string {
-  const { cellSizeIn } = cellDimensions;
+  const { cellSizeIn } = cellDimensions
 
   return String.raw`
       // Ten-frames row (show borrowing visualization)
@@ -49,7 +49,7 @@ export function generateTenFramesRow(cellDimensions: CellDimensions): string {
           (
             [],  // Empty cell for operator column
             ..for i in range(0, grid-digits).rev() {
-              let shows-frame = show-ten-frames-for-all or (i in borrow-places)
+              let shows-frame = show-ten-frames-for-all or borrow-places.contains(i)
 
               if shows-frame {
                 // Show borrowed amount visualization
@@ -77,7 +77,7 @@ export function generateTenFramesRow(cellDimensions: CellDimensions): string {
       } else {
         ()
       },
-`;
+`
 }
 
 /**
@@ -90,7 +90,7 @@ export function generateTenFramesRow(cellDimensions: CellDimensions): string {
  * @returns Typst code for answer boxes row
  */
 export function generateAnswerBoxesRow(cellDimensions: CellDimensions): string {
-  const { cellSizeIn } = cellDimensions;
+  const { cellSizeIn } = cellDimensions
 
   return String.raw`
       // Answer boxes (only for actual difference digits, hiding leading zeros)
@@ -111,5 +111,5 @@ export function generateAnswerBoxesRow(cellDimensions: CellDimensions): string {
           ],)
         }
       },
-`;
+`
 }
