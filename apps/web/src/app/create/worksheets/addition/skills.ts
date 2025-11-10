@@ -6,7 +6,7 @@ import type { DisplayRules } from './displayRules'
 /**
  * Skill IDs follow naming convention:
  * - Prefix: sd (single-digit), td (two-digit), 3d/4d/5d (multi-digit)
- * - Operation: addition skills have descriptive names, subtraction uses "sub" prefix
+ * - Operation: addition skills have descriptive names, subtraction uses "sub" prefix, mixed uses "mixed" prefix
  * - Complexity: no-regroup, simple-regroup, ones-regroup, mixed-regroup, full-regroup
  */
 export type SkillId =
@@ -329,7 +329,7 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     recommendedScaffolding: {
       carryBoxes: 'never',
       answerBoxes: 'never',
-      placeValueColors: 'when3PlusDigits',
+      placeValueColors: 'never',
       tenFrames: 'never',
       problemNumbers: 'always',
       cellBorders: 'always',
@@ -577,11 +577,11 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     recommendedScaffolding: {
       carryBoxes: 'never',
       answerBoxes: 'never',
-      placeValueColors: 'when3PlusDigits',
+      placeValueColors: 'never',
       tenFrames: 'never',
       problemNumbers: 'always',
       cellBorders: 'always',
-      borrowNotation: 'whenRegrouping',
+      borrowNotation: 'never',
       borrowingHints: 'never',
     },
     recommendedProblemCount: 10,
@@ -649,7 +649,7 @@ export function findPreviousSkill(
 }
 
 /**
- * Helper: Get the first umastered skill with prerequisites met
+ * Helper: Get the first unmastered skill with prerequisites met
  */
 export function findCurrentSkill(
   masteryStates: Map<SkillId, boolean>,
@@ -671,4 +671,11 @@ export function findCurrentSkill(
 
   // All skills mastered! Return the last skill
   return skills[skills.length - 1]
+}
+
+/**
+ * Helper: Extract digit complexity from a skill (1-5)
+ */
+export function getDigitComplexity(skill: SkillDefinition): number {
+  return skill.digitRange.max
 }
