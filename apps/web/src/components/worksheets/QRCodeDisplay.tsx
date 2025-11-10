@@ -1,7 +1,7 @@
 'use client'
 
 import { QRCodeSVG } from 'qrcode.react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { css } from '../../../styled-system/css'
 
 interface QRCodeDisplayProps {
@@ -15,6 +15,39 @@ interface QRCodeDisplayProps {
 }
 
 /**
+ * Get appropriate base URL for QR code
+ * If running on localhost, fetch the server's LAN IP instead
+ */
+async function getBaseUrl(): Promise<string> {
+  if (typeof window === 'undefined') return ''
+
+  const origin = window.location.origin
+
+  // If not localhost, use the current origin
+  if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    return origin
+  }
+
+  // For localhost, fetch the LAN IP from the server
+  try {
+    const response = await fetch('/api/network/lan-ip')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.lanIp) {
+        // Construct URL with LAN IP and current port
+        const port = window.location.port
+        return `http://${data.lanIp}${port ? `:${port}` : ''}`
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch LAN IP, falling back to localhost:', err)
+  }
+
+  // Fallback to original origin
+  return origin
+}
+
+/**
  * QR code display for batch upload workflow
  *
  * Shows QR code that links to camera upload page
@@ -22,9 +55,15 @@ interface QRCodeDisplayProps {
  */
 export function QRCodeDisplay({ sessionId, uploadCount, uploads }: QRCodeDisplayProps) {
   const [copied, setCopied] = useState(false)
+  const [baseUrl, setBaseUrl] = useState('')
+
+  // Fetch appropriate base URL on mount
+  useEffect(() => {
+    getBaseUrl().then(setBaseUrl)
+  }, [])
 
   // Generate upload URL for smartphone
-  const uploadUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/upload/${sessionId}/camera`
+  const uploadUrl = baseUrl ? `${baseUrl}/upload/${sessionId}/camera` : ''
 
   const copyUrl = async () => {
     try {
