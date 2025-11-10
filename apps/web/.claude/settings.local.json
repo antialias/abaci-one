@@ -36,7 +36,9 @@
       "Bash(done)",
       "mcp__sqlite__list_tables",
       "mcp__sqlite__describe_table",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "mcp__sqlite__read_query",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

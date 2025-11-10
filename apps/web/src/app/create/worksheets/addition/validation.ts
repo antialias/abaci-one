@@ -138,8 +138,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   // Build mode-specific config
   let config: WorksheetConfig
 
-  if (mode === 'smart') {
-    // Smart mode: Use displayRules for conditional scaffolding
+  if (mode === 'smart' || mode === 'mastery') {
+    // Smart & Mastery modes: Use displayRules for conditional scaffolding
     const displayRules: DisplayRules = {
       carryBoxes: 'whenRegrouping',
       answerBoxes: 'always',
@@ -154,9 +154,10 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
     config = {
       version: 4,
-      mode: 'smart',
+      mode: mode as 'smart' | 'mastery', // Preserve the actual mode
       displayRules,
       difficultyProfile: formState.difficultyProfile,
+      currentStepId: formState.currentStepId, // Mastery progression tracking
       ...sharedFields,
     }
   } else {

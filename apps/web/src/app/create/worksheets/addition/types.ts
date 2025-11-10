@@ -4,6 +4,7 @@ import type {
   AdditionConfigV4,
   AdditionConfigV4Smart,
   AdditionConfigV4Manual,
+  AdditionConfigV4Mastery,
 } from '../config-schemas'
 
 /**
@@ -42,26 +43,25 @@ export type WorksheetConfig = AdditionConfigV4 & {
  * Partial form state - user may be editing, fields optional
  * Based on V4 config with additional derived state
  *
- * V4 supports two modes via discriminated union:
+ * V4 supports three modes via discriminated union:
  * - Smart mode: Has displayRules and optional difficultyProfile
+ * - Mastery mode: Has displayRules and optional currentStepId
  * - Manual mode: Has boolean display flags and optional manualPreset
  *
  * During editing, mode field may be present to indicate which mode is active.
  * If mode is absent, defaults to 'smart' mode.
  *
  * This type is intentionally permissive during form editing to allow fields from
- * both modes to exist temporarily. Validation will enforce mode consistency.
+ * all modes to exist temporarily. Validation will enforce mode consistency.
  */
 export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>> &
-  Partial<Omit<AdditionConfigV4Manual, 'version'>> & {
+  Partial<Omit<AdditionConfigV4Manual, 'version'>> &
+  Partial<Omit<AdditionConfigV4Mastery, 'version'>> & {
     // DERIVED state (calculated from primary state)
     rows?: number
     total?: number
     date?: string
     seed?: number
-
-    // Mastery progression mode
-    currentStepId?: string // Current step in progression path
   }
 
 /**
