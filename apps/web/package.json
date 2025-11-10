@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch\" \"ngrok http --log stdout 3000\"",
-    "dev:no-tunnel": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch\"",
+    "dev": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch\"",
     "build": "node scripts/generate-build-info.js && npx tsx scripts/generateAllDayIcons.tsx && npx @pandacss/dev && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "npx @biomejs/biome lint . && npx eslint .",
@@ -118,7 +117,6 @@
     "eslint-plugin-storybook": "^9.1.7",
     "happy-dom": "^18.0.1",
     "jsdom": "^27.0.0",
-    "ngrok": "5.0.0-beta.2",
     "storybook": "^9.1.7",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.20.5",
