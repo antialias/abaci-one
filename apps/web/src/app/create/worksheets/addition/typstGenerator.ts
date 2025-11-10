@@ -78,7 +78,7 @@ function generatePageTypst(
             `[TYPST PROBLEM ${index}] Using additionDisplayRules for ${p.a} + ${p.b}`,
             rulesForProblem
           )
-        } else if (p.operator === '-' && masteryConfig.subtractionDisplayRules) {
+        } else if (p.operator === '−' && masteryConfig.subtractionDisplayRules) {
           rulesForProblem = masteryConfig.subtractionDisplayRules
           console.log(
             `[TYPST PROBLEM ${index}] Using subtractionDisplayRules for ${p.minuend} - ${p.subtrahend}`,
@@ -89,7 +89,7 @@ function generatePageTypst(
 
       const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
 
-      if (p.operator === '-') {
+      if (p.operator === '−') {
         console.log(`[TYPST PROBLEM ${index}] Subtraction resolved display:`, {
           problem: `${p.minuend} - ${p.subtrahend}`,
           meta,
