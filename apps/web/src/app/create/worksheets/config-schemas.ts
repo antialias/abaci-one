@@ -336,15 +336,85 @@ const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   manualPreset: z.string().optional(),
 })
 
+// Mastery Progression Mode for V4
+const additionConfigV4MasterySchema = additionConfigV4BaseSchema.extend({
+  mode: z.literal('mastery'),
+
+  // Mastery mode uses displayRules like smart mode (conditional scaffolding)
+  displayRules: z.object({
+    carryBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    answerBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    placeValueColors: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    tenFrames: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    problemNumbers: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    cellBorders: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowNotation: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowingHints: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+  }),
+
+  // Optional: Current step in mastery progression path
+  currentStepId: z.string().optional(),
+})
+
 // V4 uses discriminated union on 'mode'
 export const additionConfigV4Schema = z.discriminatedUnion('mode', [
   additionConfigV4SmartSchema,
   additionConfigV4ManualSchema,
+  additionConfigV4MasterySchema,
 ])
 
 export type AdditionConfigV4 = z.infer<typeof additionConfigV4Schema>
 export type AdditionConfigV4Smart = z.infer<typeof additionConfigV4SmartSchema>
 export type AdditionConfigV4Manual = z.infer<typeof additionConfigV4ManualSchema>
+export type AdditionConfigV4Mastery = z.infer<typeof additionConfigV4MasterySchema>
 
 /** Union of all addition config versions (add new versions here) */
 export const additionConfigSchema = z.discriminatedUnion('version', [
