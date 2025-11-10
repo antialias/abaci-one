@@ -98,17 +98,17 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         isDark={isDark}
       />
 
-      {/* Mode Selector */}
-      <ModeSelector
-        currentMode={formState.mode ?? 'smart'}
-        onChange={handleModeChange}
-        isDark={isDark}
-      />
-
       {/* Progressive Difficulty Toggle - Available for all modes */}
       <ProgressiveDifficultyToggle
         interpolate={formState.interpolate}
         onChange={(interpolate) => onChange({ interpolate })}
+        isDark={isDark}
+      />
+
+      {/* Mode Selector */}
+      <ModeSelector
+        currentMode={formState.mode ?? 'smart'}
+        onChange={handleModeChange}
         isDark={isDark}
       />
 
