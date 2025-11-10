@@ -74,12 +74,29 @@ function generatePageTypst(
         // If we have operator-specific rules (mastery+mixed), use them
         if (p.operator === '+' && masteryConfig.additionDisplayRules) {
           rulesForProblem = masteryConfig.additionDisplayRules
+          console.log(
+            `[TYPST PROBLEM ${index}] Using additionDisplayRules for ${p.a} + ${p.b}`,
+            rulesForProblem
+          )
         } else if (p.operator === '-' && masteryConfig.subtractionDisplayRules) {
           rulesForProblem = masteryConfig.subtractionDisplayRules
+          console.log(
+            `[TYPST PROBLEM ${index}] Using subtractionDisplayRules for ${p.minuend} - ${p.subtrahend}`,
+            rulesForProblem
+          )
         }
       }
 
       const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
+
+      if (p.operator === '-') {
+        console.log(`[TYPST PROBLEM ${index}] Subtraction resolved display:`, {
+          problem: `${p.minuend} - ${p.subtrahend}`,
+          meta,
+          rulesUsed: rulesForProblem,
+          resolved: displayOptions,
+        })
+      }
 
       return {
         ...p,
