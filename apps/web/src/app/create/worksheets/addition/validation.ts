@@ -169,7 +169,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       const operator = formState.operator ?? 'addition'
 
       if (operator === 'mixed') {
-        // Mixed mode: Merge scaffolding from both skills
+        // Mixed mode: Store SEPARATE display rules for each operator
+        // The typstGenerator will choose which rules to apply per-problem
         const addSkillId = formState.currentAdditionSkillId
         const subSkillId = formState.currentSubtractionSkillId
 
@@ -178,31 +179,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
           const subSkill = getSkillById(subSkillId as any)
 
           if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
-            // Use the LEAST scaffolding from both (most restrictive)
-            // This ensures mastery-level problems have minimal scaffolding
-            baseDisplayRules = {
-              // Take 'never' if either skill recommends it
-              carryBoxes:
-                addSkill.recommendedScaffolding.carryBoxes === 'never' ||
-                subSkill.recommendedScaffolding.carryBoxes === 'never'
-                  ? 'never'
-                  : 'whenRegrouping',
-              answerBoxes:
-                addSkill.recommendedScaffolding.answerBoxes === 'never' ||
-                subSkill.recommendedScaffolding.answerBoxes === 'never'
-                  ? 'never'
-                  : 'always',
-              placeValueColors:
-                addSkill.recommendedScaffolding.placeValueColors === 'never' ||
-                subSkill.recommendedScaffolding.placeValueColors === 'never'
-                  ? 'never'
-                  : addSkill.recommendedScaffolding.placeValueColors,
-              tenFrames: 'never', // Always off for mastery
-              problemNumbers: 'always',
-              cellBorders: 'always',
-              borrowNotation: subSkill.recommendedScaffolding.borrowNotation,
-              borrowingHints: 'never',
-            }
+            // Store both separately - will be used per-problem in typstGenerator
+            // Note: This will be added to the config below as additionDisplayRules/subtractionDisplayRules
           }
         }
       } else {
@@ -226,13 +204,40 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       ...((formState.displayRules as any) ?? {}), // Override with provided rules if any
     }
 
-    config = {
+    // Build config with operator-specific display rules for mixed mode
+    const operator = formState.operator ?? 'addition'
+    const baseConfig = {
       version: 4,
       mode: mode as 'smart' | 'mastery', // Preserve the actual mode
       displayRules,
       difficultyProfile: formState.difficultyProfile,
       currentStepId: formState.currentStepId, // Mastery progression tracking
       ...sharedFields,
+    }
+
+    // Add operator-specific display rules for mastery+mixed mode
+    if (mode === 'mastery' && operator === 'mixed') {
+      const addSkillId = formState.currentAdditionSkillId
+      const subSkillId = formState.currentSubtractionSkillId
+
+      if (addSkillId && subSkillId) {
+        const addSkill = getSkillById(addSkillId as any)
+        const subSkill = getSkillById(subSkillId as any)
+
+        if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
+          config = {
+            ...baseConfig,
+            additionDisplayRules: { ...addSkill.recommendedScaffolding },
+            subtractionDisplayRules: { ...subSkill.recommendedScaffolding },
+          } as any
+        } else {
+          config = baseConfig as any
+        }
+      } else {
+        config = baseConfig as any
+      }
+    } else {
+      config = baseConfig as any
     }
   } else {
     // Manual mode: Use boolean flags for uniform display

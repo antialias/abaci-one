@@ -400,6 +400,130 @@ const additionConfigV4MasterySchema = additionConfigV4BaseSchema.extend({
     ]),
   }),
 
+  // Optional: Separate display rules for mixed mode (operator-specific scaffolding)
+  // When operator='mixed', additionDisplayRules applies to addition problems,
+  // subtractionDisplayRules applies to subtraction problems
+  additionDisplayRules: z
+    .object({
+      carryBoxes: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      answerBoxes: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      placeValueColors: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      tenFrames: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      problemNumbers: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      cellBorders: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      borrowNotation: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      borrowingHints: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+    })
+    .optional(),
+  subtractionDisplayRules: z
+    .object({
+      carryBoxes: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      answerBoxes: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      placeValueColors: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      tenFrames: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      problemNumbers: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      cellBorders: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      borrowNotation: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+      borrowingHints: z.enum([
+        'always',
+        'never',
+        'whenRegrouping',
+        'whenMultipleRegroups',
+        'when3PlusDigits',
+      ]),
+    })
+    .optional(),
+
   // Optional: Current step in mastery progression path
   currentStepId: z.string().optional(),
 })

@@ -65,10 +65,21 @@ function generatePageTypst(
         p.operator === '+'
           ? analyzeProblem(p.a, p.b)
           : analyzeSubtractionProblem(p.minuend, p.subtrahend)
-      const displayOptions = resolveDisplayForProblem(
-        config.displayRules as any, // Cast for backward compatibility with configs missing new fields
-        meta
-      )
+
+      // Choose display rules based on operator (for mastery+mixed mode)
+      let rulesForProblem = config.displayRules as any
+
+      if (config.mode === 'mastery') {
+        const masteryConfig = config as any
+        // If we have operator-specific rules (mastery+mixed), use them
+        if (p.operator === '+' && masteryConfig.additionDisplayRules) {
+          rulesForProblem = masteryConfig.additionDisplayRules
+        } else if (p.operator === '-' && masteryConfig.subtractionDisplayRules) {
+          rulesForProblem = masteryConfig.subtractionDisplayRules
+        }
+      }
+
+      const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
 
       return {
         ...p,
@@ -91,11 +102,14 @@ function generatePageTypst(
   })
 
   // DEBUG: Show first 3 problems' ten-frames status
-  console.log('[TYPST DEBUG] First 3 enriched problems:', enrichedProblems.slice(0, 3).map((p, i) => ({
-    index: i,
-    problem: p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
-    showTenFrames: p.showTenFrames,
-  })))
+  console.log(
+    '[TYPST DEBUG] First 3 enriched problems:',
+    enrichedProblems.slice(0, 3).map((p, i) => ({
+      index: i,
+      problem: p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
+      showTenFrames: p.showTenFrames,
+    }))
+  )
 
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems
