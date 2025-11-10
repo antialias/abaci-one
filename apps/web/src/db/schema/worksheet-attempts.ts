@@ -47,6 +47,9 @@ export const worksheetAttempts = sqliteTable(
     /** When grading was completed */
     gradedAt: integer('graded_at', { mode: 'timestamp' }),
 
+    /** Error message if grading failed */
+    errorMessage: text('error_message'),
+
     /** Total number of problems detected/graded */
     totalProblems: integer('total_problems'),
 

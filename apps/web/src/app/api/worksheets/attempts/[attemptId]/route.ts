@@ -38,6 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: { attemptI
       status: attempt.gradingStatus,
       uploadedAt: attempt.createdAt,
       gradedAt: attempt.gradedAt,
+      errorMessage: attempt.errorMessage,
 
       // Results summary
       totalProblems: attempt.totalProblems,

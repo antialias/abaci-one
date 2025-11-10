@@ -145,10 +145,17 @@ export async function processWorksheetAttempt(attemptId: string) {
   } catch (error) {
     console.error('Grading failed:', error)
 
-    // Mark as failed
+    // Extract error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during grading'
+
+    // Mark as failed with error message
     await db
       .update(worksheetAttempts)
-      .set({ gradingStatus: 'failed', updatedAt: new Date() })
+      .set({
+        gradingStatus: 'failed',
+        errorMessage,
+        updatedAt: new Date(),
+      })
       .where(eq(worksheetAttempts.id, attemptId))
 
     throw error

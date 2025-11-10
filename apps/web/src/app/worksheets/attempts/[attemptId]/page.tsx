@@ -7,6 +7,7 @@ import { css } from '../../../../../styled-system/css'
 interface AttemptResult {
   attemptId: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
+  errorMessage: string | null
   totalProblems: number | null
   correctCount: number | null
   accuracy: number | null
@@ -217,8 +218,7 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
             Grading Failed
           </h2>
           <p className={css({ color: 'yellow.600', mb: 4 })}>
-            The image might be too blurry, not a math worksheet, or missing problems. Please try
-            uploading a different image.
+            {result.errorMessage || 'The image might be too blurry, not a math worksheet, or missing problems. Please try uploading a different image.'}
           </p>
           <Link
             href="/"

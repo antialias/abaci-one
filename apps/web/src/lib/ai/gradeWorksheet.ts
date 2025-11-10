@@ -172,9 +172,9 @@ async function callGPT5Vision(imageDataUrl: string, prompt: string): Promise<Gra
       reasoning: {
         effort: 'high', // Use deep thinking for analysis
       },
-      verbosity: 'medium', // Balanced output
       max_output_tokens: 4000, // Enough for 20 problems + analysis
       text: {
+        verbosity: 'medium', // Balanced output
         format: {
           type: 'json_schema',
           name: 'worksheet_grading',

@@ -10,7 +10,14 @@
       "Bash(npm run type-check:*)",
       "Bash(git stash:*)",
       "Bash(git pull:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(git rm:*)",
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(git rev-parse:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npm run db:migrate:*)"
     ],
     "deny": [],
     "ask": []
