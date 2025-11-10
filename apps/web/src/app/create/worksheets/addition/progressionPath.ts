@@ -43,19 +43,85 @@ export interface ProgressionStep {
 /**
  * Complete progression path for single-carry technique
  * This path demonstrates the scaffolding cycle pattern:
+ * - Start with foundation (no regrouping)
+ * - Introduce regrouping with support (mixed practice → full regrouping)
  * - Increase complexity (digit count) → reintroduce scaffolding (ten-frames)
  * - Fade scaffolding (remove ten-frames)
  * - Repeat
  */
 export const SINGLE_CARRY_PATH: ProgressionStep[] = [
   // ========================================================================
-  // PHASE 1: Single-digit carrying
+  // PHASE 0: Foundation - Basic addition without regrouping
   // ========================================================================
 
-  // Step 0: 1-digit with full scaffolding
+  // Step 0: Basic single-digit addition (NO regrouping)
+  {
+    id: 'basic-addition-1d',
+    stepNumber: 0,
+    technique: 'basic-addition',
+    name: 'Basic single-digit addition',
+    description: 'Master simple addition without regrouping (3+4, 5+2, 6+1, etc.)',
+    config: {
+      digitRange: { min: 1, max: 1 },
+      operator: 'addition',
+      pAnyStart: 0, // 0% regrouping - all sums ≤ 9
+      pAllStart: 0,
+      displayRules: {
+        carryBoxes: 'never', // Not needed yet
+        answerBoxes: 'always',
+        placeValueColors: 'never', // Keep it simple at first
+        tenFrames: 'never', // Not needed yet
+        problemNumbers: 'always',
+        cellBorders: 'always',
+        borrowNotation: 'never',
+        borrowingHints: 'never',
+      },
+      interpolate: false,
+    },
+    masteryThreshold: 0.95, // Higher threshold for basics
+    minimumAttempts: 15,
+    nextStepId: 'mixed-addition-1d',
+    previousStepId: null,
+  },
+
+  // Step 1: Mixed single-digit practice (SOME regrouping)
+  {
+    id: 'mixed-addition-1d',
+    stepNumber: 1,
+    technique: 'basic-addition',
+    name: 'Mixed single-digit addition',
+    description: 'Practice both simple and carrying problems together',
+    config: {
+      digitRange: { min: 1, max: 1 },
+      operator: 'addition',
+      pAnyStart: 0.5, // 50% regrouping - mix of easy and hard
+      pAllStart: 0,
+      displayRules: {
+        carryBoxes: 'whenRegrouping', // Introduce carry boxes
+        answerBoxes: 'always',
+        placeValueColors: 'whenRegrouping', // Show colors when carrying
+        tenFrames: 'never', // Not yet
+        problemNumbers: 'always',
+        cellBorders: 'always',
+        borrowNotation: 'never',
+        borrowingHints: 'never',
+      },
+      interpolate: false,
+    },
+    masteryThreshold: 0.9,
+    minimumAttempts: 20,
+    nextStepId: 'single-carry-1d-full',
+    previousStepId: 'basic-addition-1d',
+  },
+
+  // ========================================================================
+  // PHASE 1: Single-digit carrying with scaffolding
+  // ========================================================================
+
+  // Step 2: 1-digit with full scaffolding (100% regrouping)
   {
     id: 'single-carry-1d-full',
-    stepNumber: 0,
+    stepNumber: 2,
     technique: 'single-carry',
     name: 'Single-digit carrying (with support)',
     description: 'Learn carrying with single-digit problems and visual support',
@@ -79,13 +145,13 @@ export const SINGLE_CARRY_PATH: ProgressionStep[] = [
     masteryThreshold: 0.9,
     minimumAttempts: 20,
     nextStepId: 'single-carry-1d-minimal',
-    previousStepId: null,
+    previousStepId: 'mixed-addition-1d',
   },
 
-  // Step 1: 1-digit with minimal scaffolding
+  // Step 3: 1-digit with minimal scaffolding
   {
     id: 'single-carry-1d-minimal',
-    stepNumber: 1,
+    stepNumber: 3,
     technique: 'single-carry',
     name: 'Single-digit carrying (independent)',
     description: 'Practice carrying without visual aids',
@@ -116,10 +182,10 @@ export const SINGLE_CARRY_PATH: ProgressionStep[] = [
   // PHASE 2: Two-digit carrying (ones place only)
   // ========================================================================
 
-  // Step 2: 2-digit with full scaffolding (SCAFFOLDING RETURNS!)
+  // Step 4: 2-digit with full scaffolding (SCAFFOLDING RETURNS!)
   {
     id: 'single-carry-2d-full',
-    stepNumber: 2,
+    stepNumber: 4,
     technique: 'single-carry',
     name: 'Two-digit carrying (with support)',
     description: 'Apply carrying to two-digit problems with visual support',
@@ -146,10 +212,10 @@ export const SINGLE_CARRY_PATH: ProgressionStep[] = [
     previousStepId: 'single-carry-1d-minimal',
   },
 
-  // Step 3: 2-digit with minimal scaffolding
+  // Step 5: 2-digit with minimal scaffolding
   {
     id: 'single-carry-2d-minimal',
-    stepNumber: 3,
+    stepNumber: 5,
     technique: 'single-carry',
     name: 'Two-digit carrying (independent)',
     description: 'Practice two-digit carrying without visual aids',
@@ -180,10 +246,10 @@ export const SINGLE_CARRY_PATH: ProgressionStep[] = [
   // PHASE 3: Three-digit carrying (ones place only)
   // ========================================================================
 
-  // Step 4: 3-digit with full scaffolding (SCAFFOLDING RETURNS AGAIN!)
+  // Step 6: 3-digit with full scaffolding (SCAFFOLDING RETURNS AGAIN!)
   {
     id: 'single-carry-3d-full',
-    stepNumber: 4,
+    stepNumber: 6,
     technique: 'single-carry',
     name: 'Three-digit carrying (with support)',
     description: 'Apply carrying to three-digit problems with visual support',
@@ -210,10 +276,10 @@ export const SINGLE_CARRY_PATH: ProgressionStep[] = [
     previousStepId: 'single-carry-2d-minimal',
   },
 
-  // Step 5: 3-digit with minimal scaffolding
+  // Step 7: 3-digit with minimal scaffolding
   {
     id: 'single-carry-3d-minimal',
-    stepNumber: 5,
+    stepNumber: 7,
     technique: 'single-carry',
     name: 'Three-digit carrying (independent)',
     description: 'Practice three-digit carrying without visual aids',
