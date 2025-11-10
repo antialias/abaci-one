@@ -105,27 +105,39 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         isDark={isDark}
       />
 
-      {/* Mode Selector */}
+      {/* Mode Selector Tabs */}
       <ModeSelector
         currentMode={formState.mode ?? 'smart'}
         onChange={handleModeChange}
         isDark={isDark}
       />
 
-      {/* Smart Mode Controls */}
-      {(!formState.mode || formState.mode === 'smart') && (
-        <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
-      )}
+      {/* Mode-specific controls as tab content */}
+      <div
+        data-element="mode-content"
+        className={stack({
+          gap: '3',
+          padding: '1.5rem',
+          backgroundColor: isDark ? 'gray.700' : 'gray.50',
+          borderRadius: '0 0 8px 8px',
+          marginTop: '-1.5rem', // Connect visually to tabs
+        })}
+      >
+        {/* Smart Mode Controls */}
+        {(!formState.mode || formState.mode === 'smart') && (
+          <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
+        )}
 
-      {/* Manual Mode Controls */}
-      {formState.mode === 'manual' && (
-        <ManualModeControls formState={formState} onChange={onChange} isDark={isDark} />
-      )}
+        {/* Manual Mode Controls */}
+        {formState.mode === 'manual' && (
+          <ManualModeControls formState={formState} onChange={onChange} isDark={isDark} />
+        )}
 
-      {/* Mastery Mode Controls */}
-      {formState.mode === 'mastery' && (
-        <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
-      )}
+        {/* Mastery Mode Controls */}
+        {formState.mode === 'mastery' && (
+          <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
+        )}
+      </div>
     </div>
   )
 }
