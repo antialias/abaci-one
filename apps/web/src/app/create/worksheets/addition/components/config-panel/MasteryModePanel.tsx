@@ -287,9 +287,10 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 border: '1px solid',
                 borderColor: isDark ? 'gray.600' : 'gray.300',
                 backgroundColor: isDark ? 'gray.600' : 'white',
-                minHeight: '5.5rem',
+                height: '5.5rem',
                 display: 'flex',
                 flexDirection: 'column',
+                overflow: 'hidden',
               })}
             >
               <div
@@ -300,11 +301,19 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   marginBottom: '0.25rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.025em',
+                  flexShrink: 0,
                 })}
               >
                 Addition
               </div>
-              <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  flexShrink: 0,
+                })}
+              >
                 <h4
                   className={css({
                     fontSize: '0.8125rem',
@@ -333,6 +342,11 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   color: isDark ? 'gray.400' : 'gray.600',
                   marginTop: '0.25rem',
                   lineHeight: '1.3',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
                 })}
               >
                 {currentAdditionSkill.description}
@@ -432,9 +446,10 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 border: '1px solid',
                 borderColor: isDark ? 'gray.600' : 'gray.300',
                 backgroundColor: isDark ? 'gray.600' : 'white',
-                minHeight: '5.5rem',
+                height: '5.5rem',
                 display: 'flex',
                 flexDirection: 'column',
+                overflow: 'hidden',
               })}
             >
               <div
@@ -445,11 +460,19 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   marginBottom: '0.25rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.025em',
+                  flexShrink: 0,
                 })}
               >
                 Subtraction
               </div>
-              <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  flexShrink: 0,
+                })}
+              >
                 <h4
                   className={css({
                     fontSize: '0.8125rem',
@@ -478,6 +501,11 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   color: isDark ? 'gray.400' : 'gray.600',
                   marginTop: '0.25rem',
                   lineHeight: '1.3',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
                 })}
               >
                 {currentSubtractionSkill.description}

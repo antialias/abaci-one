@@ -2,6 +2,7 @@
 
 import type { WorksheetFormState, WorksheetConfig, ValidationResult } from './types'
 import type { DisplayRules } from './displayRules'
+import { getSkillById } from './skills'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -150,7 +151,9 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
   if (mode === 'smart' || mode === 'mastery') {
     // Smart & Mastery modes: Use displayRules for conditional scaffolding
-    const displayRules: DisplayRules = {
+
+    // Default display rules
+    let baseDisplayRules: DisplayRules = {
       carryBoxes: 'whenRegrouping',
       answerBoxes: 'always',
       placeValueColors: 'always',
@@ -159,6 +162,67 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       cellBorders: 'always',
       borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
       borrowingHints: 'never', // Subtraction: no hints by default
+    }
+
+    // Mastery mode: Apply recommendedScaffolding from current skill(s)
+    if (mode === 'mastery') {
+      const operator = formState.operator ?? 'addition'
+
+      if (operator === 'mixed') {
+        // Mixed mode: Merge scaffolding from both skills
+        const addSkillId = formState.currentAdditionSkillId
+        const subSkillId = formState.currentSubtractionSkillId
+
+        if (addSkillId && subSkillId) {
+          const addSkill = getSkillById(addSkillId as any)
+          const subSkill = getSkillById(subSkillId as any)
+
+          if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
+            // Use the LEAST scaffolding from both (most restrictive)
+            // This ensures mastery-level problems have minimal scaffolding
+            baseDisplayRules = {
+              // Take 'never' if either skill recommends it
+              carryBoxes:
+                addSkill.recommendedScaffolding.carryBoxes === 'never' ||
+                subSkill.recommendedScaffolding.carryBoxes === 'never'
+                  ? 'never'
+                  : 'whenRegrouping',
+              answerBoxes:
+                addSkill.recommendedScaffolding.answerBoxes === 'never' ||
+                subSkill.recommendedScaffolding.answerBoxes === 'never'
+                  ? 'never'
+                  : 'always',
+              placeValueColors:
+                addSkill.recommendedScaffolding.placeValueColors === 'never' ||
+                subSkill.recommendedScaffolding.placeValueColors === 'never'
+                  ? 'never'
+                  : addSkill.recommendedScaffolding.placeValueColors,
+              tenFrames: 'never', // Always off for mastery
+              problemNumbers: 'always',
+              cellBorders: 'always',
+              borrowNotation: subSkill.recommendedScaffolding.borrowNotation,
+              borrowingHints: 'never',
+            }
+          }
+        }
+      } else {
+        // Single operator: Use its recommendedScaffolding
+        const skillId =
+          operator === 'addition'
+            ? formState.currentAdditionSkillId
+            : formState.currentSubtractionSkillId
+
+        if (skillId) {
+          const skill = getSkillById(skillId as any)
+          if (skill?.recommendedScaffolding) {
+            baseDisplayRules = { ...skill.recommendedScaffolding }
+          }
+        }
+      }
+    }
+
+    const displayRules: DisplayRules = {
+      ...baseDisplayRules,
       ...((formState.displayRules as any) ?? {}), // Override with provided rules if any
     }
 
