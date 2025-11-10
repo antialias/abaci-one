@@ -27,7 +27,6 @@ export type SkillId =
   | '5d-mastery'
   // Single-digit subtraction
   | 'sd-sub-no-borrow'
-  | 'sd-sub-borrow'
   // Two-digit subtraction
   | 'td-sub-no-borrow'
   | 'td-sub-ones-borrow'
@@ -372,30 +371,6 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     recommendedReview: [],
   },
 
-  {
-    id: 'sd-sub-borrow',
-    name: 'Single-digit with borrowing',
-    description: 'Subtraction with borrowing like 13-7, 15-8',
-    operator: 'subtraction',
-    digitRange: { min: 1, max: 1 },
-    regroupingConfig: { pAnyStart: 1.0, pAllStart: 0 },
-    recommendedScaffolding: {
-      carryBoxes: 'never',
-      answerBoxes: 'always',
-      placeValueColors: 'always',
-      tenFrames: 'whenRegrouping',
-      problemNumbers: 'always',
-      cellBorders: 'always',
-      borrowNotation: 'whenRegrouping',
-      borrowingHints: 'whenRegrouping',
-    },
-    recommendedProblemCount: 20,
-    masteryThreshold: 0.9,
-    minimumAttempts: 20,
-    prerequisites: ['sd-sub-no-borrow'],
-    recommendedReview: ['sd-sub-no-borrow'],
-  },
-
   // Two-Digit Subtraction (4 skills)
   {
     id: 'td-sub-no-borrow',
@@ -417,8 +392,8 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     recommendedProblemCount: 15,
     masteryThreshold: 0.85,
     minimumAttempts: 15,
-    prerequisites: ['sd-sub-borrow'],
-    recommendedReview: ['sd-sub-borrow'],
+    prerequisites: ['sd-sub-no-borrow'],
+    recommendedReview: ['sd-sub-no-borrow'],
   },
 
   {

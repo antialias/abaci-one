@@ -333,4 +333,262 @@ describe('Ten-frames rendering', () => {
       expect(firstPage).toContain('showTenFrames: false')
     })
   })
+
+  describe('Mixed mode operator-specific scaffolding', () => {
+    it('should apply additionDisplayRules to addition problems in mixed mode', () => {
+      const config: WorksheetConfig = {
+        version: 4,
+        mode: 'mastery',
+        problemsPerPage: 4,
+        cols: 2,
+        pages: 1,
+        total: 4,
+        rows: 2,
+        orientation: 'portrait',
+        name: 'Test Student',
+        date: '2025-11-10',
+        seed: 12345,
+        fontSize: 12,
+        digitRange: { min: 2, max: 2 },
+        operator: 'mixed',
+        pAnyStart: 1.0,
+        pAllStart: 0,
+        // Default display rules (not used for operator-specific problems)
+        displayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'never',
+          placeValueColors: 'never',
+          tenFrames: 'never',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        // Operator-specific rules
+        additionDisplayRules: {
+          carryBoxes: 'whenRegrouping',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'whenRegrouping', // ← Addition should show ten-frames
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        subtractionDisplayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'always',
+          placeValueColors: 'never',
+          tenFrames: 'never', // ← Subtraction should NOT show ten-frames
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'whenRegrouping',
+          borrowingHints: 'never',
+        },
+        interpolate: false,
+        page: { wIn: 8.5, hIn: 11 },
+        margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
+      } as any // Cast to any to allow operator-specific rules
+
+      const problems: WorksheetProblem[] = [
+        { operator: 'add', a: 45, b: 27 }, // Addition with regrouping
+        { operator: 'sub', minuend: 52, subtrahend: 18 }, // Subtraction with borrowing
+      ]
+
+      const typstPages = generateTypstSource(config, problems)
+      const firstPage = typstPages[0]
+
+      // Should contain both showTenFrames: true and showTenFrames: false
+      expect(firstPage).toContain('showTenFrames: true') // Addition
+      expect(firstPage).toContain('showTenFrames: false') // Subtraction
+
+      // Verify operator assignment (Typst uses "+" and "−" display characters)
+      expect(firstPage).toContain('operator: "+"')
+      expect(firstPage).toContain('operator: "−"')
+    })
+
+    it('should apply subtractionDisplayRules to subtraction problems in mixed mode', () => {
+      const config: WorksheetConfig = {
+        version: 4,
+        mode: 'mastery',
+        problemsPerPage: 2,
+        cols: 1,
+        pages: 1,
+        total: 2,
+        rows: 2,
+        orientation: 'portrait',
+        name: 'Test Student',
+        date: '2025-11-10',
+        seed: 12345,
+        fontSize: 12,
+        digitRange: { min: 2, max: 2 },
+        operator: 'mixed',
+        pAnyStart: 1.0,
+        pAllStart: 0,
+        displayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'never',
+          placeValueColors: 'never',
+          tenFrames: 'never',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        additionDisplayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'always',
+          placeValueColors: 'never',
+          tenFrames: 'never', // ← Addition: no ten-frames
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        subtractionDisplayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'whenRegrouping', // ← Subtraction: show ten-frames when borrowing
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'whenRegrouping',
+          borrowingHints: 'whenRegrouping',
+        },
+        interpolate: false,
+        page: { wIn: 8.5, hIn: 11 },
+        margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
+      } as any
+
+      const problems: WorksheetProblem[] = [
+        { operator: 'sub', minuend: 52, subtrahend: 18 }, // Subtraction with borrowing
+      ]
+
+      const typstPages = generateTypstSource(config, problems)
+      const firstPage = typstPages[0]
+
+      // Subtraction with borrowing should show ten-frames
+      expect(firstPage).toContain('showTenFrames: true')
+      expect(firstPage).toContain('showBorrowNotation: true')
+      expect(firstPage).toContain('showBorrowingHints: true')
+    })
+
+    it('should handle subtraction problems with operator "sub" correctly', () => {
+      // This test verifies the fix for the Unicode operator bug
+      const config: WorksheetConfig = {
+        version: 4,
+        mode: 'mastery',
+        problemsPerPage: 2,
+        cols: 1,
+        pages: 1,
+        total: 2,
+        rows: 2,
+        orientation: 'portrait',
+        name: 'Test Student',
+        date: '2025-11-10',
+        seed: 12345,
+        fontSize: 12,
+        digitRange: { min: 2, max: 2 },
+        operator: 'mixed',
+        pAnyStart: 1.0,
+        pAllStart: 0,
+        displayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'always',
+          placeValueColors: 'never',
+          tenFrames: 'never',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        additionDisplayRules: {
+          carryBoxes: 'always',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'always',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        subtractionDisplayRules: {
+          carryBoxes: 'never',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'always', // ← Should show for subtraction
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'always',
+          borrowingHints: 'always',
+        },
+        interpolate: false,
+        page: { wIn: 8.5, hIn: 11 },
+        margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
+      } as any
+
+      const problems: WorksheetProblem[] = [
+        { operator: 'sub', minuend: 52, subtrahend: 18 }, // operator: 'sub' (alphanumeric)
+        { operator: 'add', a: 45, b: 27 }, // operator: 'add' (alphanumeric)
+      ]
+
+      const typstPages = generateTypstSource(config, problems)
+      const firstPage = typstPages[0]
+
+      // Both problems should show scaffolding (not zero scaffolding bug)
+      const tenFramesTrueMatches = firstPage.match(/showTenFrames: true/g)
+      expect(tenFramesTrueMatches?.length).toBe(2) // Both problems
+
+      // Verify operators are correctly set (Typst uses "+" and "−" display characters)
+      expect(firstPage).toContain('operator: "−"') // Subtraction
+      expect(firstPage).toContain('operator: "+"') // Addition
+    })
+
+    it('should fallback to default displayRules when operator-specific rules are missing', () => {
+      const config: WorksheetConfig = {
+        version: 4,
+        mode: 'mastery',
+        problemsPerPage: 2,
+        cols: 1,
+        pages: 1,
+        total: 2,
+        rows: 2,
+        orientation: 'portrait',
+        name: 'Test Student',
+        date: '2025-11-10',
+        seed: 12345,
+        fontSize: 12,
+        digitRange: { min: 2, max: 2 },
+        operator: 'mixed',
+        pAnyStart: 1.0,
+        pAllStart: 0,
+        // Only default rules, no operator-specific rules
+        displayRules: {
+          carryBoxes: 'whenRegrouping',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'whenRegrouping',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'whenRegrouping',
+          borrowingHints: 'never',
+        },
+        interpolate: false,
+        page: { wIn: 8.5, hIn: 11 },
+        margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
+      }
+
+      const problems: WorksheetProblem[] = [
+        { operator: 'add', a: 45, b: 27 }, // Has regrouping
+        { operator: 'sub', minuend: 52, subtrahend: 18 }, // Has borrowing
+      ]
+
+      const typstPages = generateTypstSource(config, problems)
+      const firstPage = typstPages[0]
+
+      // Both should use default rules and show scaffolding
+      const tenFramesTrueMatches = firstPage.match(/showTenFrames: true/g)
+      expect(tenFramesTrueMatches?.length).toBe(2) // Both problems
+    })
+  })
 })

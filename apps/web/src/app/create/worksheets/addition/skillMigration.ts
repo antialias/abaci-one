@@ -42,7 +42,6 @@ export const SKILL_TO_STEP_MIGRATION: Record<SkillId, string> = {
 
   // Single-digit subtraction
   'sd-sub-no-borrow': 'single-carry-1d-full', // Map to equivalent complexity
-  'sd-sub-borrow': 'single-carry-1d-full',
 
   // Two-digit subtraction
   'td-sub-no-borrow': 'single-carry-2d-full',

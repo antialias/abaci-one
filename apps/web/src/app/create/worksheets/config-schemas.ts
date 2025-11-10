@@ -526,6 +526,10 @@ const additionConfigV4MasterySchema = additionConfigV4BaseSchema.extend({
 
   // Optional: Current step in mastery progression path
   currentStepId: z.string().optional(),
+
+  // Optional: Current skills for mixed mode (operator-specific progression)
+  currentAdditionSkillId: z.string().optional(),
+  currentSubtractionSkillId: z.string().optional(),
 })
 
 // V4 uses discriminated union on 'mode'

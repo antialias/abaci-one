@@ -463,11 +463,7 @@ export function AllSkillsModal({
                 { value: 'available', label: 'Available', count: availableSkills.length },
                 { value: 'locked', label: 'Locked', count: lockedSkills.length },
               ].map((tab) => (
-                <Tabs.Trigger
-                  key={tab.value}
-                  value={tab.value}
-                  asChild
-                >
+                <Tabs.Trigger key={tab.value} value={tab.value} asChild>
                   <button
                     type="button"
                     className={css({
