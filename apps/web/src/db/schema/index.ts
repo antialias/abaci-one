@@ -20,3 +20,5 @@ export * from "./room-game-configs";
 export * from "./user-stats";
 export * from "./users";
 export * from "./worksheet-settings";
+export * from "./worksheet-attempts";
+export * from "./worksheet-mastery";
