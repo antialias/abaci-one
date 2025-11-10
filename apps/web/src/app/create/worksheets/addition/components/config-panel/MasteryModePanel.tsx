@@ -316,7 +316,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               >
                 <h4
                   className={css({
-                    fontSize: '0.8125rem',
+                    fontSize: '0.75rem',
                     fontWeight: '600',
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
@@ -475,7 +475,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               >
                 <h4
                   className={css({
-                    fontSize: '0.8125rem',
+                    fontSize: '0.75rem',
                     fontWeight: '600',
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
