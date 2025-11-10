@@ -87,6 +87,7 @@ const gradingSchema = {
     'correctCount',
     'accuracy',
     'errorPatterns',
+    'currentStepEstimate',
     'suggestedStepId',
     'reasoning',
     'feedback',
