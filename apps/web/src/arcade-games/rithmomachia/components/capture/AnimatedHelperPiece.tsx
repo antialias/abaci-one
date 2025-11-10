@@ -1,20 +1,20 @@
-"use client";
+'use client'
 
-import { animated, to, useSpring } from "@react-spring/web";
-import type { Piece } from "../../types";
-import { getEffectiveValue } from "../../utils/pieceSetup";
-import { PieceRenderer } from "../PieceRenderer";
+import { animated, to, useSpring } from '@react-spring/web'
+import type { Piece } from '../../types'
+import { getEffectiveValue } from '../../utils/pieceSetup'
+import { PieceRenderer } from '../PieceRenderer'
 
 interface AnimatedHelperPieceProps {
-  piece: Piece;
-  boardPos: { x: number; y: number };
-  ringX: number;
-  ringY: number;
-  cellSize: number;
-  onSelectHelper: (pieceId: string) => void;
-  closing: boolean;
-  onHover?: (pieceId: string | null) => void;
-  useNativeAbacusNumbers?: boolean;
+  piece: Piece
+  boardPos: { x: number; y: number }
+  ringX: number
+  ringY: number
+  cellSize: number
+  onSelectHelper: (pieceId: string) => void
+  closing: boolean
+  onHover?: (pieceId: string | null) => void
+  useNativeAbacusNumbers?: boolean
 }
 
 export function AnimatedHelperPiece({
@@ -29,8 +29,8 @@ export function AnimatedHelperPiece({
   useNativeAbacusNumbers = false,
 }: AnimatedHelperPieceProps) {
   console.log(
-    `[AnimatedHelperPiece] Rendering piece ${piece.id}: boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY}), closing=${closing}`,
-  );
+    `[AnimatedHelperPiece] Rendering piece ${piece.id}: boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY}), closing=${closing}`
+  )
 
   // Animate from board position to ring position
   const spring = useSpring({
@@ -39,25 +39,25 @@ export function AnimatedHelperPiece({
     y: closing ? boardPos.y : ringY,
     opacity: closing ? 0 : 1,
     config: { tension: 280, friction: 20 },
-  });
+  })
 
   console.log(
-    `[AnimatedHelperPiece] Spring config for ${piece.id}: from=(${boardPos.x}, ${boardPos.y}), to=(${closing ? boardPos.x : ringX}, ${closing ? boardPos.y : ringY})`,
-  );
+    `[AnimatedHelperPiece] Spring config for ${piece.id}: from=(${boardPos.x}, ${boardPos.y}), to=(${closing ? boardPos.x : ringX}, ${closing ? boardPos.y : ringY})`
+  )
 
-  const value = getEffectiveValue(piece);
-  if (value === undefined || value === null) return null;
+  const value = getEffectiveValue(piece)
+  if (value === undefined || value === null) return null
 
   return (
     <animated.g
       style={{
         opacity: spring.opacity,
-        cursor: "pointer",
+        cursor: 'pointer',
       }}
       transform={to([spring.x, spring.y], (x, y) => `translate(${x}, ${y})`)}
       onClick={(e) => {
-        e.stopPropagation();
-        onSelectHelper(piece.id);
+        e.stopPropagation()
+        onSelectHelper(piece.id)
       }}
       onMouseEnter={() => onHover?.(piece.id)}
       onMouseLeave={() => onHover?.(null)}
@@ -81,5 +81,5 @@ export function AnimatedHelperPiece({
         />
       </g>
     </animated.g>
-  );
+  )
 }

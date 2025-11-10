@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { memo } from "react";
-import type { Passenger, Station } from "@/arcade-games/complement-race/types";
+import { memo } from 'react'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 
 interface PassengerCardProps {
-  passenger: Passenger;
-  originStation: Station | undefined;
-  destinationStation: Station | undefined;
+  passenger: Passenger
+  originStation: Station | undefined
+  destinationStation: Station | undefined
 }
 
 export const PassengerCard = memo(function PassengerCard({
@@ -14,84 +14,83 @@ export const PassengerCard = memo(function PassengerCard({
   originStation,
   destinationStation,
 }: PassengerCardProps) {
-  if (!destinationStation || !originStation) return null;
+  if (!destinationStation || !originStation) return null
 
   // Vintage train station colors
   // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
-  const isBoarded = passenger.claimedBy !== null;
-  const isDelivered = passenger.deliveredBy !== null;
+  const isBoarded = passenger.claimedBy !== null
+  const isDelivered = passenger.deliveredBy !== null
 
   const bgColor = isDelivered
-    ? "#1a3a1a" // Dark green for delivered
+    ? '#1a3a1a' // Dark green for delivered
     : !isBoarded
-      ? "#2a2419" // Dark brown/sepia for waiting
+      ? '#2a2419' // Dark brown/sepia for waiting
       : passenger.isUrgent
-        ? "#3a2419" // Dark red-brown for urgent
-        : "#1a2a3a"; // Dark blue for aboard
+        ? '#3a2419' // Dark red-brown for urgent
+        : '#1a2a3a' // Dark blue for aboard
 
   const accentColor = isDelivered
-    ? "#4ade80" // Green
+    ? '#4ade80' // Green
     : !isBoarded
-      ? "#d4af37" // Gold for waiting
+      ? '#d4af37' // Gold for waiting
       : passenger.isUrgent
-        ? "#ff6b35" // Orange-red for urgent
-        : "#60a5fa"; // Blue for aboard
+        ? '#ff6b35' // Orange-red for urgent
+        : '#60a5fa' // Blue for aboard
 
-  const borderColor =
-    passenger.isUrgent && isBoarded && !isDelivered ? "#ff6b35" : "#d4af37";
+  const borderColor = passenger.isUrgent && isBoarded && !isDelivered ? '#ff6b35' : '#d4af37'
 
   return (
     <div
       style={{
         background: bgColor,
         border: `2px solid ${borderColor}`,
-        borderRadius: "4px",
-        padding: "8px 10px",
-        minWidth: "220px",
-        maxWidth: "280px",
+        borderRadius: '4px',
+        padding: '8px 10px',
+        minWidth: '220px',
+        maxWidth: '280px',
         boxShadow:
           passenger.isUrgent && !isDelivered && isBoarded
-            ? "0 0 16px rgba(255, 107, 53, 0.5)"
-            : "0 4px 12px rgba(0, 0, 0, 0.4)",
-        position: "relative",
+            ? '0 0 16px rgba(255, 107, 53, 0.5)'
+            : '0 4px 12px rgba(0, 0, 0, 0.4)',
+        position: 'relative',
         fontFamily: '"Courier New", Courier, monospace',
         animation:
           passenger.isUrgent && !isDelivered && isBoarded
-            ? "urgentFlicker 1.5s ease-in-out infinite"
-            : "none",
-        transition: "all 0.3s ease",
+            ? 'urgentFlicker 1.5s ease-in-out infinite'
+            : 'none',
+        transition: 'all 0.3s ease',
       }}
     >
       {/* Top row: Passenger info and status */}
       <div
         style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: "6px",
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: '6px',
           borderBottom: `1px solid ${accentColor}33`,
-          paddingBottom: "4px",
-          paddingRight: "42px", // Make room for points badge
+          paddingBottom: '4px',
+          paddingRight: '42px', // Make room for points badge
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
             flex: 1,
           }}
         >
-          <div style={{ fontSize: "20px", lineHeight: "1" }}>
-            {isDelivered ? "✅" : passenger.avatar}
+          <div style={{ fontSize: '20px', lineHeight: '1' }}>
+            {isDelivered ? '✅' : passenger.avatar}
           </div>
           <div
             style={{
-              fontSize: "11px",
-              fontWeight: "bold",
+              fontSize: '11px',
+              fontWeight: 'bold',
               color: accentColor,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
             }}
           >
             {passenger.name}
@@ -101,59 +100,57 @@ export const PassengerCard = memo(function PassengerCard({
         {/* Status indicator */}
         <div
           style={{
-            fontSize: "9px",
+            fontSize: '9px',
             color: accentColor,
-            fontWeight: "bold",
-            letterSpacing: "0.5px",
+            fontWeight: 'bold',
+            letterSpacing: '0.5px',
             background: `${accentColor}22`,
-            padding: "2px 6px",
-            borderRadius: "2px",
+            padding: '2px 6px',
+            borderRadius: '2px',
             border: `1px solid ${accentColor}66`,
-            whiteSpace: "nowrap",
-            marginTop: "0",
+            whiteSpace: 'nowrap',
+            marginTop: '0',
           }}
         >
-          {isDelivered ? "DLVRD" : isBoarded ? "BOARD" : "WAIT"}
+          {isDelivered ? 'DLVRD' : isBoarded ? 'BOARD' : 'WAIT'}
         </div>
       </div>
 
       {/* Route information */}
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "3px",
-          fontSize: "10px",
-          color: "#e8d4a0",
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3px',
+          fontSize: '10px',
+          color: '#e8d4a0',
         }}
       >
         {/* From station */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
           <span
             style={{
               color: accentColor,
-              fontSize: "8px",
-              fontWeight: "bold",
-              width: "28px",
-              letterSpacing: "0.3px",
+              fontSize: '8px',
+              fontWeight: 'bold',
+              width: '28px',
+              letterSpacing: '0.3px',
             }}
           >
             FROM:
           </span>
-          <span style={{ fontSize: "14px", lineHeight: "1" }}>
-            {originStation.icon}
-          </span>
+          <span style={{ fontSize: '14px', lineHeight: '1' }}>{originStation.icon}</span>
           <span
             style={{
-              fontWeight: "600",
-              fontSize: "10px",
-              letterSpacing: "0.3px",
+              fontWeight: '600',
+              fontSize: '10px',
+              letterSpacing: '0.3px',
             }}
           >
             {originStation.name}
@@ -163,30 +160,28 @@ export const PassengerCard = memo(function PassengerCard({
         {/* To station */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
           <span
             style={{
               color: accentColor,
-              fontSize: "8px",
-              fontWeight: "bold",
-              width: "28px",
-              letterSpacing: "0.3px",
+              fontSize: '8px',
+              fontWeight: 'bold',
+              width: '28px',
+              letterSpacing: '0.3px',
             }}
           >
             TO:
           </span>
-          <span style={{ fontSize: "14px", lineHeight: "1" }}>
-            {destinationStation.icon}
-          </span>
+          <span style={{ fontSize: '14px', lineHeight: '1' }}>{destinationStation.icon}</span>
           <span
             style={{
-              fontWeight: "600",
-              fontSize: "10px",
-              letterSpacing: "0.3px",
+              fontWeight: '600',
+              fontSize: '10px',
+              letterSpacing: '0.3px',
             }}
           >
             {destinationStation.name}
@@ -198,20 +193,20 @@ export const PassengerCard = memo(function PassengerCard({
       {!isDelivered && (
         <div
           style={{
-            position: "absolute",
-            top: "6px",
-            right: "6px",
+            position: 'absolute',
+            top: '6px',
+            right: '6px',
             background: `${accentColor}33`,
             border: `1px solid ${accentColor}`,
-            borderRadius: "2px",
-            padding: "2px 6px",
-            fontSize: "10px",
-            fontWeight: "bold",
+            borderRadius: '2px',
+            padding: '2px 6px',
+            fontSize: '10px',
+            fontWeight: 'bold',
             color: accentColor,
-            letterSpacing: "0.5px",
+            letterSpacing: '0.5px',
           }}
         >
-          {passenger.isUrgent ? "+20" : "+10"}
+          {passenger.isUrgent ? '+20' : '+10'}
         </div>
       )}
 
@@ -219,12 +214,12 @@ export const PassengerCard = memo(function PassengerCard({
       {passenger.isUrgent && !isDelivered && isBoarded && (
         <div
           style={{
-            position: "absolute",
-            left: "8px",
-            bottom: "6px",
-            fontSize: "10px",
-            animation: "urgentBlink 0.8s ease-in-out infinite",
-            filter: "drop-shadow(0 0 4px rgba(255, 107, 53, 0.8))",
+            position: 'absolute',
+            left: '8px',
+            bottom: '6px',
+            fontSize: '10px',
+            animation: 'urgentBlink 0.8s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 4px rgba(255, 107, 53, 0.8))',
           }}
         >
           ⚠️
@@ -253,5 +248,5 @@ export const PassengerCard = memo(function PassengerCard({
         }
       `}</style>
     </div>
-  );
-});
+  )
+})

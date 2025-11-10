@@ -1,17 +1,17 @@
 // API route for generating addition worksheet previews (SVG)
 
-import { type NextRequest, NextResponse } from "next/server";
-import { generateWorksheetPreview } from "@/app/create/worksheets/addition/generatePreview";
-import type { WorksheetFormState } from "@/app/create/worksheets/addition/types";
+import { type NextRequest, NextResponse } from 'next/server'
+import { generateWorksheetPreview } from '@/app/create/worksheets/addition/generatePreview'
+import type { WorksheetFormState } from '@/app/create/worksheets/addition/types'
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const body: WorksheetFormState = await request.json();
+    const body: WorksheetFormState = await request.json()
 
     // Generate preview using shared logic
-    const result = generateWorksheetPreview(body);
+    const result = generateWorksheetPreview(body)
 
     if (!result.success) {
       return NextResponse.json(
@@ -19,23 +19,23 @@ export async function POST(request: NextRequest) {
           error: result.error,
           details: result.details,
         },
-        { status: 400 },
-      );
+        { status: 400 }
+      )
     }
 
     // Return pages as JSON
-    return NextResponse.json({ pages: result.pages });
+    return NextResponse.json({ pages: result.pages })
   } catch (error) {
-    console.error("Error generating preview:", error);
+    console.error('Error generating preview:', error)
 
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error)
 
     return NextResponse.json(
       {
-        error: "Failed to generate preview",
+        error: 'Failed to generate preview',
         message: errorMessage,
       },
-      { status: 500 },
-    );
+      { status: 500 }
+    )
   }
 }

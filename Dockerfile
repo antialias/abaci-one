@@ -150,8 +150,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
 # Set up environment
 WORKDIR /app/apps/web
 
-# Create data directory for SQLite database
-RUN mkdir -p data && chown nextjs:nodejs data
+# Create data directory for SQLite database and uploads
+RUN mkdir -p data/uploads && chown -R nextjs:nodejs data
 
 USER nextjs
 EXPOSE 3000

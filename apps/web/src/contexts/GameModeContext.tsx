@@ -1,64 +1,57 @@
-"use client";
+'use client'
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import type { Player as DBPlayer } from "@/db/schema/players";
-import { useRoomData } from "@/hooks/useRoomData";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import type { Player as DBPlayer } from '@/db/schema/players'
+import { useRoomData } from '@/hooks/useRoomData'
 import {
   useCreatePlayer,
   useDeletePlayer,
   useUpdatePlayer,
   useUserPlayers,
-} from "@/hooks/useUserPlayers";
-import { useViewerId } from "@/hooks/useViewerId";
-import { getNextPlayerColor } from "../types/player";
-import { generateUniquePlayerName } from "../utils/playerNames";
+} from '@/hooks/useUserPlayers'
+import { useViewerId } from '@/hooks/useViewerId'
+import { getNextPlayerColor } from '../types/player'
+import { generateUniquePlayerName } from '../utils/playerNames'
 
 // Client-side Player type (compatible with old type)
 export interface Player {
-  id: string;
-  name: string;
-  emoji: string;
-  color: string;
-  createdAt: Date | number;
-  isActive?: boolean;
-  isLocal?: boolean;
+  id: string
+  name: string
+  emoji: string
+  color: string
+  createdAt: Date | number
+  isActive?: boolean
+  isLocal?: boolean
 }
 
-export type GameMode = "single" | "battle" | "tournament";
+export type GameMode = 'single' | 'battle' | 'tournament'
 
 export interface GameModeContextType {
-  gameMode: GameMode; // Computed from activePlayerCount
-  players: Map<string, Player>;
-  activePlayers: Set<string>;
-  activePlayerCount: number;
-  addPlayer: (player?: Partial<Player>) => void;
-  updatePlayer: (id: string, updates: Partial<Player>) => void;
-  removePlayer: (id: string) => void;
-  setActive: (id: string, active: boolean) => void;
-  getActivePlayers: () => Player[];
-  getPlayer: (id: string) => Player | undefined;
-  getAllPlayers: () => Player[];
-  resetPlayers: () => void;
-  isLoading: boolean;
+  gameMode: GameMode // Computed from activePlayerCount
+  players: Map<string, Player>
+  activePlayers: Set<string>
+  activePlayerCount: number
+  addPlayer: (player?: Partial<Player>) => void
+  updatePlayer: (id: string, updates: Partial<Player>) => void
+  removePlayer: (id: string) => void
+  setActive: (id: string, active: boolean) => void
+  getActivePlayers: () => Player[]
+  getPlayer: (id: string) => Player | undefined
+  getAllPlayers: () => Player[]
+  resetPlayers: () => void
+  isLoading: boolean
 }
 
-const GameModeContext = createContext<GameModeContextType | null>(null);
+const GameModeContext = createContext<GameModeContextType | null>(null)
 
 // Default players to create if none exist
 // Names are generated randomly on first initialization
 const DEFAULT_PLAYER_CONFIGS = [
-  { emoji: "😀", color: "#3b82f6" },
-  { emoji: "😎", color: "#8b5cf6" },
-  { emoji: "🤠", color: "#10b981" },
-  { emoji: "🚀", color: "#f59e0b" },
-];
+  { emoji: '😀', color: '#3b82f6' },
+  { emoji: '😎', color: '#8b5cf6' },
+  { emoji: '🤠', color: '#10b981' },
+  { emoji: '🚀', color: '#f59e0b' },
+]
 
 // Convert DB player to client Player type
 function toClientPlayer(dbPlayer: DBPlayer): Player {
@@ -69,94 +62,92 @@ function toClientPlayer(dbPlayer: DBPlayer): Player {
     color: dbPlayer.color,
     createdAt: dbPlayer.createdAt,
     isActive: dbPlayer.isActive,
-  };
+  }
 }
 
 export function GameModeProvider({ children }: { children: ReactNode }) {
-  const { data: dbPlayers = [], isLoading } = useUserPlayers();
-  const { mutate: createPlayer } = useCreatePlayer();
-  const { mutate: updatePlayerMutation } = useUpdatePlayer();
-  const { mutate: deletePlayer } = useDeletePlayer();
-  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData();
-  const { data: viewerId } = useViewerId();
+  const { data: dbPlayers = [], isLoading } = useUserPlayers()
+  const { mutate: createPlayer } = useCreatePlayer()
+  const { mutate: updatePlayerMutation } = useUpdatePlayer()
+  const { mutate: deletePlayer } = useDeletePlayer()
+  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData()
+  const { data: viewerId } = useViewerId()
 
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Convert DB players to Map (local players)
   const localPlayers = useMemo(() => {
-    const map = new Map<string, Player>();
+    const map = new Map<string, Player>()
     dbPlayers.forEach((dbPlayer) => {
       map.set(dbPlayer.id, {
         ...toClientPlayer(dbPlayer),
         isLocal: true,
-      });
-    });
-    return map;
-  }, [dbPlayers]);
+      })
+    })
+    return map
+  }, [dbPlayers])
 
   // When in a room, merge all players from all room members
   const players = useMemo(() => {
-    const map = new Map<string, Player>(localPlayers);
+    const map = new Map<string, Player>(localPlayers)
 
     if (roomData?.memberPlayers) {
       // Add players from other room members (marked as remote)
-      Object.entries(roomData.memberPlayers).forEach(
-        ([userId, memberPlayers]) => {
-          // Skip the current user's players (already in localPlayers)
-          if (userId === viewerId) return;
+      Object.entries(roomData.memberPlayers).forEach(([userId, memberPlayers]) => {
+        // Skip the current user's players (already in localPlayers)
+        if (userId === viewerId) return
 
-          memberPlayers.forEach((roomPlayer) => {
-            map.set(roomPlayer.id, {
-              id: roomPlayer.id,
-              name: roomPlayer.name,
-              emoji: roomPlayer.emoji,
-              color: roomPlayer.color,
-              createdAt: Date.now(),
-              isActive: true, // Players in memberPlayers are active
-              isLocal: false, // Remote player
-            });
-          });
-        },
-      );
+        memberPlayers.forEach((roomPlayer) => {
+          map.set(roomPlayer.id, {
+            id: roomPlayer.id,
+            name: roomPlayer.name,
+            emoji: roomPlayer.emoji,
+            color: roomPlayer.color,
+            createdAt: Date.now(),
+            isActive: true, // Players in memberPlayers are active
+            isLocal: false, // Remote player
+          })
+        })
+      })
     }
 
-    return map;
-  }, [localPlayers, roomData, viewerId]);
+    return map
+  }, [localPlayers, roomData, viewerId])
 
   // Track active players (local + room members when in a room)
   const activePlayers = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>()
 
     if (roomData?.memberPlayers) {
       // In room mode: all players from all members are active
       Object.values(roomData.memberPlayers).forEach((memberPlayers) => {
         memberPlayers.forEach((player) => {
-          set.add(player.id);
-        });
-      });
+          set.add(player.id)
+        })
+      })
     } else {
       // Solo mode: only local active players
       dbPlayers.forEach((player) => {
         if (player.isActive) {
-          set.add(player.id);
+          set.add(player.id)
         }
-      });
+      })
     }
 
-    return set;
-  }, [dbPlayers, roomData]);
+    return set
+  }, [dbPlayers, roomData])
 
   // Initialize with default players if none exist
   useEffect(() => {
     if (!isLoading && !isInitialized) {
       if (dbPlayers.length === 0) {
         // Generate unique names for default players, themed by their emoji
-        const existingNames: string[] = [];
+        const existingNames: string[] = []
         const generatedNames = DEFAULT_PLAYER_CONFIGS.map((config) => {
-          const name = generateUniquePlayerName(existingNames, config.emoji);
-          existingNames.push(name);
-          return name;
-        });
+          const name = generateUniquePlayerName(existingNames, config.emoji)
+          existingNames.push(name)
+          return name
+        })
 
         // Create default players with generated names
         DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
@@ -165,44 +156,41 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
             emoji: config.emoji,
             color: config.color,
             isActive: index === 0, // First player active by default
-          });
-        });
-        console.log(
-          "✅ Created default players via API with auto-generated names:",
-          generatedNames,
-        );
+          })
+        })
+        console.log('✅ Created default players via API with auto-generated names:', generatedNames)
       } else {
-        console.log("✅ Loaded players from API", {
+        console.log('✅ Loaded players from API', {
           playerCount: dbPlayers.length,
           activeCount: dbPlayers.filter((p) => p.isActive).length,
-        });
+        })
       }
-      setIsInitialized(true);
+      setIsInitialized(true)
     }
-  }, [dbPlayers, isLoading, isInitialized, createPlayer]);
+  }, [dbPlayers, isLoading, isInitialized, createPlayer])
 
   const addPlayer = (playerData?: Partial<Player>) => {
-    const playerList = Array.from(players.values());
-    const existingNames = playerList.map((p) => p.name);
-    const emoji = playerData?.emoji ?? "🎮";
+    const playerList = Array.from(players.values())
+    const existingNames = playerList.map((p) => p.name)
+    const emoji = playerData?.emoji ?? '🎮'
 
     const newPlayer = {
       name: playerData?.name ?? generateUniquePlayerName(existingNames, emoji),
       emoji,
       color: playerData?.color ?? getNextPlayerColor(playerList),
       isActive: playerData?.isActive ?? false,
-    };
+    }
 
     createPlayer(newPlayer, {
       onSuccess: () => {
         // Notify room members if in a room
-        notifyRoomOfPlayerUpdate();
+        notifyRoomOfPlayerUpdate()
       },
-    });
-  };
+    })
+  }
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
-    const player = players.get(id);
+    const player = players.get(id)
     // Only allow updating local players
     if (player?.isLocal) {
       updatePlayerMutation(
@@ -210,32 +198,32 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         {
           onSuccess: () => {
             // Notify room members if in a room
-            notifyRoomOfPlayerUpdate();
+            notifyRoomOfPlayerUpdate()
           },
-        },
-      );
+        }
+      )
     } else {
-      console.warn("[GameModeContext] Cannot update remote player:", id);
+      console.warn('[GameModeContext] Cannot update remote player:', id)
     }
-  };
+  }
 
   const removePlayer = (id: string) => {
-    const player = players.get(id);
+    const player = players.get(id)
     // Only allow removing local players
     if (player?.isLocal) {
       deletePlayer(id, {
         onSuccess: () => {
           // Notify room members if in a room
-          notifyRoomOfPlayerUpdate();
+          notifyRoomOfPlayerUpdate()
         },
-      });
+      })
     } else {
-      console.warn("[GameModeContext] Cannot remove remote player:", id);
+      console.warn('[GameModeContext] Cannot remove remote player:', id)
     }
-  };
+  }
 
   const setActive = (id: string, active: boolean) => {
-    const player = players.get(id);
+    const player = players.get(id)
     // Only allow changing active status of local players
     if (player?.isLocal) {
       updatePlayerMutation(
@@ -243,45 +231,42 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         {
           onSuccess: () => {
             // Notify room members if in a room
-            notifyRoomOfPlayerUpdate();
+            notifyRoomOfPlayerUpdate()
           },
-        },
-      );
+        }
+      )
     } else {
-      console.warn(
-        "[GameModeContext] Cannot change active status of remote player:",
-        id,
-      );
+      console.warn('[GameModeContext] Cannot change active status of remote player:', id)
     }
-  };
+  }
 
   const getActivePlayers = (): Player[] => {
     return Array.from(activePlayers)
       .map((id) => players.get(id))
-      .filter((p): p is Player => p !== undefined);
-  };
+      .filter((p): p is Player => p !== undefined)
+  }
 
   const getPlayer = (id: string): Player | undefined => {
-    return players.get(id);
-  };
+    return players.get(id)
+  }
 
   const getAllPlayers = (): Player[] => {
-    return Array.from(players.values());
-  };
+    return Array.from(players.values())
+  }
 
   const resetPlayers = () => {
     // Delete all existing players
     dbPlayers.forEach((player) => {
-      deletePlayer(player.id);
-    });
+      deletePlayer(player.id)
+    })
 
     // Generate unique names for default players, themed by their emoji
-    const existingNames: string[] = [];
+    const existingNames: string[] = []
     const generatedNames = DEFAULT_PLAYER_CONFIGS.map((config) => {
-      const name = generateUniquePlayerName(existingNames, config.emoji);
-      existingNames.push(name);
-      return name;
-    });
+      const name = generateUniquePlayerName(existingNames, config.emoji)
+      existingNames.push(name)
+      return name
+    })
 
     // Create default players with generated names
     DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
@@ -290,26 +275,26 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         emoji: config.emoji,
         color: config.color,
         isActive: index === 0,
-      });
-    });
+      })
+    })
 
     // Notify room members after reset (slight delay to ensure mutations complete)
     setTimeout(() => {
-      notifyRoomOfPlayerUpdate();
-    }, 100);
-  };
+      notifyRoomOfPlayerUpdate()
+    }, 100)
+  }
 
-  const activePlayerCount = activePlayers.size;
+  const activePlayerCount = activePlayers.size
 
   // Compute game mode from active player count
   const gameMode: GameMode =
     activePlayerCount === 1
-      ? "single"
+      ? 'single'
       : activePlayerCount === 2
-        ? "battle"
+        ? 'battle'
         : activePlayerCount >= 3
-          ? "tournament"
-          : "single";
+          ? 'tournament'
+          : 'single'
 
   const contextValue: GameModeContextType = {
     gameMode,
@@ -325,19 +310,15 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     getAllPlayers,
     resetPlayers,
     isLoading,
-  };
+  }
 
-  return (
-    <GameModeContext.Provider value={contextValue}>
-      {children}
-    </GameModeContext.Provider>
-  );
+  return <GameModeContext.Provider value={contextValue}>{children}</GameModeContext.Provider>
 }
 
 export function useGameMode(): GameModeContextType {
-  const context = useContext(GameModeContext);
+  const context = useContext(GameModeContext)
   if (!context) {
-    throw new Error("useGameMode must be used within a GameModeProvider");
+    throw new Error('useGameMode must be used within a GameModeProvider')
   }
-  return context;
+  return context
 }

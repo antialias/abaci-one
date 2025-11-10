@@ -1,27 +1,27 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { getPostBySlug, getAllPostSlugs } from "@/lib/blog";
-import { css } from "../../../../styled-system/css";
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { getPostBySlug, getAllPostSlugs } from '@/lib/blog'
+import { css } from '../../../../styled-system/css'
 
 interface Props {
   params: {
-    slug: string;
-  };
+    slug: string
+  }
 }
 
 // Generate static params for all blog posts
 export async function generateStaticParams() {
-  const slugs = getAllPostSlugs();
-  return slugs.map((slug) => ({ slug }));
+  const slugs = getAllPostSlugs()
+  return slugs.map((slug) => ({ slug }))
 }
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = await getPostBySlug(params.slug);
+  const post = await getPostBySlug(params.slug)
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://abaci.one";
-  const postUrl = `${siteUrl}/blog/${params.slug}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://abaci.one'
+  const postUrl = `${siteUrl}/blog/${params.slug}`
 
   return {
     title: `${post.title} | Abaci.one Blog`,
@@ -31,95 +31,95 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: post.title,
       description: post.description,
       url: postUrl,
-      siteName: "Abaci.one",
-      type: "article",
+      siteName: 'Abaci.one',
+      type: 'article',
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt,
       authors: [post.author],
       tags: post.tags,
     },
     twitter: {
-      card: "summary_large_image",
+      card: 'summary_large_image',
       title: post.title,
       description: post.description,
     },
     alternates: {
       canonical: postUrl,
     },
-  };
+  }
 }
 
 export default async function BlogPost({ params }: Props) {
-  let post;
+  let post
   try {
-    post = await getPostBySlug(params.slug);
+    post = await getPostBySlug(params.slug)
   } catch {
-    notFound();
+    notFound()
   }
 
   // Format date for display
-  const publishedDate = new Date(post.publishedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 
-  const updatedDate = new Date(post.updatedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const updatedDate = new Date(post.updatedAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 
-  const showUpdatedDate = post.publishedAt !== post.updatedAt;
+  const showUpdatedDate = post.publishedAt !== post.updatedAt
 
   return (
     <div
       data-component="blog-post-page"
       className={css({
-        minH: "100vh",
-        bg: "bg.canvas",
-        pt: "var(--app-nav-height-full)",
+        minH: '100vh',
+        bg: 'bg.canvas',
+        pt: 'var(--app-nav-height-full)',
       })}
     >
       {/* Background pattern */}
       <div
         className={css({
-          position: "fixed",
+          position: 'fixed',
           inset: 0,
           opacity: 0.05,
           backgroundImage:
-            "radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)",
-          backgroundSize: "40px 40px",
-          pointerEvents: "none",
+            'radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)',
+          backgroundSize: '40px 40px',
+          pointerEvents: 'none',
           zIndex: 0,
         })}
       />
 
       <div
         className={css({
-          position: "relative",
+          position: 'relative',
           zIndex: 1,
-          maxW: "48rem",
-          mx: "auto",
-          px: { base: "1rem", md: "2rem" },
-          py: { base: "2rem", md: "4rem" },
+          maxW: '48rem',
+          mx: 'auto',
+          px: { base: '1rem', md: '2rem' },
+          py: { base: '2rem', md: '4rem' },
         })}
       >
         {/* Back link */}
         <Link
           href="/blog"
           className={css({
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            mb: "2rem",
-            color: "accent.default",
-            fontSize: "0.875rem",
-            fontWeight: "500",
-            textDecoration: "none",
-            transition: "color 0.2s",
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            mb: '2rem',
+            color: 'accent.default',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            textDecoration: 'none',
+            transition: 'color 0.2s',
             _hover: {
-              color: "accent.emphasis",
+              color: 'accent.emphasis',
             },
           })}
         >
@@ -132,19 +132,19 @@ export default async function BlogPost({ params }: Props) {
           <header
             data-section="article-header"
             className={css({
-              mb: "3rem",
-              pb: "2rem",
-              borderBottom: "1px solid",
-              borderColor: "border.muted",
+              mb: '3rem',
+              pb: '2rem',
+              borderBottom: '1px solid',
+              borderColor: 'border.muted',
             })}
           >
             <h1
               className={css({
-                fontSize: { base: "2rem", md: "2.5rem", lg: "3rem" },
-                fontWeight: "bold",
-                lineHeight: "1.2",
-                mb: "1rem",
-                color: "text.primary",
+                fontSize: { base: '2rem', md: '2.5rem', lg: '3rem' },
+                fontWeight: 'bold',
+                lineHeight: '1.2',
+                mb: '1rem',
+                color: 'text.primary',
               })}
             >
               {post.title}
@@ -152,10 +152,10 @@ export default async function BlogPost({ params }: Props) {
 
             <p
               className={css({
-                fontSize: { base: "1.125rem", md: "1.25rem" },
-                color: "text.secondary",
-                lineHeight: "1.6",
-                mb: "1.5rem",
+                fontSize: { base: '1.125rem', md: '1.25rem' },
+                color: 'text.secondary',
+                lineHeight: '1.6',
+                mb: '1.5rem',
               })}
             >
               {post.description}
@@ -164,12 +164,12 @@ export default async function BlogPost({ params }: Props) {
             <div
               data-element="article-meta"
               className={css({
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "1rem",
-                alignItems: "center",
-                fontSize: "0.875rem",
-                color: "text.muted",
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                alignItems: 'center',
+                fontSize: '0.875rem',
+                color: 'text.muted',
               })}
             >
               <span data-element="author">{post.author}</span>
@@ -187,23 +187,23 @@ export default async function BlogPost({ params }: Props) {
               <div
                 data-element="tags"
                 className={css({
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "0.5rem",
-                  mt: "1rem",
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  mt: '1rem',
                 })}
               >
                 {post.tags.map((tag) => (
                   <span
                     key={tag}
                     className={css({
-                      px: "0.75rem",
-                      py: "0.25rem",
-                      bg: "accent.muted",
-                      color: "accent.emphasis",
-                      borderRadius: "0.25rem",
-                      fontSize: "0.875rem",
-                      fontWeight: "500",
+                      px: '0.75rem',
+                      py: '0.25rem',
+                      bg: 'accent.muted',
+                      color: 'accent.emphasis',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
                     })}
                   >
                     {tag}
@@ -217,123 +217,123 @@ export default async function BlogPost({ params }: Props) {
           <div
             data-section="article-content"
             className={css({
-              fontSize: { base: "1rem", md: "1.125rem" },
-              lineHeight: "1.75",
-              color: "text.primary",
+              fontSize: { base: '1rem', md: '1.125rem' },
+              lineHeight: '1.75',
+              color: 'text.primary',
 
               // Typography styles for markdown content
-              "& h1": {
-                fontSize: { base: "1.875rem", md: "2.25rem" },
-                fontWeight: "bold",
-                mt: "2.5rem",
-                mb: "1rem",
-                lineHeight: "1.25",
-                color: "text.primary",
+              '& h1': {
+                fontSize: { base: '1.875rem', md: '2.25rem' },
+                fontWeight: 'bold',
+                mt: '2.5rem',
+                mb: '1rem',
+                lineHeight: '1.25',
+                color: 'text.primary',
               },
-              "& h2": {
-                fontSize: { base: "1.5rem", md: "1.875rem" },
-                fontWeight: "bold",
-                mt: "2rem",
-                mb: "0.875rem",
-                lineHeight: "1.3",
-                color: "accent.emphasis",
+              '& h2': {
+                fontSize: { base: '1.5rem', md: '1.875rem' },
+                fontWeight: 'bold',
+                mt: '2rem',
+                mb: '0.875rem',
+                lineHeight: '1.3',
+                color: 'accent.emphasis',
               },
-              "& h3": {
-                fontSize: { base: "1.25rem", md: "1.5rem" },
-                fontWeight: "600",
-                mt: "1.75rem",
-                mb: "0.75rem",
-                lineHeight: "1.4",
-                color: "accent.default",
+              '& h3': {
+                fontSize: { base: '1.25rem', md: '1.5rem' },
+                fontWeight: '600',
+                mt: '1.75rem',
+                mb: '0.75rem',
+                lineHeight: '1.4',
+                color: 'accent.default',
               },
-              "& p": {
-                mb: "1.25rem",
+              '& p': {
+                mb: '1.25rem',
               },
-              "& strong": {
-                fontWeight: "600",
-                color: "text.primary",
+              '& strong': {
+                fontWeight: '600',
+                color: 'text.primary',
               },
-              "& a": {
-                color: "accent.emphasis",
-                textDecoration: "underline",
+              '& a': {
+                color: 'accent.emphasis',
+                textDecoration: 'underline',
                 _hover: {
-                  color: "accent.default",
+                  color: 'accent.default',
                 },
               },
-              "& ul, & ol": {
-                pl: "1.5rem",
-                mb: "1.25rem",
+              '& ul, & ol': {
+                pl: '1.5rem',
+                mb: '1.25rem',
               },
-              "& li": {
-                mb: "0.5rem",
+              '& li': {
+                mb: '0.5rem',
               },
-              "& code": {
-                bg: "bg.muted",
-                px: "0.375rem",
-                py: "0.125rem",
-                borderRadius: "0.25rem",
-                fontSize: "0.875em",
-                fontFamily: "monospace",
-                color: "accent.emphasis",
-                border: "1px solid",
-                borderColor: "accent.default",
+              '& code': {
+                bg: 'bg.muted',
+                px: '0.375rem',
+                py: '0.125rem',
+                borderRadius: '0.25rem',
+                fontSize: '0.875em',
+                fontFamily: 'monospace',
+                color: 'accent.emphasis',
+                border: '1px solid',
+                borderColor: 'accent.default',
               },
-              "& pre": {
-                bg: "bg.surface",
-                border: "1px solid",
-                borderColor: "border.default",
-                color: "text.primary",
-                p: "1rem",
-                borderRadius: "0.5rem",
-                overflow: "auto",
-                mb: "1.25rem",
+              '& pre': {
+                bg: 'bg.surface',
+                border: '1px solid',
+                borderColor: 'border.default',
+                color: 'text.primary',
+                p: '1rem',
+                borderRadius: '0.5rem',
+                overflow: 'auto',
+                mb: '1.25rem',
               },
-              "& pre code": {
-                bg: "transparent",
-                p: "0",
-                border: "none",
-                color: "inherit",
-                fontSize: "0.875rem",
+              '& pre code': {
+                bg: 'transparent',
+                p: '0',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '0.875rem',
               },
-              "& blockquote": {
-                borderLeft: "4px solid",
-                borderColor: "accent.default",
-                pl: "1rem",
-                py: "0.5rem",
-                my: "1.5rem",
-                color: "text.secondary",
-                fontStyle: "italic",
-                bg: "accent.subtle",
-                borderRadius: "0 0.25rem 0.25rem 0",
+              '& blockquote': {
+                borderLeft: '4px solid',
+                borderColor: 'accent.default',
+                pl: '1rem',
+                py: '0.5rem',
+                my: '1.5rem',
+                color: 'text.secondary',
+                fontStyle: 'italic',
+                bg: 'accent.subtle',
+                borderRadius: '0 0.25rem 0.25rem 0',
               },
-              "& hr": {
-                my: "2rem",
-                borderColor: "border.muted",
+              '& hr': {
+                my: '2rem',
+                borderColor: 'border.muted',
               },
-              "& table": {
-                width: "100%",
-                mb: "1.25rem",
-                borderCollapse: "collapse",
+              '& table': {
+                width: '100%',
+                mb: '1.25rem',
+                borderCollapse: 'collapse',
               },
-              "& th": {
-                bg: "accent.muted",
-                px: "1rem",
-                py: "0.75rem",
-                textAlign: "left",
-                fontWeight: "600",
-                borderBottom: "2px solid",
-                borderColor: "accent.default",
-                color: "accent.emphasis",
+              '& th': {
+                bg: 'accent.muted',
+                px: '1rem',
+                py: '0.75rem',
+                textAlign: 'left',
+                fontWeight: '600',
+                borderBottom: '2px solid',
+                borderColor: 'accent.default',
+                color: 'accent.emphasis',
               },
-              "& td": {
-                px: "1rem",
-                py: "0.75rem",
-                borderBottom: "1px solid",
-                borderColor: "border.muted",
-                color: "text.secondary",
+              '& td': {
+                px: '1rem',
+                py: '0.75rem',
+                borderBottom: '1px solid',
+                borderColor: 'border.muted',
+                color: 'text.secondary',
               },
-              "& tr:hover td": {
-                bg: "accent.subtle",
+              '& tr:hover td': {
+                bg: 'accent.subtle',
               },
             })}
             dangerouslySetInnerHTML={{ __html: post.html }}
@@ -345,21 +345,21 @@ export default async function BlogPost({ params }: Props) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "BlogPosting",
+              '@context': 'https://schema.org',
+              '@type': 'BlogPosting',
               headline: post.title,
               description: post.description,
               author: {
-                "@type": "Person",
+                '@type': 'Person',
                 name: post.author,
               },
               datePublished: post.publishedAt,
               dateModified: post.updatedAt,
-              keywords: post.tags.join(", "),
+              keywords: post.tags.join(', '),
             }),
           }}
         />
       </div>
     </div>
-  );
+  )
 }

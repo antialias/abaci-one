@@ -1,18 +1,18 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from 'next/server'
 import {
   createInvitation,
   declineInvitation,
   getInvitation,
   getRoomInvitations,
-} from "@/lib/arcade/room-invitations";
-import { getRoomById } from "@/lib/arcade/room-manager";
-import { getRoomMembers } from "@/lib/arcade/room-membership";
-import { getSocketIO } from "@/lib/socket-io";
-import { getViewerId } from "@/lib/viewer";
+} from '@/lib/arcade/room-invitations'
+import { getRoomById } from '@/lib/arcade/room-manager'
+import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { getSocketIO } from '@/lib/socket-io'
+import { getViewerId } from '@/lib/viewer'
 
 type RouteContext = {
-  params: Promise<{ roomId: string }>;
-};
+  params: Promise<{ roomId: string }>
+}
 
 /**
  * POST /api/arcade/rooms/:roomId/invite
@@ -24,65 +24,53 @@ type RouteContext = {
  */
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params;
-    const viewerId = await getViewerId();
-    const body = await req.json();
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
+    const body = await req.json()
 
     // Validate required fields
     if (!body.userId || !body.userName) {
       return NextResponse.json(
-        { error: "Missing required fields: userId, userName" },
-        { status: 400 },
-      );
+        { error: 'Missing required fields: userId, userName' },
+        { status: 400 }
+      )
     }
 
     // Get room to check access mode
-    const room = await getRoomById(roomId);
+    const room = await getRoomById(roomId)
     if (!room) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
     // Cannot invite to retired rooms
-    if (room.accessMode === "retired") {
+    if (room.accessMode === 'retired') {
       return NextResponse.json(
-        { error: "Cannot send invitations to retired rooms" },
-        { status: 403 },
-      );
+        { error: 'Cannot send invitations to retired rooms' },
+        { status: 403 }
+      )
     }
 
     // Check if user is the host
-    const members = await getRoomMembers(roomId);
-    const currentMember = members.find((m) => m.userId === viewerId);
+    const members = await getRoomMembers(roomId)
+    const currentMember = members.find((m) => m.userId === viewerId)
 
     if (!currentMember) {
-      return NextResponse.json(
-        { error: "You are not in this room" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
     }
 
     if (!currentMember.isCreator) {
-      return NextResponse.json(
-        { error: "Only the host can send invitations" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: 'Only the host can send invitations' }, { status: 403 })
     }
 
     // Can't invite yourself
     if (body.userId === viewerId) {
-      return NextResponse.json(
-        { error: "Cannot invite yourself" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Cannot invite yourself' }, { status: 400 })
     }
 
     // Can't invite someone who's already in the room
-    const targetUser = members.find((m) => m.userId === body.userId);
+    const targetUser = members.find((m) => m.userId === body.userId)
     if (targetUser) {
-      return NextResponse.json(
-        { error: "User is already in this room" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'User is already in this room' }, { status: 400 })
     }
 
     // Create invitation
@@ -92,16 +80,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
       userName: body.userName,
       invitedBy: viewerId,
       invitedByName: currentMember.displayName,
-      invitationType: "manual",
+      invitationType: 'manual',
       message: body.message,
-    });
+    })
 
     // Broadcast invitation via socket
-    const io = await getSocketIO();
+    const io = await getSocketIO()
     if (io) {
       try {
         // Send to the invited user's channel
-        io.to(`user:${body.userId}`).emit("room-invitation-received", {
+        io.to(`user:${body.userId}`).emit('room-invitation-received', {
           invitation: {
             id: invitation.id,
             roomId: invitation.roomId,
@@ -110,26 +98,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
             message: invitation.message,
             createdAt: invitation.createdAt,
           },
-        });
+        })
 
-        console.log(
-          `[Invite API] Sent invitation to user ${body.userId} for room ${roomId}`,
-        );
+        console.log(`[Invite API] Sent invitation to user ${body.userId} for room ${roomId}`)
       } catch (socketError) {
-        console.error(
-          "[Invite API] Failed to broadcast invitation:",
-          socketError,
-        );
+        console.error('[Invite API] Failed to broadcast invitation:', socketError)
       }
     }
 
-    return NextResponse.json({ invitation }, { status: 200 });
+    return NextResponse.json({ invitation }, { status: 200 })
   } catch (error: any) {
-    console.error("Failed to send invitation:", error);
-    return NextResponse.json(
-      { error: "Failed to send invitation" },
-      { status: 500 },
-    );
+    console.error('Failed to send invitation:', error)
+    return NextResponse.json({ error: 'Failed to send invitation' }, { status: 500 })
   }
 }
 
@@ -139,37 +119,28 @@ export async function POST(req: NextRequest, context: RouteContext) {
  */
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params;
-    const viewerId = await getViewerId();
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
 
     // Check if user is the host
-    const members = await getRoomMembers(roomId);
-    const currentMember = members.find((m) => m.userId === viewerId);
+    const members = await getRoomMembers(roomId)
+    const currentMember = members.find((m) => m.userId === viewerId)
 
     if (!currentMember) {
-      return NextResponse.json(
-        { error: "You are not in this room" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
     }
 
     if (!currentMember.isCreator) {
-      return NextResponse.json(
-        { error: "Only the host can view invitations" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: 'Only the host can view invitations' }, { status: 403 })
     }
 
     // Get all invitations
-    const invitations = await getRoomInvitations(roomId);
+    const invitations = await getRoomInvitations(roomId)
 
-    return NextResponse.json({ invitations }, { status: 200 });
+    return NextResponse.json({ invitations }, { status: 200 })
   } catch (error: any) {
-    console.error("Failed to get invitations:", error);
-    return NextResponse.json(
-      { error: "Failed to get invitations" },
-      { status: 500 },
-    );
+    console.error('Failed to get invitations:', error)
+    return NextResponse.json({ error: 'Failed to get invitations' }, { status: 500 })
   }
 }
 
@@ -179,35 +150,26 @@ export async function GET(req: NextRequest, context: RouteContext) {
  */
 export async function DELETE(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params;
-    const viewerId = await getViewerId();
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
 
     // Check if there's an invitation for this user
-    const invitation = await getInvitation(roomId, viewerId);
+    const invitation = await getInvitation(roomId, viewerId)
 
     if (!invitation) {
-      return NextResponse.json(
-        { error: "No invitation found for this room" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'No invitation found for this room' }, { status: 404 })
     }
 
-    if (invitation.status !== "pending") {
-      return NextResponse.json(
-        { error: "Invitation is not pending" },
-        { status: 400 },
-      );
+    if (invitation.status !== 'pending') {
+      return NextResponse.json({ error: 'Invitation is not pending' }, { status: 400 })
     }
 
     // Decline the invitation
-    await declineInvitation(invitation.id);
+    await declineInvitation(invitation.id)
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
-    console.error("Failed to decline invitation:", error);
-    return NextResponse.json(
-      { error: "Failed to decline invitation" },
-      { status: 500 },
-    );
+    console.error('Failed to decline invitation:', error)
+    return NextResponse.json({ error: 'Failed to decline invitation' }, { status: 500 })
   }
 }

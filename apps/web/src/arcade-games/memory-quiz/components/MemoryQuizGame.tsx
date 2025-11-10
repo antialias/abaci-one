@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { PageWithNav } from "@/components/PageWithNav";
-import { css } from "../../../../styled-system/css";
-import { useMemoryQuiz } from "../Provider";
-import { DisplayPhase } from "./DisplayPhase";
-import { InputPhase } from "./InputPhase";
-import { ResultsPhase } from "./ResultsPhase";
-import { SetupPhase } from "./SetupPhase";
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { PageWithNav } from '@/components/PageWithNav'
+import { css } from '../../../../styled-system/css'
+import { useMemoryQuiz } from '../Provider'
+import { DisplayPhase } from './DisplayPhase'
+import { InputPhase } from './InputPhase'
+import { ResultsPhase } from './ResultsPhase'
+import { SetupPhase } from './SetupPhase'
 
 // CSS animations that need to be global
 const globalAnimations = `
@@ -59,23 +59,23 @@ const globalAnimations = `
     transform: translateX(-50%) translateY(0);
   }
 }
-`;
+`
 
 export function MemoryQuizGame() {
-  const router = useRouter();
-  const { state, exitSession, resetGame } = useMemoryQuiz();
+  const router = useRouter()
+  const { state, exitSession, resetGame } = useMemoryQuiz()
 
   return (
     <PageWithNav
       navTitle="Memory Lightning"
       navEmoji="🧠"
-      emphasizePlayerSelection={state.gamePhase === "setup"}
+      emphasizePlayerSelection={state.gamePhase === 'setup'}
       onExitSession={() => {
-        exitSession?.();
-        router.push("/arcade");
+        exitSession?.()
+        router.push('/arcade')
       }}
       onNewGame={() => {
-        resetGame?.();
+        resetGame?.()
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
@@ -83,39 +83,39 @@ export function MemoryQuizGame() {
       <div
         style={{
           flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "auto",
-          padding: "20px 8px",
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          padding: '20px 8px',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
         }}
       >
         <div
           style={{
-            maxWidth: "100%",
-            margin: "0 auto",
+            maxWidth: '100%',
+            margin: '0 auto',
             flex: 1,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           <div
             className={css({
-              textAlign: "center",
-              mb: "4",
+              textAlign: 'center',
+              mb: '4',
               flexShrink: 0,
             })}
           >
             <Link
               href="/arcade"
               className={css({
-                display: "inline-flex",
-                alignItems: "center",
-                color: "gray.600",
-                textDecoration: "none",
-                mb: "4",
-                _hover: { color: "gray.800" },
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'gray.600',
+                textDecoration: 'none',
+                mb: '4',
+                _hover: { color: 'gray.800' },
               })}
             >
               ← Back to Champion Arena
@@ -124,34 +124,34 @@ export function MemoryQuizGame() {
 
           <div
             className={css({
-              bg: "white",
-              rounded: "xl",
-              shadow: "xl",
-              overflow: "hidden",
-              border: "1px solid",
-              borderColor: "gray.200",
+              bg: 'white',
+              rounded: 'xl',
+              shadow: 'xl',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'gray.200',
               flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              maxHeight: "100%",
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '100%',
             })}
           >
             <div
               className={css({
                 flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "auto",
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'auto',
               })}
             >
-              {state.gamePhase === "setup" && <SetupPhase />}
-              {state.gamePhase === "display" && <DisplayPhase />}
-              {state.gamePhase === "input" && <InputPhase key="input-phase" />}
-              {state.gamePhase === "results" && <ResultsPhase />}
+              {state.gamePhase === 'setup' && <SetupPhase />}
+              {state.gamePhase === 'display' && <DisplayPhase />}
+              {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
+              {state.gamePhase === 'results' && <ResultsPhase />}
             </div>
           </div>
         </div>
       </div>
     </PageWithNav>
-  );
+  )
 }

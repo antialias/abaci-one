@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db, schema } from "@/db";
-import { getViewerId } from "@/lib/viewer";
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db, schema } from '@/db'
+import { getViewerId } from '@/lib/viewer'
 
 /**
  * GET /api/user-stats
@@ -9,12 +9,12 @@ import { getViewerId } from "@/lib/viewer";
  */
 export async function GET() {
   try {
-    const viewerId = await getViewerId();
+    const viewerId = await getViewerId()
 
     // Get user record
     const user = await db.query.users.findFirst({
       where: eq(schema.users.guestId, viewerId),
-    });
+    })
 
     if (!user) {
       // No user yet, return default stats
@@ -26,13 +26,13 @@ export async function GET() {
           bestTime: null,
           highestAccuracy: 0,
         },
-      });
+      })
     }
 
     // Get stats record
     let stats = await db.query.userStats.findFirst({
       where: eq(schema.userStats.userId, user.id),
-    });
+    })
 
     // If no stats record exists, create one with defaults
     if (!stats) {
@@ -41,18 +41,15 @@ export async function GET() {
         .values({
           userId: user.id,
         })
-        .returning();
+        .returning()
 
-      stats = newStats;
+      stats = newStats
     }
 
-    return NextResponse.json({ stats });
+    return NextResponse.json({ stats })
   } catch (error) {
-    console.error("Failed to fetch user stats:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user stats" },
-      { status: 500 },
-    );
+    console.error('Failed to fetch user stats:', error)
+    return NextResponse.json({ error: 'Failed to fetch user stats' }, { status: 500 })
   }
 }
 
@@ -62,13 +59,13 @@ export async function GET() {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const viewerId = await getViewerId();
-    const body = await req.json();
+    const viewerId = await getViewerId()
+    const body = await req.json()
 
     // Get or create user record
     let user = await db.query.users.findFirst({
       where: eq(schema.users.guestId, viewerId),
-    });
+    })
 
     if (!user) {
       // Create user if it doesn't exist
@@ -77,25 +74,23 @@ export async function PATCH(req: NextRequest) {
         .values({
           guestId: viewerId,
         })
-        .returning();
+        .returning()
 
-      user = newUser;
+      user = newUser
     }
 
     // Get existing stats
     const stats = await db.query.userStats.findFirst({
       where: eq(schema.userStats.userId, user.id),
-    });
+    })
 
     // Prepare update values
-    const updates: any = {};
-    if (body.gamesPlayed !== undefined) updates.gamesPlayed = body.gamesPlayed;
-    if (body.totalWins !== undefined) updates.totalWins = body.totalWins;
-    if (body.favoriteGameType !== undefined)
-      updates.favoriteGameType = body.favoriteGameType;
-    if (body.bestTime !== undefined) updates.bestTime = body.bestTime;
-    if (body.highestAccuracy !== undefined)
-      updates.highestAccuracy = body.highestAccuracy;
+    const updates: any = {}
+    if (body.gamesPlayed !== undefined) updates.gamesPlayed = body.gamesPlayed
+    if (body.totalWins !== undefined) updates.totalWins = body.totalWins
+    if (body.favoriteGameType !== undefined) updates.favoriteGameType = body.favoriteGameType
+    if (body.bestTime !== undefined) updates.bestTime = body.bestTime
+    if (body.highestAccuracy !== undefined) updates.highestAccuracy = body.highestAccuracy
 
     if (stats) {
       // Update existing stats
@@ -103,9 +98,9 @@ export async function PATCH(req: NextRequest) {
         .update(schema.userStats)
         .set(updates)
         .where(eq(schema.userStats.userId, user.id))
-        .returning();
+        .returning()
 
-      return NextResponse.json({ stats: updatedStats });
+      return NextResponse.json({ stats: updatedStats })
     } else {
       // Create new stats record
       const [newStats] = await db
@@ -114,15 +109,12 @@ export async function PATCH(req: NextRequest) {
           userId: user.id,
           ...updates,
         })
-        .returning();
+        .returning()
 
-      return NextResponse.json({ stats: newStats }, { status: 201 });
+      return NextResponse.json({ stats: newStats }, { status: 201 })
     }
   } catch (error) {
-    console.error("Failed to update user stats:", error);
-    return NextResponse.json(
-      { error: "Failed to update user stats" },
-      { status: 500 },
-    );
+    console.error('Failed to update user stats:', error)
+    return NextResponse.json({ error: 'Failed to update user stats' }, { status: 500 })
   }
 }

@@ -3,14 +3,14 @@
  */
 
 export interface BoardPosition {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 export interface BoardLayout {
-  cellSize: number;
-  gap: number;
-  padding: number;
+  cellSize: number
+  gap: number
+  padding: number
 }
 
 /**
@@ -19,9 +19,9 @@ export interface BoardLayout {
  * @returns Object with file (0-7) and rank (1-8)
  */
 export function parseSquare(square: string): { file: number; rank: number } {
-  const file = square.charCodeAt(0) - 65; // 'A' = 0, 'B' = 1, etc.
-  const rank = Number.parseInt(square.slice(1), 10);
-  return { file, rank };
+  const file = square.charCodeAt(0) - 65 // 'A' = 0, 'B' = 1, etc.
+  const rank = Number.parseInt(square.slice(1), 10)
+  return { file, rank }
 }
 
 /**
@@ -30,7 +30,7 @@ export function parseSquare(square: string): { file: number; rank: number } {
  * @returns Row index (0-7)
  */
 export function rankToRow(rank: number): number {
-  return 8 - rank;
+  return 8 - rank
 }
 
 /**
@@ -39,23 +39,14 @@ export function rankToRow(rank: number): number {
  * @param layout - Board layout configuration
  * @returns Center position {x, y} in pixels
  */
-export function getSquarePosition(
-  square: string,
-  layout: BoardLayout,
-): BoardPosition {
-  const { file, rank } = parseSquare(square);
-  const row = rankToRow(rank);
+export function getSquarePosition(square: string, layout: BoardLayout): BoardPosition {
+  const { file, rank } = parseSquare(square)
+  const row = rankToRow(rank)
 
   return {
-    x:
-      layout.padding +
-      file * (layout.cellSize + layout.gap) +
-      layout.cellSize / 2,
-    y:
-      layout.padding +
-      row * (layout.cellSize + layout.gap) +
-      layout.cellSize / 2,
-  };
+    x: layout.padding + file * (layout.cellSize + layout.gap) + layout.cellSize / 2,
+    y: layout.padding + row * (layout.cellSize + layout.gap) + layout.cellSize / 2,
+  }
 }
 
 /**
@@ -64,17 +55,14 @@ export function getSquarePosition(
  * @param layout - Board layout configuration
  * @returns Top-left position {x, y} in pixels
  */
-export function getSquareCorner(
-  square: string,
-  layout: BoardLayout,
-): BoardPosition {
-  const { file, rank } = parseSquare(square);
-  const row = rankToRow(rank);
+export function getSquareCorner(square: string, layout: BoardLayout): BoardPosition {
+  const { file, rank } = parseSquare(square)
+  const row = rankToRow(rank)
 
   return {
     x: layout.padding + file * (layout.cellSize + layout.gap),
     y: layout.padding + row * (layout.cellSize + layout.gap),
-  };
+  }
 }
 
 /**
@@ -83,12 +71,12 @@ export function getSquareCorner(
  * @returns Total width and height in pixels
  */
 export function getBoardDimensions(layout: BoardLayout): {
-  width: number;
-  height: number;
+  width: number
+  height: number
 } {
-  const boardSize = 8 * layout.cellSize + 7 * layout.gap;
+  const boardSize = 8 * layout.cellSize + 7 * layout.gap
   return {
     width: boardSize + 2 * layout.padding,
     height: boardSize + 2 * layout.padding,
-  };
+  }
 }

@@ -1,27 +1,24 @@
 // Typst document generator for addition worksheets
 
-import type { WorksheetProblem, WorksheetConfig } from "./types";
+import type { WorksheetProblem, WorksheetConfig } from './types'
 import {
   generateTypstHelpers,
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
   generatePlaceValueColors,
-} from "./typstHelpers";
-import { analyzeProblem, analyzeSubtractionProblem } from "./problemAnalysis";
-import { resolveDisplayForProblem } from "./displayRules";
+} from './typstHelpers'
+import { analyzeProblem, analyzeSubtractionProblem } from './problemAnalysis'
+import { resolveDisplayForProblem } from './displayRules'
 
 /**
  * Chunk array into pages of specified size
  */
-function chunkProblems(
-  problems: WorksheetProblem[],
-  pageSize: number,
-): WorksheetProblem[][] {
-  const pages: WorksheetProblem[][] = [];
+function chunkProblems(problems: WorksheetProblem[], pageSize: number): WorksheetProblem[][] {
+  const pages: WorksheetProblem[][] = []
   for (let i = 0; i < problems.length; i += pageSize) {
-    pages.push(problems.slice(i, i + pageSize));
+    pages.push(problems.slice(i, i + pageSize))
   }
-  return pages;
+  return pages
 }
 
 /**
@@ -29,22 +26,22 @@ function chunkProblems(
  * Returns max digits across all operands (handles both addition and subtraction)
  */
 function calculateMaxDigits(problems: WorksheetProblem[]): number {
-  let maxDigits = 1;
+  let maxDigits = 1
   for (const problem of problems) {
-    if (problem.operator === "+") {
-      const digitsA = problem.a.toString().length;
-      const digitsB = problem.b.toString().length;
-      const maxProblemDigits = Math.max(digitsA, digitsB);
-      maxDigits = Math.max(maxDigits, maxProblemDigits);
+    if (problem.operator === '+') {
+      const digitsA = problem.a.toString().length
+      const digitsB = problem.b.toString().length
+      const maxProblemDigits = Math.max(digitsA, digitsB)
+      maxDigits = Math.max(maxDigits, maxProblemDigits)
     } else {
       // Subtraction
-      const digitsMinuend = problem.minuend.toString().length;
-      const digitsSubtrahend = problem.subtrahend.toString().length;
-      const maxProblemDigits = Math.max(digitsMinuend, digitsSubtrahend);
-      maxDigits = Math.max(maxDigits, maxProblemDigits);
+      const digitsMinuend = problem.minuend.toString().length
+      const digitsSubtrahend = problem.subtrahend.toString().length
+      const maxProblemDigits = Math.max(digitsMinuend, digitsSubtrahend)
+      maxDigits = Math.max(maxDigits, maxProblemDigits)
     }
   }
-  return maxDigits;
+  return maxDigits
 }
 
 /**
@@ -54,70 +51,31 @@ function generatePageTypst(
   config: WorksheetConfig,
   pageProblems: WorksheetProblem[],
   problemOffset: number,
-  rowsPerPage: number,
+  rowsPerPage: number
 ): string {
-  console.log("[typstGenerator] generatePageTypst called with config:", {
-    mode: config.mode,
-    displayRules:
-      config.mode === "smart" ? config.displayRules : "N/A (manual mode)",
-    showTenFrames:
-      config.mode === "manual" ? config.showTenFrames : "N/A (smart mode)",
-  });
-
   // Calculate maximum digits for proper column layout
-  const maxDigits = calculateMaxDigits(pageProblems);
-  console.log("[typstGenerator] Max digits on this page:", maxDigits);
+  const maxDigits = calculateMaxDigits(pageProblems)
 
   // Enrich problems with display options based on mode
   const enrichedProblems = pageProblems.map((p, index) => {
-    if (config.mode === "smart") {
-      // Smart mode: Per-problem conditional display based on problem complexity
+    if (config.mode === 'smart' || config.mode === 'mastery') {
+      // Smart & Mastery modes: Per-problem conditional display based on problem complexity
+      // Both modes use displayRules for conditional scaffolding
       const meta =
-        p.operator === "+"
+        p.operator === '+'
           ? analyzeProblem(p.a, p.b)
-          : analyzeSubtractionProblem(p.minuend, p.subtrahend);
+          : analyzeSubtractionProblem(p.minuend, p.subtrahend)
       const displayOptions = resolveDisplayForProblem(
         config.displayRules as any, // Cast for backward compatibility with configs missing new fields
-        meta,
-      );
-
-      if (index === 0) {
-        const problemStr =
-          p.operator === "+"
-            ? `${p.a} + ${p.b}`
-            : `${p.minuend} − ${p.subtrahend}`;
-        console.log(
-          "[typstGenerator] Smart mode - First problem display options:",
-          {
-            problem: problemStr,
-            meta,
-            displayOptions,
-          },
-        );
-      }
+        meta
+      )
 
       return {
         ...p,
         ...displayOptions, // Now includes showBorrowNotation and showBorrowingHints from resolved rules
-      };
-    } else {
-      // Manual mode: Uniform display across all problems
-      if (index === 0) {
-        const problemStr =
-          p.operator === "+"
-            ? `${p.a} + ${p.b}`
-            : `${p.minuend} − ${p.subtrahend}`;
-        console.log("[typstGenerator] Manual mode - Uniform display options:", {
-          problem: problemStr,
-          showCarryBoxes: config.showCarryBoxes,
-          showAnswerBoxes: config.showAnswerBoxes,
-          showPlaceValueColors: config.showPlaceValueColors,
-          showTenFrames: config.showTenFrames,
-          showProblemNumbers: config.showProblemNumbers,
-          showCellBorder: config.showCellBorder,
-        });
       }
-
+    } else {
+      // Manual mode: Uniform display across all problems using boolean flags
       return {
         ...p,
         showCarryBoxes: config.showCarryBoxes,
@@ -126,44 +84,50 @@ function generatePageTypst(
         showTenFrames: config.showTenFrames,
         showProblemNumbers: config.showProblemNumbers,
         showCellBorder: config.showCellBorder,
-        showBorrowNotation:
-          "showBorrowNotation" in config ? config.showBorrowNotation : true,
-        showBorrowingHints:
-          "showBorrowingHints" in config ? config.showBorrowingHints : false,
-      };
+        showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : true,
+        showBorrowingHints: 'showBorrowingHints' in config ? config.showBorrowingHints : false,
+      }
     }
-  });
+  })
+
+  // DEBUG: Show first 3 problems' ten-frames status
+  console.log('[TYPST DEBUG] First 3 enriched problems:', enrichedProblems.slice(0, 3).map((p, i) => ({
+    index: i,
+    problem: p.operator === '+' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
+    showTenFrames: p.showTenFrames,
+  })))
 
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems
     .map((p) => {
-      if (p.operator === "+") {
-        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`;
+      if (p.operator === '+') {
+        return `  (operator: "+", a: ${p.a}, b: ${p.b}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`
       } else {
-        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`;
+        return `  (operator: "−", minuend: ${p.minuend}, subtrahend: ${p.subtrahend}, showCarryBoxes: ${p.showCarryBoxes}, showAnswerBoxes: ${p.showAnswerBoxes}, showPlaceValueColors: ${p.showPlaceValueColors}, showTenFrames: ${p.showTenFrames}, showProblemNumbers: ${p.showProblemNumbers}, showCellBorder: ${p.showCellBorder}, showBorrowNotation: ${p.showBorrowNotation}, showBorrowingHints: ${p.showBorrowingHints}),`
       }
     })
-    .join("\n");
+    .join('\n')
+
+  // DEBUG: Show Typst problem data for first problem
+  console.log('[TYPST DEBUG] First problem Typst data:', problemsTypst.split('\n')[0])
 
   // Calculate actual number of rows on this page
-  const actualRows = Math.ceil(pageProblems.length / config.cols);
+  const actualRows = Math.ceil(pageProblems.length / config.cols)
 
   // Use smaller margins to maximize space
-  const margin = 0.4;
-  const contentWidth = config.page.wIn - margin * 2;
-  const contentHeight = config.page.hIn - margin * 2;
+  const margin = 0.4
+  const contentWidth = config.page.wIn - margin * 2
+  const contentHeight = config.page.hIn - margin * 2
 
   // Calculate grid spacing based on ACTUAL rows on this page
-  const headerHeight = 0.35; // inches for header
-  const availableHeight = contentHeight - headerHeight;
-  const problemBoxHeight = availableHeight / actualRows;
-  const problemBoxWidth = contentWidth / config.cols;
+  const headerHeight = 0.35 // inches for header
+  const availableHeight = contentHeight - headerHeight
+  const problemBoxHeight = availableHeight / actualRows
+  const problemBoxWidth = contentWidth / config.cols
 
   // Calculate cell size assuming MAXIMUM possible embellishments
   // Check if ANY problem on this page might show ten-frames
-  const anyProblemMayShowTenFrames = enrichedProblems.some(
-    (p) => p.showTenFrames,
-  );
+  const anyProblemMayShowTenFrames = enrichedProblems.some((p) => p.showTenFrames)
 
   // Calculate cell size to fill the entire problem box
   // Base vertical stack: carry row + addend1 + addend2 + line + answer = 5 rows
@@ -172,13 +136,13 @@ function generatePageTypst(
   //
   // Horizontal constraint: maxDigits columns + 1 for + sign
   // Cell size must fit: (maxDigits + 1) * cellSize <= problemBoxWidth
-  const maxCellSizeForWidth = problemBoxWidth / (maxDigits + 1);
+  const maxCellSizeForWidth = problemBoxWidth / (maxDigits + 1)
   const maxCellSizeForHeight = anyProblemMayShowTenFrames
     ? problemBoxHeight / 6.0
-    : problemBoxHeight / 4.5;
+    : problemBoxHeight / 4.5
 
   // Use the smaller of width/height constraints
-  const cellSize = Math.min(maxCellSizeForWidth, maxCellSizeForHeight);
+  const cellSize = Math.min(maxCellSizeForWidth, maxCellSizeForHeight)
 
   return String.raw`
 // addition-worksheet-page.typ (auto-generated)
@@ -196,13 +160,13 @@ function generatePageTypst(
 
 #let heavy-stroke = 0.8pt
 #let show-ten-frames-for-all = ${
-    config.mode === "manual"
+    config.mode === 'manual'
       ? config.showTenFramesForAll
-        ? "true"
-        : "false"
-      : config.displayRules.tenFrames === "always"
-        ? "true"
-        : "false"
+        ? 'true'
+        : 'false'
+      : config.displayRules.tenFrames === 'always'
+        ? 'true'
+        : 'false'
   }
 
 ${generatePlaceValueColors()}
@@ -280,7 +244,7 @@ ${problemsTypst}
 )
 
 ] // End of constrained block
-`;
+`
 }
 
 /**
@@ -288,22 +252,17 @@ ${problemsTypst}
  */
 export function generateTypstSource(
   config: WorksheetConfig,
-  problems: WorksheetProblem[],
+  problems: WorksheetProblem[]
 ): string[] {
   // Use the problemsPerPage directly from config (primary state)
-  const problemsPerPage = config.problemsPerPage;
-  const rowsPerPage = problemsPerPage / config.cols;
+  const problemsPerPage = config.problemsPerPage
+  const rowsPerPage = problemsPerPage / config.cols
 
   // Chunk problems into discrete pages
-  const pages = chunkProblems(problems, problemsPerPage);
+  const pages = chunkProblems(problems, problemsPerPage)
 
   // Generate separate Typst source for each page
   return pages.map((pageProblems, pageIndex) =>
-    generatePageTypst(
-      config,
-      pageProblems,
-      pageIndex * problemsPerPage,
-      rowsPerPage,
-    ),
-  );
+    generatePageTypst(config, pageProblems, pageIndex * problemsPerPage, rowsPerPage)
+  )
 }

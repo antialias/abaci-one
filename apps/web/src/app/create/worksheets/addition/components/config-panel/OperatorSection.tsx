@@ -1,63 +1,59 @@
-import { css } from "../../../../../../../styled-system/css";
+import { css } from '../../../../../../../styled-system/css'
 
 export interface OperatorSectionProps {
-  operator: "addition" | "subtraction" | "mixed" | undefined;
-  onChange: (operator: "addition" | "subtraction" | "mixed") => void;
-  isDark?: boolean;
+  operator: 'addition' | 'subtraction' | 'mixed' | undefined
+  onChange: (operator: 'addition' | 'subtraction' | 'mixed') => void
+  isDark?: boolean
 }
 
-export function OperatorSection({
-  operator,
-  onChange,
-  isDark = false,
-}: OperatorSectionProps) {
+export function OperatorSection({ operator, onChange, isDark = false }: OperatorSectionProps) {
   return (
     <div
       data-section="operator-selection"
       className={css({
-        bg: isDark ? "gray.700" : "gray.50",
-        border: "1px solid",
-        borderColor: isDark ? "gray.600" : "gray.200",
-        rounded: "xl",
-        p: "4",
+        bg: isDark ? 'gray.700' : 'gray.50',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
+        rounded: 'xl',
+        p: '4',
       })}
     >
       <label
         className={css({
-          fontSize: "sm",
-          fontWeight: "semibold",
-          color: isDark ? "gray.200" : "gray.700",
-          mb: "2",
-          display: "block",
+          fontSize: 'sm',
+          fontWeight: 'semibold',
+          color: isDark ? 'gray.200' : 'gray.700',
+          mb: '2',
+          display: 'block',
         })}
       >
         Operation Type
       </label>
 
-      <div className={css({ display: "flex", gap: "2", mb: "2" })}>
+      <div className={css({ display: 'flex', gap: '2', mb: '2' })}>
         <button
           type="button"
-          onClick={() => onChange("addition")}
+          onClick={() => onChange('addition')}
           className={css({
             flex: 1,
-            px: "4",
-            py: "2",
-            rounded: "lg",
-            fontSize: "sm",
-            fontWeight: "medium",
-            border: "2px solid",
-            transition: "all 0.2s",
-            ...(operator === "addition" || !operator
+            px: '4',
+            py: '2',
+            rounded: 'lg',
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            border: '2px solid',
+            transition: 'all 0.2s',
+            ...(operator === 'addition' || !operator
               ? {
-                  bg: "brand.600",
-                  borderColor: "brand.600",
-                  color: "white",
+                  bg: 'brand.600',
+                  borderColor: 'brand.600',
+                  color: 'white',
                 }
               : {
-                  bg: isDark ? "gray.600" : "white",
-                  borderColor: isDark ? "gray.500" : "gray.300",
-                  color: isDark ? "gray.200" : "gray.700",
-                  _hover: { borderColor: isDark ? "gray.400" : "gray.400" },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >
@@ -66,27 +62,27 @@ export function OperatorSection({
 
         <button
           type="button"
-          onClick={() => onChange("subtraction")}
+          onClick={() => onChange('subtraction')}
           className={css({
             flex: 1,
-            px: "4",
-            py: "2",
-            rounded: "lg",
-            fontSize: "sm",
-            fontWeight: "medium",
-            border: "2px solid",
-            transition: "all 0.2s",
-            ...(operator === "subtraction"
+            px: '4',
+            py: '2',
+            rounded: 'lg',
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            border: '2px solid',
+            transition: 'all 0.2s',
+            ...(operator === 'subtraction'
               ? {
-                  bg: "brand.600",
-                  borderColor: "brand.600",
-                  color: "white",
+                  bg: 'brand.600',
+                  borderColor: 'brand.600',
+                  color: 'white',
                 }
               : {
-                  bg: isDark ? "gray.600" : "white",
-                  borderColor: isDark ? "gray.500" : "gray.300",
-                  color: isDark ? "gray.200" : "gray.700",
-                  _hover: { borderColor: isDark ? "gray.400" : "gray.400" },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >
@@ -95,27 +91,27 @@ export function OperatorSection({
 
         <button
           type="button"
-          onClick={() => onChange("mixed")}
+          onClick={() => onChange('mixed')}
           className={css({
             flex: 1,
-            px: "4",
-            py: "2",
-            rounded: "lg",
-            fontSize: "sm",
-            fontWeight: "medium",
-            border: "2px solid",
-            transition: "all 0.2s",
-            ...(operator === "mixed"
+            px: '4',
+            py: '2',
+            rounded: 'lg',
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            border: '2px solid',
+            transition: 'all 0.2s',
+            ...(operator === 'mixed'
               ? {
-                  bg: "brand.600",
-                  borderColor: "brand.600",
-                  color: "white",
+                  bg: 'brand.600',
+                  borderColor: 'brand.600',
+                  color: 'white',
                 }
               : {
-                  bg: isDark ? "gray.600" : "white",
-                  borderColor: isDark ? "gray.500" : "gray.300",
-                  color: isDark ? "gray.200" : "gray.700",
-                  _hover: { borderColor: isDark ? "gray.400" : "gray.400" },
+                  bg: isDark ? 'gray.600' : 'white',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  _hover: { borderColor: isDark ? 'gray.400' : 'gray.400' },
                 }),
           })}
         >
@@ -123,13 +119,13 @@ export function OperatorSection({
         </button>
       </div>
 
-      <p className={css({ fontSize: "xs", color: "gray.600" })}>
-        {operator === "mixed"
-          ? "Problems will randomly use addition or subtraction"
-          : operator === "subtraction"
-            ? "All problems will be subtraction"
-            : "All problems will be addition"}
+      <p className={css({ fontSize: 'xs', color: 'gray.600' })}>
+        {operator === 'mixed'
+          ? 'Problems will randomly use addition or subtraction'
+          : operator === 'subtraction'
+            ? 'All problems will be subtraction'
+            : 'All problems will be addition'}
       </p>
     </div>
-  );
+  )
 }

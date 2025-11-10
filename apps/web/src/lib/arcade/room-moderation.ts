@@ -3,25 +3,22 @@
  * Handles reports, bans, and kicks for arcade rooms
  */
 
-import { and, desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { roomBans, roomMembers, roomReports } from "@/db/schema";
-import { recordRoomMemberHistory } from "./room-member-history";
+import { and, desc, eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { roomBans, roomMembers, roomReports } from '@/db/schema'
+import { recordRoomMemberHistory } from './room-member-history'
 
 /**
  * Check if a user is banned from a room
  */
-export async function isUserBanned(
-  roomId: string,
-  userId: string,
-): Promise<boolean> {
+export async function isUserBanned(roomId: string, userId: string): Promise<boolean> {
   const ban = await db
     .select()
     .from(roomBans)
     .where(and(eq(roomBans.roomId, roomId), eq(roomBans.userId, userId)))
-    .limit(1);
+    .limit(1)
 
-  return ban.length > 0;
+  return ban.length > 0
 }
 
 /**
@@ -32,26 +29,20 @@ export async function getRoomBans(roomId: string) {
     .select()
     .from(roomBans)
     .where(eq(roomBans.roomId, roomId))
-    .orderBy(desc(roomBans.createdAt));
+    .orderBy(desc(roomBans.createdAt))
 }
 
 /**
  * Ban a user from a room
  */
 export async function banUserFromRoom(params: {
-  roomId: string;
-  userId: string;
-  userName: string;
-  bannedBy: string;
-  bannedByName: string;
-  reason:
-    | "harassment"
-    | "cheating"
-    | "inappropriate-name"
-    | "spam"
-    | "afk"
-    | "other";
-  notes?: string;
+  roomId: string
+  userId: string
+  userName: string
+  bannedBy: string
+  bannedByName: string
+  reason: 'harassment' | 'cheating' | 'inappropriate-name' | 'spam' | 'afk' | 'other'
+  notes?: string
 }) {
   // Insert ban record (upsert in case they were already banned)
   const [ban] = await db
@@ -75,36 +66,29 @@ export async function banUserFromRoom(params: {
         createdAt: new Date(),
       },
     })
-    .returning();
+    .returning()
 
   // Remove user from room members
   await db
     .delete(roomMembers)
-    .where(
-      and(
-        eq(roomMembers.roomId, params.roomId),
-        eq(roomMembers.userId, params.userId),
-      ),
-    );
+    .where(and(eq(roomMembers.roomId, params.roomId), eq(roomMembers.userId, params.userId)))
 
   // Record in history
   await recordRoomMemberHistory({
     roomId: params.roomId,
     userId: params.userId,
     displayName: params.userName,
-    action: "banned",
-  });
+    action: 'banned',
+  })
 
-  return ban;
+  return ban
 }
 
 /**
  * Unban a user from a room
  */
 export async function unbanUserFromRoom(roomId: string, userId: string) {
-  await db
-    .delete(roomBans)
-    .where(and(eq(roomBans.roomId, roomId), eq(roomBans.userId, userId)));
+  await db.delete(roomBans).where(and(eq(roomBans.roomId, roomId), eq(roomBans.userId, userId)))
 }
 
 /**
@@ -116,11 +100,11 @@ export async function kickUserFromRoom(roomId: string, userId: string) {
     .select()
     .from(roomMembers)
     .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)))
-    .limit(1);
+    .limit(1)
 
   await db
     .delete(roomMembers)
-    .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)));
+    .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)))
 
   // Record in history
   if (member.length > 0) {
@@ -128,8 +112,8 @@ export async function kickUserFromRoom(roomId: string, userId: string) {
       roomId,
       userId,
       displayName: member[0].displayName,
-      action: "kicked",
-    });
+      action: 'kicked',
+    })
   }
 }
 
@@ -137,19 +121,13 @@ export async function kickUserFromRoom(roomId: string, userId: string) {
  * Submit a report
  */
 export async function createReport(params: {
-  roomId: string;
-  reporterId: string;
-  reporterName: string;
-  reportedUserId: string;
-  reportedUserName: string;
-  reason:
-    | "harassment"
-    | "cheating"
-    | "inappropriate-name"
-    | "spam"
-    | "afk"
-    | "other";
-  details?: string;
+  roomId: string
+  reporterId: string
+  reporterName: string
+  reportedUserId: string
+  reportedUserName: string
+  reason: 'harassment' | 'cheating' | 'inappropriate-name' | 'spam' | 'afk' | 'other'
+  details?: string
 }) {
   const [report] = await db
     .insert(roomReports)
@@ -161,11 +139,11 @@ export async function createReport(params: {
       reportedUserName: params.reportedUserName,
       reason: params.reason,
       details: params.details,
-      status: "pending",
+      status: 'pending',
     })
-    .returning();
+    .returning()
 
-  return report;
+  return report
 }
 
 /**
@@ -175,10 +153,8 @@ export async function getPendingReports(roomId: string) {
   return db
     .select()
     .from(roomReports)
-    .where(
-      and(eq(roomReports.roomId, roomId), eq(roomReports.status, "pending")),
-    )
-    .orderBy(desc(roomReports.createdAt));
+    .where(and(eq(roomReports.roomId, roomId), eq(roomReports.status, 'pending')))
+    .orderBy(desc(roomReports.createdAt))
 }
 
 /**
@@ -189,7 +165,7 @@ export async function getAllReports(roomId: string) {
     .select()
     .from(roomReports)
     .where(eq(roomReports.roomId, roomId))
-    .orderBy(desc(roomReports.createdAt));
+    .orderBy(desc(roomReports.createdAt))
 }
 
 /**
@@ -199,11 +175,11 @@ export async function markReportReviewed(reportId: string, reviewedBy: string) {
   await db
     .update(roomReports)
     .set({
-      status: "reviewed",
+      status: 'reviewed',
       reviewedAt: new Date(),
       reviewedBy,
     })
-    .where(eq(roomReports.id, reportId));
+    .where(eq(roomReports.id, reportId))
 }
 
 /**
@@ -213,9 +189,9 @@ export async function dismissReport(reportId: string, reviewedBy: string) {
   await db
     .update(roomReports)
     .set({
-      status: "dismissed",
+      status: 'dismissed',
       reviewedAt: new Date(),
       reviewedBy,
     })
-    .where(eq(roomReports.id, reportId));
+    .where(eq(roomReports.id, reportId))
 }

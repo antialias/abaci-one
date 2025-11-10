@@ -1,12 +1,12 @@
-import { rithmomachiaMessages } from "@/arcade-games/rithmomachia/messages";
-import { calendarMessages } from "@/i18n/locales/calendar/messages";
-import { createMessages } from "@/i18n/locales/create/messages";
-import { gamesMessages } from "@/i18n/locales/games/messages";
-import { guideMessages } from "@/i18n/locales/guide/messages";
-import { homeMessages } from "@/i18n/locales/home/messages";
-import { tutorialMessages } from "@/i18n/locales/tutorial/messages";
+import { rithmomachiaMessages } from '@/arcade-games/rithmomachia/messages'
+import { calendarMessages } from '@/i18n/locales/calendar/messages'
+import { createMessages } from '@/i18n/locales/create/messages'
+import { gamesMessages } from '@/i18n/locales/games/messages'
+import { guideMessages } from '@/i18n/locales/guide/messages'
+import { homeMessages } from '@/i18n/locales/home/messages'
+import { tutorialMessages } from '@/i18n/locales/tutorial/messages'
 
-export type Locale = "en" | "de" | "ja" | "hi" | "es" | "la" | "goh";
+export type Locale = 'en' | 'de' | 'ja' | 'hi' | 'es' | 'la' | 'goh'
 
 /**
  * Deep merge messages from multiple sources
@@ -14,18 +14,14 @@ export type Locale = "en" | "de" | "ja" | "hi" | "es" | "la" | "goh";
 function mergeMessages(...sources: Record<string, any>[]): Record<string, any> {
   return sources.reduce((acc, source) => {
     for (const [key, value] of Object.entries(source)) {
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        !Array.isArray(value)
-      ) {
-        acc[key] = mergeMessages(acc[key] || {}, value);
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        acc[key] = mergeMessages(acc[key] || {}, value)
       } else {
-        acc[key] = value;
+        acc[key] = value
       }
     }
-    return acc;
-  }, {});
+    return acc
+  }, {})
 }
 
 /**
@@ -37,7 +33,7 @@ export async function getMessages(locale: Locale) {
     common: {
       // Add app-wide translations here as needed
     },
-  };
+  }
 
   // Merge all co-located feature messages
   return mergeMessages(
@@ -48,6 +44,6 @@ export async function getMessages(locale: Locale) {
     { tutorial: tutorialMessages[locale] },
     { calendar: calendarMessages[locale] },
     { create: createMessages[locale] },
-    rithmomachiaMessages[locale],
-  );
+    rithmomachiaMessages[locale]
+  )
 }

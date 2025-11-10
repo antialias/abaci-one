@@ -1,29 +1,29 @@
-import type { StorybookConfig } from "@storybook/nextjs";
+import type { StorybookConfig } from '@storybook/nextjs'
 
-import { dirname, join } from "path";
+import { dirname, join } from 'path'
 
 /**
  * This function is used to resolve the absolute path of a package.
  * It is needed in projects that use Yarn PnP or are set up within a monorepo.
  */
 function getAbsolutePath(value: string): any {
-  return dirname(require.resolve(join(value, "package.json")));
+  return dirname(require.resolve(join(value, 'package.json')))
 }
 const config: StorybookConfig = {
-  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   addons: [
-    getAbsolutePath("@storybook/addon-docs"),
-    getAbsolutePath("@storybook/addon-onboarding"),
+    getAbsolutePath('@storybook/addon-docs'),
+    getAbsolutePath('@storybook/addon-onboarding'),
   ],
   framework: {
-    name: getAbsolutePath("@storybook/nextjs"),
+    name: getAbsolutePath('@storybook/nextjs'),
     options: {
-      nextConfigPath: "../next.config.js",
+      nextConfigPath: '../next.config.js',
     },
   },
-  staticDirs: ["../public"],
+  staticDirs: ['../public'],
   typescript: {
-    reactDocgen: "react-docgen-typescript",
+    reactDocgen: 'react-docgen-typescript',
   },
   webpackFinal: async (config) => {
     // Handle PandaCSS styled-system imports
@@ -31,25 +31,13 @@ const config: StorybookConfig = {
       config.resolve.alias = {
         ...config.resolve.alias,
         // Map styled-system imports to the actual directory
-        "../../styled-system/css": join(
-          __dirname,
-          "../styled-system/css/index.mjs",
-        ),
-        "../../styled-system/patterns": join(
-          __dirname,
-          "../styled-system/patterns/index.mjs",
-        ),
-        "../styled-system/css": join(
-          __dirname,
-          "../styled-system/css/index.mjs",
-        ),
-        "../styled-system/patterns": join(
-          __dirname,
-          "../styled-system/patterns/index.mjs",
-        ),
-      };
+        '../../styled-system/css': join(__dirname, '../styled-system/css/index.mjs'),
+        '../../styled-system/patterns': join(__dirname, '../styled-system/patterns/index.mjs'),
+        '../styled-system/css': join(__dirname, '../styled-system/css/index.mjs'),
+        '../styled-system/patterns': join(__dirname, '../styled-system/patterns/index.mjs'),
+      }
     }
-    return config;
+    return config
   },
-};
-export default config;
+}
+export default config

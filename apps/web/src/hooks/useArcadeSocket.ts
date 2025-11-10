@@ -1,37 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import type { GameMove } from "@/lib/arcade/validation";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
+import type { GameMove } from '@/lib/arcade/validation'
 
 export interface ArcadeSocketEvents {
   onSessionState?: (data: {
-    gameState: unknown;
-    currentGame: string;
-    gameUrl: string;
-    activePlayers: number[];
-    version: number;
-  }) => void;
-  onMoveAccepted?: (data: {
-    gameState: unknown;
-    version: number;
-    move: GameMove;
-  }) => void;
-  onMoveRejected?: (data: {
-    error: string;
-    move: GameMove;
-    versionConflict?: boolean;
-  }) => void;
-  onSessionEnded?: () => void;
-  onNoActiveSession?: () => void;
-  onError?: (error: { error: string }) => void;
+    gameState: unknown
+    currentGame: string
+    gameUrl: string
+    activePlayers: number[]
+    version: number
+  }) => void
+  onMoveAccepted?: (data: { gameState: unknown; version: number; move: GameMove }) => void
+  onMoveRejected?: (data: { error: string; move: GameMove; versionConflict?: boolean }) => void
+  onSessionEnded?: () => void
+  onNoActiveSession?: () => void
+  onError?: (error: { error: string }) => void
 }
 
 export interface UseArcadeSocketReturn {
-  socket: Socket | null;
-  connected: boolean;
-  joinSession: (userId: string, roomId?: string) => void;
-  sendMove: (userId: string, move: GameMove, roomId?: string) => void;
-  exitSession: (userId: string) => void;
-  pingSession: (userId: string) => void;
+  socket: Socket | null
+  connected: boolean
+  joinSession: (userId: string, roomId?: string) => void
+  sendMove: (userId: string, move: GameMove, roomId?: string) => void
+  exitSession: (userId: string) => void
+  pingSession: (userId: string) => void
 }
 
 /**
@@ -40,125 +32,119 @@ export interface UseArcadeSocketReturn {
  * @param events - Event handlers for socket events
  * @returns Socket instance and helper methods
  */
-export function useArcadeSocket(
-  events: ArcadeSocketEvents = {},
-): UseArcadeSocketReturn {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
-  const eventsRef = useRef(events);
+export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocketReturn {
+  const [socket, setSocket] = useState<Socket | null>(null)
+  const [connected, setConnected] = useState(false)
+  const eventsRef = useRef(events)
 
   // Update events ref when they change
   useEffect(() => {
-    eventsRef.current = events;
-  }, [events]);
+    eventsRef.current = events
+  }, [events])
 
   // Initialize socket connection
   useEffect(() => {
     const socketInstance = io({
-      path: "/api/socket",
+      path: '/api/socket',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    });
+    })
 
-    socketInstance.on("connect", () => {
-      console.log("[ArcadeSocket] Connected");
-      setConnected(true);
-    });
+    socketInstance.on('connect', () => {
+      console.log('[ArcadeSocket] Connected')
+      setConnected(true)
+    })
 
-    socketInstance.on("disconnect", () => {
-      console.log("[ArcadeSocket] Disconnected");
-      setConnected(false);
-    });
+    socketInstance.on('disconnect', () => {
+      console.log('[ArcadeSocket] Disconnected')
+      setConnected(false)
+    })
 
-    socketInstance.on("session-state", (data) => {
-      eventsRef.current.onSessionState?.(data);
-    });
+    socketInstance.on('session-state', (data) => {
+      eventsRef.current.onSessionState?.(data)
+    })
 
-    socketInstance.on("no-active-session", () => {
-      eventsRef.current.onNoActiveSession?.();
-    });
+    socketInstance.on('no-active-session', () => {
+      eventsRef.current.onNoActiveSession?.()
+    })
 
-    socketInstance.on("move-accepted", (data) => {
-      eventsRef.current.onMoveAccepted?.(data);
-    });
+    socketInstance.on('move-accepted', (data) => {
+      eventsRef.current.onMoveAccepted?.(data)
+    })
 
-    socketInstance.on("move-rejected", (data) => {
-      console.log(`[ArcadeSocket] Move rejected: ${data.error}`);
-      eventsRef.current.onMoveRejected?.(data);
-    });
+    socketInstance.on('move-rejected', (data) => {
+      console.log(`[ArcadeSocket] Move rejected: ${data.error}`)
+      eventsRef.current.onMoveRejected?.(data)
+    })
 
-    socketInstance.on("session-ended", () => {
-      console.log("[ArcadeSocket] Session ended");
-      eventsRef.current.onSessionEnded?.();
-    });
+    socketInstance.on('session-ended', () => {
+      console.log('[ArcadeSocket] Session ended')
+      eventsRef.current.onSessionEnded?.()
+    })
 
-    socketInstance.on("session-error", (data) => {
-      console.error("[ArcadeSocket] Session error", data);
-      eventsRef.current.onError?.(data);
-    });
+    socketInstance.on('session-error', (data) => {
+      console.error('[ArcadeSocket] Session error', data)
+      eventsRef.current.onError?.(data)
+    })
 
-    socketInstance.on("pong-session", () => {
-      console.log("[ArcadeSocket] Pong received");
-    });
+    socketInstance.on('pong-session', () => {
+      console.log('[ArcadeSocket] Pong received')
+    })
 
-    setSocket(socketInstance);
+    setSocket(socketInstance)
 
     return () => {
-      socketInstance.disconnect();
-    };
-  }, []);
+      socketInstance.disconnect()
+    }
+  }, [])
 
   const joinSession = useCallback(
     (userId: string, roomId?: string) => {
       if (!socket) {
-        console.warn(
-          "[ArcadeSocket] Cannot join session - socket not connected",
-        );
-        return;
+        console.warn('[ArcadeSocket] Cannot join session - socket not connected')
+        return
       }
       console.log(
-        "[ArcadeSocket] Joining session for user:",
+        '[ArcadeSocket] Joining session for user:',
         userId,
-        roomId ? `in room ${roomId}` : "(solo)",
-      );
-      socket.emit("join-arcade-session", { userId, roomId });
+        roomId ? `in room ${roomId}` : '(solo)'
+      )
+      socket.emit('join-arcade-session', { userId, roomId })
     },
-    [socket],
-  );
+    [socket]
+  )
 
   const sendMove = useCallback(
     (userId: string, move: GameMove, roomId?: string) => {
       if (!socket) {
-        console.warn("[ArcadeSocket] Cannot send move - socket not connected");
-        return;
+        console.warn('[ArcadeSocket] Cannot send move - socket not connected')
+        return
       }
-      socket.emit("game-move", { userId, move, roomId });
+      socket.emit('game-move', { userId, move, roomId })
     },
-    [socket],
-  );
+    [socket]
+  )
 
   const exitSession = useCallback(
     (userId: string) => {
       if (!socket) {
-        console.warn(
-          "[ArcadeSocket] Cannot exit session - socket not connected",
-        );
-        return;
+        console.warn('[ArcadeSocket] Cannot exit session - socket not connected')
+        return
       }
-      console.log("[ArcadeSocket] Exiting session for user:", userId);
-      socket.emit("exit-arcade-session", { userId });
+      console.log('[ArcadeSocket] Exiting session for user:', userId)
+      socket.emit('exit-arcade-session', { userId })
     },
-    [socket],
-  );
+    [socket]
+  )
 
   const pingSession = useCallback(
     (userId: string) => {
-      if (!socket) return;
-      socket.emit("ping-session", { userId });
+      if (!socket) return
+      socket.emit('ping-session', { userId })
     },
-    [socket],
-  );
+    [socket]
+  )
 
   return {
     socket,
@@ -167,5 +153,5 @@ export function useArcadeSocket(
     sendMove,
     exitSession,
     pingSession,
-  };
+  }
 }

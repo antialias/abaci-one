@@ -1,7 +1,7 @@
 // Subtrahend row rendering for subtraction problems
 // Shows the bottom number being subtracted with − sign
 
-import type { CellDimensions } from "../shared/types";
+import type { CellDimensions } from '../shared/types'
 
 /**
  * Generate Typst code for the subtrahend row
@@ -15,7 +15,7 @@ import type { CellDimensions } from "../shared/types";
  * @returns Typst code for subtrahend row
  */
 export function generateSubtrahendRow(cellDimensions: CellDimensions): string {
-  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions;
+  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions
 
   return String.raw`
       // Subtrahend row with − sign
@@ -66,5 +66,5 @@ export function generateSubtrahendRow(cellDimensions: CellDimensions): string {
           ],)
         }
       },
-`;
+`
 }

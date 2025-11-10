@@ -1,40 +1,40 @@
-"use client";
+'use client'
 
-import React, { useContext } from "react";
-import { useGameMode } from "../contexts/GameModeContext";
-import { useRoomData } from "../hooks/useRoomData";
-import { useViewerId } from "../hooks/useViewerId";
-import { AppNavBar } from "./AppNavBar";
-import { GameContextNav, type RosterWarning } from "./nav/GameContextNav";
-import type { PlayerBadge } from "./nav/types";
-import { PlayerConfigDialog } from "./nav/PlayerConfigDialog";
-import { ModerationNotifications } from "./nav/ModerationNotifications";
-import { PreviewModeContext } from "./GamePreview";
+import React, { useContext } from 'react'
+import { useGameMode } from '../contexts/GameModeContext'
+import { useRoomData } from '../hooks/useRoomData'
+import { useViewerId } from '../hooks/useViewerId'
+import { AppNavBar } from './AppNavBar'
+import { GameContextNav, type RosterWarning } from './nav/GameContextNav'
+import type { PlayerBadge } from './nav/types'
+import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
+import { ModerationNotifications } from './nav/ModerationNotifications'
+import { PreviewModeContext } from './GamePreview'
 
 interface PageWithNavProps {
-  navTitle?: string;
-  navEmoji?: string;
-  gameName?: "matching" | "memory-quiz" | "complement-race"; // Internal game name for API
-  emphasizePlayerSelection?: boolean;
-  disableFullscreenSelection?: boolean; // Disable "Select Your Champions" overlay
-  onExitSession?: () => void;
-  onSetup?: () => void;
-  onNewGame?: () => void;
-  children: React.ReactNode;
+  navTitle?: string
+  navEmoji?: string
+  gameName?: 'matching' | 'memory-quiz' | 'complement-race' // Internal game name for API
+  emphasizePlayerSelection?: boolean
+  disableFullscreenSelection?: boolean // Disable "Select Your Champions" overlay
+  onExitSession?: () => void
+  onSetup?: () => void
+  onNewGame?: () => void
+  children: React.ReactNode
   // Game state for turn indicator
-  currentPlayerId?: string;
-  playerScores?: Record<string, number>;
-  playerStreaks?: Record<string, number>;
-  playerBadges?: Record<string, PlayerBadge>;
+  currentPlayerId?: string
+  playerScores?: Record<string, number>
+  playerStreaks?: Record<string, number>
+  playerBadges?: Record<string, PlayerBadge>
   // Game-specific roster warnings
-  rosterWarning?: RosterWarning;
+  rosterWarning?: RosterWarning
   // Side assignments (for 2-player games like Rithmomachia)
-  whitePlayerId?: string | null;
-  blackPlayerId?: string | null;
-  onAssignWhitePlayer?: (playerId: string | null) => void;
-  onAssignBlackPlayer?: (playerId: string | null) => void;
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
+  onAssignWhitePlayer?: (playerId: string | null) => void
+  onAssignBlackPlayer?: (playerId: string | null) => void
   // Game phase (for showing spectating vs assign)
-  gamePhase?: "setup" | "playing" | "results";
+  gamePhase?: 'setup' | 'playing' | 'results'
 }
 
 export function PageWithNav({
@@ -59,51 +59,47 @@ export function PageWithNav({
   gamePhase,
 }: PageWithNavProps) {
   // In preview mode, render just the children without navigation
-  const previewMode = useContext(PreviewModeContext);
+  const previewMode = useContext(PreviewModeContext)
   if (previewMode?.isPreview) {
-    return <>{children}</>;
+    return <>{children}</>
   }
 
-  const { players, activePlayers, setActive, activePlayerCount } =
-    useGameMode();
-  const { roomData, isInRoom, moderationEvent, clearModerationEvent } =
-    useRoomData();
-  const { data: viewerId } = useViewerId();
-  const [mounted, setMounted] = React.useState(false);
-  const [configurePlayerId, setConfigurePlayerId] = React.useState<
-    string | null
-  >(null);
+  const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
+  const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
+  const { data: viewerId } = useViewerId()
+  const [mounted, setMounted] = React.useState(false)
+  const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
 
   // Lift AddPlayerButton popover state here to survive GameContextNav remounts
-  const [showPopover, setShowPopover] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"add" | "invite">("add");
+  const [showPopover, setShowPopover] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<'add' | 'invite'>('add')
 
   // Delay mounting animation slightly for smooth transition
   React.useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timer);
-  }, []);
+    const timer = setTimeout(() => setMounted(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleRemovePlayer = React.useCallback(
     (playerId: string) => {
-      setActive(playerId, false);
+      setActive(playerId, false)
     },
-    [setActive],
-  );
+    [setActive]
+  )
 
   const handleAddPlayer = React.useCallback(
     (playerId: string) => {
-      setActive(playerId, true);
+      setActive(playerId, true)
     },
-    [setActive],
-  );
+    [setActive]
+  )
 
   const handleConfigurePlayer = React.useCallback(
     (playerId: string) => {
-      setConfigurePlayerId(playerId);
+      setConfigurePlayerId(playerId)
     },
-    [setConfigurePlayerId],
-  );
+    [setConfigurePlayerId]
+  )
 
   // Get active and inactive players as arrays
   // Only show LOCAL players in the active/inactive lists (remote players shown separately in networkPlayers)
@@ -112,36 +108,31 @@ export function PageWithNav({
     () =>
       Array.from(activePlayers)
         .map((id) => players.get(id))
-        .filter(
-          (p): p is NonNullable<typeof p> =>
-            p !== undefined && p.isLocal !== false,
-        ),
-    [activePlayers, players],
-  );
+        .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false),
+    [activePlayers, players]
+  )
 
   const inactivePlayerList = React.useMemo(
     () =>
-      Array.from(players.values()).filter(
-        (p) => !activePlayers.has(p.id) && p.isLocal !== false,
-      ),
-    [players, activePlayers],
-  );
+      Array.from(players.values()).filter((p) => !activePlayers.has(p.id) && p.isLocal !== false),
+    [players, activePlayers]
+  )
 
   // Compute game mode from active player count
   const gameMode =
     activePlayerCount === 0
-      ? "none"
+      ? 'none'
       : activePlayerCount === 1
-        ? "single"
+        ? 'single'
         : activePlayerCount === 2
-          ? "battle"
+          ? 'battle'
           : activePlayerCount >= 3
-            ? "tournament"
-            : "none";
+            ? 'tournament'
+            : 'none'
 
-  const shouldEmphasize = emphasizePlayerSelection && mounted;
+  const shouldEmphasize = emphasizePlayerSelection && mounted
   const showFullscreenSelection =
-    !disableFullscreenSelection && shouldEmphasize && activePlayerCount === 0;
+    !disableFullscreenSelection && shouldEmphasize && activePlayerCount === 0
 
   // Compute arcade session info for display
   // Memoized to prevent unnecessary re-renders
@@ -156,20 +147,20 @@ export function PageWithNav({
             joinCode: roomData.code,
           }
         : undefined,
-    [isInRoom, roomData],
-  );
+    [isInRoom, roomData]
+  )
 
   // Compute network players (other players in the room, excluding current user)
   // Memoized to prevent unnecessary re-renders
   const networkPlayers = React.useMemo(() => {
     if (!isInRoom || !roomData?.members || !roomData?.memberPlayers) {
-      return [];
+      return []
     }
 
     return roomData.members
       .filter((member) => member.userId !== viewerId)
       .flatMap((member) => {
-        const memberPlayerList = roomData.memberPlayers[member.userId] || [];
+        const memberPlayerList = roomData.memberPlayers[member.userId] || []
         return memberPlayerList.map((player) => ({
           id: player.id,
           emoji: player.emoji,
@@ -178,9 +169,9 @@ export function PageWithNav({
           memberName: member.displayName,
           userId: member.userId, // Add userId for moderation
           isOnline: member.isOnline,
-        }));
-      });
-  }, [isInRoom, roomData, viewerId]);
+        }))
+      })
+  }, [isInRoom, roomData, viewerId])
 
   // Create nav content if title is provided
   // Pass lifted state to preserve popover state across remounts
@@ -217,7 +208,7 @@ export function PageWithNav({
       onAssignBlackPlayer={onAssignBlackPlayer}
       gamePhase={gamePhase}
     />
-  ) : null;
+  ) : null
 
   return (
     <>
@@ -229,10 +220,7 @@ export function PageWithNav({
           onClose={() => setConfigurePlayerId(null)}
         />
       )}
-      <ModerationNotifications
-        moderationEvent={moderationEvent}
-        onClose={clearModerationEvent}
-      />
+      <ModerationNotifications moderationEvent={moderationEvent} onClose={clearModerationEvent} />
     </>
-  );
+  )
 }
