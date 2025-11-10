@@ -320,6 +320,10 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                     fontWeight: '600',
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
                   })}
                 >
                   {currentAdditionSkill.name}
@@ -479,6 +483,10 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                     fontWeight: '600',
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
                   })}
                 >
                   {currentSubtractionSkill.name}
