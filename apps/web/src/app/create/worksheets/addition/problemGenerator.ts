@@ -284,19 +284,30 @@ export function generateProblems(
       }
       ok = uniquePush(problems, a, b, seen)
 
-      // If stuck, try a different category
+      // If stuck, try a different category - but respect the difficulty constraints
+      // Don't switch to a harder category if pAny is 0 (no regrouping allowed)
       if (!ok && tries % 50 === 0) {
-        picked = pick(['both', 'onesOnly', 'non'], rand)
+        if (pAny > 0) {
+          // Can use any category
+          picked = pick(['both', 'onesOnly', 'non'], rand)
+        }
+        // If pAny is 0, keep trying 'non' - don't switch to regrouping categories
       }
     }
 
-    // Last resort: add any valid problem in digit range
+    // Last resort: use the appropriate generator one more time, even if not unique
+    // This respects the difficulty constraints (non/onesOnly/both)
     if (!ok) {
-      const digitsA = randint(minDigits, maxDigits, rand)
-      const digitsB = randint(minDigits, maxDigits, rand)
-      const a = generateNumber(digitsA, rand)
-      const b = generateNumber(digitsB, rand)
-      uniquePush(problems, a, b, seen)
+      let a: number, b: number
+      if (picked === 'both') {
+        ;[a, b] = generateBoth(rand, minDigits, maxDigits)
+      } else if (picked === 'onesOnly') {
+        ;[a, b] = generateOnesOnly(rand, minDigits, maxDigits)
+      } else {
+        ;[a, b] = generateNonRegroup(rand, minDigits, maxDigits)
+      }
+      // Allow duplicate as last resort - add with operator property
+      problems.push({ a, b, operator: '+' })
     }
   }
 
@@ -410,8 +421,10 @@ export function generateOnesOnlyBorrow(
       return [minuend, subtrahend]
     }
   }
-  // Fallback
-  return minDigits === 1 ? [5, 7] : [52, 17]
+  // Fallback: Return safe problems that require ones-place borrowing
+  // For single-digit: Use teens minus singles (13-7, 15-8)
+  // For two-digit: Use problems like 52-17
+  return minDigits === 1 ? [13, 7] : [52, 17]
 }
 
 /**
@@ -596,9 +609,21 @@ export function generateSubtractionProblems(
       let minuend = generateNumber(digitsM, rand)
       let subtrahend = generateNumber(digitsS, rand)
 
-      // Ensure minuend >= subtrahend
-      if (minuend < subtrahend) {
+      // Ensure minuend > subtrahend (strictly greater to avoid 0-0 and ensure borrowing is possible)
+      if (minuend <= subtrahend) {
         ;[minuend, subtrahend] = [subtrahend, minuend]
+      }
+
+      // Final safety check: ensure minuend is actually greater
+      if (minuend <= subtrahend) {
+        // Both were equal or something went wrong - use safe fallback
+        if (minDigits === 1) {
+          minuend = 13
+          subtrahend = 7
+        } else {
+          minuend = 52
+          subtrahend = 17
+        }
       }
 
       uniquePush(minuend, subtrahend)
@@ -606,6 +631,68 @@ export function generateSubtractionProblems(
   }
 
   return problems
+}
+
+/**
+ * Generate mixed addition and subtraction problems for mastery mode
+ * Uses separate configs for addition and subtraction based on current skill levels
+ *
+ * @param count Number of problems to generate
+ * @param additionConfig Configuration for addition problems (from current addition skill)
+ * @param subtractionConfig Configuration for subtraction problems (from current subtraction skill)
+ * @param seed Random seed
+ * @returns Array of mixed problems, shuffled randomly
+ */
+export function generateMasteryMixedProblems(
+  count: number,
+  additionConfig: {
+    digitRange: { min: number; max: number }
+    pAnyStart: number
+    pAllStart: number
+  },
+  subtractionConfig: {
+    digitRange: { min: number; max: number }
+    pAnyStart: number
+    pAllStart: number
+  },
+  seed: number
+): WorksheetProblem[] {
+  // Generate half from each operator
+  const halfCount = Math.floor(count / 2)
+  const addCount = halfCount
+  const subCount = count - halfCount // Handle odd counts
+
+  // Generate addition problems using addition skill config
+  const addProblems = generateProblems(
+    addCount,
+    additionConfig.pAnyStart,
+    additionConfig.pAllStart,
+    false, // No interpolation in mastery mode
+    seed,
+    additionConfig.digitRange
+  )
+
+  // Generate subtraction problems using subtraction skill config
+  const subProblems = generateSubtractionProblems(
+    subCount,
+    subtractionConfig.digitRange,
+    subtractionConfig.pAnyStart,
+    subtractionConfig.pAllStart,
+    false, // No interpolation in mastery mode
+    seed + 1000000 // Different seed space
+  )
+
+  // Combine and shuffle
+  const allProblems = [...addProblems, ...subProblems]
+  const rand = createPRNG(seed + 2000000)
+
+  // Fisher-Yates shuffle
+  for (let i = allProblems.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[allProblems[i], allProblems[j]] = [allProblems[j], allProblems[i]]
+  }
+
+  return allProblems
 }
 
 /**

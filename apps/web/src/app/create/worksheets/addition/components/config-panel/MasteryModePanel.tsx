@@ -28,36 +28,64 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
   const [isAllSkillsModalOpen, setIsAllSkillsModalOpen] = useState(false)
   const [isCustomizeMixModalOpen, setIsCustomizeMixModalOpen] = useState(false)
 
-  // Get current operator (default to addition, filter out 'mixed')
-  const rawOperator = formState.operator ?? 'addition'
-  const operator: 'addition' | 'subtraction' = rawOperator === 'mixed' ? 'addition' : rawOperator
+  // Get current operator (default to addition)
+  const operator = formState.operator ?? 'addition'
 
-  // Get skills for current operator
-  const availableSkills = getSkillsByOperator(operator)
+  // For mixed mode, we need to track skills for BOTH operators
+  const isMixedMode = operator === 'mixed'
 
-  // Get current skill ID from form state, or use first available skill
-  const currentSkillId = formState.currentSkillId ?? availableSkills[0]?.id
+  // Get skills for current operator(s)
+  const additionSkills = getSkillsByOperator('addition')
+  const subtractionSkills = getSkillsByOperator('subtraction')
 
-  // Get current skill definition
-  const currentSkill = currentSkillId ? getSkillById(currentSkillId as SkillId) : availableSkills[0]
+  // Get current skill IDs for each operator
+  const currentAdditionSkillId =
+    formState.currentAdditionSkillId ?? additionSkills[0]?.id ?? 'sd-no-regroup'
+  const currentSubtractionSkillId =
+    formState.currentSubtractionSkillId ?? subtractionSkills[0]?.id ?? 'sd-sub-no-borrow'
+
+  // Get current skill definitions
+  const currentAdditionSkill = getSkillById(currentAdditionSkillId as SkillId)
+  const currentSubtractionSkill = getSkillById(currentSubtractionSkillId as SkillId)
+
+  // For single-operator modes, use the appropriate skill
+  const currentSkill = isMixedMode
+    ? currentAdditionSkill // Just use one for single-mode UI components
+    : operator === 'subtraction'
+      ? currentSubtractionSkill
+      : currentAdditionSkill
+
+  const availableSkills = isMixedMode
+    ? [...additionSkills, ...subtractionSkills] // Combined for modal
+    : operator === 'subtraction'
+      ? subtractionSkills
+      : additionSkills
 
   // Load mastery states from API
   useEffect(() => {
     async function loadMasteryStates() {
       try {
         setIsLoadingMastery(true)
-        const response = await fetch(`/api/worksheets/mastery?operator=${operator}`)
-        if (!response.ok) {
-          throw new Error('Failed to load mastery states')
-        }
-        const data = await response.json()
 
-        // Convert to Map<SkillId, boolean>
-        const statesMap = new Map<SkillId, boolean>()
-        for (const record of data.masteryStates) {
-          statesMap.set(record.skillId as SkillId, record.isMastered)
+        // For mixed mode, load both addition and subtraction mastery states
+        const operatorsToLoad = isMixedMode ? ['addition', 'subtraction'] : [operator]
+
+        const allStates = new Map<SkillId, boolean>()
+
+        for (const op of operatorsToLoad) {
+          const response = await fetch(`/api/worksheets/mastery?operator=${op}`)
+          if (!response.ok) {
+            throw new Error(`Failed to load mastery states for ${op}`)
+          }
+          const data = await response.json()
+
+          // Merge into combined map
+          for (const record of data.masteryStates) {
+            allStates.set(record.skillId as SkillId, record.isMastered)
+          }
         }
-        setMasteryStates(statesMap)
+
+        setMasteryStates(allStates)
       } catch (error) {
         console.error('Failed to load mastery states:', error)
       } finally {
@@ -66,35 +94,52 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
     }
 
     loadMasteryStates()
-  }, [operator])
+  }, [operator, isMixedMode])
 
   // Apply current skill configuration to form state
   useEffect(() => {
-    if (!currentSkill) return
+    if (isMixedMode) {
+      // Mixed mode: Use current addition and subtraction skills
+      if (!currentAdditionSkill || !currentSubtractionSkill) return
 
-    console.log('[MasteryModePanel] Applying skill config:', {
-      skillId: currentSkill.id,
-      skillName: currentSkill.name,
-      digitRange: currentSkill.digitRange,
-      pAnyStart: currentSkill.regroupingConfig.pAnyStart,
-      pAllStart: currentSkill.regroupingConfig.pAllStart,
-      displayRules: currentSkill.recommendedScaffolding,
-      operator: currentSkill.operator,
-    })
+      console.log('[MasteryModePanel] Applying mixed mode config:', {
+        additionSkill: currentAdditionSkill.id,
+        subtractionSkill: currentSubtractionSkill.id,
+      })
 
-    // Apply skill's configuration to form state
-    // This updates the preview to show problems appropriate for this skill
-    onChange({
-      // Keep mode as 'mastery' - displayRules will still apply conditional scaffolding
-      digitRange: currentSkill.digitRange,
-      pAnyStart: currentSkill.regroupingConfig.pAnyStart,
-      pAllStart: currentSkill.regroupingConfig.pAllStart,
-      displayRules: currentSkill.recommendedScaffolding,
-      operator: currentSkill.operator,
-      interpolate: false, // CRITICAL: Disable progressive difficulty in mastery mode
-    } as Partial<WorksheetFormState>)
+      // Store both skill IDs - worksheet generation will query these
+      onChange({
+        currentAdditionSkillId: currentAdditionSkill.id,
+        currentSubtractionSkillId: currentSubtractionSkill.id,
+        operator: 'mixed',
+        // Do NOT force interpolate - let user control it via the toggle
+      } as Partial<WorksheetFormState>)
+    } else {
+      // Single operator mode: Use the current skill
+      if (!currentSkill) return
+
+      console.log('[MasteryModePanel] Applying skill config:', {
+        skillId: currentSkill.id,
+        skillName: currentSkill.name,
+        digitRange: currentSkill.digitRange,
+        pAnyStart: currentSkill.regroupingConfig.pAnyStart,
+        pAllStart: currentSkill.regroupingConfig.pAllStart,
+        displayRules: currentSkill.recommendedScaffolding,
+        operator: currentSkill.operator,
+      })
+
+      // Apply skill's configuration to form state
+      onChange({
+        digitRange: currentSkill.digitRange,
+        pAnyStart: currentSkill.regroupingConfig.pAnyStart,
+        pAllStart: currentSkill.regroupingConfig.pAllStart,
+        displayRules: currentSkill.recommendedScaffolding,
+        operator: currentSkill.operator,
+        // Do NOT force interpolate - let user control it via the toggle
+      } as Partial<WorksheetFormState>)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSkill?.id]) // Only run when skill ID changes, not when onChange changes
+  }, [isMixedMode, currentAdditionSkill?.id, currentSubtractionSkill?.id, currentSkill?.id])
 
   // Handler: Navigate to previous skill
   const handlePreviousSkill = () => {
@@ -102,7 +147,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
     const currentIndex = availableSkills.findIndex((s) => s.id === currentSkill.id)
     if (currentIndex > 0) {
       const prevSkill = availableSkills[currentIndex - 1]
-      onChange({ currentSkillId: prevSkill.id } as Partial<WorksheetFormState>)
+
+      // Update the appropriate skill ID based on operator
+      if (operator === 'addition') {
+        onChange({ currentAdditionSkillId: prevSkill.id } as Partial<WorksheetFormState>)
+      } else if (operator === 'subtraction') {
+        onChange({ currentSubtractionSkillId: prevSkill.id } as Partial<WorksheetFormState>)
+      }
     }
   }
 
@@ -112,7 +163,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
     const currentIndex = availableSkills.findIndex((s) => s.id === currentSkill.id)
     if (currentIndex < availableSkills.length - 1) {
       const nextSkill = availableSkills[currentIndex + 1]
-      onChange({ currentSkillId: nextSkill.id } as Partial<WorksheetFormState>)
+
+      // Update the appropriate skill ID based on operator
+      if (operator === 'addition') {
+        onChange({ currentAdditionSkillId: nextSkill.id } as Partial<WorksheetFormState>)
+      } else if (operator === 'subtraction') {
+        onChange({ currentSubtractionSkillId: nextSkill.id } as Partial<WorksheetFormState>)
+      }
     }
   }
 
@@ -151,6 +208,260 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
     }
   }
 
+  // Mixed mode: Show both skills
+  if (isMixedMode) {
+    if (!currentAdditionSkill || !currentSubtractionSkill) {
+      return (
+        <div
+          data-component="mastery-mode-panel"
+          className={css({
+            padding: '1.5rem',
+            backgroundColor: isDark ? 'gray.700' : 'gray.50',
+            borderRadius: '8px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.200',
+          })}
+        >
+          <p className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>Loading skills...</p>
+        </div>
+      )
+    }
+
+    const additionMastered = masteryStates.get(currentAdditionSkill.id) ?? false
+    const subtractionMastered = masteryStates.get(currentSubtractionSkill.id) ?? false
+
+    return (
+      <div
+        data-component="mastery-mode-panel"
+        data-mode="mixed"
+        className={css({
+          padding: '1.5rem',
+          backgroundColor: isDark ? 'gray.700' : 'gray.50',
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.600' : 'gray.200',
+        })}
+      >
+        {/* Header */}
+        <div className={css({ marginBottom: '1rem' })}>
+          <h3
+            className={css({
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: isDark ? 'gray.200' : 'gray.700',
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            })}
+          >
+            Mixed Operations Mode
+          </h3>
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              fontStyle: 'italic',
+            })}
+          >
+            Practicing operator recognition with problems from both current addition and subtraction
+            skill levels
+          </p>
+        </div>
+
+        {/* Current Skills Display - Mini Compact Cards */}
+        <div className={css({ display: 'flex', gap: '0.75rem', marginTop: '1rem' })}>
+          {/* Addition Skill - Mini */}
+          <div
+            data-skill-card="addition-mini"
+            className={css({
+              flex: 1,
+              padding: '0.625rem',
+              borderRadius: '4px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? 'gray.600' : 'white',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '0.625rem',
+                fontWeight: '600',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '0.25rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.025em',
+              })}
+            >
+              Addition
+            </div>
+            <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+              <h4
+                className={css({
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  color: isDark ? 'white' : 'gray.900',
+                  lineHeight: '1.2',
+                })}
+              >
+                {currentAdditionSkill.name}
+              </h4>
+              {additionMastered && (
+                <span
+                  className={css({
+                    fontSize: '0.8125rem',
+                    lineHeight: '1',
+                  })}
+                  title="Mastered"
+                >
+                  ✓
+                </span>
+              )}
+            </div>
+            <p
+              className={css({
+                fontSize: '0.6875rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+                marginTop: '0.25rem',
+                lineHeight: '1.3',
+              })}
+            >
+              {currentAdditionSkill.description}
+            </p>
+          </div>
+
+          {/* Subtraction Skill - Mini */}
+          <div
+            data-skill-card="subtraction-mini"
+            className={css({
+              flex: 1,
+              padding: '0.625rem',
+              borderRadius: '4px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? 'gray.600' : 'white',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '0.625rem',
+                fontWeight: '600',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '0.25rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.025em',
+              })}
+            >
+              Subtraction
+            </div>
+            <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+              <h4
+                className={css({
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  color: isDark ? 'white' : 'gray.900',
+                  lineHeight: '1.2',
+                })}
+              >
+                {currentSubtractionSkill.name}
+              </h4>
+              {subtractionMastered && (
+                <span
+                  className={css({
+                    fontSize: '0.8125rem',
+                    lineHeight: '1',
+                  })}
+                  title="Mastered"
+                >
+                  ✓
+                </span>
+              )}
+            </div>
+            <p
+              className={css({
+                fontSize: '0.6875rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+                marginTop: '0.25rem',
+                lineHeight: '1.3',
+              })}
+            >
+              {currentSubtractionSkill.description}
+            </p>
+          </div>
+        </div>
+
+        {/* View All Skills Button */}
+        <div className={css({ marginTop: '1.5rem' })}>
+          <button
+            type="button"
+            data-action="view-all-skills"
+            onClick={() => setIsAllSkillsModalOpen(true)}
+            className={css({
+              width: '100%',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.500' : 'gray.300',
+              backgroundColor: isDark ? 'gray.600' : 'white',
+              color: isDark ? 'gray.200' : 'gray.700',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                borderColor: 'blue.400',
+                backgroundColor: isDark ? 'gray.500' : 'gray.50',
+              },
+            })}
+          >
+            View All Skills
+          </button>
+        </div>
+
+        {/* All Skills Modal */}
+        <AllSkillsModal
+          isOpen={isAllSkillsModalOpen}
+          onClose={() => setIsAllSkillsModalOpen(false)}
+          skills={availableSkills}
+          currentSkillId={currentAdditionSkill.id}
+          masteryStates={masteryStates}
+          onSelectSkill={(skillId) => {
+            // Determine which operator this skill belongs to
+            const skill = getSkillById(skillId)
+            if (!skill) return
+
+            if (skill.operator === 'addition') {
+              onChange({ currentAdditionSkillId: skillId } as Partial<WorksheetFormState>)
+            } else {
+              onChange({ currentSubtractionSkillId: skillId } as Partial<WorksheetFormState>)
+            }
+          }}
+          onToggleMastery={async (skillId, isMastered) => {
+            const newStates = new Map(masteryStates)
+            newStates.set(skillId, isMastered)
+            setMasteryStates(newStates)
+
+            try {
+              const response = await fetch('/api/worksheets/mastery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skillId, isMastered }),
+              })
+
+              if (!response.ok) throw new Error('Failed to update mastery state')
+            } catch (error) {
+              console.error('Failed to update mastery state:', error)
+              const revertedStates = new Map(masteryStates)
+              revertedStates.set(skillId, !isMastered)
+              setMasteryStates(revertedStates)
+            }
+          }}
+          isDark={isDark}
+        />
+      </div>
+    )
+  }
+
+  // Single operator mode
   if (!currentSkill) {
     return (
       <div

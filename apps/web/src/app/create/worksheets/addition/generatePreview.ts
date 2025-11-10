@@ -6,9 +6,11 @@ import {
   generateProblems,
   generateSubtractionProblems,
   generateMixedProblems,
+  generateMasteryMixedProblems,
 } from './problemGenerator'
 import { generateTypstSource } from './typstGenerator'
 import type { WorksheetFormState } from './types'
+import { getSkillById } from './skills'
 
 export interface PreviewResult {
   success: boolean
@@ -37,33 +39,78 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
 
     // Generate all problems for full preview based on operator
     const operator = validatedConfig.operator ?? 'addition'
-    const problems =
-      operator === 'addition'
-        ? generateProblems(
-            validatedConfig.total,
-            validatedConfig.pAnyStart,
-            validatedConfig.pAllStart,
-            validatedConfig.interpolate,
-            validatedConfig.seed,
-            validatedConfig.digitRange
-          )
-        : operator === 'subtraction'
-          ? generateSubtractionProblems(
+    const mode = config.mode ?? 'smart'
+
+    let problems
+
+    // Special handling for mastery + mixed mode
+    if (mode === 'mastery' && operator === 'mixed') {
+      // Query both skill configs
+      const addSkillId = config.currentAdditionSkillId
+      const subSkillId = config.currentSubtractionSkillId
+
+      if (!addSkillId || !subSkillId) {
+        return {
+          success: false,
+          error: 'Mixed mastery mode requires both addition and subtraction skill IDs',
+        }
+      }
+
+      const addSkill = getSkillById(addSkillId as any)
+      const subSkill = getSkillById(subSkillId as any)
+
+      if (!addSkill || !subSkill) {
+        return {
+          success: false,
+          error: 'Invalid skill IDs',
+        }
+      }
+
+      // Use skill-specific configs
+      problems = generateMasteryMixedProblems(
+        validatedConfig.total,
+        {
+          digitRange: addSkill.digitRange,
+          pAnyStart: addSkill.regroupingConfig.pAnyStart,
+          pAllStart: addSkill.regroupingConfig.pAllStart,
+        },
+        {
+          digitRange: subSkill.digitRange,
+          pAnyStart: subSkill.regroupingConfig.pAnyStart,
+          pAllStart: subSkill.regroupingConfig.pAllStart,
+        },
+        validatedConfig.seed
+      )
+    } else {
+      // Standard problem generation
+      problems =
+        operator === 'addition'
+          ? generateProblems(
               validatedConfig.total,
-              validatedConfig.digitRange,
               validatedConfig.pAnyStart,
               validatedConfig.pAllStart,
               validatedConfig.interpolate,
-              validatedConfig.seed
+              validatedConfig.seed,
+              validatedConfig.digitRange
             )
-          : generateMixedProblems(
-              validatedConfig.total,
-              validatedConfig.digitRange,
-              validatedConfig.pAnyStart,
-              validatedConfig.pAllStart,
-              validatedConfig.interpolate,
-              validatedConfig.seed
-            )
+          : operator === 'subtraction'
+            ? generateSubtractionProblems(
+                validatedConfig.total,
+                validatedConfig.digitRange,
+                validatedConfig.pAnyStart,
+                validatedConfig.pAllStart,
+                validatedConfig.interpolate,
+                validatedConfig.seed
+              )
+            : generateMixedProblems(
+                validatedConfig.total,
+                validatedConfig.digitRange,
+                validatedConfig.pAnyStart,
+                validatedConfig.pAllStart,
+                validatedConfig.interpolate,
+                validatedConfig.seed
+              )
+    }
 
     // Generate Typst sources (one per page)
     const typstSources = generateTypstSource(validatedConfig, problems)

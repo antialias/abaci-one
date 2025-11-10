@@ -37,8 +37,12 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   const rows = Math.ceil(total / cols)
 
   // Validate probabilities (0-1 range)
-  const pAnyStart = formState.pAnyStart ?? 0.75
-  const pAllStart = formState.pAllStart ?? 0.25
+  // CRITICAL: Must check for undefined/null explicitly, not use ?? operator
+  // because 0 is a valid value (e.g., "no regrouping" skills set pAnyStart=0)
+  const pAnyStart =
+    formState.pAnyStart !== undefined && formState.pAnyStart !== null ? formState.pAnyStart : 0.75
+  const pAllStart =
+    formState.pAllStart !== undefined && formState.pAllStart !== null ? formState.pAllStart : 0.25
   if (pAnyStart < 0 || pAnyStart > 1) {
     errors.push('pAnyStart must be between 0 and 1')
   }
@@ -111,7 +115,13 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     date: formState.date?.trim() || getDefaultDate(),
     pAnyStart,
     pAllStart,
-    interpolate: formState.interpolate ?? true,
+    // Default interpolate based on mode: true for smart/manual, false for mastery
+    interpolate:
+      formState.interpolate !== undefined
+        ? formState.interpolate
+        : mode === 'mastery'
+          ? false
+          : true,
 
     // V4: Digit range for problem generation
     digitRange,

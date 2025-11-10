@@ -10,7 +10,7 @@ import { OperatorSection } from './config-panel/OperatorSection'
 import { ProgressiveDifficultyToggle } from './config-panel/ProgressiveDifficultyToggle'
 import { SmartModeControls } from './config-panel/SmartModeControls'
 import { ManualModeControls } from './config-panel/ManualModeControls'
-import { ProgressionModePanel } from './config-panel/ProgressionModePanel'
+import { MasteryModePanel } from './config-panel/MasteryModePanel'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -105,7 +105,7 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         isDark={isDark}
       />
 
-      {/* Progressive Difficulty Toggle - Available for both modes */}
+      {/* Progressive Difficulty Toggle - Available for all modes */}
       <ProgressiveDifficultyToggle
         interpolate={formState.interpolate}
         onChange={(interpolate) => onChange({ interpolate })}
@@ -124,7 +124,7 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
 
       {/* Mastery Mode Controls */}
       {formState.mode === 'mastery' && (
-        <ProgressionModePanel formState={formState} onChange={onChange} isDark={isDark} />
+        <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
       )}
     </div>
   )

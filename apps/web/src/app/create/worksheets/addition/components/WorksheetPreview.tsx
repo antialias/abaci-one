@@ -27,6 +27,10 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   console.log(`[WorksheetPreview] fetchWorksheetPreview called (ID: ${fetchId})`, {
     seed: formState.seed,
     problemsPerPage: formState.problemsPerPage,
+    pAnyStart: formState.pAnyStart,
+    pAllStart: formState.pAllStart,
+    mode: formState.mode,
+    operator: formState.operator,
   })
 
   // Set current date for preview
