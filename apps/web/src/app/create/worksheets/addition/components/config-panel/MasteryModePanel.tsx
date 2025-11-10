@@ -275,58 +275,141 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             data-skill-card="addition-mini"
             className={css({
               flex: 1,
-              padding: '0.625rem',
-              borderRadius: '4px',
-              border: '1px solid',
-              borderColor: isDark ? 'gray.600' : 'gray.300',
-              backgroundColor: isDark ? 'gray.600' : 'white',
+              display: 'flex',
+              flexDirection: 'column',
             })}
           >
             <div
               className={css({
-                fontSize: '0.625rem',
-                fontWeight: '600',
-                color: isDark ? 'gray.400' : 'gray.500',
-                marginBottom: '0.25rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.025em',
+                flex: 1,
+                padding: '0.625rem',
+                borderRadius: '4px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: isDark ? 'gray.600' : 'white',
               })}
             >
-              Addition
-            </div>
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
-              <h4
+              <div
                 className={css({
-                  fontSize: '0.8125rem',
+                  fontSize: '0.625rem',
                   fontWeight: '600',
-                  color: isDark ? 'white' : 'gray.900',
-                  lineHeight: '1.2',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.25rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.025em',
                 })}
               >
-                {currentAdditionSkill.name}
-              </h4>
-              {additionMastered && (
-                <span
+                Addition
+              </div>
+              <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+                <h4
                   className={css({
                     fontSize: '0.8125rem',
-                    lineHeight: '1',
+                    fontWeight: '600',
+                    color: isDark ? 'white' : 'gray.900',
+                    lineHeight: '1.2',
                   })}
-                  title="Mastered"
                 >
-                  ✓
-                </span>
-              )}
+                  {currentAdditionSkill.name}
+                </h4>
+                {additionMastered && (
+                  <span
+                    className={css({
+                      fontSize: '0.8125rem',
+                      lineHeight: '1',
+                    })}
+                    title="Mastered"
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
+              <p
+                className={css({
+                  fontSize: '0.6875rem',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                  marginTop: '0.25rem',
+                  lineHeight: '1.3',
+                })}
+              >
+                {currentAdditionSkill.description}
+              </p>
             </div>
-            <p
-              className={css({
-                fontSize: '0.6875rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-                marginTop: '0.25rem',
-                lineHeight: '1.3',
-              })}
-            >
-              {currentAdditionSkill.description}
-            </p>
+
+            {/* Addition Nav Buttons */}
+            <div className={css({ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' })}>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIndex = additionSkills.findIndex(
+                    (s) => s.id === currentAdditionSkill.id
+                  )
+                  if (currentIndex > 0) {
+                    onChange({
+                      currentAdditionSkillId: additionSkills[currentIndex - 1].id,
+                    } as Partial<WorksheetFormState>)
+                  }
+                }}
+                disabled={additionSkills.findIndex((s) => s.id === currentAdditionSkill.id) === 0}
+                className={css({
+                  flex: 1,
+                  padding: '0.375rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.600' : 'white',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  cursor: 'pointer',
+                  _disabled: {
+                    opacity: 0.5,
+                    cursor: 'not-allowed',
+                  },
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.500' : 'gray.50',
+                  },
+                })}
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIndex = additionSkills.findIndex(
+                    (s) => s.id === currentAdditionSkill.id
+                  )
+                  if (currentIndex < additionSkills.length - 1) {
+                    onChange({
+                      currentAdditionSkillId: additionSkills[currentIndex + 1].id,
+                    } as Partial<WorksheetFormState>)
+                  }
+                }}
+                disabled={
+                  additionSkills.findIndex((s) => s.id === currentAdditionSkill.id) ===
+                  additionSkills.length - 1
+                }
+                className={css({
+                  flex: 1,
+                  padding: '0.375rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.600' : 'white',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  cursor: 'pointer',
+                  _disabled: {
+                    opacity: 0.5,
+                    cursor: 'not-allowed',
+                  },
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.500' : 'gray.50',
+                  },
+                })}
+              >
+                Next →
+              </button>
+            </div>
           </div>
 
           {/* Subtraction Skill - Mini */}
@@ -334,58 +417,143 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             data-skill-card="subtraction-mini"
             className={css({
               flex: 1,
-              padding: '0.625rem',
-              borderRadius: '4px',
-              border: '1px solid',
-              borderColor: isDark ? 'gray.600' : 'gray.300',
-              backgroundColor: isDark ? 'gray.600' : 'white',
+              display: 'flex',
+              flexDirection: 'column',
             })}
           >
             <div
               className={css({
-                fontSize: '0.625rem',
-                fontWeight: '600',
-                color: isDark ? 'gray.400' : 'gray.500',
-                marginBottom: '0.25rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.025em',
+                flex: 1,
+                padding: '0.625rem',
+                borderRadius: '4px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: isDark ? 'gray.600' : 'white',
               })}
             >
-              Subtraction
-            </div>
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
-              <h4
+              <div
                 className={css({
-                  fontSize: '0.8125rem',
+                  fontSize: '0.625rem',
                   fontWeight: '600',
-                  color: isDark ? 'white' : 'gray.900',
-                  lineHeight: '1.2',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.25rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.025em',
                 })}
               >
-                {currentSubtractionSkill.name}
-              </h4>
-              {subtractionMastered && (
-                <span
+                Subtraction
+              </div>
+              <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
+                <h4
                   className={css({
                     fontSize: '0.8125rem',
-                    lineHeight: '1',
+                    fontWeight: '600',
+                    color: isDark ? 'white' : 'gray.900',
+                    lineHeight: '1.2',
                   })}
-                  title="Mastered"
                 >
-                  ✓
-                </span>
-              )}
+                  {currentSubtractionSkill.name}
+                </h4>
+                {subtractionMastered && (
+                  <span
+                    className={css({
+                      fontSize: '0.8125rem',
+                      lineHeight: '1',
+                    })}
+                    title="Mastered"
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
+              <p
+                className={css({
+                  fontSize: '0.6875rem',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                  marginTop: '0.25rem',
+                  lineHeight: '1.3',
+                })}
+              >
+                {currentSubtractionSkill.description}
+              </p>
             </div>
-            <p
-              className={css({
-                fontSize: '0.6875rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-                marginTop: '0.25rem',
-                lineHeight: '1.3',
-              })}
-            >
-              {currentSubtractionSkill.description}
-            </p>
+
+            {/* Subtraction Nav Buttons */}
+            <div className={css({ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' })}>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIndex = subtractionSkills.findIndex(
+                    (s) => s.id === currentSubtractionSkill.id
+                  )
+                  if (currentIndex > 0) {
+                    onChange({
+                      currentSubtractionSkillId: subtractionSkills[currentIndex - 1].id,
+                    } as Partial<WorksheetFormState>)
+                  }
+                }}
+                disabled={
+                  subtractionSkills.findIndex((s) => s.id === currentSubtractionSkill.id) === 0
+                }
+                className={css({
+                  flex: 1,
+                  padding: '0.375rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.600' : 'white',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  cursor: 'pointer',
+                  _disabled: {
+                    opacity: 0.5,
+                    cursor: 'not-allowed',
+                  },
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.500' : 'gray.50',
+                  },
+                })}
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIndex = subtractionSkills.findIndex(
+                    (s) => s.id === currentSubtractionSkill.id
+                  )
+                  if (currentIndex < subtractionSkills.length - 1) {
+                    onChange({
+                      currentSubtractionSkillId: subtractionSkills[currentIndex + 1].id,
+                    } as Partial<WorksheetFormState>)
+                  }
+                }}
+                disabled={
+                  subtractionSkills.findIndex((s) => s.id === currentSubtractionSkill.id) ===
+                  subtractionSkills.length - 1
+                }
+                className={css({
+                  flex: 1,
+                  padding: '0.375rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '3px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.500' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.600' : 'white',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  cursor: 'pointer',
+                  _disabled: {
+                    opacity: 0.5,
+                    cursor: 'not-allowed',
+                  },
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.500' : 'gray.50',
+                  },
+                })}
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </div>
 
