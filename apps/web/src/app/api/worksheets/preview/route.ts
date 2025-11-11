@@ -17,7 +17,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing config' }, { status: 400 })
     }
 
-    // Add date and seed if missing
+    // Calculate derived state fields
+    const problemsPerPage = config.problemsPerPage ?? 20
+    const pages = config.pages ?? 1
+    const cols = config.cols ?? 5
+    const rows = Math.ceil((problemsPerPage * pages) / cols)
+    const total = problemsPerPage * pages
+
+    // Add date, seed, and derived fields if missing
     const fullConfig: WorksheetFormState = {
       ...config,
       date:
@@ -28,6 +35,8 @@ export async function POST(request: Request) {
           year: 'numeric',
         }),
       seed: config.seed || Date.now() % 2147483647,
+      rows,
+      total,
     }
 
     // Generate preview

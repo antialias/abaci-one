@@ -115,7 +115,13 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
     }
 
     // Generate Typst sources (one per page)
+    console.log('[generatePreview] Generated problems:', problems.length, 'for config:', {
+      pages: validatedConfig.pages,
+      problemsPerPage: validatedConfig.problemsPerPage,
+      total: validatedConfig.total,
+    })
     const typstSources = generateTypstSource(validatedConfig, problems)
+    console.log('[generatePreview] Generated Typst sources:', typstSources.length, 'pages')
 
     // Compile each page source to SVG (using stdout for single-page output)
     const pages: string[] = []
