@@ -273,32 +273,132 @@ export default function SharedWorksheetPage() {
               </div>
             </div>
 
-            <button
-              data-action="open-edit-modal"
-              onClick={() => setShowEditModal(true)}
-              className={css({
-                px: '4',
-                py: '2',
-                bg: 'white',
-                color: 'blue.600',
-                fontSize: 'sm',
-                fontWeight: 'bold',
-                rounded: 'lg',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2',
-                _hover: {
-                  bg: 'blue.50',
-                  transform: 'translateY(-1px)',
-                  shadow: 'md',
-                },
-              })}
-            >
-              <span>✏️</span>
-              <span>Edit This Worksheet</span>
-            </button>
+            <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+              {/* Download Button */}
+              <button
+                data-action="download-worksheet"
+                onClick={async () => {
+                  // Generate and download the worksheet
+                  const response = await fetch('/api/create/worksheets/addition', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      config: {
+                        ...shareData.config,
+                        date: new Date().toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        }),
+                      },
+                    }),
+                  })
+                  if (response.ok) {
+                    const blob = await response.blob()
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `worksheet-${shareData.id}.pdf`
+                    document.body.appendChild(a)
+                    a.click()
+                    window.URL.revokeObjectURL(url)
+                    document.body.removeChild(a)
+                  }
+                }}
+                className={css({
+                  px: '3',
+                  py: '2',
+                  bg: 'white',
+                  color: 'blue.600',
+                  fontSize: 'sm',
+                  fontWeight: 'bold',
+                  rounded: 'lg',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2',
+                  _hover: {
+                    bg: 'blue.50',
+                    transform: 'translateY(-1px)',
+                    shadow: 'md',
+                  },
+                })}
+              >
+                <span>⬇️</span>
+              </button>
+
+              {/* Share Button */}
+              <button
+                data-action="reshare-worksheet"
+                onClick={async () => {
+                  // Create a new share link for this config
+                  const response = await fetch('/api/worksheets/share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      worksheetType: 'addition',
+                      config: shareData.config,
+                    }),
+                  })
+                  if (response.ok) {
+                    const data = await response.json()
+                    await navigator.clipboard.writeText(data.url)
+                    // TODO: Show toast notification
+                    alert('Share link copied to clipboard!')
+                  }
+                }}
+                className={css({
+                  px: '3',
+                  py: '2',
+                  bg: 'white',
+                  color: 'blue.600',
+                  fontSize: 'sm',
+                  fontWeight: 'bold',
+                  rounded: 'lg',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2',
+                  _hover: {
+                    bg: 'blue.50',
+                    transform: 'translateY(-1px)',
+                    shadow: 'md',
+                  },
+                })}
+              >
+                <span>🔗</span>
+              </button>
+
+              {/* Edit Button */}
+              <button
+                data-action="open-edit-modal"
+                onClick={() => setShowEditModal(true)}
+                className={css({
+                  px: '4',
+                  py: '2',
+                  bg: 'white',
+                  color: 'blue.600',
+                  fontSize: 'sm',
+                  fontWeight: 'bold',
+                  rounded: 'lg',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2',
+                  _hover: {
+                    bg: 'blue.50',
+                    transform: 'translateY(-1px)',
+                    shadow: 'md',
+                  },
+                })}
+              >
+                <span>✏️</span>
+                <span>Edit</span>
+              </button>
+            </div>
           </div>
 
           {/* Worksheet studio layout */}
