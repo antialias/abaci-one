@@ -398,7 +398,7 @@ export function OrientationPanel({
                                 fontWeight: 'semibold',
                                 color: isSelected
                                   ? isDark
-                                    ? 'brand.200'
+                                    ? 'white'
                                     : 'brand.700'
                                   : isDark
                                     ? 'gray.200'
@@ -412,7 +412,7 @@ export function OrientationPanel({
                                 fontSize: 'xs',
                                 color: isSelected
                                   ? isDark
-                                    ? 'brand.300'
+                                    ? 'gray.200'
                                     : 'brand.600'
                                   : isDark
                                     ? 'gray.400'
