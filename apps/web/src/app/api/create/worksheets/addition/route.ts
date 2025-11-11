@@ -2,14 +2,14 @@
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
-import { validateWorksheetConfig } from '@/app/create/worksheets/addition/validation'
+import { validateWorksheetConfig } from '@/app/create/worksheets/validation'
 import {
   generateProblems,
   generateSubtractionProblems,
   generateMixedProblems,
-} from '@/app/create/worksheets/addition/problemGenerator'
-import { generateTypstSource } from '@/app/create/worksheets/addition/typstGenerator'
-import type { WorksheetFormState, WorksheetProblem } from '@/app/create/worksheets/addition/types'
+} from '@/app/create/worksheets/problemGenerator'
+import { generateTypstSource } from '@/app/create/worksheets/typstGenerator'
+import type { WorksheetFormState, WorksheetProblem } from '@/app/create/worksheets/types'
 
 export async function POST(request: NextRequest) {
   try {

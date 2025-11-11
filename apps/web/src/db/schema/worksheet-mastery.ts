@@ -21,7 +21,7 @@ export const worksheetMastery = sqliteTable(
 
     /**
      * Skill ID (e.g., "sd-no-regroup", "td-ones-regroup", "3d-full-regroup")
-     * See SKILL_DEFINITIONS in src/app/create/worksheets/addition/skills.ts
+     * See SKILL_DEFINITIONS in src/app/create/worksheets/skills.ts
      */
     skillId: text('skill_id').notNull(),
 

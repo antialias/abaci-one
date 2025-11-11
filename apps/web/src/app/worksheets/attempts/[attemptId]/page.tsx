@@ -535,7 +535,7 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
               <strong>{result.suggestedStepId}</strong>
             </p>
             <Link
-              href={`/create/worksheets/addition?step=${result.suggestedStepId}`}
+              href={`/create/worksheets?step=${result.suggestedStepId}`}
               className={css({
                 display: 'inline-flex',
                 alignItems: 'center',

@@ -3,7 +3,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import { generateWorksheetPreview } from '../src/app/create/worksheets/addition/generatePreview'
+import { generateWorksheetPreview } from '../src/app/create/worksheets/generatePreview'
 
 // Output directory
 const outputDir = path.join(process.cwd(), 'public', 'blog', 'multi-digit-examples')

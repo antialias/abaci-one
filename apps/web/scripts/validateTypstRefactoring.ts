@@ -6,9 +6,9 @@
  * produces identical Typst output to ensure no regressions.
  */
 
-import { generateSubtractionProblemStackFunction } from '../src/app/create/worksheets/addition/typstHelpers'
-import { generateTypstHelpers } from '../src/app/create/worksheets/addition/typstHelpers'
-import { generatePlaceValueColors } from '../src/app/create/worksheets/addition/typstHelpers'
+import { generateSubtractionProblemStackFunction } from '../src/app/create/worksheets/typstHelpers'
+import { generateTypstHelpers } from '../src/app/create/worksheets/typstHelpers'
+import { generatePlaceValueColors } from '../src/app/create/worksheets/typstHelpers'
 
 console.log('🔍 Validating typstHelpers refactoring...\n')
 

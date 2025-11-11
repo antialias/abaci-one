@@ -1,8 +1,8 @@
 // API route for generating addition worksheet previews (SVG)
 
 import { type NextRequest, NextResponse } from 'next/server'
-import { generateWorksheetPreview } from '@/app/create/worksheets/addition/generatePreview'
-import type { WorksheetFormState } from '@/app/create/worksheets/addition/types'
+import { generateWorksheetPreview } from '@/app/create/worksheets/generatePreview'
+import type { WorksheetFormState } from '@/app/create/worksheets/types'
 
 export const dynamic = 'force-dynamic'
 

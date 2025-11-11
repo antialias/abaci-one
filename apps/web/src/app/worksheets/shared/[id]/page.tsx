@@ -54,9 +54,10 @@ export default function SharedWorksheetPage() {
   const handleOpenInEditor = () => {
     if (!shareData) return
 
-    // Navigate to the worksheet creator with the share ID
-    // The server-side page will load the config from the database
-    router.push(`/create/worksheets?share=${shareData.id}`)
+    // Navigate to the worksheet creator with the shared config
+    // Store config in sessionStorage so it can be loaded by the editor
+    sessionStorage.setItem('sharedWorksheetConfig', JSON.stringify(shareData.config))
+    router.push('/create/worksheets?from=share')
   }
 
   if (loading) {

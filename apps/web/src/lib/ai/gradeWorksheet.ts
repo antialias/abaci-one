@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises'
-import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/addition/progressionPath'
+import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
 
 /**
  * Grading result structure returned by GPT-5

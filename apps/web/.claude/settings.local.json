@@ -46,11 +46,16 @@
       "Bash(npx @pandacss/dev)",
       "Bash(npm view:*)",
       "Bash(xargs sed:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git push:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(pnpm install)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

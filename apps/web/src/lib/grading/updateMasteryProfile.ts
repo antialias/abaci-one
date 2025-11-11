@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { worksheetMastery } from '@/db/schema'
-import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/addition/progressionPath'
+import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
 import type { GradingResult } from '@/lib/ai/gradeWorksheet'
 
 /**

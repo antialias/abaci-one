@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getProfileFromConfig } from './addition/difficultyProfiles'
+import { getProfileFromConfig } from './difficultyProfiles'
 
 /**
  * Versioned worksheet config schemas with type-safe validation and migration

@@ -13,14 +13,14 @@ import { type NextRequest, NextResponse } from 'next/server'
 import {
   generateProblems,
   generateSubtractionProblems,
-} from '@/app/create/worksheets/addition/problemGenerator'
-import type { WorksheetOperator } from '@/app/create/worksheets/addition/types'
+} from '@/app/create/worksheets/problemGenerator'
+import type { WorksheetOperator } from '@/app/create/worksheets/types'
 import {
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
   generateTypstHelpers,
   generatePlaceValueColors,
-} from '@/app/create/worksheets/addition/typstHelpers'
+} from '@/app/create/worksheets/typstHelpers'
 
 export const dynamic = 'force-dynamic'
 

@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
-import type { SkillId } from '@/app/create/worksheets/addition/skills'
+import type { SkillId } from '@/app/create/worksheets/skills'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
 
