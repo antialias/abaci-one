@@ -13,12 +13,15 @@ import { WorksheetPreview } from './WorksheetPreview'
 import { OrientationPanel } from './OrientationPanel'
 import { GenerateButton } from './GenerateButton'
 import { GenerationErrorDisplay } from './GenerationErrorDisplay'
+import { RuleThermometer } from './config-panel/RuleThermometer'
 import { useWorksheetState } from '../hooks/useWorksheetState'
 import { useWorksheetGeneration } from '../hooks/useWorksheetGeneration'
 import { useWorksheetAutoSave } from '../hooks/useWorksheetAutoSave'
 import { getDefaultDate } from '../utils/dateFormatting'
 import { calculateDerivedState } from '../utils/layoutCalculations'
 import type { WorksheetFormState } from '../types'
+import type { DisplayRules } from '../displayRules'
+import { defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 
 interface AdditionWorksheetClientProps {
   initialSettings: Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
@@ -201,6 +204,32 @@ export function AdditionWorksheetClient({
                 onProblemsPerPageChange={handleProblemsPerPageChange}
                 onPagesChange={handlePagesChange}
                 isDark={isDark}
+                problemNumbers={
+                  (formState.displayRules ?? defaultAdditionConfig.displayRules).problemNumbers
+                }
+                cellBorders={
+                  (formState.displayRules ?? defaultAdditionConfig.displayRules).cellBorders
+                }
+                onProblemNumbersChange={(value) => {
+                  const displayRules: DisplayRules =
+                    formState.displayRules ?? defaultAdditionConfig.displayRules
+                  updateFormState({
+                    displayRules: {
+                      ...displayRules,
+                      problemNumbers: value,
+                    },
+                  })
+                }}
+                onCellBordersChange={(value) => {
+                  const displayRules: DisplayRules =
+                    formState.displayRules ?? defaultAdditionConfig.displayRules
+                  updateFormState({
+                    displayRules: {
+                      ...displayRules,
+                      cellBorders: value,
+                    },
+                  })
+                }}
               />
 
               <GenerateButton status={status} onGenerate={handleGenerate} isDark={isDark} />

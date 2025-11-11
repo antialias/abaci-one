@@ -17,6 +17,11 @@ interface OrientationPanelProps {
   onProblemsPerPageChange: (problemsPerPage: number, cols: number) => void
   onPagesChange: (pages: number) => void
   isDark?: boolean
+  // Layout options
+  problemNumbers?: 'always' | 'never'
+  cellBorders?: 'always' | 'never'
+  onProblemNumbersChange?: (value: 'always' | 'never') => void
+  onCellBordersChange?: (value: 'always' | 'never') => void
 }
 
 /**
@@ -32,6 +37,10 @@ export function OrientationPanel({
   onProblemsPerPageChange,
   onPagesChange,
   isDark = false,
+  problemNumbers = 'always',
+  cellBorders = 'always',
+  onProblemNumbersChange,
+  onCellBordersChange,
 }: OrientationPanelProps) {
   const handleOrientationChange = (newOrientation: 'portrait' | 'landscape') => {
     const newProblemsPerPage = newOrientation === 'portrait' ? 15 : 20
@@ -423,6 +432,108 @@ export function OrientationPanel({
             >
               {total}
             </div>
+          </div>
+        </div>
+
+        {/* Row 3: Layout Options */}
+        <div className={css({ borderTop: '1px solid', borderColor: isDark ? 'gray.700' : 'gray.200', pt: '3', mt: '1' })}>
+          <div
+            className={css({
+              fontSize: '2xs',
+              fontWeight: 'semibold',
+              color: isDark ? 'gray.400' : 'gray.500',
+              textTransform: 'uppercase',
+              letterSpacing: 'wider',
+              mb: '2',
+            })}
+          >
+            Layout Options
+          </div>
+
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+            {/* Problem Numbers Toggle */}
+            <label
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              })}
+            >
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                  })}
+                >
+                  Problem Numbers
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  Show problem numbers for reference
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={problemNumbers === 'always'}
+                onChange={(e) => {
+                  onProblemNumbersChange?.(e.target.checked ? 'always' : 'never')
+                }}
+                className={css({
+                  w: '12',
+                  h: '6',
+                  cursor: 'pointer',
+                })}
+              />
+            </label>
+
+            {/* Cell Borders Toggle */}
+            <label
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              })}
+            >
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                  })}
+                >
+                  Cell Borders
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  Show borders around answer cells
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={cellBorders === 'always'}
+                onChange={(e) => {
+                  onCellBordersChange?.(e.target.checked ? 'always' : 'never')
+                }}
+                className={css({
+                  w: '12',
+                  h: '6',
+                  cursor: 'pointer',
+                })}
+              />
+            </label>
           </div>
         </div>
       </div>
