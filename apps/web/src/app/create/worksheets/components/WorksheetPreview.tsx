@@ -115,7 +115,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   // Virtualization decision based on page count, not config source
   // Always virtualize multi-page worksheets for performance
   const shouldVirtualize = totalPages > 1
-  console.log('[PAGE INDICATOR] Determining shouldVirtualize - totalPages:', totalPages, '-> shouldVirtualize:', shouldVirtualize)
+  console.log('[VIRTUALIZATION] shouldVirtualize:', shouldVirtualize, 'totalPages:', totalPages)
 
   // Initialize visible pages - start with first page only
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
@@ -125,10 +125,10 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   // Track when refs are fully populated
   const [refsReady, setRefsReady] = useState(false)
 
-  // Debug: Log when currentPage changes
+  // Debug: Log visible pages changes
   useEffect(() => {
-    console.log('[PAGE INDICATOR] currentPage state changed to:', currentPage)
-  }, [currentPage])
+    console.log('[VIRTUALIZATION] visiblePages changed:', Array.from(visiblePages).sort())
+  }, [visiblePages])
 
   // Reset to first page when preview updates
   useEffect(() => {
@@ -142,9 +142,8 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   useEffect(() => {
     if (totalPages > 1 && pageRefs.current.length === totalPages) {
       const allPopulated = pageRefs.current.every((ref) => ref !== null)
-      console.log('[PAGE INDICATOR] Refs check - totalPages:', totalPages, 'refs.length:', pageRefs.current.length, 'allPopulated:', allPopulated, 'refsReady:', refsReady)
       if (allPopulated && !refsReady) {
-        console.log('[PAGE INDICATOR] All refs populated! Setting refsReady to true')
+        console.log('[VIRTUALIZATION] All refs ready, setting up observer')
         setRefsReady(true)
       }
     }
@@ -152,32 +151,25 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
   // Intersection Observer to track current page (works with or without virtualization)
   useEffect(() => {
-    console.log('[PAGE INDICATOR] Observer useEffect triggered - shouldVirtualize:', shouldVirtualize, 'totalPages:', totalPages, 'refsReady:', refsReady)
-
     if (totalPages <= 1) {
-      console.log('[PAGE INDICATOR] Skipping observer setup - only', totalPages, 'page(s)')
       return // No need for page tracking with single page
     }
 
     // Wait for refs to be populated
     if (!refsReady) {
-      console.log('[PAGE INDICATOR] Skipping observer setup - refs not ready')
       return
     }
 
-    console.log('[PAGE INDICATOR] Setting up IntersectionObserver for', totalPages, 'pages')
+    console.log('[VIRTUALIZATION] Setting up IntersectionObserver - shouldVirtualize:', shouldVirtualize)
 
     const observer = new IntersectionObserver(
       (entries) => {
-        console.log('[PAGE INDICATOR] Observer callback triggered with', entries.length, 'entries')
-
         // Find the most visible page among all entries
         let mostVisiblePage = 0
         let maxRatio = 0
 
         entries.forEach((entry) => {
           const pageIndex = Number(entry.target.getAttribute('data-page-index'))
-          console.log('[PAGE INDICATOR] Page', pageIndex, '- ratio:', entry.intersectionRatio, 'intersecting:', entry.isIntersecting)
 
           if (entry.intersectionRatio > maxRatio) {
             maxRatio = entry.intersectionRatio
@@ -185,14 +177,9 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           }
         })
 
-        console.log('[PAGE INDICATOR] Most visible page:', mostVisiblePage, 'with ratio:', maxRatio)
-
         // Update current page if we found a more visible page
         if (maxRatio > 0) {
-          console.log('[PAGE INDICATOR] Setting current page to:', mostVisiblePage)
           setCurrentPage(mostVisiblePage)
-        } else {
-          console.log('[PAGE INDICATOR] No visible page (maxRatio = 0), keeping current page')
         }
 
         // Update visible pages set (only when virtualizing)
@@ -204,6 +191,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
               if (entry.isIntersecting) {
+                console.log('[VIRTUALIZATION] Page', pageIndex, 'is intersecting - adding to visible set')
                 // Add visible page
                 next.add(pageIndex)
                 // Preload adjacent pages for smooth scrolling
@@ -211,6 +199,11 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
                 if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
               }
             })
+
+            // Log if visible pages changed
+            if (next.size !== prev.size || ![...next].every(p => prev.has(p))) {
+              console.log('[VIRTUALIZATION] Updating visible pages:', Array.from(prev).sort(), '->', Array.from(next).sort())
+            }
 
             return next
           })
@@ -271,34 +264,41 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           p: '4',
         })}
       >
-        {pages.map((page, index) => (
-          <div
-            key={index}
-            ref={(el) => (pageRefs.current[index] = el)}
-            data-page-index={index}
-            data-element="page-container"
-            className={css({
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            })}
-          >
-            {visiblePages.has(index) ? (
-              <div
-                className={css({
-                  '& svg': {
-                    maxWidth: '100%',
-                    height: 'auto',
-                    width: 'auto',
-                  },
-                })}
-                dangerouslySetInnerHTML={{ __html: page }}
-              />
-            ) : (
-              <PagePlaceholder pageNumber={index + 1} />
-            )}
-          </div>
-        ))}
+        {pages.map((page, index) => {
+          const isVisible = visiblePages.has(index)
+          if (index === 0) {
+            console.log('[VIRTUALIZATION] Rendering pages - total:', totalPages, 'visible:', Array.from(visiblePages).sort())
+          }
+
+          return (
+            <div
+              key={index}
+              ref={(el) => (pageRefs.current[index] = el)}
+              data-page-index={index}
+              data-element="page-container"
+              className={css({
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              })}
+            >
+              {isVisible ? (
+                <div
+                  className={css({
+                    '& svg': {
+                      maxWidth: '100%',
+                      height: 'auto',
+                      width: 'auto',
+                    },
+                  })}
+                  dangerouslySetInnerHTML={{ __html: page }}
+                />
+              ) : (
+                <PagePlaceholder pageNumber={index + 1} />
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
