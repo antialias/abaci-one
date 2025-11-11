@@ -11,13 +11,17 @@ Think of it as **Smart Difficulty with skill-based presets instead of difficulty
 ## Core Concept
 
 ### Current Smart Mode
+
 User picks a difficulty preset:
+
 - "Beginner" → No regrouping, full scaffolding
 - "Practice" → High regrouping, high scaffolding
 - "Expert" → High regrouping, no scaffolding
 
 ### New Mastery Mode
+
 User picks a skill to practice:
+
 - "Two-digit with ones regrouping" → Auto-configured for that specific skill
 - Worksheet automatically mixes 75% current skill + 25% review of mastered skills
 - User can customize the mix ratio and review selection
@@ -49,6 +53,7 @@ Interface shows current skill with navigation:
 ```
 
 **Actions:**
+
 - **← Previous / Next →**: Navigate through skill sequence
 - **Mark as Mastered**: Toggle mastery status (remembered for this user)
 - **✓ indicator**: Shows this skill is already mastered
@@ -97,6 +102,7 @@ Click to expand for full details:
 ```
 
 **Key observability features:**
+
 - **Current skill block** (blue): Shows count, percentage, example problem
 - **Review block** (green): Shows count, percentage, breakdown by skill
 - **Scaffolding summary**: What scaffolds are enabled for this skill
@@ -126,6 +132,7 @@ Worksheet preview shows which problems are current vs review:
 ```
 
 **Badges:**
+
 - Blue "Current" badge → Current skill problem
 - Green "Review: skill-name" → Review problem (shows which skill)
 
@@ -172,12 +179,14 @@ Click "View All Skills" to see complete progression:
 ```
 
 **Status indicators:**
+
 - ✓ = Mastered (green)
 - ⭐ = Current skill (blue, with stats)
 - ○ = Available (prerequisites met)
 - ⊘ = Locked (prerequisites not met)
 
 **Actions per skill:**
+
 - **Practice This**: Switch to this skill
 - **Mark as Mastered / Unmark**: Toggle mastery
 - Shows prerequisite requirements for locked skills
@@ -208,6 +217,7 @@ Click "Customize Mix" for fine control:
 ```
 
 **Controls:**
+
 - **Slider**: Adjust current/review ratio (0-100% review)
 - **Checkboxes**: Select which mastered skills to include in review
 - **Reset**: Return to defaults (75% current, all recommended review skills)
@@ -219,6 +229,7 @@ Click "Customize Mix" for fine control:
 ### Example: Practicing "Two-digit with ones regrouping"
 
 **Worksheet configuration** (20 problems):
+
 - **15 current skill problems** (75%):
   - Digit range: 2 digits
   - Regrouping: ~50% of problems need ones place regrouping
@@ -229,6 +240,7 @@ Click "Customize Mix" for fine control:
   - 2-3 problems from "Two-digit without regrouping" (23+45, 31+28)
 
 **Scaffolding** (auto-configured for this skill level):
+
 - Carry boxes: When regrouping
 - Answer boxes: Always
 - Place value colors: Always
@@ -269,14 +281,18 @@ Same progression pattern for subtraction (borrowing instead of carrying).
 ## Key UX Principles
 
 ### 1. **Transparency**
+
 User always sees:
+
 - What's in the mix (current skill vs review)
 - How many of each type of problem
 - Which skills are being reviewed
 - Why (based on dependency graph)
 
 ### 2. **Control**
+
 User can:
+
 - Navigate freely between skills
 - Manually mark skills as mastered/unmastered
 - Customize mix ratio (0-100% review)
@@ -284,12 +300,14 @@ User can:
 - Jump to any unlocked skill
 
 ### 3. **Simplicity**
+
 - No timers, no auto-advance
 - No complex time-based calculations
 - Just configuration presets organized by skill
 - Works exactly like Smart mode, but skill-focused
 
 ### 4. **Observability**
+
 - Collapsed summary (quick glance)
 - Expanded detail (full breakdown)
 - Problem attribution in preview
@@ -300,6 +318,7 @@ User can:
 ## What Makes This Better Than Smart Mode?
 
 ### Smart Mode
+
 - User picks difficulty level ("Beginner" to "Expert")
 - Adjusts regrouping probability and scaffolding globally
 - No concept of skill progression
@@ -307,6 +326,7 @@ User can:
 - User manually adjusts digit range
 
 ### Mastery Mode
+
 - User picks pedagogical skill to practice
 - Problem configuration auto-tuned for that skill
 - Clear progression path (unlock skills in order)
@@ -322,6 +342,7 @@ User can:
 ### Data Storage
 
 **New table**: `worksheet_mastery`
+
 ```sql
 CREATE TABLE worksheet_mastery (
   id TEXT PRIMARY KEY,
@@ -340,6 +361,7 @@ CREATE TABLE worksheet_mastery (
 ```
 
 **Tracks**:
+
 - Which skills user has mastered (boolean)
 - Attempt/accuracy stats (for future validation)
 - Timestamps (for UI display only, not logic)
@@ -348,11 +370,13 @@ CREATE TABLE worksheet_mastery (
 
 ```typescript
 // Phase 1: Determine current skill
-const currentSkill = SKILL_DEFINITIONS.find(s => s.id === formState.currentSkillId);
+const currentSkill = SKILL_DEFINITIONS.find(
+  (s) => s.id === formState.currentSkillId,
+);
 
 // Phase 2: Get review skills (from recommendedReview list, filtered by mastery)
-const reviewSkills = currentSkill.recommendedReview.filter(skillId =>
-  masteryStates.get(skillId)?.isMastered === true
+const reviewSkills = currentSkill.recommendedReview.filter(
+  (skillId) => masteryStates.get(skillId)?.isMastered === true,
 );
 
 // Phase 3: Calculate mix
@@ -364,7 +388,7 @@ const currentCount = total - reviewCount;
 // Phase 4: Generate problems
 const problems = [
   ...generateProblemsForSkill(currentSkill, currentCount),
-  ...generateReviewProblems(reviewSkills, reviewCount)
+  ...generateReviewProblems(reviewSkills, reviewCount),
 ];
 
 // Phase 5: Shuffle and return
@@ -390,12 +414,14 @@ return shuffle(problems);
 ## Implementation Phases
 
 ### Phase 1: Foundation (Backend)
+
 - Database migration for `worksheet_mastery` table
 - Define 21 `SKILL_DEFINITIONS` (11 addition, 10 subtraction)
 - API endpoints: GET/POST `/api/worksheets/mastery`
 - Problem generation with skill mix
 
 ### Phase 2: Basic UI
+
 - Mode selector (Smart/Manual/Mastery tabs)
 - Mastery mode panel with current skill display
 - Previous/Next navigation buttons
@@ -403,16 +429,19 @@ return shuffle(problems);
 - "Mark as Mastered" toggle
 
 ### Phase 3: Modals
+
 - "View All Skills" modal with full progression
 - Progress tracking (X/Y skills mastered)
 - Click-to-select skill navigation
 
 ### Phase 4: Customization
+
 - "Customize Mix" modal with slider
 - Manual review skill selection
 - Custom mix ratio persistence
 
 ### Phase 5: Polish
+
 - Problem attribution badges in preview
 - Smooth transitions between skills
 - Responsive design (mobile/tablet)
@@ -426,6 +455,7 @@ return shuffle(problems);
 **Goal**: Generate practice worksheets for child learning two-digit addition
 
 **Flow**:
+
 1. Opens worksheet generator
 2. Clicks "Mastery" tab
 3. Sees child is on "Two-digit with ones regrouping"
@@ -441,6 +471,7 @@ return shuffle(problems);
 **Goal**: Create differentiated worksheets for students at different levels
 
 **Flow**:
+
 1. Opens worksheet generator
 2. Clicks "View All Skills"
 3. Sees student A is on skill #4, student B is on skill #7
@@ -455,6 +486,7 @@ return shuffle(problems);
 **Goal**: Create targeted practice with heavy review component
 
 **Flow**:
+
 1. Opens worksheet generator
 2. Clicks "Mastery" tab
 3. Sees student is on "Three-digit simple regrouping"
@@ -470,24 +502,31 @@ return shuffle(problems);
 ## Questions & Answers
 
 ### Q: What if I want pure practice (no review)?
+
 **A**: Adjust mix ratio slider to 100% current / 0% review.
 
 ### Q: What if I want pure review?
+
 **A**: Adjust mix ratio slider to 0% current / 100% review.
 
 ### Q: Can I practice a skill I haven't "unlocked" yet?
+
 **A**: Yes! Click "Practice This" on any skill. Prerequisites only affect the suggested progression, not what you can select.
 
 ### Q: Does marking a skill as mastered change anything automatically?
+
 **A**: No. It just updates the checkmark and enables that skill for review in future worksheets. You manually navigate to the next skill.
 
 ### Q: Can I go back to a mastered skill?
+
 **A**: Yes. Click "Practice This" on any skill, including mastered ones. Useful for generating extra practice or review.
 
 ### Q: What happens if I unmark a skill as mastered?
+
 **A**: It removes the checkmark and excludes it from review pools. You can re-mark it anytime.
 
 ### Q: Do the mastery states sync across devices?
+
 **A**: Yes, they're stored in the database per user account.
 
 ---

@@ -258,7 +258,7 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
                     border: '1px solid rgba(75, 85, 99, 0.5)',
                     borderRadius: '8px',
                     fontSize: '13px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor:
                       actionLoading === `decline-${invitation.id}` ? 'not-allowed' : 'pointer',
                     opacity: actionLoading === `decline-${invitation.id}` ? 0.5 : 1,
@@ -292,7 +292,7 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
                     border: '1px solid rgba(59, 130, 246, 0.6)',
                     borderRadius: '8px',
                     fontSize: '13px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor:
                       actionLoading === `accept-${invitation.id}` ||
                       actionLoading === `decline-${invitation.id}`

@@ -725,27 +725,32 @@ function renderProblemWithAttribution(problem: WorksheetProblem, index: number) 
 ## Observability Features Summary
 
 ### 1. **What's in the mix**
+
 - Current skill count + percentage
 - Review count + percentage
 - Breakdown of review by skill (e.g., "2 single-digit, 3 two-digit")
 
 ### 2. **Why this mix**
+
 - "Recommended scaffolding for this skill"
 - "Prerequisites: [list]"
 - "Next skill: [name] (after mastering this)"
 
 ### 3. **How it's distributed**
+
 - Visual blocks showing current vs review ratio
 - List showing exact count per review skill
 - Example problems for each skill type
 
 ### 4. **Progress tracking**
+
 - X/Y skills mastered
 - Percentage complete
 - Last practiced date
 - Accuracy tracking
 
 ### 5. **Control transparency**
+
 - Ability to customize mix ratio
 - Ability to select specific review skills
 - Ability to manually override mastery status
@@ -788,14 +793,17 @@ Current location in `AdditionWorksheetClient.tsx`:
 ## Responsive Behavior
 
 ### Desktop (≥768px)
+
 - Full panel with all details visible
 - Modals centered, max-width 600px
 
 ### Tablet (480px - 768px)
+
 - Compact panel, abbreviated text
 - Modals full-width with padding
 
 ### Mobile (<480px)
+
 - Stacked layout
 - Abbreviated labels ("Cur: 15" instead of "Current: 15 problems")
 - Full-screen modals

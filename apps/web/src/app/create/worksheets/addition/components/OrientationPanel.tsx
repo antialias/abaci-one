@@ -479,18 +479,35 @@ export function OrientationPanel({
                   Show problem numbers for reference
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={problemNumbers === 'always'}
-                onChange={(e) => {
-                  onProblemNumbersChange?.(e.target.checked ? 'always' : 'never')
+              <button
+                type="button"
+                onClick={() => {
+                  onProblemNumbersChange?.(problemNumbers === 'always' ? 'never' : 'always')
                 }}
                 className={css({
+                  position: 'relative',
                   w: '12',
                   h: '6',
+                  bg: problemNumbers === 'always' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  rounded: 'full',
                   cursor: 'pointer',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
                 })}
-              />
+              >
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: '1',
+                    left: problemNumbers === 'always' ? '7' : '1',
+                    w: '4',
+                    h: '4',
+                    bg: 'white',
+                    rounded: 'full',
+                    transition: 'left 0.2s',
+                  })}
+                />
+              </button>
             </label>
 
             {/* Cell Borders Toggle */}
@@ -521,18 +538,35 @@ export function OrientationPanel({
                   Show borders around answer cells
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={cellBorders === 'always'}
-                onChange={(e) => {
-                  onCellBordersChange?.(e.target.checked ? 'always' : 'never')
+              <button
+                type="button"
+                onClick={() => {
+                  onCellBordersChange?.(cellBorders === 'always' ? 'never' : 'always')
                 }}
                 className={css({
+                  position: 'relative',
                   w: '12',
                   h: '6',
+                  bg: cellBorders === 'always' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  rounded: 'full',
                   cursor: 'pointer',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
                 })}
-              />
+              >
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: '1',
+                    left: cellBorders === 'always' ? '7' : '1',
+                    w: '4',
+                    h: '4',
+                    bg: 'white',
+                    rounded: 'full',
+                    transition: 'left 0.2s',
+                  })}
+                />
+              </button>
             </label>
           </div>
         </div>

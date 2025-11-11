@@ -50,7 +50,7 @@ export function ThemeToggle() {
         borderRadius: '0.5rem',
         cursor: 'pointer',
         fontSize: '0.875rem',
-        fontWeight: '500',
+        fontWeight: 500,
         transition: 'all 0.2s',
         _hover: {
           bg: 'interactive.hover',

@@ -147,7 +147,7 @@ export default async function BlogIndex() {
                     <h3
                       className={css({
                         fontSize: { base: '1.25rem', md: '1.5rem' },
-                        fontWeight: '600',
+                        fontWeight: 600,
                         mb: '0.5rem',
                         color: 'text.primary',
                       })}
@@ -196,7 +196,7 @@ export default async function BlogIndex() {
                               color: 'accent.emphasis',
                               borderRadius: '0.25rem',
                               fontSize: '0.75rem',
-                              fontWeight: '500',
+                              fontWeight: 500,
                             })}
                           >
                             {tag}
@@ -265,7 +265,7 @@ export default async function BlogIndex() {
                     <h3
                       className={css({
                         fontSize: { base: '1.5rem', md: '1.875rem' },
-                        fontWeight: '600',
+                        fontWeight: 600,
                         mb: '0.5rem',
                         color: 'text.primary',
                         transition: 'color 0.2s',
@@ -319,7 +319,7 @@ export default async function BlogIndex() {
                             color: 'text.secondary',
                             borderRadius: '0.25rem',
                             fontSize: '0.75rem',
-                            fontWeight: '500',
+                            fontWeight: 500,
                           })}
                         >
                           {tag}

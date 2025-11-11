@@ -171,7 +171,7 @@ export function SetupPhase() {
               maxWidth: '600px',
               margin: '0 auto',
               lineHeight: 1.5,
-              fontWeight: '500',
+              fontWeight: 500,
             })}
           >
             Arrange abacus cards in order using <strong>only visual patterns</strong> — no numbers
@@ -333,7 +333,7 @@ export function SetupPhase() {
               fontSize: { base: '13px', md: '15px' },
               color: 'teal.800',
               margin: 0,
-              fontWeight: '600',
+              fontWeight: 600,
             })}
           >
             {cardCountInfo[state.cardCount].emoji} <strong>{state.cardCount} cards</strong> •{' '}

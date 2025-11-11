@@ -73,7 +73,7 @@ export function GameComponent() {
                 justifyContent: 'center',
                 gap: '8px',
                 fontSize: { base: '14px', sm: '16px', md: '18px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#92400e',
                 textAlign: 'center',
                 alignSelf: 'center',

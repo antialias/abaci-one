@@ -5,6 +5,7 @@ This shows the complete progression for learning the **single-carry** technique,
 ## The Pattern: Scaffolding Fade Cycles
 
 For each new complexity level:
+
 1. **WITH scaffolding** - Learn the pattern with visual support
 2. **WITHOUT scaffolding** - Internalize the concept
 3. **Next complexity WITH scaffolding** - Apply to harder problems with support again
@@ -15,6 +16,7 @@ For each new complexity level:
 ### Phase 1: Single-Digit Carrying (Entry Level)
 
 #### Objective 1: Single-digit with ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: sd-with-regroup (1-digit, 100% regrouping)
 - **Scaffolding**: FULL
@@ -27,6 +29,7 @@ For each new complexity level:
 - **Next**: Objective 2 (same complexity, less scaffolding)
 
 #### Objective 2: Single-digit without ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: sd-with-regroup (1-digit, 100% regrouping)
 - **Scaffolding**: PARTIAL (no ten-frames)
@@ -43,6 +46,7 @@ For each new complexity level:
 ### Phase 2: Two-Digit Carrying (Ones Place Only)
 
 #### Objective 3: Two-digit ones-carry with ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: td-ones-regroup (2-digit, ones only)
 - **Scaffolding**: FULL (scaffolding RETURNS for new complexity!)
@@ -56,6 +60,7 @@ For each new complexity level:
 - **Next**: Objective 4 (same complexity, fade scaffolding)
 
 #### Objective 4: Two-digit ones-carry without ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: td-ones-regroup (2-digit, ones only)
 - **Scaffolding**: PARTIAL
@@ -72,6 +77,7 @@ For each new complexity level:
 ### Phase 3: Two-Digit Carrying (Mixed/All Places)
 
 #### Objective 5: Two-digit mixed-carry with ten-frames
+
 - **Technique**: single-carry → multi-carry transition
 - **Complexity**: td-mixed-regroup (2-digit, 70% any, 30% all)
 - **Scaffolding**: FULL
@@ -84,6 +90,7 @@ For each new complexity level:
 - **Next**: Objective 6
 
 #### Objective 6: Two-digit mixed-carry without ten-frames
+
 - **Technique**: multi-carry (if pAllStart > 0)
 - **Complexity**: td-mixed-regroup
 - **Scaffolding**: PARTIAL
@@ -97,6 +104,7 @@ For each new complexity level:
 ### Phase 4: Three-Digit Carrying (Ones Place Only)
 
 #### Objective 7: Three-digit ones-carry with ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: xd-ones-regroup (3-digit, ones only)
 - **Scaffolding**: FULL (scaffolding RETURNS again!)
@@ -110,6 +118,7 @@ For each new complexity level:
 - **Next**: Objective 8
 
 #### Objective 8: Three-digit ones-carry without ten-frames
+
 - **Technique**: single-carry
 - **Complexity**: xd-ones-regroup
 - **Scaffolding**: PARTIAL
@@ -123,6 +132,7 @@ For each new complexity level:
 ### Phase 5: Three-Digit Multi-Carry
 
 #### Objective 9: Three-digit multi-carry with ten-frames
+
 - **Technique**: multi-carry
 - **Complexity**: xd-multi-regroup (3-digit, 2+ places)
 - **Scaffolding**: FULL
@@ -135,6 +145,7 @@ For each new complexity level:
 - **Next**: Objective 10
 
 #### Objective 10: Three-digit multi-carry without ten-frames
+
 - **Technique**: multi-carry
 - **Complexity**: xd-multi-regroup
 - **Scaffolding**: MINIMAL
@@ -148,6 +159,7 @@ For each new complexity level:
 ### Phase 6: Four-Digit (Advanced)
 
 #### Objective 11: Four-digit with scaffolding
+
 - **Technique**: multi-carry
 - **Complexity**: xxd-mixed (4-digit)
 - **Scaffolding**: FULL (for new complexity)
@@ -159,6 +171,7 @@ For each new complexity level:
 - **Next**: Objective 12
 
 #### Objective 12: Four-digit minimal scaffolding
+
 - **Technique**: multi-carry
 - **Complexity**: xxd-mixed
 - **Scaffolding**: MINIMAL
@@ -172,22 +185,28 @@ For each new complexity level:
 ## Key Insights
 
 ### 1. Scaffolding Cycles
+
 Ten-frames appear 6 times in this progression (objectives 1, 3, 5, 7, 9, 11), not just once!
 
 ### 2. Gradual Fade at Each Level
+
 Pattern: WITH → WITHOUT → (next complexity) WITH → WITHOUT
 
 ### 3. Two Dimensions of Progress
+
 - **Horizontal**: Fade scaffolding (full → partial → minimal)
 - **Vertical**: Increase complexity (1-digit → 2-digit → 3-digit → 4-digit)
 
 ### 4. Spiral Curriculum
+
 Students encounter the same technique multiple times with:
+
 - Increasing complexity
 - Decreasing scaffolding
 - Building mastery through repetition with variation
 
 ### 5. NOT a Linear Progression
+
 This is NOT: "learn with ten-frames, then never see them again"
 This IS: "cycle between scaffolded and unscaffolded practice as difficulty increases"
 

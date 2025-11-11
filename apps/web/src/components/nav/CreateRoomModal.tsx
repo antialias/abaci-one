@@ -136,7 +136,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   style={{
                     display: 'block',
                     marginBottom: '6px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'rgba(209, 213, 219, 1)',
                     fontSize: '13px',
                   }}
@@ -144,7 +144,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   Room Name{' '}
                   <span
                     style={{
-                      fontWeight: '400',
+                      fontWeight: 400,
                       color: 'rgba(156, 163, 175, 1)',
                       fontSize: '12px',
                     }}
@@ -182,7 +182,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   style={{
                     display: 'block',
                     marginBottom: '6px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'rgba(209, 213, 219, 1)',
                     fontSize: '13px',
                   }}
@@ -190,7 +190,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   🎮 Choose Your Game{' '}
                   <span
                     style={{
-                      fontWeight: '400',
+                      fontWeight: 400,
                       color: 'rgba(156, 163, 175, 1)',
                       fontSize: '12px',
                     }}
@@ -208,7 +208,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                       background: 'rgba(255, 255, 255, 0.05)',
                       color: gameName ? 'rgba(209, 213, 219, 1)' : 'rgba(156, 163, 175, 1)',
                       fontSize: '14px',
-                      fontWeight: '500',
+                      fontWeight: 500,
                       cursor: isPending ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -334,7 +334,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                               <div>
                                 <div
                                   style={{
-                                    fontWeight: '500',
+                                    fontWeight: 500,
                                     fontSize: '14px',
                                   }}
                                 >
@@ -415,7 +415,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                                   <div style={{ flex: 1 }}>
                                     <div
                                       style={{
-                                        fontWeight: '600',
+                                        fontWeight: 600,
                                         fontSize: '15px',
                                         color: 'rgba(209, 213, 219, 1)',
                                         marginBottom: '2px',
@@ -447,7 +447,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                                           padding: '2px 8px',
                                           borderRadius: '4px',
                                           color: 'rgba(147, 197, 253, 1)',
-                                          fontWeight: '500',
+                                          fontWeight: 500,
                                         }}
                                       >
                                         {game.manifest.maxPlayers === 1
@@ -460,7 +460,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                                           padding: '2px 8px',
                                           borderRadius: '4px',
                                           color: 'rgba(196, 181, 253, 1)',
-                                          fontWeight: '500',
+                                          fontWeight: 500,
                                         }}
                                       >
                                         {game.manifest.difficulty}
@@ -514,7 +514,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   style={{
                     display: 'block',
                     marginBottom: '8px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'rgba(209, 213, 219, 1)',
                     fontSize: '13px',
                   }}
@@ -578,7 +578,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                             ? 'rgba(134, 239, 172, 1)'
                             : 'rgba(209, 213, 219, 0.8)',
                         fontSize: '13px',
-                        fontWeight: '500',
+                        fontWeight: 500,
                         cursor: isPending ? 'not-allowed' : 'pointer',
                         opacity: isPending ? 0.5 : 1,
                         transition: 'all 0.2s ease',
@@ -607,7 +607,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                           lineHeight: '1.2',
                         }}
                       >
-                        <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600 }}>{mode.label}</div>
                         <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
                       </div>
                     </button>
@@ -621,7 +621,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                     style={{
                       display: 'block',
                       marginBottom: '8px',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       color: 'rgba(209, 213, 219, 1)',
                       fontSize: '14px',
                     }}
@@ -680,7 +680,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                     border: '2px solid rgba(75, 85, 99, 0.5)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: isPending ? 'not-allowed' : 'pointer',
                     opacity: isPending ? 0.5 : 1,
                     transition: 'all 0.2s ease',
@@ -713,7 +713,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                       : '2px solid rgba(34, 197, 94, 0.6)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: isPending ? 'not-allowed' : 'pointer',
                     opacity: isPending ? 0.5 : 1,
                     transition: 'all 0.2s ease',
@@ -793,7 +793,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                   <div
                     style={{
                       fontSize: '12px',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       color: 'rgba(156, 163, 175, 1)',
                       textAlign: 'center',
                       marginBottom: '4px',
@@ -825,7 +825,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                     border: '2px solid rgba(75, 85, 99, 0.5)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
@@ -850,7 +850,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                     border: '2px solid rgba(34, 197, 94, 0.6)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}

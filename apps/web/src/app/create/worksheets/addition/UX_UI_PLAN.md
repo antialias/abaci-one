@@ -78,6 +78,7 @@ This document describes the complete user experience and interface design for AI
 **Layout**: Modal dialog, 600px wide, centered
 
 **3 Tabs**:
+
 - 📁 File Upload
 - 📷 Camera Capture
 - 📱 Scan with Phone
@@ -107,6 +108,7 @@ This document describes the complete user experience and interface design for AI
 ```
 
 **States**:
+
 - Empty: Dashed border, upload icon
 - Hover: Blue highlight
 - Drag-over: Solid blue border
@@ -139,6 +141,7 @@ This document describes the complete user experience and interface design for AI
 ```
 
 **Features**:
+
 - Auto-request camera permission on tab switch
 - Show preview of captured image before upload
 - Retake button if image is blurry
@@ -174,6 +177,7 @@ This document describes the complete user experience and interface design for AI
 ```
 
 **Features**:
+
 - QR code generates on tab open
 - Real-time list updates as photos upload
 - Each item shows grading status
@@ -209,6 +213,7 @@ This document describes the complete user experience and interface design for AI
 ```
 
 **Features**:
+
 - Auto-open camera on page load
 - Big capture button (easy to tap)
 - Success animation after upload
@@ -218,6 +223,7 @@ This document describes the complete user experience and interface design for AI
 - Portrait orientation lock
 
 **States**:
+
 - Loading: "Opening camera..."
 - Ready: "Tap to capture"
 - Capturing: Brief flash animation
@@ -252,6 +258,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Progress bar (estimated)
 - Step-by-step status
 - Can navigate away (polling continues)
@@ -284,6 +291,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Big score display
 - Color-coded (green if >90%, yellow if >70%, else orange)
 - Encouraging message
@@ -309,6 +317,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Natural language summary
 - Error pattern tags (visual chips)
 - Specific, actionable
@@ -335,6 +344,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Collapsible (first 5 visible, expand for all)
 - Color-coded rows (green=correct, red=wrong)
 - Shows correct answer for wrong problems
@@ -365,6 +375,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Clear recommendation
 - Explains what the step includes
 - One-click worksheet generation
@@ -402,6 +413,7 @@ Shows while GPT-5 is analyzing:
 ```
 
 **Features**:
+
 - Chronological list
 - Filter by student/date
 - Quick stats per attempt
@@ -413,6 +425,7 @@ Shows while GPT-5 is analyzing:
 ### Colors
 
 **Light Mode**:
+
 - Primary: Blue (#3B82F6)
 - Success: Green (#10B981)
 - Warning: Yellow/Orange (#F59E0B)
@@ -422,6 +435,7 @@ Shows while GPT-5 is analyzing:
 - Text: Dark Gray (#111827)
 
 **Dark Mode**:
+
 - Primary: Light Blue (#60A5FA)
 - Success: Light Green (#34D399)
 - Warning: Light Orange (#FBBF24)
@@ -461,16 +475,19 @@ Shows while GPT-5 is analyzing:
 ### Mobile Adaptations
 
 **Upload Modal**:
+
 - Full-screen on mobile
 - Camera button larger
 - Simplified layout
 
 **Results Page**:
+
 - Stack sections vertically
 - Larger touch targets
 - Collapsible sections default collapsed
 
 **Camera Page**:
+
 - Always full-screen
 - Portrait lock
 - Large capture button
@@ -480,22 +497,26 @@ Shows while GPT-5 is analyzing:
 ### WCAG 2.1 AA Compliance
 
 **Keyboard Navigation**:
+
 - Tab through all interactive elements
 - Enter/Space to activate buttons
 - Escape to close modals
 
 **Screen Readers**:
+
 - Proper ARIA labels on all inputs
 - Status announcements for upload progress
 - Alt text on all images
 - Semantic HTML structure
 
 **Visual**:
+
 - Color contrast ratio ≥ 4.5:1
 - Focus indicators on all interactive elements
 - No color-only indicators (icons + text)
 
 **Touch Targets**:
+
 - Minimum 44×44px on mobile
 - Adequate spacing between targets
 
@@ -596,6 +617,7 @@ Shows while GPT-5 is analyzing:
 ## Future Enhancements
 
 ### Phase 2:
+
 - Student-facing results view
 - Parent email reports
 - Batch grading improvements
@@ -603,6 +625,7 @@ Shows while GPT-5 is analyzing:
 - Confidence scores on OCR
 
 ### Phase 3:
+
 - Real-time collaboration (multiple teachers)
 - Student progress charts
 - Comparison with class average

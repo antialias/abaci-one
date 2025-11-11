@@ -271,7 +271,7 @@ export function InputPhase() {
           marginBottom: '16px',
           color: '#1f2937',
           fontSize: '18px',
-          fontWeight: '600',
+          fontWeight: 600,
         }}
       >
         Enter the Numbers You Remember
@@ -300,7 +300,7 @@ export function InputPhase() {
             style={{
               fontSize: '12px',
               color: '#6b7280',
-              fontWeight: '500',
+              fontWeight: 500,
             }}
           >
             Cards shown:
@@ -327,7 +327,7 @@ export function InputPhase() {
             style={{
               fontSize: '12px',
               color: '#6b7280',
-              fontWeight: '500',
+              fontWeight: 500,
             }}
           >
             Guesses left:
@@ -354,7 +354,7 @@ export function InputPhase() {
             style={{
               fontSize: '12px',
               color: '#6b7280',
-              fontWeight: '500',
+              fontWeight: 500,
             }}
           >
             Found:
@@ -534,7 +534,7 @@ export function InputPhase() {
                               <span
                                 style={{
                                   color: '#1f2937',
-                                  fontWeight: '500',
+                                  fontWeight: 500,
                                 }}
                               >
                                 {player?.name || `Player ${i + 1}`}
@@ -562,7 +562,7 @@ export function InputPhase() {
             fontSize: '12px',
             color: '#6b7280',
             marginBottom: '8px',
-            fontWeight: '500',
+            fontWeight: 500,
           }}
         >
           {state.guessesRemaining === 0
@@ -610,7 +610,7 @@ export function InputPhase() {
             fontSize: '22px',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             textAlign: 'center',
-            fontWeight: '600',
+            fontWeight: 600,
             color: state.guessesRemaining === 0 ? '#6b7280' : '#1f2937',
             letterSpacing: '1px',
             display: 'flex',

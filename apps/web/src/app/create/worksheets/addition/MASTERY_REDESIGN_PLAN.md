@@ -3,6 +3,7 @@
 ## Executive Summary
 
 Redesign mastery mode to use a **1D slider that follows a curated path through 3D+ space**:
+
 - **Dimension 1**: Digit count (1-5 digits)
 - **Dimension 2**: Regrouping difficulty (0-100%)
 - **Dimension 3**: Scaffolding level (full → minimal)
@@ -18,6 +19,7 @@ The slider maps to discrete steps on a **progression path** that zig-zags throug
 **Root cause**: Current "skills" are flat - no concept of scaffolding cycling as complexity increases.
 
 **Solution**: Define a progression path where scaffolding cycles:
+
 - 2-digit WITH ten-frames → 2-digit WITHOUT ten-frames
 - 3-digit WITH ten-frames → 3-digit WITHOUT ten-frames (ten-frames return!)
 - 4-digit WITH ten-frames → 4-digit WITHOUT ten-frames (ten-frames return again!)
@@ -27,6 +29,7 @@ The slider maps to discrete steps on a **progression path** that zig-zags throug
 **IMPORTANT**: This does NOT create a new worksheet config version.
 
 Current worksheet config (version 4) already has everything we need:
+
 - `digitRange: { min, max }`
 - `regroupingConfig: { pAnyStart, pAllStart }`
 - `displayRules: { tenFrames, carryBoxes, ... }`
@@ -39,6 +42,7 @@ The mastery progression is just **pre-defined combinations** of these existing f
 ### 1. Technique (What Skill?)
 
 The actual mathematical skill being practiced:
+
 - **basic-addition**: No carrying
 - **single-carry**: Carrying in one place value
 - **multi-carry**: Carrying in multiple places
@@ -51,6 +55,7 @@ The actual mathematical skill being practiced:
 ### 2. Complexity (How Hard?)
 
 Problem characteristics:
+
 - Digit count (1, 2, 3, 4, 5 digits)
 - Regrouping frequency (0%, 50%, 100%)
 - Regrouping positions (ones only, tens only, multiple places)
@@ -60,6 +65,7 @@ Problem characteristics:
 ### 3. Scaffolding (How Much Support?)
 
 Visual scaffolding provided:
+
 - **Full**: Ten-frames shown, carry boxes shown, place value colors
 - **Partial**: No ten-frames, still have carry boxes and colors
 - **Minimal**: Minimal visual aids
@@ -141,6 +147,7 @@ When user clicks "Show Advanced Controls":
 ### Interaction Flow
 
 **Scenario 1: User drags slider right (easier → harder)**
+
 1. Slider value changes: 33% → 42%
 2. Map to progression step: Step 4 → Step 5
 3. Step 5 config:
@@ -151,6 +158,7 @@ When user clicks "Show Advanced Controls":
 5. Preview regenerates with new config
 
 **Scenario 2: User drags slider further right**
+
 1. Slider value: 42% → 50%
 2. Map to step: Step 5 → Step 6
 3. Step 6 config:
@@ -161,6 +169,7 @@ When user clicks "Show Advanced Controls":
 5. Preview regenerates
 
 **Scenario 3: User manually changes digit count**
+
 1. User expands "Advanced Controls"
 2. User clicks "4" in digit count buttons
 3. System searches progression path for nearest step with 4-digit
@@ -176,36 +185,42 @@ When user clicks "Show Advanced Controls":
 ```typescript
 // File: src/app/create/worksheets/addition/progressionPath.ts
 
-import type { WorksheetFormState } from './types'
+import type { WorksheetFormState } from "./types";
 
 /**
  * A single step in the mastery progression path
  */
 export interface ProgressionStep {
   // Unique ID for this step
-  id: string
+  id: string;
 
   // Position in progression (0-based)
-  stepNumber: number
+  stepNumber: number;
 
   // Which technique is being practiced
-  technique: 'basic-addition' | 'single-carry' | 'multi-carry' | 'basic-subtraction' | 'single-borrow' | 'multi-borrow'
+  technique:
+    | "basic-addition"
+    | "single-carry"
+    | "multi-carry"
+    | "basic-subtraction"
+    | "single-borrow"
+    | "multi-borrow";
 
   // Human-readable description
-  name: string
-  description: string
+  name: string;
+  description: string;
 
   // Complete worksheet configuration for this step
   // This is worksheet config v4 format - no new version!
-  config: Partial<WorksheetFormState>
+  config: Partial<WorksheetFormState>;
 
   // Mastery tracking
-  masteryThreshold: number  // e.g., 0.85 = 85% accuracy required
-  minimumAttempts: number   // e.g., 15 problems minimum
+  masteryThreshold: number; // e.g., 0.85 = 85% accuracy required
+  minimumAttempts: number; // e.g., 15 problems minimum
 
   // What comes next?
-  nextStepId: string | null
-  previousStepId: string | null
+  nextStepId: string | null;
+  previousStepId: string | null;
 }
 
 /**
@@ -214,194 +229,194 @@ export interface ProgressionStep {
 export const SINGLE_CARRY_PATH: ProgressionStep[] = [
   // Step 0: 1-digit with full scaffolding
   {
-    id: 'single-carry-1d-full',
+    id: "single-carry-1d-full",
     stepNumber: 0,
-    technique: 'single-carry',
-    name: 'Single-digit carrying (with support)',
-    description: 'Practice carrying with single-digit problems and ten-frames',
+    technique: "single-carry",
+    name: "Single-digit carrying (with support)",
+    description: "Practice carrying with single-digit problems and ten-frames",
     config: {
       digitRange: { min: 1, max: 1 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'whenRegrouping', // ← FULL SCAFFOLDING
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "whenRegrouping", // ← FULL SCAFFOLDING
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.9,
     minimumAttempts: 20,
-    nextStepId: 'single-carry-1d-minimal',
+    nextStepId: "single-carry-1d-minimal",
     previousStepId: null,
   },
 
   // Step 1: 1-digit with minimal scaffolding
   {
-    id: 'single-carry-1d-minimal',
+    id: "single-carry-1d-minimal",
     stepNumber: 1,
-    technique: 'single-carry',
-    name: 'Single-digit carrying (independent)',
-    description: 'Practice carrying without visual aids',
+    technique: "single-carry",
+    name: "Single-digit carrying (independent)",
+    description: "Practice carrying without visual aids",
     config: {
       digitRange: { min: 1, max: 1 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'never', // ← SCAFFOLDING FADED
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "never", // ← SCAFFOLDING FADED
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.9,
     minimumAttempts: 20,
-    nextStepId: 'single-carry-2d-full',
-    previousStepId: 'single-carry-1d-full',
+    nextStepId: "single-carry-2d-full",
+    previousStepId: "single-carry-1d-full",
   },
 
   // Step 2: 2-digit with full scaffolding (SCAFFOLDING RETURNS!)
   {
-    id: 'single-carry-2d-full',
+    id: "single-carry-2d-full",
     stepNumber: 2,
-    technique: 'single-carry',
-    name: 'Two-digit carrying (with support)',
-    description: 'Apply carrying to two-digit problems with visual support',
+    technique: "single-carry",
+    name: "Two-digit carrying (with support)",
+    description: "Apply carrying to two-digit problems with visual support",
     config: {
       digitRange: { min: 2, max: 2 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'whenRegrouping', // ← SCAFFOLDING RETURNS for new complexity!
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "whenRegrouping", // ← SCAFFOLDING RETURNS for new complexity!
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.85,
     minimumAttempts: 20,
-    nextStepId: 'single-carry-2d-minimal',
-    previousStepId: 'single-carry-1d-minimal',
+    nextStepId: "single-carry-2d-minimal",
+    previousStepId: "single-carry-1d-minimal",
   },
 
   // Step 3: 2-digit with minimal scaffolding
   {
-    id: 'single-carry-2d-minimal',
+    id: "single-carry-2d-minimal",
     stepNumber: 3,
-    technique: 'single-carry',
-    name: 'Two-digit carrying (independent)',
-    description: 'Practice two-digit carrying without visual aids',
+    technique: "single-carry",
+    name: "Two-digit carrying (independent)",
+    description: "Practice two-digit carrying without visual aids",
     config: {
       digitRange: { min: 2, max: 2 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'never', // ← SCAFFOLDING FADED
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "never", // ← SCAFFOLDING FADED
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.85,
     minimumAttempts: 20,
-    nextStepId: 'single-carry-3d-full',
-    previousStepId: 'single-carry-2d-full',
+    nextStepId: "single-carry-3d-full",
+    previousStepId: "single-carry-2d-full",
   },
 
   // Step 4: 3-digit with full scaffolding (SCAFFOLDING RETURNS AGAIN!)
   {
-    id: 'single-carry-3d-full',
+    id: "single-carry-3d-full",
     stepNumber: 4,
-    technique: 'single-carry',
-    name: 'Three-digit carrying (with support)',
-    description: 'Apply carrying to three-digit problems with visual support',
+    technique: "single-carry",
+    name: "Three-digit carrying (with support)",
+    description: "Apply carrying to three-digit problems with visual support",
     config: {
       digitRange: { min: 3, max: 3 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'whenRegrouping', // ← SCAFFOLDING RETURNS for 3-digit!
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "whenRegrouping", // ← SCAFFOLDING RETURNS for 3-digit!
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.85,
     minimumAttempts: 20,
-    nextStepId: 'single-carry-3d-minimal',
-    previousStepId: 'single-carry-2d-minimal',
+    nextStepId: "single-carry-3d-minimal",
+    previousStepId: "single-carry-2d-minimal",
   },
 
   // Step 5: 3-digit with minimal scaffolding
   {
-    id: 'single-carry-3d-minimal',
+    id: "single-carry-3d-minimal",
     stepNumber: 5,
-    technique: 'single-carry',
-    name: 'Three-digit carrying (independent)',
-    description: 'Practice three-digit carrying without visual aids',
+    technique: "single-carry",
+    name: "Three-digit carrying (independent)",
+    description: "Practice three-digit carrying without visual aids",
     config: {
       digitRange: { min: 3, max: 3 },
-      operator: 'addition',
+      operator: "addition",
       pAnyStart: 1.0,
       pAllStart: 0,
       displayRules: {
-        carryBoxes: 'whenRegrouping',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'never', // ← SCAFFOLDING FADED
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+        carryBoxes: "whenRegrouping",
+        answerBoxes: "always",
+        placeValueColors: "always",
+        tenFrames: "never", // ← SCAFFOLDING FADED
+        problemNumbers: "always",
+        cellBorders: "always",
+        borrowNotation: "never",
+        borrowingHints: "never",
       },
       interpolate: false,
     },
     masteryThreshold: 0.85,
     minimumAttempts: 20,
     nextStepId: null, // End of single-carry path
-    previousStepId: 'single-carry-3d-full',
+    previousStepId: "single-carry-3d-full",
   },
-]
+];
 
 /**
  * Map slider value (0-100) to progression step
  */
 export function getStepFromSliderValue(
   sliderValue: number,
-  path: ProgressionStep[]
+  path: ProgressionStep[],
 ): ProgressionStep {
-  const stepIndex = Math.round((sliderValue / 100) * (path.length - 1))
-  return path[stepIndex]
+  const stepIndex = Math.round((sliderValue / 100) * (path.length - 1));
+  return path[stepIndex];
 }
 
 /**
@@ -409,9 +424,9 @@ export function getStepFromSliderValue(
  */
 export function getSliderValueFromStep(
   stepNumber: number,
-  pathLength: number
+  pathLength: number,
 ): number {
-  return (stepNumber / (pathLength - 1)) * 100
+  return (stepNumber / (pathLength - 1)) * 100;
 }
 
 /**
@@ -419,43 +434,48 @@ export function getSliderValueFromStep(
  */
 export function findNearestStep(
   config: Partial<WorksheetFormState>,
-  path: ProgressionStep[]
+  path: ProgressionStep[],
 ): ProgressionStep {
   // Score each step by how well it matches config
-  let bestMatch = path[0]
-  let bestScore = -Infinity
+  let bestMatch = path[0];
+  let bestScore = -Infinity;
 
   for (const step of path) {
-    let score = 0
+    let score = 0;
 
     // Match digit range (most important)
-    if (step.config.digitRange?.min === config.digitRange?.min &&
-        step.config.digitRange?.max === config.digitRange?.max) {
-      score += 100
+    if (
+      step.config.digitRange?.min === config.digitRange?.min &&
+      step.config.digitRange?.max === config.digitRange?.max
+    ) {
+      score += 100;
     }
 
     // Match regrouping config
-    if (step.config.pAnyStart === config.pAnyStart) score += 50
-    if (step.config.pAllStart === config.pAllStart) score += 50
+    if (step.config.pAnyStart === config.pAnyStart) score += 50;
+    if (step.config.pAllStart === config.pAllStart) score += 50;
 
     // Match scaffolding (ten-frames)
-    if (step.config.displayRules?.tenFrames === config.displayRules?.tenFrames) {
-      score += 30
+    if (
+      step.config.displayRules?.tenFrames === config.displayRules?.tenFrames
+    ) {
+      score += 30;
     }
 
     if (score > bestScore) {
-      bestScore = score
-      bestMatch = step
+      bestScore = score;
+      bestMatch = step;
     }
   }
 
-  return bestMatch
+  return bestMatch;
 }
 ```
 
 ### 2. Database Schema (No Changes Needed!)
 
 **Current database** (already exists):
+
 ```sql
 CREATE TABLE worksheet_mastery (
   user_id TEXT NOT NULL,
@@ -471,6 +491,7 @@ CREATE TABLE worksheet_mastery (
 ```
 
 We can reuse this table! Just use step IDs as skill IDs:
+
 - Old: `skill_id = 'td-ones-regroup'`
 - New: `skill_id = 'single-carry-2d-full'`
 
@@ -672,11 +693,11 @@ export function ProgressionModePanel({ formState, onChange, isDark }: Progressio
 1. ✅ Create migration mapping:
    ```typescript
    const OLD_TO_NEW_SKILL_MAPPING = {
-     'sd-simple-regroup': 'single-carry-1d-full',
-     'td-ones-regroup': 'single-carry-2d-full',
-     'xd-ones-regroup': 'single-carry-3d-full',
+     "sd-simple-regroup": "single-carry-1d-full",
+     "td-ones-regroup": "single-carry-2d-full",
+     "xd-ones-regroup": "single-carry-3d-full",
      // ... etc
-   }
+   };
    ```
 2. ✅ Write database migration script (optional, or do lazy migration)
 3. ✅ Update `AllSkillsModal` to show progression structure
@@ -714,16 +735,19 @@ export function ProgressionModePanel({ formState, onChange, isDark }: Progressio
 ## Testing Strategy
 
 ### Unit Tests
+
 - Progression path utilities (`getStepFromSliderValue`, etc.)
 - Step mapping logic
 - Config merging
 
 ### Integration Tests
+
 - Slider changes update config correctly
 - Manual changes find nearest step
 - Database mastery tracking works
 
 ### User Testing
+
 - Can users understand the progression path?
 - Is the slider intuitive?
 - Do advanced controls make sense?
@@ -759,6 +783,7 @@ export function ProgressionModePanel({ formState, onChange, isDark }: Progressio
 ### Current State: Three Separate Modes
 
 Users currently choose between three mutually exclusive modes:
+
 - **Smart Difficulty**: Choose difficulty profile, get preset configs
 - **Manual Control**: Set all parameters manually
 - **Mastery Progression**: Follow skill-based progression
@@ -784,16 +809,19 @@ Users currently choose between three mutually exclusive modes:
 ### The Three Entry Points
 
 **1. Guided Path** (was "Mastery Mode"):
+
 - Shows: Technique selector + difficulty slider
 - Hides: Full configuration controls (until "Show All Settings" clicked)
 - For: Teachers following curriculum, systematic learning
 
 **2. Quick Preset** (was "Smart Difficulty"):
+
 - Shows: Preset difficulty buttons (Beginner/Intermediate/Advanced/Expert)
 - Hides: Full configuration controls (until "Show All Settings" clicked)
 - For: Quick worksheet generation at standard levels
 
 **3. Custom** (was "Manual Control"):
+
 - Shows: Full configuration panel immediately
 - Hides: Nothing (power user mode)
 - For: Fine-grained control over all settings
@@ -801,6 +829,7 @@ Users currently choose between three mutually exclusive modes:
 ### The Convergence: Progressive Disclosure
 
 All three entry points lead to **the same underlying configuration**:
+
 - **Guided Path** and **Quick Preset** start collapsed, showing simplified controls
 - Clicking "Show All Settings" reveals the **full configuration panel**
 - **Custom** starts with full panel already visible
@@ -810,22 +839,26 @@ All three entry points lead to **the same underlying configuration**:
 ### Migration Phases
 
 **Phase 1**: Keep three modes (current), fix mastery bugs
+
 - No UI changes
 - Fix ten-frames cycling issue
 - Users see familiar interface
 
 **Phase 2**: Add "Unified Mode" as 4th option
+
 - New users default to unified interface
 - Existing users can opt-in to try it
 - Gather feedback, iterate
 - Old modes remain available
 
 **Phase 3**: Make unified the default
+
 - New users see unified by default
 - Existing users can still use old modes
 - Deprecation notice on classic modes
 
 **Phase 4**: Remove old modes (breaking change)
+
 - Only unified interface remains
 - Auto-migrate saved configs
 - One-time user migration guide

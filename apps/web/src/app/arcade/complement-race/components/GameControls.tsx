@@ -118,7 +118,7 @@ export function GameControls() {
                 style={{
                   fontSize: '13px',
                   color: '#94a3b8',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   marginRight: '4px',
                 }}
               >
@@ -166,7 +166,7 @@ export function GameControls() {
                 style={{
                   fontSize: '13px',
                   color: '#94a3b8',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   marginRight: '4px',
                 }}
               >
@@ -216,7 +216,7 @@ export function GameControls() {
                 style={{
                   fontSize: '13px',
                   color: '#94a3b8',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   marginRight: '4px',
                 }}
               >
@@ -275,7 +275,7 @@ export function GameControls() {
               gap: '12px',
             }}
           >
-            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Preview:</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>Preview:</span>
             <div
               style={{
                 display: 'flex',

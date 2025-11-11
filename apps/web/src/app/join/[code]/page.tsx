@@ -85,7 +85,7 @@ function RoomSwitchConfirmation({
             >
               Current Room
             </div>
-            <div style={{ color: 'rgba(253, 186, 116, 1)', fontWeight: '600' }}>
+            <div style={{ color: 'rgba(253, 186, 116, 1)', fontWeight: 600 }}>
               {getRoomDisplayWithEmoji({
                 name: currentRoom.name,
                 code: currentRoom.code,
@@ -121,7 +121,7 @@ function RoomSwitchConfirmation({
             >
               New Room
             </div>
-            <div style={{ color: 'rgba(134, 239, 172, 1)', fontWeight: '600' }}>
+            <div style={{ color: 'rgba(134, 239, 172, 1)', fontWeight: 600 }}>
               {getRoomDisplayWithEmoji({
                 name: targetRoom.name,
                 code: targetRoom.code,
@@ -152,7 +152,7 @@ function RoomSwitchConfirmation({
               border: '2px solid rgba(75, 85, 99, 0.5)',
               borderRadius: '10px',
               fontSize: '15px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
@@ -177,7 +177,7 @@ function RoomSwitchConfirmation({
               border: '2px solid rgba(251, 146, 60, 0.6)',
               borderRadius: '10px',
               fontSize: '15px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
@@ -520,7 +520,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
             <div
               style={{
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: 'rgba(251, 191, 36, 1)',
               }}
             >
@@ -595,7 +595,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                 border: '2px solid rgba(75, 85, 99, 0.5)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: isJoining ? 'not-allowed' : 'pointer',
                 opacity: isJoining ? 0.5 : 1,
                 transition: 'all 0.2s ease',
@@ -621,7 +621,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                     : '2px solid rgba(75, 85, 99, 0.5)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: password && !isJoining ? 'pointer' : 'not-allowed',
                 opacity: password && !isJoining ? 1 : 0.5,
                 transition: 'all 0.2s ease',
@@ -694,7 +694,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                 <div
                   style={{
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'rgba(96, 165, 250, 1)',
                   }}
                 >
@@ -739,7 +739,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                   border: '2px solid rgba(75, 85, 99, 0.5)',
                   borderRadius: '10px',
                   fontSize: '15px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                 }}
@@ -788,7 +788,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                 <div
                   style={{
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'rgba(96, 165, 250, 1)',
                   }}
                 >
@@ -836,7 +836,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                     border: '2px solid rgba(75, 85, 99, 0.5)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: isJoining ? 'not-allowed' : 'pointer',
                     opacity: isJoining ? 0.5 : 1,
                     transition: 'all 0.2s ease',
@@ -870,7 +870,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                       : '2px solid rgba(59, 130, 246, 0.6)',
                     borderRadius: '10px',
                     fontSize: '15px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: isJoining ? 'not-allowed' : 'pointer',
                     opacity: isJoining ? 0.5 : 1,
                     transition: 'all 0.2s ease',

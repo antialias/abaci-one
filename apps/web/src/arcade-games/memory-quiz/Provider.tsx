@@ -524,7 +524,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
             border: 'none',
             borderRadius: '6px',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: 600,
             cursor: 'pointer',
           }}
         >

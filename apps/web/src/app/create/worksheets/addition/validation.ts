@@ -225,16 +225,24 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
         const subSkill = getSkillById(subSkillId as any)
 
         if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
-          console.log('[MIXED MODE SCAFFOLDING]', {
-            additionSkill: addSkill.name,
-            additionRules: addSkill.recommendedScaffolding,
-            subtractionSkill: subSkill.name,
-            subtractionRules: subSkill.recommendedScaffolding,
-          })
+          // Merge user's displayRules with skill's recommended scaffolding
+          // User's displayRules take precedence for problemNumbers and cellBorders (layout options)
+          const userDisplayRules = formState.displayRules || {}
+
           config = {
             ...baseConfig,
-            additionDisplayRules: { ...addSkill.recommendedScaffolding },
-            subtractionDisplayRules: { ...subSkill.recommendedScaffolding },
+            additionDisplayRules: {
+              ...addSkill.recommendedScaffolding,
+              // Override layout options with user's choices
+              problemNumbers: userDisplayRules.problemNumbers ?? addSkill.recommendedScaffolding.problemNumbers,
+              cellBorders: userDisplayRules.cellBorders ?? addSkill.recommendedScaffolding.cellBorders,
+            },
+            subtractionDisplayRules: {
+              ...subSkill.recommendedScaffolding,
+              // Override layout options with user's choices
+              problemNumbers: userDisplayRules.problemNumbers ?? subSkill.recommendedScaffolding.problemNumbers,
+              cellBorders: userDisplayRules.cellBorders ?? subSkill.recommendedScaffolding.cellBorders,
+            },
           } as any
         } else {
           console.log('[MIXED MODE SCAFFOLDING] Missing recommendedScaffolding', {
@@ -252,19 +260,22 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       config = baseConfig as any
     }
   } else {
-    // Manual mode: Use boolean flags for uniform display
+    // Manual mode: Use displayRules (same as Smart/Mastery)
+    const displayRules: DisplayRules = formState.displayRules ?? {
+      carryBoxes: 'always',
+      answerBoxes: 'always',
+      placeValueColors: 'always',
+      tenFrames: 'never',
+      problemNumbers: 'always',
+      cellBorders: 'always',
+      borrowNotation: 'always',
+      borrowingHints: 'never',
+    }
+
     config = {
       version: 4,
       mode: 'manual',
-      showCarryBoxes: formState.showCarryBoxes ?? true,
-      showAnswerBoxes: formState.showAnswerBoxes ?? true,
-      showPlaceValueColors: formState.showPlaceValueColors ?? true,
-      showTenFrames: formState.showTenFrames ?? false,
-      showProblemNumbers: formState.showProblemNumbers ?? true,
-      showCellBorder: formState.showCellBorder ?? true,
-      showTenFramesForAll: formState.showTenFramesForAll ?? false,
-      showBorrowNotation: formState.showBorrowNotation ?? true,
-      showBorrowingHints: formState.showBorrowingHints ?? false,
+      displayRules,
       manualPreset: formState.manualPreset,
       ...sharedFields,
     }

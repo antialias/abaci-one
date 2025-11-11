@@ -181,7 +181,13 @@ export function QRCodeDisplay({ sessionId, uploadCount, uploads }: QRCodeDisplay
                 },
               })}
             >
-              <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                })}
+              >
                 <span className={css({ fontWeight: 'medium', color: 'gray.700' })}>
                   Worksheet {index + 1}
                 </span>

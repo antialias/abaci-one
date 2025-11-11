@@ -76,7 +76,7 @@ export function RouteCelebration({
           }}
         >
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>{completedTheme.emoji}</div>
-          <div style={{ fontSize: '20px', fontWeight: '600' }}>{completedTheme.name}</div>
+          <div style={{ fontSize: '20px', fontWeight: 600 }}>{completedTheme.name}</div>
           <div style={{ fontSize: '16px', opacity: 0.9, marginTop: '4px' }}>
             Route {completedRouteNumber}
           </div>
@@ -102,7 +102,7 @@ export function RouteCelebration({
           }}
         >
           <div style={{ fontSize: '32px', marginBottom: '4px' }}>{nextTheme.emoji}</div>
-          <div style={{ fontSize: '18px', fontWeight: '600' }}>{nextTheme.name}</div>
+          <div style={{ fontSize: '18px', fontWeight: 600 }}>{nextTheme.name}</div>
           <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>
             Route {nextRouteNumber}
           </div>

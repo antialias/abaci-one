@@ -13,6 +13,7 @@
 **Build test pages first, production pages second.**
 
 Every feature must have a debug/test page where the user can:
+
 - Trigger the feature manually
 - See raw data/responses
 - Test edge cases
@@ -25,6 +26,7 @@ Every feature must have a debug/test page where the user can:
 ### Deliverable: `/worksheets/debug/openai-test` page
 
 **UI Components:**
+
 - Image upload input
 - "Test OpenAI API" button
 - Toggle: "Streaming" vs "Simple"
@@ -36,13 +38,14 @@ Every feature must have a debug/test page where the user can:
   - Timing information
 
 **Functionality:**
+
 ```typescript
 // Non-streaming first
 async function testOpenAI(imageFile: File) {
-  const response = await fetch('/api/debug/test-openai', {
-    method: 'POST',
-    body: formData
-  })
+  const response = await fetch("/api/debug/test-openai", {
+    method: "POST",
+    body: formData,
+  });
 
   // Display raw response
   // Display parsed grades
@@ -51,6 +54,7 @@ async function testOpenAI(imageFile: File) {
 ```
 
 **Success Criteria:**
+
 - User uploads worksheet photo
 - Sees raw OpenAI response
 - Sees parsed problem grades
@@ -68,6 +72,7 @@ async function testOpenAI(imageFile: File) {
 ### Deliverable: `/worksheets/debug/socket-test` page
 
 **UI Components:**
+
 - Connection status indicator
 - "Connect" / "Disconnect" buttons
 - "Send Test Event" button
@@ -75,28 +80,30 @@ async function testOpenAI(imageFile: File) {
 - Latency meter
 
 **Functionality:**
+
 ```typescript
 function SocketTest() {
-  const [events, setEvents] = useState([])
-  const [socket, setSocket] = useState(null)
+  const [events, setEvents] = useState([]);
+  const [socket, setSocket] = useState(null);
 
   function connect() {
-    const s = io({ path: '/api/socket' })
-    s.on('connect', () => addEvent('Connected'))
-    s.on('test-event', (data) => addEvent('Received', data))
-    setSocket(s)
+    const s = io({ path: "/api/socket" });
+    s.on("connect", () => addEvent("Connected"));
+    s.on("test-event", (data) => addEvent("Received", data));
+    setSocket(s);
   }
 
   function sendTest() {
-    socket.emit('test-event', {
+    socket.emit("test-event", {
       timestamp: Date.now(),
-      message: 'Hello from client'
-    })
+      message: "Hello from client",
+    });
   }
 }
 ```
 
 **Success Criteria:**
+
 - Socket connects successfully
 - Test events are sent and received
 - Latency is acceptable (<100ms)
@@ -114,27 +121,29 @@ function SocketTest() {
 ### Enhancement to Phase 1 page
 
 **Add to `/worksheets/debug/openai-test`:**
+
 - Progress bar with phases
 - Token counter (live updates)
 - Event log showing SSE events
 - Comparison: "With Progress" vs "Without Progress"
 
 **Functionality:**
+
 ```typescript
 async function testStreamingOpenAI(imageFile: File) {
-  const response = await fetch('/api/debug/test-openai-stream', {
-    method: 'POST',
-    body: formData
-  })
+  const response = await fetch("/api/debug/test-openai-stream", {
+    method: "POST",
+    body: formData,
+  });
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
 
   while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+    const { done, value } = await reader.read();
+    if (done) break;
 
-    const chunk = decoder.decode(value)
+    const chunk = decoder.decode(value);
     // Parse SSE events
     // Update progress UI
     // Display in event log
@@ -143,6 +152,7 @@ async function testStreamingOpenAI(imageFile: File) {
 ```
 
 **Success Criteria:**
+
 - User sees progress bar update in real-time
 - Token counts increase smoothly
 - All SSE event types are handled
@@ -160,12 +170,14 @@ async function testStreamingOpenAI(imageFile: File) {
 ### Deliverable: `/worksheets/debug/storage-test` page
 
 **UI Components:**
+
 - "Save Result to DB" button
 - Saved results list (with IDs)
 - "Load Result" button for each saved result
 - Display: saved vs current result comparison
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE worksheet_attempts (
   id TEXT PRIMARY KEY,
@@ -197,6 +209,7 @@ CREATE TABLE problem_attempts (
 ```
 
 **Success Criteria:**
+
 - Results save to database
 - Can retrieve saved results by ID
 - Data integrity is maintained
@@ -214,33 +227,37 @@ CREATE TABLE problem_attempts (
 ### Enhancement to Phase 3
 
 **Modify `/worksheets/debug/openai-test`:**
+
 - Add "Use Socket.IO" checkbox
 - When enabled, progress updates emit via socket
 - Multiple browser tabs can watch same grading
 - Compare: HTTP streaming vs Socket.IO
 
 **Server logic:**
+
 ```typescript
 // Server-side during grading
-io.emit('grading:progress', {
+io.emit("grading:progress", {
   attemptId,
-  phase: 'analyzing',
+  phase: "analyzing",
   inputTokens: 1234,
   outputTokens: 567,
-  message: 'Analyzing problems...'
-})
+  message: "Analyzing problems...",
+});
 ```
 
 **Client logic:**
+
 ```typescript
-socket.on('grading:progress', (data) => {
+socket.on("grading:progress", (data) => {
   if (data.attemptId === currentAttemptId) {
-    updateProgressUI(data)
+    updateProgressUI(data);
   }
-})
+});
 ```
 
 **Success Criteria:**
+
 - Socket progress updates work alongside SSE
 - Multiple clients can watch same grading
 - Progress is smooth and accurate
@@ -258,6 +275,7 @@ socket.on('grading:progress', (data) => {
 ### Deliverable: `/worksheets/upload` page
 
 **UI Components:**
+
 - Three upload modes:
   - File picker
   - Camera capture
@@ -267,6 +285,7 @@ socket.on('grading:progress', (data) => {
 - Redirect to results page
 
 **Functionality:**
+
 - Validates image (size, format)
 - Uploads to server
 - Creates attempt record
@@ -274,6 +293,7 @@ socket.on('grading:progress', (data) => {
 - Redirects to `/worksheets/attempts/[id]`
 
 **Success Criteria:**
+
 - All three upload modes work
 - Image validation works
 - Error messages are clear
@@ -291,6 +311,7 @@ socket.on('grading:progress', (data) => {
 ### Deliverable: `/worksheets/attempts/[attemptId]` page
 
 **UI Components:**
+
 - Overall stats (X/Y correct, accuracy %)
 - Problem-by-problem table:
   - Problem (e.g., "45 + 27")
@@ -303,11 +324,13 @@ socket.on('grading:progress', (data) => {
 - "Grade Another" button
 
 **Real-time Updates:**
+
 - Shows progress while grading
 - Updates when grading completes
 - Shows errors if grading fails
 
 **Success Criteria:**
+
 - Results display correctly
 - Real-time updates work
 - Can handle pending/processing states
@@ -325,12 +348,14 @@ socket.on('grading:progress', (data) => {
 ### Deliverable: `/worksheets/progress` page
 
 **Features:**
+
 - List of all attempts
 - Progress chart over time
 - Skill breakdown
 - Weak areas identification
 
 **Database:**
+
 ```sql
 CREATE TABLE mastery_profiles (
   user_id TEXT PRIMARY KEY,
@@ -342,6 +367,7 @@ CREATE TABLE mastery_profiles (
 ```
 
 **Success Criteria:**
+
 - Can view progress over time
 - Mastery score is accurate
 - Recommended next step is helpful
@@ -353,16 +379,21 @@ CREATE TABLE mastery_profiles (
 ## Development Principles
 
 ### 1. **Test Pages First**
+
 Every feature has a `/worksheets/debug/*` test page before production page.
 
 ### 2. **One Phase at a Time**
+
 Complete each phase fully before starting the next. Get user approval before proceeding.
 
 ### 3. **Independent Components**
+
 Each phase should work standalone. If Phase 5 breaks, Phases 1-4 still work.
 
 ### 4. **Raw Data Visibility**
+
 All test pages show:
+
 - Raw requests
 - Raw responses
 - Parsed data
@@ -370,14 +401,17 @@ All test pages show:
 - Timing information
 
 ### 5. **Manual Control**
+
 User can trigger every action manually from test pages. No automatic background processing until it's proven to work.
 
 ### 6. **Clear Exit Criteria**
+
 Each phase has explicit success criteria. User must verify before moving on.
 
 ## Technical Stack
 
 **Core Technologies:**
+
 - OpenAI GPT-5 Responses API (vision + reasoning)
 - Socket.IO for real-time updates
 - SSE for streaming progress
@@ -385,6 +419,7 @@ Each phase has explicit success criteria. User must verify before moving on.
 - Next.js App Router for UI
 
 **Key Libraries:**
+
 - `socket.io` / `socket.io-client` - Real-time communication
 - `eventsource-parser` (maybe) - SSE parsing if needed
 - Standard Next.js/React
@@ -392,15 +427,18 @@ Each phase has explicit success criteria. User must verify before moving on.
 ## Migration from V1
 
 **Files to keep:**
+
 - Database schema (worksheet_attempts, problem_attempts, mastery_profiles)
 - Basic OpenAI integration (non-streaming)
 
 **Files to remove/rewrite:**
+
 - Streaming implementation (too complex, not tested)
 - Socket progress system (built wrong order)
 - Results page (built before API worked)
 
 **Files to create:**
+
 - `/worksheets/debug/openai-test`
 - `/worksheets/debug/socket-test`
 - `/worksheets/debug/storage-test`
@@ -430,6 +468,7 @@ Each phase has explicit success criteria. User must verify before moving on.
 ## Next Steps
 
 When ready to implement:
+
 1. User: "Start Phase 1"
 2. Claude: Builds `/worksheets/debug/openai-test` page
 3. User: Tests with real worksheets, provides feedback

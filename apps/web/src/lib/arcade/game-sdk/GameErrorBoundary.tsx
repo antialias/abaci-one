@@ -109,7 +109,7 @@ export class GameErrorBoundary extends Component<Props, State> {
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: 'pointer',
             }}
           >

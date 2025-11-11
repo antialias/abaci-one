@@ -8,6 +8,7 @@
 The following files/features were partially implemented but **do not work correctly**:
 
 ### Database Tables
+
 - `worksheet_attempts` - Stores grading attempts
 - `problem_attempts` - Stores individual problem results
 - `mastery_profiles` - Tracks student progress
@@ -16,12 +17,14 @@ The following files/features were partially implemented but **do not work correc
 **Status:** Tables exist but grading logic is broken
 
 ### API Routes
+
 - `/api/worksheets/upload` - Upload worksheet images
 - `/api/worksheets/attempts/[attemptId]` - Get grading results
 
 **Status:** Upload works, grading is broken
 
 ### Library Files
+
 - `src/lib/ai/gradeWorksheet.ts` - OpenAI GPT-5 integration
 - `src/lib/grading/processAttempt.ts` - Grading orchestration
 - `src/lib/grading/updateMasteryProfile.ts` - Mastery tracking
@@ -29,6 +32,7 @@ The following files/features were partially implemented but **do not work correc
 **Status:** Partially implemented, has bugs, incomplete
 
 ### UI Pages
+
 - `/worksheets/attempts/[attemptId]` - View results
 
 **Status:** UI exists but backend doesn't work
@@ -71,6 +75,7 @@ Migrations 0017-0020 created the worksheet tables. These can stay but the applic
 ## Recommendation
 
 **Leave the existing code in place** but don't use it. When ready to implement:
+
 1. Build test pages first (in `/worksheets/debug/`)
 2. Get each piece working independently
 3. Integrate only after all pieces work

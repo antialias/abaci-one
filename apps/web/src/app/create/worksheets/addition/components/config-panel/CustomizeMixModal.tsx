@@ -133,7 +133,7 @@ export function CustomizeMixModal({
             <h2
               className={css({
                 fontSize: '1.25rem',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isDark ? 'white' : 'gray.900',
                 marginBottom: '0.25rem',
               })}
@@ -186,7 +186,7 @@ export function CustomizeMixModal({
             <h3
               className={css({
                 fontSize: '0.875rem',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isDark ? 'gray.200' : 'gray.700',
                 marginBottom: '1rem',
               })}
@@ -215,7 +215,7 @@ export function CustomizeMixModal({
                 <div
                   className={css({
                     fontSize: '0.75rem',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'blue.700',
                     marginBottom: '0.25rem',
                   })}
@@ -223,7 +223,11 @@ export function CustomizeMixModal({
                   Current Skill: {Math.round((1 - mixRatio) * 100)}%
                 </div>
                 <div
-                  className={css({ fontSize: '0.875rem', fontWeight: '600', color: 'blue.800' })}
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: 'blue.800',
+                  })}
                 >
                   {currentCount} problems
                 </div>
@@ -242,7 +246,7 @@ export function CustomizeMixModal({
                 <div
                   className={css({
                     fontSize: '0.75rem',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: 'green.700',
                     marginBottom: '0.25rem',
                   })}
@@ -250,7 +254,11 @@ export function CustomizeMixModal({
                   Review: {Math.round(mixRatio * 100)}%
                 </div>
                 <div
-                  className={css({ fontSize: '0.875rem', fontWeight: '600', color: 'green.800' })}
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: 'green.800',
+                  })}
                 >
                   {reviewCount} problems
                 </div>
@@ -293,7 +301,7 @@ export function CustomizeMixModal({
               <h3
                 className={css({
                   fontSize: '0.875rem',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: isDark ? 'gray.200' : 'gray.700',
                   marginBottom: '0.75rem',
                 })}
@@ -301,7 +309,13 @@ export function CustomizeMixModal({
                 Review Skills ({selectedReviewSkills.size} selected)
               </h3>
 
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                })}
+              >
                 {masteredReviewSkills.map((skillId) => {
                   // Find skill definition to get name
                   const skill = currentSkill.recommendedReview
@@ -403,7 +417,7 @@ export function CustomizeMixModal({
               backgroundColor: 'transparent',
               color: isDark ? 'gray.300' : 'gray.700',
               fontSize: '0.875rem',
-              fontWeight: '500',
+              fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
               _hover: {
@@ -427,7 +441,7 @@ export function CustomizeMixModal({
                 backgroundColor: isDark ? 'gray.700' : 'white',
                 color: isDark ? 'gray.200' : 'gray.700',
                 fontSize: '0.875rem',
-                fontWeight: '500',
+                fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 _hover: {
@@ -449,7 +463,7 @@ export function CustomizeMixModal({
                 backgroundColor: 'blue.500',
                 color: 'white',
                 fontSize: '0.875rem',
-                fontWeight: '500',
+                fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 _hover: {

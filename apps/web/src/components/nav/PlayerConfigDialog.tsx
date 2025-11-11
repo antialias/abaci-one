@@ -146,7 +146,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               style={{
                 fontSize: '12px',
                 color: isSaving ? '#f59e0b' : '#10b981',
-                fontWeight: '500',
+                fontWeight: 500,
                 opacity: 0.8,
               }}
             >
@@ -177,7 +177,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
             style={{
               display: 'block',
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: 600,
               color: '#374151',
               marginBottom: '8px',
             }}
@@ -226,7 +226,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               <div
                 style={{
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: '#1f2937',
                   marginBottom: '4px',
                 }}
@@ -259,7 +259,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
             style={{
               display: 'block',
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: 600,
               color: '#374151',
               marginBottom: '8px',
             }}
@@ -288,7 +288,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
                   borderRadius: '12px',
                   outline: 'none',
                   transition: 'all 0.2s ease',
-                  fontWeight: '500',
+                  fontWeight: 500,
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = gradientColor

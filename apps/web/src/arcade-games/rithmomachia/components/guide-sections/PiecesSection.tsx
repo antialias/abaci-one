@@ -151,7 +151,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                   className={css({
                     fontSize: '13px',
                     color: '#9ca3af',
-                    fontWeight: '600',
+                    fontWeight: 600,
                   })}
                 >
                   Count: {piece.count}

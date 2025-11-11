@@ -51,7 +51,7 @@ export function CardGrid({ state }: CardGridProps) {
           color: '#374151',
           marginBottom: '12px',
           fontSize: '14px',
-          fontWeight: '600',
+          fontWeight: 600,
         }}
       >
         Cards you saw ({cardCount}):

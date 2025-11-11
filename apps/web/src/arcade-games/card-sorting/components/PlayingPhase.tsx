@@ -116,7 +116,7 @@ export function PlayingPhase() {
           borderLeft: '4px solid #2c5f76',
           borderRadius: '0.25rem',
           fontSize: 'sm',
-          fontWeight: '500',
+          fontWeight: 500,
           color: '#2c3e50',
           flexShrink: 0,
         })}
@@ -142,7 +142,7 @@ export function PlayingPhase() {
               className={css({
                 fontSize: 'sm',
                 color: 'gray.600',
-                fontWeight: '600',
+                fontWeight: 600,
               })}
             >
               Time
@@ -162,7 +162,7 @@ export function PlayingPhase() {
               className={css({
                 fontSize: 'sm',
                 color: 'gray.600',
-                fontWeight: '600',
+                fontWeight: 600,
               })}
             >
               Progress
@@ -190,7 +190,7 @@ export function PlayingPhase() {
               background: canCheckSolution && !isSpectating ? 'teal.600' : 'gray.300',
               color: 'white',
               fontSize: 'sm',
-              fontWeight: '600',
+              fontWeight: 600,
               border: 'none',
               cursor: canCheckSolution && !isSpectating ? 'pointer' : 'not-allowed',
               opacity: canCheckSolution && !isSpectating ? 1 : 0.5,
@@ -211,7 +211,7 @@ export function PlayingPhase() {
               background: isSpectating ? 'gray.400' : 'gray.600',
               color: 'white',
               fontSize: 'sm',
-              fontWeight: '600',
+              fontWeight: 600,
               border: 'none',
               cursor: isSpectating ? 'not-allowed' : 'pointer',
               opacity: isSpectating ? 0.5 : 1,

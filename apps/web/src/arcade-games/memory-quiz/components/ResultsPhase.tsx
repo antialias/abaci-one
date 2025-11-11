@@ -65,7 +65,7 @@ export function ResultsPhase() {
           marginBottom: '20px',
           color: '#1f2937',
           fontSize: '18px',
-          fontWeight: '600',
+          fontWeight: 600,
         }}
       >
         Quiz Results
@@ -114,7 +114,7 @@ export function ResultsPhase() {
               fontSize: '16px',
             }}
           >
-            <span style={{ fontWeight: '500', color: '#6b7280' }}>Correct:</span>
+            <span style={{ fontWeight: 500, color: '#6b7280' }}>Correct:</span>
             <span style={{ fontWeight: 'bold' }}>{correct}</span>
           </div>
           <div
@@ -125,7 +125,7 @@ export function ResultsPhase() {
               fontSize: '16px',
             }}
           >
-            <span style={{ fontWeight: '500', color: '#6b7280' }}>Total:</span>
+            <span style={{ fontWeight: 500, color: '#6b7280' }}>Total:</span>
             <span style={{ fontWeight: 'bold' }}>{total}</span>
           </div>
         </div>
@@ -350,7 +350,7 @@ export function ResultsPhase() {
                               <span
                                 style={{
                                   color: '#1f2937',
-                                  fontWeight: '500',
+                                  fontWeight: 500,
                                   fontSize: '14px',
                                 }}
                               >
@@ -475,7 +475,7 @@ export function ResultsPhase() {
                           <span
                             style={{
                               fontSize: '16px',
-                              fontWeight: '600',
+                              fontWeight: 600,
                               color: '#6b7280',
                             }}
                           >
@@ -521,7 +521,7 @@ export function ResultsPhase() {
                             <span
                               style={{
                                 color: '#1f2937',
-                                fontWeight: '500',
+                                fontWeight: 500,
                               }}
                             >
                               {player?.name || `Player ${i + 1}`}

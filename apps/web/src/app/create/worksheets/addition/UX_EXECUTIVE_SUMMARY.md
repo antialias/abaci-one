@@ -13,23 +13,29 @@ Teachers upload worksheet photos (via desktop, camera, or smartphone). GPT-5 ana
 ## Three Upload Paths
 
 ### Path 1: Desktop File Upload (Traditional)
+
 ```
 Teacher → Drag & drop image → Upload → Results in 60 seconds
 ```
+
 **Use case**: Single worksheet, already scanned
 
 ### Path 2: Desktop Camera (Convenient)
+
 ```
 Teacher → Click "Camera" → Snap photo → Upload → Results
 ```
+
 **Use case**: Quick capture with laptop webcam
 
 ### Path 3: Smartphone QR Scan (Batch Upload - THE KILLER FEATURE)
+
 ```
 Desktop: Click "Scan with Phone" → Shows QR code
 Phone: Scan QR → Camera opens instantly → Take 5 photos → Each auto-uploads
 Desktop: See all 5 grading in real-time
 ```
+
 **Use case**: Stack of student worksheets, bulk grading
 
 **Time savings**: 5 worksheets in 2-3 minutes (vs 15+ minutes manual grading)
@@ -135,6 +141,7 @@ Desktop: See all 5 grading in real-time
 ```
 
 **Flow**:
+
 1. Scan QR → Camera opens immediately
 2. Tap → Flash → Upload → Success
 3. Repeat for next worksheet
@@ -209,6 +216,7 @@ Desktop: See all 5 grading in real-time
 ```
 
 **Key elements**:
+
 1. **Score card** - Big, celebratory
 2. **AI feedback** - Natural language, actionable
 3. **Problem table** - Expandable, color-coded
@@ -245,26 +253,31 @@ Desktop: See all 5 grading in real-time
 ## Design Principles
 
 ### 1. **Speed First**
+
 - QR scan → Camera in <1 second
 - Upload → Grading status immediately
 - Results → Recommendation front and center
 
 ### 2. **Progressive Disclosure**
+
 - Score first, details expandable
 - Simple upload → Advanced options hidden
 - Mobile: Full-screen, minimal navigation
 
 ### 3. **Real-Time Feedback**
+
 - Desktop sees uploads from phone instantly
 - Grading progress: "Reading... Analyzing... Done!"
 - Success animations for every upload
 
 ### 4. **Actionable Results**
+
 - Not just "85%", but "Practice this specific skill"
 - One-click worksheet generation
 - Visual progression path
 
 ### 5. **Mobile-First for Capture**
+
 - Smartphone camera page: Zero navigation
 - Big touch targets
 - Auto-upload on capture
@@ -272,12 +285,14 @@ Desktop: See all 5 grading in real-time
 ## Visual Design
 
 ### Color Coding
+
 - **Green**: Correct answers, high scores (>90%)
 - **Yellow**: Medium scores (70-90%)
 - **Red**: Incorrect answers, errors
 - **Blue**: Recommendations, actions
 
 ### Icons
+
 - 📊 Score
 - 🤖 AI feedback
 - 🏷️ Error tags
@@ -288,6 +303,7 @@ Desktop: See all 5 grading in real-time
 - ✗ Error
 
 ### Typography Scale
+
 - **Score**: 48px, bold
 - **Headings**: 24px, bold
 - **Body**: 16px, regular
@@ -296,11 +312,13 @@ Desktop: See all 5 grading in real-time
 ## Mobile Responsiveness
 
 ### Breakpoints
+
 - **< 640px**: Single column, full-width
 - **640-1024px**: Two columns where appropriate
 - **> 1024px**: Multi-column layout
 
 ### Mobile Adaptations
+
 - Upload modal → Full-screen
 - Results page → Stack sections vertically
 - Tables → Scroll horizontally or collapse
@@ -309,6 +327,7 @@ Desktop: See all 5 grading in real-time
 ## Error Handling
 
 ### Upload Failed
+
 ```
 ⚠️ Upload Failed
 The image couldn't be uploaded.
@@ -322,6 +341,7 @@ Possible reasons:
 ```
 
 ### Grading Failed
+
 ```
 ⚠️ Grading Failed
 The worksheet couldn't be graded.
@@ -335,6 +355,7 @@ The image might be:
 ```
 
 ### Camera Denied
+
 ```
 📷 Camera Access Denied
 Please allow camera access.
@@ -345,11 +366,13 @@ Please allow camera access.
 ## Loading States
 
 ### Upload Progress
+
 ```
 Uploading... ████████░░░░ 75%
 ```
 
 ### Grading Progress
+
 ```
 AI is grading your work...
 ━━━━━━━━━━━━░░░░░░░░ 60%
@@ -364,6 +387,7 @@ Usually takes 30-60 seconds
 ```
 
 ### Real-Time Upload (QR Mode)
+
 ```
 Worksheets uploaded: 3
 
@@ -375,18 +399,21 @@ Worksheets uploaded: 3
 ## Success States
 
 ### Upload Complete
+
 ```
 ✓ Uploaded!
 Grading started...
 ```
 
 ### Grading Complete
+
 ```
 ✨ Grading Complete!
 View your results →
 ```
 
 ### Worksheet Generated
+
 ```
 ✓ Worksheet Ready!
 [Download PDF] [Print]
@@ -395,6 +422,7 @@ View your results →
 ## Empty States
 
 ### No History Yet
+
 ```
 [Empty folder icon]
 
@@ -424,16 +452,19 @@ AI-powered grading and recommendations.
 ## User Testing Goals
 
 ### Week 1: Prototype Testing
+
 - Upload flow clarity
 - QR scan discoverability
 - Results page comprehension
 
 ### Week 2: Usability Testing
+
 - Time to first upload
 - Error recovery success rate
 - Recommendation clarity
 
 ### Week 3: Beta Testing
+
 - Real worksheets, real teachers
 - Batch upload efficiency
 - Overall satisfaction
@@ -441,12 +472,14 @@ AI-powered grading and recommendations.
 ## Success Metrics
 
 ### Primary
+
 - **Time to grade**: < 2 minutes for 5 worksheets
 - **Upload success rate**: > 95%
 - **Grading accuracy**: > 90% (vs manual)
 - **Teacher satisfaction**: > 4.5/5
 
 ### Secondary
+
 - **QR scan adoption**: > 60% of multi-worksheet uploads
 - **Recommendation click-through**: > 70%
 - **Repeat usage**: > 3 worksheets per week per teacher
@@ -454,18 +487,21 @@ AI-powered grading and recommendations.
 ## Implementation Priority
 
 ### Phase 1 (MVP - 3 weeks)
+
 1. Upload modal with file upload
 2. Basic results page
 3. GPT-5 integration
 4. ✅ Database (done)
 
 ### Phase 2 (Camera - 1 week)
+
 5. Desktop camera capture
 6. QR code generation
 7. Smartphone camera page
 8. Real-time session updates
 
 ### Phase 3 (Polish - 1 week)
+
 9. History dashboard
 10. Mobile responsiveness
 11. Dark mode
@@ -474,17 +510,20 @@ AI-powered grading and recommendations.
 ## Why This UX Works
 
 ### For Teachers
+
 - **Faster**: 2 min vs 15 min for 5 worksheets
 - **Actionable**: Exact next steps, not just scores
 - **Flexible**: Desktop, camera, or phone
 - **Batch-friendly**: QR scan for stack of papers
 
 ### For Students
+
 - **Personalized**: Targeted practice recommendations
 - **Encouraging**: Positive feedback, clear progress
 - **Visual**: See progression path, understand next goal
 
 ### For the Product
+
 - **Differentiator**: No competitor has this
 - **Sticky**: Teachers need it weekly
 - **Viral**: Teachers share QR codes with colleagues
@@ -493,6 +532,7 @@ AI-powered grading and recommendations.
 ## The "Aha!" Moment
 
 **Desktop teacher with stack of worksheets**:
+
 1. Clicks "Upload Worksheet"
 2. Sees QR code
 3. Scans with phone

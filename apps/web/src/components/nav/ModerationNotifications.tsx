@@ -203,7 +203,7 @@ export function ModerationNotifications({
               border: '2px solid rgba(251, 146, 60, 0.6)',
               borderRadius: '10px',
               fontSize: '15px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
@@ -293,7 +293,7 @@ export function ModerationNotifications({
               border: '2px solid rgba(239, 68, 68, 0.6)',
               borderRadius: '10px',
               fontSize: '15px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
@@ -556,7 +556,7 @@ export function ModerationNotifications({
                   style={{
                     fontSize: '12px',
                     color: 'rgba(254, 202, 202, 1)',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     marginBottom: '2px',
                   }}
                 >
@@ -592,7 +592,7 @@ export function ModerationNotifications({
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   cursor: isProcessingRequest ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s ease',
                   opacity: isProcessingRequest ? 0.5 : 1,
@@ -627,7 +627,7 @@ export function ModerationNotifications({
                   border: '1px solid rgba(34, 197, 94, 0.8)',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   cursor: isProcessingRequest ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s ease',
                   opacity: isProcessingRequest ? 0.5 : 1,
@@ -806,7 +806,7 @@ export function ModerationNotifications({
                 border: '2px solid rgba(75, 85, 99, 0.5)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
@@ -853,7 +853,7 @@ export function ModerationNotifications({
                 border: '2px solid rgba(59, 130, 246, 0.6)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: isAcceptingInvitation ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 opacity: isAcceptingInvitation ? 0.6 : 1,

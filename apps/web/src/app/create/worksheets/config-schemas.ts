@@ -108,6 +108,20 @@ export const additionConfigV2Schema = z.object({
       'whenMultipleRegroups',
       'when3PlusDigits',
     ]),
+    borrowNotation: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowingHints: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
   }),
 
   // V2: Track which difficulty profile is active
@@ -185,6 +199,20 @@ const additionConfigV3SmartSchema = additionConfigV3BaseSchema.extend({
       'when3PlusDigits',
     ]),
     cellBorders: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowNotation: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowingHints: z.enum([
       'always',
       'never',
       'whenRegrouping',
@@ -311,6 +339,20 @@ const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
       'whenMultipleRegroups',
       'when3PlusDigits',
     ]),
+    borrowNotation: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowingHints: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
   }),
 
   // Optional: Which smart difficulty profile is selected
@@ -318,19 +360,69 @@ const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
 })
 
 // Manual Control Mode for V4
+// Now uses displayRules like Smart/Mastery modes for 1:1 correspondence
 const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   mode: z.literal('manual'),
 
-  // Simple boolean toggles
-  showCarryBoxes: z.boolean(),
-  showAnswerBoxes: z.boolean(),
-  showPlaceValueColors: z.boolean(),
-  showTenFrames: z.boolean(),
-  showProblemNumbers: z.boolean(),
-  showCellBorder: z.boolean(),
-  showTenFramesForAll: z.boolean(),
-  showBorrowNotation: z.boolean(), // Scratch boxes for borrowing work
-  showBorrowingHints: z.boolean(), // Visual hints showing what to write when borrowing
+  // Manual mode now uses conditional display rules (same as Smart/Mastery)
+  displayRules: z.object({
+    carryBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    answerBoxes: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    placeValueColors: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    tenFrames: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    problemNumbers: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    cellBorders: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowNotation: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+    borrowingHints: z.enum([
+      'always',
+      'never',
+      'whenRegrouping',
+      'whenMultipleRegroups',
+      'when3PlusDigits',
+    ]),
+  }),
 
   // Optional: Which manual preset is selected
   manualPreset: z.string().optional(),
@@ -577,6 +669,8 @@ export const defaultAdditionConfig: AdditionConfigV4Smart = {
     tenFrames: 'whenRegrouping',
     problemNumbers: 'always',
     cellBorders: 'always',
+    borrowNotation: 'whenRegrouping',
+    borrowingHints: 'never',
   },
   difficultyProfile: 'earlyLearner',
   fontSize: 16,
@@ -596,6 +690,8 @@ function migrateAdditionV1toV2(v1: AdditionConfigV1): AdditionConfigV2 {
     tenFrames: v1.showTenFrames ? 'always' : 'never',
     problemNumbers: v1.showProblemNumbers ? 'always' : 'never',
     cellBorders: v1.showCellBorder ? 'always' : 'never',
+    borrowNotation: 'whenRegrouping', // V1 didn't have this field, use reasonable default
+    borrowingHints: 'never', // V1 didn't have this field, use reasonable default
   }
 
   // Try to match config to a known profile
@@ -695,18 +791,21 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
       difficultyProfile: v3.difficultyProfile,
     }
   } else {
+    // V3 Manual mode used boolean flags, V4 Manual mode uses displayRules
+    // Convert boolean flags to displayRules (true → 'always', false → 'never')
     return {
       ...baseFields,
       mode: 'manual',
-      showCarryBoxes: v3.showCarryBoxes,
-      showAnswerBoxes: v3.showAnswerBoxes,
-      showPlaceValueColors: v3.showPlaceValueColors,
-      showTenFrames: v3.showTenFrames,
-      showProblemNumbers: v3.showProblemNumbers,
-      showCellBorder: v3.showCellBorder,
-      showTenFramesForAll: v3.showTenFramesForAll,
-      showBorrowNotation: true, // V4: Default to true for backward compatibility
-      showBorrowingHints: false, // V4: Default to false for backward compatibility
+      displayRules: {
+        carryBoxes: v3.showCarryBoxes ? 'always' : 'never',
+        answerBoxes: v3.showAnswerBoxes ? 'always' : 'never',
+        placeValueColors: v3.showPlaceValueColors ? 'always' : 'never',
+        tenFrames: v3.showTenFrames ? 'always' : 'never',
+        problemNumbers: v3.showProblemNumbers ? 'always' : 'never',
+        cellBorders: v3.showCellBorder ? 'always' : 'never',
+        borrowNotation: 'always', // V4: Default to 'always' for backward compatibility
+        borrowingHints: 'never', // V4: Default to 'never' for backward compatibility
+      },
       manualPreset: v3.manualPreset,
     }
   }

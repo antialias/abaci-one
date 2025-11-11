@@ -23,12 +23,14 @@ Teachers upload photos of students' completed worksheets. AI grades them automat
 ## Key Benefits
 
 ### For Teachers
+
 - **No manual grading** - AI handles it automatically
 - **Instant insights** - See exactly where students struggle
 - **Targeted practice** - Auto-generate worksheets for weak areas
 - **Progress tracking** - Visual mastery progress over time
 
 ### For Students
+
 - **Personalized learning** - Practice problems target their specific needs
 - **Clear progression** - See mastery growth with visual feedback
 - **Encouragement** - AI provides positive, constructive feedback
@@ -36,11 +38,13 @@ Teachers upload photos of students' completed worksheets. AI grades them automat
 ## Technical Architecture
 
 ### Database (Already Built!)
+
 - `worksheet_attempts` - Stores uploaded worksheets and grading results
 - `problem_attempts` - Tracks each individual problem result
 - Existing `worksheet_mastery` - Updates based on grading
 
 ### API Flow
+
 ```
 POST /api/worksheets/upload
   → Store image
@@ -60,6 +64,7 @@ GET /api/worksheets/attempts/:attemptId
 ```
 
 ### UI Components
+
 1. **Upload Modal** - Drag & drop or camera upload
 2. **Processing View** - "AI is grading your work..."
 3. **Results Page** - Score, corrections, feedback, next steps
@@ -68,12 +73,14 @@ GET /api/worksheets/attempts/:attemptId
 ## Cost Estimates
 
 ### Per 1,000 Worksheets Graded:
+
 - **OCR (Google Vision)**: ~$1.50
 - **AI Grading (Claude Haiku)**: ~$1-3
 - **Storage (images)**: ~$0.15
 - **Total**: ~$3-5 per 1,000 worksheets
 
 ### Monthly for 100 Students:
+
 - ~10 worksheets/student/month = 1,000 worksheets
 - **Total cost**: ~$3-5/month for all students
 
@@ -82,6 +89,7 @@ GET /api/worksheets/attempts/:attemptId
 ## Implementation Phases
 
 ### Phase 1: MVP (2-3 weeks)
+
 - ✅ Database schema (DONE!)
 - Upload API with local file storage
 - Google Vision OCR integration
@@ -89,12 +97,14 @@ GET /api/worksheets/attempts/:attemptId
 - Basic results view
 
 ### Phase 2: Polish (1 week)
+
 - Enhanced UI/UX
 - Progress visualization
 - Targeted worksheet generation
 - Teacher dashboard
 
 ### Phase 3: Scale (1 week)
+
 - Move to cloud storage (Cloudflare R2)
 - Optimize OCR accuracy
 - Batch processing for classes
@@ -103,7 +113,9 @@ GET /api/worksheets/attempts/:attemptId
 ## Technical Decisions
 
 ### OCR Service: Google Vision API
+
 **Why**:
+
 - Industry-leading accuracy
 - Handles handwritten text well
 - Reasonable pricing
@@ -112,14 +124,18 @@ GET /api/worksheets/attempts/:attemptId
 **Alternative**: Azure Computer Vision (similar quality/price)
 
 ### AI Grading: Claude (Anthropic)
+
 **Why**:
+
 - Excellent at analyzing patterns
 - Provides constructive feedback
 - Lower cost than GPT-4
 - We already use it elsewhere
 
 ### File Storage: Start Local, Move to R2
+
 **Why**:
+
 - Local storage for MVP (faster development)
 - Cloudflare R2 for production (cheap, fast)
 - Easy migration path
@@ -127,16 +143,19 @@ GET /api/worksheets/attempts/:attemptId
 ## What Could Go Wrong
 
 ### OCR Accuracy Issues
+
 - **Problem**: Messy handwriting hard to read
 - **Solution**: Allow teacher to correct OCR results manually
 - **Mitigation**: Mark uncertain problems, show confidence scores
 
 ### AI Grading Mistakes
+
 - **Problem**: AI might misinterpret student's work
 - **Solution**: Teacher can override AI grading
 - **Mitigation**: Show AI reasoning, allow feedback
 
 ### Cost Overruns
+
 - **Problem**: High usage could increase costs
 - **Solution**: Set usage limits per account
 - **Mitigation**: Cache OCR results, batch processing
@@ -144,12 +163,14 @@ GET /api/worksheets/attempts/:attemptId
 ## Success Metrics
 
 ### MVP Success (Phase 1):
+
 - ✅ 90%+ OCR accuracy on printed worksheets
 - ✅ 85%+ grading accuracy vs teacher grading
 - ✅ <60 seconds average processing time
 - ✅ Teachers report time savings
 
 ### Long-term Success:
+
 - Students show measurable improvement in weak areas
 - Teachers use targeted recommendations regularly
 - High satisfaction scores from teachers
@@ -158,12 +179,14 @@ GET /api/worksheets/attempts/:attemptId
 ## Why This Is Valuable
 
 ### Current Reality:
+
 - Teachers spend hours grading worksheets manually
 - Hard to track individual student progress over time
 - Difficult to identify specific error patterns
 - One-size-fits-all practice doesn't help struggling students
 
 ### With AI Grading:
+
 - Instant grading, zero teacher time
 - Automatic mastery tracking per student
 - AI identifies: "This student forgets to carry in tens place"

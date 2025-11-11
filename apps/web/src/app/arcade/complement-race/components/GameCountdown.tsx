@@ -77,7 +77,7 @@ export function GameCountdown() {
             marginTop: '32px',
             fontSize: '24px',
             color: 'rgba(255, 255, 255, 0.8)',
-            fontWeight: '500',
+            fontWeight: 500,
           }}
         >
           Get Ready!

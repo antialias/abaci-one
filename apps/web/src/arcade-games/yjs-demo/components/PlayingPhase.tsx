@@ -188,7 +188,7 @@ const scoreItemStyle = css({
 
 const scorePlayerStyle = css({
   fontSize: '14px',
-  fontWeight: '500',
+  fontWeight: 500,
   color: 'gray.700',
 })
 

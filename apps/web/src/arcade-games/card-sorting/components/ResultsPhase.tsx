@@ -325,7 +325,7 @@ export function ResultsPhase() {
             <div
               className={css({
                 fontSize: { base: '12px', md: '20px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: 'white',
                 opacity: 0.9,
               })}
@@ -351,7 +351,7 @@ export function ResultsPhase() {
                   background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
                   borderRadius: '20px',
                   fontSize: { base: '11px', md: '13px' },
-                  fontWeight: '700',
+                  fontWeight: 700,
                   color: 'white',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
@@ -366,7 +366,7 @@ export function ResultsPhase() {
               className={css({
                 textAlign: { base: 'left', md: 'center' },
                 fontSize: { base: '13px', md: '18px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#0c4a6e',
                 lineHeight: 1.2,
                 display: { base: 'none', md: 'block' },
@@ -383,7 +383,7 @@ export function ResultsPhase() {
                 border: '2px solid rgba(59, 130, 246, 0.3)',
                 borderRadius: '20px',
                 fontSize: { base: '12px', md: '16px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#0c4a6e',
               })}
             >
@@ -406,7 +406,7 @@ export function ResultsPhase() {
             <div
               className={css({
                 fontSize: { base: '11px', md: '13px' },
-                fontWeight: '700',
+                fontWeight: 700,
                 color: '#64748b',
                 marginBottom: { base: '8px', md: '12px' },
                 textTransform: 'uppercase',
@@ -437,7 +437,7 @@ export function ResultsPhase() {
                       border: '1px solid rgba(139, 92, 246, 0.2)',
                       borderRadius: '20px',
                       fontSize: { base: '13px', md: '14px' },
-                      fontWeight: '500',
+                      fontWeight: 500,
                       color: '#5b21b6',
                     })}
                   >
@@ -470,7 +470,7 @@ export function ResultsPhase() {
             <div
               className={css({
                 fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#64748b',
                 marginBottom: { base: '3px', md: '4px' },
                 textTransform: 'uppercase',
@@ -491,7 +491,7 @@ export function ResultsPhase() {
                 className={css({
                   fontSize: { base: '12px', md: '14px' },
                   color: '#64748b',
-                  fontWeight: '500',
+                  fontWeight: 500,
                 })}
               >
                 /{state.cardCount}
@@ -512,7 +512,7 @@ export function ResultsPhase() {
             <div
               className={css({
                 fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#64748b',
                 marginBottom: { base: '3px', md: '4px' },
                 textTransform: 'uppercase',
@@ -533,7 +533,7 @@ export function ResultsPhase() {
                 className={css({
                   fontSize: { base: '12px', md: '14px' },
                   color: '#64748b',
-                  fontWeight: '500',
+                  fontWeight: 500,
                 })}
               >
                 /{state.cardCount}
@@ -554,7 +554,7 @@ export function ResultsPhase() {
             <div
               className={css({
                 fontSize: { base: '9px', md: '11px' },
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#64748b',
                 marginBottom: { base: '3px', md: '4px' },
                 textTransform: 'uppercase',
@@ -593,7 +593,7 @@ export function ResultsPhase() {
               border: { base: '2px solid #22c55e', md: '3px solid #22c55e' },
               borderRadius: { base: '8px', md: '12px' },
               fontSize: { base: '11px', md: '16px' },
-              fontWeight: '700',
+              fontWeight: 700,
               color: 'white',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
@@ -620,7 +620,7 @@ export function ResultsPhase() {
               border: '2px solid rgba(59, 130, 246, 0.3)',
               borderRadius: { base: '8px', md: '12px' },
               fontSize: { base: '11px', md: '14px' },
-              fontWeight: '700',
+              fontWeight: 700,
               color: '#0c4a6e',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
@@ -646,7 +646,7 @@ export function ResultsPhase() {
               border: '2px solid rgba(239, 68, 68, 0.3)',
               borderRadius: { base: '8px', md: '12px' },
               fontSize: { base: '11px', md: '14px' },
-              fontWeight: '700',
+              fontWeight: 700,
               color: '#991b1b',
               cursor: 'pointer',
               transition: 'all 0.2s ease',

@@ -822,7 +822,7 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
           <p
             style={{
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: 600,
               marginBottom: '8px',
             }}
           >
@@ -850,7 +850,7 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
             border: 'none',
             borderRadius: '6px',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: 600,
             cursor: 'pointer',
           }}
         >

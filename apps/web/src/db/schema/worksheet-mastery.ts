@@ -47,7 +47,9 @@ export const worksheetMastery = sqliteTable(
     masteredAt: integer('mastered_at', { mode: 'timestamp' }),
 
     /** When this skill was last practiced */
-    lastPracticedAt: integer('last_practiced_at', { mode: 'timestamp' }).notNull(),
+    lastPracticedAt: integer('last_practiced_at', {
+      mode: 'timestamp',
+    }).notNull(),
 
     /** Timestamp of last update */
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),

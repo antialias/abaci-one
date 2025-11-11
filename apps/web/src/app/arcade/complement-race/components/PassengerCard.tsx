@@ -148,7 +148,7 @@ export const PassengerCard = memo(function PassengerCard({
           <span style={{ fontSize: '14px', lineHeight: '1' }}>{originStation.icon}</span>
           <span
             style={{
-              fontWeight: '600',
+              fontWeight: 600,
               fontSize: '10px',
               letterSpacing: '0.3px',
             }}
@@ -179,7 +179,7 @@ export const PassengerCard = memo(function PassengerCard({
           <span style={{ fontSize: '14px', lineHeight: '1' }}>{destinationStation.icon}</span>
           <span
             style={{
-              fontWeight: '600',
+              fontWeight: 600,
               fontSize: '10px',
               letterSpacing: '0.3px',
             }}

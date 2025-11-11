@@ -72,7 +72,7 @@ export function CalendarConfigPanel({
         <legend
           className={css({
             fontSize: '1.125rem',
-            fontWeight: '600',
+            fontWeight: 600,
             marginBottom: '0.75rem',
             color: 'accent.emphasis',
           })}
@@ -145,7 +145,7 @@ export function CalendarConfigPanel({
         <legend
           className={css({
             fontSize: '1.125rem',
-            fontWeight: '600',
+            fontWeight: 600,
             marginBottom: '0.75rem',
             color: 'accent.emphasis',
           })}
@@ -213,7 +213,7 @@ export function CalendarConfigPanel({
         <legend
           className={css({
             fontSize: '1.125rem',
-            fontWeight: '600',
+            fontWeight: 600,
             marginBottom: '0.75rem',
             color: 'accent.emphasis',
           })}
@@ -298,7 +298,7 @@ export function CalendarConfigPanel({
           padding: '1rem',
           bg: 'accent.default',
           color: 'accent.fg',
-          fontWeight: '600',
+          fontWeight: 600,
           fontSize: '1.125rem',
           borderRadius: '8px',
           border: 'none',

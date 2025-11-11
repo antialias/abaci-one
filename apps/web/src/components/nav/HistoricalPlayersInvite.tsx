@@ -110,7 +110,7 @@ export function HistoricalPlayersInvite() {
       <div
         style={{
           fontSize: '12px',
-          fontWeight: '700',
+          fontWeight: 700,
           color: '#6b7280',
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
@@ -143,7 +143,7 @@ export function HistoricalPlayersInvite() {
               <div
                 style={{
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: '#1e293b',
                 }}
               >
@@ -167,7 +167,7 @@ export function HistoricalPlayersInvite() {
               style={{
                 padding: '6px 14px',
                 fontSize: '12px',
-                fontWeight: '700',
+                fontWeight: 700,
                 borderRadius: '6px',
                 border: 'none',
                 background:

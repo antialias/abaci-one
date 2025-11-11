@@ -274,7 +274,7 @@ export default function RoomDetailPage() {
                 bg: '#3b82f6',
                 color: 'white',
                 rounded: 'lg',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: 'pointer',
                 _hover: { bg: '#2563eb' },
               })}
@@ -383,7 +383,7 @@ export default function RoomDetailPage() {
                       bg: 'rgba(255, 255, 255, 0.1)',
                       color: '#fbbf24',
                       rounded: 'full',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       fontFamily: 'monospace',
                     })}
                   >
@@ -470,7 +470,7 @@ export default function RoomDetailPage() {
                       border: '2px solid rgba(59, 130, 246, 0.4)',
                       rounded: 'lg',
                       color: '#60a5fa',
-                      fontWeight: '600',
+                      fontWeight: 600,
                     })}
                   >
                     <span className={css({ fontSize: 'xl' })}>{player.emoji}</span>
@@ -555,7 +555,7 @@ export default function RoomDetailPage() {
                             rounded: 'full',
                           })}
                         />
-                        <span className={css({ color: 'white', fontWeight: '600' })}>
+                        <span className={css({ color: 'white', fontWeight: 600 })}>
                           {member.displayName}
                         </span>
                         {member.isCreator && (
@@ -567,7 +567,7 @@ export default function RoomDetailPage() {
                               color: '#fbbf24',
                               rounded: 'full',
                               fontSize: 'xs',
-                              fontWeight: '600',
+                              fontWeight: 600,
                             })}
                           >
                             HOST
@@ -607,7 +607,7 @@ export default function RoomDetailPage() {
                               border: '1px solid rgba(59, 130, 246, 0.3)',
                               rounded: 'full',
                               fontSize: 'xs',
-                              fontWeight: '600',
+                              fontWeight: 600,
                             })}
                           >
                             {player.emoji} {player.name}
@@ -646,7 +646,7 @@ export default function RoomDetailPage() {
                     bg: 'rgba(255, 255, 255, 0.1)',
                     color: 'white',
                     rounded: 'lg',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     _hover: { bg: 'rgba(255, 255, 255, 0.15)' },
                   })}
@@ -664,7 +664,7 @@ export default function RoomDetailPage() {
                     color: 'white',
                     rounded: 'lg',
                     fontSize: 'xl',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: allPlayers.length < 1 ? 'not-allowed' : 'pointer',
                     opacity: allPlayers.length < 1 ? 0.5 : 1,
                     _hover: allPlayers.length < 1 ? {} : { bg: '#059669' },
@@ -686,7 +686,7 @@ export default function RoomDetailPage() {
                     bg: 'rgba(255, 255, 255, 0.1)',
                     color: 'white',
                     rounded: 'lg',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     _hover: { bg: 'rgba(255, 255, 255, 0.15)' },
                   })}
@@ -704,7 +704,7 @@ export default function RoomDetailPage() {
                     color: 'white',
                     rounded: 'lg',
                     fontSize: 'xl',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: room.isLocked ? 'not-allowed' : 'pointer',
                     opacity: room.isLocked ? 0.5 : 1,
                     _hover: room.isLocked ? {} : { bg: '#2563eb' },

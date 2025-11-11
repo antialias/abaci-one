@@ -42,7 +42,10 @@
       "Bash(npm run lint:*)",
       "Bash(git reset:*)",
       "Bash(npx tsx:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx @pandacss/dev)",
+      "Bash(npm view:*)",
+      "Bash(xargs sed:*)"
     ],
     "deny": [],
     "ask": []

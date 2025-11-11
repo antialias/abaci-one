@@ -143,7 +143,13 @@ export function AllSkillsModal({
           })}
         />
 
-        <div className={css({ display: 'flex', gap: '1rem', alignItems: 'flex-start' })}>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'flex-start',
+          })}
+        >
           {/* Icon + Name + Description */}
           <div className={css({ flex: 1, minWidth: 0 })}>
             <div
@@ -158,7 +164,7 @@ export function AllSkillsModal({
               <h4
                 className={css({
                   fontSize: '0.9375rem',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: isDark ? 'white' : 'gray.900',
                 })}
               >
@@ -168,7 +174,7 @@ export function AllSkillsModal({
                     className={css({
                       marginLeft: '0.5rem',
                       fontSize: '0.75rem',
-                      fontWeight: '500',
+                      fontWeight: 500,
                       color: 'blue.600',
                     })}
                   >
@@ -268,7 +274,11 @@ export function AllSkillsModal({
                     })}
                   >
                     {isMastered ? 'Mark as not mastered' : 'Mark as mastered'}
-                    <Tooltip.Arrow className={css({ fill: isDark ? 'gray.800' : 'gray.900' })} />
+                    <Tooltip.Arrow
+                      className={css({
+                        fill: isDark ? 'gray.800' : 'gray.900',
+                      })}
+                    />
                   </Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip.Root>
@@ -291,7 +301,7 @@ export function AllSkillsModal({
                   backgroundColor: isDark ? 'gray.600' : 'white',
                   color: isDark ? 'gray.200' : 'gray.700',
                   fontSize: '0.75rem',
-                  fontWeight: '500',
+                  fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap',
@@ -359,7 +369,7 @@ export function AllSkillsModal({
               <h2
                 className={css({
                   fontSize: '1.25rem',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: isDark ? 'white' : 'gray.900',
                   marginBottom: '0.5rem',
                 })}
@@ -395,7 +405,9 @@ export function AllSkillsModal({
                     backgroundColor: 'green.500',
                     transition: 'transform 0.3s ease',
                   })}
-                  style={{ transform: `translateX(-${100 - progressPercentage}%)` }}
+                  style={{
+                    transform: `translateX(-${100 - progressPercentage}%)`,
+                  }}
                 />
               </Progress.Root>
               <p
@@ -459,9 +471,21 @@ export function AllSkillsModal({
             >
               {[
                 { value: 'all', label: 'All', count: skills.length },
-                { value: 'mastered', label: 'Mastered', count: masteredSkills.length },
-                { value: 'available', label: 'Available', count: availableSkills.length },
-                { value: 'locked', label: 'Locked', count: lockedSkills.length },
+                {
+                  value: 'mastered',
+                  label: 'Mastered',
+                  count: masteredSkills.length,
+                },
+                {
+                  value: 'available',
+                  label: 'Available',
+                  count: availableSkills.length,
+                },
+                {
+                  value: 'locked',
+                  label: 'Locked',
+                  count: lockedSkills.length,
+                },
               ].map((tab) => (
                 <Tabs.Trigger key={tab.value} value={tab.value} asChild>
                   <button
@@ -469,7 +493,7 @@ export function AllSkillsModal({
                     className={css({
                       padding: '0.5rem 1rem',
                       fontSize: '0.875rem',
-                      fontWeight: '500',
+                      fontWeight: 500,
                       border: 'none',
                       borderBottom: '2px solid',
                       borderColor: 'transparent',
@@ -514,7 +538,13 @@ export function AllSkillsModal({
                   No {activeTab} skills
                 </div>
               ) : (
-                <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                  })}
+                >
                   {filteredSkills.map((skill) => renderSkillCard(skill))}
                 </div>
               )}
@@ -544,7 +574,7 @@ export function AllSkillsModal({
               backgroundColor: isDark ? 'gray.700' : 'white',
               color: isDark ? 'gray.200' : 'gray.700',
               fontSize: '0.875rem',
-              fontWeight: '500',
+              fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
               _hover: {

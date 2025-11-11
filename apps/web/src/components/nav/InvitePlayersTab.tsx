@@ -80,7 +80,7 @@ export function InvitePlayersTab() {
           style={{
             fontSize: '13px',
             color: '#6b7280',
-            fontWeight: '500',
+            fontWeight: 500,
           }}
         >
           Creating room...
@@ -116,7 +116,7 @@ export function InvitePlayersTab() {
           style={{
             fontSize: '13px',
             color: '#ef4444',
-            fontWeight: '500',
+            fontWeight: 500,
             textAlign: 'center',
           }}
         >
@@ -135,7 +135,7 @@ export function InvitePlayersTab() {
             borderRadius: '8px',
             color: '#8b5cf6',
             fontSize: '13px',
-            fontWeight: '600',
+            fontWeight: 600,
             cursor: 'pointer',
             transition: 'all 0.2s ease',
           }}
@@ -172,7 +172,7 @@ export function InvitePlayersTab() {
         <div
           style={{
             fontSize: '11px',
-            fontWeight: '600',
+            fontWeight: 600,
             color: '#6b7280',
             textAlign: 'center',
             marginBottom: '4px',

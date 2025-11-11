@@ -80,7 +80,7 @@ export function PedagogicalDecompositionDisplay({
           padding: '4px 8px',
           borderRadius: '6px',
           border: '1px solid rgba(59,130,246,0.3)',
-          fontWeight: '600',
+          fontWeight: 600,
           boxShadow: '0 1px 3px rgba(59,130,246,0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
           backdropFilter: 'blur(2px)',
           display: 'inline-block',

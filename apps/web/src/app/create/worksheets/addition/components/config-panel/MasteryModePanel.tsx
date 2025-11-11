@@ -150,9 +150,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
 
       // Update the appropriate skill ID based on operator
       if (operator === 'addition') {
-        onChange({ currentAdditionSkillId: prevSkill.id } as Partial<WorksheetFormState>)
+        onChange({
+          currentAdditionSkillId: prevSkill.id,
+        } as Partial<WorksheetFormState>)
       } else if (operator === 'subtraction') {
-        onChange({ currentSubtractionSkillId: prevSkill.id } as Partial<WorksheetFormState>)
+        onChange({
+          currentSubtractionSkillId: prevSkill.id,
+        } as Partial<WorksheetFormState>)
       }
     }
   }
@@ -166,9 +170,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
 
       // Update the appropriate skill ID based on operator
       if (operator === 'addition') {
-        onChange({ currentAdditionSkillId: nextSkill.id } as Partial<WorksheetFormState>)
+        onChange({
+          currentAdditionSkillId: nextSkill.id,
+        } as Partial<WorksheetFormState>)
       } else if (operator === 'subtraction') {
-        onChange({ currentSubtractionSkillId: nextSkill.id } as Partial<WorksheetFormState>)
+        onChange({
+          currentSubtractionSkillId: nextSkill.id,
+        } as Partial<WorksheetFormState>)
       }
     }
   }
@@ -247,7 +255,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
           <h3
             className={css({
               fontSize: '0.875rem',
-              fontWeight: '600',
+              fontWeight: 600,
               color: isDark ? 'gray.200' : 'gray.700',
               marginBottom: '0.5rem',
               textTransform: 'uppercase',
@@ -269,7 +277,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         </div>
 
         {/* Current Skills Display - Mini Compact Cards */}
-        <div className={css({ display: 'flex', gap: '0.75rem', marginTop: '1rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '0.75rem',
+            marginTop: '1rem',
+          })}
+        >
           {/* Addition Skill - Mini */}
           <div
             data-skill-card="addition-mini"
@@ -296,7 +310,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               <div
                 className={css({
                   fontSize: '0.625rem',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: isDark ? 'gray.400' : 'gray.500',
                   marginBottom: '0.25rem',
                   textTransform: 'uppercase',
@@ -317,7 +331,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 <h4
                   className={css({
                     fontSize: '0.75rem',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
                     overflow: 'hidden',
@@ -358,7 +372,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             </div>
 
             {/* Addition Nav Buttons */}
-            <div className={css({ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '0.5rem',
+                marginTop: '0.5rem',
+              })}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -459,7 +479,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               <div
                 className={css({
                   fontSize: '0.625rem',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: isDark ? 'gray.400' : 'gray.500',
                   marginBottom: '0.25rem',
                   textTransform: 'uppercase',
@@ -480,7 +500,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                 <h4
                   className={css({
                     fontSize: '0.75rem',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     color: isDark ? 'white' : 'gray.900',
                     lineHeight: '1.2',
                     overflow: 'hidden',
@@ -521,7 +541,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             </div>
 
             {/* Subtraction Nav Buttons */}
-            <div className={css({ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '0.5rem',
+                marginTop: '0.5rem',
+              })}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -614,7 +640,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               backgroundColor: isDark ? 'gray.600' : 'white',
               color: isDark ? 'gray.200' : 'gray.700',
               fontSize: '0.875rem',
-              fontWeight: '500',
+              fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
               _hover: {
@@ -640,9 +666,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             if (!skill) return
 
             if (skill.operator === 'addition') {
-              onChange({ currentAdditionSkillId: skillId } as Partial<WorksheetFormState>)
+              onChange({
+                currentAdditionSkillId: skillId,
+              } as Partial<WorksheetFormState>)
             } else {
-              onChange({ currentSubtractionSkillId: skillId } as Partial<WorksheetFormState>)
+              onChange({
+                currentSubtractionSkillId: skillId,
+              } as Partial<WorksheetFormState>)
             }
           }}
           onToggleMastery={async (skillId, isMastered) => {
@@ -708,22 +738,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
   )
 
   return (
-    <div
-      data-component="mastery-mode-panel"
-      className={css({
-        padding: '1.5rem',
-        backgroundColor: isDark ? 'gray.700' : 'gray.50',
-        borderRadius: '8px',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.600' : 'gray.200',
-      })}
-    >
+    <div data-component="mastery-mode-panel">
       {/* Header */}
       <div className={css({ marginBottom: '1rem' })}>
         <h3
           className={css({
             fontSize: '0.875rem',
-            fontWeight: '600',
+            fontWeight: 600,
             color: isDark ? 'gray.200' : 'gray.700',
             marginBottom: '0.5rem',
             textTransform: 'uppercase',
@@ -744,11 +765,17 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         })}
       >
         <div className={css({ flex: 1 })}>
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            })}
+          >
             <h4
               className={css({
                 fontSize: '1.125rem',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isDark ? 'white' : 'gray.900',
               })}
             >
@@ -800,7 +827,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             backgroundColor: isDark ? 'gray.600' : 'white',
             color: isDark ? 'gray.200' : 'gray.700',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.2s',
             opacity: hasPrevious ? 1 : 0.5,
@@ -833,7 +860,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             backgroundColor: isMastered ? 'green.50' : isDark ? 'gray.600' : 'white',
             color: isMastered ? 'green.700' : isDark ? 'gray.200' : 'gray.700',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.2s',
             _hover: {
@@ -867,7 +894,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             backgroundColor: isDark ? 'gray.600' : 'white',
             color: isDark ? 'gray.200' : 'gray.700',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.2s',
             opacity: hasNext ? 1 : 0.5,
@@ -888,7 +915,13 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
 
       {/* Action Buttons */}
       <Tooltip.Provider delayDuration={300}>
-        <div className={css({ marginTop: '1rem', display: 'flex', gap: '0.75rem' })}>
+        <div
+          className={css({
+            marginTop: '1rem',
+            display: 'flex',
+            gap: '0.75rem',
+          })}
+        >
           <button
             type="button"
             data-action="view-all-skills"
@@ -902,7 +935,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
               backgroundColor: isDark ? 'gray.600' : 'white',
               color: isDark ? 'gray.200' : 'gray.700',
               fontSize: '0.875rem',
-              fontWeight: '500',
+              fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
               _hover: {
@@ -930,7 +963,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   backgroundColor: isDark ? 'gray.600' : 'white',
                   color: isDark ? 'gray.200' : 'gray.700',
                   fontSize: '0.875rem',
-                  fontWeight: '500',
+                  fontWeight: 500,
                   cursor: hasMasteredReviewSkills ? 'pointer' : 'not-allowed',
                   opacity: hasMasteredReviewSkills ? 1 : 0.5,
                   transition: 'all 0.2s',

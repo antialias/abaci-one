@@ -22,96 +22,40 @@ export function DigitRangeSection({
         bg: isDark ? 'gray.700' : 'gray.50',
         border: '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.200',
-        rounded: 'xl',
-        p: '4',
+        rounded: 'lg',
+        p: '3',
       })}
     >
-      <div className={css({ mb: '3' })}>
-        <div
-          className={css({
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          })}
-        >
-          <label
-            className={css({
-              fontSize: 'sm',
-              fontWeight: 'semibold',
-              color: isDark ? 'gray.200' : 'gray.700',
-            })}
-          >
-            Problem Size (Digits per Number)
-          </label>
-          <span
-            className={css({
-              fontSize: 'sm',
-              fontWeight: 'bold',
-              color: 'brand.600',
-            })}
-          >
-            {min === max ? `${min}` : `${min}-${max}`}
-          </span>
-        </div>
-        <p
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: '2',
+        })}
+      >
+        <label
           className={css({
             fontSize: 'xs',
-            color: isDark ? 'gray.400' : 'gray.500',
-            mt: '1',
+            fontWeight: 'semibold',
+            color: isDark ? 'gray.300' : 'gray.700',
           })}
         >
-          {min === max
-            ? `All problems: exactly ${min} digit${min > 1 ? 's' : ''}`
-            : `Mixed problem sizes from ${min} to ${max} digits`}
-        </p>
+          Digits per Number
+        </label>
+        <span
+          className={css({
+            fontSize: 'xs',
+            fontWeight: 'bold',
+            color: 'brand.600',
+          })}
+        >
+          {min === max ? `${min}` : `${min}-${max}`}
+        </span>
       </div>
 
-      {/* Range Slider with Tick Marks */}
-      <div className={css({ position: 'relative', px: '3', py: '4' })}>
-        {/* Tick marks */}
-        <div
-          className={css({
-            position: 'absolute',
-            width: 'full',
-            top: '0',
-            left: '0',
-            px: '3',
-            display: 'flex',
-            justifyContent: 'space-between',
-          })}
-        >
-          {[1, 2, 3, 4, 5].map((digit) => (
-            <div
-              key={`tick-${digit}`}
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                width: '0',
-              })}
-            >
-              <div
-                className={css({
-                  fontSize: '2xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  mb: '1',
-                })}
-              >
-                {digit}
-              </div>
-              <div
-                className={css({
-                  width: '1px',
-                  height: '2',
-                  bg: 'gray.300',
-                })}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Double-thumbed range slider */}
+      {/* Compact slider with inline labels */}
+      <div className={css({ position: 'relative' })}>
         <Slider.Root
           className={css({
             position: 'relative',
@@ -120,8 +64,7 @@ export function DigitRangeSection({
             userSelect: 'none',
             touchAction: 'none',
             width: 'full',
-            height: '6',
-            mt: '8',
+            height: '5',
           })}
           value={[min, max]}
           onValueChange={(values) => {
@@ -139,9 +82,9 @@ export function DigitRangeSection({
             className={css({
               position: 'relative',
               flexGrow: 1,
-              bg: 'gray.200',
+              bg: isDark ? 'gray.600' : 'gray.200',
               rounded: 'full',
-              height: '2',
+              height: '1.5',
             })}
           >
             <Slider.Range
@@ -156,19 +99,18 @@ export function DigitRangeSection({
           <Slider.Thumb
             className={css({
               display: 'block',
-              width: '4',
-              height: '4',
+              width: '3.5',
+              height: '3.5',
               bg: 'white',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               rounded: 'full',
               border: '2px solid',
               borderColor: 'brand.500',
               cursor: 'grab',
-              transition: 'transform 0.15s',
-              _hover: { transform: 'scale(1.15)' },
+              _hover: { transform: 'scale(1.1)' },
               _focus: {
                 outline: 'none',
-                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
+                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
               },
               _active: { cursor: 'grabbing' },
             })}
@@ -176,24 +118,46 @@ export function DigitRangeSection({
           <Slider.Thumb
             className={css({
               display: 'block',
-              width: '4',
-              height: '4',
+              width: '3.5',
+              height: '3.5',
               bg: 'white',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               rounded: 'full',
               border: '2px solid',
               borderColor: 'brand.600',
               cursor: 'grab',
-              transition: 'transform 0.15s',
-              _hover: { transform: 'scale(1.15)' },
+              _hover: { transform: 'scale(1.1)' },
               _focus: {
                 outline: 'none',
-                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
+                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
               },
               _active: { cursor: 'grabbing' },
             })}
           />
         </Slider.Root>
+
+        {/* Tick marks below slider */}
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            mt: '1',
+            px: '0.5',
+          })}
+        >
+          {[1, 2, 3, 4, 5].map((digit) => (
+            <span
+              key={`tick-${digit}`}
+              className={css({
+                fontSize: '2xs',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.500' : 'gray.400',
+              })}
+            >
+              {digit}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   )

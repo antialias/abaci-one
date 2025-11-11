@@ -49,7 +49,7 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
       <div
         style={{
           fontSize: '11px',
-          fontWeight: '600',
+          fontWeight: 600,
           color: '#6b7280',
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
@@ -92,7 +92,7 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
             <div
               style={{
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: '#1f2937',
                 marginBottom: '4px',
                 display: 'flex',
@@ -118,7 +118,7 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
                 gap: '8px',
               }}
             >
-              <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>{room.code}</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{room.code}</span>
               <span>·</span>
               <span>{formatTimeAgo(room.joinedAt)}</span>
             </div>

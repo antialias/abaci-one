@@ -80,7 +80,7 @@ function MenuContent({
     borderRadius: '8px',
     color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
     fontSize: isMobile ? '14px' : '14px',
-    fontWeight: '500',
+    fontWeight: 500,
     textDecoration: 'none',
     transition: 'all 0.2s ease',
   }
@@ -93,7 +93,7 @@ function MenuContent({
 
   const sectionHeaderStyle = {
     fontSize: isMobile ? '10px' : '10px',
-    fontWeight: '600',
+    fontWeight: 600,
     color: isDark ? 'rgba(196, 181, 253, 0.7)' : 'rgba(139, 92, 246, 0.7)',
     marginBottom: isMobile ? '6px' : '6px',
     marginLeft: isMobile ? '12px' : '12px',
@@ -163,7 +163,7 @@ function MenuContent({
     borderRadius: '8px',
     color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
     fontSize: isMobile ? '14px' : '14px',
-    fontWeight: '500',
+    fontWeight: 500,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
   }
@@ -765,7 +765,7 @@ function MinimalNav({
                 borderRadius: '9999px',
                 fontSize: '12px',
                 color: 'rgb(134, 239, 172)',
-                fontWeight: '600',
+                fontWeight: 600,
               }}
             >
               ✨ FULLSCREEN

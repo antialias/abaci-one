@@ -1504,7 +1504,7 @@ export function PlayingPhaseDrag() {
               alignItems: 'center',
               gap: { base: '6px', md: '12px' },
               fontSize: { base: '12px', md: '16px' },
-              fontWeight: '600',
+              fontWeight: 600,
             })}
           >
             <span className={css({ display: { base: 'none', sm: 'inline' } })}>👀 Spectating:</span>
@@ -1532,7 +1532,7 @@ export function PlayingPhaseDrag() {
               <span className={css({ display: { base: 'none', sm: 'inline' } })}>Progress:</span>
               <span
                 className={css({
-                  fontWeight: '600',
+                  fontWeight: 600,
                   fontSize: { base: '12px', md: '16px' },
                 })}
               >
@@ -1557,7 +1557,7 @@ export function PlayingPhaseDrag() {
                   : 'rgba(255, 255, 255, 0.1)',
                 color: 'white',
                 fontSize: { base: '11px', md: '14px' },
-                fontWeight: '500',
+                fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 _hover: {
@@ -1650,7 +1650,7 @@ export function PlayingPhaseDrag() {
             <h3
               className={css({
                 fontSize: { base: '12px', md: '18px' },
-                fontWeight: '700',
+                fontWeight: 700,
                 marginBottom: { base: '6px', md: '20px' },
                 color: '#1e293b',
                 borderBottom: '2px solid #e2e8f0',
@@ -1696,7 +1696,7 @@ export function PlayingPhaseDrag() {
                 <div
                   className={css({
                     fontSize: { base: '16px', md: '24px' },
-                    fontWeight: '700',
+                    fontWeight: 700,
                     color: '#1e3a8a',
                   })}
                 >
@@ -1729,7 +1729,7 @@ export function PlayingPhaseDrag() {
                 <div
                   className={css({
                     fontSize: { base: '16px', md: '24px' },
-                    fontWeight: '700',
+                    fontWeight: 700,
                     color: '#14532d',
                   })}
                 >
@@ -1775,7 +1775,7 @@ export function PlayingPhaseDrag() {
                 <div
                   className={css({
                     fontSize: { base: '16px', md: '24px' },
-                    fontWeight: '700',
+                    fontWeight: 700,
                     color: '#78350f',
                   })}
                 >
@@ -1873,7 +1873,7 @@ export function PlayingPhaseDrag() {
             <div
               className={css({
                 fontSize: '13px',
-                fontWeight: '700',
+                fontWeight: 700,
                 color: isSequenceCorrect ? '#f59e0b' : canCheckSolutionDrag ? '#22c55e' : '#9ca3af',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
@@ -1899,7 +1899,7 @@ export function PlayingPhaseDrag() {
             border: '2px solid rgba(59, 130, 246, 0.3)',
             borderRadius: '20px',
             fontSize: '16px',
-            fontWeight: '600',
+            fontWeight: 600,
             color: '#0c4a6e',
             zIndex: 10,
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
@@ -2043,7 +2043,7 @@ export function PlayingPhaseDrag() {
                   borderRadius: '12px',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                   fontSize: '14px',
-                  fontWeight: '500',
+                  fontWeight: 500,
                   color: '#1f2937',
                   display: 'flex',
                   alignItems: 'center',

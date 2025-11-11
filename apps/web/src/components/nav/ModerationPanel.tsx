@@ -598,7 +598,7 @@ export function ModerationPanel({
               <span
                 style={{
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: successMessage ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)',
                 }}
               >
@@ -654,7 +654,7 @@ export function ModerationPanel({
                 borderBottom:
                   activeTab === tab ? '2px solid rgba(251, 146, 60, 1)' : '2px solid transparent',
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
@@ -671,7 +671,7 @@ export function ModerationPanel({
                         background: 'rgba(239, 68, 68, 0.8)',
                         color: 'white',
                         fontSize: '11px',
-                        fontWeight: '700',
+                        fontWeight: 700,
                       }}
                     >
                       {pendingReports.length} report
@@ -694,7 +694,7 @@ export function ModerationPanel({
                         background: 'rgba(59, 130, 246, 0.8)',
                         color: 'white',
                         fontSize: '11px',
-                        fontWeight: '700',
+                        fontWeight: 700,
                       }}
                     >
                       {joinRequests.filter((r: any) => r.status === 'pending').length} pending
@@ -789,7 +789,7 @@ export function ModerationPanel({
                               <div
                                 style={{
                                   fontSize: '14px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   color: 'rgba(209, 213, 219, 1)',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -818,7 +818,7 @@ export function ModerationPanel({
                                       background: 'rgba(239, 68, 68, 0.8)',
                                       color: 'white',
                                       fontSize: '11px',
-                                      fontWeight: '700',
+                                      fontWeight: 700,
                                     }}
                                   >
                                     {memberReports.length} report
@@ -847,7 +847,7 @@ export function ModerationPanel({
                                   border: '1px solid rgba(251, 146, 60, 0.4)',
                                   borderRadius: '6px',
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   cursor:
                                     actionLoading === `kick-${member.userId}`
                                       ? 'not-allowed'
@@ -868,7 +868,7 @@ export function ModerationPanel({
                                   border: '1px solid rgba(239, 68, 68, 0.4)',
                                   borderRadius: '6px',
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   cursor:
                                     actionLoading === `ban-${member.userId}`
                                       ? 'not-allowed'
@@ -893,7 +893,7 @@ export function ModerationPanel({
                               <div
                                 style={{
                                   fontSize: '11px',
-                                  fontWeight: '700',
+                                  fontWeight: 700,
                                   color: 'rgba(239, 68, 68, 1)',
                                   marginBottom: '8px',
                                   textTransform: 'uppercase',
@@ -997,7 +997,7 @@ export function ModerationPanel({
                               <div
                                 style={{
                                   fontSize: '14px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   color: 'rgba(209, 213, 219, 1)',
                                 }}
                               >
@@ -1038,7 +1038,7 @@ export function ModerationPanel({
                                   border: '1px solid rgba(34, 197, 94, 0.4)',
                                   borderRadius: '6px',
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   cursor:
                                     actionLoading === `unban-${ban.userId}`
                                       ? 'not-allowed'
@@ -1063,7 +1063,7 @@ export function ModerationPanel({
                               <div
                                 style={{
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   color: 'rgba(134, 239, 172, 1)',
                                   marginBottom: '12px',
                                 }}
@@ -1096,7 +1096,7 @@ export function ModerationPanel({
                                     border: '1px solid rgba(75, 85, 99, 0.5)',
                                     borderRadius: '6px',
                                     fontSize: '13px',
-                                    fontWeight: '600',
+                                    fontWeight: 600,
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                   }}
@@ -1120,7 +1120,7 @@ export function ModerationPanel({
                                     border: '1px solid rgba(34, 197, 94, 0.6)',
                                     borderRadius: '6px',
                                     fontSize: '13px',
-                                    fontWeight: '600',
+                                    fontWeight: 600,
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                   }}
@@ -1202,7 +1202,7 @@ export function ModerationPanel({
                           <div
                             style={{
                               fontSize: '12px',
-                              fontWeight: '700',
+                              fontWeight: 700,
                               color: config.color,
                               marginBottom: '12px',
                               textTransform: 'uppercase',
@@ -1254,7 +1254,7 @@ export function ModerationPanel({
                                       <div
                                         style={{
                                           fontSize: '14px',
-                                          fontWeight: '600',
+                                          fontWeight: 600,
                                           color: 'rgba(209, 213, 219, 1)',
                                         }}
                                       >
@@ -1278,7 +1278,7 @@ export function ModerationPanel({
                                               fontSize: '11px',
                                               color: 'rgba(139, 92, 246, 1)',
                                               marginTop: '4px',
-                                              fontWeight: '600',
+                                              fontWeight: 600,
                                             }}
                                           >
                                             ✉️ Pending invitation
@@ -1317,7 +1317,7 @@ export function ModerationPanel({
                                                   : '1px solid rgba(59, 130, 246, 0.4)',
                                               borderRadius: '6px',
                                               fontSize: '13px',
-                                              fontWeight: '600',
+                                              fontWeight: 600,
                                               cursor:
                                                 actionLoading === `invite-${member.userId}`
                                                   ? 'not-allowed'
@@ -1344,7 +1344,7 @@ export function ModerationPanel({
                                               border: '1px solid rgba(34, 197, 94, 0.4)',
                                               borderRadius: '6px',
                                               fontSize: '13px',
-                                              fontWeight: '600',
+                                              fontWeight: 600,
                                             }}
                                           >
                                             In Room
@@ -1366,7 +1366,7 @@ export function ModerationPanel({
                                               border: '1px solid rgba(34, 197, 94, 0.4)',
                                               borderRadius: '6px',
                                               fontSize: '13px',
-                                              fontWeight: '600',
+                                              fontWeight: 600,
                                               cursor:
                                                 actionLoading === `unban-invite-${member.userId}`
                                                   ? 'not-allowed'
@@ -1398,7 +1398,7 @@ export function ModerationPanel({
                                       <div
                                         style={{
                                           fontSize: '13px',
-                                          fontWeight: '600',
+                                          fontWeight: 600,
                                           color: 'rgba(134, 239, 172, 1)',
                                           marginBottom: '8px',
                                         }}
@@ -1432,7 +1432,7 @@ export function ModerationPanel({
                                             border: '1px solid rgba(75, 85, 99, 0.5)',
                                             borderRadius: '6px',
                                             fontSize: '13px',
-                                            fontWeight: '600',
+                                            fontWeight: 600,
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
                                           }}
@@ -1460,7 +1460,7 @@ export function ModerationPanel({
                                             border: '1px solid rgba(34, 197, 94, 0.6)',
                                             borderRadius: '6px',
                                             fontSize: '13px',
-                                            fontWeight: '600',
+                                            fontWeight: 600,
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
                                           }}
@@ -1504,7 +1504,7 @@ export function ModerationPanel({
                   <div
                     style={{
                       fontSize: '14px',
-                      fontWeight: '700',
+                      fontWeight: 700,
                       color: 'rgba(253, 186, 116, 1)',
                       marginBottom: '12px',
                       textTransform: 'uppercase',
@@ -1593,7 +1593,7 @@ export function ModerationPanel({
                                 ? 'rgba(253, 186, 116, 1)'
                                 : 'rgba(209, 213, 219, 0.8)',
                             fontSize: '13px',
-                            fontWeight: '500',
+                            fontWeight: 500,
                             cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
                             opacity: actionLoading === 'update-settings' ? 0.5 : 1,
                             transition: 'all 0.2s ease',
@@ -1622,7 +1622,7 @@ export function ModerationPanel({
                               lineHeight: '1.2',
                             }}
                           >
-                            <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
+                            <div style={{ fontSize: '13px', fontWeight: 600 }}>{mode.label}</div>
                             <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
                           </div>
                         </button>
@@ -1636,7 +1636,7 @@ export function ModerationPanel({
                           style={{
                             display: 'block',
                             fontSize: '12px',
-                            fontWeight: '600',
+                            fontWeight: 600,
                             color: 'rgba(209, 213, 219, 0.8)',
                             marginBottom: '6px',
                           }}
@@ -1691,7 +1691,7 @@ export function ModerationPanel({
                                   : '1px solid rgba(75, 85, 99, 0.3)',
                               borderRadius: '6px',
                               fontSize: '14px',
-                              fontWeight: '600',
+                              fontWeight: 600,
                               cursor: roomPassword ? 'pointer' : 'not-allowed',
                               opacity: roomPassword ? 1 : 0.5,
                               transition: 'all 0.2s ease',
@@ -1742,7 +1742,7 @@ export function ModerationPanel({
                               : '1px solid rgba(59, 130, 246, 0.6)',
                           borderRadius: '6px',
                           fontSize: '14px',
-                          fontWeight: '600',
+                          fontWeight: 600,
                           cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
                           opacity: actionLoading === 'update-settings' ? 0.5 : 1,
                         }}
@@ -1759,7 +1759,7 @@ export function ModerationPanel({
                     <div
                       style={{
                         fontSize: '14px',
-                        fontWeight: '700',
+                        fontWeight: 700,
                         color: 'rgba(59, 130, 246, 1)',
                         marginBottom: '12px',
                         textTransform: 'uppercase',
@@ -1795,7 +1795,7 @@ export function ModerationPanel({
                               <div
                                 style={{
                                   fontSize: '14px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   color: 'rgba(209, 213, 219, 1)',
                                 }}
                               >
@@ -1824,7 +1824,7 @@ export function ModerationPanel({
                                   border: '1px solid rgba(239, 68, 68, 0.4)',
                                   borderRadius: '6px',
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   cursor:
                                     actionLoading === `deny-request-${request.id}`
                                       ? 'not-allowed'
@@ -1847,7 +1847,7 @@ export function ModerationPanel({
                                   border: '1px solid rgba(34, 197, 94, 0.4)',
                                   borderRadius: '6px',
                                   fontSize: '13px',
-                                  fontWeight: '600',
+                                  fontWeight: 600,
                                   cursor:
                                     actionLoading === `approve-request-${request.id}`
                                       ? 'not-allowed'
@@ -1872,7 +1872,7 @@ export function ModerationPanel({
                   <div
                     style={{
                       fontSize: '14px',
-                      fontWeight: '700',
+                      fontWeight: 700,
                       color: 'rgba(251, 146, 60, 1)',
                       marginBottom: '12px',
                       textTransform: 'uppercase',
@@ -1942,7 +1942,7 @@ export function ModerationPanel({
                               : '1px solid rgba(251, 146, 60, 0.6)',
                             borderRadius: '6px',
                             fontSize: '14px',
-                            fontWeight: '600',
+                            fontWeight: 600,
                             cursor: !selectedNewOwner ? 'not-allowed' : 'pointer',
                             opacity: !selectedNewOwner ? 0.5 : 1,
                           }}
@@ -1955,7 +1955,7 @@ export function ModerationPanel({
                         <div
                           style={{
                             fontSize: '13px',
-                            fontWeight: '600',
+                            fontWeight: 600,
                             color: 'rgba(251, 191, 36, 1)',
                             marginBottom: '8px',
                           }}
@@ -1986,7 +1986,7 @@ export function ModerationPanel({
                               border: '1px solid rgba(75, 85, 99, 0.5)',
                               borderRadius: '6px',
                               fontSize: '14px',
-                              fontWeight: '600',
+                              fontWeight: 600,
                               cursor:
                                 actionLoading === 'transfer-ownership' ? 'not-allowed' : 'pointer',
                               opacity: actionLoading === 'transfer-ownership' ? 0.5 : 1,
@@ -2023,7 +2023,7 @@ export function ModerationPanel({
                                   : '1px solid rgba(251, 146, 60, 0.6)',
                               borderRadius: '6px',
                               fontSize: '14px',
-                              fontWeight: '600',
+                              fontWeight: 600,
                               cursor:
                                 actionLoading === 'transfer-ownership' ? 'not-allowed' : 'pointer',
                               opacity: actionLoading === 'transfer-ownership' ? 0.5 : 1,
@@ -2073,7 +2073,7 @@ export function ModerationPanel({
                 : '1px solid rgba(75, 85, 99, 0.5)',
               borderRadius: '10px',
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: 600,
               cursor: hasUnsavedAccessModeChanges ? 'not-allowed' : 'pointer',
               opacity: hasUnsavedAccessModeChanges ? 0.6 : 1,
               transition: 'all 0.2s ease',
@@ -2237,7 +2237,7 @@ export function ModerationPanel({
                     border: '1px solid rgba(75, 85, 99, 0.5)',
                     borderRadius: '10px',
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
@@ -2262,7 +2262,7 @@ export function ModerationPanel({
                   border: '1px solid rgba(239, 68, 68, 0.6)',
                   borderRadius: '10px',
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                 }}

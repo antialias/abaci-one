@@ -186,7 +186,7 @@ export default function RoomBrowserPage() {
                 color: 'white',
                 rounded: 'lg',
                 fontSize: 'lg',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: 'pointer',
                 _hover: { bg: '#059669' },
                 transition: 'all 0.2s',
@@ -293,7 +293,7 @@ export default function RoomBrowserPage() {
                             color: '#fbbf24',
                             rounded: 'full',
                             fontSize: 'sm',
-                            fontWeight: '600',
+                            fontWeight: 600,
                             fontFamily: 'monospace',
                           })}
                         >
@@ -359,7 +359,7 @@ export default function RoomBrowserPage() {
                           bg: '#10b981',
                           color: 'white',
                           rounded: 'lg',
-                          fontWeight: '600',
+                          fontWeight: 600,
                           display: 'flex',
                           alignItems: 'center',
                           gap: '2',
@@ -391,7 +391,7 @@ export default function RoomBrowserPage() {
                                 : '#3b82f6',
                           color: 'white',
                           rounded: 'lg',
-                          fontWeight: '600',
+                          fontWeight: 600,
                           cursor:
                             room.isLocked ||
                             room.accessMode === 'locked' ||
@@ -481,11 +481,11 @@ export default function RoomBrowserPage() {
                     className={css({
                       display: 'block',
                       mb: '2',
-                      fontWeight: '600',
+                      fontWeight: 600,
                     })}
                   >
                     Room Name{' '}
-                    <span className={css({ fontWeight: '400', color: '#9ca3af' })}>(optional)</span>
+                    <span className={css({ fontWeight: 400, color: '#9ca3af' })}>(optional)</span>
                   </label>
                   <input
                     name="name"
@@ -506,7 +506,7 @@ export default function RoomBrowserPage() {
                     className={css({
                       display: 'block',
                       mb: '2',
-                      fontWeight: '600',
+                      fontWeight: 600,
                     })}
                   >
                     Game
@@ -539,7 +539,7 @@ export default function RoomBrowserPage() {
                       bg: '#e5e7eb',
                       color: '#374151',
                       rounded: 'lg',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       cursor: 'pointer',
                       _hover: { bg: '#d1d5db' },
                     })}
@@ -555,7 +555,7 @@ export default function RoomBrowserPage() {
                       bg: '#10b981',
                       color: 'white',
                       rounded: 'lg',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       cursor: 'pointer',
                       _hover: { bg: '#059669' },
                     })}

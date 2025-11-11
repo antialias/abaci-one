@@ -636,7 +636,7 @@ function TutorialPlayerContent({
                   padding: '12px 16px',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  fontWeight: '700',
+                  fontWeight: 700,
                   boxShadow: showCelebration
                     ? '0 8px 25px rgba(34, 197, 94, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.2)'
                     : theme === 'dark'
@@ -1473,7 +1473,7 @@ function TutorialPlayerContent({
                     <p
                       className={css({
                         fontSize: 'base',
-                        fontWeight: '600',
+                        fontWeight: 600,
                         color: theme === 'dark' ? 'gray.300' : 'amber.900',
                         mb: 4,
                         letterSpacing: 'wide',
@@ -1510,7 +1510,7 @@ function TutorialPlayerContent({
                             fontSize: 'base',
                             color: theme === 'dark' ? 'gray.300' : 'slate.800',
                             fontFamily: 'mono',
-                            fontWeight: '500',
+                            fontWeight: 500,
                             letterSpacing: 'tight',
                             lineHeight: '1.5',
                           })}
@@ -1528,7 +1528,7 @@ function TutorialPlayerContent({
                       className={css({
                         fontSize: 'sm',
                         color: theme === 'dark' ? 'gray.400' : 'amber.800',
-                        fontWeight: '500',
+                        fontWeight: 500,
                         lineHeight: '1.6',
                       })}
                     >

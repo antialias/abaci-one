@@ -7,6 +7,7 @@
 **Two possible behaviors:**
 
 #### Option A: Stay on Current Skill (Conservative)
+
 ```
 User marks "td-ones-regroup" as mastered
     ↓
@@ -20,15 +21,18 @@ User must manually click "Practice This" on next skill OR click "Next Skill" but
 ```
 
 **Pros:**
+
 - User has explicit control
 - Can generate multiple worksheets at newly-mastered skill level
 - Good for teachers who want to verify mastery with multiple worksheets
 
 **Cons:**
+
 - Requires extra click to advance
 - Less "guided" experience
 
 #### Option B: Auto-Advance with Confirmation (Recommended)
+
 ```
 User marks "td-ones-regroup" as mastered
     ↓
@@ -47,11 +51,13 @@ Regenerate preview with new skill
 ```
 
 **Pros:**
+
 - Smooth guided progression
 - User can undo or stay if needed
 - Encourages continuous learning
 
 **Cons:**
+
 - Might surprise users who want to stay
 
 #### **Recommended Implementation: Option B with Persistent "Stay Here" Option**
@@ -63,8 +69,8 @@ interface MasteryConfirmationToast {
   nextSkill: SkillDefinition;
 
   actions: [
-    { label: "Undo Mastery", action: "undo" },
-    { label: "Stay Here", action: "stay" },
+    { label: "Undo Mastery"; action: "undo" },
+    { label: "Stay Here"; action: "stay" },
     // Auto-advance after 5s if no action
   ];
 }
@@ -74,6 +80,7 @@ interface MasteryConfirmationToast {
 
 1. User clicks "Mark as Mastered" on skill
 2. Toast appears at top of screen:
+
    ```
    ┌──────────────────────────────────────────────────────────┐
    │ ✓ Two-digit ones regrouping marked as mastered!         │
@@ -201,10 +208,13 @@ Four/Five-Digit Skills
 ### Detailed Dependencies Definition
 
 ```typescript
-export const SKILL_DEPENDENCIES: Record<SkillId, {
-  prerequisites: SkillId[];
-  recommendedReview: SkillId[];
-}> = {
+export const SKILL_DEPENDENCIES: Record<
+  SkillId,
+  {
+    prerequisites: SkillId[];
+    recommendedReview: SkillId[];
+  }
+> = {
   // Single-digit
   "sd-no-regroup": {
     prerequisites: [],
@@ -268,10 +278,11 @@ export const SKILL_DEPENDENCIES: Record<SkillId, {
 ### Definition of "Recently Mastered"
 
 **Recency window**: Skills mastered in the last N days, where N depends on skill level:
-- Early skills (sd-*, td-no-regroup): 30 days
-- Intermediate skills (td-*): 21 days
-- Advanced skills (3d-*, 4d-*): 14 days
-- Expert skills (5d-*): 7 days
+
+- Early skills (sd-\*, td-no-regroup): 30 days
+- Intermediate skills (td-\*): 21 days
+- Advanced skills (3d-_, 4d-_): 14 days
+- Expert skills (5d-\*): 7 days
 
 **Rationale**: As students progress, they need tighter review cycles to maintain proficiency at higher levels.
 
@@ -284,7 +295,7 @@ export const SKILL_DEPENDENCIES: Record<SkillId, {
 function selectReviewSkills(
   currentSkill: SkillDefinition,
   masteryStates: Map<SkillId, MasteryState>,
-  currentDate: Date = new Date()
+  currentDate: Date = new Date(),
 ): SkillId[] {
   const masteredSkills = Array.from(masteryStates.entries())
     .filter(([_, state]) => state.isMastered)
@@ -298,7 +309,7 @@ function selectReviewSkills(
   const recentlyMasteredSkills = masteredSkills.filter(({ id, state }) => {
     if (!state.masteredAt) return false;
 
-    const skill = SKILL_DEFINITIONS.find(s => s.id === id);
+    const skill = SKILL_DEFINITIONS.find((s) => s.id === id);
     const recencyWindow = getRecencyWindowForSkill(skill);
     const daysSinceMastery = differenceInDays(currentDate, state.masteredAt);
 
@@ -323,7 +334,7 @@ function selectReviewSkills(
 
   // Step 3: Select top N skills (max 3-4 for variety)
   const maxReviewSkills = Math.min(4, reviewCandidates.length);
-  return reviewCandidates.slice(0, maxReviewSkills).map(c => c.id);
+  return reviewCandidates.slice(0, maxReviewSkills).map((c) => c.id);
 }
 
 /**
@@ -349,7 +360,7 @@ Once review skills are selected, distribute problems proportionally:
 function distributeReviewProblems(
   reviewSkills: SkillId[],
   totalReviewCount: number,
-  rng: SeededRandom
+  rng: SeededRandom,
 ): Map<SkillId, number> {
   if (reviewSkills.length === 0) {
     return new Map();
@@ -381,6 +392,7 @@ function distributeReviewProblems(
 **Scenario**: Student is practicing "td-mixed-regroup" (two-digit mixed regrouping)
 
 **Mastery state**:
+
 - ✓ sd-no-regroup (mastered 45 days ago)
 - ✓ sd-simple-regroup (mastered 40 days ago)
 - ✓ td-no-regroup (mastered 25 days ago)
@@ -389,7 +401,8 @@ function distributeReviewProblems(
 **Current skill's recommendedReview**: ["td-no-regroup", "td-ones-regroup"]
 
 **Selection process**:
-1. Filter by recency (21 days for td-* skills):
+
+1. Filter by recency (21 days for td-\* skills):
    - ~~sd-no-regroup~~ (45 days, outside window)
    - ~~sd-simple-regroup~~ (40 days, outside window)
    - ✓ td-no-regroup (25 days, but will be included if needed)
@@ -484,25 +497,33 @@ export const additionConfigV5SmartSchema = z.object({
 ## Summary of Design Decisions
 
 ### 1. Auto-Advance (Question 2 - Elaborated)
+
 **Decision**: Auto-advance after 5s with "Undo" and "Stay Here" options
+
 - Smooth guided experience
 - User retains control
 - Can generate multiple worksheets at mastered level if needed
 
 ### 2. Review Selection (Question 3)
+
 **Decision**: Recently mastered skills with recency windows
+
 - Recency window varies by skill level (30d → 7d as skills advance)
 - Prioritize skills from current skill's `recommendedReview` list
 - Max 3-4 review skills for variety
 
 ### 3. Dependency Tracking
+
 **Decision**: DAG-based prerequisite system like Civilization
+
 - Skills have explicit prerequisites (must master first)
 - Skills have recommended review list (related skills for practice)
 - UI shows locked/unlocked state based on prerequisites
 
 ### 4. Mix Ratio (Question 4)
+
 **Decision**: User-adjustable 0-100% range
+
 - Default: 75% current / 25% review
 - Can go to 100% current (0% review) for focused practice
 - Can go to 50% current / 50% review for heavy review mode

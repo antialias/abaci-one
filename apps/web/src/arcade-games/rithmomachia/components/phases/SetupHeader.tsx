@@ -113,7 +113,7 @@ export function SetupHeader({ onOpenGuide, isGuideOpen }: SetupHeaderProps) {
           color: '#78350f',
           fontSize: '1.2vh',
           lineHeight: '1.4',
-          fontWeight: '500',
+          fontWeight: 500,
           mb: '0.8vh',
         })}
       >

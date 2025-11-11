@@ -118,7 +118,14 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
           })}
         >
           <div className={css({ fontSize: '3xl', mb: 3 })}>❌</div>
-          <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'red.700', mb: 2 })}>
+          <h2
+            className={css({
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'red.700',
+              mb: 2,
+            })}
+          >
             Error Loading Results
           </h2>
           <p className={css({ color: 'red.600', mb: 4 })}>{error}</p>
@@ -214,7 +221,14 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
           })}
         >
           <div className={css({ fontSize: '3xl', mb: 3 })}>⚠️</div>
-          <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'yellow.700', mb: 2 })}>
+          <h2
+            className={css({
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'yellow.700',
+              mb: 2,
+            })}
+          >
             Grading Failed
           </h2>
           <p className={css({ color: 'yellow.600', mb: 4 })}>
@@ -274,7 +288,13 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
           >
             ← Back to Worksheets
           </Link>
-          <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'gray.800' })}>
+          <h1
+            className={css({
+              fontSize: '3xl',
+              fontWeight: 'bold',
+              color: 'gray.800',
+            })}
+          >
             📊 Worksheet Results
           </h1>
           <p className={css({ fontSize: 'sm', color: 'gray.600', mt: 1 })}>
@@ -301,10 +321,22 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
             mb: 6,
           })}
         >
-          <div className={css({ fontSize: '5xl', fontWeight: 'bold', color: `${scoreColor}.600` })}>
+          <div
+            className={css({
+              fontSize: '5xl',
+              fontWeight: 'bold',
+              color: `${scoreColor}.600`,
+            })}
+          >
             {result.correctCount}/{result.totalProblems}
           </div>
-          <div className={css({ fontSize: '3xl', color: `${scoreColor}.500`, mb: 2 })}>
+          <div
+            className={css({
+              fontSize: '3xl',
+              color: `${scoreColor}.500`,
+              mb: 2,
+            })}
+          >
             {accuracyPercent}%
           </div>
           <div
@@ -327,7 +359,13 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
               style={{ width: `${accuracyPercent}%` }}
             />
           </div>
-          <p className={css({ fontSize: 'lg', color: 'gray.700', fontWeight: 'medium' })}>
+          <p
+            className={css({
+              fontSize: 'lg',
+              color: 'gray.700',
+              fontWeight: 'medium',
+            })}
+          >
             {(result.accuracy || 0) >= 0.9
               ? 'Excellent work! 🎉'
               : (result.accuracy || 0) >= 0.7
@@ -367,7 +405,12 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
             {result.errorPatterns.length > 0 && (
               <>
                 <h3
-                  className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'gray.700', mb: 2 })}
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'bold',
+                    color: 'gray.700',
+                    mb: 2,
+                  })}
                 >
                   Error Patterns:
                 </h3>
@@ -433,7 +476,13 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
                 <span className={css({ fontFamily: 'mono', color: 'gray.700' })}>
                   #{problem.index + 1}: {problem.problem} = {problem.correctAnswer}
                 </span>
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  })}
+                >
                   <span className={css({ fontSize: 'sm', color: 'gray.600' })}>
                     (student: {problem.studentAnswer ?? 'blank'})
                   </span>
@@ -443,7 +492,14 @@ export default function AttemptResultsPage({ params }: { params: { attemptId: st
             ))}
           </div>
           {result.problems.length > 10 && (
-            <p className={css({ mt: 3, textAlign: 'center', color: 'gray.500', fontSize: 'sm' })}>
+            <p
+              className={css({
+                mt: 3,
+                textAlign: 'center',
+                color: 'gray.500',
+                fontSize: 'sm',
+              })}
+            >
               Showing 10 of {result.problems.length} problems
             </p>
           )}

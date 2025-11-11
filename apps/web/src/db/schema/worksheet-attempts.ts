@@ -28,7 +28,9 @@ export const worksheetAttempts = sqliteTable(
 
     // Worksheet metadata (from OCR or user input)
     /** Operator type */
-    operator: text('operator', { enum: ['addition', 'subtraction', 'mixed'] }).notNull(),
+    operator: text('operator', {
+      enum: ['addition', 'subtraction', 'mixed'],
+    }).notNull(),
 
     /** Number of digits in problems (1-5) */
     digitCount: integer('digit_count').notNull(),
@@ -145,7 +147,9 @@ export const problemAttempts = sqliteTable(
     digitCount: integer('digit_count').notNull(),
 
     /** Whether this problem requires regrouping */
-    requiresRegrouping: integer('requires_regrouping', { mode: 'boolean' }).notNull(),
+    requiresRegrouping: integer('requires_regrouping', {
+      mode: 'boolean',
+    }).notNull(),
 
     /** JSON array of place values that regroup (e.g., ["ones", "tens"]) */
     regroupsInPlaces: text('regroups_in_places'),

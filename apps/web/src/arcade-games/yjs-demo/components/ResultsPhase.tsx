@@ -167,7 +167,7 @@ const scoreRankStyle = css({
 const scorePlayerStyle = css({
   flex: 1,
   fontSize: '16px',
-  fontWeight: '500',
+  fontWeight: 500,
   color: 'gray.700',
 })
 

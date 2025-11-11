@@ -90,11 +90,15 @@ These require **generalizing patterns** already learned in two-digit work.
 ```typescript
 export const worksheetMastery = sqliteTable("worksheet_mastery", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   skillId: text("skill_id").notNull(), // e.g., "td-ones-regroup"
 
   // Mastery tracking
-  isMastered: integer("is_mastered", { mode: "boolean" }).notNull().default(false),
+  isMastered: integer("is_mastered", { mode: "boolean" })
+    .notNull()
+    .default(false),
 
   // Evidence for mastery (for future validation)
   totalAttempts: integer("total_attempts").notNull().default(0),
@@ -104,15 +108,18 @@ export const worksheetMastery = sqliteTable("worksheet_mastery", {
   // Timestamps
   firstAttemptAt: integer("first_attempt_at", { mode: "timestamp" }),
   masteredAt: integer("mastered_at", { mode: "timestamp" }),
-  lastPracticedAt: integer("last_practiced_at", { mode: "timestamp" }).notNull(),
+  lastPracticedAt: integer("last_practiced_at", {
+    mode: "timestamp",
+  }).notNull(),
 
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 // Composite index for fast user+skill lookups
-export const worksheetMasteryIndex = index("worksheet_mastery_user_skill_idx")
-  .on(worksheetMastery.userId, worksheetMastery.skillId);
+export const worksheetMasteryIndex = index(
+  "worksheet_mastery_user_skill_idx",
+).on(worksheetMastery.userId, worksheetMastery.skillId);
 ```
 
 ### TypeScript Types
@@ -229,9 +236,9 @@ Update mastery state (future: based on accuracy)
  */
 function findNextSkill(
   masteryStates: Map<SkillId, MasteryState>,
-  operator: "addition" | "subtraction"
+  operator: "addition" | "subtraction",
 ): SkillId | null {
-  const skills = SKILL_DEFINITIONS.filter(s => s.operator === operator);
+  const skills = SKILL_DEFINITIONS.filter((s) => s.operator === operator);
 
   for (const skill of skills) {
     // Check if already mastered
@@ -239,7 +246,7 @@ function findNextSkill(
     if (state?.isMastered) continue;
 
     // Check if prerequisites are met
-    const prereqsMet = skill.prerequisites.every(prereqId => {
+    const prereqsMet = skill.prerequisites.every((prereqId) => {
       const prereqState = masteryStates.get(prereqId);
       return prereqState?.isMastered === true;
     });
@@ -264,7 +271,7 @@ function generateMasteryWorksheet(
   currentSkill: SkillDefinition,
   masteredSkills: SkillDefinition[],
   total: number,
-  rng: SeededRandom
+  rng: SeededRandom,
 ): WorksheetProblem[] {
   const currentSkillCount = Math.floor(total * 0.75); // 75% current skill
   const reviewCount = total - currentSkillCount; // 25% review
@@ -283,7 +290,8 @@ function generateMasteryWorksheet(
       problems.push(generateProblemForSkill(currentSkill, rng));
     } else {
       // Pick random mastered skill
-      const reviewSkill = masteredSkills[Math.floor(rng.random() * masteredSkills.length)];
+      const reviewSkill =
+        masteredSkills[Math.floor(rng.random() * masteredSkills.length)];
       problems.push(generateProblemForSkill(reviewSkill, rng));
     }
   }
@@ -297,14 +305,14 @@ function generateMasteryWorksheet(
  */
 function generateProblemForSkill(
   skill: SkillDefinition,
-  rng: SeededRandom
+  rng: SeededRandom,
 ): WorksheetProblem {
   // Use skill's digitRange and regrouping config
   return generateProblem(
     skill.digitRange,
     skill.regroupingConfig.pAnyStart,
     skill.regroupingConfig.pAllStart,
-    rng
+    rng,
   );
 }
 ```
@@ -500,6 +508,7 @@ function migrateAdditionV4toV5(v4: AdditionConfigV4): AdditionConfigV5 {
 ## Implementation Phases
 
 ### Phase 1: Foundation (No UI changes yet)
+
 1. Create database migration for `worksheet_mastery` table
 2. Define `SKILL_DEFINITIONS` array with all 21 skills
 3. Implement `findNextSkill()` algorithm
@@ -507,17 +516,20 @@ function migrateAdditionV4toV5(v4: AdditionConfigV4): AdditionConfigV5 {
 5. Add mastery GET/POST API endpoints
 
 ### Phase 2: Basic UI Integration
+
 6. Add mastery mode toggle to Smart Mode Controls
 7. Add current skill indicator
 8. Wire up mastery mode to problem generator
 9. Test with manual mastery toggles
 
 ### Phase 3: Progress Tracking
+
 10. Add skill progress visualization
 11. Show mastery status for each skill
 12. Add manual mastery toggle per skill (teacher/parent override)
 
 ### Phase 4: Future - Automatic Validation
+
 13. Add worksheet submission endpoint
 14. Implement grading logic
 15. Automatic mastery updates based on accuracy
@@ -567,7 +579,7 @@ function migrateAdditionV4toV5(v4: AdditionConfigV4): AdditionConfigV5 {
 
 ### Scaffolding Considerations
 
-- Early skills (sd-*, td-no-regroup) should have HIGH scaffolding
+- Early skills (sd-\*, td-no-regroup) should have HIGH scaffolding
 - Middle skills (td-ones-regroup, td-mixed-regroup) should have MEDIUM scaffolding
-- Advanced skills (3d-*, 4d-*, 5d-*) should have LOW scaffolding
+- Advanced skills (3d-_, 4d-_, 5d-\*) should have LOW scaffolding
 - Mastery mode should respect recommended scaffolding for each skill

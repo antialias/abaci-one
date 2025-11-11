@@ -94,7 +94,7 @@ export function PlayerTooltip({
               <div
                 style={{
                   fontSize: '15px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: 'white',
                   lineHeight: 1.3,
                 }}
@@ -116,7 +116,7 @@ export function PlayerTooltip({
                   : 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15))',
                 border: `1px solid ${isLocal ? 'rgba(16, 185, 129, 0.3)' : 'rgba(147, 51, 234, 0.3)'}`,
                 fontSize: '11px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isLocal ? 'rgba(167, 243, 208, 1)' : 'rgba(196, 181, 253, 1)',
                 marginBottom: extraInfo || createdAt ? '8px' : 0,
               }}
@@ -157,7 +157,7 @@ export function PlayerTooltip({
                   border: '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   color: 'rgba(248, 113, 113, 1)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',

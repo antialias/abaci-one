@@ -72,7 +72,7 @@ export function SetupPlayerRequirement({
             margin: 0,
             fontSize: '14px',
             color: '#64748b',
-            fontWeight: '500',
+            fontWeight: 500,
           }}
         >
           Add local players or invite friends to join
@@ -93,7 +93,7 @@ export function SetupPlayerRequirement({
           style={{
             padding: '10px 24px',
             fontSize: '14px',
-            fontWeight: '700',
+            fontWeight: 700,
             borderRadius: '8px',
             border: activeTab === 'add' ? '2px solid #60a5fa' : '2px solid transparent',
             background: activeTab === 'add' ? '#60a5fa' : 'rgba(255, 255, 255, 0.5)',
@@ -110,7 +110,7 @@ export function SetupPlayerRequirement({
           style={{
             padding: '10px 24px',
             fontSize: '14px',
-            fontWeight: '700',
+            fontWeight: 700,
             borderRadius: '8px',
             border: activeTab === 'invite' ? '2px solid #a78bfa' : '2px solid transparent',
             background: activeTab === 'invite' ? '#a78bfa' : 'rgba(255, 255, 255, 0.5)',
@@ -153,7 +153,7 @@ export function SetupPlayerRequirement({
                 style={{
                   padding: '10px 20px',
                   fontSize: '14px',
-                  fontWeight: '700',
+                  fontWeight: 700,
                   borderRadius: '8px',
                   border: '2px solid #60a5fa',
                   background: '#60a5fa',
@@ -206,7 +206,7 @@ export function SetupPlayerRequirement({
                   <div
                     style={{
                       fontSize: '13px',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       color: '#1e293b',
                       textAlign: 'center',
                       wordBreak: 'break-word',

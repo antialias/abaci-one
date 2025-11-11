@@ -171,16 +171,53 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
 
   // Build options based on operator type
   const buildOptions = () => {
+    // Get displayRules from formState (all modes now use displayRules)
+    const displayRules = formState.displayRules ?? {
+      carryBoxes: 'always',
+      answerBoxes: 'always',
+      placeValueColors: 'always',
+      tenFrames: 'never',
+      problemNumbers: 'always',
+      cellBorders: 'always',
+      borrowNotation: 'always',
+      borrowingHints: 'never',
+    }
+
+    // The API expects boolean flags, so we evaluate displayRules against the preview problem
+    // For preview purposes, we'll assume a problem that requires regrouping with 2 digits
+    const previewProblemMeta = {
+      requiresRegrouping: true,
+      regroupCount: 1,
+      maxDigits: 2,
+    }
+
+    const evaluateRule = (mode: string) => {
+      switch (mode) {
+        case 'always':
+          return true
+        case 'never':
+          return false
+        case 'whenRegrouping':
+          return previewProblemMeta.requiresRegrouping
+        case 'whenMultipleRegroups':
+          return previewProblemMeta.regroupCount >= 2
+        case 'when3PlusDigits':
+          return previewProblemMeta.maxDigits >= 3
+        default:
+          return false
+      }
+    }
+
     const base = {
-      showCarryBoxes: formState.showCarryBoxes ?? true,
-      showAnswerBoxes: formState.showAnswerBoxes ?? true,
-      showPlaceValueColors: formState.showPlaceValueColors ?? true,
-      showProblemNumbers: formState.showProblemNumbers ?? true,
-      showCellBorder: formState.showCellBorder ?? true,
-      showTenFrames: formState.showTenFrames ?? false,
-      showTenFramesForAll: formState.showTenFramesForAll ?? false,
-      showBorrowNotation: formState.showBorrowNotation ?? true,
-      showBorrowingHints: formState.showBorrowingHints ?? false,
+      showCarryBoxes: evaluateRule(displayRules.carryBoxes),
+      showAnswerBoxes: evaluateRule(displayRules.answerBoxes),
+      showPlaceValueColors: evaluateRule(displayRules.placeValueColors),
+      showProblemNumbers: evaluateRule(displayRules.problemNumbers),
+      showCellBorder: evaluateRule(displayRules.cellBorders),
+      showTenFrames: evaluateRule(displayRules.tenFrames),
+      showTenFramesForAll: false, // Deprecated in V4
+      showBorrowNotation: evaluateRule(displayRules.borrowNotation),
+      showBorrowingHints: evaluateRule(displayRules.borrowingHints),
       operator,
     }
 
@@ -209,19 +246,7 @@ export function DisplayOptionsPreview({ formState }: DisplayOptionsPreviewProps)
     }, 300) // 300ms debounce
 
     return () => clearTimeout(timer)
-  }, [
-    formState.showCarryBoxes,
-    formState.showAnswerBoxes,
-    formState.showPlaceValueColors,
-    formState.showProblemNumbers,
-    formState.showCellBorder,
-    formState.showTenFrames,
-    formState.showTenFramesForAll,
-    formState.showBorrowNotation,
-    formState.showBorrowingHints,
-    formState.operator,
-    operands,
-  ])
+  }, [formState.displayRules, formState.operator, operands])
 
   const { data: svg, isLoading } = useQuery({
     queryKey: ['display-example', debouncedOptions],

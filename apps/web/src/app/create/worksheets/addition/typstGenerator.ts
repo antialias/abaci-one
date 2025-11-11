@@ -103,30 +103,21 @@ function generatePageTypst(
         ...displayOptions, // Now includes showBorrowNotation and showBorrowingHints from resolved rules
       }
     } else {
-      // Manual mode: Uniform display across all problems using boolean flags
+      // Manual mode: Per-problem conditional display using displayRules (same as Smart/Mastery)
+      const meta =
+        p.operator === 'add'
+          ? analyzeProblem(p.a, p.b)
+          : analyzeSubtractionProblem(p.minuend, p.subtrahend)
+
+      const displayOptions = resolveDisplayForProblem(config.displayRules as any, meta)
+
       return {
         ...p,
-        showCarryBoxes: config.showCarryBoxes,
-        showAnswerBoxes: config.showAnswerBoxes,
-        showPlaceValueColors: config.showPlaceValueColors,
-        showTenFrames: config.showTenFrames,
-        showProblemNumbers: config.showProblemNumbers,
-        showCellBorder: config.showCellBorder,
-        showBorrowNotation: 'showBorrowNotation' in config ? config.showBorrowNotation : true,
-        showBorrowingHints: 'showBorrowingHints' in config ? config.showBorrowingHints : false,
+        ...displayOptions,
       }
     }
   })
 
-  // DEBUG: Show first 3 problems' ten-frames status
-  console.log(
-    '[TYPST DEBUG] First 3 enriched problems:',
-    enrichedProblems.slice(0, 3).map((p, i) => ({
-      index: i,
-      problem: p.operator === 'add' ? `${p.a} + ${p.b}` : `${p.minuend} − ${p.subtrahend}`,
-      showTenFrames: p.showTenFrames,
-    }))
-  )
 
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems

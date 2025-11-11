@@ -11,11 +11,13 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 ### 1. Backend Infrastructure ✅
 
 **Database Schema** (`drizzle/0017_skinny_red_hulk.sql`):
+
 - `worksheet_attempts` table with `session_id` column for batch uploads
 - `problem_attempts` table for granular tracking
 - Indexes for efficient querying
 
 **API Endpoints**:
+
 - `POST /api/worksheets/upload` - File upload with optional sessionId
   - Uses `getViewerId()` for authentication (works with guests & users)
   - Stores image to `data/uploads/`
@@ -32,6 +34,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 **File**: `src/lib/ai/gradeWorksheet.ts`
 
 **Features**:
+
 - Single-model approach (no OCR handoff)
 - Uses GPT-5 Responses API (`/v1/responses`)
 - High reasoning effort for deep thinking
@@ -41,6 +44,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 - Fallback fixes if retries exhausted
 
 **Returns**:
+
 ```typescript
 {
   problems: [{ index, operandA, operandB, correctAnswer, studentAnswer, isCorrect, ... }],
@@ -59,6 +63,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 **File**: `src/lib/grading/processAttempt.ts`
 
 **Flow**:
+
 1. Updates status to 'processing'
 2. Calls `gradeWorksheetWithVision(imagePath)`
 3. Stores individual problem results in `problem_attempts`
@@ -70,6 +75,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 ### 4. UI Components ✅
 
 **CameraCapture** (`src/components/worksheets/CameraCapture.tsx`):
+
 - Works on desktop (webcam) and mobile (rear camera)
 - Auto-selects environment-facing camera on mobile
 - High resolution (1920x1080 ideal)
@@ -77,12 +83,14 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 - Handles capture → blob → File → upload
 
 **QRCodeDisplay** (`src/components/worksheets/QRCodeDisplay.tsx`):
+
 - Generates QR code linking to `/upload/[sessionId]/camera`
 - Real-time upload list with status badges
 - Copy URL button for manual sharing
 - Shows upload count and grading progress
 
 **UploadWorksheetModal** (`src/components/worksheets/UploadWorksheetModal.tsx`):
+
 - Three modes: File, Camera, QR
 - Drag & drop file upload
 - Desktop camera integration
@@ -90,6 +98,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 - Error handling and loading states
 
 **Camera Upload Page** (`src/app/upload/[sessionId]/camera/page.tsx`):
+
 - Mobile-optimized full-screen layout
 - Upload counter badge
 - Success/error status messages
@@ -97,6 +106,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 - Auto-upload on capture
 
 **Results Page** (`src/app/worksheets/attempts/[attemptId]/page.tsx`):
+
 - Large score display with color coding
 - Progress bar (green/yellow/red based on accuracy)
 - AI feedback and error patterns
@@ -107,6 +117,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 ### 5. Documentation ✅
 
 **AI_MASTERY_ASSESSMENT_PLAN.md**:
+
 - Complete system architecture
 - GPT-5 vision approach
 - Database schema
@@ -114,18 +125,21 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 - Camera upload & QR workflow
 
 **PROMPTING_STRATEGY.md**:
+
 - How we prompt GPT-5
 - JSON schema definition
 - Validation and retry logic
 - Error handling
 
 **UX_EXECUTIVE_SUMMARY.md**:
+
 - User journeys
 - Three upload paths
 - "Aha!" moment (QR batch upload)
 - Time savings (2 min vs 15 min for 5 worksheets)
 
 **UX_UI_PLAN.md**:
+
 - Complete wireframes
 - Component specs
 - Responsive design
@@ -134,11 +148,13 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 ### 6. Testing Tools ✅
 
 **Test Script** (`scripts/testGrading.ts`):
+
 ```bash
 npx tsx scripts/testGrading.ts data/uploads/worksheet.jpg
 ```
 
 Outputs:
+
 - Score and accuracy
 - AI feedback
 - Error patterns
@@ -147,6 +163,7 @@ Outputs:
 - AI reasoning
 
 **Test Worksheet Generator** (`scripts/generateTestWorksheet.ts`):
+
 ```bash
 npx tsx scripts/generateTestWorksheet.ts
 ```
@@ -165,6 +182,7 @@ Creates synthetic worksheet with known errors for testing.
 ```
 
 **What needs to be done**:
+
 - Create `worksheet_mastery` profile per user
 - Track performance across progression steps
 - Auto-advance when mastery reached (e.g., 3 consecutive 90%+ worksheets)
@@ -175,11 +193,13 @@ Creates synthetic worksheet with known errors for testing.
 ### 2. Production Job Queue ❌
 
 **Current**: Fire-and-forget background processing
+
 ```typescript
 processWorksheetAttempt(attemptId).catch(error => console.error(...))
 ```
 
 **Production**: Should use proper job queue (BullMQ, Inngest, etc.)
+
 - Retry logic
 - Dead letter queue
 - Job status tracking
@@ -190,6 +210,7 @@ processWorksheetAttempt(attemptId).catch(error => console.error(...))
 **Current**: Saves to `data/uploads/` on local disk
 
 **Production**: Should use Cloudflare R2 or S3
+
 - Cheaper storage
 - CDN for faster access
 - Automatic backups
@@ -198,6 +219,7 @@ processWorksheetAttempt(attemptId).catch(error => console.error(...))
 ### 4. Rate Limiting ❌
 
 No rate limiting on upload API. In production:
+
 - Limit uploads per user/session
 - Prevent spam/abuse
 - Cost control (GPT-5 is expensive)
@@ -205,6 +227,7 @@ No rate limiting on upload API. In production:
 ### 5. Admin Dashboard ❌
 
 No UI for teachers to:
+
 - View all their uploaded worksheets
 - Filter by student/date/accuracy
 - Export results to CSV
@@ -215,6 +238,7 @@ No UI for teachers to:
 Currently uses `userId` from session (guest or authenticated).
 
 For classroom use, need:
+
 - Teacher creates student accounts/IDs
 - Link worksheet uploads to specific students
 - Track progress per student
@@ -225,6 +249,7 @@ For classroom use, need:
 Before deploying to production:
 
 ### Backend Tests
+
 - [ ] Test upload with guest user session
 - [ ] Test upload with authenticated user
 - [ ] Test file upload (JPG, PNG, HEIC)
@@ -237,6 +262,7 @@ Before deploying to production:
 - [ ] Test concurrent uploads (2+ users simultaneously)
 
 ### Frontend Tests
+
 - [ ] Test UploadWorksheetModal all three modes
 - [ ] Test camera access granted/denied
 - [ ] Test drag & drop file upload
@@ -249,6 +275,7 @@ Before deploying to production:
 - [ ] Test accessibility (keyboard nav, screen readers)
 
 ### Integration Tests
+
 - [ ] Upload worksheet → Wait for grading → View results
 - [ ] QR batch upload → Desktop sees updates → View all results
 - [ ] Suggested step link → Generate new worksheet with that config
@@ -256,6 +283,7 @@ Before deploying to production:
 - [ ] Error handling: invalid image uploads
 
 ### GPT-5 Tests
+
 - [ ] Test with real handwritten worksheets (various handwriting quality)
 - [ ] Test with printed worksheets
 - [ ] Test with photos at different angles/lighting
@@ -269,21 +297,25 @@ Before deploying to production:
 ## Cost Estimates
 
 **GPT-5 Pricing** (as of August 2025):
+
 - Input: ~$10 per 1M tokens
 - Output: ~$30 per 1M tokens
 
 **Per Worksheet**:
+
 - Image tokens: ~1,000 (high detail 1920x1080)
 - Prompt tokens: ~500
 - Output tokens: ~1,000 (20 problems + analysis)
 - **Total cost**: ~$0.04 per worksheet
 
 **Monthly costs**:
+
 - 100 worksheets/month: ~$4
 - 1,000 worksheets/month: ~$40
 - 10,000 worksheets/month: ~$400
 
 **Optimization opportunities**:
+
 - Batch multiple worksheets in single request
 - Use lower detail images for simple worksheets
 - Cache common error patterns
@@ -292,24 +324,28 @@ Before deploying to production:
 ## Next Steps
 
 ### Immediate (For Testing)
+
 1. Add `OPENAI_API_KEY` to `.env.local`
 2. Test with real worksheet photos
 3. Verify grading accuracy vs manual grading
 4. Iterate on prompt based on results
 
 ### Short Term (1-2 weeks)
+
 1. Implement mastery profile updates
 2. Add admin dashboard for viewing uploads
 3. Add student linking/management
 4. Move to production job queue (Inngest)
 
 ### Medium Term (1 month)
+
 1. Move image storage to Cloudflare R2
 2. Add rate limiting and abuse prevention
 3. Build analytics dashboard (common errors, progression stats)
 4. A/B test different prompting strategies
 
 ### Long Term (2-3 months)
+
 1. Support subtraction worksheets
 2. Support mixed operations
 3. Support multi-page worksheets
@@ -319,6 +355,7 @@ Before deploying to production:
 ## Files Changed/Created
 
 ### Documentation
+
 - `src/app/create/worksheets/addition/AI_MASTERY_ASSESSMENT_PLAN.md`
 - `src/app/create/worksheets/addition/PROMPTING_STRATEGY.md`
 - `src/app/create/worksheets/addition/UX_UI_PLAN.md`
@@ -326,6 +363,7 @@ Before deploying to production:
 - `src/app/create/worksheets/addition/IMPLEMENTATION_STATUS.md` (this file)
 
 ### Backend
+
 - `drizzle/0017_skinny_red_hulk.sql` - Database migration
 - `src/db/schema/worksheet-attempts.ts` - Added `sessionId` column
 - `src/lib/ai/gradeWorksheet.ts` - GPT-5 vision integration (NEW)
@@ -334,6 +372,7 @@ Before deploying to production:
 - `src/app/api/worksheets/sessions/[sessionId]/route.ts` - Session polling (NEW)
 
 ### Frontend Components
+
 - `src/components/worksheets/CameraCapture.tsx` (NEW)
 - `src/components/worksheets/QRCodeDisplay.tsx` (NEW)
 - `src/components/worksheets/UploadWorksheetModal.tsx` (NEW)
@@ -341,17 +380,20 @@ Before deploying to production:
 - `src/app/worksheets/attempts/[attemptId]/page.tsx` (NEW)
 
 ### Testing
+
 - `scripts/testGrading.ts` (NEW)
 - `scripts/generateTestWorksheet.ts` (NEW)
 
 ## Known Issues
 
 ### TypeScript Errors
+
 - Pre-existing @soroban/abacus-react import errors (documented in .claude/CLAUDE.md)
 - Not related to worksheet grading implementation
 - Can be ignored for this feature
 
 ### Missing Features
+
 - No mastery profile integration yet
 - No proper job queue (fire-and-forget for now)
 - No rate limiting
@@ -373,6 +415,7 @@ The AI worksheet grading system is **functionally complete** for MVP testing. Al
 ✅ Complete documentation
 
 The system is ready for:
+
 1. Adding `OPENAI_API_KEY` to env
 2. Testing with real worksheet photos
 3. Iterating on prompts based on accuracy

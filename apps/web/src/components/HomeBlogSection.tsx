@@ -112,7 +112,7 @@ export function HomeBlogSection() {
               <h3
                 className={css({
                   fontSize: { base: 'lg', md: 'xl' },
-                  fontWeight: '600',
+                  fontWeight: 600,
                   mb: '2',
                   color: 'text.primary',
                   lineHeight: '1.3',
@@ -163,7 +163,7 @@ export function HomeBlogSection() {
                         color: 'accent.emphasis',
                         borderRadius: '0.25rem',
                         fontSize: '2xs',
-                        fontWeight: '500',
+                        fontWeight: 500,
                       })}
                     >
                       {tag}
@@ -192,7 +192,7 @@ export function HomeBlogSection() {
             py: '2',
             bg: 'accent.subtle',
             color: 'accent.emphasis',
-            fontWeight: '600',
+            fontWeight: 600,
             fontSize: 'sm',
             borderRadius: '0.5rem',
             border: '1px solid',

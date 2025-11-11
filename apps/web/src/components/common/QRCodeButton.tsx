@@ -144,7 +144,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
                 borderRadius: '8px',
                 padding: '8px 12px',
                 fontSize: '11px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: copied ? 'rgba(134, 239, 172, 1)' : 'rgba(147, 197, 253, 1)',
               }}
               onMouseEnter={(e) => {

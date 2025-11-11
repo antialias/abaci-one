@@ -115,7 +115,7 @@ export default async function BlogPost({ params }: Props) {
             mb: '2rem',
             color: 'accent.default',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: 500,
             textDecoration: 'none',
             transition: 'color 0.2s',
             _hover: {
@@ -203,7 +203,7 @@ export default async function BlogPost({ params }: Props) {
                       color: 'accent.emphasis',
                       borderRadius: '0.25rem',
                       fontSize: '0.875rem',
-                      fontWeight: '500',
+                      fontWeight: 500,
                     })}
                   >
                     {tag}
@@ -240,7 +240,7 @@ export default async function BlogPost({ params }: Props) {
               },
               '& h3': {
                 fontSize: { base: '1.25rem', md: '1.5rem' },
-                fontWeight: '600',
+                fontWeight: 600,
                 mt: '1.75rem',
                 mb: '0.75rem',
                 lineHeight: '1.4',
@@ -250,7 +250,7 @@ export default async function BlogPost({ params }: Props) {
                 mb: '1.25rem',
               },
               '& strong': {
-                fontWeight: '600',
+                fontWeight: 600,
                 color: 'text.primary',
               },
               '& a': {
@@ -320,7 +320,7 @@ export default async function BlogPost({ params }: Props) {
                 px: '1rem',
                 py: '0.75rem',
                 textAlign: 'left',
-                fontWeight: '600',
+                fontWeight: 600,
                 borderBottom: '2px solid',
                 borderColor: 'accent.default',
                 color: 'accent.emphasis',

@@ -32,7 +32,7 @@ export function PlayOnlineTab({ onCreateRoom, onJoinRoom }: PlayOnlineTabProps) 
         <div
           style={{
             fontSize: '11px',
-            fontWeight: '600',
+            fontWeight: 600,
             color: '#6b7280',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
@@ -53,7 +53,7 @@ export function PlayOnlineTab({ onCreateRoom, onJoinRoom }: PlayOnlineTabProps) 
             borderRadius: '8px',
             color: 'white',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: 600,
             cursor: isCreating ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease',
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
@@ -86,7 +86,7 @@ export function PlayOnlineTab({ onCreateRoom, onJoinRoom }: PlayOnlineTabProps) 
         <div
           style={{
             fontSize: '11px',
-            fontWeight: '600',
+            fontWeight: 600,
             color: '#6b7280',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',

@@ -177,7 +177,7 @@ export function ReportPlayerModal({
               style={{
                 display: 'block',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: 'rgba(209, 213, 219, 0.9)',
                 marginBottom: '8px',
               }}
@@ -255,7 +255,7 @@ export function ReportPlayerModal({
               style={{
                 display: 'block',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: 'rgba(209, 213, 219, 0.9)',
                 marginBottom: '8px',
               }}
@@ -320,7 +320,7 @@ export function ReportPlayerModal({
                 border: '2px solid rgba(75, 85, 99, 0.5)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 opacity: isLoading ? 0.5 : 1,
                 transition: 'all 0.2s ease',
@@ -355,7 +355,7 @@ export function ReportPlayerModal({
                     : '2px solid rgba(75, 85, 99, 0.5)',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: 600,
                 cursor: reason && !isLoading ? 'pointer' : 'not-allowed',
                 opacity: reason && !isLoading ? 1 : 0.5,
                 transition: 'all 0.2s ease',

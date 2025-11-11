@@ -27,6 +27,7 @@ THAT'S IT. Stay on current skill.
 ```
 
 **To move to next skill**:
+
 - User explicitly clicks "Practice This" on a different skill
 - OR uses "Next Skill" / "Previous Skill" navigation buttons
 
@@ -53,11 +54,11 @@ THAT'S IT. Stay on current skill.
  */
 function getReviewSkills(
   currentSkill: SkillDefinition,
-  masteryStates: Map<SkillId, MasteryState>
+  masteryStates: Map<SkillId, MasteryState>,
 ): SkillId[] {
   // Simply return the current skill's recommendedReview list,
   // filtered to only include mastered skills
-  return currentSkill.recommendedReview.filter(skillId => {
+  return currentSkill.recommendedReview.filter((skillId) => {
     const state = masteryStates.get(skillId);
     return state?.isMastered === true;
   });
@@ -78,6 +79,7 @@ recommendedReview: ["td-no-regroup", "td-ones-regroup"]
 ```
 
 **Review skills** (if mastered):
+
 - `td-no-regroup` ✓ (if mastered)
 - `td-ones-regroup` ✓ (if mastered)
 
@@ -124,7 +126,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 1, max: 1 },
     regroupingConfig: { pAnyStart: 0, pAllStart: 0 },
-    recommendedScaffolding: { /* full scaffolding */ },
+    recommendedScaffolding: {
+      /* full scaffolding */
+    },
     recommendedProblemCount: 20,
     masteryThreshold: 0.9,
     minimumAttempts: 20,
@@ -139,7 +143,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 1, max: 1 },
     regroupingConfig: { pAnyStart: 1.0, pAllStart: 0 },
-    recommendedScaffolding: { /* high scaffolding */ },
+    recommendedScaffolding: {
+      /* high scaffolding */
+    },
     recommendedProblemCount: 20,
     masteryThreshold: 0.9,
     minimumAttempts: 20,
@@ -155,7 +161,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 2, max: 2 },
     regroupingConfig: { pAnyStart: 0, pAllStart: 0 },
-    recommendedScaffolding: { /* medium scaffolding */ },
+    recommendedScaffolding: {
+      /* medium scaffolding */
+    },
     recommendedProblemCount: 15,
     masteryThreshold: 0.85,
     minimumAttempts: 15,
@@ -170,7 +178,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 2, max: 2 },
     regroupingConfig: { pAnyStart: 0.5, pAllStart: 0 },
-    recommendedScaffolding: { /* medium scaffolding */ },
+    recommendedScaffolding: {
+      /* medium scaffolding */
+    },
     recommendedProblemCount: 15,
     masteryThreshold: 0.85,
     minimumAttempts: 15,
@@ -185,7 +195,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 2, max: 2 },
     regroupingConfig: { pAnyStart: 0.7, pAllStart: 0.2 },
-    recommendedScaffolding: { /* reduced scaffolding */ },
+    recommendedScaffolding: {
+      /* reduced scaffolding */
+    },
     recommendedProblemCount: 15,
     masteryThreshold: 0.85,
     minimumAttempts: 15,
@@ -200,7 +212,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 2, max: 2 },
     regroupingConfig: { pAnyStart: 0.9, pAllStart: 0.5 },
-    recommendedScaffolding: { /* minimal scaffolding */ },
+    recommendedScaffolding: {
+      /* minimal scaffolding */
+    },
     recommendedProblemCount: 15,
     masteryThreshold: 0.8,
     minimumAttempts: 15,
@@ -216,7 +230,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 3, max: 3 },
     regroupingConfig: { pAnyStart: 0, pAllStart: 0 },
-    recommendedScaffolding: { /* reduced scaffolding */ },
+    recommendedScaffolding: {
+      /* reduced scaffolding */
+    },
     recommendedProblemCount: 12,
     masteryThreshold: 0.85,
     minimumAttempts: 12,
@@ -231,7 +247,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 3, max: 3 },
     regroupingConfig: { pAnyStart: 0.5, pAllStart: 0.1 },
-    recommendedScaffolding: { /* minimal scaffolding */ },
+    recommendedScaffolding: {
+      /* minimal scaffolding */
+    },
     recommendedProblemCount: 12,
     masteryThreshold: 0.8,
     minimumAttempts: 12,
@@ -246,7 +264,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 3, max: 3 },
     regroupingConfig: { pAnyStart: 0.9, pAllStart: 0.6 },
-    recommendedScaffolding: { /* minimal scaffolding */ },
+    recommendedScaffolding: {
+      /* minimal scaffolding */
+    },
     recommendedProblemCount: 12,
     masteryThreshold: 0.8,
     minimumAttempts: 12,
@@ -262,7 +282,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 4, max: 4 },
     regroupingConfig: { pAnyStart: 0.8, pAllStart: 0.4 },
-    recommendedScaffolding: { /* minimal scaffolding */ },
+    recommendedScaffolding: {
+      /* minimal scaffolding */
+    },
     recommendedProblemCount: 10,
     masteryThreshold: 0.8,
     minimumAttempts: 10,
@@ -277,7 +299,9 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
     operator: "addition",
     digitRange: { min: 5, max: 5 },
     regroupingConfig: { pAnyStart: 0.85, pAllStart: 0.5 },
-    recommendedScaffolding: { /* minimal scaffolding */ },
+    recommendedScaffolding: {
+      /* minimal scaffolding */
+    },
     recommendedProblemCount: 10,
     masteryThreshold: 0.75,
     minimumAttempts: 10,
@@ -298,10 +322,10 @@ export const SKILL_DEFINITIONS: SkillDefinition[] = [
 function distributeReviewProblems(
   currentSkill: SkillDefinition,
   masteryStates: Map<SkillId, MasteryState>,
-  totalReviewCount: number
+  totalReviewCount: number,
 ): Map<SkillId, number> {
   // Get mastered skills from recommendedReview list
-  const reviewSkills = currentSkill.recommendedReview.filter(skillId => {
+  const reviewSkills = currentSkill.recommendedReview.filter((skillId) => {
     const state = masteryStates.get(skillId);
     return state?.isMastered === true;
   });
@@ -334,15 +358,18 @@ function distributeReviewProblems(
 **Example**:
 
 Current skill: `td-mixed-regroup`
+
 - `recommendedReview`: `["td-no-regroup", "td-ones-regroup"]`
 
 Mastery state:
+
 - `td-no-regroup`: ✓ mastered
 - `td-ones-regroup`: ✓ mastered
 
 Total review problems: 5
 
 **Distribution**:
+
 - `td-no-regroup`: 2 problems
 - `td-ones-regroup`: 3 problems
 
@@ -368,11 +395,13 @@ function handleMarkAsMastered(skillId: SkillId) {
   toast.success("Skill marked as mastered!");
 
   // Update UI state
-  setMasteryStates(prev => new Map(prev).set(skillId, {
-    ...prev.get(skillId)!,
-    isMastered: true,
-    masteredAt: new Date()
-  }));
+  setMasteryStates((prev) =>
+    new Map(prev).set(skillId, {
+      ...prev.get(skillId)!,
+      isMastered: true,
+      masteredAt: new Date(),
+    }),
+  );
 
   // THAT'S IT. No auto-advance, no timers.
 }
@@ -442,6 +471,7 @@ function handlePreviousSkill() {
 ```
 
 **Actions**:
+
 - **Practice This**: Switch to this skill as current
 - **Mark as Mastered**: Toggle mastery state
 - **Unmark**: Remove mastery status
@@ -473,6 +503,7 @@ No timers, no auto-progression, just simple configuration.
 **Mastery mode = Smart configuration preset**
 
 It's like the existing difficulty presets ("Beginner", "Practice", "Expert"), but:
+
 - Organized by skill progression
 - Remembers what you've mastered
 - Automatically mixes review problems
@@ -485,23 +516,27 @@ It's like the existing difficulty presets ("Beginner", "Practice", "Expert"), bu
 ## Implementation Phases (Updated)
 
 ### Phase 1: Foundation
+
 1. Create `worksheet_mastery` table
 2. Define `SKILL_DEFINITIONS` array with hand-curated `recommendedReview` lists
 3. Implement simple review selection (filter by mastery, distribute evenly)
 4. Add mastery GET/POST API endpoints
 
 ### Phase 2: Basic UI
+
 5. Add mode selector (Smart/Manual/Mastery)
 6. Add MasteryModePanel with mix visualization
 7. Add prev/next navigation buttons
 8. Add "Mark as Mastered" button
 
 ### Phase 3: Skills Modal
+
 9. Add "All Skills" modal with simple list
 10. Add click-to-select skill navigation
 11. Add manual mastery toggle per skill
 
 ### Phase 4: Customization
+
 12. Add "Customize Mix" modal with ratio slider
 13. Add manual review skill selection checkboxes
 14. Wire up custom mix to problem generator

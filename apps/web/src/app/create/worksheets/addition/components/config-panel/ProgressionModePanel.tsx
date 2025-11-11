@@ -198,7 +198,7 @@ export function ProgressionModePanel({
         <h3
           className={css({
             fontSize: '0.875rem',
-            fontWeight: '600',
+            fontWeight: 600,
             color: isDark ? 'gray.200' : 'gray.700',
             marginBottom: '0.5rem',
             textTransform: 'uppercase',
@@ -270,7 +270,7 @@ export function ProgressionModePanel({
         <h4
           className={css({
             fontSize: '0.875rem',
-            fontWeight: '600',
+            fontWeight: 600,
             color: isDark ? 'gray.300' : 'gray.700',
             marginBottom: '0.75rem',
           })}
@@ -412,7 +412,7 @@ export function ProgressionModePanel({
           <h4
             className={css({
               fontSize: '0.875rem',
-              fontWeight: '600',
+              fontWeight: 600,
               color: isDark ? 'blue.300' : 'blue.700',
               marginBottom: '0.5rem',
             })}
@@ -440,7 +440,7 @@ export function ProgressionModePanel({
           width: '100%',
           padding: '0.75rem',
           fontSize: '0.875rem',
-          fontWeight: '500',
+          fontWeight: 500,
           color: isDark ? 'blue.400' : 'blue.600',
           backgroundColor: isDark ? 'gray.800' : 'white',
           border: '1px solid',
@@ -480,7 +480,7 @@ export function ProgressionModePanel({
               className={css({
                 display: 'block',
                 fontSize: '0.875rem',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isDark ? 'gray.300' : 'gray.700',
                 marginBottom: '0.75rem',
               })}
@@ -505,7 +505,7 @@ export function ProgressionModePanel({
                     flex: 1,
                     padding: '0.5rem',
                     fontSize: '0.875rem',
-                    fontWeight: '500',
+                    fontWeight: 500,
                     color:
                       formState.digitRange?.min === d ? 'white' : isDark ? 'gray.300' : 'gray.700',
                     backgroundColor:
@@ -552,14 +552,20 @@ export function ProgressionModePanel({
               className={css({
                 display: 'block',
                 fontSize: '0.875rem',
-                fontWeight: '600',
+                fontWeight: 600,
                 color: isDark ? 'gray.300' : 'gray.700',
                 marginBottom: '0.75rem',
               })}
             >
               Scaffolding Level:
             </label>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+              })}
+            >
               <label
                 className={css({
                   display: 'flex',
