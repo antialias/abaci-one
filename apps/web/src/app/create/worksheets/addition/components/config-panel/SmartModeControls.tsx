@@ -278,7 +278,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   className={css({
                     fontSize: 'xs',
                     fontWeight: 'medium',
-                    color: 'gray.700',
+                    color: isDark ? 'gray.300' : 'gray.700',
                     mb: '2',
                   })}
                 >
@@ -295,8 +295,12 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                         px: '3',
                         py: '2.5',
                         border: '2px solid',
-                        borderColor: isCustom ? 'orange.400' : 'gray.300',
-                        bg: isCustom ? 'orange.50' : 'white',
+                        borderColor: isCustom
+                          ? (isDark ? 'orange.500' : 'orange.400')
+                          : (isDark ? 'gray.600' : 'gray.300'),
+                        bg: isCustom
+                          ? (isDark ? 'orange.900' : 'orange.50')
+                          : (isDark ? 'gray.800' : 'white'),
                         rounded: 'lg',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
@@ -322,7 +326,9 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                           className={css({
                             fontSize: 'sm',
                             fontWeight: 'semibold',
-                            color: hoverPreview ? 'orange.700' : 'gray.700',
+                            color: hoverPreview
+                              ? (isDark ? 'orange.300' : 'orange.700')
+                              : (isDark ? 'gray.200' : 'gray.700'),
                           })}
                         >
                           {hoverPreview ? (
@@ -373,10 +379,10 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                           className={css({
                             fontSize: 'xs',
                             color: hoverPreview
-                              ? 'orange.600'
+                              ? (isDark ? 'orange.400' : 'orange.600')
                               : isCustom
-                                ? 'orange.600'
-                                : 'gray.500',
+                                ? (isDark ? 'orange.400' : 'orange.600')
+                                : (isDark ? 'gray.400' : 'gray.500'),
                             lineHeight: '1.3',
                             h: '14',
                             display: 'flex',
@@ -431,7 +437,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                       <span
                         className={css({
                           fontSize: 'xs',
-                          color: 'gray.400',
+                          color: isDark ? 'gray.500' : 'gray.400',
                           flexShrink: 0,
                         })}
                       >
@@ -443,11 +449,11 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   <DropdownMenu.Portal>
                     <DropdownMenu.Content
                       className={css({
-                        bg: 'white',
+                        bg: isDark ? 'gray.800' : 'white',
                         rounded: 'lg',
                         shadow: 'modal',
                         border: '1px solid',
-                        borderColor: 'gray.200',
+                        borderColor: isDark ? 'gray.700' : 'gray.200',
                         p: '2',
                         minW: '64',
                         maxH: '96',
@@ -513,7 +519,9 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               className={css({
                                 fontSize: 'sm',
                                 fontWeight: 'semibold',
-                                color: isSelected ? 'brand.700' : 'gray.700',
+                                color: isSelected
+                                  ? 'brand.700'
+                                  : (isDark ? 'gray.200' : 'gray.700'),
                               })}
                             >
                               {preset.label}
@@ -521,7 +529,9 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                             <div
                               className={css({
                                 fontSize: 'xs',
-                                color: isSelected ? 'brand.600' : 'gray.500',
+                                color: isSelected
+                                  ? 'brand.600'
+                                  : (isDark ? 'gray.400' : 'gray.500'),
                                 lineHeight: '1.3',
                               })}
                             >
@@ -543,7 +553,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   gap: '2',
                   pt: '1',
                   borderTop: '1px solid',
-                  borderColor: 'gray.200',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
                 })}
               >
                 {/* Four-Button Layout: [Alt-35%][Rec-65%][Rec-65%][Alt-35%] */}
@@ -588,16 +598,16 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                                     justifyContent: 'center',
                                     fontSize: '2xs',
                                     fontWeight: 'medium',
-                                    color: 'gray.700',
-                                    bg: 'gray.100',
+                                    color: isDark ? 'gray.300' : 'gray.700',
+                                    bg: isDark ? 'gray.700' : 'gray.100',
                                     border: '1.5px solid',
-                                    borderColor: 'gray.300',
+                                    borderColor: isDark ? 'gray.600' : 'gray.300',
                                     borderRight: 'none',
                                     borderTopLeftRadius: 'lg',
                                     borderBottomLeftRadius: 'lg',
                                     cursor: 'pointer',
                                     _hover: {
-                                      bg: 'gray.200',
+                                      bg: isDark ? 'gray.600' : 'gray.200',
                                     },
                                   })}
                                 >
@@ -640,10 +650,14 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               flexDirection: 'column',
                               alignItems: 'flex-start',
                               gap: '0.5',
-                              color: canMakeEasier ? 'brand.700' : 'gray.400',
-                              bg: 'white',
+                              color: canMakeEasier
+                                ? 'brand.700'
+                                : (isDark ? 'gray.500' : 'gray.400'),
+                              bg: isDark ? 'gray.800' : 'white',
                               border: '1.5px solid',
-                              borderColor: canMakeEasier ? 'brand.500' : 'gray.300',
+                              borderColor: canMakeEasier
+                                ? 'brand.500'
+                                : (isDark ? 'gray.600' : 'gray.300'),
                               borderTopLeftRadius: canEasierAlternative ? 'none' : 'lg',
                               borderBottomLeftRadius: canEasierAlternative ? 'none' : 'lg',
                               borderTopRightRadius: 'lg',
@@ -652,7 +666,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               opacity: canMakeEasier ? 1 : 0.5,
                               _hover: canMakeEasier
                                 ? {
-                                    bg: 'brand.50',
+                                    bg: isDark ? 'gray.700' : 'brand.50',
                                   }
                                 : {},
                             })}
@@ -725,10 +739,14 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               flexDirection: 'column',
                               alignItems: 'flex-start',
                               gap: '0.5',
-                              color: canMakeHarder ? 'brand.700' : 'gray.400',
-                              bg: 'white',
+                              color: canMakeHarder
+                                ? 'brand.700'
+                                : (isDark ? 'gray.500' : 'gray.400'),
+                              bg: isDark ? 'gray.800' : 'white',
                               border: '1.5px solid',
-                              borderColor: canMakeHarder ? 'brand.500' : 'gray.300',
+                              borderColor: canMakeHarder
+                                ? 'brand.500'
+                                : (isDark ? 'gray.600' : 'gray.300'),
                               borderTopLeftRadius: 'lg',
                               borderBottomLeftRadius: 'lg',
                               borderTopRightRadius: canHarderAlternative ? 'none' : 'lg',
@@ -737,7 +755,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                               opacity: canMakeHarder ? 1 : 0.5,
                               _hover: canMakeHarder
                                 ? {
-                                    bg: 'brand.50',
+                                    bg: isDark ? 'gray.700' : 'brand.50',
                                   }
                                 : {},
                             })}
@@ -792,16 +810,16 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                                     justifyContent: 'center',
                                     fontSize: '2xs',
                                     fontWeight: 'medium',
-                                    color: 'gray.700',
-                                    bg: 'gray.100',
+                                    color: isDark ? 'gray.300' : 'gray.700',
+                                    bg: isDark ? 'gray.700' : 'gray.100',
                                     border: '1.5px solid',
-                                    borderColor: 'gray.300',
+                                    borderColor: isDark ? 'gray.600' : 'gray.300',
                                     borderLeft: 'none',
                                     borderTopRightRadius: 'lg',
                                     borderBottomRightRadius: 'lg',
                                     cursor: 'pointer',
                                     _hover: {
-                                      bg: 'gray.200',
+                                      bg: isDark ? 'gray.600' : 'gray.200',
                                     },
                                   })}
                                 >
@@ -844,7 +862,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   className={css({
                     fontSize: 'xs',
                     fontWeight: 'medium',
-                    color: 'gray.700',
+                    color: isDark ? 'gray.300' : 'gray.700',
                     mb: '1.5',
                   })}
                 >
@@ -1021,7 +1039,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   >
                     <Slider.Track
                       className={css({
-                        bg: 'gray.100',
+                        bg: isDark ? 'gray.700' : 'gray.100',
                         position: 'relative',
                         flexGrow: 1,
                         h: '2',
@@ -1095,9 +1113,9 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
               {/* 2D Difficulty Space Visualizer */}
               <div
                 className={css({
-                  bg: 'blue.50',
+                  bg: isDark ? 'blue.950' : 'blue.50',
                   border: '1px solid',
-                  borderColor: 'blue.200',
+                  borderColor: isDark ? 'blue.800' : 'blue.200',
                   rounded: 'xl',
                   overflow: 'hidden',
                   boxShadow: 'sm',
@@ -1116,7 +1134,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                     bg: 'transparent',
                     border: 'none',
                     _hover: {
-                      bg: 'blue.100',
+                      bg: isDark ? 'blue.900' : 'blue.100',
                     },
                     transition: 'background 0.2s',
                   })}
@@ -1124,7 +1142,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   <div
                     className={css({
                       fontWeight: 'semibold',
-                      color: 'blue.900',
+                      color: isDark ? 'blue.200' : 'blue.900',
                       fontSize: 'sm',
                     })}
                   >
@@ -1133,7 +1151,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                   <div
                     className={css({
                       fontSize: 'sm',
-                      color: 'blue.700',
+                      color: isDark ? 'blue.300' : 'blue.700',
                       transform: showDebugPlot ? 'rotate(180deg)' : 'rotate(0deg)',
                       transition: 'transform 0.2s',
                     })}
@@ -1150,11 +1168,11 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                         w: 'full',
                         display: 'flex',
                         justifyContent: 'center',
-                        bg: 'white',
+                        bg: isDark ? 'gray.900' : 'white',
                         rounded: 'lg',
                         p: '4',
                         border: '1px solid',
-                        borderColor: 'gray.200',
+                        borderColor: isDark ? 'gray.700' : 'gray.200',
                       })}
                     >
                       {(() => {

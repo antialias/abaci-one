@@ -100,7 +100,7 @@ export function RegroupingFrequencyPanel({
             className={css({
               position: 'relative',
               flexGrow: 1,
-              bg: 'gray.200',
+              bg: isDark ? 'gray.600' : 'gray.200',
               rounded: 'full',
               height: '1.5',
             })}
