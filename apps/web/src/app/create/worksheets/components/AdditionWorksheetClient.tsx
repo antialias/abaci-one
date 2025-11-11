@@ -1,9 +1,7 @@
 'use client'
 
 import { css } from '@styled/css'
-import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -26,34 +24,11 @@ export function AdditionWorksheetClient({
   initialSettings,
   initialPreview,
 }: AdditionWorksheetClientProps) {
-  const searchParams = useSearchParams()
-  const isFromShare = searchParams.get('from') === 'share'
-
-  // Check for shared config in sessionStorage
-  const [effectiveSettings, setEffectiveSettings] = useState(initialSettings)
-
-  useEffect(() => {
-    if (isFromShare && typeof window !== 'undefined') {
-      const sharedConfigStr = sessionStorage.getItem('sharedWorksheetConfig')
-      if (sharedConfigStr) {
-        try {
-          const sharedConfig = JSON.parse(sharedConfigStr)
-          console.log('[Worksheet Client] Loading shared config:', sharedConfig)
-          setEffectiveSettings(sharedConfig)
-          // Clear from sessionStorage after loading
-          sessionStorage.removeItem('sharedWorksheetConfig')
-        } catch (err) {
-          console.error('Failed to parse shared config:', err)
-        }
-      }
-    }
-  }, [isFromShare])
-
-  console.log('[Worksheet Client] Component render, effectiveSettings:', {
-    problemsPerPage: effectiveSettings.problemsPerPage,
-    cols: effectiveSettings.cols,
-    pages: effectiveSettings.pages,
-    seed: effectiveSettings.seed,
+  console.log('[Worksheet Client] Component render, initialSettings:', {
+    problemsPerPage: initialSettings.problemsPerPage,
+    cols: initialSettings.cols,
+    pages: initialSettings.pages,
+    seed: initialSettings.seed,
   })
 
   const t = useTranslations('create.worksheets.addition')
@@ -61,7 +36,7 @@ export function AdditionWorksheetClient({
   const isDark = resolvedTheme === 'dark'
 
   // State management (formState, debouncedFormState, updateFormState)
-  const { formState, debouncedFormState, updateFormState } = useWorksheetState(effectiveSettings)
+  const { formState, debouncedFormState, updateFormState } = useWorksheetState(initialSettings)
 
   // Generation workflow (status, error, generate, reset)
   const { status, error, generate, reset } = useWorksheetGeneration()
