@@ -172,7 +172,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     const observer = new IntersectionObserver(
       (entries) => {
         // Find the most visible page among all entries
-        let mostVisiblePage = currentPage
+        let mostVisiblePage = 0
         let maxRatio = 0
 
         entries.forEach((entry) => {
