@@ -106,7 +106,7 @@ export function OrientationPanel({
                   border: '2px solid',
                   borderColor:
                     orientation === 'portrait' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg: orientation === 'portrait' ? 'brand.50' : isDark ? 'gray.700' : 'white',
+                  bg: orientation === 'portrait' ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -127,7 +127,7 @@ export function OrientationPanel({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
                     color:
-                      orientation === 'portrait' ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
+                      orientation === 'portrait' ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
                   })}
                 >
                   Portrait
@@ -147,7 +147,7 @@ export function OrientationPanel({
                   border: '2px solid',
                   borderColor:
                     orientation === 'landscape' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg: orientation === 'landscape' ? 'brand.50' : isDark ? 'gray.700' : 'white',
+                  bg: orientation === 'landscape' ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -168,7 +168,7 @@ export function OrientationPanel({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
                     color:
-                      orientation === 'landscape' ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
+                      orientation === 'landscape' ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
                   })}
                 >
                   Landscape
@@ -205,12 +205,12 @@ export function OrientationPanel({
                       h: '10',
                       border: '2px solid',
                       borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                      bg: isSelected ? 'brand.50' : isDark ? 'gray.700' : 'white',
+                      bg: isSelected ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
                       rounded: 'lg',
                       cursor: 'pointer',
                       fontSize: 'sm',
                       fontWeight: 'bold',
-                      color: isSelected ? 'brand.700' : isDark ? 'gray.300' : 'gray.600',
+                      color: isSelected ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
                       transition: 'all 0.15s',
                       display: 'flex',
                       alignItems: 'center',
@@ -325,43 +325,23 @@ export function OrientationPanel({
                           key={count}
                           data-action={`select-problems-${count}`}
                           onSelect={() => handleProblemsPerPageChange(count)}
-                          className={
-                            isDark
-                              ? css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '3',
-                                  px: '3',
-                                  py: '2',
-                                  rounded: 'md',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  bg: isSelected ? 'brand.900' : 'transparent',
-                                  _hover: {
-                                    bg: 'brand.900',
-                                  },
-                                  _focus: {
-                                    bg: 'brand.800',
-                                  },
-                                })
-                              : css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '3',
-                                  px: '3',
-                                  py: '2',
-                                  rounded: 'md',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  bg: isSelected ? 'brand.50' : 'transparent',
-                                  _hover: {
-                                    bg: 'brand.50',
-                                  },
-                                  _focus: {
-                                    bg: 'brand.100',
-                                  },
-                                })
-                          }
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3',
+                            px: '3',
+                            py: '2',
+                            rounded: 'md',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            bg: isSelected ? 'brand.50' : 'transparent',
+                            _hover: {
+                              bg: 'brand.50',
+                            },
+                            _focus: {
+                              bg: 'brand.100',
+                            },
+                          })}
                         >
                           {/* Grid visualization */}
                           <div
