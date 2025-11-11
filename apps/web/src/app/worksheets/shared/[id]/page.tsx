@@ -28,11 +28,6 @@ export default function SharedWorksheetPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Debug: Log theme changes
-  useEffect(() => {
-    console.log('[SharedWorksheet] Theme changed:', { resolvedTheme, isDark })
-  }, [resolvedTheme, isDark])
-
   const [shareData, setShareData] = useState<ShareData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,13 +42,11 @@ export default function SharedWorksheetPage() {
   useEffect(() => {
     // Prevent duplicate fetches in React StrictMode
     if (hasFetchedRef.current) {
-      console.log('[SharedWorksheet] Skipping duplicate fetch (already fetched)')
       return
     }
 
     const fetchShare = async () => {
       try {
-        console.log('[SharedWorksheet] Fetching share data for:', shareId)
         hasFetchedRef.current = true
 
         const response = await fetch(`/api/worksheets/share/${shareId}`)
@@ -68,7 +61,6 @@ export default function SharedWorksheetPage() {
         }
 
         const data = await response.json()
-        console.log('[SharedWorksheet] Received share data, views:', data.views)
         setShareData(data)
 
         // Fetch preview from API
@@ -82,11 +74,9 @@ export default function SharedWorksheetPage() {
           if (previewResponse.ok) {
             const previewData = await previewResponse.json()
             if (previewData.success) {
-              console.log('[SharedWorksheet] Preview generated, page count:', previewData.pages.length)
               setPreview(previewData.pages)
             } else {
               // Preview generation failed - store error details
-              console.error('[SharedWorksheet] Preview generation failed:', previewData)
               setPreviewError({
                 error: previewData.error || 'Failed to generate preview',
                 details: previewData.details,

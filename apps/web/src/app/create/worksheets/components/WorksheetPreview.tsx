@@ -121,10 +121,8 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => {
     if (!shouldVirtualize && initialData) {
       // Show all pages immediately for pre-rendered content
-      console.log('[WorksheetPreview] Initializing with all pages visible:', initialData.length)
       return new Set(Array.from({ length: initialData.length }, (_, i) => i))
     }
-    console.log('[WorksheetPreview] Initializing with virtualization (page 0 only)')
     return new Set([0])
   })
 
@@ -137,11 +135,9 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   useEffect(() => {
     setCurrentPage(0)
     if (shouldVirtualize) {
-      console.log('[WorksheetPreview] Resetting to virtualized view (page 0 only)')
       setVisiblePages(new Set([0]))
     } else {
       // Show all pages for non-virtualized view
-      console.log('[WorksheetPreview] Showing all pages:', pages.length)
       setVisiblePages(new Set(Array.from({ length: pages.length }, (_, i) => i)))
     }
     pageRefs.current = []
