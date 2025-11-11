@@ -234,14 +234,18 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
             additionDisplayRules: {
               ...addSkill.recommendedScaffolding,
               // Override layout options with user's choices
-              problemNumbers: userDisplayRules.problemNumbers ?? addSkill.recommendedScaffolding.problemNumbers,
-              cellBorders: userDisplayRules.cellBorders ?? addSkill.recommendedScaffolding.cellBorders,
+              problemNumbers:
+                userDisplayRules.problemNumbers ?? addSkill.recommendedScaffolding.problemNumbers,
+              cellBorders:
+                userDisplayRules.cellBorders ?? addSkill.recommendedScaffolding.cellBorders,
             },
             subtractionDisplayRules: {
               ...subSkill.recommendedScaffolding,
               // Override layout options with user's choices
-              problemNumbers: userDisplayRules.problemNumbers ?? subSkill.recommendedScaffolding.problemNumbers,
-              cellBorders: userDisplayRules.cellBorders ?? subSkill.recommendedScaffolding.cellBorders,
+              problemNumbers:
+                userDisplayRules.problemNumbers ?? subSkill.recommendedScaffolding.problemNumbers,
+              cellBorders:
+                userDisplayRules.cellBorders ?? subSkill.recommendedScaffolding.cellBorders,
             },
           } as any
         } else {

@@ -11,12 +11,14 @@ import {
 } from '../../difficultyProfiles'
 import type { DisplayRules } from '../../displayRules'
 import { getScaffoldingSummary } from './utils'
+import { useWorksheetConfig } from '../WorksheetConfigContext'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export interface DifficultyPresetDropdownProps {
-  currentProfile: DifficultyLevel | null
+  currentProfile: DifficultyLevel | null | undefined
   isCustom: boolean
-  nearestEasier: DifficultyLevel | null
-  nearestHarder: DifficultyLevel | null
+  nearestEasier: DifficultyLevel | null | undefined
+  nearestHarder: DifficultyLevel | null | undefined
   customDescription: React.ReactNode
   hoverPreview: {
     pAnyStart: number
@@ -24,14 +26,12 @@ export interface DifficultyPresetDropdownProps {
     displayRules: DisplayRules
     matchedProfile: string | 'custom'
   } | null
-  operator: 'addition' | 'subtraction' | 'mixed'
   onChange: (updates: {
     difficultyProfile: DifficultyLevel
     pAnyStart: number
     pAllStart: number
     displayRules: DisplayRules
   }) => void
-  isDark?: boolean
 }
 
 export function DifficultyPresetDropdown({
@@ -41,10 +41,11 @@ export function DifficultyPresetDropdown({
   nearestHarder,
   customDescription,
   hoverPreview,
-  operator,
   onChange,
-  isDark = false,
 }: DifficultyPresetDropdownProps) {
+  const { operator } = useWorksheetConfig()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   return (
     <div className={css({ mb: '3' })}>
       <div
@@ -75,13 +76,7 @@ export function DifficultyPresetDropdown({
                 : isDark
                   ? 'gray.600'
                   : 'gray.300',
-              bg: isCustom
-                ? isDark
-                  ? 'orange.900'
-                  : 'orange.50'
-                : isDark
-                  ? 'gray.800'
-                  : 'white',
+              bg: isCustom ? (isDark ? 'orange.900' : 'orange.50') : isDark ? 'gray.800' : 'white',
               rounded: 'lg',
               cursor: 'pointer',
               transition: 'all 0.15s',
@@ -185,7 +180,10 @@ export function DifficultyPresetDropdown({
                 {hoverPreview ? (
                   (() => {
                     const regroupingPercent = Math.round(hoverPreview.pAnyStart * 100)
-                    const scaffoldingSummary = getScaffoldingSummary(hoverPreview.displayRules, operator)
+                    const scaffoldingSummary = getScaffoldingSummary(
+                      hoverPreview.displayRules,
+                      operator
+                    )
                     return (
                       <>
                         <div>{regroupingPercent}% regrouping</div>

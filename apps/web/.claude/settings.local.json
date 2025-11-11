@@ -45,7 +45,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx @pandacss/dev)",
       "Bash(npm view:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []

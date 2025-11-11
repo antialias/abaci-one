@@ -3,19 +3,13 @@
 import * as Slider from '@radix-ui/react-slider'
 import { css } from '../../../../../../../styled-system/css'
 import { stack } from '../../../../../../../styled-system/patterns'
-import type { WorksheetFormState } from '../../types'
+import { useWorksheetConfig } from '../WorksheetConfigContext'
+import { useTheme } from '@/contexts/ThemeContext'
 
-export interface RegroupingFrequencyPanelProps {
-  formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean
-}
-
-export function RegroupingFrequencyPanel({
-  formState,
-  onChange,
-  isDark = false,
-}: RegroupingFrequencyPanelProps) {
+export function RegroupingFrequencyPanel() {
+  const { formState, onChange } = useWorksheetConfig()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   return (
     <div
       data-section="regrouping"

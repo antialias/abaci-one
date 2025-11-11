@@ -40,7 +40,6 @@ export function ManualModeControls({
       <DigitRangeSection
         digitRange={formState.digitRange}
         onChange={(digitRange) => onChange({ digitRange })}
-        isDark={isDark}
       />
 
       {/* Pedagogical Scaffolding Options */}

@@ -1,17 +1,15 @@
 import * as Slider from '@radix-ui/react-slider'
 import { css } from '../../../../../../../styled-system/css'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export interface DigitRangeSectionProps {
   digitRange: { min: number; max: number } | undefined
   onChange: (digitRange: { min: number; max: number }) => void
-  isDark?: boolean
 }
 
-export function DigitRangeSection({
-  digitRange,
-  onChange,
-  isDark = false,
-}: DigitRangeSectionProps) {
+export function DigitRangeSection({ digitRange, onChange }: DigitRangeSectionProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const min = digitRange?.min ?? 2
   const max = digitRange?.max ?? 2
 

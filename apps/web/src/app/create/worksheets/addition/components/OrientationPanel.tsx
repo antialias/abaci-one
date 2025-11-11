@@ -106,7 +106,14 @@ export function OrientationPanel({
                   border: '2px solid',
                   borderColor:
                     orientation === 'portrait' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg: orientation === 'portrait' ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
+                  bg:
+                    orientation === 'portrait'
+                      ? isDark
+                        ? 'brand.900'
+                        : 'brand.50'
+                      : isDark
+                        ? 'gray.700'
+                        : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -127,7 +134,13 @@ export function OrientationPanel({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
                     color:
-                      orientation === 'portrait' ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
+                      orientation === 'portrait'
+                        ? isDark
+                          ? 'brand.200'
+                          : 'brand.700'
+                        : isDark
+                          ? 'gray.300'
+                          : 'gray.600',
                   })}
                 >
                   Portrait
@@ -147,7 +160,14 @@ export function OrientationPanel({
                   border: '2px solid',
                   borderColor:
                     orientation === 'landscape' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg: orientation === 'landscape' ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
+                  bg:
+                    orientation === 'landscape'
+                      ? isDark
+                        ? 'brand.900'
+                        : 'brand.50'
+                      : isDark
+                        ? 'gray.700'
+                        : 'white',
                   rounded: 'lg',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -168,7 +188,13 @@ export function OrientationPanel({
                     fontSize: 'sm',
                     fontWeight: 'semibold',
                     color:
-                      orientation === 'landscape' ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
+                      orientation === 'landscape'
+                        ? isDark
+                          ? 'brand.200'
+                          : 'brand.700'
+                        : isDark
+                          ? 'gray.300'
+                          : 'gray.600',
                   })}
                 >
                   Landscape
@@ -205,12 +231,24 @@ export function OrientationPanel({
                       h: '10',
                       border: '2px solid',
                       borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                      bg: isSelected ? (isDark ? 'brand.900' : 'brand.50') : isDark ? 'gray.700' : 'white',
+                      bg: isSelected
+                        ? isDark
+                          ? 'brand.900'
+                          : 'brand.50'
+                        : isDark
+                          ? 'gray.700'
+                          : 'white',
                       rounded: 'lg',
                       cursor: 'pointer',
                       fontSize: 'sm',
                       fontWeight: 'bold',
-                      color: isSelected ? (isDark ? 'brand.200' : 'brand.700') : isDark ? 'gray.300' : 'gray.600',
+                      color: isSelected
+                        ? isDark
+                          ? 'brand.200'
+                          : 'brand.700'
+                        : isDark
+                          ? 'gray.300'
+                          : 'gray.600',
                       transition: 'all 0.15s',
                       display: 'flex',
                       alignItems: 'center',
@@ -384,7 +422,7 @@ export function OrientationPanel({
                                 className={css({
                                   w: '1.5',
                                   h: '1.5',
-                                  bg: isSelected ? 'brand.500' : (isDark ? 'gray.500' : 'gray.400'),
+                                  bg: isSelected ? 'brand.500' : isDark ? 'gray.500' : 'gray.400',
                                   rounded: 'full',
                                 })}
                               />
@@ -468,7 +506,14 @@ export function OrientationPanel({
         </div>
 
         {/* Row 3: Layout Options */}
-        <div className={css({ borderTop: '1px solid', borderColor: isDark ? 'gray.700' : 'gray.200', pt: '3', mt: '1' })}>
+        <div
+          className={css({
+            borderTop: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            pt: '3',
+            mt: '1',
+          })}
+        >
           <div
             className={css({
               fontSize: '2xs',

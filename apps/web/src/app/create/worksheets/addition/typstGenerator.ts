@@ -118,7 +118,6 @@ function generatePageTypst(
     }
   })
 
-
   // Generate Typst problem data with per-problem display flags
   const problemsTypst = enrichedProblems
     .map((p) => {

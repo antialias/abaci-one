@@ -163,72 +163,72 @@ export function DisplayControlsPanel({
               </button>
             </div>
 
-      {/* Pedagogical scaffolding thermometers */}
-      <div className={stack({ gap: '3' })}>
-        <RuleThermometer
-          label="Answer Boxes"
-          description="Guide students to write organized, aligned answers"
-          value={displayRules.answerBoxes}
-          onChange={(value) => updateRule('answerBoxes', value)}
-          isDark={isDark}
-        />
+            {/* Pedagogical scaffolding thermometers */}
+            <div className={stack({ gap: '3' })}>
+              <RuleThermometer
+                label="Answer Boxes"
+                description="Guide students to write organized, aligned answers"
+                value={displayRules.answerBoxes}
+                onChange={(value) => updateRule('answerBoxes', value)}
+                isDark={isDark}
+              />
 
-        <RuleThermometer
-          label="Place Value Colors"
-          description="Reinforce place value understanding visually"
-          value={displayRules.placeValueColors}
-          onChange={(value) => updateRule('placeValueColors', value)}
-          isDark={isDark}
-        />
+              <RuleThermometer
+                label="Place Value Colors"
+                description="Reinforce place value understanding visually"
+                value={displayRules.placeValueColors}
+                onChange={(value) => updateRule('placeValueColors', value)}
+                isDark={isDark}
+              />
 
-        <RuleThermometer
-          label={
-            formState.operator === 'subtraction'
-              ? 'Borrow Boxes'
-              : formState.operator === 'mixed'
-                ? 'Carry/Borrow Boxes'
-                : 'Carry Boxes'
-          }
-          description={
-            formState.operator === 'subtraction'
-              ? 'Help students track borrowing during subtraction'
-              : formState.operator === 'mixed'
-                ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
-                : 'Help students track regrouping during addition'
-          }
-          value={displayRules.carryBoxes}
-          onChange={(value) => updateRule('carryBoxes', value)}
-          isDark={isDark}
-        />
+              <RuleThermometer
+                label={
+                  formState.operator === 'subtraction'
+                    ? 'Borrow Boxes'
+                    : formState.operator === 'mixed'
+                      ? 'Carry/Borrow Boxes'
+                      : 'Carry Boxes'
+                }
+                description={
+                  formState.operator === 'subtraction'
+                    ? 'Help students track borrowing during subtraction'
+                    : formState.operator === 'mixed'
+                      ? 'Help students track regrouping (carrying in addition, borrowing in subtraction)'
+                      : 'Help students track regrouping during addition'
+                }
+                value={displayRules.carryBoxes}
+                onChange={(value) => updateRule('carryBoxes', value)}
+                isDark={isDark}
+              />
 
-        {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
-          <RuleThermometer
-            label="Borrowed 10s Box"
-            description="Box for adding 10 to borrowing digit"
-            value={displayRules.borrowNotation}
-            onChange={(value) => updateRule('borrowNotation', value)}
-            isDark={isDark}
-          />
-        )}
+              {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                <RuleThermometer
+                  label="Borrowed 10s Box"
+                  description="Box for adding 10 to borrowing digit"
+                  value={displayRules.borrowNotation}
+                  onChange={(value) => updateRule('borrowNotation', value)}
+                  isDark={isDark}
+                />
+              )}
 
-        {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
-          <RuleThermometer
-            label="Borrowing Hints"
-            description="Show arrows and calculations guiding the borrowing process"
-            value={displayRules.borrowingHints}
-            onChange={(value) => updateRule('borrowingHints', value)}
-            isDark={isDark}
-          />
-        )}
+              {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
+                <RuleThermometer
+                  label="Borrowing Hints"
+                  description="Show arrows and calculations guiding the borrowing process"
+                  value={displayRules.borrowingHints}
+                  onChange={(value) => updateRule('borrowingHints', value)}
+                  isDark={isDark}
+                />
+              )}
 
-        <RuleThermometer
-          label="Ten-Frames"
-          description="Visualize regrouping with concrete counting tools"
-          value={displayRules.tenFrames}
-          onChange={(value) => updateRule('tenFrames', value)}
-          isDark={isDark}
-        />
-      </div>
+              <RuleThermometer
+                label="Ten-Frames"
+                description="Visualize regrouping with concrete counting tools"
+                value={displayRules.tenFrames}
+                onChange={(value) => updateRule('tenFrames', value)}
+                isDark={isDark}
+              />
+            </div>
 
             {/* Live Preview - Collapsible */}
             <Collapsible.Root open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>

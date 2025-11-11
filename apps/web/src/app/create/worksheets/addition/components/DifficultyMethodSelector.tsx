@@ -38,7 +38,14 @@ export function DifficultyMethodSelector({
             py: '3',
             flex: '1',
             bg: currentMethod === 'smart' ? (isDark ? 'gray.800' : 'white') : 'transparent',
-            color: currentMethod === 'smart' ? (isDark ? 'brand.300' : 'brand.600') : (isDark ? 'gray.500' : 'gray.500'),
+            color:
+              currentMethod === 'smart'
+                ? isDark
+                  ? 'brand.300'
+                  : 'brand.600'
+                : isDark
+                  ? 'gray.500'
+                  : 'gray.500',
             fontWeight: currentMethod === 'smart' ? 'bold' : 'medium',
             fontSize: 'sm',
             borderTopLeftRadius: 'lg',
@@ -46,11 +53,26 @@ export function DifficultyMethodSelector({
             cursor: 'pointer',
             transition: 'all 0.2s',
             borderBottom: '3px solid',
-            borderColor: currentMethod === 'smart' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
+            borderColor:
+              currentMethod === 'smart' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
             mb: '-2px',
             _hover: {
-              color: currentMethod === 'smart' ? (isDark ? 'brand.200' : 'brand.700') : (isDark ? 'gray.400' : 'gray.600'),
-              bg: currentMethod === 'smart' ? (isDark ? 'gray.800' : 'white') : (isDark ? 'gray.800/30' : 'gray.50'),
+              color:
+                currentMethod === 'smart'
+                  ? isDark
+                    ? 'brand.200'
+                    : 'brand.700'
+                  : isDark
+                    ? 'gray.400'
+                    : 'gray.600',
+              bg:
+                currentMethod === 'smart'
+                  ? isDark
+                    ? 'gray.800'
+                    : 'white'
+                  : isDark
+                    ? 'gray.800/30'
+                    : 'gray.50',
             },
           })}
         >
@@ -72,7 +94,14 @@ export function DifficultyMethodSelector({
             py: '3',
             flex: '1',
             bg: currentMethod === 'mastery' ? (isDark ? 'gray.800' : 'white') : 'transparent',
-            color: currentMethod === 'mastery' ? (isDark ? 'brand.300' : 'brand.600') : (isDark ? 'gray.500' : 'gray.500'),
+            color:
+              currentMethod === 'mastery'
+                ? isDark
+                  ? 'brand.300'
+                  : 'brand.600'
+                : isDark
+                  ? 'gray.500'
+                  : 'gray.500',
             fontWeight: currentMethod === 'mastery' ? 'bold' : 'medium',
             fontSize: 'sm',
             borderTopLeftRadius: 'lg',
@@ -80,11 +109,26 @@ export function DifficultyMethodSelector({
             cursor: 'pointer',
             transition: 'all 0.2s',
             borderBottom: '3px solid',
-            borderColor: currentMethod === 'mastery' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
+            borderColor:
+              currentMethod === 'mastery' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
             mb: '-2px',
             _hover: {
-              color: currentMethod === 'mastery' ? (isDark ? 'brand.200' : 'brand.700') : (isDark ? 'gray.400' : 'gray.600'),
-              bg: currentMethod === 'mastery' ? (isDark ? 'gray.800' : 'white') : (isDark ? 'gray.800/30' : 'gray.50'),
+              color:
+                currentMethod === 'mastery'
+                  ? isDark
+                    ? 'brand.200'
+                    : 'brand.700'
+                  : isDark
+                    ? 'gray.400'
+                    : 'gray.600',
+              bg:
+                currentMethod === 'mastery'
+                  ? isDark
+                    ? 'gray.800'
+                    : 'white'
+                  : isDark
+                    ? 'gray.800/30'
+                    : 'gray.50',
             },
           })}
         >

@@ -4,6 +4,7 @@ import type React from 'react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '../../../../../../../styled-system/css'
 import type { DifficultyMode } from '../../difficultyProfiles'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export interface DifficultyChangeResult {
   changeDescription: string
@@ -28,7 +29,6 @@ export interface MakeEasierHarderButtonsProps {
   canMakeHarderSupport: boolean
   onEasier: (mode: DifficultyMode) => void
   onHarder: (mode: DifficultyMode) => void
-  isDark?: boolean
 }
 
 export function MakeEasierHarderButtons({
@@ -46,8 +46,9 @@ export function MakeEasierHarderButtons({
   canMakeHarderSupport,
   onEasier,
   onHarder,
-  isDark = false,
 }: MakeEasierHarderButtonsProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   // Determine which mode is alternative for easier
   const easierAlternativeMode =
     easierResultBoth.changeDescription === easierResultChallenge.changeDescription
@@ -160,11 +161,7 @@ export function MakeEasierHarderButtons({
                 color: canMakeEasierBoth ? 'brand.700' : isDark ? 'gray.500' : 'gray.400',
                 bg: isDark ? 'gray.800' : 'white',
                 border: '1.5px solid',
-                borderColor: canMakeEasierBoth
-                  ? 'brand.500'
-                  : isDark
-                    ? 'gray.600'
-                    : 'gray.300',
+                borderColor: canMakeEasierBoth ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
                 borderTopLeftRadius: canEasierAlternative ? 'none' : 'lg',
                 borderBottomLeftRadius: canEasierAlternative ? 'none' : 'lg',
                 borderTopRightRadius: 'lg',
@@ -229,11 +226,7 @@ export function MakeEasierHarderButtons({
                 color: canMakeHarderBoth ? 'brand.700' : isDark ? 'gray.500' : 'gray.400',
                 bg: isDark ? 'gray.800' : 'white',
                 border: '1.5px solid',
-                borderColor: canMakeHarderBoth
-                  ? 'brand.500'
-                  : isDark
-                    ? 'gray.600'
-                    : 'gray.300',
+                borderColor: canMakeHarderBoth ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
                 borderTopLeftRadius: 'lg',
                 borderBottomLeftRadius: 'lg',
                 borderTopRightRadius: canHarderAlternative ? 'none' : 'lg',

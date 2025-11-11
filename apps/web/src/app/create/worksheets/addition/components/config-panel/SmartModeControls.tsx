@@ -8,6 +8,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { css } from '../../../../../../../styled-system/css'
 import { stack } from '../../../../../../../styled-system/patterns'
 import type { WorksheetFormState } from '../../types'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   DIFFICULTY_PROFILES,
   DIFFICULTY_PROGRESSION,
@@ -34,10 +35,11 @@ import { OverallDifficultySlider } from './OverallDifficultySlider'
 export interface SmartModeControlsProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean
 }
 
-export function SmartModeControls({ formState, onChange, isDark = false }: SmartModeControlsProps) {
+export function SmartModeControls({ formState, onChange }: SmartModeControlsProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [showDebugPlot, setShowDebugPlot] = useState(false)
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
   const [hoverPreview, setHoverPreview] = useState<{
@@ -84,7 +86,6 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
       <DigitRangeSection
         digitRange={formState.digitRange}
         onChange={(digitRange) => onChange({ digitRange })}
-        isDark={isDark}
       />
 
       {/* Difficulty Level */}
@@ -283,575 +284,29 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
                 nearestHarder={nearestHarder}
                 customDescription={customDescription}
                 hoverPreview={hoverPreview}
-                operator={formState.operator}
                 onChange={onChange}
-                isDark={isDark}
               />
 
               {/* Make Easier/Harder buttons with preview */}
-              <div
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2',
-                  pt: '1',
-                  borderTop: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                })}
-              >
-                {/* Four-Button Layout: [Alt-35%][Rec-65%][Rec-65%][Alt-35%] */}
-                <Tooltip.Provider delayDuration={300}>
-                  <div className={css({ display: 'flex', gap: '2' })}>
-                    {/* Determine which mode is alternative for easier */}
-                    {(() => {
-                      const easierAlternativeMode =
-                        easierResultBoth.changeDescription ===
-                        easierResultChallenge.changeDescription
-                          ? 'support'
-                          : 'challenge'
-                      const easierAlternativeResult =
-                        easierAlternativeMode === 'support'
-                          ? easierResultSupport
-                          : easierResultChallenge
-                      const easierAlternativeLabel =
-                        easierAlternativeMode === 'support' ? '↑ More support' : '← Less challenge'
-                      const canEasierAlternative =
-                        easierAlternativeMode === 'support'
-                          ? canMakeEasierSupport
-                          : canMakeEasierChallenge
-
-                      return (
-                        <div className={css({ display: 'flex', flex: '1' })}>
-                          {/* Alternative Easier Button - Hidden if disabled and main is enabled */}
-                          {canEasierAlternative && (
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button
-                                  onClick={() =>
-                                    handleDifficultyChange(easierAlternativeMode, 'easier')
-                                  }
-                                  disabled={!canEasierAlternative}
-                                  data-action={`easier-${easierAlternativeMode}`}
-                                  className={css({
-                                    flexShrink: 0,
-                                    width: '10',
-                                    h: '16',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '2xs',
-                                    fontWeight: 'medium',
-                                    color: isDark ? 'gray.300' : 'gray.700',
-                                    bg: isDark ? 'gray.700' : 'gray.100',
-                                    border: '1.5px solid',
-                                    borderColor: isDark ? 'gray.600' : 'gray.300',
-                                    borderRight: 'none',
-                                    borderTopLeftRadius: 'lg',
-                                    borderBottomLeftRadius: 'lg',
-                                    cursor: 'pointer',
-                                    _hover: {
-                                      bg: isDark ? 'gray.600' : 'gray.200',
-                                    },
-                                  })}
-                                >
-                                  {easierAlternativeLabel}
-                                </button>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  side="top"
-                                  className={css({
-                                    bg: 'gray.800',
-                                    color: 'white',
-                                    px: '3',
-                                    py: '2',
-                                    rounded: 'md',
-                                    fontSize: 'xs',
-                                    maxW: '250px',
-                                    shadow: 'lg',
-                                    zIndex: 1000,
-                                  })}
-                                >
-                                  {easierAlternativeResult.changeDescription}
-                                  <Tooltip.Arrow className={css({ fill: 'gray.800' })} />
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          )}
-
-                          {/* Recommended Easier Button - Expands to full width if alternative is hidden */}
-                          <button
-                            onClick={() => handleDifficultyChange('both', 'easier')}
-                            disabled={!canMakeEasier}
-                            data-action="easier-both"
-                            className={css({
-                              flex: '1',
-                              h: '16',
-                              px: '3',
-                              py: '2',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              gap: '0.5',
-                              color: canMakeEasier
-                                ? 'brand.700'
-                                : (isDark ? 'gray.500' : 'gray.400'),
-                              bg: isDark ? 'gray.800' : 'white',
-                              border: '1.5px solid',
-                              borderColor: canMakeEasier
-                                ? 'brand.500'
-                                : (isDark ? 'gray.600' : 'gray.300'),
-                              borderTopLeftRadius: canEasierAlternative ? 'none' : 'lg',
-                              borderBottomLeftRadius: canEasierAlternative ? 'none' : 'lg',
-                              borderTopRightRadius: 'lg',
-                              borderBottomRightRadius: 'lg',
-                              cursor: canMakeEasier ? 'pointer' : 'not-allowed',
-                              opacity: canMakeEasier ? 1 : 0.5,
-                              _hover: canMakeEasier
-                                ? {
-                                    bg: isDark ? 'gray.700' : 'brand.50',
-                                  }
-                                : {},
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontSize: 'xs',
-                                fontWeight: 'semibold',
-                                flexShrink: 0,
-                              })}
-                            >
-                              ← Make Easier
-                            </div>
-                            {canMakeEasier && (
-                              <div
-                                className={css({
-                                  fontSize: '2xs',
-                                  fontWeight: 'normal',
-                                  lineHeight: '1.3',
-                                  textAlign: 'left',
-                                  overflow: 'hidden',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                })}
-                                style={
-                                  {
-                                    WebkitBoxOrient: 'vertical',
-                                  } as React.CSSProperties
-                                }
-                              >
-                                {easierResultBoth.changeDescription}
-                              </div>
-                            )}
-                          </button>
-                        </div>
-                      )
-                    })()}
-
-                    {/* Determine which mode is alternative for harder */}
-                    {(() => {
-                      const harderAlternativeMode =
-                        harderResultBoth.changeDescription ===
-                        harderResultChallenge.changeDescription
-                          ? 'support'
-                          : 'challenge'
-                      const harderAlternativeResult =
-                        harderAlternativeMode === 'support'
-                          ? harderResultSupport
-                          : harderResultChallenge
-                      const harderAlternativeLabel =
-                        harderAlternativeMode === 'support' ? '↓ Less support' : '→ More challenge'
-                      const canHarderAlternative =
-                        harderAlternativeMode === 'support'
-                          ? canMakeHarderSupport
-                          : canMakeHarderChallenge
-
-                      return (
-                        <div className={css({ display: 'flex', flex: '1' })}>
-                          {/* Recommended Harder Button - Expands to full width if alternative is hidden */}
-                          <button
-                            onClick={() => handleDifficultyChange('both', 'harder')}
-                            disabled={!canMakeHarder}
-                            data-action="harder-both"
-                            className={css({
-                              flex: '1',
-                              h: '16',
-                              px: '3',
-                              py: '2',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              gap: '0.5',
-                              color: canMakeHarder
-                                ? 'brand.700'
-                                : (isDark ? 'gray.500' : 'gray.400'),
-                              bg: isDark ? 'gray.800' : 'white',
-                              border: '1.5px solid',
-                              borderColor: canMakeHarder
-                                ? 'brand.500'
-                                : (isDark ? 'gray.600' : 'gray.300'),
-                              borderTopLeftRadius: 'lg',
-                              borderBottomLeftRadius: 'lg',
-                              borderTopRightRadius: canHarderAlternative ? 'none' : 'lg',
-                              borderBottomRightRadius: canHarderAlternative ? 'none' : 'lg',
-                              cursor: canMakeHarder ? 'pointer' : 'not-allowed',
-                              opacity: canMakeHarder ? 1 : 0.5,
-                              _hover: canMakeHarder
-                                ? {
-                                    bg: isDark ? 'gray.700' : 'brand.50',
-                                  }
-                                : {},
-                            })}
-                          >
-                            <div
-                              className={css({
-                                fontSize: 'xs',
-                                fontWeight: 'semibold',
-                                flexShrink: 0,
-                              })}
-                            >
-                              Make Harder →
-                            </div>
-                            {canMakeHarder && (
-                              <div
-                                className={css({
-                                  fontSize: '2xs',
-                                  fontWeight: 'normal',
-                                  lineHeight: '1.3',
-                                  textAlign: 'left',
-                                  overflow: 'hidden',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                })}
-                                style={
-                                  {
-                                    WebkitBoxOrient: 'vertical',
-                                  } as React.CSSProperties
-                                }
-                              >
-                                {harderResultBoth.changeDescription}
-                              </div>
-                            )}
-                          </button>
-
-                          {/* Alternative Harder Button - Hidden if disabled and main is enabled */}
-                          {canHarderAlternative && (
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button
-                                  onClick={() =>
-                                    handleDifficultyChange(harderAlternativeMode, 'harder')
-                                  }
-                                  disabled={!canHarderAlternative}
-                                  data-action={`harder-${harderAlternativeMode}`}
-                                  className={css({
-                                    flexShrink: 0,
-                                    width: '10',
-                                    h: '16',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '2xs',
-                                    fontWeight: 'medium',
-                                    color: isDark ? 'gray.300' : 'gray.700',
-                                    bg: isDark ? 'gray.700' : 'gray.100',
-                                    border: '1.5px solid',
-                                    borderColor: isDark ? 'gray.600' : 'gray.300',
-                                    borderLeft: 'none',
-                                    borderTopRightRadius: 'lg',
-                                    borderBottomRightRadius: 'lg',
-                                    cursor: 'pointer',
-                                    _hover: {
-                                      bg: isDark ? 'gray.600' : 'gray.200',
-                                    },
-                                  })}
-                                >
-                                  {harderAlternativeLabel}
-                                </button>
-                              </Tooltip.Trigger>
-                              {canHarderAlternative && (
-                                <Tooltip.Portal>
-                                  <Tooltip.Content
-                                    side="top"
-                                    className={css({
-                                      bg: 'gray.800',
-                                      color: 'white',
-                                      px: '3',
-                                      py: '2',
-                                      rounded: 'md',
-                                      fontSize: 'xs',
-                                      maxW: '250px',
-                                      shadow: 'lg',
-                                      zIndex: 1000,
-                                    })}
-                                  >
-                                    {harderAlternativeResult.changeDescription}
-                                    <Tooltip.Arrow className={css({ fill: 'gray.800' })} />
-                                  </Tooltip.Content>
-                                </Tooltip.Portal>
-                              )}
-                            </Tooltip.Root>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </Tooltip.Provider>
-              </div>
+              <MakeEasierHarderButtons
+                easierResultBoth={easierResultBoth}
+                easierResultChallenge={easierResultChallenge}
+                easierResultSupport={easierResultSupport}
+                harderResultBoth={harderResultBoth}
+                harderResultChallenge={harderResultChallenge}
+                harderResultSupport={harderResultSupport}
+                canMakeEasierBoth={canMakeEasierBoth}
+                canMakeEasierChallenge={canMakeEasierChallenge}
+                canMakeEasierSupport={canMakeEasierSupport}
+                canMakeHarderBoth={canMakeHarderBoth}
+                canMakeHarderChallenge={canMakeHarderChallenge}
+                canMakeHarderSupport={canMakeHarderSupport}
+                onEasier={(mode) => handleDifficultyChange(mode, 'easier')}
+                onHarder={(mode) => handleDifficultyChange(mode, 'harder')}
+              />
 
               {/* Overall Difficulty Slider */}
-              <div className={css({ mb: '2' })}>
-                <div
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: isDark ? 'gray.300' : 'gray.700',
-                    mb: '1.5',
-                  })}
-                >
-                  Overall Difficulty: {currentDifficulty.toFixed(1)} / 10
-                </div>
-
-                {/* Difficulty Slider */}
-                <div className={css({ position: 'relative', px: '2' })}>
-                  <Slider.Root
-                    value={[currentDifficulty * 10]}
-                    max={100}
-                    step={1}
-                    onValueChange={(value) => {
-                      const targetDifficulty = value[0] / 10
-
-                      // Calculate preset positions in 2D space
-                      const presetPoints = DIFFICULTY_PROGRESSION.map((presetName) => {
-                        const preset = DIFFICULTY_PROFILES[presetName]
-                        const regrouping = calculateRegroupingIntensity(
-                          preset.regrouping.pAnyStart,
-                          preset.regrouping.pAllStart
-                        )
-                        const scaffolding = calculateScaffoldingLevel(
-                          preset.displayRules,
-                          regrouping
-                        )
-                        const difficulty = calculateOverallDifficulty(
-                          preset.regrouping.pAnyStart,
-                          preset.regrouping.pAllStart,
-                          preset.displayRules
-                        )
-                        return {
-                          regrouping,
-                          scaffolding,
-                          difficulty,
-                          name: presetName,
-                        }
-                      })
-
-                      // Find which path segment we're on and interpolate
-                      let idealRegrouping = 0
-                      let idealScaffolding = 10
-
-                      for (let i = 0; i < presetPoints.length - 1; i++) {
-                        const start = presetPoints[i]
-                        const end = presetPoints[i + 1]
-
-                        if (
-                          targetDifficulty >= start.difficulty &&
-                          targetDifficulty <= end.difficulty
-                        ) {
-                          // Interpolate between start and end
-                          const t =
-                            (targetDifficulty - start.difficulty) /
-                            (end.difficulty - start.difficulty)
-                          idealRegrouping =
-                            start.regrouping + t * (end.regrouping - start.regrouping)
-                          idealScaffolding =
-                            start.scaffolding + t * (end.scaffolding - start.scaffolding)
-                          console.log(
-                            '[Slider] Interpolating between',
-                            start.name,
-                            'and',
-                            end.name,
-                            {
-                              t,
-                              idealRegrouping,
-                              idealScaffolding,
-                            }
-                          )
-                          break
-                        }
-                      }
-
-                      // Handle edge cases (before first or after last preset)
-                      if (targetDifficulty < presetPoints[0].difficulty) {
-                        idealRegrouping = presetPoints[0].regrouping
-                        idealScaffolding = presetPoints[0].scaffolding
-                      } else if (
-                        targetDifficulty > presetPoints[presetPoints.length - 1].difficulty
-                      ) {
-                        idealRegrouping = presetPoints[presetPoints.length - 1].regrouping
-                        idealScaffolding = presetPoints[presetPoints.length - 1].scaffolding
-                      }
-
-                      // Find valid configuration closest to ideal point on path
-                      let closestConfig: {
-                        pAnyStart: number
-                        pAllStart: number
-                        displayRules: any
-                        distance: number
-                      } | null = null
-
-                      for (let regIdx = 0; regIdx < REGROUPING_PROGRESSION.length; regIdx++) {
-                        for (
-                          let scaffIdx = 0;
-                          scaffIdx < SCAFFOLDING_PROGRESSION.length;
-                          scaffIdx++
-                        ) {
-                          const validState = findNearestValidState(regIdx, scaffIdx)
-                          if (
-                            validState.regroupingIdx !== regIdx ||
-                            validState.scaffoldingIdx !== scaffIdx
-                          ) {
-                            continue
-                          }
-
-                          const regrouping = REGROUPING_PROGRESSION[regIdx]
-                          const displayRules = SCAFFOLDING_PROGRESSION[scaffIdx]
-
-                          const actualRegrouping = calculateRegroupingIntensity(
-                            regrouping.pAnyStart,
-                            regrouping.pAllStart
-                          )
-                          const actualScaffolding = calculateScaffoldingLevel(
-                            displayRules,
-                            actualRegrouping
-                          )
-
-                          // Euclidean distance to ideal point on pedagogical path
-                          const distance = Math.sqrt(
-                            (actualRegrouping - idealRegrouping) ** 2 +
-                              (actualScaffolding - idealScaffolding) ** 2
-                          )
-
-                          if (closestConfig === null || distance < closestConfig.distance) {
-                            closestConfig = {
-                              pAnyStart: regrouping.pAnyStart,
-                              pAllStart: regrouping.pAllStart,
-                              displayRules,
-                              distance,
-                            }
-                          }
-                        }
-                      }
-
-                      if (closestConfig) {
-                        console.log('[Slider] Closest config:', {
-                          ...closestConfig,
-                          regrouping: calculateRegroupingIntensity(
-                            closestConfig.pAnyStart,
-                            closestConfig.pAllStart
-                          ),
-                          scaffolding: calculateScaffoldingLevel(
-                            closestConfig.displayRules,
-                            calculateRegroupingIntensity(
-                              closestConfig.pAnyStart,
-                              closestConfig.pAllStart
-                            )
-                          ),
-                        })
-                        const matchedProfile = getProfileFromConfig(
-                          closestConfig.pAllStart,
-                          closestConfig.pAnyStart,
-                          closestConfig.displayRules
-                        )
-                        onChange({
-                          pAnyStart: closestConfig.pAnyStart,
-                          pAllStart: closestConfig.pAllStart,
-                          displayRules: closestConfig.displayRules,
-                          difficultyProfile:
-                            matchedProfile !== 'custom' ? matchedProfile : undefined,
-                        })
-                      }
-                    }}
-                    className={css({
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      userSelect: 'none',
-                      touchAction: 'none',
-                      h: '8',
-                    })}
-                  >
-                    <Slider.Track
-                      className={css({
-                        bg: isDark ? 'gray.700' : 'gray.100',
-                        position: 'relative',
-                        flexGrow: 1,
-                        h: '2',
-                        rounded: 'full',
-                      })}
-                    >
-                      <Slider.Range
-                        className={css({
-                          position: 'absolute',
-                          bg: 'brand.500',
-                          h: 'full',
-                          rounded: 'full',
-                        })}
-                      />
-
-                      {/* Preset markers on track */}
-                      {DIFFICULTY_PROGRESSION.map((profileName) => {
-                        const p = DIFFICULTY_PROFILES[profileName]
-                        const presetDifficulty = calculateOverallDifficulty(
-                          p.regrouping.pAnyStart,
-                          p.regrouping.pAllStart,
-                          p.displayRules
-                        )
-                        const position = (presetDifficulty / 10) * 100
-
-                        return (
-                          <div
-                            key={profileName}
-                            className={css({
-                              position: 'absolute',
-                              top: '50%',
-                              left: `${position}%`,
-                              transform: 'translate(-50%, -50%)',
-                              w: '1.5',
-                              h: '1.5',
-                              bg: 'gray.400',
-                              rounded: 'full',
-                              pointerEvents: 'none',
-                              zIndex: 1,
-                            })}
-                            title={p.label}
-                          />
-                        )
-                      })}
-                    </Slider.Track>
-
-                    <Slider.Thumb
-                      className={css({
-                        display: 'block',
-                        w: '5',
-                        h: '5',
-                        bg: 'white',
-                        border: '2px solid',
-                        borderColor: 'brand.500',
-                        rounded: 'full',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        _hover: {
-                          bg: 'brand.50',
-                        },
-                        _focus: {
-                          outline: 'none',
-                          boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.1)',
-                        },
-                      })}
-                    />
-                  </Slider.Root>
-                </div>
-              </div>
+              <OverallDifficultySlider currentDifficulty={currentDifficulty} onChange={onChange} />
 
               {/* 2D Difficulty Space Visualizer */}
               <div
@@ -1242,7 +697,7 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
       </div>
 
       {/* Regrouping Frequency */}
-      <RegroupingFrequencyPanel formState={formState} onChange={onChange} isDark={isDark} />
+      <RegroupingFrequencyPanel />
     </div>
   )
 }

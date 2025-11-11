@@ -15,6 +15,7 @@ import {
   type DifficultyLevel,
 } from '../../difficultyProfiles'
 import type { DisplayRules } from '../../displayRules'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export interface OverallDifficultySliderProps {
   currentDifficulty: number
@@ -24,14 +25,14 @@ export interface OverallDifficultySliderProps {
     displayRules: DisplayRules
     difficultyProfile?: DifficultyLevel
   }) => void
-  isDark?: boolean
 }
 
 export function OverallDifficultySlider({
   currentDifficulty,
   onChange,
-  isDark = false,
 }: OverallDifficultySliderProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const handleValueChange = (value: number[]) => {
     const targetDifficulty = value[0] / 10
 
@@ -145,7 +146,8 @@ export function OverallDifficultySlider({
         pAnyStart: closestConfig.pAnyStart,
         pAllStart: closestConfig.pAllStart,
         displayRules: closestConfig.displayRules,
-        difficultyProfile: matchedProfile !== 'custom' ? matchedProfile : undefined,
+        difficultyProfile:
+          matchedProfile !== 'custom' ? (matchedProfile as DifficultyLevel) : undefined,
       })
     }
   }

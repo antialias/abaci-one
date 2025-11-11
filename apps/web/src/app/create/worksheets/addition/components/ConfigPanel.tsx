@@ -3,6 +3,7 @@
 import { stack } from '../../../../../../styled-system/patterns'
 import type { WorksheetFormState } from '../types'
 import { defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { WorksheetConfigProvider } from './WorksheetConfigContext'
 import { DifficultyMethodSelector } from './DifficultyMethodSelector'
 import { StudentNameInput } from './config-panel/StudentNameInput'
 import { OperatorSection } from './config-panel/OperatorSection'
@@ -46,46 +47,48 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
   const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
 
   return (
-    <div data-component="config-panel" className={stack({ gap: '3' })}>
-      {/* Student Name */}
-      <StudentNameInput
-        value={formState.name}
-        onChange={(name) => onChange({ name })}
-        isDark={isDark}
-      />
+    <WorksheetConfigProvider formState={formState} onChange={onChange}>
+      <div data-component="config-panel" className={stack({ gap: '3' })}>
+        {/* Student Name */}
+        <StudentNameInput
+          value={formState.name}
+          onChange={(name) => onChange({ name })}
+          isDark={isDark}
+        />
 
-      {/* Operator Selector */}
-      <OperatorSection
-        operator={formState.operator}
-        onChange={(operator) => onChange({ operator })}
-        isDark={isDark}
-      />
+        {/* Operator Selector */}
+        <OperatorSection
+          operator={formState.operator}
+          onChange={(operator) => onChange({ operator })}
+          isDark={isDark}
+        />
 
-      {/* Progressive Difficulty Toggle */}
-      <ProgressiveDifficultyToggle
-        interpolate={formState.interpolate}
-        onChange={(interpolate) => onChange({ interpolate })}
-        isDark={isDark}
-      />
+        {/* Progressive Difficulty Toggle */}
+        <ProgressiveDifficultyToggle
+          interpolate={formState.interpolate}
+          onChange={(interpolate) => onChange({ interpolate })}
+          isDark={isDark}
+        />
 
-      {/* Display Controls - Always visible for manual adjustment */}
-      <DisplayControlsPanel formState={formState} onChange={onChange} isDark={isDark} />
+        {/* Display Controls - Always visible for manual adjustment */}
+        <DisplayControlsPanel formState={formState} onChange={onChange} isDark={isDark} />
 
-      {/* Difficulty Method Selector (Smart vs Mastery) */}
-      <DifficultyMethodSelector
-        currentMethod={currentMethod}
-        onChange={handleMethodChange}
-        isDark={isDark}
-      />
+        {/* Difficulty Method Selector (Smart vs Mastery) */}
+        <DifficultyMethodSelector
+          currentMethod={currentMethod}
+          onChange={handleMethodChange}
+          isDark={isDark}
+        />
 
-      {/* Method-specific preset controls */}
-      {currentMethod === 'smart' && (
-        <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
-      )}
+        {/* Method-specific preset controls */}
+        {currentMethod === 'smart' && (
+          <SmartModeControls formState={formState} onChange={onChange} />
+        )}
 
-      {currentMethod === 'mastery' && (
-        <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
-      )}
-    </div>
+        {currentMethod === 'mastery' && (
+          <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
+        )}
+      </div>
+    </WorksheetConfigProvider>
   )
 }
