@@ -238,12 +238,12 @@ export default function SharedWorksheetPage() {
         <div
           data-component="shared-worksheet-studio"
           className={css({
-            position: 'fixed',
-            inset: 0,
-            top: '16', // Account for nav bar
+            height: '100vh',
+            bg: isDark ? 'gray.900' : 'gray.50',
+            paddingTop: 'var(--app-nav-height)',
+            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            bg: isDark ? 'gray.900' : 'gray.50',
           })}
         >
           {/* Read-only banner */}
@@ -259,6 +259,7 @@ export default function SharedWorksheetPage() {
               justifyContent: 'space-between',
               gap: '4',
               shadow: 'md',
+              flexShrink: 0,
             })}
           >
             <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
@@ -402,7 +403,7 @@ export default function SharedWorksheetPage() {
           </div>
 
           {/* Worksheet studio layout */}
-          <PanelGroup direction="horizontal" className={css({ flex: '1', overflow: 'hidden' })}>
+          <PanelGroup direction="horizontal" className={css({ flex: '1', minHeight: '0' })}>
             {/* Left sidebar - Config controls (read-only) */}
             <Panel
               defaultSize={25}
