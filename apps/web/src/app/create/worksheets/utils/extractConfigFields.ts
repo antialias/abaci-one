@@ -1,5 +1,5 @@
-import type { WorksheetFormState } from '../types'
 import type { AdditionConfigV4 } from '../config-schemas'
+import type { WorksheetFormState } from '../types'
 
 /**
  * Extract only the persisted config fields from formState
@@ -41,5 +41,9 @@ export function extractConfigFields(
     difficultyProfile: formState.difficultyProfile,
     displayRules: formState.displayRules,
     manualPreset: formState.manualPreset,
+    // Mastery mode fields (optional)
+    currentStepId: formState.currentStepId,
+    currentAdditionSkillId: formState.currentAdditionSkillId,
+    currentSubtractionSkillId: formState.currentSubtractionSkillId,
   }
 }

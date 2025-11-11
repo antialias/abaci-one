@@ -47,7 +47,7 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
   const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
 
   return (
-    <WorksheetConfigProvider formState={formState} onChange={onChange}>
+    <WorksheetConfigProvider formState={formState} updateFormState={onChange}>
       <div data-component="config-panel" className={stack({ gap: '3' })}>
         {/* Student Name */}
         <StudentNameInput

@@ -108,7 +108,7 @@ export function AdditionWorksheetClient({
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="📝">
-      <WorksheetConfigProvider formState={formState} onChange={updateFormState}>
+      <WorksheetConfigProvider formState={formState} updateFormState={updateFormState}>
         <div
           data-component="addition-worksheet-page"
           className={css({

@@ -1,16 +1,16 @@
 // Shared logic for generating worksheet previews (used by both API route and SSR)
 
 import { execSync } from 'child_process'
-import { validateWorksheetConfig } from './validation'
+import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import {
+  generateMasteryMixedProblems,
+  generateMixedProblems,
   generateProblems,
   generateSubtractionProblems,
-  generateMixedProblems,
-  generateMasteryMixedProblems,
 } from './problemGenerator'
-import { generateTypstSource } from './typstGenerator'
-import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { getSkillById } from './skills'
+import { generateTypstSource } from './typstGenerator'
+import { validateWorksheetConfig } from './validation'
 
 export interface PreviewResult {
   success: boolean
@@ -53,6 +53,7 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
         return {
           success: false,
           error: 'Mixed mastery mode requires both addition and subtraction skill IDs',
+          details: `Missing skill IDs - addition: ${addSkillId || 'none'}, subtraction: ${subSkillId || 'none'}. This config may have been shared before mastery mode fields were added to the share system.`,
         }
       }
 
@@ -63,6 +64,7 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
         return {
           success: false,
           error: 'Invalid skill IDs',
+          details: `Addition skill ID: ${addSkillId} (${addSkill ? 'valid' : 'invalid'}), Subtraction skill ID: ${subSkillId} (${subSkill ? 'valid' : 'invalid'})`,
         }
       }
 

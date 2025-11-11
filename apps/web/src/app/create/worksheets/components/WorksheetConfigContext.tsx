@@ -11,6 +11,7 @@ export interface WorksheetConfigContextValue {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
   operator: 'addition' | 'subtraction' | 'mixed'
+  isReadOnly?: boolean
 }
 
 export const WorksheetConfigContext = createContext<WorksheetConfigContextValue | null>(null)
@@ -29,8 +30,9 @@ export function useWorksheetConfig() {
 
 export interface WorksheetConfigProviderProps {
   formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
+  updateFormState: (updates: Partial<WorksheetFormState>) => void
   children: React.ReactNode
+  isReadOnly?: boolean
 }
 
 /**
@@ -39,16 +41,18 @@ export interface WorksheetConfigProviderProps {
  */
 export function WorksheetConfigProvider({
   formState,
-  onChange,
+  updateFormState,
   children,
+  isReadOnly = false,
 }: WorksheetConfigProviderProps) {
   const value = useMemo(
     () => ({
       formState,
-      onChange,
+      onChange: updateFormState,
       operator: formState.operator || 'addition',
+      isReadOnly,
     }),
-    [formState, onChange]
+    [formState, updateFormState, isReadOnly]
   )
 
   return <WorksheetConfigContext.Provider value={value}>{children}</WorksheetConfigContext.Provider>

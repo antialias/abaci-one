@@ -12,15 +12,21 @@ import { TabNavigation } from './config-sidebar/TabNavigation'
 import { useWorksheetConfig } from './WorksheetConfigContext'
 
 interface ConfigSidebarProps {
-  isSaving: boolean
-  lastSaved: Date | null
+  isSaving?: boolean
+  lastSaved?: Date | null
+  isReadOnly?: boolean
 }
 
-export function ConfigSidebar({ isSaving, lastSaved }: ConfigSidebarProps) {
+export function ConfigSidebar({
+  isSaving = false,
+  lastSaved = null,
+  isReadOnly = false,
+}: ConfigSidebarProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [activeTab, setActiveTab] = useState('operator')
-  const { formState, onChange } = useWorksheetConfig()
+  const { formState, onChange, isReadOnly: contextReadOnly } = useWorksheetConfig()
+  const effectiveReadOnly = isReadOnly || contextReadOnly
 
   return (
     <div
@@ -58,16 +64,20 @@ export function ConfigSidebar({ isSaving, lastSaved }: ConfigSidebarProps) {
         <div
           className={css({
             fontSize: 'xs',
-            color: isSaving
+            color: effectiveReadOnly
               ? isDark
-                ? 'gray.400'
-                : 'gray.500'
-              : isDark
-                ? 'green.400'
-                : 'green.600',
+                ? 'blue.400'
+                : 'blue.600'
+              : isSaving
+                ? isDark
+                  ? 'gray.400'
+                  : 'gray.500'
+                : isDark
+                  ? 'green.400'
+                  : 'green.600',
           })}
         >
-          {isSaving ? 'Saving...' : lastSaved ? '✓ Saved' : ''}
+          {effectiveReadOnly ? '👁️ Read-Only' : isSaving ? 'Saving...' : lastSaved ? '✓ Saved' : ''}
         </div>
       </div>
 
@@ -77,6 +87,7 @@ export function ConfigSidebar({ isSaving, lastSaved }: ConfigSidebarProps) {
           value={formState.name}
           onChange={(name) => onChange({ name })}
           isDark={isDark}
+          readOnly={effectiveReadOnly}
         />
       </div>
 
@@ -99,6 +110,8 @@ export function ConfigSidebar({ isSaving, lastSaved }: ConfigSidebarProps) {
           overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',
+          opacity: effectiveReadOnly ? '0.7' : '1',
+          pointerEvents: effectiveReadOnly ? 'none' : 'auto',
         })}
       >
         {activeTab === 'operator' && <ContentTab />}
