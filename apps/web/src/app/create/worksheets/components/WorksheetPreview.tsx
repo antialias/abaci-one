@@ -115,7 +115,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   // Virtualization decision based on page count, not config source
   // Always virtualize multi-page worksheets for performance
   const shouldVirtualize = totalPages > 1
-  console.log('[VIRTUALIZATION] shouldVirtualize:', shouldVirtualize, 'totalPages:', totalPages)
+  console.log('[VIRTUALIZATION] shouldVirtualize: ' + shouldVirtualize + ', totalPages: ' + totalPages)
 
   // Initialize visible pages - start with first page only
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
@@ -127,7 +127,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
   // Debug: Log visible pages changes
   useEffect(() => {
-    console.log('[VIRTUALIZATION] visiblePages changed:', Array.from(visiblePages).sort())
+    console.log('[VIRTUALIZATION] visiblePages changed: [' + Array.from(visiblePages).sort().join(', ') + ']')
   }, [visiblePages])
 
   // Reset to first page when preview updates
@@ -160,7 +160,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
       return
     }
 
-    console.log('[VIRTUALIZATION] Setting up IntersectionObserver - shouldVirtualize:', shouldVirtualize)
+    console.log('[VIRTUALIZATION] Setting up IntersectionObserver - shouldVirtualize: ' + shouldVirtualize)
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -191,7 +191,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
               if (entry.isIntersecting) {
-                console.log('[VIRTUALIZATION] Page', pageIndex, 'is intersecting - adding to visible set')
+                console.log('[VIRTUALIZATION] Page ' + pageIndex + ' is intersecting - adding to visible set')
                 // Add visible page
                 next.add(pageIndex)
                 // Preload adjacent pages for smooth scrolling
@@ -202,7 +202,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
             // Log if visible pages changed
             if (next.size !== prev.size || ![...next].every(p => prev.has(p))) {
-              console.log('[VIRTUALIZATION] Updating visible pages:', Array.from(prev).sort(), '->', Array.from(next).sort())
+              console.log('[VIRTUALIZATION] Updating visible pages: [' + Array.from(prev).sort().join(', ') + '] -> [' + Array.from(next).sort().join(', ') + ']')
             }
 
             return next
@@ -267,7 +267,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
         {pages.map((page, index) => {
           const isVisible = visiblePages.has(index)
           if (index === 0) {
-            console.log('[VIRTUALIZATION] Rendering pages - total:', totalPages, 'visible:', Array.from(visiblePages).sort())
+            console.log('[VIRTUALIZATION] Rendering pages - total: ' + totalPages + ', visible: [' + Array.from(visiblePages).sort().join(', ') + ']')
           }
 
           return (
