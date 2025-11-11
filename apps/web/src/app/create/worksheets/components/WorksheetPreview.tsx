@@ -131,6 +131,11 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   // Track when refs are fully populated
   const [refsReady, setRefsReady] = useState(false)
 
+  // Debug: Log when currentPage changes
+  useEffect(() => {
+    console.log('[PAGE INDICATOR] currentPage state changed to:', currentPage)
+  }, [currentPage])
+
   // Reset to first page and visible pages when preview updates
   useEffect(() => {
     setCurrentPage(0)
@@ -148,7 +153,9 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   useEffect(() => {
     if (totalPages > 1 && pageRefs.current.length === totalPages) {
       const allPopulated = pageRefs.current.every((ref) => ref !== null)
+      console.log('[PAGE INDICATOR] Refs check - totalPages:', totalPages, 'refs.length:', pageRefs.current.length, 'allPopulated:', allPopulated, 'refsReady:', refsReady)
       if (allPopulated && !refsReady) {
+        console.log('[PAGE INDICATOR] All refs populated! Setting refsReady to true')
         setRefsReady(true)
       }
     }
@@ -156,35 +163,52 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
   // Intersection Observer to track visible pages (only when virtualizing)
   useEffect(() => {
+    console.log('[PAGE INDICATOR] Observer useEffect triggered - shouldVirtualize:', shouldVirtualize, 'totalPages:', totalPages, 'refsReady:', refsReady)
+
     if (!shouldVirtualize) {
+      console.log('[PAGE INDICATOR] Skipping observer setup - not virtualizing')
       return // Skip virtualization when showing all pages
     }
 
     if (totalPages <= 1) {
+      console.log('[PAGE INDICATOR] Skipping observer setup - only', totalPages, 'page(s)')
       return // No need for virtualization with single page
     }
 
     // Wait for refs to be populated
     if (!refsReady) {
+      console.log('[PAGE INDICATOR] Skipping observer setup - refs not ready')
       return
     }
 
+    console.log('[PAGE INDICATOR] Setting up IntersectionObserver for', totalPages, 'pages')
+
     const observer = new IntersectionObserver(
       (entries) => {
+        console.log('[PAGE INDICATOR] Observer callback triggered with', entries.length, 'entries')
+
         // Find the most visible page among all entries
         let mostVisiblePage = 0
         let maxRatio = 0
 
         entries.forEach((entry) => {
+          const pageIndex = Number(entry.target.getAttribute('data-page-index'))
+          console.log('[PAGE INDICATOR] Page', pageIndex, '- ratio:', entry.intersectionRatio, 'intersecting:', entry.isIntersecting)
+
           if (entry.intersectionRatio > maxRatio) {
             maxRatio = entry.intersectionRatio
-            mostVisiblePage = Number(entry.target.getAttribute('data-page-index'))
+            mostVisiblePage = pageIndex
           }
         })
 
+        console.log('[PAGE INDICATOR] Most visible page:', mostVisiblePage, 'with ratio:', maxRatio)
+
         // Update current page if we found a more visible page
         if (maxRatio > 0) {
+          console.log('[PAGE INDICATOR] Setting current page to:', mostVisiblePage)
           setCurrentPage(mostVisiblePage)
+        } else {
+          console.log('[PAGE INDICATOR] No visible page (maxRatio = 0), keeping current page')
         }
 
         // Update visible pages set
