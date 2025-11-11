@@ -278,7 +278,9 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
         {pages.map((page, index) => {
           const isVisible = visiblePages.has(index)
           if (index === 0) {
-            console.log('[VIRTUALIZATION] Rendering pages - total: ' + totalPages + ', visible: [' + Array.from(visiblePages).sort().join(', ') + ']')
+            const renderedPages = pages.map((_, i) => visiblePages.has(i) ? i : null).filter(i => i !== null)
+            const placeholderPages = pages.map((_, i) => !visiblePages.has(i) ? i : null).filter(i => i !== null)
+            console.log('[VIRTUALIZATION] Render cycle - total: ' + totalPages + ' | RENDERING SVG for pages: [' + renderedPages.join(', ') + '] | SHOWING PLACEHOLDER for pages: [' + placeholderPages.join(', ') + ']')
           }
 
           return (
@@ -287,6 +289,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               ref={(el) => (pageRefs.current[index] = el)}
               data-page-index={index}
               data-element="page-container"
+              data-page-rendered={isVisible ? 'svg' : 'placeholder'}
               className={css({
                 display: 'flex',
                 justifyContent: 'center',
