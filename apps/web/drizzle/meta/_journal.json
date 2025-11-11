@@ -148,6 +148,13 @@
       "when": 1762776068979,
       "tag": "0020_supreme_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1762879693900,
+      "tag": "0021_little_sentry",
+      "breakpoints": true
     }
   ]
 }
