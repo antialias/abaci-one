@@ -161,18 +161,13 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     }
   })
 
-  // Intersection Observer to track visible pages (only when virtualizing)
+  // Intersection Observer to track current page (works with or without virtualization)
   useEffect(() => {
     console.log('[PAGE INDICATOR] Observer useEffect triggered - shouldVirtualize:', shouldVirtualize, 'totalPages:', totalPages, 'refsReady:', refsReady)
 
-    if (!shouldVirtualize) {
-      console.log('[PAGE INDICATOR] Skipping observer setup - not virtualizing')
-      return // Skip virtualization when showing all pages
-    }
-
     if (totalPages <= 1) {
       console.log('[PAGE INDICATOR] Skipping observer setup - only', totalPages, 'page(s)')
-      return // No need for virtualization with single page
+      return // No need for page tracking with single page
     }
 
     // Wait for refs to be populated
@@ -211,24 +206,26 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           console.log('[PAGE INDICATOR] No visible page (maxRatio = 0), keeping current page')
         }
 
-        // Update visible pages set
-        setVisiblePages((prev) => {
-          const next = new Set(prev)
+        // Update visible pages set (only when virtualizing)
+        if (shouldVirtualize) {
+          setVisiblePages((prev) => {
+            const next = new Set(prev)
 
-          entries.forEach((entry) => {
-            const pageIndex = Number(entry.target.getAttribute('data-page-index'))
+            entries.forEach((entry) => {
+              const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
-            if (entry.isIntersecting) {
-              // Add visible page
-              next.add(pageIndex)
-              // Preload adjacent pages for smooth scrolling
-              if (pageIndex > 0) next.add(pageIndex - 1)
-              if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
-            }
+              if (entry.isIntersecting) {
+                // Add visible page
+                next.add(pageIndex)
+                // Preload adjacent pages for smooth scrolling
+                if (pageIndex > 0) next.add(pageIndex - 1)
+                if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
+              }
+            })
+
+            return next
           })
-
-          return next
-        })
+        }
       },
       {
         root: null, // Use viewport as root (scrolling happens in parent)
