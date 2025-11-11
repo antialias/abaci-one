@@ -7,7 +7,12 @@ export interface StudentNameInputProps {
   readOnly?: boolean
 }
 
-export function StudentNameInput({ value, onChange, isDark = false, readOnly = false }: StudentNameInputProps) {
+export function StudentNameInput({
+  value,
+  onChange,
+  isDark = false,
+  readOnly = false,
+}: StudentNameInputProps) {
   return (
     <input
       type="text"
@@ -27,12 +32,14 @@ export function StudentNameInput({ value, onChange, isDark = false, readOnly = f
         fontSize: 'sm',
         opacity: readOnly ? '0.7' : '1',
         cursor: readOnly ? 'not-allowed' : 'text',
-        _focus: readOnly ? {} : {
-          outline: 'none',
-          borderColor: 'brand.500',
-          ring: '2px',
-          ringColor: 'brand.200',
-        },
+        _focus: readOnly
+          ? {}
+          : {
+              outline: 'none',
+              borderColor: 'brand.500',
+              ring: '2px',
+              ringColor: 'brand.200',
+            },
         _placeholder: { color: isDark ? 'gray.500' : 'gray.400' },
       })}
     />

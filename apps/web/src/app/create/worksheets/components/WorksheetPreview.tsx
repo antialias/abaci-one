@@ -55,8 +55,6 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
 function PreviewContent({ formState, initialData, isScrolling = false }: WorksheetPreviewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(new Set([0]))
-  const [currentPage, setCurrentPage] = useState(0)
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
 
   // Track if we've used the initial data (so we only use it once)
@@ -114,16 +112,41 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
   const totalPages = pages.length
 
+  // When initialData is provided (e.g., shared worksheets), show all pages immediately
+  // Otherwise use virtualization for performance
+  // Store this as state so it persists after initialData is consumed
+  const [shouldVirtualize] = useState(() => !initialData)
+
+  // Initialize visible pages based on whether we should virtualize
+  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => {
+    if (!shouldVirtualize && initialData) {
+      // Show all pages immediately for pre-rendered content
+      console.log('[WorksheetPreview] Initializing with all pages visible:', initialData.length)
+      return new Set(Array.from({ length: initialData.length }, (_, i) => i))
+    }
+    console.log('[WorksheetPreview] Initializing with virtualization (page 0 only)')
+    return new Set([0])
+  })
+
+  const [currentPage, setCurrentPage] = useState(0)
+
   // Track when refs are fully populated
   const [refsReady, setRefsReady] = useState(false)
 
   // Reset to first page and visible pages when preview updates
   useEffect(() => {
     setCurrentPage(0)
-    setVisiblePages(new Set([0]))
+    if (shouldVirtualize) {
+      console.log('[WorksheetPreview] Resetting to virtualized view (page 0 only)')
+      setVisiblePages(new Set([0]))
+    } else {
+      // Show all pages for non-virtualized view
+      console.log('[WorksheetPreview] Showing all pages:', pages.length)
+      setVisiblePages(new Set(Array.from({ length: pages.length }, (_, i) => i)))
+    }
     pageRefs.current = []
     setRefsReady(false)
-  }, [pages])
+  }, [pages, shouldVirtualize])
 
   // Check if all refs are populated after each render
   useEffect(() => {
@@ -135,8 +158,12 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     }
   })
 
-  // Intersection Observer to track visible pages
+  // Intersection Observer to track visible pages (only when virtualizing)
   useEffect(() => {
+    if (!shouldVirtualize) {
+      return // Skip virtualization when showing all pages
+    }
+
     if (totalPages <= 1) {
       return // No need for virtualization with single page
     }
@@ -188,7 +215,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     return () => {
       observer.disconnect()
     }
-  }, [totalPages, refsReady])
+  }, [totalPages, refsReady, shouldVirtualize])
 
   // Jump to page function for floating indicator
   const jumpToPage = (pageIndex: number) => {

@@ -28,6 +28,11 @@ export default function SharedWorksheetPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  // Debug: Log theme changes
+  useEffect(() => {
+    console.log('[SharedWorksheet] Theme changed:', { resolvedTheme, isDark })
+  }, [resolvedTheme, isDark])
+
   const [shareData, setShareData] = useState<ShareData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +44,7 @@ export default function SharedWorksheetPage() {
   useEffect(() => {
     const fetchShare = async () => {
       try {
+        console.log('[SharedWorksheet] Fetching share data for:', shareId)
         const response = await fetch(`/api/worksheets/share/${shareId}`)
 
         if (!response.ok) {
@@ -51,6 +57,7 @@ export default function SharedWorksheetPage() {
         }
 
         const data = await response.json()
+        console.log('[SharedWorksheet] Received share data, views:', data.views)
         setShareData(data)
 
         // Fetch preview from API
@@ -64,9 +71,11 @@ export default function SharedWorksheetPage() {
           if (previewResponse.ok) {
             const previewData = await previewResponse.json()
             if (previewData.success) {
+              console.log('[SharedWorksheet] Preview generated, page count:', previewData.pages.length)
               setPreview(previewData.pages)
             } else {
               // Preview generation failed - store error details
+              console.error('[SharedWorksheet] Preview generation failed:', previewData)
               setPreviewError({
                 error: previewData.error || 'Failed to generate preview',
                 details: previewData.details,
@@ -250,155 +259,33 @@ export default function SharedWorksheetPage() {
           <div
             data-component="shared-mode-banner"
             className={css({
-              bg: 'blue.600',
+              bg: isDark ? 'blue.700' : 'blue.600',
               color: 'white',
               px: '6',
               py: '3',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '4',
+              gap: '3',
               shadow: 'md',
               flexShrink: 0,
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'blue.600' : 'blue.700',
             })}
           >
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
-              <span className={css({ fontSize: 'xl' })}>🔗</span>
-              <div>
-                <div className={css({ fontWeight: 'bold', fontSize: 'md' })}>
-                  Shared Worksheet (Read-Only)
-                </div>
-                <div className={css({ fontSize: 'sm', opacity: '0.9' })}>
-                  {shareData.title || `Shared by someone • ${shareData.views} views`}
-                </div>
+            <span className={css({ fontSize: 'xl' })}>🔗</span>
+            <div>
+              <div className={css({ fontWeight: 'bold', fontSize: 'md' })}>
+                Shared Worksheet (Read-Only)
               </div>
-            </div>
-
-            <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-              {/* Download Button */}
-              <button
-                data-action="download-worksheet"
-                onClick={async () => {
-                  // Generate and download the worksheet
-                  const response = await fetch('/api/create/worksheets/addition', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      config: {
-                        ...shareData.config,
-                        date: new Date().toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }),
-                      },
-                    }),
-                  })
-                  if (response.ok) {
-                    const blob = await response.blob()
-                    const url = window.URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `worksheet-${shareData.id}.pdf`
-                    document.body.appendChild(a)
-                    a.click()
-                    window.URL.revokeObjectURL(url)
-                    document.body.removeChild(a)
-                  }
-                }}
+              <div
                 className={css({
-                  px: '3',
-                  py: '2',
-                  bg: 'white',
-                  color: 'blue.600',
                   fontSize: 'sm',
-                  fontWeight: 'bold',
-                  rounded: 'lg',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  _hover: {
-                    bg: 'blue.50',
-                    transform: 'translateY(-1px)',
-                    shadow: 'md',
-                  },
+                  opacity: isDark ? '0.85' : '0.9',
+                  color: isDark ? 'blue.100' : 'white',
                 })}
               >
-                <span>⬇️</span>
-              </button>
-
-              {/* Share Button */}
-              <button
-                data-action="reshare-worksheet"
-                onClick={async () => {
-                  // Create a new share link for this config
-                  const response = await fetch('/api/worksheets/share', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      worksheetType: 'addition',
-                      config: shareData.config,
-                    }),
-                  })
-                  if (response.ok) {
-                    const data = await response.json()
-                    await navigator.clipboard.writeText(data.url)
-                    // TODO: Show toast notification
-                    alert('Share link copied to clipboard!')
-                  }
-                }}
-                className={css({
-                  px: '3',
-                  py: '2',
-                  bg: 'white',
-                  color: 'blue.600',
-                  fontSize: 'sm',
-                  fontWeight: 'bold',
-                  rounded: 'lg',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  _hover: {
-                    bg: 'blue.50',
-                    transform: 'translateY(-1px)',
-                    shadow: 'md',
-                  },
-                })}
-              >
-                <span>🔗</span>
-              </button>
-
-              {/* Edit Button */}
-              <button
-                data-action="open-edit-modal"
-                onClick={() => setShowEditModal(true)}
-                className={css({
-                  px: '4',
-                  py: '2',
-                  bg: 'white',
-                  color: 'blue.600',
-                  fontSize: 'sm',
-                  fontWeight: 'bold',
-                  rounded: 'lg',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  _hover: {
-                    bg: 'blue.50',
-                    transform: 'translateY(-1px)',
-                    shadow: 'md',
-                  },
-                })}
-              >
-                <span>✏️</span>
-                <span>Edit</span>
-              </button>
+                {shareData.title || `Shared by someone • ${shareData.views} views`}
+              </div>
             </div>
           </div>
 
@@ -511,9 +398,54 @@ export default function SharedWorksheetPage() {
                 <PreviewCenter
                   formState={shareData.config}
                   initialPreview={preview}
-                  onGenerate={async () => {}} // No-op for read-only
+                  onGenerate={async () => {
+                    // Generate and download the worksheet
+                    const response = await fetch('/api/create/worksheets/addition', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        config: {
+                          ...shareData.config,
+                          date: new Date().toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          }),
+                        },
+                      }),
+                    })
+                    if (response.ok) {
+                      const blob = await response.blob()
+                      const url = window.URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `worksheet-${shareData.id}.pdf`
+                      document.body.appendChild(a)
+                      a.click()
+                      window.URL.revokeObjectURL(url)
+                      document.body.removeChild(a)
+                    }
+                  }}
                   status="idle"
                   isReadOnly={true}
+                  onShare={async () => {
+                    // Create a new share link for this config
+                    const response = await fetch('/api/worksheets/share', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        worksheetType: 'addition',
+                        config: shareData.config,
+                      }),
+                    })
+                    if (response.ok) {
+                      const data = await response.json()
+                      await navigator.clipboard.writeText(data.url)
+                      // TODO: Show toast notification
+                      alert('Share link copied to clipboard!')
+                    }
+                  }}
+                  onEdit={() => setShowEditModal(true)}
                 />
               )}
             </Panel>

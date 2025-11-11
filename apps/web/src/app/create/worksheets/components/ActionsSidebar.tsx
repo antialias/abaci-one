@@ -149,17 +149,19 @@ export function ActionsSidebar({ onGenerate, status }: ActionsSidebarProps) {
                 outline: 'none',
                 transition: 'all 0.2s',
                 opacity: isGeneratingShare ? '0.6' : '1',
-                _hover: isGeneratingShare || justCopied
-                  ? {}
-                  : {
-                      bg: 'blue.700',
-                      transform: 'translateY(-1px)',
-                    },
-                _active: isGeneratingShare || justCopied
-                  ? {}
-                  : {
-                      transform: 'translateY(0)',
-                    },
+                _hover:
+                  isGeneratingShare || justCopied
+                    ? {}
+                    : {
+                        bg: 'blue.700',
+                        transform: 'translateY(-1px)',
+                      },
+                _active:
+                  isGeneratingShare || justCopied
+                    ? {}
+                    : {
+                        transform: 'translateY(0)',
+                      },
               })}
             >
               {isGeneratingShare ? '⏳' : justCopied ? '✓' : '📋'}
