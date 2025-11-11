@@ -8,6 +8,8 @@ import type { SkillId } from '../../skills'
 import { getSkillById, getSkillsByOperator } from '../../skills'
 import { AllSkillsModal } from './AllSkillsModal'
 import { CustomizeMixModal } from './CustomizeMixModal'
+import { SkillConfigurationModal } from './SkillConfigurationModal'
+import type { DisplayRules } from '../../displayRules'
 
 interface MasteryModePanelProps {
   formState: WorksheetFormState
@@ -27,6 +29,8 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
   const [isLoadingMastery, setIsLoadingMastery] = useState(true)
   const [isAllSkillsModalOpen, setIsAllSkillsModalOpen] = useState(false)
   const [isCustomizeMixModalOpen, setIsCustomizeMixModalOpen] = useState(false)
+  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   // Get current operator (default to addition)
   const operator = formState.operator ?? 'addition'
@@ -213,6 +217,85 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
       const revertedStates = new Map(masteryStates)
       revertedStates.set(currentSkill.id, currentMastery)
       setMasteryStates(revertedStates)
+    }
+  }
+
+  // Handler: Save skill customization
+  const handleSaveCustomization = async (config: {
+    name: string
+    description?: string
+    digitRange: { min: number; max: number }
+    regroupingConfig: { pAnyStart: number; pAllStart: number }
+    displayRules: DisplayRules
+  }) => {
+    if (!currentSkill) return
+
+    try {
+      const response = await fetch(`/api/worksheets/skills/${currentSkill.id}/customize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator,
+          digitRange: config.digitRange,
+          regroupingConfig: config.regroupingConfig,
+          displayRules: config.displayRules,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save skill customization')
+      }
+
+      // Apply the new configuration to the form state
+      onChange({
+        digitRange: config.digitRange,
+        pAnyStart: config.regroupingConfig.pAnyStart,
+        pAllStart: config.regroupingConfig.pAllStart,
+        displayRules: config.displayRules,
+      } as Partial<WorksheetFormState>)
+
+      console.log('Skill customization saved successfully')
+    } catch (error) {
+      console.error('Failed to save skill customization:', error)
+      alert('Failed to save skill customization. Please try again.')
+    }
+  }
+
+  // Handler: Create custom skill
+  const handleCreateCustomSkill = async (config: {
+    name: string
+    description?: string
+    digitRange: { min: number; max: number }
+    regroupingConfig: { pAnyStart: number; pAllStart: number }
+    displayRules: DisplayRules
+  }) => {
+    try {
+      const response = await fetch('/api/worksheets/skills/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: config.name,
+          description: config.description,
+          operator,
+          digitRange: config.digitRange,
+          regroupingConfig: config.regroupingConfig,
+          displayRules: config.displayRules,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create custom skill')
+      }
+
+      const data = await response.json()
+      console.log('Custom skill created successfully:', data.skill)
+
+      // TODO: Reload skills list to include new custom skill
+      // For now, just notify the user
+      alert(`Custom skill "${config.name}" created successfully!`)
+    } catch (error) {
+      console.error('Failed to create custom skill:', error)
+      alert('Failed to create custom skill. Please try again.')
     }
   }
 
@@ -920,14 +1003,65 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
             marginTop: '1rem',
             display: 'flex',
             gap: '0.75rem',
+            flexWrap: 'wrap',
           })}
         >
+          <button
+            type="button"
+            data-action="configure-skill"
+            onClick={() => setIsConfigureModalOpen(true)}
+            className={css({
+              flex: '1 1 auto',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'blue.600' : 'blue.500',
+              backgroundColor: isDark ? 'blue.700' : 'blue.50',
+              color: isDark ? 'blue.200' : 'blue.700',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                borderColor: isDark ? 'blue.500' : 'blue.600',
+                backgroundColor: isDark ? 'blue.600' : 'blue.100',
+              },
+            })}
+          >
+            ⚙️ Configure Skill
+          </button>
+
+          <button
+            type="button"
+            data-action="create-custom-skill"
+            onClick={() => setIsCreateModalOpen(true)}
+            className={css({
+              flex: '1 1 auto',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'green.600' : 'green.500',
+              backgroundColor: isDark ? 'green.700' : 'green.50',
+              color: isDark ? 'green.200' : 'green.700',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                borderColor: isDark ? 'green.500' : 'green.600',
+                backgroundColor: isDark ? 'green.600' : 'green.100',
+              },
+            })}
+          >
+            ✨ Create Custom Skill
+          </button>
+
           <button
             type="button"
             data-action="view-all-skills"
             onClick={() => setIsAllSkillsModalOpen(true)}
             className={css({
-              flex: 1,
+              flex: '1 1 auto',
               padding: '0.75rem 1rem',
               borderRadius: '6px',
               border: '1px solid',
@@ -1058,6 +1192,38 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
           } as Partial<WorksheetFormState>)
         }}
         isDark={isDark}
+      />
+
+      {/* Configure Skill Modal */}
+      <SkillConfigurationModal
+        open={isConfigureModalOpen}
+        onClose={() => setIsConfigureModalOpen(false)}
+        mode="edit"
+        operator={operator === 'mixed' ? 'addition' : operator}
+        existingConfig={{
+          name: currentSkill.name,
+          description: currentSkill.description,
+          digitRange: currentSkill.digitRange,
+          regroupingConfig: currentSkill.regroupingConfig,
+          displayRules: currentSkill.recommendedScaffolding,
+        }}
+        onSave={handleSaveCustomization}
+        masteryProgressionSkills={availableSkills.map((skill) => ({
+          id: skill.id,
+          label: skill.name.split(' ').slice(0, 2).join(' '), // Shorten labels
+          pAnyStart: skill.regroupingConfig.pAnyStart,
+          pAllStart: skill.regroupingConfig.pAllStart,
+          displayRules: skill.recommendedScaffolding,
+        }))}
+      />
+
+      {/* Create Custom Skill Modal */}
+      <SkillConfigurationModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        mode="create"
+        operator={operator === 'mixed' ? 'addition' : operator}
+        onSave={handleCreateCustomSkill}
       />
     </div>
   )

@@ -171,6 +171,23 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
     const observer = new IntersectionObserver(
       (entries) => {
+        // Find the most visible page among all entries
+        let mostVisiblePage = currentPage
+        let maxRatio = 0
+
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio > maxRatio) {
+            maxRatio = entry.intersectionRatio
+            mostVisiblePage = Number(entry.target.getAttribute('data-page-index'))
+          }
+        })
+
+        // Update current page if we found a more visible page
+        if (maxRatio > 0) {
+          setCurrentPage(mostVisiblePage)
+        }
+
+        // Update visible pages set
         setVisiblePages((prev) => {
           const next = new Set(prev)
 
@@ -183,11 +200,6 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               // Preload adjacent pages for smooth scrolling
               if (pageIndex > 0) next.add(pageIndex - 1)
               if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
-
-              // Update current page indicator based on most visible page
-              if (entry.intersectionRatio > 0.5) {
-                setCurrentPage(pageIndex)
-              }
             }
           })
 
