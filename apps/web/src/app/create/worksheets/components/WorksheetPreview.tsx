@@ -185,8 +185,9 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
         // Update visible pages set (only when virtualizing)
         if (shouldVirtualize) {
           setVisiblePages((prev) => {
-            const next = new Set(prev)
+            const next = new Set<number>()
 
+            // Only keep pages that are currently intersecting
             entries.forEach((entry) => {
               const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
@@ -197,6 +198,16 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
                 // Preload adjacent pages for smooth scrolling
                 if (pageIndex > 0) next.add(pageIndex - 1)
                 if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
+              } else {
+                console.log('[VIRTUALIZATION] Page ' + pageIndex + ' is NOT intersecting - checking if should remove')
+              }
+            })
+
+            // Keep any pages from prev that weren't in entries (not observed in this callback)
+            prev.forEach((pageIndex) => {
+              const wasObserved = entries.some((entry) => Number(entry.target.getAttribute('data-page-index')) === pageIndex)
+              if (!wasObserved) {
+                next.add(pageIndex)
               }
             })
 
