@@ -19,6 +19,14 @@ export interface PreviewResult {
   details?: string
 }
 
+export interface SinglePageResult {
+  success: boolean
+  page?: string
+  totalPages?: number
+  error?: string
+  details?: string
+}
+
 /**
  * Generate worksheet preview SVG pages
  * Can be called from API routes or Server Components
@@ -159,6 +167,147 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
     return {
       success: false,
       error: 'Failed to generate preview',
+      details: errorMessage,
+    }
+  }
+}
+
+/**
+ * Generate a single worksheet page SVG
+ * Much faster than generating all pages when you only need one
+ */
+export function generateSinglePage(config: WorksheetFormState, pageNumber: number): SinglePageResult {
+  try {
+    // First, validate and get total page count
+    const validation = validateWorksheetConfig(config)
+    if (!validation.isValid || !validation.config) {
+      return {
+        success: false,
+        error: 'Invalid configuration',
+        details: validation.errors?.join(', '),
+      }
+    }
+
+    const validatedConfig = validation.config
+    const totalPages = validatedConfig.pages
+
+    // Check if requested page is valid
+    if (pageNumber < 0 || pageNumber >= totalPages) {
+      return {
+        success: false,
+        error: `Invalid page number ${pageNumber}. Total pages: ${totalPages}`,
+      }
+    }
+
+    // Generate all problems (need full set to know which problems go on which page)
+    // This is unavoidable because problems are distributed across pages
+    const operator = validatedConfig.operator ?? 'addition'
+    const mode = config.mode ?? 'smart'
+
+    let problems
+
+    // Same problem generation logic as generateWorksheetPreview
+    if (mode === 'mastery' && operator === 'mixed') {
+      const addSkillId = config.currentAdditionSkillId
+      const subSkillId = config.currentSubtractionSkillId
+
+      if (!addSkillId || !subSkillId) {
+        return {
+          success: false,
+          error: 'Mixed mastery mode requires both addition and subtraction skill IDs',
+        }
+      }
+
+      const addSkill = getSkillById(addSkillId as any)
+      const subSkill = getSkillById(subSkillId as any)
+
+      if (!addSkill || !subSkill) {
+        return {
+          success: false,
+          error: 'Invalid skill IDs',
+        }
+      }
+
+      problems = generateMasteryMixedProblems(
+        validatedConfig.total,
+        {
+          digitRange: addSkill.digitRange,
+          pAnyStart: addSkill.regroupingConfig.pAnyStart,
+          pAllStart: addSkill.regroupingConfig.pAllStart,
+        },
+        {
+          digitRange: subSkill.digitRange,
+          pAnyStart: subSkill.regroupingConfig.pAnyStart,
+          pAllStart: subSkill.regroupingConfig.pAllStart,
+        },
+        validatedConfig.seed
+      )
+    } else if (operator === 'mixed') {
+      problems = generateMixedProblems(
+        validatedConfig.total,
+        validatedConfig.digitRange,
+        validatedConfig.pAnyStart,
+        validatedConfig.pAllStart,
+        validatedConfig.seed
+      )
+    } else if (operator === 'subtraction') {
+      problems = generateSubtractionProblems(
+        validatedConfig.total,
+        validatedConfig.digitRange,
+        validatedConfig.pAnyStart,
+        validatedConfig.pAllStart,
+        validatedConfig.seed
+      )
+    } else {
+      problems = generateProblems(
+        validatedConfig.total,
+        validatedConfig.digitRange,
+        validatedConfig.pAnyStart,
+        validatedConfig.pAllStart,
+        validatedConfig.seed
+      )
+    }
+
+    // Generate Typst source for ALL pages (lightweight operation)
+    const typstSources = generateTypstSource(problems, validatedConfig)
+
+    // Only compile the requested page
+    const typstSource = typstSources[pageNumber]
+
+    try {
+      const svgOutput = execSync('typst compile --format svg - -', {
+        input: typstSource,
+        encoding: 'utf8',
+        maxBuffer: 10 * 1024 * 1024,
+      })
+
+      return {
+        success: true,
+        page: svgOutput,
+        totalPages,
+      }
+    } catch (error) {
+      console.error(`Typst compilation error (page ${pageNumber}):`, error)
+
+      const stderr =
+        error instanceof Error && 'stderr' in error
+          ? String((error as any).stderr)
+          : 'Unknown compilation error'
+
+      return {
+        success: false,
+        error: `Failed to compile page ${pageNumber}`,
+        details: stderr,
+      }
+    }
+  } catch (error) {
+    console.error('Error generating single page:', error)
+
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    return {
+      success: false,
+      error: 'Failed to generate page',
       details: errorMessage,
     }
   }
