@@ -115,7 +115,11 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   // When initialData is provided (e.g., shared worksheets), show all pages immediately
   // Otherwise use virtualization for performance
   // Store this as state so it persists after initialData is consumed
-  const [shouldVirtualize] = useState(() => !initialData)
+  const [shouldVirtualize] = useState(() => {
+    const shouldVirt = !initialData
+    console.log('[PAGE INDICATOR] Determining shouldVirtualize - initialData:', initialData ? 'provided' : 'none', '-> shouldVirtualize:', shouldVirt)
+    return shouldVirt
+  })
 
   // Initialize visible pages based on whether we should virtualize
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => {
