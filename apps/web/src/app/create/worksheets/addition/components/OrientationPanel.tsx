@@ -325,23 +325,43 @@ export function OrientationPanel({
                           key={count}
                           data-action={`select-problems-${count}`}
                           onSelect={() => handleProblemsPerPageChange(count)}
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3',
-                            px: '3',
-                            py: '2',
-                            rounded: 'md',
-                            cursor: 'pointer',
-                            outline: 'none',
-                            bg: isSelected ? 'brand.50' : 'transparent',
-                            _hover: {
-                              bg: 'brand.50',
-                            },
-                            _focus: {
-                              bg: 'brand.100',
-                            },
-                          })}
+                          className={
+                            isDark
+                              ? css({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3',
+                                  px: '3',
+                                  py: '2',
+                                  rounded: 'md',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  bg: isSelected ? 'gray.700' : 'transparent',
+                                  _hover: {
+                                    bg: 'gray.700',
+                                  },
+                                  _focus: {
+                                    bg: 'gray.600',
+                                  },
+                                })
+                              : css({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3',
+                                  px: '3',
+                                  py: '2',
+                                  rounded: 'md',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  bg: isSelected ? 'brand.50' : 'transparent',
+                                  _hover: {
+                                    bg: 'brand.50',
+                                  },
+                                  _focus: {
+                                    bg: 'brand.100',
+                                  },
+                                })
+                          }
                         >
                           {/* Grid visualization */}
                           <div
