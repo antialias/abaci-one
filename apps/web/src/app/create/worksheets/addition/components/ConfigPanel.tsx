@@ -3,14 +3,13 @@
 import { stack } from '../../../../../../styled-system/patterns'
 import type { WorksheetFormState } from '../types'
 import { defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
-import { ModeSelector } from './ModeSelector'
+import { DifficultyMethodSelector } from './DifficultyMethodSelector'
 import { StudentNameInput } from './config-panel/StudentNameInput'
-import { DigitRangeSection } from './config-panel/DigitRangeSection'
 import { OperatorSection } from './config-panel/OperatorSection'
 import { ProgressiveDifficultyToggle } from './config-panel/ProgressiveDifficultyToggle'
 import { SmartModeControls } from './config-panel/SmartModeControls'
-import { ManualModeControls } from './config-panel/ManualModeControls'
 import { MasteryModePanel } from './config-panel/MasteryModePanel'
+import { DisplayControlsPanel } from './DisplayControlsPanel'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -19,61 +18,32 @@ interface ConfigPanelProps {
 }
 
 export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanelProps) {
-  // Handler for mode switching
-  const handleModeChange = (newMode: 'smart' | 'manual' | 'mastery') => {
-    if (formState.mode === newMode) {
+  // Handler for difficulty method switching (smart vs mastery)
+  const handleMethodChange = (newMethod: 'smart' | 'mastery') => {
+    const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
+    if (currentMethod === newMethod) {
       return // No change needed
     }
 
-    if (newMode === 'smart') {
-      // Switching to Smart mode
-      // Use current displayRules if available, otherwise default to earlyLearner
-      const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
+    // Preserve displayRules when switching
+    const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
+
+    if (newMethod === 'smart') {
       onChange({
         mode: 'smart',
         displayRules,
         difficultyProfile: 'earlyLearner',
       } as unknown as Partial<WorksheetFormState>)
-    } else if (newMode === 'manual') {
-      // Switching to Manual mode
-      // Convert current displayRules to boolean flags if available
-      let booleanFlags = {
-        showCarryBoxes: true,
-        showAnswerBoxes: true,
-        showPlaceValueColors: true,
-        showTenFrames: false,
-        showProblemNumbers: true,
-        showCellBorder: true,
-        showTenFramesForAll: false,
-      }
-
-      if (formState.displayRules) {
-        // Convert 'always' to true, everything else to false
-        booleanFlags = {
-          showCarryBoxes: formState.displayRules.carryBoxes === 'always',
-          showAnswerBoxes: formState.displayRules.answerBoxes === 'always',
-          showPlaceValueColors: formState.displayRules.placeValueColors === 'always',
-          showTenFrames: formState.displayRules.tenFrames === 'always',
-          showProblemNumbers: formState.displayRules.problemNumbers === 'always',
-          showCellBorder: formState.displayRules.cellBorders === 'always',
-          showTenFramesForAll: false,
-        }
-      }
-
-      onChange({
-        mode: 'manual',
-        ...booleanFlags,
-      } as unknown as Partial<WorksheetFormState>)
     } else {
-      // Switching to Mastery mode
-      // Mastery mode uses Smart mode under the hood with skill-based configuration
-      const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
       onChange({
         mode: 'mastery',
         displayRules,
       } as unknown as Partial<WorksheetFormState>)
     }
   }
+
+  // Determine current method for selector
+  const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
 
   return (
     <div data-component="config-panel" className={stack({ gap: '3' })}>
@@ -84,13 +54,6 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         isDark={isDark}
       />
 
-      {/* Digit Range Selector */}
-      <DigitRangeSection
-        digitRange={formState.digitRange}
-        onChange={(digitRange) => onChange({ digitRange })}
-        isDark={isDark}
-      />
-
       {/* Operator Selector */}
       <OperatorSection
         operator={formState.operator}
@@ -98,33 +61,29 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         isDark={isDark}
       />
 
-      {/* Progressive Difficulty Toggle - Available for all modes */}
+      {/* Progressive Difficulty Toggle */}
       <ProgressiveDifficultyToggle
         interpolate={formState.interpolate}
         onChange={(interpolate) => onChange({ interpolate })}
         isDark={isDark}
       />
 
-      {/* Mode Selector Tabs with description */}
-      <ModeSelector
-        currentMode={formState.mode ?? 'smart'}
-        onChange={handleModeChange}
+      {/* Display Controls - Always visible for manual adjustment */}
+      <DisplayControlsPanel formState={formState} onChange={onChange} isDark={isDark} />
+
+      {/* Difficulty Method Selector (Smart vs Mastery) */}
+      <DifficultyMethodSelector
+        currentMethod={currentMethod}
+        onChange={handleMethodChange}
         isDark={isDark}
       />
 
-      {/* Mode-specific controls - no wrapper, let controls style themselves */}
-      {/* Smart Mode Controls */}
-      {(!formState.mode || formState.mode === 'smart') && (
+      {/* Method-specific preset controls */}
+      {currentMethod === 'smart' && (
         <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
       )}
 
-      {/* Manual Mode Controls */}
-      {formState.mode === 'manual' && (
-        <ManualModeControls formState={formState} onChange={onChange} isDark={isDark} />
-      )}
-
-      {/* Mastery Mode Controls */}
-      {formState.mode === 'mastery' && (
+      {currentMethod === 'mastery' && (
         <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />
       )}
     </div>
