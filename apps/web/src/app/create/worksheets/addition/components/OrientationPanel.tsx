@@ -334,12 +334,12 @@ export function OrientationPanel({
                             rounded: 'md',
                             cursor: 'pointer',
                             outline: 'none',
-                            bg: isSelected ? 'brand.50' : 'transparent',
+                            bg: isSelected ? (isDark ? 'brand.900' : 'brand.50') : 'transparent',
                             _hover: {
-                              bg: 'brand.50',
+                              bg: isDark ? 'brand.900' : 'brand.50',
                             },
                             _focus: {
-                              bg: 'brand.100',
+                              bg: isDark ? 'brand.800' : 'brand.100',
                             },
                           })}
                         >
@@ -364,7 +364,7 @@ export function OrientationPanel({
                                 className={css({
                                   w: '1.5',
                                   h: '1.5',
-                                  bg: isSelected ? 'brand.500' : 'gray.400',
+                                  bg: isSelected ? 'brand.500' : (isDark ? 'gray.500' : 'gray.400'),
                                   rounded: 'full',
                                 })}
                               />
