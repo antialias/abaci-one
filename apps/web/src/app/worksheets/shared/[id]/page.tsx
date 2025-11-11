@@ -3,7 +3,7 @@
 import { css } from '@styled/css'
 import { stack } from '@styled/patterns'
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ConfigSidebar } from '@/app/create/worksheets/components/ConfigSidebar'
 import { PreviewCenter } from '@/app/create/worksheets/components/PreviewCenter'
@@ -40,11 +40,22 @@ export default function SharedWorksheetPage() {
   const [preview, setPreview] = useState<string[] | undefined>(undefined)
   const [showEditModal, setShowEditModal] = useState(false)
 
+  // Track if we've already fetched to prevent duplicate API calls in StrictMode
+  const hasFetchedRef = useRef(false)
+
   // Fetch shared worksheet data
   useEffect(() => {
+    // Prevent duplicate fetches in React StrictMode
+    if (hasFetchedRef.current) {
+      console.log('[SharedWorksheet] Skipping duplicate fetch (already fetched)')
+      return
+    }
+
     const fetchShare = async () => {
       try {
         console.log('[SharedWorksheet] Fetching share data for:', shareId)
+        hasFetchedRef.current = true
+
         const response = await fetch(`/api/worksheets/share/${shareId}`)
 
         if (!response.ok) {
