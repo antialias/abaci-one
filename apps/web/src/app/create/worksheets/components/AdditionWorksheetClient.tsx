@@ -137,7 +137,7 @@ export function AdditionWorksheetClient({
             <Panel defaultSize={75} minSize={60}>
               <PreviewCenter
                 formState={debouncedFormState}
-                initialPreview={isFromShare ? initialPreview : undefined}
+                initialPreview={initialPreview}
                 onGenerate={handleGenerate}
                 status={status}
               />

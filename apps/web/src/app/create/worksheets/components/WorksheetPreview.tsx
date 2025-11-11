@@ -112,23 +112,13 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
 
   const totalPages = pages.length
 
-  // When initialData is provided (e.g., shared worksheets), show all pages immediately
-  // Otherwise use virtualization for performance
-  // Store this as state so it persists after initialData is consumed
-  const [shouldVirtualize] = useState(() => {
-    const shouldVirt = !initialData
-    console.log('[PAGE INDICATOR] Determining shouldVirtualize - initialData:', initialData ? 'provided' : 'none', '-> shouldVirtualize:', shouldVirt)
-    return shouldVirt
-  })
+  // Virtualization decision based on page count, not config source
+  // Always virtualize multi-page worksheets for performance
+  const shouldVirtualize = totalPages > 1
+  console.log('[PAGE INDICATOR] Determining shouldVirtualize - totalPages:', totalPages, '-> shouldVirtualize:', shouldVirtualize)
 
-  // Initialize visible pages based on whether we should virtualize
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => {
-    if (!shouldVirtualize && initialData) {
-      // Show all pages immediately for pre-rendered content
-      return new Set(Array.from({ length: initialData.length }, (_, i) => i))
-    }
-    return new Set([0])
-  })
+  // Initialize visible pages - start with first page only
+  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
 
   const [currentPage, setCurrentPage] = useState(0)
 
@@ -140,18 +130,13 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     console.log('[PAGE INDICATOR] currentPage state changed to:', currentPage)
   }, [currentPage])
 
-  // Reset to first page and visible pages when preview updates
+  // Reset to first page when preview updates
   useEffect(() => {
     setCurrentPage(0)
-    if (shouldVirtualize) {
-      setVisiblePages(new Set([0]))
-    } else {
-      // Show all pages for non-virtualized view
-      setVisiblePages(new Set(Array.from({ length: pages.length }, (_, i) => i)))
-    }
+    setVisiblePages(new Set([0]))
     pageRefs.current = []
     setRefsReady(false)
-  }, [pages, shouldVirtualize])
+  }, [pages])
 
   // Check if all refs are populated after each render
   useEffect(() => {
