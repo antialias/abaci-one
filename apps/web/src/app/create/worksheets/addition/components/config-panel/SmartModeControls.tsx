@@ -25,6 +25,8 @@ import {
 } from '../../difficultyProfiles'
 import type { DisplayRules } from '../../displayRules'
 import { getScaffoldingSummary } from './utils'
+import { RegroupingFrequencyPanel } from './RegroupingFrequencyPanel'
+import { DigitRangeSection } from './DigitRangeSection'
 
 export interface SmartModeControlsProps {
   formState: WorksheetFormState
@@ -74,22 +76,21 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
   }
 
   return (
-    <div
-      data-section="difficulty"
-      className={css({
-        bg: 'gray.50',
-        border: '1px solid',
-        borderColor: 'gray.200',
-        rounded: 'xl',
-        p: '3',
-      })}
-    >
-      <div className={stack({ gap: '2.5' })}>
+    <div data-section="smart-mode" className={stack({ gap: '3' })}>
+      {/* Digit Range */}
+      <DigitRangeSection
+        digitRange={formState.digitRange}
+        onChange={(digitRange) => onChange({ digitRange })}
+        isDark={isDark}
+      />
+
+      {/* Difficulty Level */}
+      <div data-section="difficulty" className={stack({ gap: '2.5' })}>
         <div
           className={css({
             fontSize: 'xs',
             fontWeight: 'semibold',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
             textTransform: 'uppercase',
             letterSpacing: 'wider',
           })}
@@ -1478,6 +1479,9 @@ export function SmartModeControls({ formState, onChange, isDark = false }: Smart
           )
         })()}
       </div>
+
+      {/* Regrouping Frequency */}
+      <RegroupingFrequencyPanel formState={formState} onChange={onChange} isDark={isDark} />
     </div>
   )
 }
