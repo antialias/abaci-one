@@ -4,12 +4,14 @@ import { css } from '@styled/css'
 import { stack } from '@styled/patterns'
 import QRCode from 'qrcode'
 import { useEffect, useRef, useState } from 'react'
+import type { WorksheetFormState } from '../types'
+import { extractConfigFields } from '../utils/extractConfigFields'
 
 interface ShareModalProps {
   isOpen: boolean
   onClose: () => void
   worksheetType: string
-  config: unknown
+  config: WorksheetFormState
   isDark?: boolean
 }
 
@@ -41,7 +43,7 @@ export function ShareModal({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             worksheetType,
-            config,
+            config: extractConfigFields(config),
           }),
         })
 

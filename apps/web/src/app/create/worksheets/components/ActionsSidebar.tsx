@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { UploadWorksheetModal } from '@/components/worksheets/UploadWorksheetModal'
 import { useTheme } from '@/contexts/ThemeContext'
+import { extractConfigFields } from '../utils/extractConfigFields'
 import { GenerateButton } from './GenerateButton'
 import { ShareModal } from './ShareModal'
 import { useWorksheetConfig } from './WorksheetConfigContext'
@@ -41,7 +42,7 @@ export function ActionsSidebar({ onGenerate, status }: ActionsSidebarProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           worksheetType: 'addition',
-          config: formState,
+          config: extractConfigFields(formState),
         }),
       })
 

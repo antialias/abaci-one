@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { extractConfigFields } from '../utils/extractConfigFields'
 
 interface UseWorksheetAutoSaveReturn {
   isSaving: boolean
@@ -44,65 +45,15 @@ export function useWorksheetAutoSave(
       console.log('[useWorksheetAutoSave] Attempting to save settings...')
       setIsSaving(true)
       try {
-        // Extract only the fields we want to persist (exclude date, seed, derived state)
-        const {
-          problemsPerPage,
-          cols,
-          pages,
-          orientation,
-          name,
-          digitRange,
-          operator,
-          pAnyStart,
-          pAllStart,
-          interpolate,
-          showCarryBoxes,
-          showAnswerBoxes,
-          showPlaceValueColors,
-          showProblemNumbers,
-          showCellBorder,
-          showTenFrames,
-          showTenFramesForAll,
-          showBorrowNotation,
-          showBorrowingHints,
-          fontSize,
-          mode,
-          difficultyProfile,
-          displayRules,
-          manualPreset,
-        } = formState
+        // Extract persisted config fields (excludes date, seed, derived state)
+        const config = extractConfigFields(formState)
 
         const response = await fetch('/api/worksheets/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: worksheetType,
-            config: {
-              problemsPerPage,
-              cols,
-              pages,
-              orientation,
-              name,
-              digitRange,
-              operator,
-              pAnyStart,
-              pAllStart,
-              interpolate,
-              showCarryBoxes,
-              showAnswerBoxes,
-              showPlaceValueColors,
-              showProblemNumbers,
-              showCellBorder,
-              showTenFrames,
-              showTenFramesForAll,
-              showBorrowNotation,
-              showBorrowingHints,
-              fontSize,
-              mode,
-              difficultyProfile,
-              displayRules,
-              manualPreset,
-            },
+            config,
           }),
         })
 

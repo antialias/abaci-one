@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { isValidShareId } from '@/lib/generateShareId'
+import { parseAdditionConfig } from '@/app/create/worksheets/config-schemas'
 
 /**
  * GET /api/worksheets/share/[id]
@@ -46,8 +47,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
       .where(eq(worksheetShares.id, id))
 
-    // Parse config JSON
-    const config = JSON.parse(share.config)
+    // Parse and validate config (auto-migrates to latest version)
+    // This ensures shared configs are validated just like user session configs
+    const config = parseAdditionConfig(share.config)
 
     return NextResponse.json({
       id: share.id,

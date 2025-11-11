@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { UploadWorksheetModal } from '@/components/worksheets/UploadWorksheetModal'
 import { useTheme } from '@/contexts/ThemeContext'
+import { extractConfigFields } from '../utils/extractConfigFields'
 import { ShareModal } from './ShareModal'
 import { WorksheetPreview } from './WorksheetPreview'
 
@@ -80,7 +81,7 @@ export function PreviewCenter({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           worksheetType: 'addition',
-          config: formState,
+          config: extractConfigFields(formState),
         }),
       })
 
