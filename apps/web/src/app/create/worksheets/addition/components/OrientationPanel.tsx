@@ -396,7 +396,13 @@ export function OrientationPanel({
                               className={css({
                                 fontSize: 'sm',
                                 fontWeight: 'semibold',
-                                color: isSelected ? 'brand.700' : isDark ? 'gray.200' : 'gray.700',
+                                color: isSelected
+                                  ? isDark
+                                    ? 'brand.200'
+                                    : 'brand.700'
+                                  : isDark
+                                    ? 'gray.200'
+                                    : 'gray.700',
                               })}
                             >
                               {count} problems
@@ -404,7 +410,13 @@ export function OrientationPanel({
                             <div
                               className={css({
                                 fontSize: 'xs',
-                                color: isSelected ? 'brand.600' : isDark ? 'gray.400' : 'gray.500',
+                                color: isSelected
+                                  ? isDark
+                                    ? 'brand.300'
+                                    : 'brand.600'
+                                  : isDark
+                                    ? 'gray.400'
+                                    : 'gray.500',
                               })}
                             >
                               {itemCols} cols × {rows} rows
