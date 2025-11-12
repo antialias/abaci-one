@@ -389,13 +389,14 @@ export function OrientationPanel({
               className={css({
                 display: 'flex',
                 gap: '1',
+                flexWrap: 'wrap',
                 '@media (max-width: 444px)': {
                   width: '100%',
                   gap: '0.5',
                 },
               })}
             >
-              {[1, 2, 3, 4].map((pageCount) => {
+              {[1, 2, 3, 4, 10, 25, 50, 100].map((pageCount) => {
                 const isSelected = pages === pageCount
                 return (
                   <button
@@ -404,8 +405,9 @@ export function OrientationPanel({
                     data-action={`select-pages-${pageCount}`}
                     onClick={() => onPagesChange(pageCount)}
                     className={css({
-                      w: '8',
+                      minW: '8',
                       h: '8',
+                      px: '2',
                       border: '2px solid',
                       borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
                       bg: isSelected
@@ -435,12 +437,12 @@ export function OrientationPanel({
                         borderColor: 'brand.400',
                       },
                       '@media (max-width: 444px)': {
-                        w: '6',
+                        minW: '6',
                         h: '6',
                         fontSize: '2xs',
                       },
                       '@media (max-width: 300px)': {
-                        w: '5',
+                        minW: '5',
                         h: '5',
                         fontSize: '2xs',
                         borderWidth: '1px',

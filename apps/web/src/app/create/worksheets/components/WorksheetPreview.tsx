@@ -23,7 +23,25 @@ function getDefaultDate(): string {
   })
 }
 
-async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<string[]> {
+interface PageRange {
+  startPage?: number
+  endPage?: number
+  cursor?: number
+  limit?: number
+}
+
+interface PreviewResponse {
+  pages: string[]
+  totalPages: number
+  startPage: number
+  endPage: number
+  nextCursor: number | null
+}
+
+async function fetchWorksheetPreview(
+  formState: WorksheetFormState,
+  range?: PageRange
+): Promise<PreviewResponse> {
   // Set current date for preview
   const configWithDate = {
     ...formState,
@@ -32,7 +50,25 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
 
   // Use absolute URL for SSR compatibility
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-  const url = `${baseUrl}/api/create/worksheets/preview`
+
+  // Build query string for pagination
+  const params = new URLSearchParams()
+  if (range?.cursor !== undefined) {
+    params.set('cursor', String(range.cursor))
+    if (range.limit !== undefined) {
+      params.set('limit', String(range.limit))
+    }
+  } else if (range?.startPage !== undefined || range?.endPage !== undefined) {
+    if (range.startPage !== undefined) {
+      params.set('startPage', String(range.startPage))
+    }
+    if (range.endPage !== undefined) {
+      params.set('endPage', String(range.endPage))
+    }
+  }
+
+  const queryString = params.toString()
+  const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ''}`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -49,7 +85,7 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   }
 
   const data = await response.json()
-  return data.pages
+  return data
 }
 
 function PreviewContent({ formState, initialData, isScrolling = false }: WorksheetPreviewProps) {
@@ -57,93 +93,179 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   const isDark = resolvedTheme === 'dark'
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  // Track if we've used the initial data (so we only use it once)
-  const initialDataUsed = useRef(false)
+  // Common query key for all page-related queries
+  const baseQueryKey = [
+    'worksheet-preview',
+    // PRIMARY state
+    formState.problemsPerPage,
+    formState.cols,
+    formState.pages,
+    formState.orientation,
+    // V4: Problem size (CRITICAL - affects column layout and problem generation)
+    formState.digitRange?.min,
+    formState.digitRange?.max,
+    // V4: Operator selection (addition, subtraction, or mixed)
+    formState.operator,
+    // V4: Mode and conditional display settings
+    formState.mode,
+    formState.displayRules, // Smart mode: conditional scaffolding
+    formState.difficultyProfile, // Smart mode: difficulty preset
+    formState.manualPreset, // Manual mode: manual preset
+    // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
+    formState.currentAdditionSkillId,
+    formState.currentSubtractionSkillId,
+    formState.currentStepId,
+    // Other settings that affect appearance
+    formState.name,
+    formState.pAnyStart,
+    formState.pAllStart,
+    formState.interpolate,
+    formState.seed, // Include seed to bust cache when problem set regenerates
+  ] as const
 
-  // Only use initialData on the very first query, not on subsequent fetches
-  const queryInitialData = !initialDataUsed.current && initialData ? initialData : undefined
-
-  if (queryInitialData) {
-    initialDataUsed.current = true
-  }
-
-  // Use Suspense Query - will suspend during loading
-  const { data: pages } = useSuspenseQuery({
-    queryKey: [
-      'worksheet-preview',
-      // PRIMARY state
-      formState.problemsPerPage,
-      formState.cols,
-      formState.pages,
-      formState.orientation,
-      // V4: Problem size (CRITICAL - affects column layout and problem generation)
-      formState.digitRange?.min,
-      formState.digitRange?.max,
-      // V4: Operator selection (addition, subtraction, or mixed)
-      formState.operator,
-      // V4: Mode and conditional display settings
-      formState.mode,
-      formState.displayRules, // Smart mode: conditional scaffolding
-      formState.difficultyProfile, // Smart mode: difficulty preset
-      formState.manualPreset, // Manual mode: manual preset
-      // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
-      formState.currentAdditionSkillId,
-      formState.currentSubtractionSkillId,
-      formState.currentStepId,
-      // Other settings that affect appearance
-      formState.name,
-      formState.pAnyStart,
-      formState.pAllStart,
-      formState.interpolate,
-      formState.showCarryBoxes,
-      formState.showAnswerBoxes,
-      formState.showPlaceValueColors,
-      formState.showProblemNumbers,
-      formState.showCellBorder,
-      formState.showTenFrames,
-      formState.showTenFramesForAll,
-      formState.seed, // Include seed to bust cache when problem set regenerates
-      // Note: fontSize, date, rows, total intentionally excluded
-      // (rows and total are derived from primary state)
-    ],
-    queryFn: () => fetchWorksheetPreview(formState),
-    initialData: queryInitialData, // Only use on first render
+  // Fetch initial batch to get total page count and first few pages
+  const INITIAL_PAGES = 3
+  const { data: initialResponse } = useSuspenseQuery({
+    queryKey: [...baseQueryKey, 'initial'],
+    queryFn: () =>
+      fetchWorksheetPreview(formState, {
+        startPage: 0,
+        endPage: INITIAL_PAGES - 1,
+      }),
   })
 
-  const totalPages = pages.length
+  const totalPages = initialResponse.totalPages
+  const [loadedPages, setLoadedPages] = useState<Map<number, string>>(() => {
+    // Initialize with initial pages or initialData
+    const map = new Map<number, string>()
+    if (initialData) {
+      initialData.forEach((page, index) => map.set(index, page))
+    } else {
+      initialResponse.pages.forEach((page, index) => {
+        map.set(initialResponse.startPage + index, page)
+      })
+    }
+    return map
+  })
 
   // Virtualization decision based on page count, not config source
   // Always virtualize multi-page worksheets for performance
   const shouldVirtualize = totalPages > 1
-  console.log('[VIRTUALIZATION] shouldVirtualize: ' + shouldVirtualize + ', totalPages: ' + totalPages)
 
-  // Initialize visible pages - start with first page only
+  // Track which pages are visible in viewport
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
+
+  // Track which pages are currently being fetched
+  const [fetchingPages, setFetchingPages] = useState<Set<number>>(new Set())
 
   const [currentPage, setCurrentPage] = useState(0)
 
   // Track when refs are fully populated
   const [refsReady, setRefsReady] = useState(false)
 
-  // Debug: Log visible pages changes
-  useEffect(() => {
-    console.log('[VIRTUALIZATION] visiblePages changed: [' + Array.from(visiblePages).sort().join(', ') + ']')
-  }, [visiblePages])
-
-  // Reset to first page when preview updates
+  // Reset state when form config changes
   useEffect(() => {
     setCurrentPage(0)
     setVisiblePages(new Set([0]))
+    setFetchingPages(new Set())
     pageRefs.current = []
     setRefsReady(false)
-  }, [pages])
+
+    // Reset loaded pages with new initial response
+    const map = new Map<number, string>()
+    if (initialData) {
+      initialData.forEach((page, index) => map.set(index, page))
+    } else {
+      initialResponse.pages.forEach((page, index) => {
+        map.set(initialResponse.startPage + index, page)
+      })
+    }
+    setLoadedPages(map)
+  }, [initialResponse, initialData])
+
+  // Fetch pages as they become visible
+  useEffect(() => {
+    if (!shouldVirtualize) return
+
+    // Find pages that are visible but not loaded and not being fetched
+    const pagesToFetch = Array.from(visiblePages).filter(
+      (pageIndex) => !loadedPages.has(pageIndex) && !fetchingPages.has(pageIndex)
+    )
+
+    if (pagesToFetch.length === 0) return
+
+    // Group consecutive pages into ranges for batch fetching
+    const ranges: { start: number; end: number }[] = []
+    let currentRange: { start: number; end: number } | null = null
+
+    pagesToFetch
+      .sort((a, b) => a - b)
+      .forEach((pageIndex) => {
+        if (currentRange === null) {
+          currentRange = { start: pageIndex, end: pageIndex }
+        } else if (pageIndex === currentRange.end + 1) {
+          currentRange.end = pageIndex
+        } else {
+          ranges.push(currentRange)
+          currentRange = { start: pageIndex, end: pageIndex }
+        }
+      })
+    if (currentRange !== null) {
+      ranges.push(currentRange)
+    }
+
+    // Fetch each range
+    ranges.forEach(({ start, end }) => {
+      // Mark pages as being fetched
+      setFetchingPages((prev) => {
+        const next = new Set(prev)
+        for (let i = start; i <= end; i++) {
+          next.add(i)
+        }
+        return next
+      })
+
+      // Fetch the range
+      fetchWorksheetPreview(formState, { startPage: start, endPage: end })
+        .then((response) => {
+          // Add fetched pages to loaded pages
+          setLoadedPages((prev) => {
+            const next = new Map(prev)
+            response.pages.forEach((page, index) => {
+              next.set(response.startPage + index, page)
+            })
+            return next
+          })
+
+          // Remove from fetching set
+          setFetchingPages((prev) => {
+            const next = new Set(prev)
+            for (let i = response.startPage; i <= response.endPage; i++) {
+              next.delete(i)
+            }
+            return next
+          })
+        })
+        .catch((error) => {
+          console.error('Failed to fetch pages ' + start + '-' + end + ':', error)
+
+          // Remove from fetching set on error
+          setFetchingPages((prev) => {
+            const next = new Set(prev)
+            for (let i = start; i <= end; i++) {
+              next.delete(i)
+            }
+            return next
+          })
+        })
+    })
+  }, [visiblePages, loadedPages, fetchingPages, shouldVirtualize, formState])
 
   // Check if all refs are populated after each render
   useEffect(() => {
     if (totalPages > 1 && pageRefs.current.length === totalPages) {
       const allPopulated = pageRefs.current.every((ref) => ref !== null)
       if (allPopulated && !refsReady) {
-        console.log('[VIRTUALIZATION] All refs ready, setting up observer')
         setRefsReady(true)
       }
     }
@@ -160,8 +282,6 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
       return
     }
 
-    console.log('[VIRTUALIZATION] Setting up IntersectionObserver - shouldVirtualize: ' + shouldVirtualize)
-
     const observer = new IntersectionObserver(
       (entries) => {
         // Find the most visible page among all entries
@@ -177,9 +297,23 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           }
         })
 
-        // Update current page if we found a more visible page
+        // Update current page with hysteresis to prevent flickering
+        // Only update if:
+        // 1. New page has > 0 visibility
+        // 2. New page is different from current
+        // 3. New page is significantly more visible (>0.6 ratio) OR current page has very low visibility (<0.3)
         if (maxRatio > 0) {
-          setCurrentPage(mostVisiblePage)
+          setCurrentPage((prev) => {
+            const isDifferentPage = mostVisiblePage !== prev
+            const isSignificantlyVisible = maxRatio > 0.6
+            const currentPageLowVisibility = maxRatio > 0.3 // If maxRatio is high, current page must be less visible
+
+            if (isDifferentPage && (isSignificantlyVisible || !currentPageLowVisibility)) {
+              return mostVisiblePage
+            }
+
+            return prev
+          })
         }
 
         // Update visible pages set (only when virtualizing)
@@ -192,29 +326,23 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
               if (entry.isIntersecting) {
-                console.log('[VIRTUALIZATION] Page ' + pageIndex + ' is intersecting - adding to visible set')
                 // Add visible page
                 next.add(pageIndex)
                 // Preload adjacent pages for smooth scrolling
                 if (pageIndex > 0) next.add(pageIndex - 1)
                 if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
-              } else {
-                console.log('[VIRTUALIZATION] Page ' + pageIndex + ' is NOT intersecting - checking if should remove')
               }
             })
 
             // Keep any pages from prev that weren't in entries (not observed in this callback)
             prev.forEach((pageIndex) => {
-              const wasObserved = entries.some((entry) => Number(entry.target.getAttribute('data-page-index')) === pageIndex)
+              const wasObserved = entries.some(
+                (entry) => Number(entry.target.getAttribute('data-page-index')) === pageIndex
+              )
               if (!wasObserved) {
                 next.add(pageIndex)
               }
             })
-
-            // Log if visible pages changed
-            if (next.size !== prev.size || ![...next].every(p => prev.has(p))) {
-              console.log('[VIRTUALIZATION] Updating visible pages: [' + Array.from(prev).sort().join(', ') + '] -> [' + Array.from(next).sort().join(', ') + ']')
-            }
 
             return next
           })
@@ -275,28 +403,30 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           p: '4',
         })}
       >
-        {pages.map((page, index) => {
+        {Array.from({ length: totalPages }, (_, index) => {
+          const isLoaded = loadedPages.has(index)
+          const isFetching = fetchingPages.has(index)
           const isVisible = visiblePages.has(index)
-          if (index === 0) {
-            const renderedPages = pages.map((_, i) => visiblePages.has(i) ? i : null).filter(i => i !== null)
-            const placeholderPages = pages.map((_, i) => !visiblePages.has(i) ? i : null).filter(i => i !== null)
-            console.log('[VIRTUALIZATION] Render cycle - total: ' + totalPages + ' | RENDERING SVG for pages: [' + renderedPages.join(', ') + '] | SHOWING PLACEHOLDER for pages: [' + placeholderPages.join(', ') + ']')
-          }
+          const page = loadedPages.get(index)
 
           return (
             <div
               key={index}
-              ref={(el) => (pageRefs.current[index] = el)}
+              ref={(el) => {
+                pageRefs.current[index] = el
+              }}
               data-page-index={index}
               data-element="page-container"
-              data-page-rendered={isVisible ? 'svg' : 'placeholder'}
+              data-page-loaded={isLoaded ? 'true' : 'false'}
+              data-page-fetching={isFetching ? 'true' : 'false'}
               className={css({
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
+                minHeight: '800px', // Prevent layout shift
               })}
             >
-              {isVisible ? (
+              {isLoaded && page ? (
                 <div
                   className={css({
                     '& svg': {
@@ -307,6 +437,37 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
                   })}
                   dangerouslySetInnerHTML={{ __html: page }}
                 />
+              ) : isFetching ? (
+                <div
+                  data-element="page-loading"
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4',
+                    p: '8',
+                  })}
+                >
+                  <div
+                    className={css({
+                      fontSize: '2xl',
+                      animation: 'spin',
+                      animationDuration: '1s',
+                      animationTimingFunction: 'linear',
+                      animationIterationCount: 'infinite',
+                    })}
+                  >
+                    ⏳
+                  </div>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: isDark ? 'gray.400' : 'gray.600',
+                    })}
+                  >
+                    Loading page {index + 1}...
+                  </p>
+                </div>
               ) : (
                 <PagePlaceholder pageNumber={index + 1} />
               )}

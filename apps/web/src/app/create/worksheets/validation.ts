@@ -28,8 +28,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
   // Validate total (must be positive, reasonable limit)
   const total = formState.total ?? 20
-  if (total < 1 || total > 100) {
-    errors.push('Total problems must be between 1 and 100')
+  if (total < 1 || total > 2000) {
+    errors.push('Total problems must be between 1 and 2000')
   }
 
   // Validate cols and auto-calculate rows

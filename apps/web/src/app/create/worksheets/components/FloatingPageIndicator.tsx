@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
+import NumberFlow from '@number-flow/react'
 
 interface FloatingPageIndicatorProps {
   currentPage: number
@@ -82,9 +83,35 @@ export function FloatingPageIndicator({
           color: isDark ? 'gray.100' : 'gray.900',
           minW: '20',
           textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1',
         })}
       >
-        Page {currentPage + 1} of {totalPages}
+        Page{' '}
+        <NumberFlow
+          value={currentPage + 1}
+          format={{ notation: 'standard' }}
+          trend={0}
+          animated
+          style={{
+            fontWeight: 'inherit',
+            fontSize: 'inherit',
+            color: 'inherit',
+          }}
+        />{' '}
+        of{' '}
+        <NumberFlow
+          value={totalPages}
+          format={{ notation: 'standard' }}
+          trend={0}
+          animated
+          style={{
+            fontWeight: 'inherit',
+            fontSize: 'inherit',
+            color: 'inherit',
+          }}
+        />
       </span>
 
       <button

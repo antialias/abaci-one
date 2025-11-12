@@ -15,14 +15,9 @@ import { validateWorksheetConfig } from './validation'
 export interface PreviewResult {
   success: boolean
   pages?: string[]
-  error?: string
-  details?: string
-}
-
-export interface SinglePageResult {
-  success: boolean
-  page?: string
   totalPages?: number
+  startPage?: number
+  endPage?: number
   error?: string
   details?: string
 }
@@ -30,8 +25,15 @@ export interface SinglePageResult {
 /**
  * Generate worksheet preview SVG pages
  * Can be called from API routes or Server Components
+ * @param config - Worksheet configuration
+ * @param startPage - Optional start page (0-indexed, inclusive). Default: 0
+ * @param endPage - Optional end page (0-indexed, inclusive). Default: last page
  */
-export function generateWorksheetPreview(config: WorksheetFormState): PreviewResult {
+export function generateWorksheetPreview(
+  config: WorksheetFormState,
+  startPage?: number,
+  endPage?: number
+): PreviewResult {
   try {
     // Validate configuration
     const validation = validateWorksheetConfig(config)
@@ -124,10 +126,23 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
 
     // Generate Typst sources (one per page)
     const typstSources = generateTypstSource(validatedConfig, problems)
+    const totalPages = typstSources.length
 
-    // Compile each page source to SVG (using stdout for single-page output)
+    // Determine range to compile
+    const start = startPage !== undefined ? Math.max(0, startPage) : 0
+    const end = endPage !== undefined ? Math.min(endPage, totalPages - 1) : totalPages - 1
+
+    // Validate range
+    if (start > end || start >= totalPages) {
+      return {
+        success: false,
+        error: `Invalid page range: start=${start}, end=${end}, totalPages=${totalPages}`,
+      }
+    }
+
+    // Compile only requested page range to SVG
     const pages: string[] = []
-    for (let i = 0; i < typstSources.length; i++) {
+    for (let i = start; i <= end; i++) {
       const typstSource = typstSources[i]
 
       // Compile to SVG via stdin/stdout
@@ -139,7 +154,7 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
         })
         pages.push(svgOutput)
       } catch (error) {
-        console.error(`Typst compilation error (page ${i + 1}):`, error)
+        console.error(`Typst compilation error (page ${i}):`, error)
 
         // Extract the actual Typst error message
         const stderr =
@@ -149,7 +164,7 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
 
         return {
           success: false,
-          error: `Failed to compile preview (page ${i + 1})`,
+          error: `Failed to compile preview (page ${i})`,
           details: stderr,
         }
       }
@@ -158,6 +173,9 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
     return {
       success: true,
       pages,
+      totalPages,
+      startPage: start,
+      endPage: end,
     }
   } catch (error) {
     console.error('Error generating preview:', error)
@@ -176,7 +194,10 @@ export function generateWorksheetPreview(config: WorksheetFormState): PreviewRes
  * Generate a single worksheet page SVG
  * Much faster than generating all pages when you only need one
  */
-export function generateSinglePage(config: WorksheetFormState, pageNumber: number): SinglePageResult {
+export function generateSinglePage(
+  config: WorksheetFormState,
+  pageNumber: number
+): SinglePageResult {
   try {
     // First, validate and get total page count
     const validation = validateWorksheetConfig(config)
