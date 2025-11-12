@@ -389,14 +389,15 @@ export function OrientationPanel({
               className={css({
                 display: 'flex',
                 gap: '1',
-                flexWrap: 'wrap',
+                alignItems: 'center',
                 '@media (max-width: 444px)': {
                   width: '100%',
                   gap: '0.5',
                 },
               })}
             >
-              {[1, 2, 3, 4, 10, 25, 50, 100].map((pageCount) => {
+              {/* Quick select buttons for 1-4 pages */}
+              {[1, 2, 3, 4].map((pageCount) => {
                 const isSelected = pages === pageCount
                 return (
                   <button
@@ -405,9 +406,8 @@ export function OrientationPanel({
                     data-action={`select-pages-${pageCount}`}
                     onClick={() => onPagesChange(pageCount)}
                     className={css({
-                      minW: '8',
+                      w: '8',
                       h: '8',
-                      px: '2',
                       border: '2px solid',
                       borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
                       bg: isSelected
@@ -437,6 +437,65 @@ export function OrientationPanel({
                         borderColor: 'brand.400',
                       },
                       '@media (max-width: 444px)': {
+                        w: '6',
+                        h: '6',
+                        fontSize: '2xs',
+                      },
+                      '@media (max-width: 300px)': {
+                        w: '5',
+                        h: '5',
+                        fontSize: '2xs',
+                        borderWidth: '1px',
+                      },
+                    })}
+                  >
+                    {pageCount}
+                  </button>
+                )
+              })}
+
+              {/* Dropdown for 10+ pages */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    type="button"
+                    data-action="open-pages-dropdown"
+                    className={css({
+                      minW: '8',
+                      h: '8',
+                      px: '2',
+                      border: '2px solid',
+                      borderColor: pages > 4 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                      bg:
+                        pages > 4
+                          ? isDark
+                            ? 'brand.900'
+                            : 'brand.50'
+                          : isDark
+                            ? 'gray.700'
+                            : 'white',
+                      rounded: 'lg',
+                      cursor: 'pointer',
+                      fontSize: 'xs',
+                      fontWeight: 'bold',
+                      color:
+                        pages > 4
+                          ? isDark
+                            ? 'brand.200'
+                            : 'brand.700'
+                          : isDark
+                            ? 'gray.300'
+                            : 'gray.600',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '1',
+                      flexShrink: 0,
+                      _hover: {
+                        borderColor: 'brand.400',
+                      },
+                      '@media (max-width: 444px)': {
                         minW: '6',
                         h: '6',
                         fontSize: '2xs',
@@ -449,10 +508,84 @@ export function OrientationPanel({
                       },
                     })}
                   >
-                    {pageCount}
+                    {pages > 4 ? pages : '10+'}
+                    <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
                   </button>
-                )
-              })}
+                </DropdownMenu.Trigger>
+
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className={css({
+                      bg: isDark ? 'gray.800' : 'white',
+                      rounded: 'lg',
+                      shadow: 'modal',
+                      border: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      p: '2',
+                      minW: '32',
+                      zIndex: 50,
+                    })}
+                    sideOffset={5}
+                  >
+                    {[10, 25, 50, 100].map((pageCount) => {
+                      const isSelected = pages === pageCount
+                      return (
+                        <DropdownMenu.Item
+                          key={pageCount}
+                          data-action={`select-pages-${pageCount}`}
+                          onSelect={() => onPagesChange(pageCount)}
+                          className={
+                            isDark
+                              ? css({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  px: '3',
+                                  py: '2',
+                                  rounded: 'md',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  fontSize: 'sm',
+                                  fontWeight: isSelected ? 'semibold' : 'medium',
+                                  color: isSelected ? 'brand.200' : 'gray.200',
+                                  bg: isSelected ? 'gray.700' : 'transparent',
+                                  _hover: {
+                                    bg: 'gray.700',
+                                  },
+                                  _focus: {
+                                    bg: 'gray.600',
+                                  },
+                                })
+                              : css({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  px: '3',
+                                  py: '2',
+                                  rounded: 'md',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  fontSize: 'sm',
+                                  fontWeight: isSelected ? 'semibold' : 'medium',
+                                  color: isSelected ? 'brand.700' : 'gray.700',
+                                  bg: isSelected ? 'brand.50' : 'transparent',
+                                  _hover: {
+                                    bg: 'brand.50',
+                                  },
+                                  _focus: {
+                                    bg: 'brand.100',
+                                  },
+                                })
+                          }
+                        >
+                          <span>{pageCount} pages</span>
+                          {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
+                        </DropdownMenu.Item>
+                      )
+                    })}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
             </div>
           </div>
         </div>
