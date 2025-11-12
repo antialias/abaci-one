@@ -1,5 +1,31 @@
 # Claude Code Instructions for apps/web
 
+## CRITICAL: Documentation Graph Requirement
+
+**ALL documentation must be reachable from the main README via a linked path.**
+
+When creating new documentation:
+1. ✅ Create the document in the appropriate directory
+2. ✅ Link it from a parent README that eventually links to root README
+3. ✅ Verify the chain: Root README → Area README → Your Document
+
+**Why this matters:**
+- Documentation that isn't linked is invisible and will be forgotten
+- New developers start at root README and follow links
+- Ensures documentation stays discoverable and maintained
+
+**Example chain:**
+```
+README.md (root)
+  → apps/web/src/app/create/worksheets/README.md
+    → PROBLEM_GENERATION_ARCHITECTURE.md
+    → USER_WARNING_IMPROVEMENTS.md
+    → .claude/PROBLEM_GENERATION.md
+```
+
+**Invalid:** Creating `/docs/some-feature.md` without linking from anywhere ❌
+**Valid:** Creating `/docs/some-feature.md` AND linking from root README ✅
+
 ## CRITICAL: Production Dependencies
 
 **NEVER add TypeScript execution tools to production dependencies.**

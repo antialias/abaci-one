@@ -802,13 +802,34 @@ MIT License - see LICENSE file for details.
 
 ## This project uses DejaVu Sans font (included), which is released under a free license.
 
+## 📚 Additional Documentation
+
+### Worksheet Generator
+
+**Location**: [`apps/web/src/app/create/worksheets/`](./apps/web/src/app/create/worksheets/)
+**Overview**: [`apps/web/src/app/create/worksheets/README.md`](./apps/web/src/app/create/worksheets/README.md)
+
+Create customizable math worksheets with progressive difficulty, problem space validation, and Typst-powered PDF generation.
+
+**Key Documentation**:
+- **[Problem Generation Architecture](./apps/web/src/app/create/worksheets/PROBLEM_GENERATION_ARCHITECTURE.md)** - Complete technical deep-dive on generation algorithms, strategies, and edge cases
+- **[User Warning Improvements](./apps/web/src/app/create/worksheets/USER_WARNING_IMPROVEMENTS.md)** - UX enhancement plan for problem space warnings
+
+### Abacus React Component
+
+**Package**: `@soroban/abacus-react`
+**Documentation**: [`packages/abacus-react/README.md`](./packages/abacus-react/README.md)
+**Storybook**: [Interactive Examples](https://antialias.github.io/soroban-abacus-flashcards/abacus-react/)
+
+React component library for rendering interactive and static abacus visualizations.
+
 ## 🚀 Active Development Projects
 
 ### Speed Complement Race Port (In Progress)
 
-**Status**: Planning Complete, Ready to Implement  
-**Plan Document**: [`apps/web/COMPLEMENT_RACE_PORT_PLAN.md`](./apps/web/COMPLEMENT_RACE_PORT_PLAN.md)  
-**Source**: `packages/core/src/web_generator.py` (lines 10956-15113)  
+**Status**: Planning Complete, Ready to Implement
+**Plan Document**: [`apps/web/COMPLEMENT_RACE_PORT_PLAN.md`](./apps/web/COMPLEMENT_RACE_PORT_PLAN.md)
+**Source**: `packages/core/src/web_generator.py` (lines 10956-15113)
 **Target**: `apps/web/src/app/games/complement-race/`
 
 A comprehensive port of the sophisticated Speed Complement Race game from standalone HTML to Next.js. Features 3 game modes, 2 AI personalities with 82 unique commentary messages, adaptive difficulty, and multiple visualization systems.
