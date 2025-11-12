@@ -50,6 +50,10 @@ export const additionConfigV1Schema = z.object({
     .int()
     .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
     .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
+
+  // Problem reproducibility (CRITICAL for sharing worksheets)
+  seed: z.number().int().min(0).optional(),
+  prngAlgorithm: z.string().optional(),
 })
 
 export type AdditionConfigV1 = z.infer<typeof additionConfigV1Schema>
@@ -139,6 +143,10 @@ export const additionConfigV2Schema = z.object({
     .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
     .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
   showTenFramesForAll: z.boolean(),
+
+  // Problem reproducibility (CRITICAL for sharing worksheets)
+  seed: z.number().int().min(0).optional(),
+  prngAlgorithm: z.string().optional(),
 })
 
 export type AdditionConfigV2 = z.infer<typeof additionConfigV2Schema>
@@ -168,6 +176,10 @@ const additionConfigV3BaseSchema = z.object({
   pAnyStart: z.number().min(0).max(1),
   pAllStart: z.number().min(0).max(1),
   interpolate: z.boolean(),
+
+  // Problem reproducibility (CRITICAL for sharing worksheets)
+  seed: z.number().int().min(0).optional(),
+  prngAlgorithm: z.string().optional(),
 })
 
 // Smart Difficulty Mode
@@ -314,6 +326,10 @@ const additionConfigV4BaseSchema = z.object({
   pAnyStart: z.number().min(0).max(1),
   pAllStart: z.number().min(0).max(1),
   interpolate: z.boolean(),
+
+  // Problem reproducibility (CRITICAL for sharing worksheets)
+  seed: z.number().int().min(0).optional(),
+  prngAlgorithm: z.string().optional(),
 })
 
 // Smart Difficulty Mode for V4
