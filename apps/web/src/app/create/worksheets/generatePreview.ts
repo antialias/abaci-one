@@ -11,6 +11,7 @@ import {
 import { getSkillById } from './skills'
 import { generateTypstSource } from './typstGenerator'
 import { validateWorksheetConfig } from './validation'
+import { validateProblemSpace } from './utils/validateProblemSpace'
 
 export interface PreviewResult {
   success: boolean
@@ -20,6 +21,7 @@ export interface PreviewResult {
   endPage?: number
   error?: string
   details?: string
+  warnings?: string[] // Added for problem space validation warnings
 }
 
 /**
