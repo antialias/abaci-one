@@ -1,14 +1,9 @@
 {
   "permissions": {
-    "allow": [
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:react-resizable-panels.vercel.app)"
-    ],
+    "allow": ["WebFetch(domain:github.com)", "WebFetch(domain:react-resizable-panels.vercel.app)"],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }
