@@ -384,6 +384,7 @@ export function generateProblems(
       // Sample problems based on difficulty curve
       const result: AdditionProblem[] = []
       const seen = new Set<string>()
+      let cycleCount = 0 // Track how many times we've cycled through all problems
 
       for (let i = 0; i < total; i++) {
         const frac = total <= 1 ? 0 : i / (total - 1)
@@ -415,8 +416,15 @@ export function generateProblems(
             }
             if (found) break
           }
-          // If still not found, allow duplicate
+          // If still not found, we've exhausted all unique problems
+          // Reset the seen set and start a new cycle
           if (!found) {
+            cycleCount++
+            console.log(
+              `[ADD GEN] Exhausted all ${sortedByDifficulty.length} unique problems at position ${i}. Starting cycle ${cycleCount + 1}.`
+            )
+            seen.clear()
+            // Use the target problem for this position
             seen.add(key)
           }
         } else {
@@ -428,26 +436,27 @@ export function generateProblems(
 
       const elapsed = Date.now() - startTime
       console.log(
-        `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all with progressive difficulty)`
+        `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all with progressive difficulty, ${cycleCount} cycles)`
       )
       return result
     } else {
       // No interpolation - just shuffle and take first N
       const shuffled = shuffleArray(allProblems, rand)
 
-      // If we need more problems than available, we'll have duplicates
+      // If we need more problems than available, cycle through the shuffled array
       if (total > shuffled.length) {
+        const cyclesNeeded = Math.ceil(total / shuffled.length)
         console.warn(
-          `[ADD GEN] Warning: Requested ${total} problems but only ${shuffled.length} unique problems exist. Some duplicates will occur.`
+          `[ADD GEN] Warning: Requested ${total} problems but only ${shuffled.length} unique problems exist. Will cycle ${cyclesNeeded} times.`
         )
-        // Repeat the shuffled array to fill the request
+        // Build result by repeating the entire shuffled array as many times as needed
         const result: AdditionProblem[] = []
-        while (result.length < total) {
-          result.push(...shuffled.slice(0, Math.min(shuffled.length, total - result.length)))
+        for (let i = 0; i < total; i++) {
+          result.push(shuffled[i % shuffled.length])
         }
         const elapsed = Date.now() - startTime
         console.log(
-          `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all method)`
+          `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all method, ${cyclesNeeded} cycles)`
         )
         return result
       }
