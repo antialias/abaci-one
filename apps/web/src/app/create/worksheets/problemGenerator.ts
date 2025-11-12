@@ -283,9 +283,11 @@ export function generateProblems(
     }
 
     // Generate problem with retries for uniqueness
+    // Reduced from 3000 to 100 - for large worksheets with constrained digit ranges,
+    // 3000 retries per problem = millions of iterations. Better to allow some duplicates.
     let tries = 0
     let ok = false
-    while (tries++ < 3000 && !ok) {
+    while (tries++ < 100 && !ok) {
       let a: number, b: number
       if (picked === 'both') {
         ;[a, b] = generateBoth(rand, minDigits, maxDigits)
@@ -613,9 +615,11 @@ export function generateSubtractionProblems(
     }
 
     // Generate problem with retries for uniqueness
+    // Reduced from 3000 to 100 - for large worksheets with constrained digit ranges,
+    // 3000 retries per problem = millions of iterations. Better to allow some duplicates.
     let tries = 0
     let ok = false
-    while (tries++ < 3000 && !ok) {
+    while (tries++ < 100 && !ok) {
       let minuend: number, subtrahend: number
       if (picked === 'both') {
         ;[minuend, subtrahend] = generateBothBorrow(rand, minDigits, maxDigits)
