@@ -17,7 +17,7 @@ import type { WorksheetFormState } from '../types'
 export function extractConfigFields(
   formState: WorksheetFormState
 ): Omit<AdditionConfigV4, 'version'> & { seed?: number; prngAlgorithm?: string } {
-  return {
+  const extracted = {
     problemsPerPage: formState.problemsPerPage!,
     cols: formState.cols!,
     pages: formState.pages!,
@@ -50,4 +50,11 @@ export function extractConfigFields(
     seed: formState.seed,
     prngAlgorithm: formState.prngAlgorithm ?? 'mulberry32',
   }
+
+  console.log('[extractConfigFields] Extracted config:', {
+    seed: extracted.seed,
+    prngAlgorithm: extracted.prngAlgorithm,
+  })
+
+  return extracted
 }

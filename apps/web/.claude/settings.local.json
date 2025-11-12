@@ -53,11 +53,15 @@
       "Bash(npx @biomejs/biome check:*)",
       "Bash(node -e:*)",
       "Bash(sqlite3:*)",
-      "Bash(npm run format:check:*)"
+      "Bash(npm run format:check:*)",
+      "Bash(npx biome:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

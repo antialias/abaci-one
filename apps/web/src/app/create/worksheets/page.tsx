@@ -54,9 +54,19 @@ async function loadWorksheetSettings(): Promise<
 
     // CRITICAL: Use saved seed if present, otherwise generate new one
     // This ensures reloading the page shows the same problems
+    const savedSeed = (config as any).seed
+    const finalSeed = savedSeed ?? Date.now() % 2147483647
+
+    console.log('[loadWorksheetSettings] Loaded from DB:', {
+      hasSavedSeed: !!savedSeed,
+      savedSeed,
+      finalSeed,
+      prngAlgorithm: (config as any).prngAlgorithm,
+    })
+
     return {
       ...config,
-      seed: (config as any).seed ?? Date.now() % 2147483647,
+      seed: finalSeed,
       prngAlgorithm: (config as any).prngAlgorithm ?? 'mulberry32',
     } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   } catch (error) {
