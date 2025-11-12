@@ -333,14 +333,30 @@ function uniquePush(list: AdditionProblem[], a: number, b: number, seen: Set<str
 }
 
 /**
- * Generate a complete set of problems based on difficulty parameters
+ * Generate a complete set of addition problems with configurable difficulty
+ *
+ * STRATEGY SELECTION:
+ * - Small problem spaces (< 10,000 unique): Generate-all + shuffle for zero retries
+ * - Large problem spaces (≥ 10,000): Retry-based generation allows some duplicates
+ *
+ * CYCLING BEHAVIOR (when total > unique problems available):
+ * - Non-interpolate mode: Repeats entire shuffled sequence (problems 0-44, 45-89, 90+...)
+ * - Interpolate mode: Clears "seen" set after exhausting problems, maintains difficulty curve
+ *
+ * EXAMPLES:
+ * - 1-digit 100% regrouping: Only 45 unique problems exist (will cycle after problem 44)
+ * - 2-digit mixed regrouping: ~4,000 unique problems (generate-all used)
+ * - 3-digit any regrouping: ~400,000 unique problems (retry-based used)
  *
  * @param total Total number of problems to generate
- * @param pAnyStart Starting probability of any regrouping (0-1)
- * @param pAllStart Starting probability of multiple regrouping (0-1)
- * @param interpolate If true, difficulty increases from start to end
- * @param seed Random seed for reproducible generation
- * @param digitRange Digit range for problem numbers (V4+)
+ * @param pAnyStart Target probability of ANY regrouping occurring (0-1)
+ *                  0.0 = no regrouping, 1.0 = all problems must have regrouping
+ * @param pAllStart Target probability of MULTIPLE regrouping (0-1), must be ≤ pAnyStart
+ * @param interpolate If true, difficulty increases progressively from easy→hard
+ *                    If false, all problems at constant difficulty
+ * @param seed Random seed for deterministic reproducible generation
+ * @param digitRange Digit range for problem operands (1-5 digits)
+ * @returns Array of addition problems matching constraints
  */
 export function generateProblems(
   total: number,
@@ -362,7 +378,14 @@ export function generateProblems(
   const estimatedSpace = estimateUniqueProblemSpace(digitRange, pAnyStart, 'addition')
   console.log(`[ADD GEN] Estimated unique problem space: ${estimatedSpace} (requesting ${total})`)
 
-  // For small problem spaces, use generate-all + shuffle approach (even with interpolate)
+  // ========================================================================
+  // STRATEGY 1: Generate-All + Shuffle (Small Problem Spaces)
+  // ========================================================================
+  // Used when estimated unique problems < 10,000
+  // Advantages:
+  // - Zero retries (no random generation needed)
+  // - Guaranteed coverage (all unique problems appear before repeating)
+  // - Deterministic (same seed = same worksheet)
   const THRESHOLD = 10000
   if (estimatedSpace < THRESHOLD) {
     console.log(
@@ -372,8 +395,9 @@ export function generateProblems(
     console.log(`[ADD GEN] Generated ${allProblems.length} unique problems`)
 
     if (interpolate) {
-      // Sort problems by difficulty (number of regrouping operations)
-      // This allows us to sample from easier problems early, harder problems later
+      // ===== PROGRESSIVE DIFFICULTY MODE =====
+      // Sort all problems by difficulty (carry count), then sample based on
+      // position in worksheet to create easy→medium→hard progression
       console.log(`[ADD GEN] Sorting problems by difficulty for progressive difficulty`)
       const sortedByDifficulty = [...allProblems].sort((a, b) => {
         const diffA = countRegroupingOperations(a.a, a.b)
@@ -387,21 +411,23 @@ export function generateProblems(
       let cycleCount = 0 // Track how many times we've cycled through all problems
 
       for (let i = 0; i < total; i++) {
+        // Calculate difficulty fraction (0.0 = easy, 1.0 = hard)
         const frac = total <= 1 ? 0 : i / (total - 1)
         // Map frac (0 to 1) to index in sorted array
         // frac=0 (start) → sample from easy problems (low index)
         // frac=1 (end) → sample from hard problems (high index)
         const targetIndex = Math.floor(frac * (sortedByDifficulty.length - 1))
 
-        // Try to get a problem near the target difficulty that we haven't used
+        // Try to get a problem near the target difficulty that we haven't used yet
         let problem = sortedByDifficulty[targetIndex]
         const key = `${problem.a},${problem.b}`
 
-        // If already used, search nearby for unused problem
+        // If already used, search nearby (forward then backward) for unused problem
+        // This maintains approximate difficulty while avoiding duplicates
         if (seen.has(key)) {
           let found = false
           for (let offset = 1; offset < sortedByDifficulty.length; offset++) {
-            // Try forward first, then backward
+            // Try forward first (slightly harder), then backward (slightly easier)
             for (const direction of [1, -1]) {
               const idx = targetIndex + direction * offset
               if (idx >= 0 && idx < sortedByDifficulty.length) {
@@ -416,15 +442,16 @@ export function generateProblems(
             }
             if (found) break
           }
-          // If still not found, we've exhausted all unique problems
-          // Reset the seen set and start a new cycle
+          // If still not found, we've exhausted ALL unique problems
+          // Clear the "seen" set and start a new cycle through the sorted array
+          // This maintains the difficulty progression across cycles
           if (!found) {
             cycleCount++
             console.log(
               `[ADD GEN] Exhausted all ${sortedByDifficulty.length} unique problems at position ${i}. Starting cycle ${cycleCount + 1}.`
             )
             seen.clear()
-            // Use the target problem for this position
+            // Use the target problem for this position (beginning of new cycle)
             seen.add(key)
           }
         } else {
@@ -440,16 +467,22 @@ export function generateProblems(
       )
       return result
     } else {
-      // No interpolation - just shuffle and take first N
+      // ===== CONSTANT DIFFICULTY MODE =====
+      // Shuffle all problems randomly, no sorting by difficulty
       const shuffled = shuffleArray(allProblems, rand)
 
       // If we need more problems than available, cycle through the shuffled array
+      // Example: 45 unique problems, requesting 100
+      //   - Problems 0-44: First complete shuffle
+      //   - Problems 45-89: Second complete shuffle (same order as first)
+      //   - Problems 90-99: First 10 from third shuffle
       if (total > shuffled.length) {
         const cyclesNeeded = Math.ceil(total / shuffled.length)
         console.warn(
           `[ADD GEN] Warning: Requested ${total} problems but only ${shuffled.length} unique problems exist. Will cycle ${cyclesNeeded} times.`
         )
         // Build result by repeating the entire shuffled array as many times as needed
+        // Using modulo ensures we cycle through: problem[0], problem[1], ..., problem[N-1], problem[0], ...
         const result: AdditionProblem[] = []
         for (let i = 0; i < total; i++) {
           result.push(shuffled[i % shuffled.length])
@@ -461,7 +494,7 @@ export function generateProblems(
         return result
       }
 
-      // Take first N problems from shuffled array
+      // Take first N problems from shuffled array (typical case: enough unique problems)
       const elapsed = Date.now() - startTime
       console.log(
         `[ADD GEN] Complete: ${total} problems in ${elapsed}ms (0 retries, generate-all method)`
@@ -470,7 +503,12 @@ export function generateProblems(
     }
   }
 
-  // For large problem spaces, use retry-based approach
+  // ========================================================================
+  // STRATEGY 2: Retry-Based Generation (Large Problem Spaces)
+  // ========================================================================
+  // Used when estimated unique problems ≥ 10,000
+  // Randomly generates problems and retries on duplicates
+  // Allows some duplicates after 100 retries to prevent infinite loops
   console.log(`[ADD GEN] Using retry-based approach (space >= ${THRESHOLD})`)
   const problems: AdditionProblem[] = []
   const seen = new Set<string>()
@@ -998,14 +1036,28 @@ export function generateSubtractionProblems(
 }
 
 /**
- * Generate mixed addition and subtraction problems for mastery mode
- * Uses separate configs for addition and subtraction based on current skill levels
+ * Generate mixed addition and subtraction problems for MASTERY MODE
  *
- * @param count Number of problems to generate
- * @param additionConfig Configuration for addition problems (from current addition skill)
- * @param subtractionConfig Configuration for subtraction problems (from current subtraction skill)
- * @param seed Random seed
- * @returns Array of mixed problems, shuffled randomly
+ * KEY DIFFERENCES from manual mixed mode:
+ * - Uses SEPARATE skill-based configs for addition vs subtraction
+ * - Addition problems based on addition skill (e.g., 2-digit 30% regrouping)
+ * - Subtraction problems based on subtraction skill (e.g., 1-2 digit 70% borrowing)
+ * - Problems can have different difficulties within same worksheet
+ *
+ * PROBLEM SPACE VALIDATION:
+ * - Validation is SKIPPED for mastery+mixed mode (too complex with separate configs)
+ * - See WorksheetPreviewContext.tsx:53-56
+ *
+ * EXAMPLE:
+ * - Addition skill: Level 5 → {digitRange: {min:2, max:2}, pAnyStart: 0.3}
+ * - Subtraction skill: Level 3 → {digitRange: {min:1, max:2}, pAnyStart: 0.7}
+ * - Result: 50 easy 2-digit additions + 50 harder 1-2 digit subtractions, shuffled
+ *
+ * @param count Total number of problems to generate (split 50/50 between operators)
+ * @param additionConfig Difficulty config from current addition skill level
+ * @param subtractionConfig Difficulty config from current subtraction skill level
+ * @param seed Random seed for deterministic generation and shuffling
+ * @returns Array of mixed problems shuffled randomly (no interpolation in mastery mode)
  */
 export function generateMasteryMixedProblems(
   count: number,
