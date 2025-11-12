@@ -56,11 +56,15 @@
       "Bash(npm run format:check:*)",
       "Bash(npx biome:*)",
       "Bash(git restore:*)",
-      "Bash(mcp__sqlite__describe_table:*)"
+      "Bash(mcp__sqlite__describe_table:*)",
+      "Bash(~45 unique available. Consider: • Reduce to 1 pages • Increase digit range)",
+      "Bash(• Lower regrouping %\"\n\n**Next:** Problem space indicator in config panel showing live estimate\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

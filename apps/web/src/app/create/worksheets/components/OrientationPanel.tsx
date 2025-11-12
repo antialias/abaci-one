@@ -1,7 +1,10 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '@styled/css'
+import { useMemo } from 'react'
+import { estimateUniqueProblemSpace } from '../utils/validateProblemSpace'
 import { getDefaultColsForProblemsPerPage } from '../utils/layoutCalculations'
 
 interface OrientationPanelProps {
@@ -17,6 +20,11 @@ interface OrientationPanelProps {
   onProblemsPerPageChange: (problemsPerPage: number, cols: number) => void
   onPagesChange: (pages: number) => void
   isDark?: boolean
+  // Config for problem space validation
+  digitRange?: { min: number; max: number }
+  pAnyStart?: number
+  operator?: 'addition' | 'subtraction' | 'mixed'
+  mode?: 'smart' | 'mastery'
   // Layout options
   problemNumbers?: 'always' | 'never'
   cellBorders?: 'always' | 'never'
@@ -37,6 +45,10 @@ export function OrientationPanel({
   onProblemsPerPageChange,
   onPagesChange,
   isDark = false,
+  digitRange = { min: 2, max: 2 },
+  pAnyStart = 0,
+  operator = 'addition',
+  mode = 'smart',
   problemNumbers = 'always',
   cellBorders = 'always',
   onProblemNumbersChange,
@@ -56,6 +68,43 @@ export function OrientationPanel({
   const total = problemsPerPage * pages
   const problemsForOrientation =
     orientation === 'portrait' ? [6, 8, 10, 12, 15] : [8, 10, 12, 15, 16, 20]
+
+  // Calculate problem space and determine risk for each page count
+  const estimatedSpace = useMemo(() => {
+    // Skip validation for mastery + mixed mode (same logic as WorksheetPreviewContext)
+    if (mode === 'mastery' && operator === 'mixed') {
+      return Infinity // No validation
+    }
+    return estimateUniqueProblemSpace(digitRange, pAnyStart, operator)
+  }, [digitRange, pAnyStart, operator, mode])
+
+  // Helper to get duplicate risk for a given page count
+  const getDuplicateRisk = (pageCount: number): 'none' | 'caution' | 'danger' => {
+    if (estimatedSpace === Infinity) return 'none'
+
+    const requestedProblems = problemsPerPage * pageCount
+    const ratio = requestedProblems / estimatedSpace
+
+    if (ratio < 0.5) return 'none'
+    if (ratio < 0.8) return 'caution'
+    return 'danger'
+  }
+
+  // Helper to get tooltip message for a page count
+  const getTooltipMessage = (pageCount: number): string | null => {
+    if (estimatedSpace === Infinity) return null
+
+    const requestedProblems = problemsPerPage * pageCount
+    const ratio = requestedProblems / estimatedSpace
+
+    if (ratio < 0.5) return null // No warning needed
+
+    if (ratio < 0.8) {
+      return `⚠️ Limited variety: ${requestedProblems} problems requested, ~${Math.floor(estimatedSpace)} unique available.\n\nSome duplicates may occur.`
+    }
+
+    return `🚫 Too many duplicates: ${requestedProblems} problems requested, only ~${Math.floor(estimatedSpace)} unique available.\n\nConsider:\n• Reduce to ${Math.max(1, Math.floor((estimatedSpace * 0.5) / problemsPerPage))} pages\n• Increase digit range\n• Lower regrouping %`
+  }
 
   return (
     <div
@@ -399,7 +448,10 @@ export function OrientationPanel({
               {/* Quick select buttons for 1-3 pages */}
               {[1, 2, 3].map((pageCount) => {
                 const isSelected = pages === pageCount
-                return (
+                const risk = getDuplicateRisk(pageCount)
+                const tooltipMessage = getTooltipMessage(pageCount)
+
+                const button = (
                   <button
                     key={pageCount}
                     type="button"
@@ -409,11 +461,35 @@ export function OrientationPanel({
                       w: '8',
                       h: '8',
                       border: '2px solid',
-                      borderColor: isSelected ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                      borderColor: isSelected
+                        ? risk === 'danger'
+                          ? 'red.500'
+                          : risk === 'caution'
+                            ? 'yellow.500'
+                            : 'brand.500'
+                        : risk === 'danger'
+                          ? isDark
+                            ? 'red.700'
+                            : 'red.300'
+                          : risk === 'caution'
+                            ? isDark
+                              ? 'yellow.700'
+                              : 'yellow.300'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.300',
                       bg: isSelected
                         ? isDark
-                          ? 'brand.900'
-                          : 'brand.50'
+                          ? risk === 'danger'
+                            ? 'red.900'
+                            : risk === 'caution'
+                              ? 'yellow.900'
+                              : 'brand.900'
+                          : risk === 'danger'
+                            ? 'red.50'
+                            : risk === 'caution'
+                              ? 'yellow.50'
+                              : 'brand.50'
                         : isDark
                           ? 'gray.700'
                           : 'white',
@@ -423,8 +499,16 @@ export function OrientationPanel({
                       fontWeight: 'bold',
                       color: isSelected
                         ? isDark
-                          ? 'brand.200'
-                          : 'brand.700'
+                          ? risk === 'danger'
+                            ? 'red.200'
+                            : risk === 'caution'
+                              ? 'yellow.200'
+                              : 'brand.200'
+                          : risk === 'danger'
+                            ? 'red.700'
+                            : risk === 'caution'
+                              ? 'yellow.700'
+                              : 'brand.700'
                         : isDark
                           ? 'gray.300'
                           : 'gray.600',
@@ -433,8 +517,14 @@ export function OrientationPanel({
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      position: 'relative',
                       _hover: {
-                        borderColor: 'brand.400',
+                        borderColor:
+                          risk === 'danger'
+                            ? 'red.400'
+                            : risk === 'caution'
+                              ? 'yellow.400'
+                              : 'brand.400',
                       },
                       '@media (max-width: 444px)': {
                         w: '6',
@@ -450,8 +540,62 @@ export function OrientationPanel({
                     })}
                   >
                     {pageCount}
+                    {/* Warning indicator dot */}
+                    {risk !== 'none' && (
+                      <span
+                        className={css({
+                          position: 'absolute',
+                          top: '-1',
+                          right: '-1',
+                          w: '2',
+                          h: '2',
+                          bg: risk === 'danger' ? 'red.500' : 'yellow.500',
+                          rounded: 'full',
+                        })}
+                      />
+                    )}
                   </button>
                 )
+
+                // Wrap in tooltip if there's a warning message
+                if (tooltipMessage) {
+                  return (
+                    <Tooltip.Provider key={pageCount}>
+                      <Tooltip.Root delayDuration={300}>
+                        <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            className={css({
+                              bg: isDark ? 'gray.800' : 'white',
+                              color: isDark ? 'gray.100' : 'gray.900',
+                              px: '3',
+                              py: '2',
+                              rounded: 'lg',
+                              shadow: 'lg',
+                              border: '1px solid',
+                              borderColor: isDark ? 'gray.600' : 'gray.200',
+                              maxW: '64',
+                              fontSize: 'xs',
+                              lineHeight: '1.5',
+                              whiteSpace: 'pre-wrap',
+                              zIndex: 10000,
+                            })}
+                            sideOffset={5}
+                          >
+                            {tooltipMessage}
+                            <Tooltip.Arrow
+                              className={css({
+                                fill: isDark ? 'gray.800' : 'white',
+                              })}
+                            />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                  )
+                }
+
+                return button
               })}
 
               {/* Dropdown for 4+ pages */}

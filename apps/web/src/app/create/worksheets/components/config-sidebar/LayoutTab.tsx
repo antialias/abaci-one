@@ -65,6 +65,11 @@ export function LayoutTab() {
       onProblemsPerPageChange={handleProblemsPerPageChange}
       onPagesChange={handlePagesChange}
       isDark={isDark}
+      // Pass config for problem space validation
+      digitRange={formState.digitRange || { min: 2, max: 2 }}
+      pAnyStart={formState.pAnyStart ?? 0}
+      operator={formState.operator || 'addition'}
+      mode={formState.mode || 'smart'}
       problemNumbers={
         ((formState.displayRules ?? defaultAdditionConfig.displayRules).problemNumbers as
           | 'always'
