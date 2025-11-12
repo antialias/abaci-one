@@ -74,29 +74,12 @@ function generatePageTypst(
         // If we have operator-specific rules (mastery+mixed), use them
         if (p.operator === 'add' && masteryConfig.additionDisplayRules) {
           rulesForProblem = masteryConfig.additionDisplayRules
-          console.log(
-            `[TYPST PROBLEM ${index}] Using additionDisplayRules for ${p.a} + ${p.b}`,
-            rulesForProblem
-          )
         } else if (p.operator === 'sub' && masteryConfig.subtractionDisplayRules) {
           rulesForProblem = masteryConfig.subtractionDisplayRules
-          console.log(
-            `[TYPST PROBLEM ${index}] Using subtractionDisplayRules for ${p.minuend} - ${p.subtrahend}`,
-            rulesForProblem
-          )
         }
       }
 
       const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
-
-      if (p.operator === 'sub') {
-        console.log(`[TYPST PROBLEM ${index}] Subtraction resolved display:`, {
-          problem: `${p.minuend} - ${p.subtrahend}`,
-          meta,
-          rulesUsed: rulesForProblem,
-          resolved: displayOptions,
-        })
-      }
 
       return {
         ...p,
@@ -128,9 +111,6 @@ function generatePageTypst(
       }
     })
     .join('\n')
-
-  // DEBUG: Show Typst problem data for first problem
-  console.log('[TYPST DEBUG] First problem Typst data:', problemsTypst.split('\n')[0])
 
   // Calculate actual number of rows on this page
   const actualRows = Math.ceil(pageProblems.length / config.cols)
