@@ -32,7 +32,7 @@ export function FloatingPageIndicator({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={css({
-        position: 'sticky',
+        position: 'absolute',
         top: '4',
         left: '50%',
         transform: 'translateX(-50%)',

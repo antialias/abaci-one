@@ -55,13 +55,12 @@
       "Bash(sqlite3:*)",
       "Bash(npm run format:check:*)",
       "Bash(npx biome:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(mcp__sqlite__describe_table:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

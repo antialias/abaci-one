@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       totalPages: result.totalPages,
       startPage: result.startPage,
       endPage: result.endPage,
+      warnings: result.warnings,
       // Include cursor for next page (GraphQL style)
       nextCursor:
         result.endPage !== undefined &&

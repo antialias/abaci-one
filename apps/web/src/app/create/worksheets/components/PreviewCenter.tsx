@@ -10,6 +10,9 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { extractConfigFields } from '../utils/extractConfigFields'
 import { ShareModal } from './ShareModal'
 import { WorksheetPreview } from './WorksheetPreview'
+import { FloatingPageIndicator } from './FloatingPageIndicator'
+import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
+import { WorksheetPreviewProvider } from './worksheet-preview/WorksheetPreviewContext'
 
 interface PreviewCenterProps {
   formState: WorksheetFormState
@@ -41,6 +44,11 @@ export function PreviewCenter({
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [justCopied, setJustCopied] = useState(false)
   const isGenerating = status === 'generating'
+  const [pageData, setPageData] = useState<{
+    currentPage: number
+    totalPages: number
+    jumpToPage: (pageIndex: number) => void
+  } | null>(null)
 
   // Detect scrolling in the scroll container
   useEffect(() => {
@@ -110,12 +118,10 @@ export function PreviewCenter({
 
   return (
     <div
-      ref={scrollContainerRef}
       data-component="preview-center"
       className={css({
         h: 'full',
         w: 'full',
-        overflow: 'auto',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -477,17 +483,37 @@ export function PreviewCenter({
         </>
       )}
 
+      {/* Floating elements - positioned absolutely relative to preview-center */}
+      <WorksheetPreviewProvider formState={formState}>
+        {/* Dismissable warning banner */}
+        <DuplicateWarningBanner />
+
+        {/* Floating page indicator */}
+        {pageData && pageData.totalPages > 1 && (
+          <FloatingPageIndicator
+            currentPage={pageData.currentPage}
+            totalPages={pageData.totalPages}
+            onJumpToPage={pageData.jumpToPage}
+            isScrolling={isScrolling}
+          />
+        )}
+      </WorksheetPreviewProvider>
+
       <div
+        ref={scrollContainerRef}
         className={css({
+          flex: '1',
           w: 'full',
-          maxW: '1000px',
           minH: 'full',
+          h: 'full',
+          overflow: 'auto',
         })}
       >
         <WorksheetPreview
           formState={formState}
           initialData={initialPreview}
           isScrolling={isScrolling}
+          onPageDataReady={setPageData}
         />
       </div>
     </div>

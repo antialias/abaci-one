@@ -24,6 +24,14 @@ export interface PreviewResult {
   warnings?: string[] // Added for problem space validation warnings
 }
 
+export interface SinglePageResult {
+  success: boolean
+  page?: string
+  totalPages?: number
+  error?: string
+  details?: string
+}
+
 /**
  * Generate worksheet preview SVG pages
  * Can be called from API routes or Server Components
@@ -54,8 +62,21 @@ export function generateWorksheetPreview(
     const validatedConfig = validation.config
     console.log('[PREVIEW] Step 1: ✓ Configuration valid')
 
-    // Generate all problems for full preview based on operator
+    // Validate problem space for duplicate risk
     const operator = validatedConfig.operator ?? 'addition'
+    const spaceValidation = validateProblemSpace(
+      validatedConfig.problemsPerPage,
+      validatedConfig.pages,
+      validatedConfig.digitRange,
+      validatedConfig.pAnyStart,
+      operator
+    )
+
+    if (spaceValidation.warnings.length > 0) {
+      console.log('[PREVIEW] Problem space warnings:', spaceValidation.warnings)
+    }
+
+    // Generate all problems for full preview based on operator
     const mode = config.mode ?? 'smart'
 
     console.log(
@@ -206,6 +227,7 @@ export function generateWorksheetPreview(
       totalPages,
       startPage: start,
       endPage: end,
+      warnings: spaceValidation.warnings.length > 0 ? spaceValidation.warnings : undefined,
     }
   } catch (error) {
     console.error('Error generating preview:', error)

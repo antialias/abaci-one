@@ -2,10 +2,11 @@
 
 import type {
   AdditionProblem,
+  ProblemCategory,
   SubtractionProblem,
   WorksheetProblem,
-  ProblemCategory,
 } from '@/app/create/worksheets/types'
+import { estimateUniqueProblemSpace } from './utils/validateProblemSpace'
 
 /**
  * Mulberry32 PRNG for reproducible random number generation
@@ -25,6 +26,18 @@ export function createPRNG(seed: number) {
  */
 function pick<T>(arr: T[], rand: () => number): T {
   return arr[Math.floor(rand() * arr.length)]
+}
+
+/**
+ * Fisher-Yates shuffle with deterministic PRNG
+ */
+function shuffleArray<T>(arr: T[], rand: () => number): T[] {
+  const shuffled = [...arr]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
 }
 
 /**
@@ -81,6 +94,102 @@ function getDigit(num: number, position: number): number {
 function countDigits(num: number): number {
   if (num === 0) return 1
   return Math.floor(Math.log10(Math.abs(num))) + 1
+}
+
+/**
+ * Check if addition problem has regrouping
+ * Returns { hasAny: boolean, hasMultiple: boolean }
+ */
+function checkRegrouping(a: number, b: number): { hasAny: boolean; hasMultiple: boolean } {
+  const maxPlaces = Math.max(countDigits(a), countDigits(b))
+  let carryCount = 0
+  let carry = 0
+
+  for (let pos = 0; pos < maxPlaces; pos++) {
+    const digitA = getDigit(a, pos)
+    const digitB = getDigit(b, pos)
+    const sum = digitA + digitB + carry
+
+    if (sum >= 10) {
+      carryCount++
+      carry = 1
+    } else {
+      carry = 0
+    }
+  }
+
+  return { hasAny: carryCount > 0, hasMultiple: carryCount > 1 }
+}
+
+/**
+ * Count the number of regrouping operations (carries) in an addition problem
+ * Returns a number representing difficulty: 0 = no regrouping, 1+ = increasing difficulty
+ */
+function countRegroupingOperations(a: number, b: number): number {
+  const maxPlaces = Math.max(countDigits(a), countDigits(b))
+  let carryCount = 0
+  let carry = 0
+
+  for (let pos = 0; pos < maxPlaces; pos++) {
+    const digitA = getDigit(a, pos)
+    const digitB = getDigit(b, pos)
+    const sum = digitA + digitB + carry
+
+    if (sum >= 10) {
+      carryCount++
+      carry = 1
+    } else {
+      carry = 0
+    }
+  }
+
+  return carryCount
+}
+
+/**
+ * Generate ALL valid addition problems for a given digit range and regrouping constraints
+ * Used for small problem spaces where enumeration is faster than retry loops
+ */
+function generateAllAdditionProblems(
+  minDigits: number,
+  maxDigits: number,
+  pAnyStart: number,
+  pAllStart: number
+): AdditionProblem[] {
+  const problems: AdditionProblem[] = []
+
+  // Generate all possible number pairs within digit range
+  for (let digitsA = minDigits; digitsA <= maxDigits; digitsA++) {
+    for (let digitsB = minDigits; digitsB <= maxDigits; digitsB++) {
+      const minA = digitsA === 1 ? 0 : 10 ** (digitsA - 1)
+      const maxA = digitsA === 1 ? 9 : 10 ** digitsA - 1
+      const minB = digitsB === 1 ? 0 : 10 ** (digitsB - 1)
+      const maxB = digitsB === 1 ? 9 : 10 ** digitsB - 1
+
+      for (let a = minA; a <= maxA; a++) {
+        for (let b = minB; b <= maxB; b++) {
+          const regroup = checkRegrouping(a, b)
+
+          // Filter based on regrouping requirements
+          // pAnyStart = 1.0 means ONLY regrouping problems
+          // pAllStart = 1.0 means ONLY multiple regrouping problems
+          // pAnyStart = 0.0 means ONLY non-regrouping problems
+
+          const includeThis =
+            (pAnyStart === 1.0 && regroup.hasAny) || // Only regrouping
+            (pAllStart === 1.0 && regroup.hasMultiple) || // Only multiple regrouping
+            (pAnyStart === 0.0 && !regroup.hasAny) || // Only non-regrouping
+            (pAnyStart > 0 && pAnyStart < 1) // Mixed mode - include everything, will sample later
+
+          if (includeThis) {
+            problems.push({ a, b, operator: 'add' })
+          }
+        }
+      }
+    }
+  }
+
+  return problems
 }
 
 /**
@@ -247,10 +356,115 @@ export function generateProblems(
   const startTime = Date.now()
 
   const rand = createPRNG(seed)
+  const { min: minDigits, max: maxDigits } = digitRange
+
+  // Estimate problem space size
+  const estimatedSpace = estimateUniqueProblemSpace(digitRange, pAnyStart, 'addition')
+  console.log(`[ADD GEN] Estimated unique problem space: ${estimatedSpace} (requesting ${total})`)
+
+  // For small problem spaces, use generate-all + shuffle approach (even with interpolate)
+  const THRESHOLD = 10000
+  if (estimatedSpace < THRESHOLD) {
+    console.log(
+      `[ADD GEN] Using generate-all + shuffle (space < ${THRESHOLD}, interpolate=${interpolate})`
+    )
+    const allProblems = generateAllAdditionProblems(minDigits, maxDigits, pAnyStart, pAllStart)
+    console.log(`[ADD GEN] Generated ${allProblems.length} unique problems`)
+
+    if (interpolate) {
+      // Sort problems by difficulty (number of regrouping operations)
+      // This allows us to sample from easier problems early, harder problems later
+      console.log(`[ADD GEN] Sorting problems by difficulty for progressive difficulty`)
+      const sortedByDifficulty = [...allProblems].sort((a, b) => {
+        const diffA = countRegroupingOperations(a.a, a.b)
+        const diffB = countRegroupingOperations(b.a, b.b)
+        return diffA - diffB // Easier (fewer regroups) first
+      })
+
+      // Sample problems based on difficulty curve
+      const result: AdditionProblem[] = []
+      const seen = new Set<string>()
+
+      for (let i = 0; i < total; i++) {
+        const frac = total <= 1 ? 0 : i / (total - 1)
+        // Map frac (0 to 1) to index in sorted array
+        // frac=0 (start) → sample from easy problems (low index)
+        // frac=1 (end) → sample from hard problems (high index)
+        const targetIndex = Math.floor(frac * (sortedByDifficulty.length - 1))
+
+        // Try to get a problem near the target difficulty that we haven't used
+        let problem = sortedByDifficulty[targetIndex]
+        const key = `${problem.a},${problem.b}`
+
+        // If already used, search nearby for unused problem
+        if (seen.has(key)) {
+          let found = false
+          for (let offset = 1; offset < sortedByDifficulty.length; offset++) {
+            // Try forward first, then backward
+            for (const direction of [1, -1]) {
+              const idx = targetIndex + direction * offset
+              if (idx >= 0 && idx < sortedByDifficulty.length) {
+                problem = sortedByDifficulty[idx]
+                const newKey = `${problem.a},${problem.b}`
+                if (!seen.has(newKey)) {
+                  seen.add(newKey)
+                  found = true
+                  break
+                }
+              }
+            }
+            if (found) break
+          }
+          // If still not found, allow duplicate
+          if (!found) {
+            seen.add(key)
+          }
+        } else {
+          seen.add(key)
+        }
+
+        result.push(problem)
+      }
+
+      const elapsed = Date.now() - startTime
+      console.log(
+        `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all with progressive difficulty)`
+      )
+      return result
+    } else {
+      // No interpolation - just shuffle and take first N
+      const shuffled = shuffleArray(allProblems, rand)
+
+      // If we need more problems than available, we'll have duplicates
+      if (total > shuffled.length) {
+        console.warn(
+          `[ADD GEN] Warning: Requested ${total} problems but only ${shuffled.length} unique problems exist. Some duplicates will occur.`
+        )
+        // Repeat the shuffled array to fill the request
+        const result: AdditionProblem[] = []
+        while (result.length < total) {
+          result.push(...shuffled.slice(0, Math.min(shuffled.length, total - result.length)))
+        }
+        const elapsed = Date.now() - startTime
+        console.log(
+          `[ADD GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all method)`
+        )
+        return result
+      }
+
+      // Take first N problems from shuffled array
+      const elapsed = Date.now() - startTime
+      console.log(
+        `[ADD GEN] Complete: ${total} problems in ${elapsed}ms (0 retries, generate-all method)`
+      )
+      return shuffled.slice(0, total)
+    }
+  }
+
+  // For large problem spaces, use retry-based approach
+  console.log(`[ADD GEN] Using retry-based approach (space >= ${THRESHOLD})`)
   const problems: AdditionProblem[] = []
   const seen = new Set<string>()
-
-  const { min: minDigits, max: maxDigits } = digitRange
 
   let totalRetries = 0
   for (let i = 0; i < total; i++) {
@@ -448,6 +662,63 @@ export function generateOnesOnlyBorrow(
 }
 
 /**
+ * Check if subtraction problem has borrowing
+ * Returns { hasAny: boolean, hasMultiple: boolean }
+ */
+function checkBorrowing(
+  minuend: number,
+  subtrahend: number
+): { hasAny: boolean; hasMultiple: boolean } {
+  const borrowCount = countBorrows(minuend, subtrahend)
+  return { hasAny: borrowCount > 0, hasMultiple: borrowCount > 1 }
+}
+
+/**
+ * Generate ALL valid subtraction problems for a given digit range and borrowing constraints
+ * Used for small problem spaces where enumeration is faster than retry loops
+ */
+function generateAllSubtractionProblems(
+  minDigits: number,
+  maxDigits: number,
+  pAnyBorrow: number,
+  pAllBorrow: number
+): SubtractionProblem[] {
+  const problems: SubtractionProblem[] = []
+
+  // Generate all possible number pairs within digit range where minuend >= subtrahend
+  for (let digitsM = minDigits; digitsM <= maxDigits; digitsM++) {
+    for (let digitsS = minDigits; digitsS <= maxDigits; digitsS++) {
+      const minM = digitsM === 1 ? 0 : 10 ** (digitsM - 1)
+      const maxM = digitsM === 1 ? 9 : 10 ** digitsM - 1
+      const minS = digitsS === 1 ? 0 : 10 ** (digitsS - 1)
+      const maxS = digitsS === 1 ? 9 : 10 ** digitsS - 1
+
+      for (let minuend = minM; minuend <= maxM; minuend++) {
+        for (let subtrahend = minS; subtrahend <= maxS; subtrahend++) {
+          // Ensure minuend >= subtrahend (no negative results)
+          if (minuend < subtrahend) continue
+
+          const borrow = checkBorrowing(minuend, subtrahend)
+
+          // Filter based on borrowing requirements (same logic as addition)
+          const includeThis =
+            (pAnyBorrow === 1.0 && borrow.hasAny) || // Only borrowing
+            (pAllBorrow === 1.0 && borrow.hasMultiple) || // Only multiple borrowing
+            (pAnyBorrow === 0.0 && !borrow.hasAny) || // Only non-borrowing
+            (pAnyBorrow > 0 && pAnyBorrow < 1) // Mixed mode - include everything
+
+          if (includeThis) {
+            problems.push({ minuend, subtrahend, operator: 'sub' })
+          }
+        }
+      }
+    }
+  }
+
+  return problems
+}
+
+/**
  * Count the number of actual borrow operations needed for subtraction
  * Simulates the standard borrowing algorithm
  *
@@ -571,10 +842,54 @@ export function generateSubtractionProblems(
   const startTime = Date.now()
 
   const rand = createPRNG(seed)
-  const problems: SubtractionProblem[] = []
-  const seen = new Set<string>()
   const minDigits = digitRange.min
   const maxDigits = digitRange.max
+
+  // Estimate problem space size
+  const estimatedSpace = estimateUniqueProblemSpace(digitRange, pAnyBorrow, 'subtraction')
+  console.log(`[SUB GEN] Estimated unique problem space: ${estimatedSpace} (requesting ${count})`)
+
+  // For small problem spaces, use generate-all + shuffle approach
+  const THRESHOLD = 10000
+  if (estimatedSpace < THRESHOLD && !interpolate) {
+    console.log(`[SUB GEN] Using generate-all + shuffle (space < ${THRESHOLD})`)
+    const allProblems = generateAllSubtractionProblems(minDigits, maxDigits, pAnyBorrow, pAllBorrow)
+    console.log(`[SUB GEN] Generated ${allProblems.length} unique problems`)
+
+    // Shuffle deterministically using seed
+    const shuffled = shuffleArray(allProblems, rand)
+
+    // If we need more problems than available, we'll have duplicates
+    if (count > shuffled.length) {
+      console.warn(
+        `[SUB GEN] Warning: Requested ${count} problems but only ${shuffled.length} unique problems exist. Some duplicates will occur.`
+      )
+      // Repeat the shuffled array to fill the request
+      const result: SubtractionProblem[] = []
+      while (result.length < count) {
+        result.push(...shuffled.slice(0, Math.min(shuffled.length, count - result.length)))
+      }
+      const elapsed = Date.now() - startTime
+      console.log(
+        `[SUB GEN] Complete: ${result.length} problems in ${elapsed}ms (0 retries, generate-all method)`
+      )
+      return result
+    }
+
+    // Take first N problems from shuffled array
+    const elapsed = Date.now() - startTime
+    console.log(
+      `[SUB GEN] Complete: ${count} problems in ${elapsed}ms (0 retries, generate-all method)`
+    )
+    return shuffled.slice(0, count)
+  }
+
+  // For large problem spaces or interpolated difficulty, use retry-based approach
+  console.log(
+    `[SUB GEN] Using retry-based approach (space >= ${THRESHOLD} or interpolate=${interpolate})`
+  )
+  const problems: SubtractionProblem[] = []
+  const seen = new Set<string>()
 
   function uniquePush(minuend: number, subtrahend: number): boolean {
     const key = `${minuend}-${subtrahend}`

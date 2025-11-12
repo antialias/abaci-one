@@ -1,17 +1,24 @@
 'use client'
 
-import { Suspense, useState, useEffect, useRef, Component, type ReactNode } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { css } from '@styled/css'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Component, type ReactNode, Suspense, useEffect, useRef, useState } from 'react'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { useTheme } from '@/contexts/ThemeContext'
 import { FloatingPageIndicator } from './FloatingPageIndicator'
 import { PagePlaceholder } from './PagePlaceholder'
-import { useTheme } from '@/contexts/ThemeContext'
+import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
+import { WorksheetPreviewProvider } from './worksheet-preview/WorksheetPreviewContext'
 
 interface WorksheetPreviewProps {
   formState: WorksheetFormState
   initialData?: string[]
   isScrolling?: boolean
+  onPageDataReady?: (data: {
+    currentPage: number
+    totalPages: number
+    jumpToPage: (pageIndex: number) => void
+  }) => void
 }
 
 function getDefaultDate(): string {
@@ -36,6 +43,7 @@ interface PreviewResponse {
   startPage: number
   endPage: number
   nextCursor: number | null
+  warnings?: string[]
 }
 
 async function fetchWorksheetPreview(
@@ -88,7 +96,12 @@ async function fetchWorksheetPreview(
   return data
 }
 
-function PreviewContent({ formState, initialData, isScrolling = false }: WorksheetPreviewProps) {
+function PreviewContent({
+  formState,
+  initialData,
+  isScrolling = false,
+  onPageDataReady,
+}: WorksheetPreviewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -247,7 +260,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
           })
         })
         .catch((error) => {
-          console.error('Failed to fetch pages ' + start + '-' + end + ':', error)
+          console.error(`Failed to fetch pages ${start}-${end}:`, error)
 
           // Remove from fetching set on error
           setFetchingPages((prev) => {
@@ -372,6 +385,13 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
     pageRefs.current[pageIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // Notify parent of page data for floating elements
+  useEffect(() => {
+    if (onPageDataReady) {
+      onPageDataReady({ currentPage, totalPages, jumpToPage })
+    }
+  }, [currentPage, totalPages, onPageDataReady])
+
   return (
     <div
       data-component="worksheet-preview"
@@ -380,19 +400,10 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
         rounded: 'lg',
         border: '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.200',
-        position: 'relative',
-        minHeight: 'full',
+        minH: 'full',
       })}
     >
-      {/* Floating page indicator */}
-      {totalPages > 1 && (
-        <FloatingPageIndicator
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onJumpToPage={jumpToPage}
-          isScrolling={isScrolling}
-        />
-      )}
+      {/* Floating elements moved to PreviewCenter */}
 
       {/* Page containers */}
       <div
@@ -453,7 +464,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
   )
 }
 
-function PreviewFallback() {
+function PreviewFallback({ formState }: { formState?: WorksheetFormState }) {
   return (
     <div
       data-component="worksheet-preview-loading"
@@ -468,15 +479,13 @@ function PreviewFallback() {
         minHeight: '600px',
       })}
     >
-      <p
-        className={css({
-          fontSize: 'lg',
-          color: 'gray.400',
-          textAlign: 'center',
-        })}
-      >
-        Generating preview...
-      </p>
+      <PagePlaceholder
+        pageNumber={1}
+        orientation={formState?.orientation ?? 'portrait'}
+        rows={Math.ceil((formState?.problemsPerPage ?? 20) / (formState?.cols ?? 5))}
+        cols={formState?.cols ?? 5}
+        loading={true}
+      />
     </div>
   )
 }
@@ -744,12 +753,24 @@ class PreviewErrorBoundary extends Component<
   }
 }
 
-export function WorksheetPreview({ formState, initialData, isScrolling }: WorksheetPreviewProps) {
+export function WorksheetPreview({
+  formState,
+  initialData,
+  isScrolling,
+  onPageDataReady,
+}: WorksheetPreviewProps) {
   return (
-    <PreviewErrorBoundary>
-      <Suspense fallback={<PreviewFallback />}>
-        <PreviewContent formState={formState} initialData={initialData} isScrolling={isScrolling} />
-      </Suspense>
-    </PreviewErrorBoundary>
+    <WorksheetPreviewProvider formState={formState}>
+      <PreviewErrorBoundary>
+        <Suspense fallback={<PreviewFallback formState={formState} />}>
+          <PreviewContent
+            formState={formState}
+            initialData={initialData}
+            isScrolling={isScrolling}
+            onPageDataReady={onPageDataReady}
+          />
+        </Suspense>
+      </PreviewErrorBoundary>
+    </WorksheetPreviewProvider>
   )
 }
