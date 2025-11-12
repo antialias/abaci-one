@@ -9,7 +9,7 @@ export const SETTING_ICONS = {
     subtraction: '➖',
     multiplication: '✖️',
     division: '➗',
-    mixed: '🔀',
+    mixed: '±',
   },
   difficulty: {
     smart: '🎯',

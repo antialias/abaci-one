@@ -143,7 +143,7 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
 
       {/* Main Content */}
       <InfoCard
-        icon={config.operator === 'mixed' ? '+−' : SETTING_ICONS.operator[config.operator]}
+        icon={SETTING_ICONS.operator[config.operator]}
         title="What's Being Practiced"
         description={`${operatorLabel} with ${digitRangeText}`}
         isDark={isDark}
