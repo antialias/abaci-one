@@ -168,9 +168,7 @@ export function MobileSettingsButton({ config, onClick }: MobileSettingsButtonPr
         color: isDark ? 'gray.100' : 'gray.900',
         rounded: 'xl',
         p: '3',
-        boxShadow: isDragging
-          ? '0 8px 24px rgba(0, 0, 0, 0.3)'
-          : '0 4px 12px rgba(0, 0, 0, 0.15)',
+        boxShadow: isDragging ? '0 8px 24px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
         border: '1px solid',
         borderColor: isDark ? 'gray.700' : 'gray.300',
         cursor: isDragging ? 'grabbing' : 'grab',
@@ -178,9 +176,7 @@ export function MobileSettingsButton({ config, onClick }: MobileSettingsButtonPr
         maxWidth: 'calc(100vw - 32px)',
         userSelect: 'none',
         _hover: {
-          boxShadow: isDragging
-            ? '0 8px 24px rgba(0, 0, 0, 0.3)'
-            : '0 6px 16px rgba(0, 0, 0, 0.2)',
+          boxShadow: isDragging ? '0 8px 24px rgba(0, 0, 0, 0.3)' : '0 6px 16px rgba(0, 0, 0, 0.2)',
           bg: isDark ? 'gray.750' : 'gray.50',
         },
       })}

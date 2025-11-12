@@ -11,6 +11,7 @@ import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useDeploymentInfo } from '../contexts/DeploymentInfoContext'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { LanguageSelector } from './LanguageSelector'
@@ -59,6 +60,7 @@ function MenuContent({
   handleNestedDropdownChange,
   isMobile,
   resolvedTheme,
+  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -69,6 +71,7 @@ function MenuContent({
   handleNestedDropdownChange?: (isOpen: boolean) => void
   isMobile?: boolean
   resolvedTheme?: 'light' | 'dark'
+  openDeploymentInfo?: () => void
 }) {
   const isDark = resolvedTheme === 'dark'
 
@@ -257,6 +260,33 @@ function MenuContent({
                 <span>Exit Arcade</span>
               </div>
             )}
+
+            {openDeploymentInfo && (
+              <div
+                onClick={() => {
+                  openDeploymentInfo()
+                  onNavigate?.()
+                }}
+                style={controlButtonStyle}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : 'rgba(34, 197, 94, 0.1)'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(134, 239, 172, 1)'
+                    : 'rgba(21, 128, 61, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(209, 213, 219, 1)'
+                    : 'rgba(55, 65, 81, 1)'
+                }}
+              >
+                <span style={{ fontSize: '18px' }}>ℹ️</span>
+                <span>Deployment Info</span>
+              </div>
+            )}
           </div>
 
           {/* Column 2: Style + Language + Theme */}
@@ -390,12 +420,14 @@ function HamburgerMenu({
   pathname,
   toggleFullscreen,
   router,
+  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
   pathname: string | null
   toggleFullscreen: () => void
   router: any
+  openDeploymentInfo: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
@@ -538,6 +570,7 @@ function HamburgerMenu({
                   handleNestedDropdownChange={handleNestedDropdownChange}
                   isMobile={true}
                   resolvedTheme={resolvedTheme}
+                  openDeploymentInfo={openDeploymentInfo}
                 />
               </div>
 
@@ -648,6 +681,7 @@ function HamburgerMenu({
             handleNestedDropdownChange={handleNestedDropdownChange}
             isMobile={false}
             resolvedTheme={resolvedTheme}
+            openDeploymentInfo={openDeploymentInfo}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -725,6 +759,7 @@ function MinimalNav({
           pathname={pathname}
           toggleFullscreen={toggleFullscreen}
           router={router}
+          openDeploymentInfo={openDeploymentInfo}
         />
       </div>
 
@@ -783,6 +818,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isArcadePage = pathname?.startsWith('/arcade')
   const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
+  const { open: openDeploymentInfo } = useDeploymentInfo()
 
   // Try to get home hero context (if on homepage)
   const homeHero = useOptionalHomeHero()
@@ -958,6 +994,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 pathname={pathname}
                 toggleFullscreen={toggleFullscreen}
                 router={router}
+                openDeploymentInfo={openDeploymentInfo}
               />
             </div>
           </div>

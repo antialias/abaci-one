@@ -36,7 +36,7 @@ export function FloatingPageIndicator({
       className={css({
         position: 'absolute',
         // Mobile: top-left with margin, Desktop: centered at top
-        top: isMobile ? '3' : '4',
+        top: '4',
         left: isMobile ? '3' : '50%',
         transform: isMobile ? 'none' : 'translateX(-50%)',
         zIndex: 10,

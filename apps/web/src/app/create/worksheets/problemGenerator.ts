@@ -125,7 +125,7 @@ function checkRegrouping(a: number, b: number): { hasAny: boolean; hasMultiple: 
  * Count the number of regrouping operations (carries) in an addition problem
  * Returns a number representing difficulty: 0 = no regrouping, 1+ = increasing difficulty
  */
-function countRegroupingOperations(a: number, b: number): number {
+export function countRegroupingOperations(a: number, b: number): number {
   const maxPlaces = Math.max(countDigits(a), countDigits(b))
   let carryCount = 0
   let carry = 0
@@ -418,16 +418,33 @@ export function generateProblems(
         // frac=1 (end) → sample from hard problems (high index)
         const targetIndex = Math.floor(frac * (sortedByDifficulty.length - 1))
 
-        // Try to get a problem near the target difficulty that we haven't used yet
-        let problem = sortedByDifficulty[targetIndex]
-        const key = `${problem.a},${problem.b}`
+        // Define a window around the target index to add variety
+        // Window size is 20% of total problems, minimum 3
+        const windowSize = Math.max(3, Math.floor(sortedByDifficulty.length * 0.2))
+        const windowStart = Math.max(0, targetIndex - Math.floor(windowSize / 2))
+        const windowEnd = Math.min(sortedByDifficulty.length, windowStart + windowSize)
 
-        // If already used, search nearby (forward then backward) for unused problem
-        // This maintains approximate difficulty while avoiding duplicates
-        if (seen.has(key)) {
+        // Collect unused problems within the window
+        const candidatesInWindow: AdditionProblem[] = []
+        for (let j = windowStart; j < windowEnd; j++) {
+          const candidate = sortedByDifficulty[j]
+          const candidateKey = `${candidate.a},${candidate.b}`
+          if (!seen.has(candidateKey)) {
+            candidatesInWindow.push(candidate)
+          }
+        }
+
+        let problem: AdditionProblem | undefined
+        if (candidatesInWindow.length > 0) {
+          // Randomly pick from unused problems in the window
+          const randomIdx = Math.floor(rand() * candidatesInWindow.length)
+          problem = candidatesInWindow[randomIdx]
+          const key = `${problem.a},${problem.b}`
+          seen.add(key)
+        } else {
+          // If no unused problems in window, search outward from target
           let found = false
           for (let offset = 1; offset < sortedByDifficulty.length; offset++) {
-            // Try forward first (slightly harder), then backward (slightly easier)
             for (const direction of [1, -1]) {
               const idx = targetIndex + direction * offset
               if (idx >= 0 && idx < sortedByDifficulty.length) {
@@ -444,7 +461,6 @@ export function generateProblems(
           }
           // If still not found, we've exhausted ALL unique problems
           // Clear the "seen" set and start a new cycle through the sorted array
-          // This maintains the difficulty progression across cycles
           if (!found) {
             cycleCount++
             console.log(
@@ -452,9 +468,16 @@ export function generateProblems(
             )
             seen.clear()
             // Use the target problem for this position (beginning of new cycle)
+            problem = sortedByDifficulty[targetIndex]
+            const key = `${problem.a},${problem.b}`
             seen.add(key)
           }
-        } else {
+        }
+
+        // Safety: If problem is still undefined, use the target problem
+        if (!problem) {
+          problem = sortedByDifficulty[targetIndex]
+          const key = `${problem.a},${problem.b}`
           seen.add(key)
         }
 

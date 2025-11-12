@@ -8,10 +8,20 @@ import { css } from '../../styled-system/css'
 
 interface DeploymentInfoModalProps {
   children: React.ReactNode
+  externalOpen?: boolean
+  onExternalOpenChange?: (open: boolean) => void
 }
 
-export function DeploymentInfoModal({ children }: DeploymentInfoModalProps) {
-  const [open, setOpen] = useState(false)
+export function DeploymentInfoModal({
+  children,
+  externalOpen,
+  onExternalOpenChange,
+}: DeploymentInfoModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen
+  const setOpen = onExternalOpenChange || setInternalOpen
 
   useEffect(() => {
     // Keyboard shortcut: Cmd/Ctrl + Shift + I
