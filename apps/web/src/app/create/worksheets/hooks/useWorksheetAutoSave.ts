@@ -14,7 +14,8 @@ interface UseWorksheetAutoSaveReturn {
  *
  * Features:
  * - Debounced auto-save (1000ms delay)
- * - Only persists settings, not transient state (date, seed, rows, total)
+ * - Persists settings including seed and prngAlgorithm for problem reproducibility
+ * - Excludes transient state (date, rows, total)
  * - Persists V4 fields: mode, digitRange, displayRules, difficultyProfile, manualPreset
  * - Silent error handling (auto-save is not critical)
  * - StrictMode-safe (handles double renders)
@@ -45,7 +46,7 @@ export function useWorksheetAutoSave(
       console.log('[useWorksheetAutoSave] Attempting to save settings...')
       setIsSaving(true)
       try {
-        // Extract persisted config fields (excludes date, seed, derived state)
+        // Extract persisted config fields (includes seed/prngAlgorithm, excludes date and derived state)
         const config = extractConfigFields(formState)
 
         const response = await fetch('/api/worksheets/settings', {

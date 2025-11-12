@@ -24,7 +24,10 @@ export type WorksheetConfig = AdditionConfigV4 & {
 
   // Personalization
   date: string
+
+  // Problem reproducibility (critical for sharing)
   seed: number
+  prngAlgorithm: string
 
   // Layout
   page: {
@@ -61,7 +64,9 @@ export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>>
     rows?: number
     total?: number
     date?: string
+    // Problem reproducibility (critical for sharing)
     seed?: number
+    prngAlgorithm?: string
   }
 
 /**

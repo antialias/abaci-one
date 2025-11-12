@@ -148,6 +148,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
     fontSize,
     seed,
+    prngAlgorithm: formState.prngAlgorithm ?? 'mulberry32',
   }
 
   // Build mode-specific config

@@ -3,7 +3,8 @@ import type { WorksheetFormState } from '../types'
 
 /**
  * Extract only the persisted config fields from formState
- * Excludes derived state (rows, total, date, seed)
+ * Excludes derived state (rows, total, date)
+ * INCLUDES seed and prngAlgorithm to ensure exact problem reproduction when shared
  *
  * This ensures consistent field extraction across:
  * - Auto-save (useWorksheetAutoSave)
@@ -15,7 +16,7 @@ import type { WorksheetFormState } from '../types'
  */
 export function extractConfigFields(
   formState: WorksheetFormState
-): Omit<AdditionConfigV4, 'version'> {
+): Omit<AdditionConfigV4, 'version'> & { seed?: number; prngAlgorithm?: string } {
   return {
     problemsPerPage: formState.problemsPerPage!,
     cols: formState.cols!,
@@ -45,5 +46,8 @@ export function extractConfigFields(
     currentStepId: formState.currentStepId,
     currentAdditionSkillId: formState.currentAdditionSkillId,
     currentSubtractionSkillId: formState.currentSubtractionSkillId,
+    // CRITICAL: Include seed and algorithm to ensure exact same problems when sharing
+    seed: formState.seed,
+    prngAlgorithm: formState.prngAlgorithm ?? 'mulberry32',
   }
 }

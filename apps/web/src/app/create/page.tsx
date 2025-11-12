@@ -283,7 +283,7 @@ export default function CreateHubPage() {
             </Link>
 
             {/* Worksheet Creator */}
-            <Link href="/create/worksheets/addition">
+            <Link href="/create/worksheets">
               <div
                 data-element="worksheets-card"
                 className={css({
