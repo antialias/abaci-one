@@ -77,19 +77,22 @@ export function AdditionWorksheetClient({
     })
   }
 
-  // Resize handle styles
+  // Resize handle - thin 8px divider
   const resizeHandleStyles = css({
     width: '8px',
-    bg: isDark ? 'gray.700' : 'gray.200',
+    height: '100%',
     position: 'relative',
     cursor: 'col-resize',
     transition: 'background 0.2s',
+    zIndex: 10,
+    background: isDark ? 'gray.700' : 'gray.200',
     _hover: {
-      bg: isDark ? 'brand.600' : 'brand.400',
+      background: isDark ? 'brand.600' : 'brand.400',
     },
     _active: {
-      bg: 'brand.500',
+      background: 'brand.500',
     },
+    // Vertical grip dots
     _before: {
       content: '""',
       position: 'absolute',
@@ -98,12 +101,43 @@ export function AdditionWorksheetClient({
       transform: 'translate(-50%, -50%)',
       width: '3px',
       height: '20px',
-      bg: isDark ? 'gray.500' : 'gray.400',
+      bg: isDark ? 'gray.400' : 'gray.500',
       borderRadius: 'full',
       boxShadow: isDark
-        ? '0 -8px 0 0 rgb(107, 114, 128), 0 8px 0 0 rgb(107, 114, 128)'
-        : '0 -8px 0 0 rgb(156, 163, 175), 0 8px 0 0 rgb(156, 163, 175)',
+        ? '0 -8px 0 0 rgb(156, 163, 175), 0 8px 0 0 rgb(156, 163, 175)'
+        : '0 -8px 0 0 rgb(107, 114, 128), 0 8px 0 0 rgb(107, 114, 128)',
+      pointerEvents: 'none',
+      zIndex: 2,
     },
+  })
+
+  // Visual grab tab with rounded corners (non-interactive decoration)
+  const grabTabStyles = css({
+    position: 'absolute',
+    top: 'calc(50% - 32px)',
+    left: '8px',
+    width: '28px',
+    height: '64px',
+    background: isDark ? 'rgb(75, 85, 99)' : 'rgb(209, 213, 219)',
+    borderRadius: '0 8px 8px 0',
+    boxShadow: isDark ? '2px 2px 8px rgba(0, 0, 0, 0.3)' : '2px 2px 8px rgba(0, 0, 0, 0.15)',
+    pointerEvents: 'none',
+    // Knurled texture
+    backgroundImage: isDark
+      ? `repeating-linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.1) 0px,
+          rgba(255, 255, 255, 0.1) 1px,
+          transparent 1px,
+          transparent 3px
+        )`
+      : `repeating-linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0.08) 0px,
+          rgba(0, 0, 0, 0.08) 1px,
+          transparent 1px,
+          transparent 3px
+        )`,
   })
 
   return (
@@ -131,7 +165,9 @@ export function AdditionWorksheetClient({
               <ConfigSidebar isSaving={isSaving} lastSaved={lastSaved} />
             </Panel>
 
-            <PanelResizeHandle className={resizeHandleStyles} />
+            <PanelResizeHandle className={resizeHandleStyles}>
+              <div className={grabTabStyles} data-element="grab-tab" />
+            </PanelResizeHandle>
 
             {/* Center Panel: Preview */}
             <Panel defaultSize={75} minSize={60}>
