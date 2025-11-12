@@ -5,11 +5,17 @@ import { useTheme } from '@/contexts/ThemeContext'
 
 interface PagePlaceholderProps {
   pageNumber: number
+  orientation?: 'portrait' | 'landscape'
 }
 
-export function PagePlaceholder({ pageNumber }: PagePlaceholderProps) {
+export function PagePlaceholder({ pageNumber, orientation = 'portrait' }: PagePlaceholderProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Match the aspect ratio of actual worksheet pages
+  // Portrait: 8.5" × 11" (aspect ratio 1:1.294)
+  // Landscape: 11" × 8.5" (aspect ratio 1.294:1)
+  const aspectRatio = orientation === 'portrait' ? 11 / 8.5 : 8.5 / 11
 
   return (
     <div
@@ -20,7 +26,8 @@ export function PagePlaceholder({ pageNumber }: PagePlaceholderProps) {
         border: '2px dashed',
         borderColor: isDark ? 'gray.600' : 'gray.300',
         rounded: 'lg',
-        minHeight: '800px',
+        width: '100%',
+        aspectRatio: `1 / ${aspectRatio}`,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

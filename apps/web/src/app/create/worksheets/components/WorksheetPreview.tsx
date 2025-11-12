@@ -422,8 +422,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
               className={css({
                 display: 'flex',
                 justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '800px', // Prevent layout shift
+                alignItems: 'flex-start',
               })}
             >
               {isLoaded && page ? (
@@ -469,7 +468,7 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
                   </p>
                 </div>
               ) : (
-                <PagePlaceholder pageNumber={index + 1} />
+                <PagePlaceholder pageNumber={index + 1} orientation={formState.orientation} />
               )}
             </div>
           )
