@@ -3,8 +3,9 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '@styled/css'
-import { useMemo } from 'react'
-import { estimateUniqueProblemSpace } from '../utils/validateProblemSpace'
+import { useMemo, useState } from 'react'
+import { validateProblemSpace } from '../utils/validateProblemSpace'
+import type { ProblemSpaceValidation } from '../utils/validateProblemSpace'
 import { getDefaultColsForProblemsPerPage } from '../utils/layoutCalculations'
 
 interface OrientationPanelProps {
@@ -65,45 +66,66 @@ export function OrientationPanel({
     onProblemsPerPageChange(count, newCols)
   }
 
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   const total = problemsPerPage * pages
   const problemsForOrientation =
     orientation === 'portrait' ? [6, 8, 10, 12, 15] : [8, 10, 12, 15, 16, 20]
 
-  // Calculate problem space and determine risk for each page count
-  const estimatedSpace = useMemo(() => {
+  /**
+   * Get validation result for a specific page count
+   * Uses the same validateProblemSpace() function as the banner warning
+   */
+  const getValidationForPageCount = (pageCount: number): ProblemSpaceValidation | null => {
     // Skip validation for mastery + mixed mode (same logic as WorksheetPreviewContext)
     if (mode === 'mastery' && operator === 'mixed') {
-      return Infinity // No validation
+      return null
     }
-    return estimateUniqueProblemSpace(digitRange, pAnyStart, operator)
-  }, [digitRange, pAnyStart, operator, mode])
-
-  // Helper to get duplicate risk for a given page count
-  const getDuplicateRisk = (pageCount: number): 'none' | 'caution' | 'danger' => {
-    if (estimatedSpace === Infinity) return 'none'
-
-    const requestedProblems = problemsPerPage * pageCount
-    const ratio = requestedProblems / estimatedSpace
-
-    if (ratio < 0.5) return 'none'
-    if (ratio < 0.8) return 'caution'
-    return 'danger'
+    return validateProblemSpace(problemsPerPage, pageCount, digitRange, pAnyStart, operator)
   }
 
-  // Helper to get tooltip message for a page count
-  const getTooltipMessage = (pageCount: number): string | null => {
-    if (estimatedSpace === Infinity) return null
+  /**
+   * Map duplicate risk levels to UI warning states
+   * - none: No visual warning (green/default)
+   * - low/medium: Caution (yellow)
+   * - high/extreme: Danger (red)
+   */
+  const getRiskLevel = (
+    validation: ProblemSpaceValidation | null
+  ): 'none' | 'caution' | 'danger' => {
+    if (!validation) return 'none'
+    const { duplicateRisk } = validation
+    if (duplicateRisk === 'none') return 'none'
+    if (duplicateRisk === 'low' || duplicateRisk === 'medium') return 'caution'
+    return 'danger' // high or extreme
+  }
 
-    const requestedProblems = problemsPerPage * pageCount
-    const ratio = requestedProblems / estimatedSpace
+  /**
+   * Format validation warnings for tooltip display
+   */
+  const getTooltipMessage = (validation: ProblemSpaceValidation | null): string | null => {
+    if (!validation || validation.warnings.length === 0) return null
+    return validation.warnings.join('\n\n')
+  }
 
-    if (ratio < 0.5) return null // No warning needed
+  /**
+   * Get the mildest (most severe) warning among dropdown items (4, 10, 25, 50, 100)
+   * Returns 'none' if no warnings, 'caution' if any caution, 'danger' if any danger
+   */
+  const getDropdownMildestWarning = (): 'none' | 'caution' | 'danger' => {
+    const dropdownPageCounts = [4, 10, 25, 50, 100]
+    let hasCaution = false
+    let hasDanger = false
 
-    if (ratio < 0.8) {
-      return `⚠️ Limited variety: ${requestedProblems} problems requested, ~${Math.floor(estimatedSpace)} unique available.\n\nSome duplicates may occur.`
+    for (const pageCount of dropdownPageCounts) {
+      const risk = getRiskLevel(getValidationForPageCount(pageCount))
+      if (risk === 'danger') hasDanger = true
+      if (risk === 'caution') hasCaution = true
     }
 
-    return `🚫 Too many duplicates: ${requestedProblems} problems requested, only ~${Math.floor(estimatedSpace)} unique available.\n\nConsider:\n• Reduce to ${Math.max(1, Math.floor((estimatedSpace * 0.5) / problemsPerPage))} pages\n• Increase digit range\n• Lower regrouping %`
+    if (hasDanger) return 'danger'
+    if (hasCaution) return 'caution'
+    return 'none'
   }
 
   return (
@@ -448,8 +470,9 @@ export function OrientationPanel({
               {/* Quick select buttons for 1-3 pages */}
               {[1, 2, 3].map((pageCount) => {
                 const isSelected = pages === pageCount
-                const risk = getDuplicateRisk(pageCount)
-                const tooltipMessage = getTooltipMessage(pageCount)
+                const validation = getValidationForPageCount(pageCount)
+                const risk = getRiskLevel(validation)
+                const tooltipMessage = getTooltipMessage(validation)
 
                 const button = (
                   <button
@@ -561,7 +584,7 @@ export function OrientationPanel({
                 if (tooltipMessage) {
                   return (
                     <Tooltip.Provider key={pageCount}>
-                      <Tooltip.Root delayDuration={300}>
+                      <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
                         <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
                         <Tooltip.Portal>
                           <Tooltip.Content
@@ -599,63 +622,126 @@ export function OrientationPanel({
               })}
 
               {/* Dropdown for 4+ pages */}
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                  <button
-                    type="button"
-                    data-action="open-pages-dropdown"
-                    className={css({
-                      minW: '8',
-                      h: '8',
-                      px: '2',
-                      border: '2px solid',
-                      borderColor: pages > 3 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                      bg:
-                        pages > 3
-                          ? isDark
-                            ? 'brand.900'
-                            : 'brand.50'
-                          : isDark
-                            ? 'gray.700'
-                            : 'white',
-                      rounded: 'lg',
-                      cursor: 'pointer',
-                      fontSize: 'xs',
-                      fontWeight: 'bold',
-                      color:
-                        pages > 3
-                          ? isDark
-                            ? 'brand.200'
-                            : 'brand.700'
-                          : isDark
-                            ? 'gray.300'
-                            : 'gray.600',
-                      transition: 'all 0.15s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '1',
-                      flexShrink: 0,
-                      _hover: {
-                        borderColor: 'brand.400',
-                      },
-                      '@media (max-width: 444px)': {
-                        minW: '6',
-                        h: '6',
-                        fontSize: '2xs',
-                      },
-                      '@media (max-width: 300px)': {
-                        minW: '5',
-                        h: '5',
-                        fontSize: '2xs',
-                        borderWidth: '1px',
-                      },
-                    })}
+              <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
+                <Tooltip.Provider>
+                  <Tooltip.Root
+                    delayDuration={0}
+                    disableHoverableContent={true}
+                    open={
+                      !dropdownOpen &&
+                      pages > 3 &&
+                      getTooltipMessage(getValidationForPageCount(pages)) !== null
+                        ? undefined
+                        : false
+                    }
                   >
-                    {pages > 3 ? pages : '4+'}
-                    <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
-                  </button>
-                </DropdownMenu.Trigger>
+                    <Tooltip.Trigger asChild>
+                      <DropdownMenu.Trigger asChild>
+                        <button
+                          type="button"
+                          data-action="open-pages-dropdown"
+                          className={css({
+                            minW: '8',
+                            h: '8',
+                            px: '2',
+                            border: '2px solid',
+                            borderColor: pages > 3 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                            bg:
+                              pages > 3
+                                ? isDark
+                                  ? 'brand.900'
+                                  : 'brand.50'
+                                : isDark
+                                  ? 'gray.700'
+                                  : 'white',
+                            rounded: 'lg',
+                            cursor: 'pointer',
+                            fontSize: 'xs',
+                            fontWeight: 'bold',
+                            color:
+                              pages > 3
+                                ? isDark
+                                  ? 'brand.200'
+                                  : 'brand.700'
+                                : isDark
+                                  ? 'gray.300'
+                                  : 'gray.600',
+                            transition: 'all 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '1',
+                            flexShrink: 0,
+                            position: 'relative',
+                            _hover: {
+                              borderColor: 'brand.400',
+                            },
+                            '@media (max-width: 444px)': {
+                              minW: '6',
+                              h: '6',
+                              fontSize: '2xs',
+                            },
+                            '@media (max-width: 300px)': {
+                              minW: '5',
+                              h: '5',
+                              fontSize: '2xs',
+                              borderWidth: '1px',
+                            },
+                          })}
+                        >
+                          {pages > 3 ? pages : '4+'}
+                          <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
+                          {/* Warning indicator dot - shows mildest warning from all dropdown items */}
+                          {getDropdownMildestWarning() !== 'none' && (
+                            <span
+                              className={css({
+                                position: 'absolute',
+                                top: '-1',
+                                right: '-1',
+                                w: '2',
+                                h: '2',
+                                bg:
+                                  getDropdownMildestWarning() === 'danger'
+                                    ? 'red.500'
+                                    : 'yellow.500',
+                                rounded: 'full',
+                              })}
+                            />
+                          )}
+                        </button>
+                      </DropdownMenu.Trigger>
+                    </Tooltip.Trigger>
+                    {pages > 3 && getTooltipMessage(getValidationForPageCount(pages)) && (
+                      <Tooltip.Portal>
+                        <Tooltip.Content
+                          className={css({
+                            bg: isDark ? 'gray.800' : 'white',
+                            color: isDark ? 'gray.100' : 'gray.900',
+                            px: '3',
+                            py: '2',
+                            rounded: 'lg',
+                            shadow: 'lg',
+                            border: '1px solid',
+                            borderColor: isDark ? 'gray.600' : 'gray.200',
+                            maxW: '64',
+                            fontSize: 'xs',
+                            lineHeight: '1.5',
+                            whiteSpace: 'pre-wrap',
+                            zIndex: 10000,
+                          })}
+                          sideOffset={5}
+                        >
+                          {getTooltipMessage(getValidationForPageCount(pages))}
+                          <Tooltip.Arrow
+                            className={css({
+                              fill: isDark ? 'gray.800' : 'white',
+                            })}
+                          />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    )}
+                  </Tooltip.Root>
+                </Tooltip.Provider>
 
                 <DropdownMenu.Portal>
                   <DropdownMenu.Content
@@ -673,7 +759,11 @@ export function OrientationPanel({
                   >
                     {[4, 10, 25, 50, 100].map((pageCount) => {
                       const isSelected = pages === pageCount
-                      return (
+                      const validation = getValidationForPageCount(pageCount)
+                      const risk = getRiskLevel(validation)
+                      const tooltipMessage = getTooltipMessage(validation)
+
+                      const menuItem = (
                         <DropdownMenu.Item
                           key={pageCount}
                           data-action={`select-pages-${pageCount}`}
@@ -684,6 +774,7 @@ export function OrientationPanel({
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
+                                  gap: '2',
                                   px: '3',
                                   py: '2',
                                   rounded: 'md',
@@ -693,6 +784,7 @@ export function OrientationPanel({
                                   fontWeight: isSelected ? 'semibold' : 'medium',
                                   color: isSelected ? 'brand.200' : 'gray.200',
                                   bg: isSelected ? 'gray.700' : 'transparent',
+                                  position: 'relative',
                                   _hover: {
                                     bg: 'gray.700',
                                   },
@@ -704,6 +796,7 @@ export function OrientationPanel({
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
+                                  gap: '2',
                                   px: '3',
                                   py: '2',
                                   rounded: 'md',
@@ -713,6 +806,7 @@ export function OrientationPanel({
                                   fontWeight: isSelected ? 'semibold' : 'medium',
                                   color: isSelected ? 'brand.700' : 'gray.700',
                                   bg: isSelected ? 'brand.50' : 'transparent',
+                                  position: 'relative',
                                   _hover: {
                                     bg: 'brand.50',
                                   },
@@ -722,10 +816,67 @@ export function OrientationPanel({
                                 })
                           }
                         >
-                          <span>{pageCount}</span>
-                          {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
+                          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+                            {/* Warning indicator dot (same style as page buttons 1-3) */}
+                            {risk !== 'none' && (
+                              <span
+                                className={css({
+                                  w: '2',
+                                  h: '2',
+                                  bg: risk === 'danger' ? 'red.500' : 'yellow.500',
+                                  rounded: 'full',
+                                  flexShrink: 0,
+                                })}
+                              />
+                            )}
+                            <span>{pageCount} pages</span>
+                          </div>
+                          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+                            {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
+                          </div>
                         </DropdownMenu.Item>
                       )
+
+                      // Wrap in tooltip if there's a warning message
+                      if (tooltipMessage) {
+                        return (
+                          <Tooltip.Provider key={pageCount}>
+                            <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
+                              <Tooltip.Trigger asChild>{menuItem}</Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  className={css({
+                                    bg: isDark ? 'gray.800' : 'white',
+                                    color: isDark ? 'gray.100' : 'gray.900',
+                                    px: '3',
+                                    py: '2',
+                                    rounded: 'lg',
+                                    shadow: 'lg',
+                                    border: '1px solid',
+                                    borderColor: isDark ? 'gray.600' : 'gray.200',
+                                    maxW: '80',
+                                    fontSize: 'xs',
+                                    lineHeight: '1.5',
+                                    whiteSpace: 'pre-wrap',
+                                    zIndex: 10000,
+                                  })}
+                                  side="left"
+                                  sideOffset={5}
+                                >
+                                  {tooltipMessage}
+                                  <Tooltip.Arrow
+                                    className={css({
+                                      fill: isDark ? 'gray.800' : 'white',
+                                    })}
+                                  />
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        )
+                      }
+
+                      return menuItem
                     })}
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
