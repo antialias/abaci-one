@@ -436,39 +436,14 @@ function PreviewContent({ formState, initialData, isScrolling = false }: Workshe
                   })}
                   dangerouslySetInnerHTML={{ __html: page }}
                 />
-              ) : isFetching ? (
-                <div
-                  data-element="page-loading"
-                  className={css({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4',
-                    p: '8',
-                  })}
-                >
-                  <div
-                    className={css({
-                      fontSize: '2xl',
-                      animation: 'spin',
-                      animationDuration: '1s',
-                      animationTimingFunction: 'linear',
-                      animationIterationCount: 'infinite',
-                    })}
-                  >
-                    ⏳
-                  </div>
-                  <p
-                    className={css({
-                      fontSize: 'sm',
-                      color: isDark ? 'gray.400' : 'gray.600',
-                    })}
-                  >
-                    Loading page {index + 1}...
-                  </p>
-                </div>
               ) : (
-                <PagePlaceholder pageNumber={index + 1} orientation={formState.orientation} />
+                <PagePlaceholder
+                  pageNumber={index + 1}
+                  orientation={formState.orientation}
+                  rows={Math.ceil((formState.problemsPerPage ?? 20) / (formState.cols ?? 5))}
+                  cols={formState.cols}
+                  loading={isFetching}
+                />
               )}
             </div>
           )
