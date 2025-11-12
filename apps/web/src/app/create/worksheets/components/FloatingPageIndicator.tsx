@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import NumberFlow from '@number-flow/react'
 
 interface FloatingPageIndicatorProps {
@@ -20,6 +21,7 @@ export function FloatingPageIndicator({
 }: FloatingPageIndicatorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const isMobile = useIsMobile()
   const [isHovered, setIsHovered] = useState(false)
 
   if (totalPages <= 1) return null
@@ -33,33 +35,37 @@ export function FloatingPageIndicator({
       onMouseLeave={() => setIsHovered(false)}
       className={css({
         position: 'absolute',
-        top: '4',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        // Mobile: top-left with margin, Desktop: centered at top
+        top: isMobile ? '3' : '4',
+        left: isMobile ? '3' : '50%',
+        transform: isMobile ? 'none' : 'translateX(-50%)',
         zIndex: 10,
         bg: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(8px)',
         border: '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.200',
         rounded: 'full',
-        px: '4',
-        py: '2',
+        // Mobile: smaller padding
+        px: isMobile ? '2' : '4',
+        py: isMobile ? '1' : '2',
         shadow: 'lg',
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '3',
+        gap: isMobile ? '2' : '3',
         opacity: isActive ? 1 : 0.7,
         transition: 'opacity 0.3s ease-in-out',
+        // Mobile: slightly smaller scale
+        fontSize: isMobile ? 'xs' : 'sm',
       })}
     >
       <button
         onClick={() => onJumpToPage(Math.max(0, currentPage - 1))}
         disabled={currentPage === 0}
         className={css({
-          px: '2',
+          px: isMobile ? '1' : '2',
           py: '1',
           rounded: 'md',
-          fontSize: 'sm',
+          fontSize: isMobile ? 'xs' : 'sm',
           fontWeight: 'medium',
           color: isDark ? 'gray.300' : 'gray.700',
           cursor: 'pointer',
@@ -78,50 +84,83 @@ export function FloatingPageIndicator({
 
       <span
         className={css({
-          fontSize: 'sm',
+          fontSize: isMobile ? 'xs' : 'sm',
           fontWeight: 'semibold',
           color: isDark ? 'gray.100' : 'gray.900',
-          minW: '20',
+          minW: isMobile ? '16' : '20',
           textAlign: 'center',
           display: 'flex',
           alignItems: 'center',
           gap: '1',
+          whiteSpace: 'nowrap',
         })}
       >
-        Page{' '}
-        <NumberFlow
-          value={currentPage + 1}
-          format={{ notation: 'standard' }}
-          trend={0}
-          animated
-          style={{
-            fontWeight: 'inherit',
-            fontSize: 'inherit',
-            color: 'inherit',
-          }}
-        />{' '}
-        of{' '}
-        <NumberFlow
-          value={totalPages}
-          format={{ notation: 'standard' }}
-          trend={0}
-          animated
-          style={{
-            fontWeight: 'inherit',
-            fontSize: 'inherit',
-            color: 'inherit',
-          }}
-        />
+        {isMobile ? (
+          // Mobile: compact format "1/5"
+          <>
+            <NumberFlow
+              value={currentPage + 1}
+              format={{ notation: 'standard' }}
+              trend={0}
+              animated
+              style={{
+                fontWeight: 'inherit',
+                fontSize: 'inherit',
+                color: 'inherit',
+              }}
+            />
+            /
+            <NumberFlow
+              value={totalPages}
+              format={{ notation: 'standard' }}
+              trend={0}
+              animated
+              style={{
+                fontWeight: 'inherit',
+                fontSize: 'inherit',
+                color: 'inherit',
+              }}
+            />
+          </>
+        ) : (
+          // Desktop: full format "Page 1 of 5"
+          <>
+            Page{' '}
+            <NumberFlow
+              value={currentPage + 1}
+              format={{ notation: 'standard' }}
+              trend={0}
+              animated
+              style={{
+                fontWeight: 'inherit',
+                fontSize: 'inherit',
+                color: 'inherit',
+              }}
+            />{' '}
+            of{' '}
+            <NumberFlow
+              value={totalPages}
+              format={{ notation: 'standard' }}
+              trend={0}
+              animated
+              style={{
+                fontWeight: 'inherit',
+                fontSize: 'inherit',
+                color: 'inherit',
+              }}
+            />
+          </>
+        )}
       </span>
 
       <button
         onClick={() => onJumpToPage(Math.min(totalPages - 1, currentPage + 1))}
         disabled={currentPage === totalPages - 1}
         className={css({
-          px: '2',
+          px: isMobile ? '1' : '2',
           py: '1',
           rounded: 'md',
-          fontSize: 'sm',
+          fontSize: isMobile ? 'xs' : 'sm',
           fontWeight: 'medium',
           color: isDark ? 'gray.300' : 'gray.700',
           cursor: 'pointer',
