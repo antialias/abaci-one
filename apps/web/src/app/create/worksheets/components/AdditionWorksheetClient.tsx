@@ -77,28 +77,43 @@ export function AdditionWorksheetClient({
     })
   }
 
-  // Resize handle - thin 8px divider
+  // Resize handle - wide enough to contain tab, but clipped to show only divider + tab
   const resizeHandleStyles = css({
-    width: '8px',
+    width: '36px',
     height: '100%',
+    marginRight: '-28px', // Overlap the preview pane
     position: 'relative',
     cursor: 'col-resize',
-    transition: 'background 0.2s',
     zIndex: 10,
-    background: isDark ? 'gray.700' : 'gray.200',
-    _hover: {
-      background: isDark ? 'brand.600' : 'brand.400',
-    },
-    _active: {
-      background: 'brand.500',
-    },
-    // Vertical grip dots
+    overflow: 'visible',
+  })
+
+  // Visual container - creates the thin divider + tab shape
+  const handleVisualStyles = css({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none',
+    // Thin divider on the left
     _before: {
       content: '""',
       position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '8px',
+      height: '100%',
+      background: isDark ? 'gray.700' : 'gray.200',
+      transition: 'background 0.2s',
+    },
+    // Grip dots on divider
+    _after: {
+      content: '""',
+      position: 'absolute',
       top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
+      left: '4px',
+      transform: 'translateY(-50%)',
       width: '3px',
       height: '20px',
       bg: isDark ? 'gray.400' : 'gray.500',
@@ -106,12 +121,11 @@ export function AdditionWorksheetClient({
       boxShadow: isDark
         ? '0 -8px 0 0 rgb(156, 163, 175), 0 8px 0 0 rgb(156, 163, 175)'
         : '0 -8px 0 0 rgb(107, 114, 128), 0 8px 0 0 rgb(107, 114, 128)',
-      pointerEvents: 'none',
       zIndex: 2,
     },
   })
 
-  // Visual grab tab with rounded corners (non-interactive decoration)
+  // Grab tab with rounded corners
   const grabTabStyles = css({
     position: 'absolute',
     top: 'calc(50% - 32px)',
@@ -122,6 +136,7 @@ export function AdditionWorksheetClient({
     borderRadius: '0 8px 8px 0',
     boxShadow: isDark ? '2px 2px 8px rgba(0, 0, 0, 0.3)' : '2px 2px 8px rgba(0, 0, 0, 0.15)',
     pointerEvents: 'none',
+    transition: 'background 0.2s',
     // Knurled texture
     backgroundImage: isDark
       ? `repeating-linear-gradient(
@@ -166,7 +181,9 @@ export function AdditionWorksheetClient({
             </Panel>
 
             <PanelResizeHandle className={resizeHandleStyles}>
-              <div className={grabTabStyles} data-element="grab-tab" />
+              <div className={handleVisualStyles}>
+                <div className={grabTabStyles} data-element="grab-tab" />
+              </div>
             </PanelResizeHandle>
 
             {/* Center Panel: Preview */}
