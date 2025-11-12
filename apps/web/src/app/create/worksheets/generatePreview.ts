@@ -34,7 +34,11 @@ export function generateWorksheetPreview(
   startPage?: number,
   endPage?: number
 ): PreviewResult {
+  const totalProblems = (config.problemsPerPage ?? 20) * (config.pages ?? 1)
+  console.log(`[PREVIEW] Starting generation: ${totalProblems} problems, pages ${config.pages}`)
+
   try {
+    console.log('[PREVIEW] Step 1: Validating configuration...')
     // Validate configuration
     const validation = validateWorksheetConfig(config)
     if (!validation.isValid || !validation.config) {
@@ -46,10 +50,15 @@ export function generateWorksheetPreview(
     }
 
     const validatedConfig = validation.config
+    console.log('[PREVIEW] Step 1: ✓ Configuration valid')
 
     // Generate all problems for full preview based on operator
     const operator = validatedConfig.operator ?? 'addition'
     const mode = config.mode ?? 'smart'
+
+    console.log(
+      `[PREVIEW] Step 2: Generating ${validatedConfig.total} problems (mode: ${mode}, operator: ${operator})...`
+    )
 
     let problems
 
@@ -124,9 +133,15 @@ export function generateWorksheetPreview(
               )
     }
 
+    console.log(`[PREVIEW] Step 2: ✓ Generated ${problems.length} problems`)
+
     // Generate Typst sources (one per page)
+    console.log(`[PREVIEW] Step 3: Generating Typst source for ${validatedConfig.pages} pages...`)
+    const startTypst = Date.now()
     const typstSources = generateTypstSource(validatedConfig, problems)
+    const typstTime = Date.now() - startTypst
     const totalPages = typstSources.length
+    console.log(`[PREVIEW] Step 3: ✓ Generated ${totalPages} Typst sources in ${typstTime}ms`)
 
     // Determine range to compile
     const start = startPage !== undefined ? Math.max(0, startPage) : 0
@@ -140,9 +155,15 @@ export function generateWorksheetPreview(
       }
     }
 
+    console.log(
+      `[PREVIEW] Step 4: Compiling pages ${start}-${end} (${end - start + 1} pages) to SVG...`
+    )
+
     // Compile only requested page range to SVG
     const pages: string[] = []
+    const compileStart = Date.now()
     for (let i = start; i <= end; i++) {
+      const pageStart = Date.now()
       const typstSource = typstSources[i]
 
       // Compile to SVG via stdin/stdout
@@ -152,6 +173,8 @@ export function generateWorksheetPreview(
           encoding: 'utf8',
           maxBuffer: 10 * 1024 * 1024, // 10MB limit
         })
+        const pageTime = Date.now() - pageStart
+        console.log(`[PREVIEW] Step 4.${i + 1}: ✓ Page ${i} compiled in ${pageTime}ms`)
         pages.push(svgOutput)
       } catch (error) {
         console.error(`Typst compilation error (page ${i}):`, error)
@@ -169,6 +192,11 @@ export function generateWorksheetPreview(
         }
       }
     }
+
+    const totalCompileTime = Date.now() - compileStart
+    console.log(
+      `[PREVIEW] Step 4: ✓ All ${pages.length} pages compiled in ${totalCompileTime}ms (avg: ${Math.round(totalCompileTime / pages.length)}ms/page)`
+    )
 
     return {
       success: true,

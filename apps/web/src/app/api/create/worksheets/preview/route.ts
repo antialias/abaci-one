@@ -7,11 +7,19 @@ import type { WorksheetFormState } from '@/app/create/worksheets/types'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const requestStart = Date.now()
   try {
     const body: WorksheetFormState = await request.json()
 
     // Parse pagination parameters from query string
     const { searchParams } = new URL(request.url)
+    console.log('[API] Preview request:', {
+      pages: body.pages,
+      problemsPerPage: body.problemsPerPage,
+      total: (body.problemsPerPage ?? 20) * (body.pages ?? 1),
+      startPage: searchParams.get('startPage'),
+      endPage: searchParams.get('endPage'),
+    })
 
     // Support cursor-based pagination (GraphQL style)
     const cursor = searchParams.get('cursor')
@@ -54,6 +62,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const requestTime = Date.now() - requestStart
+    console.log(`[API] Preview request completed in ${requestTime}ms`)
 
     // Return pages with metadata
     return NextResponse.json({
