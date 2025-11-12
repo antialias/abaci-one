@@ -41,25 +41,31 @@ async function loadWorksheetSettings(): Promise<
       .limit(1)
 
     if (!row) {
-      // No saved settings, return defaults with a stable seed
+      // No saved settings, return defaults with a new seed
       return {
         ...defaultAdditionConfig,
         seed: Date.now() % 2147483647,
+        prngAlgorithm: 'mulberry32',
       } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
     }
 
     // Parse and validate config (auto-migrates to latest version)
     const config = parseAdditionConfig(row.config)
+
+    // CRITICAL: Use saved seed if present, otherwise generate new one
+    // This ensures reloading the page shows the same problems
     return {
       ...config,
-      seed: Date.now() % 2147483647,
+      seed: (config as any).seed ?? Date.now() % 2147483647,
+      prngAlgorithm: (config as any).prngAlgorithm ?? 'mulberry32',
     } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   } catch (error) {
     console.error('Failed to load worksheet settings:', error)
-    // Return defaults on error with a stable seed
+    // Return defaults on error with a new seed
     return {
       ...defaultAdditionConfig,
       seed: Date.now() % 2147483647,
+      prngAlgorithm: 'mulberry32',
     } as unknown as Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   }
 }
