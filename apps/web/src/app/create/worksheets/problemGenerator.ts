@@ -545,6 +545,11 @@ export function generateSubtractionProblems(
   interpolate: boolean,
   seed: number
 ): SubtractionProblem[] {
+  console.log(
+    `[SUB GEN] Starting: ${count} problems, digitRange: ${digitRange.min}-${digitRange.max}, pAnyBorrow: ${pAnyBorrow}, pAllBorrow: ${pAllBorrow}`
+  )
+  const startTime = Date.now()
+
   const rand = createPRNG(seed)
   const problems: SubtractionProblem[] = []
   const seen = new Set<string>()
@@ -561,7 +566,14 @@ export function generateSubtractionProblems(
     return false
   }
 
+  let totalRetries = 0
   for (let i = 0; i < count; i++) {
+    // Log progress every 100 problems for large sets
+    if (i > 0 && i % 100 === 0) {
+      console.log(
+        `[SUB GEN] Progress: ${i}/${count} problems (${totalRetries} total retries so far)`
+      )
+    }
     const t = i / Math.max(1, count - 1) // 0.0 to 1.0
     const difficultyMultiplier = interpolate ? t : 1
 
@@ -601,6 +613,7 @@ export function generateSubtractionProblems(
         picked = pick(['both', 'onesOnly', 'non'], rand)
       }
     }
+    totalRetries += tries
 
     // Last resort: add any valid problem in digit range
     if (!ok) {
@@ -630,6 +643,11 @@ export function generateSubtractionProblems(
     }
   }
 
+  const elapsed = Date.now() - startTime
+  console.log(
+    `[SUB GEN] Complete: ${problems.length} problems in ${elapsed}ms (${totalRetries} total retries, avg ${Math.round(totalRetries / count)} per problem)`
+  )
+
   return problems
 }
 
@@ -657,11 +675,15 @@ export function generateMasteryMixedProblems(
   },
   seed: number
 ): WorksheetProblem[] {
+  console.log(`[MASTERY MIXED] Generating ${count} mixed problems (50/50 split)...`)
+
   // Generate half from each operator
   const halfCount = Math.floor(count / 2)
   const addCount = halfCount
   const subCount = count - halfCount // Handle odd counts
 
+  console.log(`[MASTERY MIXED] Step 1: Generating ${addCount} addition problems...`)
+  const addStart = Date.now()
   // Generate addition problems using addition skill config
   const addProblems = generateProblems(
     addCount,
@@ -671,7 +693,12 @@ export function generateMasteryMixedProblems(
     seed,
     additionConfig.digitRange
   )
+  console.log(
+    `[MASTERY MIXED] Step 1: ✓ Generated ${addProblems.length} addition problems in ${Date.now() - addStart}ms`
+  )
 
+  console.log(`[MASTERY MIXED] Step 2: Generating ${subCount} subtraction problems...`)
+  const subStart = Date.now()
   // Generate subtraction problems using subtraction skill config
   const subProblems = generateSubtractionProblems(
     subCount,
@@ -681,7 +708,12 @@ export function generateMasteryMixedProblems(
     false, // No interpolation in mastery mode
     seed + 1000000 // Different seed space
   )
+  console.log(
+    `[MASTERY MIXED] Step 2: ✓ Generated ${subProblems.length} subtraction problems in ${Date.now() - subStart}ms`
+  )
 
+  console.log(`[MASTERY MIXED] Step 3: Shuffling ${count} problems...`)
+  const shuffleStart = Date.now()
   // Combine and shuffle
   const allProblems = [...addProblems, ...subProblems]
   const rand = createPRNG(seed + 2000000)
@@ -691,6 +723,7 @@ export function generateMasteryMixedProblems(
     const j = Math.floor(rand() * (i + 1))
     ;[allProblems[i], allProblems[j]] = [allProblems[j], allProblems[i]]
   }
+  console.log(`[MASTERY MIXED] Step 3: ✓ Shuffled in ${Date.now() - shuffleStart}ms`)
 
   return allProblems
 }
