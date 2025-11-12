@@ -198,7 +198,9 @@ function PreviewContent({
 
   // Fetch pages as they become visible
   useEffect(() => {
-    if (!shouldVirtualize) return
+    if (!shouldVirtualize) {
+      return
+    }
 
     // Find pages that are visible but not loaded and not being fetched
     const pagesToFetch = Array.from(visiblePages).filter(
@@ -260,7 +262,7 @@ function PreviewContent({
           })
         })
         .catch((error) => {
-          console.error(`Failed to fetch pages ${start}-${end}:`, error)
+          console.error(`[Virtualization] Failed to fetch pages ${start}-${end}:`, error)
 
           // Remove from fetching set on error
           setFetchingPages((prev) => {

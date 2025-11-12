@@ -1,7 +1,7 @@
 'use client'
 
 import { css } from '@styled/css'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { StudentNameInput } from './config-panel/StudentNameInput'
 import { ContentTab } from './config-sidebar/ContentTab'
@@ -10,6 +10,8 @@ import { LayoutTab } from './config-sidebar/LayoutTab'
 import { ScaffoldingTab } from './config-sidebar/ScaffoldingTab'
 import { TabNavigation } from './config-sidebar/TabNavigation'
 import { useWorksheetConfig } from './WorksheetConfigContext'
+
+const ACTIVE_TAB_KEY = 'worksheet-config-active-tab'
 
 interface ConfigSidebarProps {
   isSaving?: boolean
@@ -24,9 +26,29 @@ export function ConfigSidebar({
 }: ConfigSidebarProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [activeTab, setActiveTab] = useState('operator')
   const { formState, onChange, isReadOnly: contextReadOnly } = useWorksheetConfig()
   const effectiveReadOnly = isReadOnly || contextReadOnly
+
+  // Always initialize with default to avoid hydration mismatch
+  const [activeTab, setActiveTab] = useState<string>('operator')
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Load from sessionStorage after mount (client-side only, runs once)
+  useEffect(() => {
+    const savedTab = sessionStorage.getItem(ACTIVE_TAB_KEY)
+    if (savedTab) {
+      setActiveTab(savedTab)
+    }
+    setIsInitialized(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist activeTab to sessionStorage whenever it changes (but only after initialization)
+  useEffect(() => {
+    if (isInitialized) {
+      sessionStorage.setItem(ACTIVE_TAB_KEY, activeTab)
+    }
+  }, [activeTab, isInitialized])
 
   return (
     <div

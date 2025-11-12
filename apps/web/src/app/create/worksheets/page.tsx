@@ -100,9 +100,12 @@ export default async function AdditionWorksheetPage() {
     date: getDefaultDate(),
   }
 
-  // Pre-generate worksheet preview on the server
-  console.log('[SSR] Generating worksheet preview on server...')
-  const previewResult = generateWorksheetPreview(fullConfig)
+  // Pre-generate ONLY the first 3 pages on the server
+  // The virtualization system will handle loading additional pages on-demand
+  const INITIAL_PAGES = 3
+  const pagesToGenerate = Math.min(INITIAL_PAGES, pages)
+  console.log(`[SSR] Generating initial ${pagesToGenerate} pages on server (total: ${pages})...`)
+  const previewResult = generateWorksheetPreview(fullConfig, 0, pagesToGenerate - 1)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
   // Pass settings and preview to client, wrapped in error boundary
