@@ -241,13 +241,25 @@ export function generateProblems(
   seed: number,
   digitRange: { min: number; max: number } = { min: 2, max: 2 }
 ): AdditionProblem[] {
+  console.log(
+    `[ADD GEN] Starting: ${total} problems, digitRange: ${digitRange.min}-${digitRange.max}, pAnyStart: ${pAnyStart}, pAllStart: ${pAllStart}`
+  )
+  const startTime = Date.now()
+
   const rand = createPRNG(seed)
   const problems: AdditionProblem[] = []
   const seen = new Set<string>()
 
   const { min: minDigits, max: maxDigits } = digitRange
 
+  let totalRetries = 0
   for (let i = 0; i < total; i++) {
+    // Log progress every 100 problems for large sets
+    if (i > 0 && i % 100 === 0) {
+      console.log(
+        `[ADD GEN] Progress: ${i}/${total} problems (${totalRetries} total retries so far)`
+      )
+    }
     // Calculate position from start (0) to end (1)
     const frac = total <= 1 ? 0 : i / (total - 1)
     // Progressive difficulty: start easy, end hard
@@ -294,6 +306,7 @@ export function generateProblems(
         // If pAny is 0, keep trying 'non' - don't switch to regrouping categories
       }
     }
+    totalRetries += tries
 
     // Last resort: use the appropriate generator one more time, even if not unique
     // This respects the difficulty constraints (non/onesOnly/both)
@@ -310,6 +323,11 @@ export function generateProblems(
       problems.push({ a, b, operator: 'add' })
     }
   }
+
+  const elapsed = Date.now() - startTime
+  console.log(
+    `[ADD GEN] Complete: ${problems.length} problems in ${elapsed}ms (${totalRetries} total retries, avg ${Math.round(totalRetries / total)} per problem)`
+  )
 
   return problems
 }
