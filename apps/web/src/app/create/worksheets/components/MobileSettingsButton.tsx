@@ -36,8 +36,8 @@ export function MobileSettingsButton({ config, onClick }: MobileSettingsButtonPr
     } else {
       // Default position: below nav and action button
       const navHeight = 60 // Approximate --app-nav-height
-      const actionButtonHeight = 48 // Approximate height of download/action button
-      setPosition({ x: MARGIN, y: navHeight + actionButtonHeight + MARGIN })
+      const actionButtonArea = 80 // Generous estimate including padding
+      setPosition({ x: MARGIN, y: navHeight + actionButtonArea })
     }
   }, [])
 
@@ -52,10 +52,22 @@ export function MobileSettingsButton({ config, onClick }: MobileSettingsButtonPr
 
     const rect = buttonRef.current.getBoundingClientRect()
 
-    // Calculate bounds
-    const navHeight = 60 // Approximate --app-nav-height
-    const actionButtonHeight = 48 // Approximate height of download/action button
-    const minY = navHeight + actionButtonHeight + MARGIN // Don't go above action button
+    // Calculate bounds - need to stay below the download/action button
+    // Try to find the actual action button element to get its real height
+    const actionButton = document.querySelector('[data-action="generate-worksheet"]')
+    let actionButtonBottom = 0
+
+    if (actionButton) {
+      const actionRect = actionButton.getBoundingClientRect()
+      actionButtonBottom = actionRect.bottom + MARGIN
+    } else {
+      // Fallback: estimate based on nav height + action button area
+      const navHeight = 60 // Approximate --app-nav-height
+      const actionButtonArea = 80 // More generous estimate including padding
+      actionButtonBottom = navHeight + actionButtonArea
+    }
+
+    const minY = actionButtonBottom
     const maxX = window.innerWidth - rect.width - MARGIN
     const maxY = window.innerHeight - rect.height - MARGIN
 
