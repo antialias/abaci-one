@@ -118,8 +118,7 @@ describe('Progressive Difficulty Mode', () => {
     // Should still maintain progression even with cycles
     const difficulties = problems.map((p) => countRegroupingOperations(p.a, p.b))
     const first10Avg = difficulties.slice(0, 10).reduce((a, b) => a + b, 0) / 10
-    const last10Avg =
-      difficulties.slice(-10).reduce((a, b) => a + b, 0) / 10
+    const last10Avg = difficulties.slice(-10).reduce((a, b) => a + b, 0) / 10
 
     // Last 10 should still be harder than first 10 (or equal if very limited problem space)
     expect(last10Avg).toBeGreaterThanOrEqual(first10Avg)

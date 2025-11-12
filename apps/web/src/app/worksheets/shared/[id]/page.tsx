@@ -4,13 +4,13 @@ import { css } from '@styled/css'
 import { stack } from '@styled/patterns'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { ConfigSidebar } from '@/app/create/worksheets/components/ConfigSidebar'
 import { PreviewCenter } from '@/app/create/worksheets/components/PreviewCenter'
 import { WorksheetConfigProvider } from '@/app/create/worksheets/components/WorksheetConfigContext'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
+import { ResponsiveSharedLayout } from '../components/ResponsiveSharedLayout'
+import { SharedWorksheetSummary } from '../components/SharedWorksheetSummary'
 
 interface ShareData {
   id: string
@@ -127,32 +127,6 @@ export default function SharedWorksheetPage() {
       // TODO: Show error toast
     }
   }
-
-  // Resize handle styles
-  const resizeHandleStyles = css({
-    width: '8px',
-    bg: isDark ? 'gray.700' : 'gray.200',
-    position: 'relative',
-    cursor: 'col-resize',
-    transition: 'background 0.2s',
-    _hover: {
-      bg: isDark ? 'brand.600' : 'brand.400',
-    },
-    _active: {
-      bg: 'brand.500',
-    },
-    _before: {
-      content: '""',
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: '3px',
-      height: '20px',
-      bg: isDark ? 'gray.600' : 'gray.300',
-      rounded: 'full',
-    },
-  })
 
   if (loading) {
     return (
@@ -291,28 +265,12 @@ export default function SharedWorksheetPage() {
           </div>
 
           {/* Worksheet studio layout */}
-          <PanelGroup direction="horizontal" className={css({ flex: '1', minHeight: '0' })}>
-            {/* Left sidebar - Config controls (read-only) */}
-            <Panel
-              defaultSize={25}
-              minSize={20}
-              maxSize={35}
-              className={css({
-                overflow: 'auto',
-                p: '4',
-                bg: isDark ? 'gray.800' : 'white',
-                borderRight: '1px solid',
-                borderColor: isDark ? 'gray.700' : 'gray.200',
-              })}
-            >
-              <ConfigSidebar isReadOnly={true} />
-            </Panel>
-
-            <PanelResizeHandle className={resizeHandleStyles} />
-
-            {/* Center - Preview */}
-            <Panel defaultSize={75} minSize={50} className={css({ overflow: 'hidden' })}>
-              {previewError ? (
+          <ResponsiveSharedLayout
+            config={shareData.config}
+            isDark={isDark}
+            sidebarContent={<SharedWorksheetSummary config={shareData.config} />}
+            previewContent={
+              previewError ? (
                 <div
                   className={css({
                     h: 'full',
@@ -448,9 +406,9 @@ export default function SharedWorksheetPage() {
                   }}
                   onEdit={() => setShowEditModal(true)}
                 />
-              )}
-            </Panel>
-          </PanelGroup>
+              )
+            }
+          />
 
           {/* Edit Modal */}
           {showEditModal && (
