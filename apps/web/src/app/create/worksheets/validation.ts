@@ -7,6 +7,7 @@ import type {
 } from '@/app/create/worksheets/types'
 import type { DisplayRules } from './displayRules'
 import { getSkillById } from './skills'
+import { WORKSHEET_LIMITS } from './constants/validation'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -28,14 +29,14 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
   // Validate total (must be positive, reasonable limit)
   const total = formState.total ?? 20
-  if (total < 1 || total > 2000) {
-    errors.push('Total problems must be between 1 and 2000')
+  if (total < 1 || total > WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS) {
+    errors.push(`Total problems must be between 1 and ${WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS}`)
   }
 
   // Validate cols and auto-calculate rows
   const cols = formState.cols ?? 4
-  if (cols < 1 || cols > 10) {
-    errors.push('Columns must be between 1 and 10')
+  if (cols < 1 || cols > WORKSHEET_LIMITS.MAX_COLS) {
+    errors.push(`Columns must be between 1 and ${WORKSHEET_LIMITS.MAX_COLS}`)
   }
 
   // Auto-calculate rows to fit all problems
@@ -60,18 +61,32 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
   // Validate fontSize
   const fontSize = formState.fontSize ?? 16
-  if (fontSize < 8 || fontSize > 32) {
-    errors.push('Font size must be between 8 and 32')
+  if (fontSize < WORKSHEET_LIMITS.FONT_SIZE.MIN || fontSize > WORKSHEET_LIMITS.FONT_SIZE.MAX) {
+    errors.push(
+      `Font size must be between ${WORKSHEET_LIMITS.FONT_SIZE.MIN} and ${WORKSHEET_LIMITS.FONT_SIZE.MAX}`
+    )
   }
 
   // V4: Validate digitRange (min and max must be 1-5, min <= max)
   // Note: Same range applies to both addition and subtraction
   const digitRange = formState.digitRange ?? { min: 2, max: 2 }
-  if (!digitRange.min || digitRange.min < 1 || digitRange.min > 5) {
-    errors.push('Digit range min must be between 1 and 5')
+  if (
+    !digitRange.min ||
+    digitRange.min < WORKSHEET_LIMITS.DIGIT_RANGE.MIN ||
+    digitRange.min > WORKSHEET_LIMITS.DIGIT_RANGE.MAX
+  ) {
+    errors.push(
+      `Digit range min must be between ${WORKSHEET_LIMITS.DIGIT_RANGE.MIN} and ${WORKSHEET_LIMITS.DIGIT_RANGE.MAX}`
+    )
   }
-  if (!digitRange.max || digitRange.max < 1 || digitRange.max > 5) {
-    errors.push('Digit range max must be between 1 and 5')
+  if (
+    !digitRange.max ||
+    digitRange.max < WORKSHEET_LIMITS.DIGIT_RANGE.MIN ||
+    digitRange.max > WORKSHEET_LIMITS.DIGIT_RANGE.MAX
+  ) {
+    errors.push(
+      `Digit range max must be between ${WORKSHEET_LIMITS.DIGIT_RANGE.MIN} and ${WORKSHEET_LIMITS.DIGIT_RANGE.MAX}`
+    )
   }
   if (digitRange.min > digitRange.max) {
     errors.push('Digit range min cannot be greater than max')
@@ -101,7 +116,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   const pages = formState.pages ?? 1
 
   // Determine mode (default to 'smart' if not specified)
-  const mode = formState.mode ?? 'smart'
+  const mode: 'smart' | 'manual' | 'mastery' = formState.mode ?? 'smart'
 
   // Shared fields for both modes
   const sharedFields = {
@@ -232,7 +247,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
         if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
           // Merge user's displayRules with skill's recommended scaffolding
           // User's displayRules take precedence for problemNumbers and cellBorders (layout options)
-          const userDisplayRules = formState.displayRules || {}
+          const userDisplayRules: Partial<DisplayRules> = formState.displayRules || {}
 
           config = {
             ...baseConfig,

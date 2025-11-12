@@ -7,6 +7,7 @@ import { extractConfigFields } from '../utils/extractConfigFields'
 interface UseWorksheetAutoSaveReturn {
   isSaving: boolean
   lastSaved: Date | null
+  saveError: string | null
 }
 
 /**
@@ -26,6 +27,7 @@ export function useWorksheetAutoSave(
 ): UseWorksheetAutoSaveReturn {
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Store the previous formState for auto-save to detect real changes
   const prevAutoSaveFormStateRef = useRef(formState)
@@ -45,6 +47,7 @@ export function useWorksheetAutoSave(
     const timer = setTimeout(async () => {
       console.log('[useWorksheetAutoSave] Attempting to save settings...')
       setIsSaving(true)
+      setSaveError(null) // Clear previous errors
       try {
         // Extract persisted config fields (includes seed/prngAlgorithm, excludes date and derived state)
         const config = extractConfigFields(formState)
@@ -64,15 +67,24 @@ export function useWorksheetAutoSave(
           if (data.success) {
             console.log('[useWorksheetAutoSave] ✓ Settings saved successfully')
             setLastSaved(new Date())
+            setSaveError(null)
+          } else if (data.error) {
+            // Validation error from server
+            console.error('[useWorksheetAutoSave] Validation error:', data.error)
+            setSaveError(data.error)
           } else {
             console.log('[useWorksheetAutoSave] Save skipped')
           }
         } else {
+          const errorText = await response.text()
           console.error('[useWorksheetAutoSave] Save failed with status:', response.status)
+          setSaveError(`Failed to save settings (${response.status}): ${errorText}`)
         }
       } catch (error) {
-        // Silently fail - settings persistence is not critical
+        // Surface error to user
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error('[useWorksheetAutoSave] Settings save error:', error)
+        setSaveError(`Failed to save settings: ${errorMessage}`)
       } finally {
         setIsSaving(false)
       }
@@ -84,5 +96,6 @@ export function useWorksheetAutoSave(
   return {
     isSaving,
     lastSaved,
+    saveError,
   }
 }

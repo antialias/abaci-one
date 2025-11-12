@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { getProfileFromConfig } from './difficultyProfiles'
+import { WORKSHEET_LIMITS } from './constants/validation'
 
 /**
  * Versioned worksheet config schemas with type-safe validation and migration
@@ -29,9 +30,9 @@ const ADDITION_CURRENT_VERSION = 4
  */
 export const additionConfigV1Schema = z.object({
   version: z.literal(1),
-  problemsPerPage: z.number().int().min(1).max(100),
-  cols: z.number().int().min(1).max(10),
-  pages: z.number().int().min(1).max(20),
+  problemsPerPage: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE),
+  cols: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_COLS),
+  pages: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PAGES),
   orientation: z.enum(['portrait', 'landscape']),
   name: z.string(),
   pAnyStart: z.number().min(0).max(1),
@@ -44,7 +45,11 @@ export const additionConfigV1Schema = z.object({
   showCellBorder: z.boolean(),
   showTenFrames: z.boolean(),
   showTenFramesForAll: z.boolean(),
-  fontSize: z.number().int().min(8).max(32),
+  fontSize: z
+    .number()
+    .int()
+    .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
+    .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
 })
 
 export type AdditionConfigV1 = z.infer<typeof additionConfigV1Schema>
@@ -55,9 +60,9 @@ export type AdditionConfigV1 = z.infer<typeof additionConfigV1Schema>
  */
 export const additionConfigV2Schema = z.object({
   version: z.literal(2),
-  problemsPerPage: z.number().int().min(1).max(100),
-  cols: z.number().int().min(1).max(10),
-  pages: z.number().int().min(1).max(20),
+  problemsPerPage: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE),
+  cols: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_COLS),
+  pages: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PAGES),
   orientation: z.enum(['portrait', 'landscape']),
   name: z.string(),
   pAnyStart: z.number().min(0).max(1),
@@ -128,7 +133,11 @@ export const additionConfigV2Schema = z.object({
   difficultyProfile: z.string().optional(),
 
   // V2: Keep fontSize and showTenFramesForAll for now (may refactor later)
-  fontSize: z.number().int().min(8).max(32),
+  fontSize: z
+    .number()
+    .int()
+    .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
+    .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
   showTenFramesForAll: z.boolean(),
 })
 
@@ -144,12 +153,16 @@ const additionConfigV3BaseSchema = z.object({
   version: z.literal(3),
 
   // Core worksheet settings
-  problemsPerPage: z.number().int().min(1).max(100),
-  cols: z.number().int().min(1).max(10),
-  pages: z.number().int().min(1).max(20),
+  problemsPerPage: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE),
+  cols: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_COLS),
+  pages: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PAGES),
   orientation: z.enum(['portrait', 'landscape']),
   name: z.string(),
-  fontSize: z.number().int().min(8).max(32),
+  fontSize: z
+    .number()
+    .int()
+    .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
+    .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
 
   // Regrouping probabilities (shared between modes)
   pAnyStart: z.number().min(0).max(1),
@@ -265,18 +278,30 @@ const additionConfigV4BaseSchema = z.object({
   version: z.literal(4),
 
   // Core worksheet settings
-  problemsPerPage: z.number().int().min(1).max(100),
-  cols: z.number().int().min(1).max(10),
-  pages: z.number().int().min(1).max(20),
+  problemsPerPage: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE),
+  cols: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_COLS),
+  pages: z.number().int().min(1).max(WORKSHEET_LIMITS.MAX_PAGES),
   orientation: z.enum(['portrait', 'landscape']),
   name: z.string(),
-  fontSize: z.number().int().min(8).max(32),
+  fontSize: z
+    .number()
+    .int()
+    .min(WORKSHEET_LIMITS.FONT_SIZE.MIN)
+    .max(WORKSHEET_LIMITS.FONT_SIZE.MAX),
 
   // V4: Digit range for problem generation
   digitRange: z
     .object({
-      min: z.number().int().min(1).max(5),
-      max: z.number().int().min(1).max(5),
+      min: z
+        .number()
+        .int()
+        .min(WORKSHEET_LIMITS.DIGIT_RANGE.MIN)
+        .max(WORKSHEET_LIMITS.DIGIT_RANGE.MAX),
+      max: z
+        .number()
+        .int()
+        .min(WORKSHEET_LIMITS.DIGIT_RANGE.MIN)
+        .max(WORKSHEET_LIMITS.DIGIT_RANGE.MAX),
     })
     .refine((data) => data.min <= data.max, {
       message: 'min must be less than or equal to max',

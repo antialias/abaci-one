@@ -68,7 +68,7 @@ export function resolveDisplayForProblem(
   rules: DisplayRules,
   problem: AnyProblemMeta
 ): ResolvedDisplayOptions {
-  const resolved = {
+  return {
     showCarryBoxes: evaluateRule(rules.carryBoxes, problem),
     showAnswerBoxes: evaluateRule(rules.answerBoxes, problem),
     showPlaceValueColors: evaluateRule(rules.placeValueColors, problem),
@@ -78,15 +78,4 @@ export function resolveDisplayForProblem(
     showBorrowNotation: evaluateRule(rules.borrowNotation, problem),
     showBorrowingHints: evaluateRule(rules.borrowingHints, problem),
   }
-
-  // DEBUG: Ten-frames evaluation
-  console.log('[TEN-FRAMES DEBUG]', {
-    rule: rules.tenFrames,
-    requiresRegrouping:
-      'requiresRegrouping' in problem ? problem.requiresRegrouping : problem.requiresBorrowing,
-    regroupCount: 'regroupCount' in problem ? problem.regroupCount : problem.borrowCount,
-    resolved: resolved.showTenFrames,
-  })
-
-  return resolved
 }

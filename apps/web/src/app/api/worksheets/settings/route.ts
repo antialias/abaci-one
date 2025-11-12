@@ -6,7 +6,12 @@ import {
   parseAdditionConfig,
   serializeAdditionConfig,
   defaultAdditionConfig,
+  additionConfigSchema,
 } from '@/app/create/worksheets/config-schemas'
+import {
+  WORKSHEET_LIMITS,
+  validateWorksheetLimits,
+} from '@/app/create/worksheets/constants/validation'
 
 /**
  * GET /api/worksheets/settings?type=addition
@@ -101,6 +106,33 @@ export async function POST(req: NextRequest) {
     if (worksheetType !== 'addition') {
       return NextResponse.json(
         { error: `Unsupported worksheet type: ${worksheetType}` },
+        { status: 400 }
+      )
+    }
+
+    // Validate worksheet limits before saving
+    const validation = validateWorksheetLimits(config.problemsPerPage, config.pages)
+    if (!validation.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: validation.error,
+        },
+        { status: 400 }
+      )
+    }
+
+    // Validate against schema (this will check all field types and ranges)
+    const schemaValidation = additionConfigSchema.safeParse({ ...config, version: 4 })
+    if (!schemaValidation.success) {
+      const errorMessages = schemaValidation.error.issues
+        .map((err) => `${err.path.join('.')}: ${err.message}`)
+        .join(', ')
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Invalid configuration: ${errorMessages}`,
+        },
         { status: 400 }
       )
     }
