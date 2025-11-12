@@ -396,8 +396,8 @@ export function OrientationPanel({
                 },
               })}
             >
-              {/* Quick select buttons for 1-4 pages */}
-              {[1, 2, 3, 4].map((pageCount) => {
+              {/* Quick select buttons for 1-3 pages */}
+              {[1, 2, 3].map((pageCount) => {
                 const isSelected = pages === pageCount
                 return (
                   <button
@@ -454,7 +454,7 @@ export function OrientationPanel({
                 )
               })}
 
-              {/* Dropdown for 10+ pages */}
+              {/* Dropdown for 4+ pages */}
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
@@ -465,9 +465,9 @@ export function OrientationPanel({
                       h: '8',
                       px: '2',
                       border: '2px solid',
-                      borderColor: pages > 4 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                      borderColor: pages > 3 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
                       bg:
-                        pages > 4
+                        pages > 3
                           ? isDark
                             ? 'brand.900'
                             : 'brand.50'
@@ -479,7 +479,7 @@ export function OrientationPanel({
                       fontSize: 'xs',
                       fontWeight: 'bold',
                       color:
-                        pages > 4
+                        pages > 3
                           ? isDark
                             ? 'brand.200'
                             : 'brand.700'
@@ -508,7 +508,7 @@ export function OrientationPanel({
                       },
                     })}
                   >
-                    {pages > 4 ? pages : '10+'}
+                    {pages > 3 ? pages : '4+'}
                     <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
                   </button>
                 </DropdownMenu.Trigger>
@@ -522,12 +522,12 @@ export function OrientationPanel({
                       border: '1px solid',
                       borderColor: isDark ? 'gray.700' : 'gray.200',
                       p: '2',
-                      minW: '32',
+                      minW: '24',
                       zIndex: 50,
                     })}
                     sideOffset={5}
                   >
-                    {[10, 25, 50, 100].map((pageCount) => {
+                    {[4, 10, 25, 50, 100].map((pageCount) => {
                       const isSelected = pages === pageCount
                       return (
                         <DropdownMenu.Item
@@ -578,7 +578,7 @@ export function OrientationPanel({
                                 })
                           }
                         >
-                          <span>{pageCount} pages</span>
+                          <span>{pageCount}</span>
                           {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
                         </DropdownMenu.Item>
                       )
