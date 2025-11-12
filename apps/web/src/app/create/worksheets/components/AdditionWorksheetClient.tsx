@@ -77,82 +77,23 @@ export function AdditionWorksheetClient({
     })
   }
 
-  // Resize handle - wide enough to contain tab, but clipped to show only divider + tab
+  // Resize handle - 36px wide but overlaps preview by 28px
   const resizeHandleStyles = css({
     width: '36px',
+    marginRight: '-28px',
     height: '100%',
-    marginRight: '-28px', // Overlap the preview pane
     position: 'relative',
     cursor: 'col-resize',
     zIndex: 10,
-    overflow: 'visible',
   })
 
-  // Visual container - creates the thin divider + tab shape
+  // Visual appearance: thin divider + grab tab
   const handleVisualStyles = css({
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
+    inset: 0,
     pointerEvents: 'none',
-    // Thin divider on the left
-    _before: {
-      content: '""',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '8px',
-      height: '100%',
-      background: isDark ? 'gray.700' : 'gray.200',
-      transition: 'background 0.2s',
-    },
-    // Grip dots on divider
-    _after: {
-      content: '""',
-      position: 'absolute',
-      top: '50%',
-      left: '4px',
-      transform: 'translateY(-50%)',
-      width: '3px',
-      height: '20px',
-      bg: isDark ? 'gray.400' : 'gray.500',
-      borderRadius: 'full',
-      boxShadow: isDark
-        ? '0 -8px 0 0 rgb(156, 163, 175), 0 8px 0 0 rgb(156, 163, 175)'
-        : '0 -8px 0 0 rgb(107, 114, 128), 0 8px 0 0 rgb(107, 114, 128)',
-      zIndex: 2,
-    },
-  })
-
-  // Grab tab with rounded corners
-  const grabTabStyles = css({
-    position: 'absolute',
-    top: 'calc(50% - 32px)',
-    left: '8px',
-    width: '28px',
-    height: '64px',
-    background: isDark ? 'rgb(75, 85, 99)' : 'rgb(209, 213, 219)',
-    borderRadius: '0 8px 8px 0',
-    boxShadow: isDark ? '2px 2px 8px rgba(0, 0, 0, 0.3)' : '2px 2px 8px rgba(0, 0, 0, 0.15)',
-    pointerEvents: 'none',
-    transition: 'background 0.2s',
-    // Knurled texture
-    backgroundImage: isDark
-      ? `repeating-linear-gradient(
-          90deg,
-          rgba(255, 255, 255, 0.1) 0px,
-          rgba(255, 255, 255, 0.1) 1px,
-          transparent 1px,
-          transparent 3px
-        )`
-      : `repeating-linear-gradient(
-          90deg,
-          rgba(0, 0, 0, 0.08) 0px,
-          rgba(0, 0, 0, 0.08) 1px,
-          transparent 1px,
-          transparent 3px
-        )`,
+    display: 'flex',
+    alignItems: 'center',
   })
 
   return (
@@ -182,7 +123,92 @@ export function AdditionWorksheetClient({
 
             <PanelResizeHandle className={resizeHandleStyles}>
               <div className={handleVisualStyles}>
-                <div className={grabTabStyles} data-element="grab-tab" />
+                {/* Thin divider (8px, full height) */}
+                <div
+                  className={css({
+                    width: '8px',
+                    height: '100%',
+                    bg: isDark ? 'gray.700' : 'gray.300',
+                    position: 'relative',
+                    transition: 'background-color 0.2s',
+                    _groupHover: {
+                      bg: isDark ? 'blue.600' : 'blue.300',
+                    },
+                  })}
+                >
+                  {/* Grip dots on divider */}
+                  <div
+                    className={css({
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    })}
+                  >
+                    <div
+                      className={css({
+                        width: '3px',
+                        height: '3px',
+                        borderRadius: 'full',
+                        bg: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    />
+                    <div
+                      className={css({
+                        width: '3px',
+                        height: '3px',
+                        borderRadius: 'full',
+                        bg: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    />
+                    <div
+                      className={css({
+                        width: '3px',
+                        height: '3px',
+                        borderRadius: 'full',
+                        bg: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    />
+                  </div>
+                </div>
+
+                {/* Grab tab (28px wide, 64px tall, centered vertically) */}
+                <div
+                  className={css({
+                    width: '28px',
+                    height: '64px',
+                    bg: isDark ? 'gray.600' : 'gray.400',
+                    borderTopRightRadius: '8px',
+                    borderBottomRightRadius: '8px',
+                    position: 'relative',
+                    transition: 'background-color 0.2s',
+                    overflow: 'hidden',
+                    _groupHover: {
+                      bg: isDark ? 'blue.500' : 'blue.400',
+                    },
+                  })}
+                >
+                  {/* Knurled texture (vertical ridges) - multiple visible lines */}
+                  {[0, 4, 8, 12, 16, 20, 24].map((offset) => (
+                    <div
+                      key={offset}
+                      className={css({
+                        position: 'absolute',
+                        left: `${offset}px`,
+                        top: 0,
+                        bottom: 0,
+                        width: '2px',
+                        bg: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)',
+                        boxShadow: isDark
+                          ? '1px 0 0 rgba(0, 0, 0, 0.3)'
+                          : '1px 0 0 rgba(255, 255, 255, 0.3)',
+                      })}
+                    />
+                  ))}
+                </div>
               </div>
             </PanelResizeHandle>
 
