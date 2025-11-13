@@ -62,7 +62,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   //
 
   // Get primary state values (source of truth for calculation)
-  const problemsPerPage = formState.problemsPerPage ?? (formState.total ?? 20)
+  const problemsPerPage = formState.problemsPerPage ?? formState.total ?? 20
   const pages = formState.pages ?? 1
 
   // Calculate derived state: total = problemsPerPage × pages

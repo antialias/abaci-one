@@ -5,6 +5,7 @@ import { stack } from '@styled/patterns'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { PreviewCenter } from '@/app/create/worksheets/components/PreviewCenter'
+import { ShareModal } from '@/app/create/worksheets/components/ShareModal'
 import { WorksheetConfigProvider } from '@/app/create/worksheets/components/WorksheetConfigContext'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -34,6 +35,7 @@ export default function SharedWorksheetPage() {
   const [previewError, setPreviewError] = useState<{ error: string; details?: string } | null>(null)
   const [preview, setPreview] = useState<string[] | undefined>(undefined)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   // Track if we've already fetched to prevent duplicate API calls in StrictMode
   const hasFetchedRef = useRef(false)
@@ -401,27 +403,20 @@ export default function SharedWorksheetPage() {
                   }}
                   status="idle"
                   isReadOnly={true}
-                  onShare={async () => {
-                    // Create a new share link for this config
-                    const response = await fetch('/api/worksheets/share', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        worksheetType: 'addition',
-                        config: shareData.config,
-                      }),
-                    })
-                    if (response.ok) {
-                      const data = await response.json()
-                      await navigator.clipboard.writeText(data.url)
-                      // TODO: Show toast notification
-                      alert('Share link copied to clipboard!')
-                    }
-                  }}
+                  onShare={() => setShowShareModal(true)}
                   onEdit={() => setShowEditModal(true)}
                 />
               )
             }
+          />
+
+          {/* Share Modal */}
+          <ShareModal
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            worksheetType="addition"
+            config={shareData.config}
+            isDark={isDark}
           />
 
           {/* Edit Modal */}

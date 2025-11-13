@@ -2,8 +2,8 @@
 
 import { css } from '@styled/css'
 import { stack } from '@styled/patterns'
-import QRCode from 'qrcode'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { AbacusQRCode } from '@/components/common/AbacusQRCode'
 import type { WorksheetFormState } from '../types'
 import { extractConfigFields } from '../utils/extractConfigFields'
 
@@ -27,7 +27,6 @@ export function ShareModal({
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string>('')
   const [copied, setCopied] = useState(false)
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
   // Auto-generate share link when modal opens
   useEffect(() => {
@@ -70,27 +69,6 @@ export function ShareModal({
 
     generateShare()
   }, [isOpen, worksheetType, config])
-
-  // Generate QR code when URL is available
-  useEffect(() => {
-    if (!shareUrl || !qrCanvasRef.current) return
-
-    QRCode.toCanvas(
-      qrCanvasRef.current,
-      shareUrl,
-      {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: isDark ? '#ffffff' : '#000000',
-          light: isDark ? '#1f2937' : '#ffffff',
-        },
-      },
-      (error) => {
-        if (error) console.error('QR Code generation error:', error)
-      }
-    )
-  }, [shareUrl, isDark])
 
   if (!isOpen) return null
 
@@ -195,7 +173,7 @@ export function ShareModal({
             </div>
           ) : shareUrl ? (
             <div className={stack({ gap: '4' })}>
-              {/* QR Code */}
+              {/* QR Code with Abacus Logo */}
               <div
                 className={css({
                   display: 'flex',
@@ -205,14 +183,19 @@ export function ShareModal({
               >
                 <div
                   className={css({
-                    bg: isDark ? 'gray.700' : 'white',
-                    p: '4',
-                    rounded: 'lg',
-                    border: '2px solid',
-                    borderColor: isDark ? 'gray.600' : 'gray.300',
+                    bg: 'white',
+                    p: '5',
+                    rounded: 'xl',
+                    border: '3px solid',
+                    borderColor: 'brand.400',
+                    boxShadow: '0 4px 16px rgba(251, 146, 60, 0.2)',
                   })}
                 >
-                  <canvas ref={qrCanvasRef} />
+                  <AbacusQRCode
+                    value={shareUrl}
+                    size={220}
+                    fgColor={isDark ? '#1f2937' : '#111827'}
+                  />
                 </div>
               </div>
 

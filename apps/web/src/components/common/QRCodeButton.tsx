@@ -1,9 +1,9 @@
 import * as Popover from '@radix-ui/react-popover'
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
 import { useClipboard } from '@/hooks/useClipboard'
 import { Z_INDEX } from '@/constants/zIndex'
+import { AbacusQRCode } from './AbacusQRCode'
 
 export interface QRCodeButtonProps {
   /**
@@ -61,7 +61,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
             Object.assign(e.currentTarget.style, buttonStyles)
           }}
         >
-          <QRCodeSVG value={url} size={84} level="L" />
+          <AbacusQRCode value={url} size={84} />
         </button>
       </Popover.Trigger>
 
@@ -105,7 +105,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
               marginBottom: '16px',
             }}
           >
-            <QRCodeSVG value={url} size={200} level="H" />
+            <AbacusQRCode value={url} size={200} />
           </div>
 
           {/* URL with copy button */}

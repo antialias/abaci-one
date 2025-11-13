@@ -1,8 +1,8 @@
 'use client'
 
-import { QRCodeSVG } from 'qrcode.react'
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
+import { AbacusQRCode } from '../common/AbacusQRCode'
 
 interface QRCodeDisplayProps {
   sessionId: string
@@ -78,11 +78,9 @@ export function QRCodeDisplay({ sessionId, uploadCount, uploads }: QRCodeDisplay
           borderColor: 'gray.200',
         })}
       >
-        <QRCodeSVG
+        <AbacusQRCode
           value={uploadUrl}
           size={200}
-          level="M"
-          includeMargin={false}
           className={css({
             display: 'block',
           })}

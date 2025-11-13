@@ -1,9 +1,36 @@
 {
   "permissions": {
-    "allow": ["WebFetch(domain:github.com)", "WebFetch(domain:react-resizable-panels.vercel.app)"],
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:react-resizable-panels.vercel.app)",
+      "Bash(gh run watch:*)",
+      "Bash(npm run build:*)",
+      "Bash(NODE_ENV=production npm run build:*)",
+      "Bash(npx @pandacss/dev:*)",
+      "Bash(npm run build-storybook:*)",
+      "Bash(ssh nas.home.network:*)",
+      "Bash(python3:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:community.home-assistant.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.google.com)",
+      "Bash(gcloud auth list:*)",
+      "Bash(gcloud auth login:*)",
+      "Bash(gcloud projects list:*)",
+      "Bash(gcloud projects create:*)",
+      "Bash(gcloud config set:*)",
+      "Bash(gcloud services enable:*)",
+      "Bash(gcloud alpha services api-keys create:*)",
+      "Bash(gcloud components install:*)",
+      "Bash(chmod:*)",
+      "Bash(./fetch-streetview.sh:*)"
+    ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
