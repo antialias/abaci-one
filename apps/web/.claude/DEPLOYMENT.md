@@ -211,6 +211,7 @@ git rev-parse HEAD
 - compose-updater not running - check with `docker ps | grep compose-updater`
 - compose-updater labels incorrect - check container labels
 - Image not pulled - manually pull with `docker-compose pull`
+- **compose-updater detection issue** - May not detect updates reliably (investigation ongoing - 2025-11-13)
 
 **Debugging**:
 
@@ -218,8 +219,10 @@ git rev-parse HEAD
 # Check compose-updater is running
 ssh nas.home.network "docker ps | grep compose-updater"
 
-# Check compose-updater logs for errors
+# Check compose-updater logs for errors and pull activity
 ssh nas.home.network "docker logs --tail 50 compose-updater"
+# Look for: "Processing service" followed by pull activity
+# If it says "No need to restart" WITHOUT pulling, detection may be broken
 
 # Check container labels are correct
 ssh nas.home.network "docker inspect soroban-abacus-flashcards" | grep -A3 "docker-compose-watcher"
@@ -228,14 +231,24 @@ ssh nas.home.network "docker inspect soroban-abacus-flashcards" | grep -A3 "dock
 #   "docker-compose-watcher.dir": "/volume1/homes/antialias/projects/abaci.one"
 ```
 
+**Known Issue (2025-11-13)**:
+
+compose-updater sometimes fails to detect updates even when new images are available. Logs show:
+```
+Processing service soroban-abacus-flashcards (requires build: false, watched: true)...
+No need to restart services in /volume1/homes/antialias/projects/abaci.one/docker-compose.yaml
+```
+
+Without any `docker pull` activity shown, even with `LOG_LEVEL=debug`. This suggests it's determining "no update needed" without actually checking the remote registry. Root cause under investigation.
+
 **Solution**:
 
 ```bash
-# Option 1: Restart compose-updater to force immediate check
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
-
-# Option 2: Manual pull and restart
+# Option 1: Manual pull and restart (most reliable)
 ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose pull && docker-compose up -d"
+
+# Option 2: Restart compose-updater to force immediate check (may not always work)
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
 ```
 
 #### 3. Missing Database Columns
