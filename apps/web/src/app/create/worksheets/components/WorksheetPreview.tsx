@@ -422,6 +422,11 @@ function PreviewContent({
           const isVisible = visiblePages.has(index)
           const page = loadedPages.get(index)
 
+          // Calculate dimensions for consistent sizing between placeholder and loaded content
+          const orientation = formState.orientation ?? 'portrait'
+          const maxWidth = orientation === 'portrait' ? 816 : 1056
+          const aspectRatio = orientation === 'portrait' ? '8.5 / 11' : '11 / 8.5'
+
           return (
             <div
               key={index}
@@ -440,11 +445,15 @@ function PreviewContent({
             >
               {isLoaded && page ? (
                 <div
+                  style={{
+                    width: '100%',
+                    maxWidth: `${maxWidth}px`,
+                    aspectRatio: aspectRatio,
+                  }}
                   className={css({
                     '& svg': {
-                      maxWidth: '100%',
+                      width: '100%',
                       height: 'auto',
-                      width: 'auto',
                     },
                   })}
                   dangerouslySetInnerHTML={{ __html: page }}

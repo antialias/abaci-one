@@ -38,12 +38,19 @@ export function ShareModal({
       setError('')
 
       try {
+        const extractedConfig = extractConfigFields(config)
+        console.log('[ShareModal] Creating share with config:', {
+          pages: extractedConfig.pages,
+          problemsPerPage: extractedConfig.problemsPerPage,
+          totalProblems: (extractedConfig.pages || 0) * (extractedConfig.problemsPerPage || 0),
+        })
+
         const response = await fetch('/api/worksheets/share', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             worksheetType,
-            config: extractConfigFields(config),
+            config: extractedConfig,
           }),
         })
 

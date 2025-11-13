@@ -61,39 +61,53 @@ export default function SharedWorksheetPage() {
         }
 
         const data = await response.json()
+        console.log('[SharedWorksheetPage] Loaded share data:', {
+          pages: data.config.pages,
+          problemsPerPage: data.config.problemsPerPage,
+          totalProblems: (data.config.pages || 0) * (data.config.problemsPerPage || 0),
+          fullConfig: data.config,
+        })
         setShareData(data)
 
-        // Fetch preview from API
-        try {
-          const previewResponse = await fetch('/api/worksheets/preview', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config: data.config }),
-          })
+        // Don't pre-fetch preview for large worksheets - let WorksheetPreview handle virtual loading
+        // Only pre-fetch for small worksheets (≤5 pages) to improve initial load experience
+        if (data.config.pages && data.config.pages <= 5) {
+          console.log('[SharedWorksheetPage] Pre-fetching preview for small worksheet...')
+          try {
+            const previewResponse = await fetch('/api/worksheets/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ config: data.config }),
+            })
 
-          if (previewResponse.ok) {
-            const previewData = await previewResponse.json()
-            if (previewData.success) {
-              setPreview(previewData.pages)
+            if (previewResponse.ok) {
+              const previewData = await previewResponse.json()
+              if (previewData.success) {
+                setPreview(previewData.pages)
+              } else {
+                // Preview generation failed - store error details
+                setPreviewError({
+                  error: previewData.error || 'Failed to generate preview',
+                  details: previewData.details,
+                })
+              }
             } else {
-              // Preview generation failed - store error details
               setPreviewError({
-                error: previewData.error || 'Failed to generate preview',
-                details: previewData.details,
+                error: 'Preview generation failed',
+                details: `HTTP ${previewResponse.status}: ${previewResponse.statusText}`,
               })
             }
-          } else {
+          } catch (err) {
+            console.error('Failed to generate preview:', err)
             setPreviewError({
-              error: 'Preview generation failed',
-              details: `HTTP ${previewResponse.status}: ${previewResponse.statusText}`,
+              error: 'Failed to generate preview',
+              details: err instanceof Error ? err.message : String(err),
             })
           }
-        } catch (err) {
-          console.error('Failed to generate preview:', err)
-          setPreviewError({
-            error: 'Failed to generate preview',
-            details: err instanceof Error ? err.message : String(err),
-          })
+        } else {
+          console.log(
+            `[SharedWorksheetPage] Skipping pre-fetch for large worksheet (${data.config.pages} pages) - using virtual loading`
+          )
         }
       } catch (err) {
         console.error('Error fetching shared worksheet:', err)

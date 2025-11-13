@@ -30,7 +30,12 @@ const config: StorybookConfig = {
     if (config.resolve) {
       config.resolve.alias = {
         ...config.resolve.alias,
-        // Map styled-system imports to the actual directory
+        // Map @styled/* imports (from tsconfig paths)
+        '@styled/css': join(__dirname, '../styled-system/css/index.mjs'),
+        '@styled/patterns': join(__dirname, '../styled-system/patterns/index.mjs'),
+        '@styled/jsx': join(__dirname, '../styled-system/jsx/index.mjs'),
+        '@styled/recipes': join(__dirname, '../styled-system/recipes/index.mjs'),
+        // Map relative styled-system imports
         '../../styled-system/css': join(__dirname, '../styled-system/css/index.mjs'),
         '../../styled-system/patterns': join(__dirname, '../styled-system/patterns/index.mjs'),
         '../styled-system/css': join(__dirname, '../styled-system/css/index.mjs'),

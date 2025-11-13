@@ -228,6 +228,39 @@ export default defineConfig({
             boxShadow: '0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6)',
           },
         },
+        // Wiggle - playful rotation oscillation
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-3deg)' },
+          '75%': { transform: 'rotate(3deg)' },
+        },
+        // Shimmer - opacity wave for loading states
+        shimmer: {
+          '0%, 100%': { opacity: '0.7' },
+          '50%': { opacity: '0.4' },
+        },
+        // Fade in with scale - entrance animation
+        fadeInScale: {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        // Slide in from right - entrance animation
+        slideInRight: {
+          '0%': { transform: 'translateX(10px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        // Morph width - bars dramatically expand and contract (simulating numbers changing)
+        morphWidth: {
+          '0%, 100%': { transform: 'scaleX(1)', opacity: '0.7' },
+          '25%': { transform: 'scaleX(0.5)', opacity: '0.4' },
+          '50%': { transform: 'scaleX(1.3)', opacity: '0.9' },
+          '75%': { transform: 'scaleX(0.7)', opacity: '0.5' },
+        },
+        // Color shift - operators cycle through hues
+        colorShift: {
+          '0%, 100%': { filter: 'hue-rotate(0deg)' },
+          '50%': { filter: 'hue-rotate(20deg)' },
+        },
       },
     },
   },

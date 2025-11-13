@@ -27,20 +27,65 @@ function getDefaultDate(): string {
 export function validateWorksheetConfig(formState: WorksheetFormState): ValidationResult {
   const errors: string[] = []
 
-  // Validate total (must be positive, reasonable limit)
-  const total = formState.total ?? 20
-  if (total < 1 || total > WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS) {
-    errors.push(`Total problems must be between 1 and ${WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS}`)
-  }
-
-  // Validate cols and auto-calculate rows
+  // Validate cols first (needed for rows calculation)
   const cols = formState.cols ?? 4
   if (cols < 1 || cols > WORKSHEET_LIMITS.MAX_COLS) {
     errors.push(`Columns must be between 1 and ${WORKSHEET_LIMITS.MAX_COLS}`)
   }
 
-  // Auto-calculate rows to fit all problems
-  const rows = Math.ceil(total / cols)
+  // ========================================
+  // PRIMARY STATE → DERIVED STATE
+  // ========================================
+  //
+  // This section demonstrates the core principle of our config persistence:
+  //
+  // PRIMARY STATE (saved, source of truth):
+  //   - problemsPerPage: How many problems per page (e.g., 20)
+  //   - pages: How many pages (e.g., 5)
+  //
+  // DERIVED STATE (calculated, never saved):
+  //   - total = problemsPerPage × pages (e.g., 100)
+  //   - rows = Math.ceil(problemsPerPage / cols) (e.g., 5)
+  //
+  // Why this matters:
+  //   - When sharing worksheets, we only save PRIMARY state
+  //   - When loading shared worksheets, we MUST calculate DERIVED state
+  //   - Never use formState.total as fallback - it may be missing for shared worksheets!
+  //   - See .claude/WORKSHEET_CONFIG_PERSISTENCE.md for full architecture
+  //
+  // Example bug that was fixed (2025-01):
+  //   - Shared 100-page worksheet
+  //   - formState.total was missing (correctly excluded from share)
+  //   - Old code: total = formState.total ?? 20 (WRONG!)
+  //   - Result: Generated only 20 problems → 1 page instead of 100
+  //   - Fix: total = problemsPerPage × pages (from PRIMARY state)
+  //
+
+  // Get primary state values (source of truth for calculation)
+  const problemsPerPage = formState.problemsPerPage ?? (formState.total ?? 20)
+  const pages = formState.pages ?? 1
+
+  // Calculate derived state: total = problemsPerPage × pages
+  // DO NOT use formState.total as source of truth - it may be missing!
+  const total = problemsPerPage * pages
+
+  console.log('[validateWorksheetConfig] PRIMARY → DERIVED state:', {
+    // Primary (source of truth)
+    problemsPerPage,
+    pages,
+    // Derived (calculated)
+    total,
+    // Debug: check if formState had these values
+    hadTotal: formState.total !== undefined,
+    totalMatches: formState.total === total,
+  })
+
+  if (total < 1 || total > WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS) {
+    errors.push(`Total problems must be between 1 and ${WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS}`)
+  }
+
+  // Calculate derived state: rows based on problemsPerPage and cols
+  const rows = Math.ceil(problemsPerPage / cols)
 
   // Validate probabilities (0-1 range)
   // CRITICAL: Must check for undefined/null explicitly, not use ?? operator
@@ -110,10 +155,6 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
   // Determine orientation based on columns (portrait = 2-3 cols, landscape = 4-5 cols)
   const orientation = formState.orientation || (cols <= 3 ? 'portrait' : 'landscape')
-
-  // Get primary state values
-  const problemsPerPage = formState.problemsPerPage ?? total
-  const pages = formState.pages ?? 1
 
   // Determine mode (default to 'smart' if not specified)
   const mode: 'smart' | 'manual' | 'mastery' = formState.mode ?? 'smart'

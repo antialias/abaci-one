@@ -56,16 +56,54 @@ export type WorksheetConfig = AdditionConfigV4 & {
  *
  * This type is intentionally permissive during form editing to allow fields from
  * all modes to exist temporarily. Validation will enforce mode consistency.
+ *
+ * ## Field Categories (Config Persistence)
+ *
+ * **PRIMARY STATE** (persisted to localStorage/database):
+ * - Most fields from AdditionConfigV4 (problemsPerPage, pages, cols, etc.)
+ * - seed, prngAlgorithm (critical for reproducibility)
+ *
+ * **DERIVED STATE** (calculated, never persisted):
+ * - `total` = problemsPerPage × pages
+ * - `rows` = Math.ceil(problemsPerPage / cols)
+ *
+ * **EPHEMERAL STATE** (generated fresh, never persisted):
+ * - `date` = current date when worksheet is generated
+ *
+ * See `.claude/WORKSHEET_CONFIG_PERSISTENCE.md` for full architecture.
  */
 export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>> &
   Partial<Omit<AdditionConfigV4Manual, 'version'>> &
   Partial<Omit<AdditionConfigV4Mastery, 'version'>> & {
-    // DERIVED state (calculated from primary state)
+    // ========================================
+    // DERIVED STATE (never persisted)
+    // ========================================
+    // These are calculated from primary state and excluded from persistence.
+    // See extractConfigFields() blacklist for exclusion logic.
+
+    /** Derived: total = problemsPerPage × pages */
     rows?: number
+
+    /** Derived: rows = Math.ceil(problemsPerPage / cols) */
     total?: number
+
+    // ========================================
+    // EPHEMERAL STATE (never persisted)
+    // ========================================
+    // Generated fresh at render time
+
+    /** Ephemeral: Current date when worksheet is generated */
     date?: string
-    // Problem reproducibility (critical for sharing)
+
+    // ========================================
+    // PRIMARY STATE (persisted)
+    // ========================================
+    // Critical for reproducibility when sharing worksheets
+
+    /** Primary: Random seed for reproducible problem generation */
     seed?: number
+
+    /** Primary: PRNG algorithm (ensures same random sequence across systems) */
     prngAlgorithm?: string
   }
 
