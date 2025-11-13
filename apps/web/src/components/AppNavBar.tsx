@@ -60,7 +60,6 @@ function MenuContent({
   handleNestedDropdownChange,
   isMobile,
   resolvedTheme,
-  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -71,9 +70,9 @@ function MenuContent({
   handleNestedDropdownChange?: (isOpen: boolean) => void
   isMobile?: boolean
   resolvedTheme?: 'light' | 'dark'
-  openDeploymentInfo?: () => void
 }) {
   const isDark = resolvedTheme === 'dark'
+  const { open: openDeploymentInfo } = useDeploymentInfo()
 
   const linkStyle = {
     display: 'flex',
@@ -420,19 +419,18 @@ function HamburgerMenu({
   pathname,
   toggleFullscreen,
   router,
-  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
   pathname: string | null
   toggleFullscreen: () => void
   router: any
-  openDeploymentInfo: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { resolvedTheme } = useTheme()
+  const { open: openDeploymentInfo } = useDeploymentInfo()
 
   // Detect mobile viewport - check the smaller dimension to catch landscape orientation
   React.useEffect(() => {
@@ -570,7 +568,6 @@ function HamburgerMenu({
                   handleNestedDropdownChange={handleNestedDropdownChange}
                   isMobile={true}
                   resolvedTheme={resolvedTheme}
-                  openDeploymentInfo={openDeploymentInfo}
                 />
               </div>
 
@@ -681,7 +678,6 @@ function HamburgerMenu({
             handleNestedDropdownChange={handleNestedDropdownChange}
             isMobile={false}
             resolvedTheme={resolvedTheme}
-            openDeploymentInfo={openDeploymentInfo}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -717,7 +713,6 @@ function MinimalNav({
   toggleFullscreen,
   exitFullscreen,
   router,
-  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -726,7 +721,6 @@ function MinimalNav({
   toggleFullscreen: () => void
   exitFullscreen: () => void
   router: any
-  openDeploymentInfo: () => void
 }) {
   return (
     <header
@@ -761,7 +755,6 @@ function MinimalNav({
           pathname={pathname}
           toggleFullscreen={toggleFullscreen}
           router={router}
-          openDeploymentInfo={openDeploymentInfo}
         />
       </div>
 
@@ -848,7 +841,6 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         toggleFullscreen={toggleFullscreen}
         exitFullscreen={exitFullscreen}
         router={router}
-        openDeploymentInfo={openDeploymentInfo}
       />
     )
   }
@@ -997,7 +989,6 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 pathname={pathname}
                 toggleFullscreen={toggleFullscreen}
                 router={router}
-                openDeploymentInfo={openDeploymentInfo}
               />
             </div>
           </div>
