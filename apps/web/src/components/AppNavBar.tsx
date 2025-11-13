@@ -717,6 +717,7 @@ function MinimalNav({
   toggleFullscreen,
   exitFullscreen,
   router,
+  openDeploymentInfo,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -725,6 +726,7 @@ function MinimalNav({
   toggleFullscreen: () => void
   exitFullscreen: () => void
   router: any
+  openDeploymentInfo: () => void
 }) {
   return (
     <header
@@ -846,6 +848,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         toggleFullscreen={toggleFullscreen}
         exitFullscreen={exitFullscreen}
         router={router}
+        openDeploymentInfo={openDeploymentInfo}
       />
     )
   }
