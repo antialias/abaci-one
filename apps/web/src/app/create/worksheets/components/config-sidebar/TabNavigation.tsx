@@ -15,8 +15,8 @@ export const TABS: Tab[] = [
     label: 'Operator',
     icon: (operator) => {
       if (operator === 'mixed') return '±'
-      if (operator === 'subtraction') return '➖'
-      return '➕'
+      if (operator === 'subtraction') return '−'
+      return '+'
     },
   },
   { id: 'layout', label: 'Layout', icon: '📐' },
@@ -52,7 +52,8 @@ export function TabNavigation({ activeTab, onChange, operator }: TabNavigationPr
     >
       {TABS.map((tab) => {
         const icon = getTabIcon(tab)
-        const isPlusMinus = icon === '±'
+        // All operator symbols (+, −, ±) are ASCII characters that need larger font size
+        const isOperatorSymbol = tab.id === 'operator'
 
         return (
           <button
@@ -100,8 +101,8 @@ export function TabNavigation({ activeTab, onChange, operator }: TabNavigationPr
             >
               <span
                 className={css({
-                  fontSize: isPlusMinus ? 'lg' : undefined,
-                  fontWeight: isPlusMinus ? 'bold' : undefined,
+                  fontSize: isOperatorSymbol ? 'lg' : undefined,
+                  fontWeight: isOperatorSymbol ? 'bold' : undefined,
                 })}
               >
                 {icon}

@@ -5,10 +5,10 @@ import type { WorksheetFormState } from '../types'
  */
 export const SETTING_ICONS = {
   operator: {
-    addition: '➕',
-    subtraction: '➖',
-    multiplication: '✖️',
-    division: '➗',
+    addition: '+',
+    subtraction: '−',
+    multiplication: '×',
+    division: '÷',
     mixed: '±',
   },
   difficulty: {
