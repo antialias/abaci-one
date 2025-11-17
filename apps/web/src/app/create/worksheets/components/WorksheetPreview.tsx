@@ -30,7 +30,20 @@ function getDefaultDate(): string {
   })
 }
 
-async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<string[]> {
+interface FetchPreviewResponse {
+  pages: string[]
+  totalPages: number
+  startPage?: number
+  endPage?: number
+  warnings?: string[]
+  nextCursor?: number | null
+}
+
+async function fetchWorksheetPreview(
+  formState: WorksheetFormState,
+  startPage?: number,
+  endPage?: number
+): Promise<FetchPreviewResponse> {
   // Set current date for preview
   const configWithDate = {
     ...formState,
@@ -39,7 +52,18 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
 
   // Use absolute URL for SSR compatibility
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-  const url = `${baseUrl}/api/create/worksheets/preview`
+
+  // Add pagination query parameters if provided
+  const params = new URLSearchParams()
+  if (startPage !== undefined) {
+    params.set('startPage', startPage.toString())
+  }
+  if (endPage !== undefined) {
+    params.set('endPage', endPage.toString())
+  }
+
+  const queryString = params.toString()
+  const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ''}`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -56,7 +80,7 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   }
 
   const data = await response.json()
-  return data.pages
+  return data
 }
 
 function PreviewContent({
@@ -73,14 +97,26 @@ function PreviewContent({
   const initialDataUsed = useRef(false)
 
   // Only use initialData on the very first query, not on subsequent fetches
-  const queryInitialData = !initialDataUsed.current && initialData ? initialData : undefined
+  // Convert initial pages to response format
+  const queryInitialData =
+    !initialDataUsed.current && initialData
+      ? {
+          pages: initialData,
+          totalPages: formState.pages || initialData.length,
+          startPage: 0,
+          endPage: initialData.length - 1,
+        }
+      : undefined
 
   if (queryInitialData) {
     initialDataUsed.current = true
   }
 
+  // For initial query and refetches, only load first 3 pages
+  const INITIAL_PAGE_COUNT = 3
+
   // Use Suspense Query - will suspend during loading
-  const { data: pages } = useSuspenseQuery({
+  const { data: response } = useSuspenseQuery({
     queryKey: [
       'worksheet-preview',
       // PRIMARY state
@@ -118,15 +154,24 @@ function PreviewContent({
       // Note: fontSize, date, rows, total intentionally excluded
       // (rows and total are derived from primary state)
     ],
-    queryFn: () => fetchWorksheetPreview(formState),
+    queryFn: () => {
+      // Only fetch first INITIAL_PAGE_COUNT pages initially
+      // The virtualization system will fetch remaining pages on-demand
+      const totalPages = formState.pages || 1
+      const endPage = Math.min(INITIAL_PAGE_COUNT - 1, totalPages - 1)
+      return fetchWorksheetPreview(formState, 0, endPage)
+    },
     initialData: queryInitialData, // Only use on first render
   })
 
-  const totalPages = pages.length
+  const totalPages = response.totalPages
   const [loadedPages, setLoadedPages] = useState<Map<number, string>>(() => {
-    // Initialize with all pages
+    // Initialize with pages from response
     const map = new Map<number, string>()
-    pages.forEach((page, index) => map.set(index, page))
+    response.pages.forEach((page, offsetIndex) => {
+      const pageIndex = (response.startPage ?? 0) + offsetIndex
+      map.set(pageIndex, page)
+    })
     return map
   })
 
@@ -153,11 +198,14 @@ function PreviewContent({
     pageRefs.current = []
     setRefsReady(false)
 
-    // Update loaded pages with new pages
+    // Update loaded pages with new pages from response
     const map = new Map<number, string>()
-    pages.forEach((page, index) => map.set(index, page))
+    response.pages.forEach((page, offsetIndex) => {
+      const pageIndex = (response.startPage ?? 0) + offsetIndex
+      map.set(pageIndex, page)
+    })
     setLoadedPages(map)
-  }, [pages])
+  }, [response])
 
   // Fetch pages as they become visible
   useEffect(() => {
@@ -203,14 +251,20 @@ function PreviewContent({
         return next
       })
 
-      // Fetch the range
-      fetchWorksheetPreview(formState)
-        .then((pages) => {
+      console.log(`[Virtualization] Fetching pages ${start}-${end}...`)
+
+      // Fetch the range with pagination parameters
+      fetchWorksheetPreview(formState, start, end)
+        .then((response) => {
+          console.log(
+            `[Virtualization] Received ${response.pages.length} pages for range ${start}-${end}`
+          )
           // Add fetched pages to loaded pages
           setLoadedPages((prev) => {
             const next = new Map(prev)
-            pages.forEach((page, index) => {
-              next.set(index, page)
+            // Pages are returned starting from 'start', so map them correctly
+            response.pages.forEach((page, offsetIndex) => {
+              next.set(start + offsetIndex, page)
             })
             return next
           })

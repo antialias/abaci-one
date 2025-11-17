@@ -6,10 +6,7 @@ import type { WorksheetFormState } from '@/app/create/worksheets/types'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { pageNumber: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { pageNumber: string } }) {
   try {
     const body: WorksheetFormState = await request.json()
     const pageNumber = parseInt(params.pageNumber, 10)
