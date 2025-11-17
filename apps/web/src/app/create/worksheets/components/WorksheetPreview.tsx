@@ -134,7 +134,7 @@ function PreviewContent({
   // Always virtualize multi-page worksheets for performance
   const shouldVirtualize = totalPages > 1
 
-  // Track which pages are visible in viewport
+  // Initialize visible pages - start with first page only
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
 
   // Track which pages are currently being fetched
@@ -152,6 +152,11 @@ function PreviewContent({
     setFetchingPages(new Set())
     pageRefs.current = []
     setRefsReady(false)
+
+    // Update loaded pages with new pages
+    const map = new Map<number, string>()
+    pages.forEach((page, index) => map.set(index, page))
+    setLoadedPages(map)
   }, [pages])
 
   // Fetch pages as they become visible
