@@ -69,63 +69,64 @@ function PreviewContent({
   const isDark = resolvedTheme === 'dark'
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  // Common query key for all page-related queries
-  const baseQueryKey = [
-    'worksheet-preview',
-    // PRIMARY state
-    formState.problemsPerPage,
-    formState.cols,
-    formState.pages,
-    formState.orientation,
-    // V4: Problem size (CRITICAL - affects column layout and problem generation)
-    formState.digitRange?.min,
-    formState.digitRange?.max,
-    // V4: Operator selection (addition, subtraction, or mixed)
-    formState.operator,
-    // V4: Mode and conditional display settings
-    formState.mode,
-    formState.displayRules, // Smart mode: conditional scaffolding
-    formState.difficultyProfile, // Smart mode: difficulty preset
-    formState.manualPreset, // Manual mode: manual preset
-    // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
-    formState.currentAdditionSkillId,
-    formState.currentSubtractionSkillId,
-    formState.currentStepId,
-    // Other settings that affect appearance
-    formState.name,
-    formState.pAnyStart,
-    formState.pAllStart,
-    formState.interpolate,
-    formState.showCarryBoxes,
-    formState.showAnswerBoxes,
-    formState.showPlaceValueColors,
-    formState.showProblemNumbers,
-    formState.showCellBorder,
-    formState.showTenFrames,
-    formState.showTenFramesForAll,
-    formState.seed, // Include seed to bust cache when problem set regenerates
-    // Note: fontSize, date, rows, total intentionally excluded
-    // (rows and total are derived from primary state)
-  ] as const
+  // Track if we've used the initial data (so we only use it once)
+  const initialDataUsed = useRef(false)
 
-  // Fetch initial batch to get total page count and first few pages
-  const INITIAL_PAGES = 3
-  const { data: initialResponse } = useSuspenseQuery({
-    queryKey: [...baseQueryKey, 'initial'],
+  // Only use initialData on the very first query, not on subsequent fetches
+  const queryInitialData = !initialDataUsed.current && initialData ? initialData : undefined
+
+  if (queryInitialData) {
+    initialDataUsed.current = true
+  }
+
+  // Use Suspense Query - will suspend during loading
+  const { data: pages } = useSuspenseQuery({
+    queryKey: [
+      'worksheet-preview',
+      // PRIMARY state
+      formState.problemsPerPage,
+      formState.cols,
+      formState.pages,
+      formState.orientation,
+      // V4: Problem size (CRITICAL - affects column layout and problem generation)
+      formState.digitRange?.min,
+      formState.digitRange?.max,
+      // V4: Operator selection (addition, subtraction, or mixed)
+      formState.operator,
+      // V4: Mode and conditional display settings
+      formState.mode,
+      formState.displayRules, // Smart mode: conditional scaffolding
+      formState.difficultyProfile, // Smart mode: difficulty preset
+      formState.manualPreset, // Manual mode: manual preset
+      // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
+      formState.currentAdditionSkillId,
+      formState.currentSubtractionSkillId,
+      formState.currentStepId,
+      // Other settings that affect appearance
+      formState.name,
+      formState.pAnyStart,
+      formState.pAllStart,
+      formState.interpolate,
+      formState.showCarryBoxes,
+      formState.showAnswerBoxes,
+      formState.showPlaceValueColors,
+      formState.showProblemNumbers,
+      formState.showCellBorder,
+      formState.showTenFrames,
+      formState.showTenFramesForAll,
+      formState.seed, // Include seed to bust cache when problem set regenerates
+      // Note: fontSize, date, rows, total intentionally excluded
+      // (rows and total are derived from primary state)
+    ],
     queryFn: () => fetchWorksheetPreview(formState),
+    initialData: queryInitialData, // Only use on first render
   })
 
-  const totalPages = initialResponse.length
+  const totalPages = pages.length
   const [loadedPages, setLoadedPages] = useState<Map<number, string>>(() => {
-    // Initialize with initial pages or initialData
+    // Initialize with all pages
     const map = new Map<number, string>()
-    if (initialData) {
-      initialData.forEach((page, index) => map.set(index, page))
-    } else {
-      initialResponse.forEach((page, index) => {
-        map.set(index, page)
-      })
-    }
+    pages.forEach((page, index) => map.set(index, page))
     return map
   })
 
@@ -144,25 +145,14 @@ function PreviewContent({
   // Track when refs are fully populated
   const [refsReady, setRefsReady] = useState(false)
 
-  // Reset state when form config changes
+  // Reset to first page when preview updates
   useEffect(() => {
     setCurrentPage(0)
     setVisiblePages(new Set([0]))
     setFetchingPages(new Set())
     pageRefs.current = []
     setRefsReady(false)
-
-    // Reset loaded pages with new initial response
-    const map = new Map<number, string>()
-    if (initialData) {
-      initialData.forEach((page, index) => map.set(index, page))
-    } else {
-      initialResponse.forEach((page, index) => {
-        map.set(index, page)
-      })
-    }
-    setLoadedPages(map)
-  }, [initialResponse, initialData])
+  }, [pages])
 
   // Fetch pages as they become visible
   useEffect(() => {
