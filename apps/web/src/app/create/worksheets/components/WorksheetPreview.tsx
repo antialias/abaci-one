@@ -96,7 +96,16 @@ function PreviewContent({
     formState.pAnyStart,
     formState.pAllStart,
     formState.interpolate,
+    formState.showCarryBoxes,
+    formState.showAnswerBoxes,
+    formState.showPlaceValueColors,
+    formState.showProblemNumbers,
+    formState.showCellBorder,
+    formState.showTenFrames,
+    formState.showTenFramesForAll,
     formState.seed, // Include seed to bust cache when problem set regenerates
+    // Note: fontSize, date, rows, total intentionally excluded
+    // (rows and total are derived from primary state)
   ] as const
 
   // Fetch initial batch to get total page count and first few pages
