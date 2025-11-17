@@ -776,6 +776,9 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
       interpolate: v2.interpolate,
       displayRules: v2.displayRules,
       difficultyProfile: v2.difficultyProfile,
+      // CRITICAL: Preserve seed/prngAlgorithm for problem reproducibility
+      seed: v2.seed,
+      prngAlgorithm: v2.prngAlgorithm,
     }
   }
 
@@ -800,6 +803,9 @@ function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
     showProblemNumbers: v2.displayRules.problemNumbers === 'always',
     showCellBorder: v2.displayRules.cellBorders === 'always',
     showTenFramesForAll: v2.showTenFramesForAll,
+    // CRITICAL: Preserve seed/prngAlgorithm for problem reproducibility
+    seed: v2.seed,
+    prngAlgorithm: v2.prngAlgorithm,
   }
 }
 
@@ -822,6 +828,9 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
     pAnyStart: v3.pAnyStart,
     pAllStart: v3.pAllStart,
     interpolate: v3.interpolate,
+    // CRITICAL: Preserve seed/prngAlgorithm for problem reproducibility
+    seed: v3.seed,
+    prngAlgorithm: v3.prngAlgorithm,
   }
 
   if (v3.mode === 'smart') {
