@@ -30,26 +30,7 @@ function getDefaultDate(): string {
   })
 }
 
-interface PageRange {
-  startPage?: number
-  endPage?: number
-  cursor?: number
-  limit?: number
-}
-
-interface PreviewResponse {
-  pages: string[]
-  totalPages: number
-  startPage: number
-  endPage: number
-  nextCursor: number | null
-  warnings?: string[]
-}
-
-async function fetchWorksheetPreview(
-  formState: WorksheetFormState,
-  range?: PageRange
-): Promise<PreviewResponse> {
+async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<string[]> {
   // Set current date for preview
   const configWithDate = {
     ...formState,
@@ -58,25 +39,7 @@ async function fetchWorksheetPreview(
 
   // Use absolute URL for SSR compatibility
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-
-  // Build query string for pagination
-  const params = new URLSearchParams()
-  if (range?.cursor !== undefined) {
-    params.set('cursor', String(range.cursor))
-    if (range.limit !== undefined) {
-      params.set('limit', String(range.limit))
-    }
-  } else if (range?.startPage !== undefined || range?.endPage !== undefined) {
-    if (range.startPage !== undefined) {
-      params.set('startPage', String(range.startPage))
-    }
-    if (range.endPage !== undefined) {
-      params.set('endPage', String(range.endPage))
-    }
-  }
-
-  const queryString = params.toString()
-  const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ''}`
+  const url = `${baseUrl}/api/create/worksheets/preview`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -93,7 +56,7 @@ async function fetchWorksheetPreview(
   }
 
   const data = await response.json()
-  return data
+  return data.pages
 }
 
 function PreviewContent({
@@ -140,22 +103,18 @@ function PreviewContent({
   const INITIAL_PAGES = 3
   const { data: initialResponse } = useSuspenseQuery({
     queryKey: [...baseQueryKey, 'initial'],
-    queryFn: () =>
-      fetchWorksheetPreview(formState, {
-        startPage: 0,
-        endPage: INITIAL_PAGES - 1,
-      }),
+    queryFn: () => fetchWorksheetPreview(formState),
   })
 
-  const totalPages = initialResponse.totalPages
+  const totalPages = initialResponse.length
   const [loadedPages, setLoadedPages] = useState<Map<number, string>>(() => {
     // Initialize with initial pages or initialData
     const map = new Map<number, string>()
     if (initialData) {
       initialData.forEach((page, index) => map.set(index, page))
     } else {
-      initialResponse.pages.forEach((page, index) => {
-        map.set(initialResponse.startPage + index, page)
+      initialResponse.forEach((page, index) => {
+        map.set(index, page)
       })
     }
     return map
@@ -189,8 +148,8 @@ function PreviewContent({
     if (initialData) {
       initialData.forEach((page, index) => map.set(index, page))
     } else {
-      initialResponse.pages.forEach((page, index) => {
-        map.set(initialResponse.startPage + index, page)
+      initialResponse.forEach((page, index) => {
+        map.set(index, page)
       })
     }
     setLoadedPages(map)
@@ -241,13 +200,13 @@ function PreviewContent({
       })
 
       // Fetch the range
-      fetchWorksheetPreview(formState, { startPage: start, endPage: end })
-        .then((response) => {
+      fetchWorksheetPreview(formState)
+        .then((pages) => {
           // Add fetched pages to loaded pages
           setLoadedPages((prev) => {
             const next = new Map(prev)
-            response.pages.forEach((page, index) => {
-              next.set(response.startPage + index, page)
+            pages.forEach((page, index) => {
+              next.set(index, page)
             })
             return next
           })
@@ -255,7 +214,7 @@ function PreviewContent({
           // Remove from fetching set
           setFetchingPages((prev) => {
             const next = new Set(prev)
-            for (let i = response.startPage; i <= response.endPage; i++) {
+            for (let i = start; i <= end; i++) {
               next.delete(i)
             }
             return next
