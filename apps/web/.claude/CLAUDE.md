@@ -242,6 +242,47 @@ When asked to make ANY changes:
 
 **Never auto-commit or auto-push after making changes.**
 
+## Merge Conflict Resolution
+
+When encountering Git merge conflicts, refer to:
+
+- **`.claude/MERGE_CONFLICT_RESOLUTION.md`** - Complete guide to intelligent merge conflict resolution
+  - How to read diff3-style conflicts (with common ancestor)
+  - 5 resolution patterns: Compatible, Redundant, Conflicting, Delete vs Modify, Rename + References
+  - Step-by-step analysis workflow
+  - zdiff3 modern alternative (cleaner conflict markers)
+  - Semantic merge concepts
+  - Best practices and anti-patterns
+  - Debugging failed resolutions
+  - Resolution checklist
+
+**Quick Reference:**
+
+Enable better conflict markers (recommended):
+```bash
+git config --global merge.conflictstyle zdiff3
+```
+
+**diff3 Format:**
+```
+<<<<<<< HEAD
+our changes
+||||||| base
+common ancestor (original code)
+=======
+their changes
+>>>>>>> branch-name
+```
+
+**Resolution Strategy:**
+1. Compare OURS vs BASE - what did we change?
+2. Compare THEIRS vs BASE - what did they change?
+3. Classify: Compatible (keep both), Redundant (choose better), or Conflicting (combine carefully)
+4. Apply appropriate resolution pattern
+5. Test thoroughly (merge conflicts can create semantic issues that compile but don't work)
+
+**Critical:** Always test merged code even if it type-checks. Conflicts can create runtime bugs.
+
 ## Dev Server Management
 
 **CRITICAL: The user manages running the dev server, NOT Claude Code.**
