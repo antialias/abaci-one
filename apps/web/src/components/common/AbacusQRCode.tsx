@@ -1,5 +1,7 @@
+import type { ComponentProps } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import type { QRCodeSVGProps } from 'qrcode.react'
+
+type QRCodeSVGProps = ComponentProps<typeof QRCodeSVG>
 
 export interface AbacusQRCodeProps extends Omit<QRCodeSVGProps, 'imageSettings'> {
   /**
@@ -48,7 +50,6 @@ export interface AbacusQRCodeProps extends Omit<QRCodeSVGProps, 'imageSettings'>
  * <AbacusQRCode
  *   value="https://abaci.one/room/xyz"
  *   size={300}
- *   qrStyle="dots"  // Fancy rounded dots
  *   fgColor="#1a1a2e"
  *   level="H"  // High error correction for better scanning with logo
  * />
@@ -59,7 +60,6 @@ export function AbacusQRCode({
   minLogoSize = 150,
   size = 128,
   level = 'H', // Default to high error correction for logo
-  qrStyle = 'dots', // Default to fancy rounded dots
   fgColor = '#111827',
   bgColor = '#ffffff',
   ...props
@@ -75,7 +75,6 @@ export function AbacusQRCode({
       {...props}
       size={size}
       level={level}
-      qrStyle={qrStyle}
       fgColor={fgColor}
       bgColor={bgColor}
       imageSettings={
