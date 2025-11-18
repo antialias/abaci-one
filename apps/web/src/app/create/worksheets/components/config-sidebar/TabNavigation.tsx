@@ -16,6 +16,7 @@ export interface Tab {
     orientation?: 'portrait' | 'landscape'
     problemsPerPage?: number
     cols?: number
+    pages?: number
     displayRules?: DisplayRules
     resolvedDisplayRules?: DisplayRules
     operator?: 'addition' | 'subtraction' | 'mixed'
@@ -36,11 +37,12 @@ export const TABS: Tab[] = [
     id: 'layout',
     label: 'Layout',
     icon: '📐',
-    subtitle: ({ orientation, problemsPerPage, cols }) => {
-      if (!orientation || !problemsPerPage || !cols) return null
+    subtitle: ({ orientation, problemsPerPage, cols, pages }) => {
+      if (!orientation || !problemsPerPage || !cols || !pages) return null
       const orientationLabel = orientation === 'portrait' ? 'Portrait' : 'Landscape'
       const rows = Math.ceil(problemsPerPage / cols)
-      return `${orientationLabel}: ${cols}×${rows}`
+      const pageLabel = pages === 1 ? 'page' : 'pages'
+      return `${orientationLabel}: ${cols}×${rows}, ${pages} ${pageLabel}`
     },
   },
   {
@@ -119,6 +121,7 @@ interface TabNavigationProps {
   orientation?: 'portrait' | 'landscape'
   problemsPerPage?: number
   cols?: number
+  pages?: number
   displayRules?: DisplayRules
   resolvedDisplayRules?: DisplayRules
   digitRange?: { min: number; max: number }
@@ -134,6 +137,7 @@ export function TabNavigation({
   orientation,
   problemsPerPage,
   cols,
+  pages,
   displayRules,
   resolvedDisplayRules,
   digitRange,
@@ -157,6 +161,7 @@ export function TabNavigation({
         orientation,
         problemsPerPage,
         cols,
+        pages,
         displayRules,
         resolvedDisplayRules,
         operator,
@@ -220,18 +225,19 @@ export function TabNavigation({
             <div
               className={css({
                 display: 'flex',
-                flexDirection: 'column',
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: subtitle || showPreviewIcon ? '0.5' : '1.5',
+                gap: '2',
+                width: '100%',
               })}
             >
+              {/* Icon - left side, uses full height */}
               <div
                 className={css({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '1.5',
+                  flexShrink: 0,
                 })}
               >
                 {showPreviewIcon ? (
@@ -244,35 +250,48 @@ export function TabNavigation({
                 ) : (
                   <span
                     className={css({
-                      fontSize: isOperatorSymbol ? 'lg' : undefined,
+                      fontSize: '3xl',
                       fontWeight: isOperatorSymbol ? 'bold' : undefined,
+                      lineHeight: '1',
                     })}
                   >
                     {icon}
                   </span>
                 )}
-                <span>{tab.label}</span>
               </div>
-              {subtitle ? (
-                <span
-                  className={css({
-                    fontSize: '2xs',
-                    fontWeight: 'normal',
-                    whiteSpace: 'pre-line',
-                    textAlign: 'center',
-                    color:
-                      activeTab === tab.id
-                        ? isDark
-                          ? 'brand.300'
-                          : 'brand.600'
-                        : isDark
-                          ? 'gray.400'
-                          : 'gray.500',
-                  })}
-                >
-                  {subtitle}
-                </span>
-              ) : null}
+
+              {/* Label + Subtitle - right side, stacked vertically */}
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.5',
+                  flex: 1,
+                })}
+              >
+                <span>{tab.label}</span>
+                {subtitle ? (
+                  <span
+                    className={css({
+                      fontSize: '2xs',
+                      fontWeight: 'normal',
+                      whiteSpace: 'pre-line',
+                      textAlign: 'left',
+                      color:
+                        activeTab === tab.id
+                          ? isDark
+                            ? 'brand.300'
+                            : 'brand.600'
+                          : isDark
+                            ? 'gray.400'
+                            : 'gray.500',
+                    })}
+                  >
+                    {subtitle}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </button>
         )

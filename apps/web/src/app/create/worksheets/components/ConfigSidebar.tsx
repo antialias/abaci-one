@@ -142,6 +142,7 @@ export function ConfigSidebar({
           orientation={formState.orientation}
           problemsPerPage={formState.problemsPerPage}
           cols={formState.cols}
+          pages={formState.pages}
           displayRules={formState.displayRules}
           resolvedDisplayRules={resolvedDisplayRules}
           digitRange={formState.digitRange}
