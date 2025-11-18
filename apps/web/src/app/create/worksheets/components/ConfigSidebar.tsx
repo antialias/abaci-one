@@ -3,6 +3,8 @@
 import { css } from '@styled/css'
 import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import type { DisplayRules } from '../displayRules'
+import { getSkillById } from '../skills'
 import { StudentNameInput } from './config-panel/StudentNameInput'
 import { ContentTab } from './config-sidebar/ContentTab'
 import { DifficultyTab } from './config-sidebar/DifficultyTab'
@@ -28,6 +30,21 @@ export function ConfigSidebar({
   const isDark = resolvedTheme === 'dark'
   const { formState, onChange, isReadOnly: contextReadOnly } = useWorksheetConfig()
   const effectiveReadOnly = isReadOnly || contextReadOnly
+
+  // Get resolved display rules for showing what 'auto' defers to (mastery mode only)
+  let resolvedDisplayRules: DisplayRules | undefined
+  if (formState.mode === 'mastery') {
+    const operator = formState.operator ?? 'addition'
+    const skillId =
+      operator === 'addition' || operator === 'mixed'
+        ? formState.currentAdditionSkillId
+        : formState.currentSubtractionSkillId
+
+    if (skillId) {
+      const skill = getSkillById(skillId as any)
+      resolvedDisplayRules = skill?.recommendedScaffolding
+    }
+  }
 
   // Always initialize with default to avoid hydration mismatch
   const [activeTab, setActiveTab] = useState<string>('operator')
@@ -119,6 +136,15 @@ export function ConfigSidebar({
           activeTab={activeTab}
           onChange={setActiveTab}
           operator={formState.operator}
+          mode={formState.mode as 'custom' | 'manual' | 'mastery' | undefined}
+          difficultyProfile={formState.difficultyProfile}
+          interpolate={formState.interpolate}
+          orientation={formState.orientation}
+          problemsPerPage={formState.problemsPerPage}
+          cols={formState.cols}
+          displayRules={formState.displayRules}
+          resolvedDisplayRules={resolvedDisplayRules}
+          digitRange={formState.digitRange}
         />
       </div>
 
