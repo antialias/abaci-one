@@ -45,6 +45,7 @@
 - **Configuration Schema** - [`CONFIG_SCHEMA_GUIDE.md`](./CONFIG_SCHEMA_GUIDE.md) - Complete guide to worksheet configuration
 - **Smart Difficulty** - [`addition/SMART_DIFFICULTY_SPEC.md`](./addition/SMART_DIFFICULTY_SPEC.md) - Smart Mode progression spec
 - **Subtraction System** - [`SUBTRACTION_AND_OPERATOR_PLAN.md`](./SUBTRACTION_AND_OPERATOR_PLAN.md) - Subtraction implementation
+- **⚠️ Operator-Specific Settings** - [`OPERATOR_SPECIFIC_SETTINGS.md`](./OPERATOR_SPECIFIC_SETTINGS.md) - **[NEEDS REFACTORING]** Mixed mode architecture & refactoring plan
 
 ## Key Concepts
 
