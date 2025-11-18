@@ -3,11 +3,13 @@
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
+import { CONTINENTS } from '../continents'
 
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, startGame, setMap, setMode, setDifficulty, setStudyDuration } = useKnowYourWorld()
+  const { state, startGame, setMap, setMode, setDifficulty, setStudyDuration, setContinent } =
+    useKnowYourWorld()
 
   return (
     <div
@@ -107,6 +109,94 @@ export function SetupPhase() {
           </button>
         </div>
       </div>
+
+      {/* Continent Selection (only for World map) */}
+      {state.selectedMap === 'world' && (
+        <div data-section="continent-selection">
+          <h2
+            className={css({
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              marginBottom: '4',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            Focus on Continent 🌐
+          </h2>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '3',
+            })}
+          >
+            {/* All continents option */}
+            <button
+              data-action="select-all-continents"
+              onClick={() => setContinent('all')}
+              className={css({
+                padding: '3',
+                rounded: 'lg',
+                border: '2px solid',
+                borderColor: state.selectedContinent === 'all' ? 'blue.500' : 'transparent',
+                bg:
+                  state.selectedContinent === 'all'
+                    ? isDark
+                      ? 'blue.900'
+                      : 'blue.50'
+                    : isDark
+                      ? 'gray.800'
+                      : 'gray.100',
+                color: isDark ? 'gray.100' : 'gray.900',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                _hover: {
+                  borderColor: 'blue.400',
+                },
+              })}
+            >
+              <div className={css({ fontSize: '2xl', marginBottom: '1' })}>🌍</div>
+              <div className={css({ fontSize: 'sm', fontWeight: 'bold' })}>All</div>
+              <div className={css({ fontSize: '2xs', color: isDark ? 'gray.400' : 'gray.600' })}>
+                Whole world
+              </div>
+            </button>
+
+            {/* Individual continents */}
+            {CONTINENTS.map((continent) => (
+              <button
+                key={continent.id}
+                data-action={`select-${continent.id}-continent`}
+                onClick={() => setContinent(continent.id)}
+                className={css({
+                  padding: '3',
+                  rounded: 'lg',
+                  border: '2px solid',
+                  borderColor:
+                    state.selectedContinent === continent.id ? 'blue.500' : 'transparent',
+                  bg:
+                    state.selectedContinent === continent.id
+                      ? isDark
+                        ? 'blue.900'
+                        : 'blue.50'
+                      : isDark
+                        ? 'gray.800'
+                        : 'gray.100',
+                  color: isDark ? 'gray.100' : 'gray.900',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    borderColor: 'blue.400',
+                  },
+                })}
+              >
+                <div className={css({ fontSize: '2xl', marginBottom: '1' })}>{continent.emoji}</div>
+                <div className={css({ fontSize: 'sm', fontWeight: 'bold' })}>{continent.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mode Selection */}
       <div data-section="mode-selection">

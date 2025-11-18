@@ -32,9 +32,21 @@ const defaultConfig: KnowYourWorldConfig = {
   gameMode: 'cooperative',
   difficulty: 'easy',
   studyDuration: 0,
+  selectedContinent: 'all',
 }
 
 function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldConfig {
+  const validContinents = [
+    'all',
+    'africa',
+    'asia',
+    'europe',
+    'north-america',
+    'south-america',
+    'oceania',
+    'antarctica',
+  ]
+
   return (
     typeof config === 'object' &&
     config !== null &&
@@ -42,6 +54,7 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     'gameMode' in config &&
     'difficulty' in config &&
     'studyDuration' in config &&
+    'selectedContinent' in config &&
     (config.selectedMap === 'world' || config.selectedMap === 'usa') &&
     (config.gameMode === 'cooperative' ||
       config.gameMode === 'race' ||
@@ -50,7 +63,9 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     (config.studyDuration === 0 ||
       config.studyDuration === 30 ||
       config.studyDuration === 60 ||
-      config.studyDuration === 120)
+      config.studyDuration === 120) &&
+    typeof config.selectedContinent === 'string' &&
+    validContinents.includes(config.selectedContinent)
   )
 }
 

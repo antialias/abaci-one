@@ -5,7 +5,7 @@ import type {
   KnowYourWorldState,
   GuessRecord,
 } from './types'
-import { getMapData } from './maps'
+import { getMapData, getFilteredMapData } from './maps'
 
 export class KnowYourWorldValidator
   implements GameValidator<KnowYourWorldState, KnowYourWorldMove>
@@ -32,6 +32,8 @@ export class KnowYourWorldValidator
         return this.validateSetDifficulty(state, move.data.difficulty)
       case 'SET_STUDY_DURATION':
         return this.validateSetStudyDuration(state, move.data.studyDuration)
+      case 'SET_CONTINENT':
+        return this.validateSetContinent(state, move.data.selectedContinent)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
@@ -56,10 +58,11 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Need at least 1 player' }
     }
 
-    // Get map data and shuffle regions
-    const mapData = getMapData(selectedMap)
+    // Get map data and shuffle regions (with continent filter if applicable)
+    const mapData = getFilteredMapData(selectedMap, state.selectedContinent)
     console.log('[KnowYourWorld Validator] Map data loaded:', {
       map: mapData.id,
+      continent: state.selectedContinent,
       regionsCount: mapData.regions.length,
     })
     const regionIds = mapData.regions.map((r) => r.id)
@@ -220,8 +223,8 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Can only start next round from results' }
     }
 
-    // Get map data and shuffle regions
-    const mapData = getMapData(state.selectedMap)
+    // Get map data and shuffle regions (with continent filter if applicable)
+    const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent)
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 
@@ -330,6 +333,22 @@ export class KnowYourWorldValidator
     return { valid: true, newState }
   }
 
+  private validateSetContinent(
+    state: KnowYourWorldState,
+    selectedContinent: import('./continents').ContinentId | 'all'
+  ): ValidationResult {
+    if (state.gamePhase !== 'setup') {
+      return { valid: false, error: 'Can only change continent during setup' }
+    }
+
+    const newState: KnowYourWorldState = {
+      ...state,
+      selectedContinent,
+    }
+
+    return { valid: true, newState }
+  }
+
   private validateEndStudy(state: KnowYourWorldState): ValidationResult {
     if (state.gamePhase !== 'studying') {
       return { valid: false, error: 'Can only end study during studying phase' }
@@ -389,6 +408,7 @@ export class KnowYourWorldValidator
       gameMode: typedConfig?.gameMode || 'cooperative',
       difficulty: typedConfig?.difficulty || 'easy',
       studyDuration: typedConfig?.studyDuration || 0,
+      selectedContinent: typedConfig?.selectedContinent || 'all',
       studyTimeRemaining: 0,
       studyStartTime: 0,
       currentPrompt: null,

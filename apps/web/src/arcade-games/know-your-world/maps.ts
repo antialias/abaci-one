@@ -1,6 +1,6 @@
-// @ts-ignore - ESM/CommonJS compatibility
+// @ts-expect-error - ESM/CommonJS compatibility
 import World from '@svg-maps/world'
-// @ts-ignore - ESM/CommonJS compatibility
+// @ts-expect-error - ESM/CommonJS compatibility
 import USA from '@svg-maps/usa'
 import type { MapData, MapRegion } from './types'
 
@@ -20,7 +20,11 @@ function calculatePathCenter(pathString: string): [number, number] {
 
   while ((match = commandRegex.exec(pathString)) !== null) {
     const command = match[1]
-    const params = match[2].trim().match(/-?\d+\.?\d*/g)?.map(Number) || []
+    const params =
+      match[2]
+        .trim()
+        .match(/-?\d+\.?\d*/g)
+        ?.map(Number) || []
 
     switch (command) {
       case 'M': // Move to (absolute)
@@ -239,4 +243,125 @@ export function getMapData(mapId: 'world' | 'usa'): MapData {
 export function getRegionById(mapId: 'world' | 'usa', regionId: string) {
   const mapData = getMapData(mapId)
   return mapData.regions.find((r) => r.id === regionId)
+}
+
+/**
+ * Calculate bounding box for a set of SVG paths
+ */
+export interface BoundingBox {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+  width: number
+  height: number
+}
+
+function calculateBoundingBox(paths: string[]): BoundingBox {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+
+  for (const path of paths) {
+    // Extract all numbers from path string
+    const numbers = path.match(/-?\d+\.?\d*/g)?.map(Number) || []
+
+    // Assume pairs of x,y coordinates
+    for (let i = 0; i < numbers.length - 1; i += 2) {
+      const x = numbers[i]
+      const y = numbers[i + 1]
+
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
+/**
+ * Filter world map regions by continent
+ */
+import { getContinentForCountry, type ContinentId } from './continents'
+
+export function filterRegionsByContinent(
+  regions: MapRegion[],
+  continentId: ContinentId | 'all'
+): MapRegion[] {
+  if (continentId === 'all') {
+    return regions
+  }
+
+  return regions.filter((region) => {
+    const continent = getContinentForCountry(region.id)
+    return continent === continentId
+  })
+}
+
+/**
+ * Calculate adjusted viewBox for a continent
+ * Adds padding around the bounding box
+ */
+export function calculateContinentViewBox(
+  regions: MapRegion[],
+  continentId: ContinentId | 'all',
+  originalViewBox: string
+): string {
+  if (continentId === 'all') {
+    return originalViewBox
+  }
+
+  const filteredRegions = filterRegionsByContinent(regions, continentId)
+
+  if (filteredRegions.length === 0) {
+    return originalViewBox
+  }
+
+  const paths = filteredRegions.map((r) => r.path)
+  const bbox = calculateBoundingBox(paths)
+
+  // Add 10% padding on each side
+  const paddingX = bbox.width * 0.1
+  const paddingY = bbox.height * 0.1
+
+  const newMinX = bbox.minX - paddingX
+  const newMinY = bbox.minY - paddingY
+  const newWidth = bbox.width + 2 * paddingX
+  const newHeight = bbox.height + 2 * paddingY
+
+  return `${newMinX} ${newMinY} ${newWidth} ${newHeight}`
+}
+
+/**
+ * Get filtered map data for a continent
+ */
+export function getFilteredMapData(
+  mapId: 'world' | 'usa',
+  continentId: ContinentId | 'all'
+): MapData {
+  const mapData = getMapData(mapId)
+
+  // Continent filtering only applies to world map
+  if (mapId !== 'world' || continentId === 'all') {
+    return mapData
+  }
+
+  const filteredRegions = filterRegionsByContinent(mapData.regions, continentId)
+  const adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+
+  return {
+    ...mapData,
+    regions: filteredRegions,
+    viewBox: adjustedViewBox,
+  }
 }

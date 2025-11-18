@@ -1,4 +1,5 @@
 import type { GameConfig, GameMove, GameState } from '@/lib/arcade/game-sdk'
+import type { ContinentId } from './continents'
 
 // Game configuration (persisted to database)
 export interface KnowYourWorldConfig extends GameConfig {
@@ -6,6 +7,7 @@ export interface KnowYourWorldConfig extends GameConfig {
   gameMode: 'cooperative' | 'race' | 'turn-based'
   difficulty: 'easy' | 'hard'
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
+  selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 }
 
 // Map data structures
@@ -42,6 +44,7 @@ export interface KnowYourWorldState extends GameState {
   gameMode: 'cooperative' | 'race' | 'turn-based'
   difficulty: 'easy' | 'hard'
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
+  selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 
   // Study phase
   studyTimeRemaining: number // seconds remaining in study phase
@@ -155,4 +158,13 @@ export type KnowYourWorldMove =
       userId: string
       timestamp: number
       data: {}
+    }
+  | {
+      type: 'SET_CONTINENT'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        selectedContinent: ContinentId | 'all'
+      }
     }

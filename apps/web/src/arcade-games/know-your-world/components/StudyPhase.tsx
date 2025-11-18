@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import { getMapData } from '../maps'
+import { getFilteredMapData } from '../maps'
 import type { MapRegion } from '../types'
 import { getRegionColor, getLabelTextColor, getLabelTextShadow } from '../mapColors'
 
@@ -15,7 +15,7 @@ export function StudyPhase() {
 
   const [timeRemaining, setTimeRemaining] = useState(state.studyTimeRemaining)
 
-  const mapData = getMapData(state.selectedMap)
+  const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent)
 
   // Countdown timer
   useEffect(() => {
@@ -102,7 +102,14 @@ export function StudyPhase() {
             className={css({
               fontSize: '4xl',
               fontWeight: 'bold',
-              color: timeRemaining <= 10 ? (isDark ? 'red.400' : 'red.600') : isDark ? 'blue.200' : 'blue.800',
+              color:
+                timeRemaining <= 10
+                  ? isDark
+                    ? 'red.400'
+                    : 'red.600'
+                  : isDark
+                    ? 'blue.200'
+                    : 'blue.800',
               fontFeatureSettings: '"tnum"',
             })}
           >
@@ -200,7 +207,15 @@ export function StudyPhase() {
         })}
       >
         <p className={css({ fontWeight: 'semibold', marginBottom: '2' })}>💡 Study Tips:</p>
-        <ul className={css({ listStyle: 'disc', paddingLeft: '5', display: 'flex', flexDirection: 'column', gap: '1' })}>
+        <ul
+          className={css({
+            listStyle: 'disc',
+            paddingLeft: '5',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1',
+          })}
+        >
           <li>Look for patterns - neighboring regions, shapes, sizes</li>
           <li>Group regions mentally by area (e.g., Northeast, Southwest)</li>
           <li>Focus on the tricky small ones that are hard to see</li>

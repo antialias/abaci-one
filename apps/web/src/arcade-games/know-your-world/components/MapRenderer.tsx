@@ -81,7 +81,7 @@ function isSmallRegion(bbox: BoundingBox, viewBox: string): boolean {
   // Thresholds (relative to map size)
   const minWidth = mapWidth * 0.025 // 2.5% of map width
   const minHeight = mapHeight * 0.025 // 2.5% of map height
-  const minArea = (mapWidth * mapHeight) * 0.001 // 0.1% of total map area
+  const minArea = mapWidth * mapHeight * 0.001 // 0.1% of total map area
 
   return bbox.width < minWidth || bbox.height < minHeight || bbox.area < minArea
 }
@@ -116,10 +116,7 @@ export function MapRenderer({
           regionId: region.id,
           regionName: region.name,
           regionCenter: region.center,
-          labelPosition: [
-            region.center[0] + offsetX,
-            region.center[1] + offsetY,
-          ],
+          labelPosition: [region.center[0] + offsetX, region.center[1] + offsetY],
           isFound: regionsFound.includes(region.id),
         })
       }
@@ -229,8 +226,10 @@ export function MapRenderer({
               y={label.labelPosition[1] - 12}
               width={label.regionName.length * 6 + 10}
               height={20}
-              fill={label.isFound ? (isDark ? '#22c55e' : '#86efac') : (isDark ? '#1f2937' : '#ffffff')}
-              stroke={label.isFound ? '#16a34a' : (isDark ? '#60a5fa' : '#3b82f6')}
+              fill={
+                label.isFound ? (isDark ? '#22c55e' : '#86efac') : isDark ? '#1f2937' : '#ffffff'
+              }
+              stroke={label.isFound ? '#16a34a' : isDark ? '#60a5fa' : '#3b82f6'}
               strokeWidth={2}
               rx={4}
               style={{
@@ -269,22 +268,11 @@ export function MapRenderer({
 
         {/* Arrow marker definition */}
         <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="10"
-            markerHeight="10"
-            refX="8"
-            refY="3"
-            orient="auto"
-          >
-            <polygon
-              points="0 0, 10 3, 0 6"
-              fill={isDark ? '#60a5fa' : '#3b82f6'}
-            />
+          <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 10 3, 0 6" fill={isDark ? '#60a5fa' : '#3b82f6'} />
           </marker>
         </defs>
       </svg>
-
     </div>
   )
 }

@@ -30,6 +30,7 @@ interface KnowYourWorldContextValue {
   setMode: (mode: 'cooperative' | 'race' | 'turn-based') => void
   setDifficulty: (difficulty: 'easy' | 'hard') => void
   setStudyDuration: (duration: 0 | 30 | 60 | 120) => void
+  setContinent: (continent: import('./continents').ContinentId | 'all') => void
 }
 
 const KnowYourWorldContext = createContext<KnowYourWorldContextValue | null>(null)
@@ -59,12 +60,30 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     const studyDuration: 0 | 30 | 60 | 120 =
       rawDuration === 30 || rawDuration === 60 || rawDuration === 120 ? rawDuration : 0
 
+    // Validate selectedContinent
+    const rawContinent = gameConfig?.selectedContinent
+    const validContinents = [
+      'all',
+      'africa',
+      'asia',
+      'europe',
+      'north-america',
+      'south-america',
+      'oceania',
+      'antarctica',
+    ]
+    const selectedContinent: import('./continents').ContinentId | 'all' =
+      typeof rawContinent === 'string' && validContinents.includes(rawContinent)
+        ? (rawContinent as any)
+        : 'all'
+
     return {
       gamePhase: 'setup' as const,
       selectedMap: (gameConfig?.selectedMap as 'world' | 'usa') || 'world',
       gameMode: (gameConfig?.gameMode as 'cooperative' | 'race' | 'turn-based') || 'cooperative',
       difficulty: (gameConfig?.difficulty as 'easy' | 'hard') || 'easy',
       studyDuration,
+      selectedContinent,
       studyTimeRemaining: 0,
       studyStartTime: 0,
       currentPrompt: null,
@@ -277,6 +296,36 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     })
   }, [viewerId, sendMove])
 
+  // Setup Action: Set Continent
+  const setContinent = useCallback(
+    (selectedContinent: import('./continents').ContinentId | 'all') => {
+      sendMove({
+        type: 'SET_CONTINENT',
+        playerId: viewerId || 'player-1',
+        userId: viewerId || '',
+        data: { selectedContinent },
+      })
+
+      // Persist to database
+      if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentConfig = (currentGameConfig['know-your-world'] as Record<string, any>) || {}
+
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: {
+            ...currentGameConfig,
+            'know-your-world': {
+              ...currentConfig,
+              selectedContinent,
+            },
+          },
+        })
+      }
+    },
+    [viewerId, sendMove, roomData, updateGameConfig]
+  )
+
   // Action: Return to Setup
   const returnToSetup = useCallback(() => {
     sendMove({
@@ -304,6 +353,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         setMode,
         setDifficulty,
         setStudyDuration,
+        setContinent,
       }}
     >
       {children}

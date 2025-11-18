@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import { getMapData } from '../maps'
+import { getFilteredMapData } from '../maps'
 import { MapRenderer } from './MapRenderer'
 
 export function PlayingPhase() {
@@ -12,7 +12,7 @@ export function PlayingPhase() {
   const isDark = resolvedTheme === 'dark'
   const { state, clickRegion, lastError, clearError } = useKnowYourWorld()
 
-  const mapData = getMapData(state.selectedMap)
+  const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent)
   const totalRegions = mapData.regions.length
   const foundCount = state.regionsFound.length
   const progress = (foundCount / totalRegions) * 100
