@@ -36,9 +36,10 @@ export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
       // Borrow boxes row (shows borrows FROM higher place TO lower place)
       [],  // Empty cell for operator column
       ..for i in range(0, grid-digits).rev() {
-        // Check if we need to borrow FROM this place (to give to i-1)
-        // We borrow when m-digit < s-digit at position i-1
-        let shows-borrow = show-borrows and i > 0 and (m-digits.at(i - 1) < s-digits.at(i - 1))
+        // Show borrow box if enabled (display rules already handle "whenRegrouping" logic in TypeScript)
+        // Note: Borrowing occurs FROM position i TO position i-1 (when m-digits.at(i-1) < s-digits.at(i-1))
+        let shows-borrow = show-borrows and i > 0
+        let column-needs-borrow = i > 0 and (m-digits.at(i - 1) < s-digits.at(i - 1))
 
         if shows-borrow {
           // This place borrowed FROM to give to lower place
@@ -46,7 +47,8 @@ export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
           let dest-color = place-colors.at(i - 1)    // Lower place (receiving)
 
           // When showing hints, determine what to display based on cascading
-          if show-borrowing-hints and i <= m-highest {
+          // Only show hints where borrowing actually occurs (even if boxes show everywhere)
+          if show-borrowing-hints and column-needs-borrow and i <= m-highest {
             // Determine the actual value to show in the hint
             // For cascading: if this digit is 0, it received 10 from left and gives 1 to right
             // So it shows "10 - 1". Otherwise it shows "original - 1"
