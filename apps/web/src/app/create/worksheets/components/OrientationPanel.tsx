@@ -187,7 +187,8 @@ export function OrientationPanel({
         shadow: 'card',
         p: '4',
         minWidth: 0,
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         containerType: 'inline-size',
         '@container (max-width: 400px)': {
           p: '3',
