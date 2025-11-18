@@ -22,6 +22,34 @@ function getDefaultDate(): string {
 }
 
 /**
+ * Merge user display rules with skill recommendations, resolving "auto" values
+ *
+ * For each display rule field:
+ * - If user value is "auto" → use skill's recommendation
+ * - If user value is undefined → use skill's recommendation
+ * - Otherwise → use user's explicit value (manual override)
+ *
+ * @param skillRules - The skill's recommended scaffolding settings
+ * @param userRules - The user's custom scaffolding settings (may contain "auto")
+ * @returns Fully resolved display rules with no "auto" values
+ */
+function mergeDisplayRulesWithAuto(
+  skillRules: DisplayRules,
+  userRules: Partial<DisplayRules>
+): DisplayRules {
+  const result: Record<string, any> = {}
+
+  for (const key of Object.keys(skillRules) as Array<keyof DisplayRules>) {
+    const userValue = userRules[key]
+    // If user value is "auto" or undefined, use skill's recommendation
+    // Otherwise, use user's explicit value (manual override)
+    result[key] = userValue === 'auto' || userValue === undefined ? skillRules[key] : userValue
+  }
+
+  return result as DisplayRules
+}
+
+/**
  * Validate and create complete config from partial form state
  */
 export function validateWorksheetConfig(formState: WorksheetFormState): ValidationResult {
@@ -260,10 +288,22 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       }
     }
 
-    const displayRules: DisplayRules = {
-      ...baseDisplayRules,
-      ...((formState.displayRules as any) ?? {}), // Override with provided rules if any
-    }
+    // Merge user's display rules with skill recommendations, resolving "auto" values
+    const userDisplayRules = (formState.displayRules as any) ?? {}
+    const displayRules: DisplayRules =
+      mode === 'mastery'
+        ? mergeDisplayRulesWithAuto(baseDisplayRules, userDisplayRules)
+        : {
+            ...baseDisplayRules,
+            ...userDisplayRules, // Smart mode: direct override (no "auto" resolution)
+          }
+
+    console.log('[MASTERY MODE] Display rules resolved:', {
+      mode,
+      baseDisplayRules,
+      userDisplayRules,
+      resolvedDisplayRules: displayRules,
+    })
 
     // Build config with operator-specific display rules for mixed mode
     const operator = formState.operator ?? 'addition'
@@ -287,32 +327,36 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
 
         if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
           // Merge user's operator-specific displayRules with skill's recommended scaffolding
-          // User's rules (if set) take precedence over skill's recommendations
-          // Fall back to general displayRules if operator-specific rules don't exist
+          // Resolves "auto" values to skill recommendations
+          // Falls back to general displayRules if operator-specific rules don't exist
           const userAdditionRules: Partial<DisplayRules> =
             (formState as any).additionDisplayRules || formState.displayRules || {}
           const userSubtractionRules: Partial<DisplayRules> =
             (formState as any).subtractionDisplayRules || formState.displayRules || {}
 
-          console.log('[MIXED MODE SCAFFOLDING] User rules:', {
+          console.log('[MIXED MODE SCAFFOLDING] User rules (may contain "auto"):', {
             additionRules: userAdditionRules,
             subtractionRules: userSubtractionRules,
             generalRules: formState.displayRules,
           })
 
+          // Resolve "auto" values to skill recommendations
+          const resolvedAdditionRules = mergeDisplayRulesWithAuto(
+            addSkill.recommendedScaffolding,
+            userAdditionRules
+          )
+          const resolvedSubtractionRules = mergeDisplayRulesWithAuto(
+            subSkill.recommendedScaffolding,
+            userSubtractionRules
+          )
+
           config = {
             ...baseConfig,
-            additionDisplayRules: {
-              ...addSkill.recommendedScaffolding,
-              ...userAdditionRules, // User's custom rules override skill's recommendations
-            },
-            subtractionDisplayRules: {
-              ...subSkill.recommendedScaffolding,
-              ...userSubtractionRules, // User's custom rules override skill's recommendations
-            },
+            additionDisplayRules: resolvedAdditionRules,
+            subtractionDisplayRules: resolvedSubtractionRules,
           } as any
 
-          console.log('[MIXED MODE SCAFFOLDING] Final config:', {
+          console.log('[MIXED MODE SCAFFOLDING] Final config (after resolving "auto"):', {
             additionDisplayRules: config.additionDisplayRules,
             subtractionDisplayRules: config.subtractionDisplayRules,
           })

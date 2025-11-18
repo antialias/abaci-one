@@ -18,6 +18,29 @@ import { WORKSHEET_LIMITS } from './constants/validation'
  */
 
 // =============================================================================
+// SHARED DISPLAY RULE TYPES
+// =============================================================================
+
+/**
+ * Display rule values for conditional scaffolding
+ *
+ * - "auto": Defer to mastery progression's skill recommendation (mastery mode only)
+ * - "always": Always show this scaffolding element
+ * - "never": Never show this scaffolding element
+ * - "whenRegrouping": Show only when problem requires regrouping
+ * - "whenMultipleRegroups": Show only when problem has multiple regroups
+ * - "when3PlusDigits": Show only when problem has 3+ digits
+ */
+const displayRuleValues = [
+  'auto',
+  'always',
+  'never',
+  'whenRegrouping',
+  'whenMultipleRegroups',
+  'when3PlusDigits',
+] as const
+
+// =============================================================================
 // ADDITION WORKSHEETS
 // =============================================================================
 
@@ -336,64 +359,16 @@ const additionConfigV4BaseSchema = z.object({
 const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
   mode: z.literal('smart'),
 
-  // Conditional display rules
+  // Conditional display rules (with 'auto' for deferring to smart difficulty)
   displayRules: z.object({
-    carryBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    answerBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    placeValueColors: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    tenFrames: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    problemNumbers: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    cellBorders: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowNotation: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowingHints: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
+    carryBoxes: z.enum(displayRuleValues),
+    answerBoxes: z.enum(displayRuleValues),
+    placeValueColors: z.enum(displayRuleValues),
+    tenFrames: z.enum(displayRuleValues),
+    problemNumbers: z.enum(displayRuleValues),
+    cellBorders: z.enum(displayRuleValues),
+    borrowNotation: z.enum(displayRuleValues),
+    borrowingHints: z.enum(displayRuleValues),
   }),
 
   // Optional: Which smart difficulty profile is selected
@@ -406,63 +381,16 @@ const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   mode: z.literal('manual'),
 
   // Manual mode now uses conditional display rules (same as Smart/Mastery)
+  // 'auto' is available but typically not used in manual mode
   displayRules: z.object({
-    carryBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    answerBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    placeValueColors: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    tenFrames: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    problemNumbers: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    cellBorders: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowNotation: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowingHints: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
+    carryBoxes: z.enum(displayRuleValues),
+    answerBoxes: z.enum(displayRuleValues),
+    placeValueColors: z.enum(displayRuleValues),
+    tenFrames: z.enum(displayRuleValues),
+    problemNumbers: z.enum(displayRuleValues),
+    cellBorders: z.enum(displayRuleValues),
+    borrowNotation: z.enum(displayRuleValues),
+    borrowingHints: z.enum(displayRuleValues),
   }),
 
   // Optional: Which manual preset is selected
@@ -473,187 +401,44 @@ const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
 const additionConfigV4MasterySchema = additionConfigV4BaseSchema.extend({
   mode: z.literal('mastery'),
 
-  // Mastery mode uses displayRules like smart mode (conditional scaffolding)
+  // Mastery mode uses displayRules with 'auto' for deferring to skill recommendations
   displayRules: z.object({
-    carryBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    answerBoxes: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    placeValueColors: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    tenFrames: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    problemNumbers: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    cellBorders: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowNotation: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
-    borrowingHints: z.enum([
-      'always',
-      'never',
-      'whenRegrouping',
-      'whenMultipleRegroups',
-      'when3PlusDigits',
-    ]),
+    carryBoxes: z.enum(displayRuleValues),
+    answerBoxes: z.enum(displayRuleValues),
+    placeValueColors: z.enum(displayRuleValues),
+    tenFrames: z.enum(displayRuleValues),
+    problemNumbers: z.enum(displayRuleValues),
+    cellBorders: z.enum(displayRuleValues),
+    borrowNotation: z.enum(displayRuleValues),
+    borrowingHints: z.enum(displayRuleValues),
   }),
 
   // Optional: Separate display rules for mixed mode (operator-specific scaffolding)
   // When operator='mixed', additionDisplayRules applies to addition problems,
   // subtractionDisplayRules applies to subtraction problems
+  // Each can independently use 'auto' to defer to the operator-specific skill recommendation
   additionDisplayRules: z
     .object({
-      carryBoxes: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      answerBoxes: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      placeValueColors: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      tenFrames: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      problemNumbers: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      cellBorders: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      borrowNotation: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      borrowingHints: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
+      carryBoxes: z.enum(displayRuleValues),
+      answerBoxes: z.enum(displayRuleValues),
+      placeValueColors: z.enum(displayRuleValues),
+      tenFrames: z.enum(displayRuleValues),
+      problemNumbers: z.enum(displayRuleValues),
+      cellBorders: z.enum(displayRuleValues),
+      borrowNotation: z.enum(displayRuleValues),
+      borrowingHints: z.enum(displayRuleValues),
     })
     .optional(),
   subtractionDisplayRules: z
     .object({
-      carryBoxes: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      answerBoxes: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      placeValueColors: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      tenFrames: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      problemNumbers: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      cellBorders: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      borrowNotation: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
-      borrowingHints: z.enum([
-        'always',
-        'never',
-        'whenRegrouping',
-        'whenMultipleRegroups',
-        'when3PlusDigits',
-      ]),
+      carryBoxes: z.enum(displayRuleValues),
+      answerBoxes: z.enum(displayRuleValues),
+      placeValueColors: z.enum(displayRuleValues),
+      tenFrames: z.enum(displayRuleValues),
+      problemNumbers: z.enum(displayRuleValues),
+      cellBorders: z.enum(displayRuleValues),
+      borrowNotation: z.enum(displayRuleValues),
+      borrowingHints: z.enum(displayRuleValues),
     })
     .optional(),
 

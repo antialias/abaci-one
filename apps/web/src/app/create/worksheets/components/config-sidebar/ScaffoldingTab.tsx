@@ -69,6 +69,48 @@ export function ScaffoldingTab() {
           Quick Presets
         </div>
         <div className={css({ display: 'flex', gap: '1.5' })}>
+          {/* Auto preset - defer to mastery progression (only show in mastery mode) */}
+          {formState.mode === 'mastery' && (
+            <button
+              onClick={() => {
+                const newDisplayRules = {
+                  ...displayRules,
+                  carryBoxes: 'auto' as const,
+                  answerBoxes: 'auto' as const,
+                  placeValueColors: 'auto' as const,
+                  tenFrames: 'auto' as const,
+                  borrowNotation: 'auto' as const,
+                  borrowingHints: 'auto' as const,
+                }
+                // In mastery+mixed mode, update operator-specific rules too
+                if (isMasteryMixed) {
+                  onChange({
+                    displayRules: newDisplayRules,
+                    additionDisplayRules: newDisplayRules,
+                    subtractionDisplayRules: newDisplayRules,
+                  })
+                } else {
+                  onChange({
+                    displayRules: newDisplayRules,
+                  })
+                }
+              }}
+              className={css({
+                px: '2',
+                py: '0.5',
+                fontSize: '2xs',
+                color: isDark ? 'green.300' : 'green.600',
+                bg: isDark ? 'green.900/30' : 'green.50',
+                border: '1px solid',
+                borderColor: isDark ? 'green.700' : 'green.300',
+                rounded: 'md',
+                cursor: 'pointer',
+                _hover: { bg: isDark ? 'green.800/40' : 'green.100' },
+              })}
+            >
+              Auto
+            </button>
+          )}
           <button
             onClick={() => {
               const newDisplayRules = {

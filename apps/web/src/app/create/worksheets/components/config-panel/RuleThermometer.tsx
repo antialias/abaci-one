@@ -12,6 +12,7 @@ export interface RuleThermometerProps {
 }
 
 const RULE_OPTIONS: Array<{ value: RuleMode; label: string; short: string }> = [
+  { value: 'auto', label: 'Auto (Use Mastery Progression)', short: 'Auto' },
   { value: 'always', label: 'Always', short: 'Always' },
   { value: 'whenRegrouping', label: 'When Regrouping', short: 'Regroup' },
   { value: 'whenMultipleRegroups', label: 'Multiple Regroups', short: '2+' },
