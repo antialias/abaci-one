@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
-import { WORLD_MAP, calculateContinentViewBox } from '../maps'
+import { WORLD_MAP } from '../maps'
 import { getContinentForCountry, CONTINENTS, type ContinentId } from '../continents'
 import { getRegionColor } from '../mapColors'
 
@@ -78,11 +78,6 @@ export function ContinentSelector({
     return 0.3
   }
 
-  // Calculate viewBox based on selected continent
-  const viewBox = useMemo(() => {
-    return calculateContinentViewBox(WORLD_MAP.regions, selectedContinent, WORLD_MAP.viewBox)
-  }, [selectedContinent])
-
   return (
     <div data-component="continent-selector">
       <div
@@ -116,7 +111,7 @@ export function ContinentSelector({
         })}
       >
         <svg
-          viewBox={viewBox}
+          viewBox={WORLD_MAP.viewBox}
           className={css({
             width: '100%',
             height: 'auto',

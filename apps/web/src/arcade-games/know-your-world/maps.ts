@@ -263,19 +263,175 @@ function calculateBoundingBox(paths: string[]): BoundingBox {
   let minY = Infinity
   let maxY = -Infinity
 
-  for (const path of paths) {
-    // Extract all numbers from path string
-    const numbers = path.match(/-?\d+\.?\d*/g)?.map(Number) || []
+  for (const pathString of paths) {
+    // Parse SVG path commands properly (similar to calculatePathCenter)
+    const commandRegex = /([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)/g
+    let currentX = 0
+    let currentY = 0
+    let match
 
-    // Assume pairs of x,y coordinates
-    for (let i = 0; i < numbers.length - 1; i += 2) {
-      const x = numbers[i]
-      const y = numbers[i + 1]
+    while ((match = commandRegex.exec(pathString)) !== null) {
+      const command = match[1]
+      const params =
+        match[2]
+          .trim()
+          .match(/-?\d+\.?\d*/g)
+          ?.map(Number) || []
 
-      minX = Math.min(minX, x)
-      maxX = Math.max(maxX, x)
-      minY = Math.min(minY, y)
-      maxY = Math.max(maxY, y)
+      switch (command) {
+        case 'M': // Move to (absolute)
+          if (params.length >= 2) {
+            currentX = params[0]
+            currentY = params[1]
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'm': // Move to (relative)
+          if (params.length >= 2) {
+            currentX += params[0]
+            currentY += params[1]
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'L': // Line to (absolute)
+          for (let i = 0; i < params.length - 1; i += 2) {
+            currentX = params[i]
+            currentY = params[i + 1]
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'l': // Line to (relative)
+          for (let i = 0; i < params.length - 1; i += 2) {
+            currentX += params[i]
+            currentY += params[i + 1]
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'H': // Horizontal line (absolute)
+          for (const x of params) {
+            currentX = x
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+          }
+          break
+
+        case 'h': // Horizontal line (relative)
+          for (const dx of params) {
+            currentX += dx
+            minX = Math.min(minX, currentX)
+            maxX = Math.max(maxX, currentX)
+          }
+          break
+
+        case 'V': // Vertical line (absolute)
+          for (const y of params) {
+            currentY = y
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'v': // Vertical line (relative)
+          for (const dy of params) {
+            currentY += dy
+            minY = Math.min(minY, currentY)
+            maxY = Math.max(maxY, currentY)
+          }
+          break
+
+        case 'C': // Cubic Bezier (absolute)
+          for (let i = 0; i < params.length - 1; i += 6) {
+            if (i + 5 < params.length) {
+              // Check all control points and endpoint
+              for (let j = 0; j < 6; j += 2) {
+                const x = params[i + j]
+                const y = params[i + j + 1]
+                minX = Math.min(minX, x)
+                maxX = Math.max(maxX, x)
+                minY = Math.min(minY, y)
+                maxY = Math.max(maxY, y)
+              }
+              currentX = params[i + 4]
+              currentY = params[i + 5]
+            }
+          }
+          break
+
+        case 'c': // Cubic Bezier (relative)
+          for (let i = 0; i < params.length - 1; i += 6) {
+            if (i + 5 < params.length) {
+              // Check all control points and endpoint (converted to absolute)
+              for (let j = 0; j < 6; j += 2) {
+                const x = currentX + params[i + j]
+                const y = currentY + params[i + j + 1]
+                minX = Math.min(minX, x)
+                maxX = Math.max(maxX, x)
+                minY = Math.min(minY, y)
+                maxY = Math.max(maxY, y)
+              }
+              currentX += params[i + 4]
+              currentY += params[i + 5]
+            }
+          }
+          break
+
+        case 'Q': // Quadratic Bezier (absolute)
+          for (let i = 0; i < params.length - 1; i += 4) {
+            if (i + 3 < params.length) {
+              // Check control point and endpoint
+              for (let j = 0; j < 4; j += 2) {
+                const x = params[i + j]
+                const y = params[i + j + 1]
+                minX = Math.min(minX, x)
+                maxX = Math.max(maxX, x)
+                minY = Math.min(minY, y)
+                maxY = Math.max(maxY, y)
+              }
+              currentX = params[i + 2]
+              currentY = params[i + 3]
+            }
+          }
+          break
+
+        case 'q': // Quadratic Bezier (relative)
+          for (let i = 0; i < params.length - 1; i += 4) {
+            if (i + 3 < params.length) {
+              // Check control point and endpoint (converted to absolute)
+              for (let j = 0; j < 4; j += 2) {
+                const x = currentX + params[i + j]
+                const y = currentY + params[i + j + 1]
+                minX = Math.min(minX, x)
+                maxX = Math.max(maxX, x)
+                minY = Math.min(minY, y)
+                maxY = Math.max(maxY, y)
+              }
+              currentX += params[i + 2]
+              currentY += params[i + 3]
+            }
+          }
+          break
+
+        case 'Z':
+        case 'z':
+          // Close path - no new point needed
+          break
+      }
     }
   }
 
