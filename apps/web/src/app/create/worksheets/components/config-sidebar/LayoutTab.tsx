@@ -12,6 +12,8 @@ export function LayoutTab() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  console.log('[LayoutTab] Current formState.displayRules:', formState.displayRules)
+
   // Orientation change handler with automatic problemsPerPage/cols updates
   const handleOrientationChange = (
     orientation: 'portrait' | 'landscape',
@@ -83,6 +85,11 @@ export function LayoutTab() {
       onProblemNumbersChange={(value) => {
         const displayRules: DisplayRules =
           formState.displayRules ?? defaultAdditionConfig.displayRules
+        console.log('[LayoutTab] Changing problemNumbers:', {
+          from: displayRules.problemNumbers,
+          to: value,
+          fullDisplayRules: displayRules,
+        })
         onChange({
           displayRules: {
             ...displayRules,
@@ -93,6 +100,11 @@ export function LayoutTab() {
       onCellBordersChange={(value) => {
         const displayRules: DisplayRules =
           formState.displayRules ?? defaultAdditionConfig.displayRules
+        console.log('[LayoutTab] Changing cellBorders:', {
+          from: displayRules.cellBorders,
+          to: value,
+          fullDisplayRules: displayRules,
+        })
         onChange({
           displayRules: {
             ...displayRules,
