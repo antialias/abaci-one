@@ -3,6 +3,7 @@
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { DisplayRules } from '../../displayRules'
+import { LayoutPreview } from './LayoutPreview'
 import { ProblemPreview } from './ProblemPreview'
 
 export interface Tab {
@@ -36,7 +37,7 @@ export const TABS: Tab[] = [
   {
     id: 'layout',
     label: 'Layout',
-    icon: '📐',
+    icon: 'preview',
     subtitle: ({ orientation, problemsPerPage, cols, pages }) => {
       if (!orientation || !problemsPerPage || !cols || !pages) return null
       const orientationLabel = orientation === 'portrait' ? 'Portrait' : 'Landscape'
@@ -182,7 +183,8 @@ export function TabNavigation({
       {TABS.map((tab) => {
         const icon = getTabIcon(tab)
         const subtitle = getTabSubtitle(tab)
-        const showPreviewIcon = tab.icon === 'preview' && displayRules
+        const showLayoutPreview = tab.id === 'layout' && orientation && problemsPerPage && cols
+        const showScaffoldingPreview = tab.id === 'scaffolding' && displayRules
         // All operator symbols (+, −, ±) are ASCII characters that need larger font size
         const isOperatorSymbol = tab.id === 'operator'
 
@@ -240,7 +242,13 @@ export function TabNavigation({
                   flexShrink: 0,
                 })}
               >
-                {showPreviewIcon ? (
+                {showLayoutPreview ? (
+                  <LayoutPreview
+                    orientation={orientation!}
+                    cols={cols!}
+                    rows={Math.ceil(problemsPerPage! / cols!)}
+                  />
+                ) : showScaffoldingPreview ? (
                   <ProblemPreview
                     displayRules={displayRules!}
                     resolvedDisplayRules={resolvedDisplayRules}

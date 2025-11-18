@@ -4,6 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '@styled/css'
 import { useMemo, useState } from 'react'
+import { LayoutPreview } from './config-sidebar/LayoutPreview'
 import { validateProblemSpace } from '../utils/validateProblemSpace'
 import type { ProblemSpaceValidation } from '../utils/validateProblemSpace'
 import { getDefaultColsForProblemsPerPage } from '../utils/layoutCalculations'
@@ -25,7 +26,7 @@ interface OrientationPanelProps {
   digitRange?: { min: number; max: number }
   pAnyStart?: number
   operator?: 'addition' | 'subtraction' | 'mixed'
-  mode?: 'smart' | 'mastery'
+  mode?: 'custom' | 'mastery'
   // Layout options
   problemNumbers?: 'always' | 'never'
   cellBorders?: 'always' | 'never'
@@ -49,7 +50,7 @@ export function OrientationPanel({
   digitRange = { min: 2, max: 2 },
   pAnyStart = 0,
   operator = 'addition',
-  mode = 'smart',
+  mode = 'custom',
   problemNumbers = 'always',
   cellBorders = 'always',
   onProblemNumbersChange,
@@ -188,250 +189,36 @@ export function OrientationPanel({
                 },
               })}
             >
-              <button
-                type="button"
-                data-action="select-portrait"
+              <LayoutPreview
+                orientation="portrait"
+                cols={
+                  orientation === 'portrait'
+                    ? cols
+                    : getDefaultColsForProblemsPerPage(15, 'portrait')
+                }
+                rows={
+                  orientation === 'portrait'
+                    ? Math.ceil(problemsPerPage / cols)
+                    : Math.ceil(15 / getDefaultColsForProblemsPerPage(15, 'portrait'))
+                }
                 onClick={() => handleOrientationChange('portrait')}
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1.5',
-                  flex: '1',
-                  px: '2',
-                  py: '1.5',
-                  border: '2px solid',
-                  borderColor:
-                    orientation === 'portrait' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg:
-                    orientation === 'portrait'
-                      ? isDark
-                        ? 'brand.900'
-                        : 'brand.50'
-                      : isDark
-                        ? 'gray.700'
-                        : 'white',
-                  rounded: 'lg',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  justifyContent: 'center',
-                  minWidth: 0,
-                  _hover: {
-                    borderColor: 'brand.400',
-                  },
-                  '@media (max-width: 400px)': {
-                    px: '1.5',
-                    py: '1',
-                    gap: '1',
-                  },
-                  '@media (max-width: 200px)': {
-                    px: '1',
-                    py: '0.5',
-                    gap: '0.5',
-                  },
-                })}
-              >
-                {/* Portrait page icon */}
-                <svg
-                  width="16"
-                  height="20"
-                  viewBox="0 0 16 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={css({
-                    flexShrink: 0,
-                    '@media (max-width: 300px)': {
-                      width: '12px',
-                      height: '16px',
-                    },
-                  })}
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="14"
-                    height="18"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    fill="none"
-                  />
-                  <line
-                    x1="3"
-                    y1="4"
-                    x2="13"
-                    y2="4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1="3"
-                    y1="7"
-                    x2="13"
-                    y2="7"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1="3"
-                    y1="10"
-                    x2="10"
-                    y2="10"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'semibold',
-                    color:
-                      orientation === 'portrait'
-                        ? isDark
-                          ? 'brand.200'
-                          : 'brand.700'
-                        : isDark
-                          ? 'gray.300'
-                          : 'gray.600',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    '@media (max-width: 200px)': {
-                      fontSize: '2xs',
-                    },
-                    '@media (max-width: 150px)': {
-                      display: 'none',
-                    },
-                  })}
-                >
-                  Portrait
-                </div>
-              </button>
-              <button
-                type="button"
-                data-action="select-landscape"
+                isSelected={orientation === 'portrait'}
+              />
+              <LayoutPreview
+                orientation="landscape"
+                cols={
+                  orientation === 'landscape'
+                    ? cols
+                    : getDefaultColsForProblemsPerPage(20, 'landscape')
+                }
+                rows={
+                  orientation === 'landscape'
+                    ? Math.ceil(problemsPerPage / cols)
+                    : Math.ceil(20 / getDefaultColsForProblemsPerPage(20, 'landscape'))
+                }
                 onClick={() => handleOrientationChange('landscape')}
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1.5',
-                  flex: '1',
-                  px: '2',
-                  py: '1.5',
-                  border: '2px solid',
-                  borderColor:
-                    orientation === 'landscape' ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                  bg:
-                    orientation === 'landscape'
-                      ? isDark
-                        ? 'brand.900'
-                        : 'brand.50'
-                      : isDark
-                        ? 'gray.700'
-                        : 'white',
-                  rounded: 'lg',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  justifyContent: 'center',
-                  minWidth: 0,
-                  _hover: {
-                    borderColor: 'brand.400',
-                  },
-                  '@media (max-width: 400px)': {
-                    px: '1.5',
-                    py: '1',
-                    gap: '1',
-                  },
-                  '@media (max-width: 200px)': {
-                    px: '1',
-                    py: '0.5',
-                    gap: '0.5',
-                  },
-                })}
-              >
-                {/* Landscape page icon */}
-                <svg
-                  width="20"
-                  height="16"
-                  viewBox="0 0 20 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={css({
-                    flexShrink: 0,
-                    '@media (max-width: 300px)': {
-                      width: '16px',
-                      height: '12px',
-                    },
-                  })}
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="18"
-                    height="14"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    fill="none"
-                  />
-                  <line
-                    x1="3"
-                    y1="4"
-                    x2="17"
-                    y2="4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1="3"
-                    y1="7"
-                    x2="17"
-                    y2="7"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1="3"
-                    y1="10"
-                    x2="13"
-                    y2="10"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'semibold',
-                    color:
-                      orientation === 'landscape'
-                        ? isDark
-                          ? 'brand.200'
-                          : 'brand.700'
-                        : isDark
-                          ? 'gray.300'
-                          : 'gray.600',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    '@media (max-width: 200px)': {
-                      fontSize: '2xs',
-                    },
-                    '@media (max-width: 150px)': {
-                      display: 'none',
-                    },
-                  })}
-                >
-                  Landscape
-                </div>
-              </button>
+                isSelected={orientation === 'landscape'}
+              />
             </div>
           </div>
 
