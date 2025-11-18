@@ -5,6 +5,7 @@ import type { ProblemMeta, SubtractionProblemMeta } from './problemAnalysis'
 export type AnyProblemMeta = ProblemMeta | SubtractionProblemMeta
 
 export type RuleMode =
+  | 'auto' // Defer to mastery progression (should be resolved before rendering)
   | 'always' // Always show this display option
   | 'never' // Never show this display option
   | 'whenRegrouping' // Show when problem requires any regrouping
@@ -39,6 +40,14 @@ export interface ResolvedDisplayOptions {
  */
 export function evaluateRule(mode: RuleMode, problem: AnyProblemMeta): boolean {
   switch (mode) {
+    case 'auto':
+      // 'auto' should have been resolved to a concrete value in validation
+      // If it reaches here, something went wrong - default to 'always' to avoid breaking
+      console.error(
+        '[evaluateRule] BUG: "auto" mode should have been resolved before rendering. Defaulting to "always".'
+      )
+      return true
+
     case 'always':
       return true
 
