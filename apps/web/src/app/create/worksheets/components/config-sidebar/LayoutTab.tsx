@@ -88,14 +88,38 @@ export function LayoutTab() {
         console.log('[LayoutTab] Changing problemNumbers:', {
           from: displayRules.problemNumbers,
           to: value,
+          mode: formState.mode,
+          operator: formState.operator,
           fullDisplayRules: displayRules,
         })
-        onChange({
+
+        // Update general displayRules
+        const updates: any = {
           displayRules: {
             ...displayRules,
             problemNumbers: value,
           },
-        })
+        }
+
+        // CRITICAL: In mastery+mixed mode, also update operator-specific display rules
+        if (formState.mode === 'mastery' && formState.operator === 'mixed') {
+          // Update additionDisplayRules if they exist
+          if (formState.additionDisplayRules) {
+            updates.additionDisplayRules = {
+              ...formState.additionDisplayRules,
+              problemNumbers: value,
+            }
+          }
+          // Update subtractionDisplayRules if they exist
+          if (formState.subtractionDisplayRules) {
+            updates.subtractionDisplayRules = {
+              ...formState.subtractionDisplayRules,
+              problemNumbers: value,
+            }
+          }
+        }
+
+        onChange(updates)
       }}
       onCellBordersChange={(value) => {
         const displayRules: DisplayRules =
@@ -103,14 +127,38 @@ export function LayoutTab() {
         console.log('[LayoutTab] Changing cellBorders:', {
           from: displayRules.cellBorders,
           to: value,
+          mode: formState.mode,
+          operator: formState.operator,
           fullDisplayRules: displayRules,
         })
-        onChange({
+
+        // Update general displayRules
+        const updates: any = {
           displayRules: {
             ...displayRules,
             cellBorders: value,
           },
-        })
+        }
+
+        // CRITICAL: In mastery+mixed mode, also update operator-specific display rules
+        if (formState.mode === 'mastery' && formState.operator === 'mixed') {
+          // Update additionDisplayRules if they exist
+          if (formState.additionDisplayRules) {
+            updates.additionDisplayRules = {
+              ...formState.additionDisplayRules,
+              cellBorders: value,
+            }
+          }
+          // Update subtractionDisplayRules if they exist
+          if (formState.subtractionDisplayRules) {
+            updates.subtractionDisplayRules = {
+              ...formState.subtractionDisplayRules,
+              cellBorders: value,
+            }
+          }
+        }
+
+        onChange(updates)
       }}
     />
   )
