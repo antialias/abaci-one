@@ -10,16 +10,12 @@
 
 import { execSync } from 'child_process'
 import { type NextRequest, NextResponse } from 'next/server'
-import {
-  generateProblems,
-  generateSubtractionProblems,
-} from '@/app/create/worksheets/problemGenerator'
 import type { WorksheetOperator } from '@/app/create/worksheets/types'
 import {
+  generatePlaceValueColors,
   generateProblemStackFunction,
   generateSubtractionProblemStackFunction,
   generateTypstHelpers,
-  generatePlaceValueColors,
 } from '@/app/create/worksheets/typstHelpers'
 
 export const dynamic = 'force-dynamic'
@@ -64,7 +60,7 @@ function generateExampleTypst(config: ExampleRequest): string {
   const showBorrowingHints = config.showBorrowingHints ?? false
 
   if (operator === 'addition') {
-    // Use custom addends if provided, otherwise generate a problem
+    // Use custom addends if provided, otherwise use a 3-digit problem with multiple regroups
     let a: number
     let b: number
 
@@ -72,11 +68,10 @@ function generateExampleTypst(config: ExampleRequest): string {
       a = config.addend1
       b = config.addend2
     } else {
-      // Generate a simple 2-digit + 2-digit problem with carries
-      const problems = generateProblems(1, 0.8, 0.5, false, 12345)
-      const problem = problems[0]
-      a = problem.a
-      b = problem.b
+      // Use a 3-digit problem with multiple regroups to demonstrate all scaffolding features
+      // 456 + 789 = 1245 (3 digits, 3 regroups: ones, tens, hundreds)
+      a = 456
+      b = 789
     }
 
     return String.raw`
@@ -113,12 +108,10 @@ ${generateProblemStackFunction(cellSize, 3)}
       minuend = config.minuend
       subtrahend = config.subtrahend
     } else {
-      // Generate a simple 2-digit - 2-digit problem with borrows
-      const digitRange = { min: 2, max: 2 }
-      const problems = generateSubtractionProblems(1, digitRange, 0.8, 0.5, false, 12345)
-      const problem = problems[0]
-      minuend = problem.minuend
-      subtrahend = problem.subtrahend
+      // Use a 3-digit problem with multiple borrows to demonstrate all scaffolding features
+      // 832 - 456 = 376 (3 digits, 2 borrows: ones and tens)
+      minuend = 832
+      subtrahend = 456
     }
 
     return String.raw`

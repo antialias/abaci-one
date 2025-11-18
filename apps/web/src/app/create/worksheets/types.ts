@@ -2,7 +2,7 @@
 
 import type {
   AdditionConfigV4,
-  AdditionConfigV4Smart,
+  AdditionConfigV4Custom,
   AdditionConfigV4Manual,
   AdditionConfigV4Mastery,
 } from '@/app/create/worksheets/config-schemas'
@@ -12,7 +12,7 @@ import type {
  * Extends V4 config with additional derived fields needed for rendering
  *
  * V4 uses discriminated union on 'mode':
- * - Smart mode: Uses displayRules for conditional per-problem scaffolding
+ * - Custom mode: Uses displayRules for conditional per-problem scaffolding
  * - Manual mode: Uses boolean flags for uniform display across all problems
  *
  * V4 adds digitRange field to support 1-5 digit problems
@@ -47,12 +47,12 @@ export type WorksheetConfig = AdditionConfigV4 & {
  * Based on V4 config with additional derived state
  *
  * V4 supports three modes via discriminated union:
- * - Smart mode: Has displayRules and optional difficultyProfile
+ * - Custom mode: Has displayRules and optional difficultyProfile
  * - Mastery mode: Has displayRules and optional currentStepId
  * - Manual mode: Has boolean display flags and optional manualPreset
  *
  * During editing, mode field may be present to indicate which mode is active.
- * If mode is absent, defaults to 'smart' mode.
+ * If mode is absent, defaults to 'custom' mode.
  *
  * This type is intentionally permissive during form editing to allow fields from
  * all modes to exist temporarily. Validation will enforce mode consistency.
@@ -72,7 +72,7 @@ export type WorksheetConfig = AdditionConfigV4 & {
  *
  * See `.claude/WORKSHEET_CONFIG_PERSISTENCE.md` for full architecture.
  */
-export type WorksheetFormState = Partial<Omit<AdditionConfigV4Smart, 'version'>> &
+export type WorksheetFormState = Partial<Omit<AdditionConfigV4Custom, 'version'>> &
   Partial<Omit<AdditionConfigV4Manual, 'version'>> &
   Partial<Omit<AdditionConfigV4Mastery, 'version'>> & {
     // ========================================

@@ -143,8 +143,8 @@ function PreviewContent({
       formState.operator,
       // V4: Mode and conditional display settings
       formState.mode,
-      formState.displayRules, // Smart mode: conditional scaffolding
-      formState.difficultyProfile, // Smart mode: difficulty preset
+      formState.displayRules, // Custom mode: conditional scaffolding
+      formState.difficultyProfile, // Custom mode: difficulty preset
       formState.manualPreset, // Manual mode: manual preset
       // Mastery mode: skill IDs (CRITICAL for mastery+mixed mode)
       formState.currentAdditionSkillId,

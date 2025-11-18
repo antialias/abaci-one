@@ -3,21 +3,21 @@
 import { css } from '@styled/css'
 
 interface ModeSelectorProps {
-  currentMode: 'smart' | 'manual' | 'mastery'
-  onChange: (mode: 'smart' | 'manual' | 'mastery') => void
+  currentMode: 'custom' | 'manual' | 'mastery'
+  onChange: (mode: 'custom' | 'manual' | 'mastery') => void
   isDark?: boolean
 }
 
 /**
  * Mode selector tabs for worksheet generation
- * Large, prominent tabs that switch between Smart Difficulty, Manual Control, and Mastery Progression modes
+ * Large, prominent tabs that switch between Custom Difficulty, Manual Control, and Mastery Progression modes
  */
 export function ModeSelector({ currentMode, onChange, isDark = false }: ModeSelectorProps) {
   const modes = [
     {
-      id: 'smart' as const,
+      id: 'custom' as const,
       emoji: '🎯',
-      label: 'Smart Difficulty',
+      label: 'Custom Difficulty',
       description: 'Research-backed progressive difficulty with adaptive scaffolding per problem',
     },
     {

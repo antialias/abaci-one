@@ -17,13 +17,13 @@ export function ContentTab() {
         onChange={(operator) => {
           // If switching to 'mixed' while in mastery mode without both skill IDs,
           // automatically switch to smart mode to prevent errors
-          const mode = formState.mode ?? 'smart'
+          const mode = formState.mode ?? 'custom'
           if (
             operator === 'mixed' &&
             mode === 'mastery' &&
             (!formState.currentAdditionSkillId || !formState.currentSubtractionSkillId)
           ) {
-            onChange({ operator, mode: 'smart' })
+            onChange({ operator, mode: 'custom' })
           } else {
             onChange({ operator })
           }

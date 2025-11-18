@@ -6,7 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import type { WorksheetFormState } from '../../types'
 import { MasteryModePanel } from '../config-panel/MasteryModePanel'
 import { ProgressiveDifficultyToggle } from '../config-panel/ProgressiveDifficultyToggle'
-import { SmartModeControls } from '../config-panel/SmartModeControls'
+import { CustomModeControls } from '../config-panel/CustomModeControls'
 import { DifficultyMethodSelector } from '../DifficultyMethodSelector'
 import { useWorksheetConfig } from '../WorksheetConfigContext'
 
@@ -15,19 +15,19 @@ export function DifficultyTab() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
+  const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'custom'
 
   // Handler for difficulty method switching (smart vs mastery)
-  const handleMethodChange = (newMethod: 'smart' | 'mastery') => {
+  const handleMethodChange = (newMethod: 'custom' | 'mastery') => {
     if (currentMethod === newMethod) {
       return
     }
 
     const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
 
-    if (newMethod === 'smart') {
+    if (newMethod === 'custom') {
       onChange({
-        mode: 'smart',
+        mode: 'custom',
         displayRules,
         difficultyProfile: 'earlyLearner',
       } as unknown as Partial<WorksheetFormState>)
@@ -56,7 +56,9 @@ export function DifficultyTab() {
       />
 
       {/* Method-specific controls */}
-      {currentMethod === 'smart' && <SmartModeControls formState={formState} onChange={onChange} />}
+      {currentMethod === 'custom' && (
+        <CustomModeControls formState={formState} onChange={onChange} />
+      )}
 
       {currentMethod === 'mastery' && (
         <MasteryModePanel formState={formState} onChange={onChange} isDark={isDark} />

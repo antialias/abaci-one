@@ -44,7 +44,7 @@ export function WorksheetPreviewProvider({ formState, children }: WorksheetPrevi
     const problemsPerPage = formState.problemsPerPage ?? 20
     const pages = formState.pages ?? 1
     const operator = formState.operator ?? 'addition'
-    const mode = formState.mode ?? 'smart'
+    const mode = formState.mode ?? 'custom'
 
     // Reset dismissed state when config changes
     setIsDismissed(false)

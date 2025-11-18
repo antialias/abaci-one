@@ -71,11 +71,12 @@ export function generateBorrowBoxesRow(cellDimensions: CellDimensions): string {
                 ]
               )
               // Draw curved line using Typst bezier with control point
+              // Note: path() is deprecated but curve() has different API - needs investigation
               #place(
                 top + left,
                 dx: ${arrowStartDx}in,
                 dy: ${arrowStartDy}in,
-                curve(
+                path(
                   stroke: (paint: gray.darken(30%), thickness: ${TYPST_CONSTANTS.ARROW_STROKE_WIDTH}pt),
                   // Start vertex (near the "1" in borrow box)
                   (0pt, 0pt),

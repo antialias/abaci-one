@@ -2,20 +2,20 @@
 
 import * as Slider from '@radix-ui/react-slider'
 import { css } from '@styled/css'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
-  DIFFICULTY_PROFILES,
-  DIFFICULTY_PROGRESSION,
   calculateOverallDifficulty,
   calculateRegroupingIntensity,
   calculateScaffoldingLevel,
-  REGROUPING_PROGRESSION,
-  SCAFFOLDING_PROGRESSION,
+  DIFFICULTY_PROFILES,
+  DIFFICULTY_PROGRESSION,
+  type DifficultyLevel,
   findNearestValidState,
   getProfileFromConfig,
-  type DifficultyLevel,
+  REGROUPING_PROGRESSION,
+  SCAFFOLDING_PROGRESSION,
 } from '../../difficultyProfiles'
 import type { DisplayRules } from '../../displayRules'
-import { useTheme } from '@/contexts/ThemeContext'
 
 export interface OverallDifficultySliderProps {
   currentDifficulty: number
@@ -162,13 +162,14 @@ export function OverallDifficultySlider({
           mb: '1.5',
         })}
       >
-        Overall Difficulty: {currentDifficulty.toFixed(1)} / 10
+        Overall Difficulty: {Number.isNaN(currentDifficulty) ? '0.0' : currentDifficulty.toFixed(1)}{' '}
+        / 10
       </div>
 
       {/* Difficulty Slider */}
       <div className={css({ position: 'relative', px: '2' })}>
         <Slider.Root
-          value={[currentDifficulty * 10]}
+          value={[Number.isNaN(currentDifficulty) ? 0 : currentDifficulty * 10]}
           max={100}
           step={1}
           onValueChange={handleValueChange}

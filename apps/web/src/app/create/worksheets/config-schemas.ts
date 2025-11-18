@@ -83,7 +83,7 @@ export type AdditionConfigV1 = z.infer<typeof additionConfigV1Schema>
 
 /**
  * Addition worksheet config - Version 2
- * Smart difficulty system with conditional display rules
+ * Custom difficulty system with conditional display rules
  */
 export const additionConfigV2Schema = z.object({
   version: z.literal(2),
@@ -176,7 +176,7 @@ export type AdditionConfigV2 = z.infer<typeof additionConfigV2Schema>
 
 /**
  * Addition worksheet config - Version 3
- * Two-mode system: Smart Difficulty vs Manual Control
+ * Two-mode system: Custom Difficulty vs Manual Control
  */
 
 // Shared base fields for both modes
@@ -205,9 +205,9 @@ const additionConfigV3BaseSchema = z.object({
   prngAlgorithm: z.string().optional(),
 })
 
-// Smart Difficulty Mode
-const additionConfigV3SmartSchema = additionConfigV3BaseSchema.extend({
-  mode: z.literal('smart'),
+// Custom Difficulty Mode
+const additionConfigV3CustomSchema = additionConfigV3BaseSchema.extend({
+  mode: z.literal('custom'),
 
   // Conditional display rules
   displayRules: z.object({
@@ -269,10 +269,10 @@ const additionConfigV3SmartSchema = additionConfigV3BaseSchema.extend({
     ]),
   }),
 
-  // Optional: Which smart difficulty profile is selected
+  // Optional: Which custom difficulty profile is selected
   difficultyProfile: z.string().optional(),
 
-  // showTenFramesForAll is deprecated in V3 smart mode
+  // showTenFramesForAll is deprecated in V3 custom mode
   // (controlled by displayRules.tenFrames)
 })
 
@@ -295,12 +295,12 @@ const additionConfigV3ManualSchema = additionConfigV3BaseSchema.extend({
 
 // V3 uses discriminated union on 'mode'
 export const additionConfigV3Schema = z.discriminatedUnion('mode', [
-  additionConfigV3SmartSchema,
+  additionConfigV3CustomSchema,
   additionConfigV3ManualSchema,
 ])
 
 export type AdditionConfigV3 = z.infer<typeof additionConfigV3Schema>
-export type AdditionConfigV3Smart = z.infer<typeof additionConfigV3SmartSchema>
+export type AdditionConfigV3Custom = z.infer<typeof additionConfigV3CustomSchema>
 export type AdditionConfigV3Manual = z.infer<typeof additionConfigV3ManualSchema>
 
 /**
@@ -355,11 +355,11 @@ const additionConfigV4BaseSchema = z.object({
   prngAlgorithm: z.string().optional(),
 })
 
-// Smart Difficulty Mode for V4
-const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
-  mode: z.literal('smart'),
+// Custom Difficulty Mode for V4
+const additionConfigV4CustomSchema = additionConfigV4BaseSchema.extend({
+  mode: z.literal('custom'),
 
-  // Conditional display rules (with 'auto' for deferring to smart difficulty)
+  // Conditional display rules (with 'auto' for deferring to custom difficulty)
   displayRules: z.object({
     carryBoxes: z.enum(displayRuleValues),
     answerBoxes: z.enum(displayRuleValues),
@@ -371,16 +371,16 @@ const additionConfigV4SmartSchema = additionConfigV4BaseSchema.extend({
     borrowingHints: z.enum(displayRuleValues),
   }),
 
-  // Optional: Which smart difficulty profile is selected
+  // Optional: Which custom difficulty profile is selected
   difficultyProfile: z.string().optional(),
 })
 
 // Manual Control Mode for V4
-// Now uses displayRules like Smart/Mastery modes for 1:1 correspondence
+// Now uses displayRules like Custom/Mastery modes for 1:1 correspondence
 const additionConfigV4ManualSchema = additionConfigV4BaseSchema.extend({
   mode: z.literal('manual'),
 
-  // Manual mode now uses conditional display rules (same as Smart/Mastery)
+  // Manual mode now uses conditional display rules (same as Custom/Mastery)
   // 'auto' is available but typically not used in manual mode
   displayRules: z.object({
     carryBoxes: z.enum(displayRuleValues),
@@ -452,13 +452,13 @@ const additionConfigV4MasterySchema = additionConfigV4BaseSchema.extend({
 
 // V4 uses discriminated union on 'mode'
 export const additionConfigV4Schema = z.discriminatedUnion('mode', [
-  additionConfigV4SmartSchema,
+  additionConfigV4CustomSchema,
   additionConfigV4ManualSchema,
   additionConfigV4MasterySchema,
 ])
 
 export type AdditionConfigV4 = z.infer<typeof additionConfigV4Schema>
-export type AdditionConfigV4Smart = z.infer<typeof additionConfigV4SmartSchema>
+export type AdditionConfigV4Custom = z.infer<typeof additionConfigV4CustomSchema>
 export type AdditionConfigV4Manual = z.infer<typeof additionConfigV4ManualSchema>
 export type AdditionConfigV4Mastery = z.infer<typeof additionConfigV4MasterySchema>
 
@@ -473,11 +473,11 @@ export const additionConfigSchema = z.discriminatedUnion('version', [
 export type AdditionConfig = z.infer<typeof additionConfigSchema>
 
 /**
- * Default addition config (always latest version - V4 Smart Mode)
+ * Default addition config (always latest version - V4 Custom Mode)
  */
-export const defaultAdditionConfig: AdditionConfigV4Smart = {
+export const defaultAdditionConfig: AdditionConfigV4Custom = {
   version: 4,
-  mode: 'smart',
+  mode: 'custom',
   problemsPerPage: 20,
   cols: 5,
   pages: 1,
@@ -545,11 +545,11 @@ function migrateAdditionV1toV2(v1: AdditionConfigV1): AdditionConfigV2 {
  * Determines mode based on whether difficultyProfile is set
  */
 function migrateAdditionV2toV3(v2: AdditionConfigV2): AdditionConfigV3 {
-  // If user has a difficultyProfile set, they're using smart mode
+  // If user has a difficultyProfile set, they're using custom mode
   if (v2.difficultyProfile) {
     return {
       version: 3,
-      mode: 'smart',
+      mode: 'custom',
       problemsPerPage: v2.problemsPerPage,
       cols: v2.cols,
       pages: v2.pages,
@@ -618,10 +618,10 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
     prngAlgorithm: v3.prngAlgorithm,
   }
 
-  if (v3.mode === 'smart') {
+  if (v3.mode === 'custom') {
     return {
       ...baseFields,
-      mode: 'smart',
+      mode: 'custom',
       displayRules: v3.displayRules,
       difficultyProfile: v3.difficultyProfile,
     }

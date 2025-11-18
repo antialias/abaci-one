@@ -3,8 +3,8 @@
 import { css } from '@styled/css'
 
 interface DifficultyMethodSelectorProps {
-  currentMethod: 'smart' | 'mastery'
-  onChange: (method: 'smart' | 'mastery') => void
+  currentMethod: 'custom' | 'mastery'
+  onChange: (method: 'custom' | 'mastery') => void
   isDark?: boolean
 }
 
@@ -24,11 +24,11 @@ export function DifficultyMethodSelector({
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        {/* Smart Difficulty Tab */}
+        {/* Custom Difficulty Tab */}
         <button
           type="button"
           data-action="select-smart"
-          onClick={() => onChange('smart')}
+          onClick={() => onChange('custom')}
           className={css({
             display: 'flex',
             alignItems: 'center',
@@ -37,16 +37,16 @@ export function DifficultyMethodSelector({
             px: '5',
             py: '3',
             flex: '1',
-            bg: currentMethod === 'smart' ? (isDark ? 'gray.800' : 'white') : 'transparent',
+            bg: currentMethod === 'custom' ? (isDark ? 'gray.800' : 'white') : 'transparent',
             color:
-              currentMethod === 'smart'
+              currentMethod === 'custom'
                 ? isDark
                   ? 'brand.300'
                   : 'brand.600'
                 : isDark
                   ? 'gray.500'
                   : 'gray.500',
-            fontWeight: currentMethod === 'smart' ? 'bold' : 'medium',
+            fontWeight: currentMethod === 'custom' ? 'bold' : 'medium',
             fontSize: 'sm',
             borderTopLeftRadius: 'lg',
             borderTopRightRadius: 'lg',
@@ -54,11 +54,11 @@ export function DifficultyMethodSelector({
             transition: 'all 0.2s',
             borderBottom: '3px solid',
             borderColor:
-              currentMethod === 'smart' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
+              currentMethod === 'custom' ? (isDark ? 'brand.500' : 'brand.500') : 'transparent',
             mb: '-2px',
             _hover: {
               color:
-                currentMethod === 'smart'
+                currentMethod === 'custom'
                   ? isDark
                     ? 'brand.200'
                     : 'brand.700'
@@ -66,7 +66,7 @@ export function DifficultyMethodSelector({
                     ? 'gray.400'
                     : 'gray.600',
               bg:
-                currentMethod === 'smart'
+                currentMethod === 'custom'
                   ? isDark
                     ? 'gray.800'
                     : 'white'
@@ -77,7 +77,7 @@ export function DifficultyMethodSelector({
           })}
         >
           <span>🎯</span>
-          <span>Smart Difficulty</span>
+          <span>Custom Difficulty</span>
         </button>
 
         {/* Mastery Progression Tab */}
@@ -147,7 +147,7 @@ export function DifficultyMethodSelector({
           textAlign: 'center',
         })}
       >
-        {currentMethod === 'smart'
+        {currentMethod === 'custom'
           ? 'Choose a difficulty preset, then customize display options below'
           : 'Follow a structured skill progression with recommended scaffolding'}
       </div>

@@ -247,6 +247,7 @@ export function TabNavigation({
                     orientation={orientation!}
                     cols={cols!}
                     rows={Math.ceil(problemsPerPage! / cols!)}
+                    maxSize={32}
                   />
                 ) : showScaffoldingPreview ? (
                   <ProblemPreview
@@ -297,6 +298,27 @@ export function TabNavigation({
                     })}
                   >
                     {subtitle}
+                  </span>
+                ) : null}
+                {/* Total badge for layout tab */}
+                {tab.id === 'layout' && problemsPerPage && pages ? (
+                  <span
+                    className={css({
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '1',
+                      px: '2',
+                      py: '0.5',
+                      bg: activeTab === tab.id ? 'brand.500' : isDark ? 'gray.600' : 'gray.400',
+                      color: 'white',
+                      rounded: 'full',
+                      fontSize: '2xs',
+                      fontWeight: 'semibold',
+                      mt: '0.5',
+                    })}
+                  >
+                    <span>Total:</span>
+                    <span>{problemsPerPage * pages}</span>
                   </span>
                 ) : null}
               </div>

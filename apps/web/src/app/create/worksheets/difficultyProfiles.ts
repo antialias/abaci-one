@@ -550,6 +550,7 @@ export function calculateScaffoldingLevel(
   regroupingIntensity?: number
 ): number {
   const ruleScores: Record<string, number> = {
+    auto: 8, // Default to 'whenRegrouping' level for auto mode
     always: 10, // Maximum scaffolding (easiest)
     whenRegrouping: 8,
     whenMultipleRegroups: 5,
@@ -632,8 +633,9 @@ export function calculateOverallDifficulty(
     result: progress * 10,
   })
 
-  // Scale to 0-10 range
-  return progress * 10
+  // Scale to 0-10 range and ensure no NaN
+  const result = progress * 10
+  return Number.isNaN(result) ? 0 : result
 }
 
 /**

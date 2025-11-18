@@ -58,8 +58,8 @@ function generatePageTypst(
 
   // Enrich problems with display options based on mode
   const enrichedProblems = pageProblems.map((p, index) => {
-    if (config.mode === 'smart' || config.mode === 'mastery') {
-      // Smart & Mastery modes: Per-problem conditional display based on problem complexity
+    if (config.mode === 'custom' || config.mode === 'mastery') {
+      // Custom & Mastery modes: Per-problem conditional display based on problem complexity
       // Both modes use displayRules for conditional scaffolding
       const meta =
         p.operator === 'add'
@@ -103,7 +103,7 @@ function generatePageTypst(
         ...displayOptions, // Now includes showBorrowNotation and showBorrowingHints from resolved rules
       }
     } else {
-      // Manual mode: Per-problem conditional display using displayRules (same as Smart/Mastery)
+      // Manual mode: Per-problem conditional display using displayRules (same as Custom/Mastery)
       const meta =
         p.operator === 'add'
           ? analyzeProblem(p.a, p.b)

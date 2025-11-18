@@ -103,7 +103,7 @@ export const SmartMode: Story = {
   render: () => (
     <SidebarWrapper
       initialState={{
-        mode: 'smart',
+        mode: 'custom',
         difficultyProfile: 'earlyLearner',
       }}
     />

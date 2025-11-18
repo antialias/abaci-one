@@ -267,7 +267,7 @@ export const SmartModeEarlyLearner: Story = {
   render: () => (
     <FullWorksheetGenerator
       initialState={{
-        mode: 'smart',
+        mode: 'custom',
         difficultyProfile: 'earlyLearner',
         pages: 3,
       }}
@@ -279,7 +279,7 @@ export const SmartModeAdvanced: Story = {
   render: () => (
     <FullWorksheetGenerator
       initialState={{
-        mode: 'smart',
+        mode: 'custom',
         difficultyProfile: 'advanced',
         pages: 5,
       }}

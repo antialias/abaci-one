@@ -97,7 +97,7 @@ describe('Ten-frames rendering', () => {
     it('should pass showTenFrames: true to Typst template for regrouping problems', () => {
       const config: WorksheetConfig = {
         version: 4,
-        mode: 'smart',
+        mode: 'custom',
         problemsPerPage: 4,
         cols: 2,
         pages: 1,
@@ -149,7 +149,7 @@ describe('Ten-frames rendering', () => {
     it('should include ten-frames rendering code when showTenFrames: true', () => {
       const config: WorksheetConfig = {
         version: 4,
-        mode: 'smart',
+        mode: 'custom',
         problemsPerPage: 2,
         cols: 1,
         pages: 1,

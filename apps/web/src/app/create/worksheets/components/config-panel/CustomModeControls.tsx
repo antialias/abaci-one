@@ -32,12 +32,12 @@ import { DifficultyPresetDropdown } from './DifficultyPresetDropdown'
 import { MakeEasierHarderButtons } from './MakeEasierHarderButtons'
 import { OverallDifficultySlider } from './OverallDifficultySlider'
 
-export interface SmartModeControlsProps {
+export interface CustomModeControlsProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
 }
 
-export function SmartModeControls({ formState, onChange }: SmartModeControlsProps) {
+export function CustomModeControls({ formState, onChange }: CustomModeControlsProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [showDebugPlot, setShowDebugPlot] = useState(false)

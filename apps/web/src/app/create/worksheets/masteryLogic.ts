@@ -160,7 +160,7 @@ export function calculateMasteryMix(
  *
  * This is the bridge between mastery mode and smart mode.
  * Each skill's configuration (digitRange, regrouping, scaffolding) maps directly
- * to a Smart Mode configuration.
+ * to a Custom Mode configuration.
  *
  * @param skill - Skill definition
  * @param problemCount - Number of problems to generate for this skill
@@ -172,7 +172,7 @@ export function skillToConfig(
 ): Partial<WorksheetConfig> {
   return {
     version: 4,
-    mode: 'smart',
+    mode: 'custom',
 
     // Digit range from skill
     digitRange: skill.digitRange,

@@ -22,7 +22,7 @@ const RULE_OPTIONS: Array<{ value: RuleMode; label: string; short: string }> = [
   { value: 'auto', label: 'Auto (Use Mastery Progression)', short: 'Auto' },
   { value: 'always', label: 'Always', short: 'Always' },
   { value: 'whenRegrouping', label: 'When Regrouping', short: 'Regroup' },
-  { value: 'whenMultipleRegroups', label: 'Multiple Regroups', short: '2+' },
+  { value: 'whenMultipleRegroups', label: 'Multiple Regroups', short: '2+ reg' },
   { value: 'when3PlusDigits', label: '3+ Digits', short: '3+ dig' },
   { value: 'never', label: 'Never', short: 'Never' },
 ]

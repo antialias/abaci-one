@@ -10,6 +10,7 @@ interface LayoutPreviewProps {
   className?: string
   onClick?: () => void
   isSelected?: boolean
+  maxSize?: number
 }
 
 /**
@@ -23,6 +24,7 @@ export function LayoutPreview({
   className,
   onClick,
   isSelected = false,
+  maxSize = 48,
 }: LayoutPreviewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -31,7 +33,6 @@ export function LayoutPreview({
   const pageAspect = orientation === 'portrait' ? 8.5 / 11 : 11 / 8.5
 
   // Scale to fit in button (max dimensions)
-  const maxSize = 48
   let pageWidth: number
   let pageHeight: number
 
@@ -51,15 +52,16 @@ export function LayoutPreview({
 
   const svgContent = (
     <svg
-      width={pageWidth}
-      height={pageHeight}
       viewBox={`0 0 ${pageWidth} ${pageHeight}`}
       className={css({
         rounded: 'sm',
+        width: '100%',
+        height: '100%',
       })}
       style={{
         backgroundColor: isDark ? '#1f2937' : 'white',
       }}
+      preserveAspectRatio="xMidYMid meet"
     >
       {/* Problem grid */}
       {Array.from({ length: rows }).map((_, rowIdx) =>
@@ -80,6 +82,8 @@ export function LayoutPreview({
 
   // If used as a button, wrap in button element with styling
   if (onClick) {
+    const aspectRatio = orientation === 'portrait' ? 8.5 / 11 : 11 / 8.5
+
     return (
       <button
         type="button"
@@ -95,10 +99,15 @@ export function LayoutPreview({
           cursor: 'pointer',
           transition: 'all 0.15s',
           p: '2',
+          width: '100%',
+          maxWidth: '32',
           _hover: {
             borderColor: 'brand.400',
           },
         })}
+        style={{
+          aspectRatio: aspectRatio.toString(),
+        }}
       >
         {svgContent}
       </button>
@@ -106,14 +115,23 @@ export function LayoutPreview({
   }
 
   // Otherwise just return the SVG with border
+  const aspectRatio = orientation === 'portrait' ? 8.5 / 11 : 11 / 8.5
+
   return (
     <div
       className={css({
         border: '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.300',
         rounded: 'sm',
-        display: 'inline-block',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: '1',
       })}
+      style={{
+        width: `${maxSize}px`,
+        aspectRatio: aspectRatio.toString(),
+      }}
     >
       {svgContent}
     </div>

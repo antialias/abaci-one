@@ -10,7 +10,7 @@ import { DifficultyMethodSelector } from './DifficultyMethodSelector'
 import { StudentNameInput } from './config-panel/StudentNameInput'
 import { OperatorSection } from './config-panel/OperatorSection'
 import { ProgressiveDifficultyToggle } from './config-panel/ProgressiveDifficultyToggle'
-import { SmartModeControls } from './config-panel/SmartModeControls'
+import { CustomModeControls } from './config-panel/CustomModeControls'
 import { MasteryModePanel } from './config-panel/MasteryModePanel'
 import { DisplayControlsPanel } from './DisplayControlsPanel'
 import { validateProblemSpace } from '@/app/create/worksheets/utils/validateProblemSpace'
@@ -56,8 +56,8 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
   ])
 
   // Handler for difficulty method switching (smart vs mastery)
-  const handleMethodChange = (newMethod: 'smart' | 'mastery') => {
-    const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
+  const handleMethodChange = (newMethod: 'custom' | 'mastery') => {
+    const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'custom'
     if (currentMethod === newMethod) {
       return // No change needed
     }
@@ -65,9 +65,9 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
     // Preserve displayRules when switching
     const displayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
 
-    if (newMethod === 'smart') {
+    if (newMethod === 'custom') {
       onChange({
-        mode: 'smart',
+        mode: 'custom',
         displayRules,
         difficultyProfile: 'earlyLearner',
       } as unknown as Partial<WorksheetFormState>)
@@ -80,7 +80,7 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
   }
 
   // Determine current method for selector
-  const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'smart'
+  const currentMethod = formState.mode === 'mastery' ? 'mastery' : 'custom'
 
   return (
     <WorksheetConfigProvider formState={formState} updateFormState={onChange}>
@@ -158,8 +158,8 @@ export function ConfigPanel({ formState, onChange, isDark = false }: ConfigPanel
         />
 
         {/* Method-specific preset controls */}
-        {currentMethod === 'smart' && (
-          <SmartModeControls formState={formState} onChange={onChange} />
+        {currentMethod === 'custom' && (
+          <CustomModeControls formState={formState} onChange={onChange} />
         )}
 
         {currentMethod === 'mastery' && (

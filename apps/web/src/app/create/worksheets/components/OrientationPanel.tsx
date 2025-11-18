@@ -3,11 +3,11 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '@styled/css'
-import { useMemo, useState } from 'react'
-import { LayoutPreview } from './config-sidebar/LayoutPreview'
-import { validateProblemSpace } from '../utils/validateProblemSpace'
-import type { ProblemSpaceValidation } from '../utils/validateProblemSpace'
+import { useEffect, useRef, useState } from 'react'
 import { getDefaultColsForProblemsPerPage } from '../utils/layoutCalculations'
+import type { ProblemSpaceValidation } from '../utils/validateProblemSpace'
+import { validateProblemSpace } from '../utils/validateProblemSpace'
+import { LayoutPreview } from './config-sidebar/LayoutPreview'
 
 interface OrientationPanelProps {
   orientation: 'portrait' | 'landscape'
@@ -56,8 +56,27 @@ export function OrientationPanel({
   onProblemNumbersChange,
   onCellBordersChange,
 }: OrientationPanelProps) {
+  // Calculate best problems per page for an orientation to minimize total change
+  const getBestProblemsPerPage = (targetOrientation: 'portrait' | 'landscape') => {
+    const currentTotal = problemsPerPage * pages
+    const options = targetOrientation === 'portrait' ? [6, 8, 10, 12, 15] : [8, 10, 12, 15, 16, 20]
+
+    let bestOption = options[options.length - 1] // default to largest
+    let smallestDiff = Math.abs(bestOption * pages - currentTotal)
+
+    for (const option of options) {
+      const diff = Math.abs(option * pages - currentTotal)
+      if (diff < smallestDiff) {
+        smallestDiff = diff
+        bestOption = option
+      }
+    }
+
+    return bestOption
+  }
+
   const handleOrientationChange = (newOrientation: 'portrait' | 'landscape') => {
-    const newProblemsPerPage = newOrientation === 'portrait' ? 15 : 20
+    const newProblemsPerPage = getBestProblemsPerPage(newOrientation)
     const newCols = getDefaultColsForProblemsPerPage(newProblemsPerPage, newOrientation)
     onOrientationChange(newOrientation, newProblemsPerPage, newCols)
   }
@@ -68,8 +87,39 @@ export function OrientationPanel({
   }
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [containerWidth, setContainerWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const total = problemsPerPage * pages
+  // Track container width to determine which buttons are visible
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) {
+        setContainerWidth(entry.contentRect.width)
+      }
+    })
+
+    resizeObserver.observe(container)
+    return () => resizeObserver.disconnect()
+  }, [])
+
+  // All possible page options
+  const allPageOptions = [1, 2, 3, 4, 10, 25, 50, 100]
+
+  // Determine which buttons are visible based on container width
+  const getVisibleButtonCount = (): number => {
+    if (containerWidth <= 280) return 4
+    if (containerWidth <= 320) return 6
+    return 8 // Show all options as buttons
+  }
+
+  const visibleButtonCount = getVisibleButtonCount()
+  const visibleButtons = allPageOptions.slice(0, visibleButtonCount)
+  const dropdownOptions = allPageOptions.slice(visibleButtonCount)
+
   const problemsForOrientation =
     orientation === 'portrait' ? [6, 8, 10, 12, 15] : [8, 10, 12, 15, 16, 20]
 
@@ -110,15 +160,14 @@ export function OrientationPanel({
   }
 
   /**
-   * Get the mildest (most severe) warning among dropdown items (4, 10, 25, 50, 100)
+   * Get the mildest (most severe) warning among dropdown items
    * Returns 'none' if no warnings, 'caution' if any caution, 'danger' if any danger
    */
   const getDropdownMildestWarning = (): 'none' | 'caution' | 'danger' => {
-    const dropdownPageCounts = [4, 10, 25, 50, 100]
     let hasCaution = false
     let hasDanger = false
 
-    for (const pageCount of dropdownPageCounts) {
+    for (const pageCount of dropdownOptions) {
       const risk = getRiskLevel(getValidationForPageCount(pageCount))
       if (risk === 'danger') hasDanger = true
       if (risk === 'caution') hasCaution = true
@@ -139,35 +188,35 @@ export function OrientationPanel({
         p: '4',
         minWidth: 0,
         overflow: 'hidden',
-        '@media (max-width: 400px)': {
+        containerType: 'inline-size',
+        '@container (max-width: 400px)': {
           p: '3',
         },
-        '@media (max-width: 300px)': {
+        '@container (max-width: 300px)': {
           p: '2',
         },
       })}
     >
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
-        {/* Row 1: Orientation + Pages */}
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3',
+          '@container (min-width: 400px)': {
+            gap: '4',
+          },
+        })}
+      >
+        {/* Orientation + Pages - Always stacked for better visual hierarchy */}
         <div
           className={css({
             display: 'flex',
-            flexDirection: 'row',
+            flexDirection: 'column',
             gap: '3',
-            alignItems: 'end',
-            '@media (max-width: 444px)': {
-              flexDirection: 'column',
-              gap: '2',
-            },
           })}
         >
           {/* Orientation */}
-          <div
-            className={css({
-              flex: '1',
-              minWidth: 0,
-            })}
-          >
+          <div>
             <div
               className={css({
                 fontSize: '2xs',
@@ -176,6 +225,9 @@ export function OrientationPanel({
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
                 mb: '1.5',
+                '@container (min-width: 400px)': {
+                  mb: '2',
+                },
               })}
             >
               Orientation
@@ -183,54 +235,76 @@ export function OrientationPanel({
             <div
               className={css({
                 display: 'flex',
-                gap: '1.5',
-                '@media (max-width: 400px)': {
-                  gap: '1',
+                gap: '2',
+                width: '100%',
+                '@container (min-width: 500px)': {
+                  gap: '3',
                 },
               })}
             >
-              <LayoutPreview
-                orientation="portrait"
-                cols={
-                  orientation === 'portrait'
-                    ? cols
-                    : getDefaultColsForProblemsPerPage(15, 'portrait')
-                }
-                rows={
-                  orientation === 'portrait'
-                    ? Math.ceil(problemsPerPage / cols)
-                    : Math.ceil(15 / getDefaultColsForProblemsPerPage(15, 'portrait'))
-                }
-                onClick={() => handleOrientationChange('portrait')}
-                isSelected={orientation === 'portrait'}
-              />
-              <LayoutPreview
-                orientation="landscape"
-                cols={
-                  orientation === 'landscape'
-                    ? cols
-                    : getDefaultColsForProblemsPerPage(20, 'landscape')
-                }
-                rows={
-                  orientation === 'landscape'
-                    ? Math.ceil(problemsPerPage / cols)
-                    : Math.ceil(20 / getDefaultColsForProblemsPerPage(20, 'landscape'))
-                }
-                onClick={() => handleOrientationChange('landscape')}
-                isSelected={orientation === 'landscape'}
-              />
+              <div
+                className={css({
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
+              >
+                {(() => {
+                  const portraitProblemsPerPage =
+                    orientation === 'portrait'
+                      ? problemsPerPage
+                      : getBestProblemsPerPage('portrait')
+                  const portraitCols = getDefaultColsForProblemsPerPage(
+                    portraitProblemsPerPage,
+                    'portrait'
+                  )
+                  return (
+                    <LayoutPreview
+                      orientation="portrait"
+                      cols={portraitCols}
+                      rows={Math.ceil(portraitProblemsPerPage / portraitCols)}
+                      onClick={() => handleOrientationChange('portrait')}
+                      isSelected={orientation === 'portrait'}
+                      maxSize={80}
+                    />
+                  )
+                })()}
+              </div>
+              <div
+                className={css({
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
+              >
+                {(() => {
+                  const landscapeProblemsPerPage =
+                    orientation === 'landscape'
+                      ? problemsPerPage
+                      : getBestProblemsPerPage('landscape')
+                  const landscapeCols = getDefaultColsForProblemsPerPage(
+                    landscapeProblemsPerPage,
+                    'landscape'
+                  )
+                  return (
+                    <LayoutPreview
+                      orientation="landscape"
+                      cols={landscapeCols}
+                      rows={Math.ceil(landscapeProblemsPerPage / landscapeCols)}
+                      onClick={() => handleOrientationChange('landscape')}
+                      isSelected={orientation === 'landscape'}
+                      maxSize={80}
+                    />
+                  )
+                })()}
+              </div>
             </div>
           </div>
 
           {/* Pages */}
-          <div
-            className={css({
-              flexShrink: 0,
-              '@media (max-width: 444px)': {
-                width: '100%',
-              },
-            })}
-          >
+          <div>
             <div
               className={css({
                 fontSize: '2xs',
@@ -239,23 +313,26 @@ export function OrientationPanel({
                 textTransform: 'uppercase',
                 letterSpacing: 'wider',
                 mb: '1.5',
+                '@container (min-width: 400px)': {
+                  mb: '2',
+                },
               })}
             >
               Pages
             </div>
             <div
+              ref={containerRef}
               className={css({
                 display: 'flex',
                 gap: '1',
                 alignItems: 'center',
-                '@media (max-width: 444px)': {
-                  width: '100%',
-                  gap: '0.5',
-                },
+                width: '100%',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
               })}
             >
-              {/* Quick select buttons for 1-3 pages */}
-              {[1, 2, 3].map((pageCount) => {
+              {/* Quick select buttons - dynamically shown based on container width */}
+              {visibleButtons.map((pageCount) => {
                 const isSelected = pages === pageCount
                 const validation = getValidationForPageCount(pageCount)
                 const risk = getRiskLevel(validation)
@@ -336,16 +413,10 @@ export function OrientationPanel({
                               ? 'yellow.400'
                               : 'brand.400',
                       },
-                      '@media (max-width: 444px)': {
-                        w: '6',
-                        h: '6',
+                      '@container (max-width: 280px)': {
+                        w: '7',
+                        h: '7',
                         fontSize: '2xs',
-                      },
-                      '@media (max-width: 300px)': {
-                        w: '5',
-                        h: '5',
-                        fontSize: '2xs',
-                        borderWidth: '1px',
                       },
                     })}
                   >
@@ -408,15 +479,165 @@ export function OrientationPanel({
                 return button
               })}
 
-              {/* Dropdown for 4+ pages */}
-              <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
+              {/* Dropdown for remaining options (only if more than one option) */}
+              {dropdownOptions.length === 1 ? (
+                // Render single dropdown option as a button
+                (() => {
+                  const pageCount = dropdownOptions[0]
+                  const isSelected = pages === pageCount
+                  const validation = getValidationForPageCount(pageCount)
+                  const risk = getRiskLevel(validation)
+                  const tooltipMessage = getTooltipMessage(validation)
+
+                  const button = (
+                    <button
+                      key={pageCount}
+                      type="button"
+                      data-action={`select-pages-${pageCount}`}
+                      onClick={() => onPagesChange(pageCount)}
+                      className={css({
+                        w: '8',
+                        h: '8',
+                        border: '2px solid',
+                        borderColor: isSelected
+                          ? risk === 'danger'
+                            ? 'red.500'
+                            : risk === 'caution'
+                              ? 'yellow.500'
+                              : 'brand.500'
+                          : risk === 'danger'
+                            ? isDark
+                              ? 'red.700'
+                              : 'red.300'
+                            : risk === 'caution'
+                              ? isDark
+                                ? 'yellow.700'
+                                : 'yellow.300'
+                              : isDark
+                                ? 'gray.600'
+                                : 'gray.300',
+                        bg: isSelected
+                          ? isDark
+                            ? risk === 'danger'
+                              ? 'red.900'
+                              : risk === 'caution'
+                                ? 'yellow.900'
+                                : 'brand.900'
+                            : risk === 'danger'
+                              ? 'red.50'
+                              : risk === 'caution'
+                                ? 'yellow.50'
+                                : 'brand.50'
+                          : isDark
+                            ? 'gray.700'
+                            : 'white',
+                        rounded: 'lg',
+                        cursor: 'pointer',
+                        fontSize: 'xs',
+                        fontWeight: 'bold',
+                        color: isSelected
+                          ? isDark
+                            ? risk === 'danger'
+                              ? 'red.200'
+                              : risk === 'caution'
+                                ? 'yellow.200'
+                                : 'brand.200'
+                            : risk === 'danger'
+                              ? 'red.700'
+                              : risk === 'caution'
+                                ? 'yellow.700'
+                                : 'brand.700'
+                          : isDark
+                            ? 'gray.300'
+                            : 'gray.600',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        position: 'relative',
+                        _hover: {
+                          borderColor:
+                            risk === 'danger'
+                              ? 'red.400'
+                              : risk === 'caution'
+                                ? 'yellow.400'
+                                : 'brand.400',
+                        },
+                        '@container (max-width: 280px)': {
+                          w: '7',
+                          h: '7',
+                          fontSize: '2xs',
+                        },
+                      })}
+                    >
+                      {pageCount}
+                      {/* Warning indicator dot */}
+                      {risk !== 'none' && (
+                        <span
+                          className={css({
+                            position: 'absolute',
+                            top: '-1',
+                            right: '-1',
+                            w: '2',
+                            h: '2',
+                            bg: risk === 'danger' ? 'red.500' : 'yellow.500',
+                            rounded: 'full',
+                          })}
+                        />
+                      )}
+                    </button>
+                  )
+
+                  // Wrap in tooltip if there's a warning message
+                  if (tooltipMessage) {
+                    return (
+                      <Tooltip.Provider key={pageCount}>
+                        <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
+                          <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              className={css({
+                                bg: isDark ? 'gray.800' : 'white',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                                px: '3',
+                                py: '2',
+                                rounded: 'lg',
+                                shadow: 'lg',
+                                border: '1px solid',
+                                borderColor: isDark ? 'gray.600' : 'gray.200',
+                                maxW: '64',
+                                fontSize: 'xs',
+                                lineHeight: '1.5',
+                                whiteSpace: 'pre-wrap',
+                                zIndex: 10000,
+                              })}
+                              sideOffset={5}
+                            >
+                              {tooltipMessage}
+                              <Tooltip.Arrow
+                                className={css({
+                                  fill: isDark ? 'gray.800' : 'white',
+                                })}
+                              />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                    )
+                  }
+
+                  return button
+                })()
+              ) : dropdownOptions.length > 1 ? (
+                <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <Tooltip.Provider>
                   <Tooltip.Root
                     delayDuration={0}
                     disableHoverableContent={true}
                     open={
                       !dropdownOpen &&
-                      pages > 3 &&
+                      dropdownOptions.includes(pages) &&
                       getTooltipMessage(getValidationForPageCount(pages)) !== null
                         ? undefined
                         : false
@@ -432,27 +653,29 @@ export function OrientationPanel({
                             h: '8',
                             px: '2',
                             border: '2px solid',
-                            borderColor: pages > 3 ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
-                            bg:
-                              pages > 3
-                                ? isDark
-                                  ? 'brand.900'
-                                  : 'brand.50'
-                                : isDark
-                                  ? 'gray.700'
-                                  : 'white',
+                            borderColor: dropdownOptions.includes(pages)
+                              ? 'brand.500'
+                              : isDark
+                                ? 'gray.600'
+                                : 'gray.300',
+                            bg: dropdownOptions.includes(pages)
+                              ? isDark
+                                ? 'brand.900'
+                                : 'brand.50'
+                              : isDark
+                                ? 'gray.700'
+                                : 'white',
                             rounded: 'lg',
                             cursor: 'pointer',
                             fontSize: 'xs',
                             fontWeight: 'bold',
-                            color:
-                              pages > 3
-                                ? isDark
-                                  ? 'brand.200'
-                                  : 'brand.700'
-                                : isDark
-                                  ? 'gray.300'
-                                  : 'gray.600',
+                            color: dropdownOptions.includes(pages)
+                              ? isDark
+                                ? 'brand.200'
+                                : 'brand.700'
+                              : isDark
+                                ? 'gray.300'
+                                : 'gray.600',
                             transition: 'all 0.15s',
                             display: 'flex',
                             alignItems: 'center',
@@ -463,20 +686,18 @@ export function OrientationPanel({
                             _hover: {
                               borderColor: 'brand.400',
                             },
-                            '@media (max-width: 444px)': {
-                              minW: '6',
-                              h: '6',
+                            '@container (max-width: 280px)': {
+                              minW: '7',
+                              h: '7',
                               fontSize: '2xs',
-                            },
-                            '@media (max-width: 300px)': {
-                              minW: '5',
-                              h: '5',
-                              fontSize: '2xs',
-                              borderWidth: '1px',
                             },
                           })}
                         >
-                          {pages > 3 ? pages : '4+'}
+                          {dropdownOptions.includes(pages)
+                            ? pages
+                            : dropdownOptions.length > 0
+                              ? `${dropdownOptions[0]}+`
+                              : '•••'}
                           <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
                           {/* Warning indicator dot - shows mildest warning from all dropdown items */}
                           {getDropdownMildestWarning() !== 'none' && (
@@ -498,7 +719,8 @@ export function OrientationPanel({
                         </button>
                       </DropdownMenu.Trigger>
                     </Tooltip.Trigger>
-                    {pages > 3 && getTooltipMessage(getValidationForPageCount(pages)) && (
+                    {dropdownOptions.includes(pages) &&
+                      getTooltipMessage(getValidationForPageCount(pages)) && (
                       <Tooltip.Portal>
                         <Tooltip.Content
                           className={css({
@@ -544,7 +766,7 @@ export function OrientationPanel({
                     })}
                     sideOffset={5}
                   >
-                    {[4, 10, 25, 50, 100].map((pageCount) => {
+                    {dropdownOptions.map((pageCount) => {
                       const isSelected = pages === pageCount
                       const validation = getValidationForPageCount(pageCount)
                       const risk = getRiskLevel(validation)
@@ -668,42 +890,30 @@ export function OrientationPanel({
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
+              ) : null}
             </div>
           </div>
         </div>
 
-        {/* Row 2: Problems per page dropdown + Total badge */}
-        <div
-          className={css({
-            display: 'flex',
-            flexDirection: 'row',
-            gap: '3',
-            alignItems: 'center',
-            '@media (max-width: 444px)': {
-              flexDirection: 'column',
-              gap: '2',
-            },
-          })}
-        >
+        {/* Problems per page dropdown */}
+        <div>
           <div
             className={css({
-              flex: '1',
-              minWidth: 0,
+              fontSize: '2xs',
+              fontWeight: 'semibold',
+              color: isDark ? 'gray.400' : 'gray.500',
+              textTransform: 'uppercase',
+              letterSpacing: 'wider',
+              display: 'block',
+              mb: '1.5',
+              '@container (min-width: 400px)': {
+                mb: '2',
+              },
             })}
           >
-            <div
-              className={css({
-                fontSize: '2xs',
-                fontWeight: 'semibold',
-                color: isDark ? 'gray.400' : 'gray.500',
-                textTransform: 'uppercase',
-                letterSpacing: 'wider',
-                display: 'block',
-                mb: '1.5',
-              })}
-            >
-              Problems per Page
-            </div>
+            Problems per Page
+          </div>
+          <div>
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button
@@ -730,10 +940,6 @@ export function OrientationPanel({
                     _hover: {
                       borderColor: 'brand.400',
                     },
-                    '@media (max-width: 200px)': {
-                      px: '1',
-                      fontSize: '2xs',
-                    },
                   })}
                 >
                   <span
@@ -744,26 +950,8 @@ export function OrientationPanel({
                       minWidth: 0,
                     })}
                   >
-                    <span
-                      className={css({
-                        '@media (max-width: 250px)': {
-                          display: 'none',
-                        },
-                      })}
-                    >
-                      {problemsPerPage} problems ({cols} cols × {Math.ceil(problemsPerPage / cols)}{' '}
-                      rows)
-                    </span>
-                    <span
-                      className={css({
-                        display: 'none',
-                        '@media (max-width: 250px)': {
-                          display: 'inline',
-                        },
-                      })}
-                    >
-                      {problemsPerPage} ({cols}×{Math.ceil(problemsPerPage / cols)})
-                    </span>
+                    {problemsPerPage} problems ({cols} cols × {Math.ceil(problemsPerPage / cols)}{' '}
+                    rows)
                   </span>
                   <span
                     className={css({
@@ -915,56 +1103,17 @@ export function OrientationPanel({
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
           </div>
-
-          {/* Total problems badge */}
-          <div
-            className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '1',
-              flexShrink: 0,
-              '@media (max-width: 444px)': {
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                width: '100%',
-              },
-            })}
-          >
-            <div
-              className={css({
-                fontSize: '2xs',
-                fontWeight: 'semibold',
-                color: isDark ? 'gray.400' : 'gray.500',
-                textTransform: 'uppercase',
-                letterSpacing: 'wider',
-              })}
-            >
-              Total
-            </div>
-            <div
-              className={css({
-                px: '4',
-                py: '2',
-                bg: 'brand.100',
-                rounded: 'full',
-                fontSize: 'lg',
-                fontWeight: 'bold',
-                color: 'brand.700',
-              })}
-            >
-              {total}
-            </div>
-          </div>
         </div>
 
-        {/* Row 3: Layout Options */}
+        {/* Layout Options */}
         <div
           className={css({
             borderTop: '1px solid',
             borderColor: isDark ? 'gray.700' : 'gray.200',
             pt: '3',
-            mt: '1',
+            '@container (min-width: 400px)': {
+              pt: '4',
+            },
           })}
         >
           <div
@@ -975,12 +1124,24 @@ export function OrientationPanel({
               textTransform: 'uppercase',
               letterSpacing: 'wider',
               mb: '2',
+              '@container (min-width: 400px)': {
+                mb: '3',
+              },
             })}
           >
             Layout Options
           </div>
 
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2',
+              '@container (min-width: 400px)': {
+                gap: '3',
+              },
+            })}
+          >
             {/* Problem Numbers Toggle */}
             <label
               className={css({

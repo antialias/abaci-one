@@ -184,8 +184,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   // Determine orientation based on columns (portrait = 2-3 cols, landscape = 4-5 cols)
   const orientation = formState.orientation || (cols <= 3 ? 'portrait' : 'landscape')
 
-  // Determine mode (default to 'smart' if not specified)
-  const mode: 'smart' | 'manual' | 'mastery' = formState.mode ?? 'smart'
+  // Determine mode (default to 'custom' if not specified)
+  const mode: 'custom' | 'manual' | 'mastery' = formState.mode ?? 'custom'
 
   // Shared fields for both modes
   const sharedFields = {
@@ -204,7 +204,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     date: formState.date?.trim() || getDefaultDate(),
     pAnyStart,
     pAllStart,
-    // Default interpolate based on mode: true for smart/manual, false for mastery
+    // Default interpolate based on mode: true for custom/manual, false for mastery
     interpolate:
       formState.interpolate !== undefined
         ? formState.interpolate
@@ -238,8 +238,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   // Build mode-specific config
   let config: WorksheetConfig
 
-  if (mode === 'smart' || mode === 'mastery') {
-    // Smart & Mastery modes: Use displayRules for conditional scaffolding
+  if (mode === 'custom' || mode === 'mastery') {
+    // Custom & Mastery modes: Use displayRules for conditional scaffolding
 
     // Default display rules
     let baseDisplayRules: DisplayRules = {
@@ -295,7 +295,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
         ? mergeDisplayRulesWithAuto(baseDisplayRules, userDisplayRules)
         : {
             ...baseDisplayRules,
-            ...userDisplayRules, // Smart mode: direct override (no "auto" resolution)
+            ...userDisplayRules, // Custom mode: direct override (no "auto" resolution)
           }
 
     console.log('[MASTERY MODE] Display rules resolved:', {
@@ -309,7 +309,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     const operator = formState.operator ?? 'addition'
     const baseConfig = {
       version: 4,
-      mode: mode as 'smart' | 'mastery', // Preserve the actual mode
+      mode: mode as 'custom' | 'mastery', // Preserve the actual mode
       displayRules,
       difficultyProfile: formState.difficultyProfile,
       currentStepId: formState.currentStepId, // Mastery progression tracking
@@ -376,7 +376,7 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       config = baseConfig as any
     }
   } else {
-    // Manual mode: Use displayRules (same as Smart/Mastery)
+    // Manual mode: Use displayRules (same as Custom/Mastery)
     const displayRules: DisplayRules = formState.displayRules ?? {
       carryBoxes: 'always',
       answerBoxes: 'always',

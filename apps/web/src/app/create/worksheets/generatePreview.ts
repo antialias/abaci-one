@@ -77,7 +77,7 @@ export function generateWorksheetPreview(
     }
 
     // Generate all problems for full preview based on operator
-    const mode = config.mode ?? 'smart'
+    const mode = config.mode ?? 'custom'
 
     console.log(
       `[PREVIEW] Step 2: Generating ${validatedConfig.total} problems (mode: ${mode}, operator: ${operator})...`
@@ -275,7 +275,7 @@ export function generateSinglePage(
     // Generate all problems (need full set to know which problems go on which page)
     // This is unavoidable because problems are distributed across pages
     const operator = validatedConfig.operator ?? 'addition'
-    const mode = config.mode ?? 'smart'
+    const mode = config.mode ?? 'custom'
 
     let problems
 

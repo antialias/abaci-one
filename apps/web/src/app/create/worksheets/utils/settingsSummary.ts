@@ -85,13 +85,13 @@ export function generateSettingsSummary(config: Partial<WorksheetFormState>): {
   if (config.mode) {
     const diffIcon = SETTING_ICONS.difficulty[config.mode as keyof typeof SETTING_ICONS.difficulty]
     const modeName =
-      config.mode === 'smart'
-        ? 'Smart difficulty'
+      config.mode === 'custom'
+        ? 'Custom difficulty'
         : config.mode === 'mastery'
           ? 'Mastery mode'
           : 'Manual mode'
     const pStart =
-      config.mode === 'smart' && config.pAnyStart != null
+      config.mode === 'custom' && config.pAnyStart != null
         ? ` • ${Math.round(config.pAnyStart * 100)}% starts`
         : ''
     lines.push(`${diffIcon} ${modeName}${pStart}`)
