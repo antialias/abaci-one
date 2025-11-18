@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { RuleThermometer } from '../config-panel/RuleThermometer'
 import type { DisplayRules } from '../../displayRules'
 import { defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { getSkillById } from '../../skills'
 
 export function ScaffoldingTab() {
   const { formState, onChange } = useWorksheetConfig()
@@ -17,6 +18,33 @@ export function ScaffoldingTab() {
 
   // Check if we're in mastery+mixed mode (needs operator-specific rules)
   const isMasteryMixed = formState.mode === 'mastery' && formState.operator === 'mixed'
+
+  // Get resolved display rules for showing what 'auto' defers to
+  let resolvedDisplayRules: DisplayRules | undefined
+
+  if (formState.mode === 'mastery') {
+    const operator = formState.operator ?? 'addition'
+
+    if (operator === 'mixed') {
+      // Mixed mode: Use addition skill's recommendations for now (could show both)
+      const skillId = formState.currentAdditionSkillId
+      if (skillId) {
+        const skill = getSkillById(skillId as any)
+        resolvedDisplayRules = skill?.recommendedScaffolding
+      }
+    } else {
+      // Single operator: Use its skill's recommendations
+      const skillId =
+        operator === 'addition'
+          ? formState.currentAdditionSkillId
+          : formState.currentSubtractionSkillId
+
+      if (skillId) {
+        const skill = getSkillById(skillId as any)
+        resolvedDisplayRules = skill?.recommendedScaffolding
+      }
+    }
+  }
 
   const updateRule = (key: keyof DisplayRules, value: DisplayRules[keyof DisplayRules]) => {
     const newDisplayRules = {
@@ -199,6 +227,7 @@ export function ScaffoldingTab() {
         value={displayRules.answerBoxes}
         onChange={(value) => updateRule('answerBoxes', value)}
         isDark={isDark}
+        resolvedValue={resolvedDisplayRules?.answerBoxes}
       />
 
       <RuleThermometer
@@ -207,6 +236,7 @@ export function ScaffoldingTab() {
         value={displayRules.placeValueColors}
         onChange={(value) => updateRule('placeValueColors', value)}
         isDark={isDark}
+        resolvedValue={resolvedDisplayRules?.placeValueColors}
       />
 
       <RuleThermometer
@@ -227,6 +257,7 @@ export function ScaffoldingTab() {
         value={displayRules.carryBoxes}
         onChange={(value) => updateRule('carryBoxes', value)}
         isDark={isDark}
+        resolvedValue={resolvedDisplayRules?.carryBoxes}
       />
 
       {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
@@ -236,6 +267,7 @@ export function ScaffoldingTab() {
           value={displayRules.borrowNotation}
           onChange={(value) => updateRule('borrowNotation', value)}
           isDark={isDark}
+          resolvedValue={resolvedDisplayRules?.borrowNotation}
         />
       )}
 
@@ -246,6 +278,7 @@ export function ScaffoldingTab() {
           value={displayRules.borrowingHints}
           onChange={(value) => updateRule('borrowingHints', value)}
           isDark={isDark}
+          resolvedValue={resolvedDisplayRules?.borrowingHints}
         />
       )}
 
@@ -255,6 +288,7 @@ export function ScaffoldingTab() {
         value={displayRules.tenFrames}
         onChange={(value) => updateRule('tenFrames', value)}
         isDark={isDark}
+        resolvedValue={resolvedDisplayRules?.tenFrames}
       />
     </div>
   )
