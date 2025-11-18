@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
-import { WORLD_MAP } from '../maps'
+import { WORLD_MAP, calculateContinentViewBox } from '../maps'
 import { getContinentForCountry, CONTINENTS, type ContinentId } from '../continents'
 import { getRegionColor } from '../mapColors'
 
@@ -78,6 +78,11 @@ export function ContinentSelector({
     return 0.3
   }
 
+  // Calculate viewBox based on selected continent
+  const viewBox = useMemo(() => {
+    return calculateContinentViewBox(WORLD_MAP.regions, selectedContinent, WORLD_MAP.viewBox)
+  }, [selectedContinent])
+
   return (
     <div data-component="continent-selector">
       <div
@@ -111,7 +116,7 @@ export function ContinentSelector({
         })}
       >
         <svg
-          viewBox={WORLD_MAP.viewBox}
+          viewBox={viewBox}
           className={css({
             width: '100%',
             height: 'auto',
@@ -144,10 +149,14 @@ export function ContinentSelector({
                       setHoveredContinent(null)
                       setHoveredRegion(null)
                     }}
-                    onClick={() => onSelectContinent(continent.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectContinent(continent.id)
+                    }}
                     style={{
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
+                      pointerEvents: 'all',
                     }}
                   />
                 ))}
