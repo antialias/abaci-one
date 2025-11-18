@@ -5,6 +5,7 @@ import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { WORLD_MAP } from '../maps'
 import { getContinentForCountry, CONTINENTS, type ContinentId } from '../continents'
+import { getRegionColor } from '../mapColors'
 
 interface ContinentSelectorProps {
   selectedContinent: ContinentId | 'all'
@@ -18,6 +19,7 @@ export function ContinentSelector({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [hoveredContinent, setHoveredContinent] = useState<ContinentId | 'all' | null>(null)
+  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
 
   // Group regions by continent
   const regionsByContinent = new Map<ContinentId | 'all', typeof WORLD_MAP.regions>()
@@ -34,23 +36,29 @@ export function ContinentSelector({
     }
   })
 
-  // Get color for continent based on state
-  const getContinentColor = (continentId: ContinentId | 'all'): string => {
+  // Get color for a region based on its continent's state
+  const getRegionColorForSelector = (
+    regionId: string,
+    continentId: ContinentId | 'all'
+  ): string => {
     const isSelected = selectedContinent === continentId
-    const isHovered = hoveredContinent === continentId
+    const isHovered = hoveredContinent === continentId || hoveredRegion === regionId
 
-    if (isSelected) {
-      return isDark ? '#3b82f6' : '#2563eb' // Solid blue for selected
+    // Use the game's color algorithm, but adjust opacity based on selection state
+    const baseColor = getRegionColor(regionId, isSelected, isHovered, isDark)
+
+    // If this continent is not selected and not hovered, make it more transparent
+    if (!isSelected && !isHovered) {
+      // Extract the color and add low opacity
+      return baseColor.includes('#') ? `${baseColor}33` : baseColor // 20% opacity
     }
-    if (isHovered) {
-      return isDark ? '#60a5fa66' : '#3b82f655' // Semi-transparent blue for hover
-    }
-    return isDark ? '#4b556333' : '#d1d5db44' // Very light for unselected
+
+    return baseColor
   }
 
-  const getContinentStroke = (continentId: ContinentId | 'all'): string => {
+  const getRegionStroke = (continentId: ContinentId | 'all', regionId: string): string => {
     const isSelected = selectedContinent === continentId
-    const isHovered = hoveredContinent === continentId
+    const isHovered = hoveredContinent === continentId || hoveredRegion === regionId
 
     if (isSelected) {
       return isDark ? '#60a5fa' : '#1d4ed8'
@@ -59,6 +67,15 @@ export function ContinentSelector({
       return isDark ? '#93c5fd' : '#3b82f6'
     }
     return isDark ? '#374151' : '#9ca3af'
+  }
+
+  const getRegionStrokeWidth = (continentId: ContinentId | 'all', regionId: string): number => {
+    const isSelected = selectedContinent === continentId
+    const isHovered = hoveredContinent === continentId || hoveredRegion === regionId
+
+    if (isHovered) return 1.5
+    if (isSelected) return 1
+    return 0.3
   }
 
   return (
@@ -110,28 +127,27 @@ export function ContinentSelector({
             if (regions.length === 0) return null
 
             return (
-              <g
-                key={continent.id}
-                data-continent={continent.id}
-                onMouseEnter={() => setHoveredContinent(continent.id)}
-                onMouseLeave={() => setHoveredContinent(null)}
-                onClick={() => onSelectContinent(continent.id)}
-                style={{
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {/* All regions in this continent */}
+              <g key={continent.id} data-continent={continent.id}>
+                {/* All regions in this continent - each individually clickable */}
                 {regions.map((region) => (
                   <path
                     key={region.id}
                     d={region.path}
-                    fill={getContinentColor(continent.id)}
-                    stroke={getContinentStroke(continent.id)}
-                    strokeWidth={selectedContinent === continent.id ? 1 : 0.5}
+                    fill={getRegionColorForSelector(region.id, continent.id)}
+                    stroke={getRegionStroke(continent.id, region.id)}
+                    strokeWidth={getRegionStrokeWidth(continent.id, region.id)}
+                    onMouseEnter={() => {
+                      setHoveredContinent(continent.id)
+                      setHoveredRegion(region.id)
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredContinent(null)
+                      setHoveredRegion(null)
+                    }}
+                    onClick={() => onSelectContinent(continent.id)}
                     style={{
-                      pointerEvents: 'none',
-                      transition: 'all 0.2s ease',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
                     }}
                   />
                 ))}
