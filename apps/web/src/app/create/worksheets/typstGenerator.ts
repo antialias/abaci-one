@@ -218,7 +218,7 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
       } else {
         subtraction-problem-stack(
           problem.minuend, problem.subtrahend, index,
-          problem.showBorrowNotation,  // show-borrows (whether to show borrow boxes)
+          problem.showCarryBoxes,      // show-borrows (whether to show borrow boxes)
           problem.showAnswerBoxes,
           problem.showPlaceValueColors,
           problem.showTenFrames,
