@@ -34,7 +34,15 @@
       "Bash(git commit -m \"$(cat <<''EOF''\ndocs: add merge conflict resolution section to CLAUDE.md\n\nAdd quick reference section for merge conflict resolution:\n- Link to comprehensive guide (.claude/MERGE_CONFLICT_RESOLUTION.md)\n- Enable zdiff3 command\n- Quick resolution strategy summary\n- Reminder to test thoroughly after resolution\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: add auto-approvals for development commands\n\nAdd auto-approvals for common development workflow commands:\n- npm run type-check\n- npm run pre-commit  \n- git add\n- npm info\n- npx tsc\n\nThese commands are safe to run automatically during development and code quality checks.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
-      "Bash(/tmp/worksheet-preview-new.tsx)"
+      "Bash(/tmp/worksheet-preview-new.tsx)",
+      "Bash(npm run format:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npm run lint)",
+      "mcp__sqlite__read_query",
+      "mcp__sqlite__describe_table",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

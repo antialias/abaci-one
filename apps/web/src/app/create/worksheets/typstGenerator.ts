@@ -73,13 +73,30 @@ function generatePageTypst(
         const masteryConfig = config as any
         // If we have operator-specific rules (mastery+mixed), use them
         if (p.operator === 'add' && masteryConfig.additionDisplayRules) {
+          console.log(
+            `[typstGenerator] Problem ${index}: Using additionDisplayRules for ${p.operator} problem`
+          )
           rulesForProblem = masteryConfig.additionDisplayRules
         } else if (p.operator === 'sub' && masteryConfig.subtractionDisplayRules) {
+          console.log(
+            `[typstGenerator] Problem ${index}: Using subtractionDisplayRules for ${p.operator} problem`
+          )
           rulesForProblem = masteryConfig.subtractionDisplayRules
+        } else {
+          console.log(
+            `[typstGenerator] Problem ${index}: Using global displayRules for ${p.operator} problem`
+          )
         }
       }
 
+      console.log(`[typstGenerator] Problem ${index} display rules:`, {
+        operator: p.operator,
+        rulesForProblem,
+      })
+
       const displayOptions = resolveDisplayForProblem(rulesForProblem, meta)
+
+      console.log(`[typstGenerator] Problem ${index} resolved display options:`, displayOptions)
 
       return {
         ...p,

@@ -95,6 +95,7 @@ export function useWorksheetState(
   }, [formState])
 
   const updateFormState = (updates: Partial<WorksheetFormState>) => {
+    console.log('[useWorksheetState] updateFormState called with:', updates)
     setFormState((prev) => {
       const newState = { ...prev, ...updates }
 
@@ -110,7 +111,16 @@ export function useWorksheetState(
 
       if (affectsProblems) {
         newState.seed = Date.now() % 2147483647
+        console.log('[useWorksheetState] Problem settings changed - generated new seed:', newState.seed)
       }
+
+      console.log('[useWorksheetState] New formState:', {
+        displayRules: newState.displayRules,
+        additionDisplayRules: (newState as any).additionDisplayRules,
+        subtractionDisplayRules: (newState as any).subtractionDisplayRules,
+        mode: newState.mode,
+        operator: newState.operator,
+      })
 
       return newState
     })

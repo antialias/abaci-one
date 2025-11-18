@@ -19,6 +19,11 @@ export async function POST(request: NextRequest) {
       total: (body.problemsPerPage ?? 20) * (body.pages ?? 1),
       startPage: searchParams.get('startPage'),
       endPage: searchParams.get('endPage'),
+      mode: body.mode,
+      operator: body.operator,
+      displayRules: body.displayRules,
+      additionDisplayRules: (body as any).additionDisplayRules,
+      subtractionDisplayRules: (body as any).subtractionDisplayRules,
     })
 
     // Support cursor-based pagination (GraphQL style)

@@ -24,14 +24,23 @@ export function ScaffoldingTab() {
       [key]: value,
     }
 
+    console.log('[ScaffoldingTab] updateRule called:', {
+      key,
+      value,
+      isMasteryMixed,
+      newDisplayRules,
+    })
+
     // In mastery+mixed mode, update both general AND operator-specific display rules
     if (isMasteryMixed) {
+      console.log('[ScaffoldingTab] Updating ALL operator-specific rules (mastery+mixed)')
       onChange({
         displayRules: newDisplayRules,
         additionDisplayRules: newDisplayRules,
         subtractionDisplayRules: newDisplayRules,
       })
     } else {
+      console.log('[ScaffoldingTab] Updating only global displayRules')
       onChange({
         displayRules: newDisplayRules,
       })
