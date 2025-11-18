@@ -82,6 +82,11 @@ export function extractConfigFields(
     prngAlgorithm: config.prngAlgorithm,
     pages: config.pages,
     problemsPerPage: config.problemsPerPage,
+    mode: (config as any).mode,
+    operator: (config as any).operator,
+    displayRules: (config as any).displayRules,
+    additionDisplayRules: (config as any).additionDisplayRules,
+    subtractionDisplayRules: (config as any).subtractionDisplayRules,
     excludedFields: ['rows', 'total', 'date'],
   })
 

@@ -50,6 +50,16 @@ async function fetchWorksheetPreview(
     date: getDefaultDate(),
   }
 
+  console.log('[fetchWorksheetPreview] Fetching with config:', {
+    mode: configWithDate.mode,
+    operator: configWithDate.operator,
+    displayRules: configWithDate.displayRules,
+    additionDisplayRules: (configWithDate as any).additionDisplayRules,
+    subtractionDisplayRules: (configWithDate as any).subtractionDisplayRules,
+    startPage,
+    endPage,
+  })
+
   // Use absolute URL for SSR compatibility
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
@@ -64,6 +74,8 @@ async function fetchWorksheetPreview(
 
   const queryString = params.toString()
   const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ''}`
+
+  console.log('[fetchWorksheetPreview] Sending POST to:', url)
 
   const response = await fetch(url, {
     method: 'POST',
