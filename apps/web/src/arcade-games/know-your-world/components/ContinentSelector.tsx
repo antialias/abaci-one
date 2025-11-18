@@ -1,0 +1,232 @@
+'use client'
+
+import { useState } from 'react'
+import { css } from '@styled/css'
+import { useTheme } from '@/contexts/ThemeContext'
+import { WORLD_MAP } from '../maps'
+import { getContinentForCountry, CONTINENTS, type ContinentId } from '../continents'
+
+interface ContinentSelectorProps {
+  selectedContinent: ContinentId | 'all'
+  onSelectContinent: (continent: ContinentId | 'all') => void
+}
+
+export function ContinentSelector({
+  selectedContinent,
+  onSelectContinent,
+}: ContinentSelectorProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const [hoveredContinent, setHoveredContinent] = useState<ContinentId | 'all' | null>(null)
+
+  // Group regions by continent
+  const regionsByContinent = new Map<ContinentId | 'all', typeof WORLD_MAP.regions>()
+  regionsByContinent.set('all', []) // Initialize all continents
+
+  CONTINENTS.forEach((continent) => {
+    regionsByContinent.set(continent.id, [])
+  })
+
+  WORLD_MAP.regions.forEach((region) => {
+    const continent = getContinentForCountry(region.id)
+    if (continent) {
+      regionsByContinent.get(continent)?.push(region)
+    }
+  })
+
+  // Get color for continent based on state
+  const getContinentColor = (continentId: ContinentId | 'all'): string => {
+    const isSelected = selectedContinent === continentId
+    const isHovered = hoveredContinent === continentId
+
+    if (isSelected) {
+      return isDark ? '#3b82f6' : '#2563eb' // Solid blue for selected
+    }
+    if (isHovered) {
+      return isDark ? '#60a5fa66' : '#3b82f655' // Semi-transparent blue for hover
+    }
+    return isDark ? '#4b556333' : '#d1d5db44' // Very light for unselected
+  }
+
+  const getContinentStroke = (continentId: ContinentId | 'all'): string => {
+    const isSelected = selectedContinent === continentId
+    const isHovered = hoveredContinent === continentId
+
+    if (isSelected) {
+      return isDark ? '#60a5fa' : '#1d4ed8'
+    }
+    if (isHovered) {
+      return isDark ? '#93c5fd' : '#3b82f6'
+    }
+    return isDark ? '#374151' : '#9ca3af'
+  }
+
+  return (
+    <div data-component="continent-selector">
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2',
+          marginBottom: '2',
+        })}
+      >
+        <div
+          className={css({
+            fontSize: 'sm',
+            color: isDark ? 'gray.400' : 'gray.600',
+            textAlign: 'center',
+          })}
+        >
+          Click a continent to focus on it, or select &quot;All&quot; for the whole world
+        </div>
+      </div>
+
+      {/* Interactive Map */}
+      <div
+        className={css({
+          width: '100%',
+          padding: '4',
+          bg: isDark ? 'gray.900' : 'gray.50',
+          rounded: 'xl',
+          border: '2px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+        })}
+      >
+        <svg
+          viewBox={WORLD_MAP.viewBox}
+          className={css({
+            width: '100%',
+            height: 'auto',
+            cursor: 'pointer',
+          })}
+        >
+          {/* Background */}
+          <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f9fafb'} />
+
+          {/* Render each continent as a group */}
+          {CONTINENTS.map((continent) => {
+            const regions = regionsByContinent.get(continent.id) || []
+            if (regions.length === 0) return null
+
+            return (
+              <g
+                key={continent.id}
+                data-continent={continent.id}
+                onMouseEnter={() => setHoveredContinent(continent.id)}
+                onMouseLeave={() => setHoveredContinent(null)}
+                onClick={() => onSelectContinent(continent.id)}
+                style={{
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {/* All regions in this continent */}
+                {regions.map((region) => (
+                  <path
+                    key={region.id}
+                    d={region.path}
+                    fill={getContinentColor(continent.id)}
+                    stroke={getContinentStroke(continent.id)}
+                    strokeWidth={selectedContinent === continent.id ? 1 : 0.5}
+                    style={{
+                      pointerEvents: 'none',
+                      transition: 'all 0.2s ease',
+                    }}
+                  />
+                ))}
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* Legend/Buttons below map */}
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '2',
+          marginTop: '3',
+        })}
+      >
+        {/* All option */}
+        <button
+          data-action="select-all-continents"
+          onClick={() => onSelectContinent('all')}
+          onMouseEnter={() => setHoveredContinent('all')}
+          onMouseLeave={() => setHoveredContinent(null)}
+          className={css({
+            padding: '2',
+            rounded: 'lg',
+            border: '2px solid',
+            borderColor: selectedContinent === 'all' ? 'blue.500' : 'transparent',
+            bg:
+              selectedContinent === 'all'
+                ? isDark
+                  ? 'blue.900'
+                  : 'blue.50'
+                : hoveredContinent === 'all'
+                  ? isDark
+                    ? 'gray.700'
+                    : 'gray.200'
+                  : isDark
+                    ? 'gray.800'
+                    : 'gray.100',
+            color: isDark ? 'gray.100' : 'gray.900',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            fontSize: 'xs',
+            fontWeight: selectedContinent === 'all' ? 'bold' : 'normal',
+            _hover: {
+              borderColor: 'blue.400',
+            },
+          })}
+        >
+          <div className={css({ fontSize: 'lg' })}>🌍</div>
+          <div>All</div>
+        </button>
+
+        {/* Continent buttons */}
+        {CONTINENTS.map((continent) => (
+          <button
+            key={continent.id}
+            data-action={`select-${continent.id}-continent`}
+            onClick={() => onSelectContinent(continent.id)}
+            onMouseEnter={() => setHoveredContinent(continent.id)}
+            onMouseLeave={() => setHoveredContinent(null)}
+            className={css({
+              padding: '2',
+              rounded: 'lg',
+              border: '2px solid',
+              borderColor: selectedContinent === continent.id ? 'blue.500' : 'transparent',
+              bg:
+                selectedContinent === continent.id
+                  ? isDark
+                    ? 'blue.900'
+                    : 'blue.50'
+                  : hoveredContinent === continent.id
+                    ? isDark
+                      ? 'gray.700'
+                      : 'gray.200'
+                    : isDark
+                      ? 'gray.800'
+                      : 'gray.100',
+              color: isDark ? 'gray.100' : 'gray.900',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontSize: 'xs',
+              fontWeight: selectedContinent === continent.id ? 'bold' : 'normal',
+              _hover: {
+                borderColor: 'blue.400',
+              },
+            })}
+          >
+            <div className={css({ fontSize: 'lg' })}>{continent.emoji}</div>
+            <div>{continent.name}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
