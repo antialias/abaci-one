@@ -15,13 +15,27 @@ export function ScaffoldingTab() {
 
   const displayRules: DisplayRules = formState.displayRules ?? defaultAdditionConfig.displayRules
 
+  // Check if we're in mastery+mixed mode (needs operator-specific rules)
+  const isMasteryMixed = formState.mode === 'mastery' && formState.operator === 'mixed'
+
   const updateRule = (key: keyof DisplayRules, value: DisplayRules[keyof DisplayRules]) => {
-    onChange({
-      displayRules: {
-        ...displayRules,
-        [key]: value,
-      },
-    })
+    const newDisplayRules = {
+      ...displayRules,
+      [key]: value,
+    }
+
+    // In mastery+mixed mode, update both general AND operator-specific display rules
+    if (isMasteryMixed) {
+      onChange({
+        displayRules: newDisplayRules,
+        additionDisplayRules: newDisplayRules,
+        subtractionDisplayRules: newDisplayRules,
+      })
+    } else {
+      onChange({
+        displayRules: newDisplayRules,
+      })
+    }
   }
 
   return (
@@ -47,19 +61,29 @@ export function ScaffoldingTab() {
         </div>
         <div className={css({ display: 'flex', gap: '1.5' })}>
           <button
-            onClick={() =>
-              onChange({
-                displayRules: {
-                  ...displayRules,
-                  carryBoxes: 'always',
-                  answerBoxes: 'always',
-                  placeValueColors: 'always',
-                  tenFrames: 'always',
-                  borrowNotation: 'always',
-                  borrowingHints: 'always',
-                },
-              })
-            }
+            onClick={() => {
+              const newDisplayRules = {
+                ...displayRules,
+                carryBoxes: 'always' as const,
+                answerBoxes: 'always' as const,
+                placeValueColors: 'always' as const,
+                tenFrames: 'always' as const,
+                borrowNotation: 'always' as const,
+                borrowingHints: 'always' as const,
+              }
+              // In mastery+mixed mode, update operator-specific rules too
+              if (isMasteryMixed) {
+                onChange({
+                  displayRules: newDisplayRules,
+                  additionDisplayRules: newDisplayRules,
+                  subtractionDisplayRules: newDisplayRules,
+                })
+              } else {
+                onChange({
+                  displayRules: newDisplayRules,
+                })
+              }
+            }}
             className={css({
               px: '2',
               py: '0.5',
@@ -76,19 +100,29 @@ export function ScaffoldingTab() {
             All Always
           </button>
           <button
-            onClick={() =>
-              onChange({
-                displayRules: {
-                  ...displayRules,
-                  carryBoxes: 'never',
-                  answerBoxes: 'never',
-                  placeValueColors: 'never',
-                  tenFrames: 'never',
-                  borrowNotation: 'never',
-                  borrowingHints: 'never',
-                },
-              })
-            }
+            onClick={() => {
+              const newDisplayRules = {
+                ...displayRules,
+                carryBoxes: 'never' as const,
+                answerBoxes: 'never' as const,
+                placeValueColors: 'never' as const,
+                tenFrames: 'never' as const,
+                borrowNotation: 'never' as const,
+                borrowingHints: 'never' as const,
+              }
+              // In mastery+mixed mode, update operator-specific rules too
+              if (isMasteryMixed) {
+                onChange({
+                  displayRules: newDisplayRules,
+                  additionDisplayRules: newDisplayRules,
+                  subtractionDisplayRules: newDisplayRules,
+                })
+              } else {
+                onChange({
+                  displayRules: newDisplayRules,
+                })
+              }
+            }}
             className={css({
               px: '2',
               py: '0.5',
