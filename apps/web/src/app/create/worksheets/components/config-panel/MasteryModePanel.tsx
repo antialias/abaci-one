@@ -128,16 +128,17 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         digitRange: currentSkill.digitRange,
         pAnyStart: currentSkill.regroupingConfig.pAnyStart,
         pAllStart: currentSkill.regroupingConfig.pAllStart,
-        displayRules: currentSkill.recommendedScaffolding,
         operator: currentSkill.operator,
       })
 
       // Apply skill's configuration to form state
+      // NOTE: We do NOT set displayRules here - the skill's recommendedScaffolding
+      // is only used at render time when resolving "auto" values.
+      // Setting displayRules here would overwrite the user's custom scaffolding settings.
       onChange({
         digitRange: currentSkill.digitRange,
         pAnyStart: currentSkill.regroupingConfig.pAnyStart,
         pAllStart: currentSkill.regroupingConfig.pAllStart,
-        displayRules: currentSkill.recommendedScaffolding,
         operator: currentSkill.operator,
         // Do NOT force interpolate - let user control it via the toggle
       } as Partial<WorksheetFormState>)
