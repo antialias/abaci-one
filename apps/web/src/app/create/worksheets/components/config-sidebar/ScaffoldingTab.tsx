@@ -21,16 +21,25 @@ export function ScaffoldingTab() {
 
   // Get resolved display rules for showing what 'auto' defers to
   let resolvedDisplayRules: DisplayRules | undefined
+  let resolvedAdditionRules: DisplayRules | undefined
+  let resolvedSubtractionRules: DisplayRules | undefined
 
   if (formState.mode === 'mastery') {
     const operator = formState.operator ?? 'addition'
 
     if (operator === 'mixed') {
-      // Mixed mode: Use addition skill's recommendations for now (could show both)
-      const skillId = formState.currentAdditionSkillId
-      if (skillId) {
-        const skill = getSkillById(skillId as any)
-        resolvedDisplayRules = skill?.recommendedScaffolding
+      // Mixed mode: Get BOTH addition and subtraction skill recommendations
+      const addSkillId = formState.currentAdditionSkillId
+      const subSkillId = formState.currentSubtractionSkillId
+
+      if (addSkillId) {
+        const skill = getSkillById(addSkillId as any)
+        resolvedAdditionRules = skill?.recommendedScaffolding
+      }
+
+      if (subSkillId) {
+        const skill = getSkillById(subSkillId as any)
+        resolvedSubtractionRules = skill?.recommendedScaffolding
       }
     } else {
       // Single operator: Use its skill's recommendations
@@ -74,6 +83,40 @@ export function ScaffoldingTab() {
       })
     }
   }
+
+  // Get skill names for auto notice
+  const getAutoNoticeText = () => {
+    if (formState.mode !== 'mastery') return null
+
+    const operator = formState.operator ?? 'addition'
+
+    if (operator === 'mixed') {
+      const addSkill = formState.currentAdditionSkillId
+        ? getSkillById(formState.currentAdditionSkillId as any)
+        : null
+      const subSkill = formState.currentSubtractionSkillId
+        ? getSkillById(formState.currentSubtractionSkillId as any)
+        : null
+
+      if (addSkill && subSkill) {
+        return `Auto uses ${addSkill.name} (addition) and ${subSkill.name} (subtraction) recommendations`
+      }
+    } else {
+      const skillId =
+        operator === 'addition'
+          ? formState.currentAdditionSkillId
+          : formState.currentSubtractionSkillId
+      const skill = skillId ? getSkillById(skillId as any) : null
+
+      if (skill) {
+        return `Auto uses ${skill.name} recommendations`
+      }
+    }
+
+    return null
+  }
+
+  const autoNoticeText = getAutoNoticeText()
 
   return (
     <div data-component="scaffolding-tab" className={stack({ gap: '3' })}>
@@ -220,6 +263,20 @@ export function ScaffoldingTab() {
         </div>
       </div>
 
+      {/* Auto notice - shows what skill auto defers to */}
+      {autoNoticeText && (
+        <div
+          className={css({
+            fontSize: '2xs',
+            color: isDark ? 'gray.500' : 'gray.500',
+            fontStyle: 'italic',
+            px: '1',
+          })}
+        >
+          {autoNoticeText}
+        </div>
+      )}
+
       {/* Pedagogical scaffolding thermometers */}
       <RuleThermometer
         label="Answer Boxes"
@@ -228,6 +285,8 @@ export function ScaffoldingTab() {
         onChange={(value) => updateRule('answerBoxes', value)}
         isDark={isDark}
         resolvedValue={resolvedDisplayRules?.answerBoxes}
+        resolvedAdditionValue={resolvedAdditionRules?.answerBoxes}
+        resolvedSubtractionValue={resolvedSubtractionRules?.answerBoxes}
       />
 
       <RuleThermometer
@@ -237,6 +296,8 @@ export function ScaffoldingTab() {
         onChange={(value) => updateRule('placeValueColors', value)}
         isDark={isDark}
         resolvedValue={resolvedDisplayRules?.placeValueColors}
+        resolvedAdditionValue={resolvedAdditionRules?.placeValueColors}
+        resolvedSubtractionValue={resolvedSubtractionRules?.placeValueColors}
       />
 
       <RuleThermometer
@@ -258,6 +319,8 @@ export function ScaffoldingTab() {
         onChange={(value) => updateRule('carryBoxes', value)}
         isDark={isDark}
         resolvedValue={resolvedDisplayRules?.carryBoxes}
+        resolvedAdditionValue={resolvedAdditionRules?.carryBoxes}
+        resolvedSubtractionValue={resolvedSubtractionRules?.carryBoxes}
       />
 
       {(formState.operator === 'subtraction' || formState.operator === 'mixed') && (
@@ -268,6 +331,8 @@ export function ScaffoldingTab() {
           onChange={(value) => updateRule('borrowNotation', value)}
           isDark={isDark}
           resolvedValue={resolvedDisplayRules?.borrowNotation}
+          resolvedAdditionValue={resolvedAdditionRules?.borrowNotation}
+          resolvedSubtractionValue={resolvedSubtractionRules?.borrowNotation}
         />
       )}
 
@@ -279,6 +344,8 @@ export function ScaffoldingTab() {
           onChange={(value) => updateRule('borrowingHints', value)}
           isDark={isDark}
           resolvedValue={resolvedDisplayRules?.borrowingHints}
+          resolvedAdditionValue={resolvedAdditionRules?.borrowingHints}
+          resolvedSubtractionValue={resolvedSubtractionRules?.borrowingHints}
         />
       )}
 
@@ -289,6 +356,8 @@ export function ScaffoldingTab() {
         onChange={(value) => updateRule('tenFrames', value)}
         isDark={isDark}
         resolvedValue={resolvedDisplayRules?.tenFrames}
+        resolvedAdditionValue={resolvedAdditionRules?.tenFrames}
+        resolvedSubtractionValue={resolvedSubtractionRules?.tenFrames}
       />
     </div>
   )

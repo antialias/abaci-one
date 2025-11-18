@@ -65,6 +65,40 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
       ? subtractionSkills
       : additionSkills
 
+  // Get override notice - which scaffolding settings are overriding mastery progression
+  const getOverrideNotice = () => {
+    if (!currentSkill?.recommendedScaffolding || !formState.displayRules) return null
+
+    const overrides: string[] = []
+    const recommended = currentSkill.recommendedScaffolding
+    const userRules = formState.displayRules
+
+    const ruleLabels: Record<string, string> = {
+      carryBoxes: 'Carry/Borrow',
+      answerBoxes: 'Answer Boxes',
+      placeValueColors: 'Place Value',
+      tenFrames: 'Ten-Frames',
+      borrowNotation: 'Borrow Notation',
+      borrowingHints: 'Borrow Hints',
+    }
+
+    for (const [key, label] of Object.entries(ruleLabels)) {
+      const userValue = (userRules as any)[key]
+      const recommendedValue = (recommended as any)[key]
+
+      // Check if user has manually overridden (not 'auto' and different from recommended)
+      if (userValue !== 'auto' && userValue !== undefined && userValue !== recommendedValue) {
+        overrides.push(label)
+      }
+    }
+
+    if (overrides.length === 0) return null
+
+    return `Custom scaffolding: ${overrides.join(', ')}`
+  }
+
+  const overrideNotice = getOverrideNotice()
+
   // Load mastery states from API
   useEffect(() => {
     async function loadMasteryStates() {
@@ -886,6 +920,72 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
           >
             {currentSkill.description}
           </p>
+          {overrideNotice && (
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2',
+                marginTop: '0.5rem',
+              })}
+            >
+              <p
+                className={css({
+                  fontSize: '0.75rem',
+                  color: isDark ? 'gray.500' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                {overrideNotice}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const autoRules: DisplayRules = {
+                    carryBoxes: 'auto',
+                    answerBoxes: 'auto',
+                    placeValueColors: 'auto',
+                    tenFrames: 'auto',
+                    problemNumbers: 'auto',
+                    cellBorders: 'auto',
+                    borrowNotation: 'auto',
+                    borrowingHints: 'auto',
+                  }
+
+                  // In mastery+mixed mode, update operator-specific rules too
+                  if (isMixedMode) {
+                    onChange({
+                      displayRules: autoRules,
+                      additionDisplayRules: autoRules,
+                      subtractionDisplayRules: autoRules,
+                    })
+                  } else {
+                    onChange({
+                      displayRules: autoRules,
+                    })
+                  }
+                }}
+                className={css({
+                  fontSize: '0.625rem',
+                  px: '1.5',
+                  py: '0.5',
+                  rounded: 'md',
+                  color: isDark ? 'green.300' : 'green.600',
+                  bg: isDark ? 'green.900/30' : 'green.50',
+                  border: '1px solid',
+                  borderColor: isDark ? 'green.700' : 'green.300',
+                  cursor: 'pointer',
+                  fontWeight: 'medium',
+                  whiteSpace: 'nowrap',
+                  _hover: {
+                    bg: isDark ? 'green.800/40' : 'green.100',
+                  },
+                })}
+              >
+                Reset to Auto
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

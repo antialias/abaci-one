@@ -1,4 +1,5 @@
 import { css } from '@styled/css'
+import { OperatorIcon } from './OperatorIcon'
 
 export interface OperatorSectionProps {
   operator: 'addition' | 'subtraction' | 'mixed' | undefined
@@ -108,16 +109,7 @@ export function OperatorSection({ operator, onChange, isDark = false }: Operator
               minWidth: 0,
             })}
           >
-            <span
-              className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                color: isDark ? 'gray.300' : 'gray.700',
-                flexShrink: 0,
-              })}
-            >
-              +
-            </span>
+            <OperatorIcon operator="addition" isDark={isDark} />
             <span
               className={css({
                 fontSize: 'sm',
@@ -180,16 +172,7 @@ export function OperatorSection({ operator, onChange, isDark = false }: Operator
               minWidth: 0,
             })}
           >
-            <span
-              className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                color: isDark ? 'gray.300' : 'gray.700',
-                flexShrink: 0,
-              })}
-            >
-              −
-            </span>
+            <OperatorIcon operator="subtraction" isDark={isDark} />
             <span
               className={css({
                 fontSize: 'sm',
