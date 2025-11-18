@@ -286,29 +286,36 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
         const subSkill = getSkillById(subSkillId as any)
 
         if (addSkill?.recommendedScaffolding && subSkill?.recommendedScaffolding) {
-          // Merge user's displayRules with skill's recommended scaffolding
-          // User's displayRules take precedence for problemNumbers and cellBorders (layout options)
-          const userDisplayRules: Partial<DisplayRules> = formState.displayRules || {}
+          // Merge user's operator-specific displayRules with skill's recommended scaffolding
+          // User's rules (if set) take precedence over skill's recommendations
+          // Fall back to general displayRules if operator-specific rules don't exist
+          const userAdditionRules: Partial<DisplayRules> =
+            (formState as any).additionDisplayRules || formState.displayRules || {}
+          const userSubtractionRules: Partial<DisplayRules> =
+            (formState as any).subtractionDisplayRules || formState.displayRules || {}
+
+          console.log('[MIXED MODE SCAFFOLDING] User rules:', {
+            additionRules: userAdditionRules,
+            subtractionRules: userSubtractionRules,
+            generalRules: formState.displayRules,
+          })
 
           config = {
             ...baseConfig,
             additionDisplayRules: {
               ...addSkill.recommendedScaffolding,
-              // Override layout options with user's choices
-              problemNumbers:
-                userDisplayRules.problemNumbers ?? addSkill.recommendedScaffolding.problemNumbers,
-              cellBorders:
-                userDisplayRules.cellBorders ?? addSkill.recommendedScaffolding.cellBorders,
+              ...userAdditionRules, // User's custom rules override skill's recommendations
             },
             subtractionDisplayRules: {
               ...subSkill.recommendedScaffolding,
-              // Override layout options with user's choices
-              problemNumbers:
-                userDisplayRules.problemNumbers ?? subSkill.recommendedScaffolding.problemNumbers,
-              cellBorders:
-                userDisplayRules.cellBorders ?? subSkill.recommendedScaffolding.cellBorders,
+              ...userSubtractionRules, // User's custom rules override skill's recommendations
             },
           } as any
+
+          console.log('[MIXED MODE SCAFFOLDING] Final config:', {
+            additionDisplayRules: config.additionDisplayRules,
+            subtractionDisplayRules: config.subtractionDisplayRules,
+          })
         } else {
           console.log('[MIXED MODE SCAFFOLDING] Missing recommendedScaffolding', {
             addSkill: addSkill?.name,

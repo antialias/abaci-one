@@ -111,7 +111,10 @@ export function useWorksheetState(
 
       if (affectsProblems) {
         newState.seed = Date.now() % 2147483647
-        console.log('[useWorksheetState] Problem settings changed - generated new seed:', newState.seed)
+        console.log(
+          '[useWorksheetState] Problem settings changed - generated new seed:',
+          newState.seed
+        )
       }
 
       console.log('[useWorksheetState] New formState:', {
