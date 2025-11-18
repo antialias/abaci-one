@@ -1,6 +1,6 @@
-// @ts-expect-error - ESM/CommonJS compatibility
+// @ts-ignore - ESM/CommonJS compatibility
 import World from '@svg-maps/world'
-// @ts-expect-error - ESM/CommonJS compatibility
+// @ts-ignore - ESM/CommonJS compatibility
 import USA from '@svg-maps/usa'
 import type { MapData, MapRegion } from './types'
 

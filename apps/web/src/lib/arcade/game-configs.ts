@@ -185,6 +185,7 @@ export const DEFAULT_KNOW_YOUR_WORLD_CONFIG: KnowYourWorldConfig = {
   gameMode: 'cooperative',
   difficulty: 'easy',
   studyDuration: 0,
+  selectedContinent: 'all',
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
