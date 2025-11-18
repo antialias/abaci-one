@@ -18,6 +18,7 @@ import type { matchingGame } from '@/arcade-games/matching'
 import type { cardSortingGame } from '@/arcade-games/card-sorting'
 import type { yjsDemoGame } from '@/arcade-games/yjs-demo'
 import type { rithmomachiaGame } from '@/arcade-games/rithmomachia'
+import type { knowYourWorldGame } from '@/arcade-games/know-your-world'
 
 /**
  * Utility type: Extract config type from a game definition
@@ -58,6 +59,12 @@ export type YjsDemoGameConfig = InferGameConfig<typeof yjsDemoGame>
  * INFERRED from rithmomachiaGame.defaultConfig
  */
 export type RithmomachiaGameConfig = InferGameConfig<typeof rithmomachiaGame>
+
+/**
+ * Configuration for know-your-world (Geography Quiz) game
+ * INFERRED from knowYourWorldGame.defaultConfig
+ */
+export type KnowYourWorldConfig = InferGameConfig<typeof knowYourWorldGame>
 
 // ============================================================================
 // Legacy Games (Manual Type Definitions)
@@ -120,6 +127,7 @@ export type GameConfigByName = {
   'card-sorting': CardSortingGameConfig
   'yjs-demo': YjsDemoGameConfig
   rithmomachia: RithmomachiaGameConfig
+  'know-your-world': KnowYourWorldConfig
 
   // Legacy games (manual types)
   'complement-race': ComplementRaceGameConfig
@@ -170,6 +178,13 @@ export const DEFAULT_RITHMOMACHIA_CONFIG: RithmomachiaGameConfig = {
 export const DEFAULT_YIJS_DEMO_CONFIG: YjsDemoGameConfig = {
   gridSize: 8,
   duration: 60,
+}
+
+export const DEFAULT_KNOW_YOUR_WORLD_CONFIG: KnowYourWorldConfig = {
+  selectedMap: 'world',
+  gameMode: 'cooperative',
+  difficulty: 'easy',
+  studyDuration: 0,
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {

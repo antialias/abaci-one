@@ -17,6 +17,7 @@ import {
   DEFAULT_CARD_SORTING_CONFIG,
   DEFAULT_RITHMOMACHIA_CONFIG,
   DEFAULT_YIJS_DEMO_CONFIG,
+  DEFAULT_KNOW_YOUR_WORLD_CONFIG,
 } from './game-configs'
 
 // Lazy-load game registry to avoid loading React components on server
@@ -58,6 +59,8 @@ function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[Exte
       return DEFAULT_RITHMOMACHIA_CONFIG
     case 'yjs-demo':
       return DEFAULT_YIJS_DEMO_CONFIG
+    case 'know-your-world':
+      return DEFAULT_KNOW_YOUR_WORLD_CONFIG
     default:
       throw new Error(`Unknown game: ${gameName}`)
   }

@@ -16,6 +16,7 @@ import { complementRaceValidator } from '@/arcade-games/complement-race/Validato
 import { cardSortingValidator } from '@/arcade-games/card-sorting/Validator'
 import { yjsDemoValidator } from '@/arcade-games/yjs-demo/Validator'
 import { rithmomachiaValidator } from '@/arcade-games/rithmomachia/Validator'
+import { knowYourWorldValidator } from '@/arcade-games/know-your-world/Validator'
 import type { GameValidator } from './validation/types'
 
 /**
@@ -30,6 +31,7 @@ export const validatorRegistry = {
   'card-sorting': cardSortingValidator,
   'yjs-demo': yjsDemoValidator,
   rithmomachia: rithmomachiaValidator,
+  'know-your-world': knowYourWorldValidator,
   // Add new games here - GameName type will auto-update
 } as const
 
@@ -103,4 +105,5 @@ export {
   cardSortingValidator,
   yjsDemoValidator,
   rithmomachiaValidator,
+  knowYourWorldValidator,
 }
