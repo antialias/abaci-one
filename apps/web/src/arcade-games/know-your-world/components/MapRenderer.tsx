@@ -757,10 +757,10 @@ export function MapRenderer({
     let regionsInBox = 0
     let hasSmallRegion = false
     let totalRegionArea = 0
-    let detectedSmallestSize = Infinity // SVG units for zoom calculation
-    let detectedSmallestScreenSize = Infinity // Screen pixels for dampening
+    let detectedSmallestSize = Infinity // For dampening (smallest in detection box)
     const detectedRegions: string[] = []
     let regionUnderCursor: string | null = null
+    let regionUnderCursorArea = 0 // For zoom calculation (area of hovered region)
     let smallestDistanceToCenter = Infinity
 
     mapData.regions.forEach((region) => {
@@ -804,6 +804,7 @@ export function MapRenderer({
         if (distanceToCenter < smallestDistanceToCenter) {
           smallestDistanceToCenter = distanceToCenter
           regionUnderCursor = region.id
+          regionUnderCursorArea = pathRect.width * pathRect.height
         }
       }
 
@@ -826,14 +827,10 @@ export function MapRenderer({
           })
         }
 
-        // Track region sizes - use screen pixels for both zoom and dampening
-        // SVG path parsing is too complex (relative vs absolute commands)
-        // Screen pixels work well for tiny regions like Gibraltar (0.08px)
+        // Track smallest region size for cursor dampening (use smallest in detection box)
         const screenSize = Math.min(pixelWidth, pixelHeight)
-
         totalRegionArea += pixelArea
         detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
-        detectedSmallestScreenSize = Math.min(detectedSmallestScreenSize, screenSize)
       }
     })
 
@@ -844,9 +841,9 @@ export function MapRenderer({
     // Show magnifier if: 7+ regions in detection box OR any region smaller than 15px
     const shouldShow = regionsInBox >= 7 || hasSmallRegion
 
-    // Update smallest region size for adaptive cursor dampening (use screen pixels)
-    if (shouldShow && detectedSmallestScreenSize !== Infinity) {
-      setSmallestRegionSize(detectedSmallestScreenSize)
+    // Update smallest region size for adaptive cursor dampening
+    if (shouldShow && detectedSmallestSize !== Infinity) {
+      setSmallestRegionSize(detectedSmallestSize)
     } else {
       setSmallestRegionSize(Infinity)
     }
@@ -873,54 +870,43 @@ export function MapRenderer({
     }
 
     if (shouldShow) {
-      // Unified adaptive zoom calculation
-      // Zoom is based on region density and smallest region size
-      let adaptiveZoom = 10 // Base zoom
+      // Calculate zoom to make the region under cursor occupy ~15% of magnifier area
+      // Magnifier area is 50% of container width × 25% height (aspect 2:1)
+      // Target: region should occupy 15% of magnifier
+      let adaptiveZoom = 10 // Default zoom
 
-      // Add zoom based on region count (crowded areas need more zoom)
-      const countFactor = Math.min(regionsInBox / 10, 1) // 0 to 1
-      adaptiveZoom += countFactor * 20 // Up to +20x for density
+      if (regionUnderCursor && regionUnderCursorArea > 0) {
+        // Get magnifier dimensions in screen pixels
+        const magnifierWidth = containerRect.width * 0.5
+        const magnifierHeight = magnifierWidth / 2
+        const magnifierArea = magnifierWidth * magnifierHeight
 
-      // Add zoom based on smallest region size (tiny regions need EXTREME zoom)
-      // detectedSmallestSize is in screen pixels (from getBoundingClientRect)
-      // Gibraltar is ~0.08px, most countries are 10-100px
-      let sizeZoom = 0
-      if (detectedSmallestSize !== Infinity) {
-        // For Gibraltar (0.08px): we need massive zoom
-        // Use exponential scaling for sub-pixel and tiny regions
-        if (detectedSmallestSize < 1) {
-          // Sub-pixel regions get extreme zoom
-          // Gibraltar (0.08px): 1000/(0.08+0.05) ≈ 7692x → capped at 1000x
-          sizeZoom = 1000 / (detectedSmallestSize + 0.05)
-        } else if (detectedSmallestSize < 10) {
-          // Very small regions (1-10px) get high zoom
-          // 1px: 500/(1+0.5) ≈ 333x
-          // 5px: 500/(5+0.5) ≈ 91x
-          // 10px: 500/(10+0.5) ≈ 48x
-          sizeZoom = 500 / (detectedSmallestSize + 0.5)
-        } else {
-          // Regular small regions use linear scaling
-          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 50) // 0 to 1
-          sizeZoom = sizeFactor * 50 // Up to +50x for small regions
+        // Calculate zoom so region occupies 15% of magnifier area
+        // regionArea * zoom^2 = magnifierArea * 0.15
+        // zoom = sqrt((magnifierArea * 0.15) / regionArea)
+        const targetAreaRatio = 0.15
+        adaptiveZoom = Math.sqrt((magnifierArea * targetAreaRatio) / regionUnderCursorArea)
+
+        // Clamp zoom between reasonable bounds
+        const preClampZoom = adaptiveZoom
+        adaptiveZoom = Math.max(8, Math.min(MAX_ZOOM, adaptiveZoom))
+
+        // Debug logging for Gibraltar
+        const hasGibraltar = regionUnderCursor === 'gi'
+        if (hasGibraltar) {
+          console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
+            regionArea: `${regionUnderCursorArea.toFixed(6)}px²`,
+            magnifierArea: `${magnifierArea.toFixed(0)}px²`,
+            targetRatio: `${(targetAreaRatio * 100).toFixed(0)}%`,
+            calculatedZoom: preClampZoom.toFixed(1),
+            finalZoom: adaptiveZoom.toFixed(1),
+            hitMaxZoom: preClampZoom > MAX_ZOOM,
+          })
         }
-        adaptiveZoom += sizeZoom
-      }
-
-      // Clamp to max zoom
-      const preClampZoom = adaptiveZoom
-      adaptiveZoom = Math.max(10, Math.min(MAX_ZOOM, adaptiveZoom))
-
-      // Debug logging for Gibraltar - show full calculation breakdown
-      if (hasGibraltar) {
-        console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
-          regionSize: `${detectedSmallestSize.toFixed(6)}px (screen)`,
-          baseZoom: 10,
-          densityZoom: (countFactor * 20).toFixed(1),
-          sizeZoom: sizeZoom.toFixed(1),
-          totalBeforeClamp: preClampZoom.toFixed(1),
-          finalZoom: adaptiveZoom.toFixed(1),
-          hitMaxZoom: preClampZoom > MAX_ZOOM,
-        })
+      } else {
+        // No region under cursor - use density-based zoom
+        const countFactor = Math.min(regionsInBox / 10, 1)
+        adaptiveZoom = 10 + countFactor * 20
       }
 
       // Calculate magnifier position (opposite corner from cursor)
