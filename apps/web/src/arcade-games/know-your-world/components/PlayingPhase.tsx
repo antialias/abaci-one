@@ -158,6 +158,8 @@ export function PlayingPhase() {
         currentPrompt={state.currentPrompt}
         difficulty={state.difficulty}
         onRegionClick={clickRegion}
+        guessHistory={state.guessHistory}
+        playerMetadata={state.playerMetadata}
       />
 
       {/* Game Mode Info */}
@@ -198,26 +200,6 @@ export function PlayingPhase() {
           </div>
         </div>
       </div>
-
-      {/* Turn Indicator (for turn-based mode) */}
-      {state.gameMode === 'turn-based' && (
-        <div
-          data-section="turn-indicator"
-          className={css({
-            textAlign: 'center',
-            padding: '3',
-            bg: isDark ? 'purple.900' : 'purple.50',
-            rounded: 'lg',
-            border: '2px solid',
-            borderColor: 'purple.500',
-            fontSize: 'lg',
-            fontWeight: 'semibold',
-            color: isDark ? 'purple.100' : 'purple.900',
-          })}
-        >
-          Current Turn: {state.playerMetadata[state.currentPlayer]?.name || state.currentPlayer}
-        </div>
-      )}
     </div>
   )
 }
