@@ -204,6 +204,9 @@ export function MapRenderer({
       setPointerLocked(isLocked)
       if (isLocked) {
         setShowLockPrompt(false) // Hide prompt when locked
+      } else {
+        // Show prompt again when lock is released (e.g., user hit Escape)
+        setShowLockPrompt(true)
       }
     }
 
@@ -1355,22 +1358,23 @@ export function MapRenderer({
               boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
             }}
           >
-          {/* Crosshair */}
+          {/* Crosshair - Vertical line */}
           <div
             style={{
               position: 'absolute',
               left: '50%',
-              top: '50%',
+              top: '0',
               width: '2px',
               height: '100%',
               backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
               transform: 'translateX(-50%)',
             }}
           />
+          {/* Crosshair - Horizontal line */}
           <div
             style={{
               position: 'absolute',
-              left: '50%',
+              left: '0',
               top: '50%',
               width: '100%',
               height: '2px',
