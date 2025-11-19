@@ -48,7 +48,6 @@ interface MapRendererProps {
       color: string
     }
   >
-  pointerLocked: boolean // Whether pointer lock is currently active
   // Force simulation tuning parameters
   forceTuning?: {
     showArrows?: boolean
@@ -109,7 +108,6 @@ export function MapRenderer({
   onRegionClick,
   guessHistory,
   playerMetadata,
-  pointerLocked,
   forceTuning = {},
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
@@ -165,6 +163,10 @@ export function MapRenderer({
   const [targetTop, setTargetTop] = useState(20)
   const [targetLeft, setTargetLeft] = useState(20)
 
+  // Pointer lock management
+  const [pointerLocked, setPointerLocked] = useState(false)
+  const [showLockPrompt, setShowLockPrompt] = useState(true)
+
   // Cursor position tracking (container-relative coordinates)
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const lastMoveTimeRef = useRef<number>(Date.now())
@@ -187,6 +189,71 @@ export function MapRenderer({
     if (size < 5) return 0.1 // High precision for regions like Jersey (0.82px)
     if (size < 15) return 0.25 // Moderate precision for regions like Rhode Island (11px)
     return 1.0 // Normal speed for larger regions
+  }
+
+  // Set up pointer lock event listeners
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      const isLocked = document.pointerLockElement === containerRef.current
+      console.log('[MapRenderer] Pointer lock change event:', {
+        isLocked,
+        pointerLockElement: document.pointerLockElement,
+        containerElement: containerRef.current,
+        elementsMatch: document.pointerLockElement === containerRef.current,
+      })
+      setPointerLocked(isLocked)
+      if (isLocked) {
+        setShowLockPrompt(false) // Hide prompt when locked
+      }
+    }
+
+    const handlePointerLockError = () => {
+      console.error('[Pointer Lock] ❌ Failed to acquire pointer lock')
+      setPointerLocked(false)
+    }
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    document.addEventListener('pointerlockerror', handlePointerLockError)
+
+    console.log('[MapRenderer] Pointer lock listeners attached')
+
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange)
+      document.removeEventListener('pointerlockerror', handlePointerLockError)
+      console.log('[MapRenderer] Pointer lock listeners removed')
+    }
+  }, [])
+
+  // Release pointer lock when component unmounts
+  useEffect(() => {
+    return () => {
+      if (document.pointerLockElement) {
+        console.log('[Pointer Lock] 🔓 RELEASING (MapRenderer unmount)')
+        document.exitPointerLock()
+      }
+    }
+  }, [])
+
+  // Request pointer lock on first click
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log('[MapRenderer] Container clicked:', {
+      pointerLocked,
+      hasContainer: !!containerRef.current,
+      showLockPrompt,
+      willRequestLock: !pointerLocked && containerRef.current && showLockPrompt,
+      target: e.target,
+    })
+
+    if (!pointerLocked && containerRef.current && showLockPrompt) {
+      console.log('[Pointer Lock] 🔒 REQUESTING pointer lock (user clicked map)')
+      try {
+        containerRef.current.requestPointerLock()
+        console.log('[Pointer Lock] Request sent successfully')
+      } catch (error) {
+        console.error('[Pointer Lock] Request failed with error:', error)
+      }
+      setShowLockPrompt(false) // Hide prompt after first click attempt
+    }
   }
 
   // Animated spring values for smooth transitions
@@ -911,6 +978,7 @@ export function MapRenderer({
       data-component="map-renderer"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onClick={handleContainerClick}
       className={css({
         position: 'relative',
         width: '100%',
@@ -922,6 +990,41 @@ export function MapRenderer({
         shadow: 'lg',
       })}
     >
+      {/* Pointer Lock Prompt Overlay */}
+      {showLockPrompt && !pointerLocked && (
+        <div
+          data-element="pointer-lock-prompt"
+          className={css({
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            bg: isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            color: isDark ? 'white' : 'gray.900',
+            padding: '8',
+            rounded: 'xl',
+            border: '3px solid',
+            borderColor: 'blue.500',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+            zIndex: 10000,
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            _hover: {
+              transform: 'translate(-50%, -50%) scale(1.05)',
+              borderColor: 'blue.400',
+            },
+          })}
+        >
+          <div className={css({ fontSize: '4xl', marginBottom: '4' })}>🎯</div>
+          <div className={css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '2' })}>
+            Enable Precision Controls
+          </div>
+          <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+            Click anywhere to lock cursor for precise control
+          </div>
+        </div>
+      )}
       <svg
         ref={svgRef}
         viewBox={mapData.viewBox}

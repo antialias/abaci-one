@@ -105,7 +105,6 @@ const Template = (args: any) => {
         onRegionClick={(id, name) => console.log('Clicked:', id, name)}
         guessHistory={guessHistory}
         playerMetadata={mockPlayerMetadata}
-        pointerLocked={false}
         forceTuning={{
           showArrows: args.showArrows,
           centeringStrength: args.centeringStrength,
