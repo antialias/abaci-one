@@ -737,17 +737,6 @@ export function MapRenderer({
       velocity = distance // Distance in pixels (effectively pixels per frame)
     }
 
-    // Debug: Log velocity every frame when in precision mode
-    if (precisionMode || velocity > 0) {
-      console.log('[Velocity] Current velocity:', {
-        velocity: velocity.toFixed(1) + 'px/frame',
-        threshold: QUICK_MOVE_THRESHOLD + 'px/frame',
-        willTriggerEscape: velocity > QUICK_MOVE_THRESHOLD,
-        precisionModeActive: precisionMode,
-        timeDelta: timeDelta.toFixed(0) + 'ms',
-      })
-    }
-
     // Quick escape: If moving fast, cancel dampening and super zoom
     if (velocity > QUICK_MOVE_THRESHOLD) {
       const cooldownUntil = now + PRECISION_MODE_COOLDOWN_MS
@@ -772,16 +761,6 @@ export function MapRenderer({
     // Calculate adaptive dampening factor based on smallest region
     const dampeningFactor = getDampeningFactor(smallestRegionSize)
 
-    console.log('[Precision Mode] Before dampening:', {
-      precisionMode,
-      hasLastRaw: !!lastRawCursorRef.current,
-      hasDampened: !!dampenedCursorRef.current,
-      rawCursor: { x: cursorX, y: cursorY },
-      velocity: velocity.toFixed(0) + 'px/frame',
-      smallestRegionSize: smallestRegionSize.toFixed(2),
-      dampeningFactor,
-    })
-
     if (precisionMode && lastRawCursorRef.current && dampenedCursorRef.current) {
       // Calculate delta from LAST RAW to CURRENT RAW (true velocity/direction)
       const deltaX = cursorX - lastRawCursorRef.current.x
@@ -791,34 +770,10 @@ export function MapRenderer({
       // This ensures instant direction changes without lag
       finalCursorX = dampenedCursorRef.current.x + deltaX * dampeningFactor
       finalCursorY = dampenedCursorRef.current.y + deltaY * dampeningFactor
-
-      console.log('[Precision Mode] ✅ DAMPENING ACTIVE:', {
-        rawCurrent: { x: cursorX.toFixed(2), y: cursorY.toFixed(2) },
-        rawLast: {
-          x: lastRawCursorRef.current.x.toFixed(2),
-          y: lastRawCursorRef.current.y.toFixed(2),
-        },
-        dampenedLast: {
-          x: dampenedCursorRef.current.x.toFixed(2),
-          y: dampenedCursorRef.current.y.toFixed(2),
-        },
-        delta: { x: deltaX.toFixed(2), y: deltaY.toFixed(2) },
-        dampenedNew: { x: finalCursorX.toFixed(2), y: finalCursorY.toFixed(2) },
-        smallestRegionSize: smallestRegionSize.toFixed(2) + 'px',
-        dampeningFactor: `${(dampeningFactor * 100).toFixed(0)}%`,
-      })
     } else if (precisionMode) {
       // First frame of precision mode - initialize dampened cursor at raw position
       finalCursorX = cursorX
       finalCursorY = cursorY
-      console.log('[Precision Mode] 🎯 INITIALIZING dampened cursor at raw position')
-    } else {
-      console.log('[Precision Mode] ❌ NO DAMPENING:', {
-        reason: !precisionMode ? 'precisionMode is false' : 'refs not initialized',
-        precisionMode,
-        hasLastRaw: !!lastRawCursorRef.current,
-        hasDampened: !!dampenedCursorRef.current,
-      })
     }
 
     // Update both cursor refs for next frame
@@ -835,15 +790,6 @@ export function MapRenderer({
     // This ensures the detection box matches the crosshairs in the magnifier
     const finalClientX = containerRect.left + finalCursorX
     const finalClientY = containerRect.top + finalCursorY
-
-    console.log('[Region Detection] Using dampened cursor position:', {
-      raw: { x: e.clientX, y: e.clientY },
-      dampened: { x: finalClientX.toFixed(0), y: finalClientY.toFixed(0) },
-      delta: {
-        x: (finalClientX - e.clientX).toFixed(0),
-        y: (finalClientY - e.clientY).toFixed(0),
-      },
-    })
 
     // Count regions in the detection box and track their sizes
     let regionsInBox = 0
@@ -941,14 +887,6 @@ export function MapRenderer({
     // Set hover highlighting based on dampened cursor position
     // This ensures the crosshairs match what's highlighted
     if (regionUnderCursor !== hoveredRegion) {
-      console.log('[Hover Detection] Region under dampened cursor:', {
-        region: regionUnderCursor,
-        regionName: regionUnderCursor
-          ? mapData.regions.find((r) => r.id === regionUnderCursor)?.name
-          : null,
-        dampenedPos: { x: finalClientX.toFixed(0), y: finalClientY.toFixed(0) },
-        distanceToCenter: smallestDistanceToCenter.toFixed(2) + 'px',
-      })
       setHoveredRegion(regionUnderCursor)
     }
 
@@ -959,17 +897,7 @@ export function MapRenderer({
     const cooldownTimeRemaining = Math.max(0, precisionModeCooldownRef.current - now)
     const shouldEnablePrecisionMode = shouldShow && !cooldownActive
 
-    // Debug: Log precision mode state every frame
-    console.log('[Precision Mode] State check:', {
-      shouldShow,
-      cooldownActive,
-      cooldownRemaining: cooldownActive ? cooldownTimeRemaining.toFixed(0) + 'ms' : '0ms',
-      currentPrecisionMode: precisionMode,
-      willChangeTo: shouldEnablePrecisionMode,
-      smallestRegion: detectedSmallestSize.toFixed(2) + 'px',
-      pointerLocked,
-    })
-
+    // Log precision mode state changes
     if (shouldEnablePrecisionMode !== precisionMode) {
       console.log(
         `[Precision Mode] ⚡ CHANGING STATE: ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE - ' + cooldownTimeRemaining.toFixed(0) + 'ms remaining)' : ''} | Pointer locked: ${pointerLocked}`
