@@ -653,12 +653,23 @@ export function MapRenderer({
       velocity = distance // Distance in pixels (effectively pixels per frame)
     }
 
+    // Debug: Log velocity every frame when in precision mode
+    if (precisionMode || velocity > 0) {
+      console.log('[Velocity] Current velocity:', {
+        velocity: velocity.toFixed(1) + 'px/frame',
+        threshold: QUICK_MOVE_THRESHOLD + 'px/frame',
+        willTriggerEscape: velocity > QUICK_MOVE_THRESHOLD,
+        precisionModeActive: precisionMode,
+        timeDelta: timeDelta.toFixed(0) + 'ms',
+      })
+    }
+
     // Quick escape: If moving fast, cancel dampening and super zoom
     if (velocity > QUICK_MOVE_THRESHOLD) {
       const cooldownUntil = now + PRECISION_MODE_COOLDOWN_MS
       precisionModeCooldownRef.current = cooldownUntil
       console.log(
-        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px) - canceling precision mode and super zoom (cooldown until ${new Date(cooldownUntil).toLocaleTimeString()})`
+        `[Quick Escape] 💨 TRIGGERED! Fast movement detected (${velocity.toFixed(0)}px > ${QUICK_MOVE_THRESHOLD}px threshold) - canceling precision mode and super zoom (cooldown until ${new Date(cooldownUntil).toLocaleTimeString()})`
       )
       setPrecisionMode(false)
       setSuperZoomActive(false)
@@ -861,11 +872,22 @@ export function MapRenderer({
     // This gives users more control over tiny regions like Jersey
     // Respect cooldown period after quick-escape to let user escape the area
     const cooldownActive = now < precisionModeCooldownRef.current
+    const cooldownTimeRemaining = Math.max(0, precisionModeCooldownRef.current - now)
     const shouldEnablePrecisionMode = shouldShow && !cooldownActive
+
+    // Debug: Log precision mode state every frame
+    console.log('[Precision Mode] State check:', {
+      shouldShow,
+      cooldownActive,
+      cooldownRemaining: cooldownActive ? cooldownTimeRemaining.toFixed(0) + 'ms' : '0ms',
+      currentPrecisionMode: precisionMode,
+      willChangeTo: shouldEnablePrecisionMode,
+      smallestRegion: detectedSmallestSize.toFixed(2) + 'px',
+    })
 
     if (shouldEnablePrecisionMode !== precisionMode) {
       console.log(
-        `[Precision Mode] ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode (cursor dampening) | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE)' : ''}`
+        `[Precision Mode] ⚡ CHANGING STATE: ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE - ' + cooldownTimeRemaining.toFixed(0) + 'ms remaining)' : ''}`
       )
     }
     setPrecisionMode(shouldEnablePrecisionMode)
