@@ -179,6 +179,8 @@ export function MapRenderer({
   const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels super zoom
   const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
   const SUPER_ZOOM_SIZE_THRESHOLD = 3 // Activate super zoom for regions smaller than this (in pixels)
+  const MAX_ZOOM_NORMAL = 24 // Maximum zoom in normal mode
+  const MAX_ZOOM_SUPER = 120 // Maximum zoom in super zoom mode (for Gibraltar!)
 
   // Movement speed multiplier based on smallest region size
   // When pointer lock is active, apply this multiplier to movementX/movementY
@@ -915,15 +917,15 @@ export function MapRenderer({
         adaptiveZoom += sizeFactor * 8
       }
 
-      // Clamp zoom between 8x and 24x (or higher if super zoom active)
-      const maxZoom = superZoomActive ? 60 : 24 // Super zoom can go up to 60x
+      // Clamp zoom between 8x and max (24x normal, 120x super zoom)
+      const maxZoom = superZoomActive ? MAX_ZOOM_SUPER : MAX_ZOOM_NORMAL
       adaptiveZoom = Math.max(8, Math.min(maxZoom, adaptiveZoom))
 
       // Apply super zoom multiplier if active
       if (superZoomActive) {
         adaptiveZoom = Math.min(maxZoom, adaptiveZoom * SUPER_ZOOM_MULTIPLIER)
         console.log(
-          `[Super Zoom] 🔍 Applied ${SUPER_ZOOM_MULTIPLIER}x multiplier: ${adaptiveZoom.toFixed(1)}x zoom`
+          `[Super Zoom] 🔍 Applied ${SUPER_ZOOM_MULTIPLIER}x multiplier: ${adaptiveZoom.toFixed(1)}x zoom (max: ${maxZoom}x)`
         )
       }
 
