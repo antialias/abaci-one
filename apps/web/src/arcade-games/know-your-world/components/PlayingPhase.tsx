@@ -33,6 +33,12 @@ export function PlayingPhase() {
   useEffect(() => {
     const handlePointerLockChange = () => {
       const isLocked = document.pointerLockElement === containerRef.current
+      console.log('[PlayingPhase] Pointer lock change event:', {
+        isLocked,
+        pointerLockElement: document.pointerLockElement,
+        containerElement: containerRef.current,
+        elementsMatch: document.pointerLockElement === containerRef.current,
+      })
       setPointerLocked(isLocked)
       console.log('[Pointer Lock]', isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED')
     }
@@ -46,9 +52,12 @@ export function PlayingPhase() {
     document.addEventListener('pointerlockchange', handlePointerLockChange)
     document.addEventListener('pointerlockerror', handlePointerLockError)
 
+    console.log('[PlayingPhase] Pointer lock listeners attached')
+
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange)
       document.removeEventListener('pointerlockerror', handlePointerLockError)
+      console.log('[PlayingPhase] Pointer lock listeners removed')
     }
   }, [])
 
@@ -64,12 +73,29 @@ export function PlayingPhase() {
 
   // Request pointer lock on first click
   const handleContainerClick = () => {
+    console.log('[PlayingPhase] Container clicked:', {
+      pointerLocked,
+      hasContainer: !!containerRef.current,
+      showLockPrompt,
+      willRequestLock: !pointerLocked && containerRef.current && showLockPrompt,
+    })
+
     if (!pointerLocked && containerRef.current && showLockPrompt) {
       console.log('[Pointer Lock] 🔒 REQUESTING pointer lock (user clicked)')
-      containerRef.current.requestPointerLock()
+      try {
+        containerRef.current.requestPointerLock()
+        console.log('[Pointer Lock] Request sent successfully')
+      } catch (error) {
+        console.error('[Pointer Lock] Request failed with error:', error)
+      }
       setShowLockPrompt(false) // Hide prompt after first click
     }
   }
+
+  // Log when pointerLocked state changes
+  useEffect(() => {
+    console.log('[PlayingPhase] pointerLocked state changed:', pointerLocked)
+  }, [pointerLocked])
 
   // Get the display name for the current prompt
   const currentRegionName = state.currentPrompt

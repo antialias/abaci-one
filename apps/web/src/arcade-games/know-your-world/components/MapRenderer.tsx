@@ -1222,24 +1222,36 @@ export function MapRenderer({
       ))}
 
       {/* Custom Cursor - Visible when pointer lock is active */}
-      {pointerLocked && cursorPosition && (
-        <div
-          data-element="custom-cursor"
-          style={{
-            position: 'absolute',
-            left: `${cursorPosition.x}px`,
-            top: `${cursorPosition.y}px`,
-            width: '20px',
-            height: '20px',
-            border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
-            borderRadius: '50%',
-            pointerEvents: 'none',
-            zIndex: 200,
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'transparent',
-            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
-          }}
-        >
+      {(() => {
+        console.log('[Custom Cursor] Render check:', {
+          pointerLocked,
+          hasCursorPosition: !!cursorPosition,
+          cursorPosition,
+          shouldRender: pointerLocked && cursorPosition,
+        })
+
+        if (pointerLocked && cursorPosition) {
+          console.log('[Custom Cursor] ✅ RENDERING at position:', cursorPosition)
+        }
+
+        return pointerLocked && cursorPosition ? (
+          <div
+            data-element="custom-cursor"
+            style={{
+              position: 'absolute',
+              left: `${cursorPosition.x}px`,
+              top: `${cursorPosition.y}px`,
+              width: '20px',
+              height: '20px',
+              border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
+              borderRadius: '50%',
+              pointerEvents: 'none',
+              zIndex: 200,
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'transparent',
+              boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
+            }}
+          >
           {/* Crosshair */}
           <div
             style={{
@@ -1264,7 +1276,8 @@ export function MapRenderer({
             }}
           />
         </div>
-      )}
+        ) : null
+      })()}
 
       {/* Magnifier Window - Always rendered when cursor exists, opacity controlled by spring */}
       {cursorPosition && svgRef.current && containerRef.current && (
