@@ -188,7 +188,7 @@ export function MapRenderer({
   // Configuration
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
   const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels super zoom
-  const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
+  const SUPER_ZOOM_MULTIPLIER = 5.0 // Super zoom is 5x the normal adaptive zoom (for Gibraltar!)
   const SUPER_ZOOM_SIZE_THRESHOLD = 3 // Activate super zoom for regions smaller than this (in pixels)
   const MAX_ZOOM_NORMAL = 24 // Maximum zoom in normal mode
   const MAX_ZOOM_SUPER = 120 // Maximum zoom in super zoom mode (for Gibraltar!)
