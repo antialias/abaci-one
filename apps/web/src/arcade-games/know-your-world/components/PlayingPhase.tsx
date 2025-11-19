@@ -146,7 +146,7 @@ export function PlayingPhase() {
             border: '3px solid',
             borderColor: 'blue.500',
             boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-            zIndex: 1000,
+            zIndex: 10000,
             textAlign: 'center',
             cursor: 'pointer',
             transition: 'all 0.2s',
