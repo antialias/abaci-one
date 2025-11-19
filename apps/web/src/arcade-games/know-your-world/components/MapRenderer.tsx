@@ -870,43 +870,92 @@ export function MapRenderer({
     }
 
     if (shouldShow) {
-      // Calculate zoom to make the region under cursor occupy ~15% of magnifier area
-      // Magnifier area is 50% of container width × 25% height (aspect 2:1)
-      // Target: region should occupy 15% of magnifier
-      let adaptiveZoom = 10 // Default zoom
+      // Binary search for optimal zoom level
+      // Goal: Find zoom where regions fit nicely in magnifier (taking 10-20% of area)
+      const TARGET_AREA_MIN = 0.10 // 10% of magnifier
+      const TARGET_AREA_MAX = 0.20 // 20% of magnifier
 
-      if (regionUnderCursor && regionUnderCursorArea > 0) {
-        // Get magnifier dimensions in screen pixels
-        const magnifierWidth = containerRect.width * 0.5
-        const magnifierHeight = magnifierWidth / 2
-        const magnifierArea = magnifierWidth * magnifierHeight
+      // Get magnifier dimensions
+      const magnifierWidth = containerRect.width * 0.5
+      const magnifierHeight = magnifierWidth / 2
+      const magnifierArea = magnifierWidth * magnifierHeight
 
-        // Calculate zoom so region occupies 15% of magnifier area
-        // regionArea * zoom^2 = magnifierArea * 0.15
-        // zoom = sqrt((magnifierArea * 0.15) / regionArea)
-        const targetAreaRatio = 0.15
-        adaptiveZoom = Math.sqrt((magnifierArea * targetAreaRatio) / regionUnderCursorArea)
+      // Get SVG viewBox for coordinate conversion
+      const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+      const viewBoxWidth = viewBoxParts[2] || 1000
+      const viewBoxHeight = viewBoxParts[3] || 1000
 
-        // Clamp zoom between reasonable bounds
-        const preClampZoom = adaptiveZoom
-        adaptiveZoom = Math.max(8, Math.min(MAX_ZOOM, adaptiveZoom))
+      // Binary search bounds
+      let minZoom = 1
+      let maxZoom = MAX_ZOOM
+      let adaptiveZoom = 10
+      let iterations = 0
+      const MAX_ITERATIONS = 20
 
-        // Debug logging for Gibraltar
-        const hasGibraltar = regionUnderCursor === 'gi'
-        if (hasGibraltar) {
-          console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
-            regionArea: `${regionUnderCursorArea.toFixed(6)}px²`,
-            magnifierArea: `${magnifierArea.toFixed(0)}px²`,
-            targetRatio: `${(targetAreaRatio * 100).toFixed(0)}%`,
-            calculatedZoom: preClampZoom.toFixed(1),
-            finalZoom: adaptiveZoom.toFixed(1),
-            hitMaxZoom: preClampZoom > MAX_ZOOM,
-          })
+      while (iterations < MAX_ITERATIONS && maxZoom - minZoom > 0.1) {
+        iterations++
+        const testZoom = (minZoom + maxZoom) / 2
+
+        // Calculate magnified viewBox dimensions at this zoom
+        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
+        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
+        const magnifiedViewBoxArea = magnifiedViewBoxWidth * magnifiedViewBoxHeight
+
+        // Check regions in detection box to see how they fit
+        let anyRegionFullyInside = false
+        let largestRegionRatio = 0
+
+        detectedRegions.forEach((regionId) => {
+          const region = mapData.regions.find((r) => r.id === regionId)
+          if (!region) return
+
+          const regionPath = svgRef.current?.querySelector(`path[data-region-id="${regionId}"]`)
+          if (!regionPath) return
+
+          const pathRect = regionPath.getBoundingClientRect()
+          const regionPixelArea = pathRect.width * pathRect.height
+
+          // Convert pixel area to viewBox area (approximate)
+          const scaleX = viewBoxWidth / svgRect.width
+          const scaleY = viewBoxHeight / svgRect.height
+          const regionViewBoxArea = regionPixelArea * scaleX * scaleY
+
+          // Check if region fits in magnified view
+          const regionRatioInMagnifier = regionViewBoxArea / magnifiedViewBoxArea
+
+          if (regionRatioInMagnifier < 1.0) {
+            anyRegionFullyInside = true
+            largestRegionRatio = Math.max(largestRegionRatio, regionRatioInMagnifier)
+          }
+        })
+
+        // Binary search logic
+        if (!anyRegionFullyInside) {
+          // No regions fit - zoom out
+          maxZoom = testZoom
+        } else if (largestRegionRatio < TARGET_AREA_MIN) {
+          // Regions too small - zoom in
+          minZoom = testZoom
+        } else if (largestRegionRatio > TARGET_AREA_MAX) {
+          // Regions too large - zoom out
+          maxZoom = testZoom
+        } else {
+          // Just right!
+          adaptiveZoom = testZoom
+          break
         }
-      } else {
-        // No region under cursor - use density-based zoom
-        const countFactor = Math.min(regionsInBox / 10, 1)
-        adaptiveZoom = 10 + countFactor * 20
+
+        adaptiveZoom = testZoom
+      }
+
+      // Debug logging for Gibraltar
+      const hasGibraltar = detectedRegions.includes('gi')
+      if (hasGibraltar) {
+        console.log(`[Zoom] 🎯 BINARY SEARCH RESULT:`, {
+          iterations,
+          finalZoom: adaptiveZoom.toFixed(1),
+          detectedRegions,
+        })
       }
 
       // Calculate magnifier position (opposite corner from cursor)
