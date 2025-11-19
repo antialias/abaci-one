@@ -183,7 +183,7 @@ export function MapRenderer({
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Configuration
-  const MAX_ZOOM = 500 // Maximum zoom level (for Gibraltar at 0.08px!)
+  const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
   const HIGH_ZOOM_THRESHOLD = 100 // Show gold border above this zoom level
 
   // Movement speed multiplier based on smallest region size
@@ -877,28 +877,37 @@ export function MapRenderer({
       adaptiveZoom += countFactor * 20 // Up to +20x for density
 
       // Add zoom based on smallest region size (tiny regions need EXTREME zoom)
+      let sizeZoom = 0
       if (detectedSmallestSize !== Infinity) {
-        // For Gibraltar (0.08px): we need ~400x total
+        // For Gibraltar (0.08px): we need massive zoom
         // Use exponential scaling for sub-pixel regions
         if (detectedSmallestSize < 1) {
           // Sub-pixel regions get exponential zoom
-          // 0.08px → ~470x, 0.5px → ~380x, 1px → ~200x
-          adaptiveZoom += 500 / (detectedSmallestSize + 0.05)
+          // 0.08px → ~970x, 0.5px → ~180x, 1px → ~95x
+          sizeZoom = 1000 / (detectedSmallestSize + 0.05)
         } else {
           // Regular small regions use linear scaling
           const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1
-          adaptiveZoom += sizeFactor * 150 // Up to +150x for small regions
+          sizeZoom = sizeFactor * 150 // Up to +150x for small regions
         }
+        adaptiveZoom += sizeZoom
       }
 
       // Clamp to max zoom
+      const preClampZoom = adaptiveZoom
       adaptiveZoom = Math.max(10, Math.min(MAX_ZOOM, adaptiveZoom))
 
-      // Debug logging for Gibraltar
+      // Debug logging for Gibraltar - show full calculation breakdown
       if (hasGibraltar) {
-        console.log(
-          `[Zoom] 🎯 GIBRALTAR: ${adaptiveZoom.toFixed(1)}x zoom (size: ${detectedSmallestSize.toFixed(2)}px)`
-        )
+        console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
+          regionSize: `${detectedSmallestSize.toFixed(4)}px`,
+          baseZoom: 10,
+          densityZoom: (countFactor * 20).toFixed(1),
+          sizeZoom: sizeZoom.toFixed(1),
+          totalBeforeClamp: preClampZoom.toFixed(1),
+          finalZoom: adaptiveZoom.toFixed(1),
+          hitMaxZoom: preClampZoom > MAX_ZOOM,
+        })
       }
 
       // Calculate magnifier position (opposite corner from cursor)
