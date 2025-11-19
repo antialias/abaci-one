@@ -739,19 +739,7 @@ export function MapRenderer({
       return
     }
 
-    // Calculate mouse velocity for quick-escape detection (cancel super zoom on fast movement)
-    const now = Date.now()
-    const timeDelta = now - lastMoveTimeRef.current
-    let velocity = 0
-
-    if (cursorPositionRef.current && timeDelta > 0) {
-      const deltaX = cursorX - cursorPositionRef.current.x
-      const deltaY = cursorY - cursorPositionRef.current.y
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-      velocity = distance // Distance in pixels (effectively pixels per frame)
-    }
-
-    // No longer need quick escape logic - zoom adapts immediately
+    // No velocity tracking needed - zoom adapts immediately to region size
 
     // Update cursor position ref for next frame
     cursorPositionRef.current = { x: cursorX, y: cursorY }
@@ -865,12 +853,12 @@ export function MapRenderer({
     }
 
     // Debug logging - ONLY for Gibraltar or ultra-small regions (< 2px)
-    const hasGibraltar = detectedRegions.some((r) => r.id === 'gi')
+    const hasGibraltar = detectedRegions.includes('gi')
     if (hasGibraltar || detectedSmallestSize < 2) {
       console.log(
         `[Magnifier] ${hasGibraltar ? '🎯 GIBRALTAR DETECTED' : '🔍 Tiny region'} Detection:`,
         {
-          detectedRegions: detectedRegions.map((r) => r.name),
+          detectedRegionIds: detectedRegions,
           regionsInBox,
           smallestSize: detectedSmallestSize.toFixed(2) + 'px',
           shouldShow,
