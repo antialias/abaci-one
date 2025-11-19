@@ -826,15 +826,13 @@ export function MapRenderer({
           })
         }
 
-        // Track region sizes for adaptive zoom and dampening
-        // - SVG units (from viewBox) for accurate zoom calculation
-        // - Screen pixels (from getBoundingClientRect) for cursor dampening
-        const svgBBox = calculateBoundingBox(region.path)
-        const svgSize = Math.min(svgBBox.width, svgBBox.height)
+        // Track region sizes - use screen pixels for both zoom and dampening
+        // SVG path parsing is too complex (relative vs absolute commands)
+        // Screen pixels work well for tiny regions like Gibraltar (0.08px)
         const screenSize = Math.min(pixelWidth, pixelHeight)
 
         totalRegionArea += pixelArea
-        detectedSmallestSize = Math.min(detectedSmallestSize, svgSize)
+        detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
         detectedSmallestScreenSize = Math.min(detectedSmallestScreenSize, screenSize)
       }
     })
@@ -861,16 +859,15 @@ export function MapRenderer({
 
     // Debug logging - ONLY for Gibraltar or ultra-small regions
     const hasGibraltar = detectedRegions.includes('gi')
-    if (hasGibraltar || detectedSmallestSize < 5) {
+    if (hasGibraltar || detectedSmallestSize < 1) {
       console.log(
         `[Magnifier] ${hasGibraltar ? '🎯 GIBRALTAR DETECTED' : '🔍 Tiny region'} Detection:`,
         {
           detectedRegionIds: detectedRegions,
           regionsInBox,
-          smallestSvgSize: detectedSmallestSize.toFixed(4) + ' SVG units',
-          smallestScreenSize: detectedSmallestScreenSize.toFixed(2) + 'px',
+          smallestScreenSize: detectedSmallestSize.toFixed(4) + 'px',
           shouldShow,
-          movementMultiplier: getMovementMultiplier(detectedSmallestScreenSize).toFixed(2),
+          movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
         }
       )
     }
@@ -885,21 +882,25 @@ export function MapRenderer({
       adaptiveZoom += countFactor * 20 // Up to +20x for density
 
       // Add zoom based on smallest region size (tiny regions need EXTREME zoom)
-      // Note: detectedSmallestSize is now in SVG viewBox units (0-1010), not screen pixels
-      // Gibraltar is ~0.08 SVG units, most countries are 10-100 SVG units
+      // detectedSmallestSize is in screen pixels (from getBoundingClientRect)
+      // Gibraltar is ~0.08px, most countries are 10-100px
       let sizeZoom = 0
       if (detectedSmallestSize !== Infinity) {
-        // For Gibraltar (0.08 SVG units): we need massive zoom
-        // Use exponential scaling for tiny regions
-        if (detectedSmallestSize < 5) {
-          // Tiny regions (< 5 SVG units) get exponential zoom
-          // Gibraltar (0.08): 200/(0.08+0.1) ≈ 1111x → capped at 1000x
-          // 1 SVG unit: 200/(1+0.1) ≈ 182x
-          // 5 SVG units: 200/(5+0.1) ≈ 39x
-          sizeZoom = 200 / (detectedSmallestSize + 0.1)
+        // For Gibraltar (0.08px): we need massive zoom
+        // Use exponential scaling for sub-pixel and tiny regions
+        if (detectedSmallestSize < 1) {
+          // Sub-pixel regions get extreme zoom
+          // Gibraltar (0.08px): 1000/(0.08+0.05) ≈ 7692x → capped at 1000x
+          sizeZoom = 1000 / (detectedSmallestSize + 0.05)
+        } else if (detectedSmallestSize < 10) {
+          // Very small regions (1-10px) get high zoom
+          // 1px: 500/(1+0.5) ≈ 333x
+          // 5px: 500/(5+0.5) ≈ 91x
+          // 10px: 500/(10+0.5) ≈ 48x
+          sizeZoom = 500 / (detectedSmallestSize + 0.5)
         } else {
           // Regular small regions use linear scaling
-          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 100) // 0 to 1
+          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 50) // 0 to 1
           sizeZoom = sizeFactor * 50 // Up to +50x for small regions
         }
         adaptiveZoom += sizeZoom
@@ -912,8 +913,7 @@ export function MapRenderer({
       // Debug logging for Gibraltar - show full calculation breakdown
       if (hasGibraltar) {
         console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
-          regionSize: `${detectedSmallestSize.toFixed(6)} SVG units`,
-          viewBoxSize: '1010 × 666',
+          regionSize: `${detectedSmallestSize.toFixed(6)}px (screen)`,
           baseZoom: 10,
           densityZoom: (countFactor * 20).toFixed(1),
           sizeZoom: sizeZoom.toFixed(1),
