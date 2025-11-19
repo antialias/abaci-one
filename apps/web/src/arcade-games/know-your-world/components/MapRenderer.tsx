@@ -164,7 +164,8 @@ export function MapRenderer({
   const [targetLeft, setTargetLeft] = useState(20)
 
   // Precision mode: automatic cursor dampening when over small regions
-  const lastCursorRef = useRef<{ x: number; y: number } | null>(null)
+  const lastRawCursorRef = useRef<{ x: number; y: number } | null>(null) // Raw mouse position
+  const dampenedCursorRef = useRef<{ x: number; y: number } | null>(null) // Dampened position
   const lastMoveTimeRef = useRef<number>(Date.now())
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [precisionMode, setPrecisionMode] = useState(false)
@@ -643,9 +644,9 @@ export function MapRenderer({
     const timeDelta = now - lastMoveTimeRef.current
     let velocity = 0
 
-    if (lastCursorRef.current && timeDelta > 0) {
-      const deltaX = cursorX - lastCursorRef.current.x
-      const deltaY = cursorY - lastCursorRef.current.y
+    if (lastRawCursorRef.current && timeDelta > 0) {
+      const deltaX = cursorX - lastRawCursorRef.current.x
+      const deltaY = cursorY - lastRawCursorRef.current.y
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
       velocity = distance // Distance in pixels (effectively pixels per frame)
     }
@@ -674,45 +675,56 @@ export function MapRenderer({
 
     console.log('[Precision Mode] Before dampening:', {
       precisionMode,
-      hasLastCursor: !!lastCursorRef.current,
+      hasLastRaw: !!lastRawCursorRef.current,
+      hasDampened: !!dampenedCursorRef.current,
       rawCursor: { x: cursorX, y: cursorY },
       velocity: velocity.toFixed(0) + 'px/frame',
       smallestRegionSize: smallestRegionSize.toFixed(2),
       dampeningFactor,
     })
 
-    if (precisionMode && lastCursorRef.current) {
-      // Interpolate cursor position: dampen movement by moving only a fraction of the distance
-      const deltaX = cursorX - lastCursorRef.current.x
-      const deltaY = cursorY - lastCursorRef.current.y
-      finalCursorX = lastCursorRef.current.x + deltaX * dampeningFactor
-      finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor
+    if (precisionMode && lastRawCursorRef.current && dampenedCursorRef.current) {
+      // Calculate delta from LAST RAW to CURRENT RAW (true velocity/direction)
+      const deltaX = cursorX - lastRawCursorRef.current.x
+      const deltaY = cursorY - lastRawCursorRef.current.y
+
+      // Apply dampening to the delta and add to last DAMPENED position
+      // This ensures instant direction changes without lag
+      finalCursorX = dampenedCursorRef.current.x + deltaX * dampeningFactor
+      finalCursorY = dampenedCursorRef.current.y + deltaY * dampeningFactor
 
       console.log('[Precision Mode] ✅ DAMPENING ACTIVE:', {
-        actual: { x: cursorX.toFixed(2), y: cursorY.toFixed(2) },
-        last: {
-          x: lastCursorRef.current.x.toFixed(2),
-          y: lastCursorRef.current.y.toFixed(2),
+        rawCurrent: { x: cursorX.toFixed(2), y: cursorY.toFixed(2) },
+        rawLast: {
+          x: lastRawCursorRef.current.x.toFixed(2),
+          y: lastRawCursorRef.current.y.toFixed(2),
+        },
+        dampenedLast: {
+          x: dampenedCursorRef.current.x.toFixed(2),
+          y: dampenedCursorRef.current.y.toFixed(2),
         },
         delta: { x: deltaX.toFixed(2), y: deltaY.toFixed(2) },
-        dampened: { x: finalCursorX.toFixed(2), y: finalCursorY.toFixed(2) },
+        dampenedNew: { x: finalCursorX.toFixed(2), y: finalCursorY.toFixed(2) },
         smallestRegionSize: smallestRegionSize.toFixed(2) + 'px',
         dampeningFactor: `${(dampeningFactor * 100).toFixed(0)}%`,
       })
+    } else if (precisionMode) {
+      // First frame of precision mode - initialize dampened cursor at raw position
+      finalCursorX = cursorX
+      finalCursorY = cursorY
+      console.log('[Precision Mode] 🎯 INITIALIZING dampened cursor at raw position')
     } else {
       console.log('[Precision Mode] ❌ NO DAMPENING:', {
-        reason: !precisionMode
-          ? 'precisionMode is false'
-          : !lastCursorRef.current
-            ? 'no last cursor position'
-            : 'unknown',
+        reason: !precisionMode ? 'precisionMode is false' : 'refs not initialized',
         precisionMode,
-        hasLastCursor: !!lastCursorRef.current,
+        hasLastRaw: !!lastRawCursorRef.current,
+        hasDampened: !!dampenedCursorRef.current,
       })
     }
 
-    // Update last cursor position for next frame
-    lastCursorRef.current = { x: finalCursorX, y: finalCursorY }
+    // Update both cursor refs for next frame
+    lastRawCursorRef.current = { x: cursorX, y: cursorY }
+    dampenedCursorRef.current = { x: finalCursorX, y: finalCursorY }
 
     setCursorPosition({ x: finalCursorX, y: finalCursorY })
 
@@ -942,7 +954,8 @@ export function MapRenderer({
     setCursorPosition(null)
     setPrecisionMode(false)
     setSuperZoomActive(false)
-    lastCursorRef.current = null
+    lastRawCursorRef.current = null
+    dampenedCursorRef.current = null
 
     // Clear hover timer if active
     if (hoverTimerRef.current) {
