@@ -178,6 +178,7 @@ export function MapRenderer({
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
   const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels super zoom
   const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
+  const SUPER_ZOOM_SIZE_THRESHOLD = 3 // Activate super zoom for regions smaller than this (in pixels)
 
   // Movement speed multiplier based on smallest region size
   // When pointer lock is active, apply this multiplier to movementX/movementY
@@ -867,11 +868,11 @@ export function MapRenderer({
       setHoveredRegion(regionUnderCursor)
     }
 
-    // Auto super-zoom on hover: If hovering over sub-pixel regions (< 1px), start timer
-    const shouldEnableSuperZoom = detectedSmallestSize < 1 && shouldShow
+    // Auto super-zoom on hover: If hovering over very tiny regions, start timer
+    const shouldEnableSuperZoom = detectedSmallestSize < SUPER_ZOOM_SIZE_THRESHOLD && shouldShow
     if (shouldEnableSuperZoom && !hoverTimerRef.current && !superZoomActive) {
       console.log(
-        `[Super Zoom] ⏱️ Starting hover timer (${HOVER_DELAY_MS}ms) for sub-pixel region: ${detectedSmallestSize.toFixed(2)}px`
+        `[Super Zoom] ⏱️ Starting hover timer (${HOVER_DELAY_MS}ms) for tiny region: ${detectedSmallestSize.toFixed(2)}px (threshold: ${SUPER_ZOOM_SIZE_THRESHOLD}px)`
       )
       hoverTimerRef.current = setTimeout(() => {
         console.log('[Super Zoom] 🔍 ACTIVATING super zoom!')
@@ -879,8 +880,8 @@ export function MapRenderer({
         hoverTimerRef.current = null
       }, HOVER_DELAY_MS)
     } else if (!shouldEnableSuperZoom && hoverTimerRef.current) {
-      // Cancel timer if we move away from sub-pixel regions
-      console.log('[Super Zoom] ❌ Canceling hover timer (moved away from sub-pixel region)')
+      // Cancel timer if we move away from tiny regions
+      console.log('[Super Zoom] ❌ Canceling hover timer (moved away from tiny region)')
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
     } else if (!shouldShow && superZoomActive) {
