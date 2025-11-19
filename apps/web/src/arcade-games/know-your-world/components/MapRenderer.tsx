@@ -1221,6 +1221,51 @@ export function MapRenderer({
         </div>
       ))}
 
+      {/* Custom Cursor - Visible when pointer lock is active */}
+      {pointerLocked && cursorPosition && (
+        <div
+          data-element="custom-cursor"
+          style={{
+            position: 'absolute',
+            left: `${cursorPosition.x}px`,
+            top: `${cursorPosition.y}px`,
+            width: '20px',
+            height: '20px',
+            border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
+            borderRadius: '50%',
+            pointerEvents: 'none',
+            zIndex: 200,
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'transparent',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          {/* Crosshair */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '2px',
+              height: '100%',
+              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+              transform: 'translateX(-50%)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '100%',
+              height: '2px',
+              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+              transform: 'translateY(-50%)',
+            }}
+          />
+        </div>
+      )}
+
       {/* Magnifier Window - Always rendered when cursor exists, opacity controlled by spring */}
       {cursorPosition && svgRef.current && containerRef.current && (
         <animated.div
