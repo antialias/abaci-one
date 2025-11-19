@@ -757,7 +757,8 @@ export function MapRenderer({
     let regionsInBox = 0
     let hasSmallRegion = false
     let totalRegionArea = 0
-    let detectedSmallestSize = Infinity
+    let detectedSmallestSize = Infinity // SVG units for zoom calculation
+    let detectedSmallestScreenSize = Infinity // Screen pixels for dampening
     const detectedRegions: string[] = []
     let regionUnderCursor: string | null = null
     let smallestDistanceToCenter = Infinity
@@ -826,13 +827,15 @@ export function MapRenderer({
         }
 
         // Track region sizes for adaptive zoom and dampening
-        // Use SVG path bounding box (from viewBox coordinates) for more accurate sizing
-        // getBoundingClientRect() gives axis-aligned boxes which are too large for irregular shapes
+        // - SVG units (from viewBox) for accurate zoom calculation
+        // - Screen pixels (from getBoundingClientRect) for cursor dampening
         const svgBBox = calculateBoundingBox(region.path)
         const svgSize = Math.min(svgBBox.width, svgBBox.height)
+        const screenSize = Math.min(pixelWidth, pixelHeight)
 
         totalRegionArea += pixelArea
         detectedSmallestSize = Math.min(detectedSmallestSize, svgSize)
+        detectedSmallestScreenSize = Math.min(detectedSmallestScreenSize, screenSize)
       }
     })
 
@@ -843,9 +846,9 @@ export function MapRenderer({
     // Show magnifier if: 7+ regions in detection box OR any region smaller than 15px
     const shouldShow = regionsInBox >= 7 || hasSmallRegion
 
-    // Update smallest region size for adaptive cursor dampening
-    if (shouldShow && detectedSmallestSize !== Infinity) {
-      setSmallestRegionSize(detectedSmallestSize)
+    // Update smallest region size for adaptive cursor dampening (use screen pixels)
+    if (shouldShow && detectedSmallestScreenSize !== Infinity) {
+      setSmallestRegionSize(detectedSmallestScreenSize)
     } else {
       setSmallestRegionSize(Infinity)
     }
@@ -856,17 +859,18 @@ export function MapRenderer({
       setHoveredRegion(regionUnderCursor)
     }
 
-    // Debug logging - ONLY for Gibraltar or ultra-small regions (< 2px)
+    // Debug logging - ONLY for Gibraltar or ultra-small regions
     const hasGibraltar = detectedRegions.includes('gi')
-    if (hasGibraltar || detectedSmallestSize < 2) {
+    if (hasGibraltar || detectedSmallestSize < 5) {
       console.log(
         `[Magnifier] ${hasGibraltar ? '🎯 GIBRALTAR DETECTED' : '🔍 Tiny region'} Detection:`,
         {
           detectedRegionIds: detectedRegions,
           regionsInBox,
-          smallestSize: detectedSmallestSize.toFixed(2) + 'px',
+          smallestSvgSize: detectedSmallestSize.toFixed(4) + ' SVG units',
+          smallestScreenSize: detectedSmallestScreenSize.toFixed(2) + 'px',
           shouldShow,
-          movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
+          movementMultiplier: getMovementMultiplier(detectedSmallestScreenSize).toFixed(2),
         }
       )
     }
