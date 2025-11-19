@@ -48,6 +48,7 @@ interface MapRendererProps {
       color: string
     }
   >
+  pointerLocked: boolean // Whether pointer lock is currently active
   // Force simulation tuning parameters
   forceTuning?: {
     showArrows?: boolean
@@ -108,6 +109,7 @@ export function MapRenderer({
   onRegionClick,
   guessHistory,
   playerMetadata,
+  pointerLocked,
   forceTuning = {},
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
@@ -163,85 +165,29 @@ export function MapRenderer({
   const [targetTop, setTargetTop] = useState(20)
   const [targetLeft, setTargetLeft] = useState(20)
 
-  // Precision mode: automatic cursor dampening when over small regions
-  const lastRawCursorRef = useRef<{ x: number; y: number } | null>(null) // Raw mouse position
-  const dampenedCursorRef = useRef<{ x: number; y: number } | null>(null) // Dampened position
+  // Cursor position tracking (container-relative coordinates)
+  const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const lastMoveTimeRef = useRef<number>(Date.now())
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const precisionModeCooldownRef = useRef<number>(0) // Timestamp when cooldown expires
-  const [precisionMode, setPrecisionMode] = useState(false)
   const [superZoomActive, setSuperZoomActive] = useState(false)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
-  const [pointerLocked, setPointerLocked] = useState(false)
 
   // Configuration
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
-  const QUICK_MOVE_THRESHOLD = 15 // Pixels per frame - exceeding this cancels dampening/zoom
-  const PRECISION_MODE_COOLDOWN_MS = 1200 // Cooldown after quick-escape before precision can re-activate
+  const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels super zoom
   const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
 
-  // Adaptive dampening based on smallest region size
+  // Movement speed multiplier based on smallest region size
+  // When pointer lock is active, apply this multiplier to movementX/movementY
   // For sub-pixel regions (< 1px): 3% speed (ultra precision)
   // For tiny regions (1-5px): 10% speed (high precision)
   // For small regions (5-15px): 25% speed (moderate precision)
-  const getDampeningFactor = (size: number): number => {
+  const getMovementMultiplier = (size: number): number => {
     if (size < 1) return 0.03 // Ultra precision for sub-pixel regions like Gibraltar (0.08px)
     if (size < 5) return 0.1 // High precision for regions like Jersey (0.82px)
-    return 0.25 // Moderate precision for regions like Rhode Island (11px)
+    if (size < 15) return 0.25 // Moderate precision for regions like Rhode Island (11px)
+    return 1.0 // Normal speed for larger regions
   }
-
-  // Pointer lock management for precision mode
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    const handlePointerLockChange = () => {
-      const isLocked = document.pointerLockElement === containerRef.current
-      setPointerLocked(isLocked)
-      console.log('[Pointer Lock]', isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED')
-    }
-
-    const handlePointerLockError = () => {
-      console.error('[Pointer Lock] ❌ Failed to acquire pointer lock')
-      setPointerLocked(false)
-    }
-
-    document.addEventListener('pointerlockchange', handlePointerLockChange)
-    document.addEventListener('pointerlockerror', handlePointerLockError)
-
-    return () => {
-      document.removeEventListener('pointerlockchange', handlePointerLockChange)
-      document.removeEventListener('pointerlockerror', handlePointerLockError)
-    }
-  }, [])
-
-  // Request/release pointer lock based on precision mode
-  useEffect(() => {
-    console.log('[Pointer Lock] Effect triggered:', {
-      precisionMode,
-      pointerLocked,
-      hasContainer: !!containerRef.current,
-      willRequest: precisionMode && !pointerLocked,
-      willRelease: !precisionMode && pointerLocked,
-    })
-
-    if (!containerRef.current) {
-      console.warn('[Pointer Lock] No container ref!')
-      return
-    }
-
-    if (precisionMode && !pointerLocked) {
-      console.log('[Pointer Lock] 🔒 REQUESTING pointer lock for precision mode')
-      try {
-        containerRef.current.requestPointerLock()
-        console.log('[Pointer Lock] Request sent successfully')
-      } catch (error) {
-        console.error('[Pointer Lock] Request failed:', error)
-      }
-    } else if (!precisionMode && pointerLocked) {
-      console.log('[Pointer Lock] 🔓 RELEASING pointer lock')
-      document.exitPointerLock()
-    }
-  }, [precisionMode, pointerLocked])
 
   // Animated spring values for smooth transitions
   // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
@@ -681,23 +627,18 @@ export function MapRenderer({
     let cursorY: number
 
     if (pointerLocked) {
-      // When pointer is locked, use movement deltas to update position
-      // This prevents cursor from leaving the container
-      const lastX = lastRawCursorRef.current?.x ?? containerRect.width / 2
-      const lastY = lastRawCursorRef.current?.y ?? containerRect.height / 2
+      // When pointer is locked, use movement deltas with precision multiplier
+      const lastX = cursorPositionRef.current?.x ?? containerRect.width / 2
+      const lastY = cursorPositionRef.current?.y ?? containerRect.height / 2
 
-      cursorX = lastX + e.movementX
-      cursorY = lastY + e.movementY
+      // Apply movement multiplier based on smallest region size for precision control
+      const movementMultiplier = getMovementMultiplier(smallestRegionSize)
+      cursorX = lastX + e.movementX * movementMultiplier
+      cursorY = lastY + e.movementY * movementMultiplier
 
       // Clamp to container bounds
       cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
       cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
-
-      console.log('[Pointer Lock] Movement:', {
-        movementX: e.movementX,
-        movementY: e.movementY,
-        newPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
-      })
     } else {
       // Normal mode: use absolute position
       cursorX = e.clientX - containerRect.left
@@ -705,17 +646,11 @@ export function MapRenderer({
     }
 
     // Check if cursor is over the SVG
-    const isOverSvg = pointerLocked
-      ? // When pointer is locked, check if our calculated position is within SVG bounds
-        cursorX >= svgRect.left - containerRect.left &&
-        cursorX <= svgRect.right - containerRect.left &&
-        cursorY >= svgRect.top - containerRect.top &&
-        cursorY <= svgRect.bottom - containerRect.top
-      : // Normal mode: use real mouse position
-        e.clientX >= svgRect.left &&
-        e.clientX <= svgRect.right &&
-        e.clientY >= svgRect.top &&
-        e.clientY <= svgRect.bottom
+    const isOverSvg =
+      cursorX >= svgRect.left - containerRect.left &&
+      cursorX <= svgRect.right - containerRect.left &&
+      cursorY >= svgRect.top - containerRect.top &&
+      cursorY <= svgRect.bottom - containerRect.top
 
     // Don't hide magnifier if mouse is still in container (just moved to padding/magnifier area)
     // Only update cursor position and check for regions if over SVG
@@ -725,26 +660,23 @@ export function MapRenderer({
       return
     }
 
-    // Calculate mouse velocity for quick-escape detection
+    // Calculate mouse velocity for quick-escape detection (cancel super zoom on fast movement)
     const now = Date.now()
     const timeDelta = now - lastMoveTimeRef.current
     let velocity = 0
 
-    if (lastRawCursorRef.current && timeDelta > 0) {
-      const deltaX = cursorX - lastRawCursorRef.current.x
-      const deltaY = cursorY - lastRawCursorRef.current.y
+    if (cursorPositionRef.current && timeDelta > 0) {
+      const deltaX = cursorX - cursorPositionRef.current.x
+      const deltaY = cursorY - cursorPositionRef.current.y
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
       velocity = distance // Distance in pixels (effectively pixels per frame)
     }
 
-    // Quick escape: If moving fast, cancel dampening and super zoom
+    // Quick escape: If moving fast, cancel super zoom
     if (velocity > QUICK_MOVE_THRESHOLD) {
-      const cooldownUntil = now + PRECISION_MODE_COOLDOWN_MS
-      precisionModeCooldownRef.current = cooldownUntil
       console.log(
-        `[Quick Escape] 💨 TRIGGERED! Fast movement detected (${velocity.toFixed(0)}px > ${QUICK_MOVE_THRESHOLD}px threshold) - canceling precision mode and super zoom (cooldown until ${new Date(cooldownUntil).toLocaleTimeString()})`
+        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px > ${QUICK_MOVE_THRESHOLD}px) - canceling super zoom`
       )
-      setPrecisionMode(false)
       setSuperZoomActive(false)
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current)
@@ -754,42 +686,17 @@ export function MapRenderer({
 
     lastMoveTimeRef.current = now
 
-    // Apply cursor dampening in precision mode for better control over small regions
-    let finalCursorX = cursorX
-    let finalCursorY = cursorY
-
-    // Calculate adaptive dampening factor based on smallest region
-    const dampeningFactor = getDampeningFactor(smallestRegionSize)
-
-    if (precisionMode && lastRawCursorRef.current && dampenedCursorRef.current) {
-      // Calculate delta from LAST RAW to CURRENT RAW (true velocity/direction)
-      const deltaX = cursorX - lastRawCursorRef.current.x
-      const deltaY = cursorY - lastRawCursorRef.current.y
-
-      // Apply dampening to the delta and add to last DAMPENED position
-      // This ensures instant direction changes without lag
-      finalCursorX = dampenedCursorRef.current.x + deltaX * dampeningFactor
-      finalCursorY = dampenedCursorRef.current.y + deltaY * dampeningFactor
-    } else if (precisionMode) {
-      // First frame of precision mode - initialize dampened cursor at raw position
-      finalCursorX = cursorX
-      finalCursorY = cursorY
-    }
-
-    // Update both cursor refs for next frame
-    lastRawCursorRef.current = { x: cursorX, y: cursorY }
-    dampenedCursorRef.current = { x: finalCursorX, y: finalCursorY }
-
-    setCursorPosition({ x: finalCursorX, y: finalCursorY })
+    // Update cursor position ref for next frame
+    cursorPositionRef.current = { x: cursorX, y: cursorY }
+    setCursorPosition({ x: cursorX, y: cursorY })
 
     // Define 50px × 50px detection box around cursor
     const detectionBoxSize = 50
     const halfBox = detectionBoxSize / 2
 
-    // Convert dampened cursor position back to client coordinates for region detection
-    // This ensures the detection box matches the crosshairs in the magnifier
-    const finalClientX = containerRect.left + finalCursorX
-    const finalClientY = containerRect.top + finalCursorY
+    // Convert cursor position to client coordinates for region detection
+    const cursorClientX = containerRect.left + cursorX
+    const cursorClientY = containerRect.top + cursorY
 
     // Count regions in the detection box and track their sizes
     let regionsInBox = 0
@@ -806,11 +713,11 @@ export function MapRenderer({
 
       const pathRect = regionPath.getBoundingClientRect()
 
-      // Check if region overlaps with detection box (using dampened cursor position)
-      const boxLeft = finalClientX - halfBox
-      const boxRight = finalClientX + halfBox
-      const boxTop = finalClientY - halfBox
-      const boxBottom = finalClientY + halfBox
+      // Check if region overlaps with detection box
+      const boxLeft = cursorClientX - halfBox
+      const boxRight = cursorClientX + halfBox
+      const boxTop = cursorClientY - halfBox
+      const boxBottom = cursorClientY + halfBox
 
       const regionLeft = pathRect.left
       const regionRight = pathRect.right
@@ -823,19 +730,19 @@ export function MapRenderer({
         regionTop < boxBottom &&
         regionBottom > boxTop
 
-      // Also check if dampened cursor is directly over this region
+      // Also check if cursor is directly over this region
       const cursorInRegion =
-        finalClientX >= regionLeft &&
-        finalClientX <= regionRight &&
-        finalClientY >= regionTop &&
-        finalClientY <= regionBottom
+        cursorClientX >= regionLeft &&
+        cursorClientX <= regionRight &&
+        cursorClientY >= regionTop &&
+        cursorClientY <= regionBottom
 
       if (cursorInRegion) {
         // Calculate distance from cursor to region center to find the "best" match
         const regionCenterX = (regionLeft + regionRight) / 2
         const regionCenterY = (regionTop + regionBottom) / 2
         const distanceToCenter = Math.sqrt(
-          (finalClientX - regionCenterX) ** 2 + (finalClientY - regionCenterY) ** 2
+          (cursorClientX - regionCenterX) ** 2 + (cursorClientY - regionCenterY) ** 2
         )
 
         if (distanceToCenter < smallestDistanceToCenter) {
@@ -884,26 +791,11 @@ export function MapRenderer({
       setSmallestRegionSize(Infinity)
     }
 
-    // Set hover highlighting based on dampened cursor position
+    // Set hover highlighting based on cursor position
     // This ensures the crosshairs match what's highlighted
     if (regionUnderCursor !== hoveredRegion) {
       setHoveredRegion(regionUnderCursor)
     }
-
-    // Enable precision mode (cursor dampening) when magnifier is needed
-    // This gives users more control over tiny regions like Jersey
-    // Respect cooldown period after quick-escape to let user escape the area
-    const cooldownActive = now < precisionModeCooldownRef.current
-    const cooldownTimeRemaining = Math.max(0, precisionModeCooldownRef.current - now)
-    const shouldEnablePrecisionMode = shouldShow && !cooldownActive
-
-    // Log precision mode state changes
-    if (shouldEnablePrecisionMode !== precisionMode) {
-      console.log(
-        `[Precision Mode] ⚡ CHANGING STATE: ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE - ' + cooldownTimeRemaining.toFixed(0) + 'ms remaining)' : ''} | Pointer locked: ${pointerLocked}`
-      )
-    }
-    setPrecisionMode(shouldEnablePrecisionMode)
 
     // Auto super-zoom on hover: If hovering over sub-pixel regions (< 1px), start timer
     const shouldEnableSuperZoom = detectedSmallestSize < 1 && shouldShow
@@ -934,8 +826,9 @@ export function MapRenderer({
       hasSmallRegion,
       smallestRegionSize: detectedSmallestSize.toFixed(2) + 'px',
       shouldShow,
-      precisionMode: shouldShow,
-      cursorPos: { x: e.clientX, y: e.clientY },
+      pointerLocked,
+      movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
+      cursorPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
     })
 
     if (shouldShow) {
@@ -992,8 +885,8 @@ export function MapRenderer({
   }
 
   const handleMouseLeave = () => {
-    // Don't hide magnifier when pointer is locked (precision mode active)
-    // The real cursor may leave the container, but we're tracking movement deltas
+    // Don't hide magnifier when pointer is locked
+    // The cursor is locked to the container, so mouse leave events are not meaningful
     if (pointerLocked) {
       console.log('[Mouse Leave] Ignoring - pointer is locked')
       return
@@ -1002,11 +895,8 @@ export function MapRenderer({
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
-    setPrecisionMode(false)
     setSuperZoomActive(false)
-    lastRawCursorRef.current = null
-    dampenedCursorRef.current = null
-    precisionModeCooldownRef.current = 0
+    cursorPositionRef.current = null
 
     // Clear hover timer if active
     if (hoverTimerRef.current) {
@@ -1038,7 +928,7 @@ export function MapRenderer({
         className={css({
           width: '100%',
           height: 'auto',
-          cursor: precisionMode ? 'crosshair' : 'pointer',
+          cursor: pointerLocked ? 'crosshair' : 'pointer',
         })}
       >
         {/* Background */}
@@ -1070,10 +960,10 @@ export function MapRenderer({
                 strokeWidth={1}
                 vectorEffect="non-scaling-stroke"
                 opacity={showOutline(region) ? 1 : 0.7} // Increased from 0.3 to 0.7 for better visibility
-                // When precision mode is active, hover is controlled by dampened cursor position
+                // When pointer lock is active, hover is controlled by cursor position tracking
                 // Otherwise, use native mouse events
-                onMouseEnter={() => !isExcluded && !precisionMode && setHoveredRegion(region.id)}
-                onMouseLeave={() => !precisionMode && setHoveredRegion(null)}
+                onMouseEnter={() => !isExcluded && !pointerLocked && setHoveredRegion(region.id)}
+                onMouseLeave={() => !pointerLocked && setHoveredRegion(null)}
                 onClick={() => !isExcluded && onRegionClick(region.id, region.name)} // Disable clicks on excluded regions
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',

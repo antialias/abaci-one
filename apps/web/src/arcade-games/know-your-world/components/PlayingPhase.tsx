@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
@@ -11,6 +11,10 @@ export function PlayingPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { state, clickRegion, lastError, clearError } = useKnowYourWorld()
+
+  const [pointerLocked, setPointerLocked] = useState(false)
+  const [showLockPrompt, setShowLockPrompt] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent, state.difficulty)
   const totalRegions = mapData.regions.length
@@ -24,6 +28,48 @@ export function PlayingPhase() {
       return () => clearTimeout(timeout)
     }
   }, [lastError, clearError])
+
+  // Set up pointer lock event listeners
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      const isLocked = document.pointerLockElement === containerRef.current
+      setPointerLocked(isLocked)
+      console.log('[Pointer Lock]', isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED')
+    }
+
+    const handlePointerLockError = () => {
+      console.error('[Pointer Lock] ❌ Failed to acquire pointer lock')
+      setPointerLocked(false)
+      setShowLockPrompt(true) // Show prompt again if lock fails
+    }
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    document.addEventListener('pointerlockerror', handlePointerLockError)
+
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange)
+      document.removeEventListener('pointerlockerror', handlePointerLockError)
+    }
+  }, [])
+
+  // Release pointer lock when component unmounts (game ends)
+  useEffect(() => {
+    return () => {
+      if (document.pointerLockElement) {
+        console.log('[Pointer Lock] 🔓 RELEASING (PlayingPhase unmount)')
+        document.exitPointerLock()
+      }
+    }
+  }, [])
+
+  // Request pointer lock on first click
+  const handleContainerClick = () => {
+    if (!pointerLocked && containerRef.current && showLockPrompt) {
+      console.log('[Pointer Lock] 🔒 REQUESTING pointer lock (user clicked)')
+      containerRef.current.requestPointerLock()
+      setShowLockPrompt(false) // Hide prompt after first click
+    }
+  }
 
   // Get the display name for the current prompt
   const currentRegionName = state.currentPrompt
@@ -43,7 +89,9 @@ export function PlayingPhase() {
 
   return (
     <div
+      ref={containerRef}
       data-component="playing-phase"
+      onClick={handleContainerClick}
       className={css({
         display: 'flex',
         flexDirection: 'column',
@@ -53,8 +101,44 @@ export function PlayingPhase() {
         paddingBottom: '4',
         maxWidth: '1200px',
         margin: '0 auto',
+        position: 'relative',
       })}
     >
+      {/* Pointer Lock Prompt Overlay */}
+      {showLockPrompt && !pointerLocked && (
+        <div
+          data-element="pointer-lock-prompt"
+          className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            bg: isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            color: isDark ? 'white' : 'gray.900',
+            padding: '8',
+            rounded: 'xl',
+            border: '3px solid',
+            borderColor: 'blue.500',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            _hover: {
+              transform: 'translate(-50%, -50%) scale(1.05)',
+              borderColor: 'blue.400',
+            },
+          })}
+        >
+          <div className={css({ fontSize: '4xl', marginBottom: '4' })}>🎯</div>
+          <div className={css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '2' })}>
+            Enable Precision Controls
+          </div>
+          <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+            Click anywhere to lock cursor and enable precise clicking on tiny regions
+          </div>
+        </div>
+      )}
       {/* Current Prompt */}
       <div
         data-section="current-prompt"
@@ -173,6 +257,7 @@ export function PlayingPhase() {
         onRegionClick={clickRegion}
         guessHistory={state.guessHistory}
         playerMetadata={state.playerMetadata}
+        pointerLocked={pointerLocked}
       />
 
       {/* Game Mode Info */}

@@ -100,9 +100,12 @@ const Template = (args: any) => {
         regionsFound={regionsFound}
         currentPrompt={mapData.regions[5]?.id || null}
         difficulty={args.difficulty}
+        selectedMap="world"
+        selectedContinent={args.continent}
         onRegionClick={(id, name) => console.log('Clicked:', id, name)}
         guessHistory={guessHistory}
         playerMetadata={mockPlayerMetadata}
+        pointerLocked={false}
         forceTuning={{
           showArrows: args.showArrows,
           centeringStrength: args.centeringStrength,
