@@ -826,9 +826,13 @@ export function MapRenderer({
         }
 
         // Track region sizes for adaptive zoom and dampening
+        // Use SVG path bounding box (from viewBox coordinates) for more accurate sizing
+        // getBoundingClientRect() gives axis-aligned boxes which are too large for irregular shapes
+        const svgBBox = calculateBoundingBox(region.path)
+        const svgSize = Math.min(svgBBox.width, svgBBox.height)
+
         totalRegionArea += pixelArea
-        const regionSize = Math.min(pixelWidth, pixelHeight)
-        detectedSmallestSize = Math.min(detectedSmallestSize, regionSize)
+        detectedSmallestSize = Math.min(detectedSmallestSize, svgSize)
       }
     })
 
@@ -877,18 +881,22 @@ export function MapRenderer({
       adaptiveZoom += countFactor * 20 // Up to +20x for density
 
       // Add zoom based on smallest region size (tiny regions need EXTREME zoom)
+      // Note: detectedSmallestSize is now in SVG viewBox units (0-1010), not screen pixels
+      // Gibraltar is ~0.08 SVG units, most countries are 10-100 SVG units
       let sizeZoom = 0
       if (detectedSmallestSize !== Infinity) {
-        // For Gibraltar (0.08px): we need massive zoom
-        // Use exponential scaling for sub-pixel regions
-        if (detectedSmallestSize < 1) {
-          // Sub-pixel regions get exponential zoom
-          // 0.08px → ~970x, 0.5px → ~180x, 1px → ~95x
-          sizeZoom = 1000 / (detectedSmallestSize + 0.05)
+        // For Gibraltar (0.08 SVG units): we need massive zoom
+        // Use exponential scaling for tiny regions
+        if (detectedSmallestSize < 5) {
+          // Tiny regions (< 5 SVG units) get exponential zoom
+          // Gibraltar (0.08): 200/(0.08+0.1) ≈ 1111x → capped at 1000x
+          // 1 SVG unit: 200/(1+0.1) ≈ 182x
+          // 5 SVG units: 200/(5+0.1) ≈ 39x
+          sizeZoom = 200 / (detectedSmallestSize + 0.1)
         } else {
           // Regular small regions use linear scaling
-          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1
-          sizeZoom = sizeFactor * 150 // Up to +150x for small regions
+          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 100) // 0 to 1
+          sizeZoom = sizeFactor * 50 // Up to +50x for small regions
         }
         adaptiveZoom += sizeZoom
       }
@@ -900,7 +908,8 @@ export function MapRenderer({
       // Debug logging for Gibraltar - show full calculation breakdown
       if (hasGibraltar) {
         console.log(`[Zoom] 🎯 GIBRALTAR BREAKDOWN:`, {
-          regionSize: `${detectedSmallestSize.toFixed(4)}px`,
+          regionSize: `${detectedSmallestSize.toFixed(6)} SVG units`,
+          viewBoxSize: '1010 × 666',
           baseZoom: 10,
           densityZoom: (countFactor * 20).toFixed(1),
           sizeZoom: sizeZoom.toFixed(1),
