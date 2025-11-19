@@ -144,8 +144,19 @@ export function MapRenderer({
       excludedNames: excluded.map((r) => r.name),
     })
 
+    // Debug: Check if Gibraltar is included or excluded
+    const gibraltar = allRegions.find((r) => r.id === 'gi')
+    const gibraltarIncluded = includedRegionIds.has('gi')
+    if (gibraltar) {
+      console.log('[Gibraltar Debug]', gibraltarIncluded ? '✅ INCLUDED' : '❌ EXCLUDED', {
+        inFilteredMap: gibraltarIncluded,
+        difficulty,
+        continent: selectedContinent,
+      })
+    }
+
     return excluded
-  }, [mapData, selectedMap, selectedContinent])
+  }, [mapData, selectedMap, selectedContinent, difficulty])
 
   // Create a set of excluded region IDs for quick lookup
   const excludedRegionIds = useMemo(
@@ -389,12 +400,14 @@ export function MapRenderer({
         // Check if this is a small region using ACTUAL screen pixels
         const isSmall = pixelWidth < 10 || pixelHeight < 10 || pixelArea < 100
 
-        // Debug logging for ALL regions to diagnose threshold issues
-        console.log(
-          `[MapRenderer] ${isSmall ? '🔍 SMALL' : '📍 Regular'}: ${region.name} - ` +
-            `W:${pixelWidth.toFixed(1)}px H:${pixelHeight.toFixed(1)}px ` +
-            `Area:${pixelArea.toFixed(0)}px² (threshold: 10px)`
-        )
+        // Debug logging ONLY for Gibraltar and ultra-tiny regions (< 1px)
+        if (region.id === 'gi' || pixelWidth < 1 || pixelHeight < 1) {
+          console.log(
+            `[MapRenderer] ${region.id === 'gi' ? '🎯 GIBRALTAR' : '🔍 TINY'}: ${region.name} - ` +
+              `W:${pixelWidth.toFixed(2)}px H:${pixelHeight.toFixed(2)}px ` +
+              `Area:${pixelArea.toFixed(2)}px²`
+          )
+        }
 
         // Collect label nodes for regions that need labels
         // Only show arrow labels for small regions if showArrows flag is enabled
@@ -892,17 +905,21 @@ export function MapRenderer({
       setSuperZoomActive(false)
     }
 
-    // Debug logging
-    console.log('[Magnifier] Detection:', {
-      detectedRegions,
-      regionsInBox,
-      hasSmallRegion,
-      smallestRegionSize: detectedSmallestSize.toFixed(2) + 'px',
-      shouldShow,
-      pointerLocked,
-      movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
-      cursorPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
-    })
+    // Debug logging - ONLY for Gibraltar or ultra-small regions (< 2px)
+    const hasGibraltar = detectedRegions.some((r) => r.id === 'gi')
+    if (hasGibraltar || detectedSmallestSize < 2) {
+      console.log(
+        `[Magnifier] ${hasGibraltar ? '🎯 GIBRALTAR DETECTED' : '🔍 Tiny region'} Detection:`,
+        {
+          detectedRegions: detectedRegions.map((r) => r.name),
+          regionsInBox,
+          smallestSize: detectedSmallestSize.toFixed(2) + 'px',
+          shouldShow,
+          superZoomActive,
+          movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
+        }
+      )
+    }
 
     if (shouldShow) {
       let adaptiveZoom = 8 // Base zoom
@@ -924,8 +941,14 @@ export function MapRenderer({
       // Apply super zoom multiplier if active
       if (superZoomActive) {
         adaptiveZoom = Math.min(maxZoom, adaptiveZoom * SUPER_ZOOM_MULTIPLIER)
+        if (hasGibraltar) {
+          console.log(
+            `[Super Zoom] 🎯 GIBRALTAR: ${adaptiveZoom.toFixed(1)}x zoom (max: ${maxZoom}x, size: ${detectedSmallestSize.toFixed(2)}px)`
+          )
+        }
+      } else if (hasGibraltar) {
         console.log(
-          `[Super Zoom] 🔍 Applied ${SUPER_ZOOM_MULTIPLIER}x multiplier: ${adaptiveZoom.toFixed(1)}x zoom (max: ${maxZoom}x)`
+          `[Zoom] 🎯 GIBRALTAR (normal): ${adaptiveZoom.toFixed(1)}x zoom (size: ${detectedSmallestSize.toFixed(2)}px)`
         )
       }
 
