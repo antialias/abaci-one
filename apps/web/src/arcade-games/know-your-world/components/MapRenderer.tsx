@@ -910,7 +910,7 @@ export function MapRenderer({
       }
 
       // Calculate magnifier position (opposite corner from cursor)
-      const containerRect = containerRef.current.getBoundingClientRect()
+      // containerRect already declared at top of function
       const magnifierWidth = containerRect.width * 0.5
       const magnifierHeight = magnifierWidth / 2
       const isLeftHalf = cursorX < containerRect.width / 2
