@@ -175,8 +175,8 @@ export function MapRenderer({
 
   // Configuration
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
-  const QUICK_MOVE_THRESHOLD = 30 // Pixels per frame - exceeding this cancels dampening/zoom
-  const PRECISION_MODE_COOLDOWN_MS = 800 // Cooldown after quick-escape before precision can re-activate
+  const QUICK_MOVE_THRESHOLD = 15 // Pixels per frame - exceeding this cancels dampening/zoom
+  const PRECISION_MODE_COOLDOWN_MS = 1200 // Cooldown after quick-escape before precision can re-activate
   const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
 
   // Adaptive dampening based on smallest region size
