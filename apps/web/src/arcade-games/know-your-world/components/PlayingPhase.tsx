@@ -12,7 +12,7 @@ export function PlayingPhase() {
   const isDark = resolvedTheme === 'dark'
   const { state, clickRegion, lastError, clearError } = useKnowYourWorld()
 
-  const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent)
+  const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent, state.difficulty)
   const totalRegions = mapData.regions.length
   const foundCount = state.regionsFound.length
   const progress = (foundCount / totalRegions) * 100
@@ -29,6 +29,17 @@ export function PlayingPhase() {
   const currentRegionName = state.currentPrompt
     ? mapData.regions.find((r) => r.id === state.currentPrompt)?.name
     : null
+
+  // Debug logging
+  console.log('[PlayingPhase] Current prompt lookup:', {
+    currentPrompt: state.currentPrompt,
+    currentRegionName,
+    difficulty: state.difficulty,
+    totalFilteredRegions: mapData.regions.length,
+    filteredRegionIds: mapData.regions.map((r) => r.id).slice(0, 10),
+    regionsToFindCount: state.regionsToFind.length,
+    regionsToFindSample: state.regionsToFind.slice(0, 5),
+  })
 
   return (
     <div
@@ -157,6 +168,8 @@ export function PlayingPhase() {
         regionsFound={state.regionsFound}
         currentPrompt={state.currentPrompt}
         difficulty={state.difficulty}
+        selectedMap={state.selectedMap}
+        selectedContinent={state.selectedContinent}
         onRegionClick={clickRegion}
         guessHistory={state.guessHistory}
         playerMetadata={state.playerMetadata}

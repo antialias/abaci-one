@@ -632,265 +632,269 @@ export function OrientationPanel({
                 })()
               ) : dropdownOptions.length > 1 ? (
                 <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                <Tooltip.Provider>
-                  <Tooltip.Root
-                    delayDuration={0}
-                    disableHoverableContent={true}
-                    open={
-                      !dropdownOpen &&
-                      dropdownOptions.includes(pages) &&
-                      getTooltipMessage(getValidationForPageCount(pages)) !== null
-                        ? undefined
-                        : false
-                    }
-                  >
-                    <Tooltip.Trigger asChild>
-                      <DropdownMenu.Trigger asChild>
-                        <button
-                          type="button"
-                          data-action="open-pages-dropdown"
-                          className={css({
-                            minW: '8',
-                            h: '8',
-                            px: '2',
-                            border: '2px solid',
-                            borderColor: dropdownOptions.includes(pages)
-                              ? 'brand.500'
-                              : isDark
-                                ? 'gray.600'
-                                : 'gray.300',
-                            bg: dropdownOptions.includes(pages)
-                              ? isDark
-                                ? 'brand.900'
-                                : 'brand.50'
-                              : isDark
-                                ? 'gray.700'
-                                : 'white',
-                            rounded: 'lg',
-                            cursor: 'pointer',
-                            fontSize: 'xs',
-                            fontWeight: 'bold',
-                            color: dropdownOptions.includes(pages)
-                              ? isDark
-                                ? 'brand.200'
-                                : 'brand.700'
-                              : isDark
-                                ? 'gray.300'
-                                : 'gray.600',
-                            transition: 'all 0.15s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '1',
-                            flexShrink: 0,
-                            position: 'relative',
-                            _hover: {
-                              borderColor: 'brand.400',
-                            },
-                            '@container (max-width: 280px)': {
-                              minW: '7',
-                              h: '7',
-                              fontSize: '2xs',
-                            },
-                          })}
-                        >
-                          {dropdownOptions.includes(pages)
-                            ? pages
-                            : dropdownOptions.length > 0
-                              ? `${dropdownOptions[0]}+`
-                              : '•••'}
-                          <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
-                          {/* Warning indicator dot - shows mildest warning from all dropdown items */}
-                          {getDropdownMildestWarning() !== 'none' && (
-                            <span
-                              className={css({
-                                position: 'absolute',
-                                top: '-1',
-                                right: '-1',
-                                w: '2',
-                                h: '2',
-                                bg:
-                                  getDropdownMildestWarning() === 'danger'
-                                    ? 'red.500'
-                                    : 'yellow.500',
-                                rounded: 'full',
-                              })}
-                            />
-                          )}
-                        </button>
-                      </DropdownMenu.Trigger>
-                    </Tooltip.Trigger>
-                    {dropdownOptions.includes(pages) &&
-                      getTooltipMessage(getValidationForPageCount(pages)) && (
-                      <Tooltip.Portal>
-                        <Tooltip.Content
-                          className={css({
-                            bg: isDark ? 'gray.800' : 'white',
-                            color: isDark ? 'gray.100' : 'gray.900',
-                            px: '3',
-                            py: '2',
-                            rounded: 'lg',
-                            shadow: 'lg',
-                            border: '1px solid',
-                            borderColor: isDark ? 'gray.600' : 'gray.200',
-                            maxW: '64',
-                            fontSize: 'xs',
-                            lineHeight: '1.5',
-                            whiteSpace: 'pre-wrap',
-                            zIndex: 10000,
-                          })}
-                          sideOffset={5}
-                        >
-                          {getTooltipMessage(getValidationForPageCount(pages))}
-                          <Tooltip.Arrow
+                  <Tooltip.Provider>
+                    <Tooltip.Root
+                      delayDuration={0}
+                      disableHoverableContent={true}
+                      open={
+                        !dropdownOpen &&
+                        dropdownOptions.includes(pages) &&
+                        getTooltipMessage(getValidationForPageCount(pages)) !== null
+                          ? undefined
+                          : false
+                      }
+                    >
+                      <Tooltip.Trigger asChild>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            type="button"
+                            data-action="open-pages-dropdown"
                             className={css({
-                              fill: isDark ? 'gray.800' : 'white',
+                              minW: '8',
+                              h: '8',
+                              px: '2',
+                              border: '2px solid',
+                              borderColor: dropdownOptions.includes(pages)
+                                ? 'brand.500'
+                                : isDark
+                                  ? 'gray.600'
+                                  : 'gray.300',
+                              bg: dropdownOptions.includes(pages)
+                                ? isDark
+                                  ? 'brand.900'
+                                  : 'brand.50'
+                                : isDark
+                                  ? 'gray.700'
+                                  : 'white',
+                              rounded: 'lg',
+                              cursor: 'pointer',
+                              fontSize: 'xs',
+                              fontWeight: 'bold',
+                              color: dropdownOptions.includes(pages)
+                                ? isDark
+                                  ? 'brand.200'
+                                  : 'brand.700'
+                                : isDark
+                                  ? 'gray.300'
+                                  : 'gray.600',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '1',
+                              flexShrink: 0,
+                              position: 'relative',
+                              _hover: {
+                                borderColor: 'brand.400',
+                              },
+                              '@container (max-width: 280px)': {
+                                minW: '7',
+                                h: '7',
+                                fontSize: '2xs',
+                              },
                             })}
-                          />
-                        </Tooltip.Content>
-                      </Tooltip.Portal>
-                    )}
-                  </Tooltip.Root>
-                </Tooltip.Provider>
-
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    className={css({
-                      bg: isDark ? 'gray.800' : 'white',
-                      rounded: 'lg',
-                      shadow: 'modal',
-                      border: '1px solid',
-                      borderColor: isDark ? 'gray.700' : 'gray.200',
-                      p: '2',
-                      minW: '24',
-                      zIndex: 50,
-                    })}
-                    sideOffset={5}
-                  >
-                    {dropdownOptions.map((pageCount) => {
-                      const isSelected = pages === pageCount
-                      const validation = getValidationForPageCount(pageCount)
-                      const risk = getRiskLevel(validation)
-                      const tooltipMessage = getTooltipMessage(validation)
-
-                      const menuItem = (
-                        <DropdownMenu.Item
-                          key={pageCount}
-                          data-action={`select-pages-${pageCount}`}
-                          onSelect={() => onPagesChange(pageCount)}
-                          className={
-                            isDark
-                              ? css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '2',
-                                  px: '3',
-                                  py: '2',
-                                  rounded: 'md',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  fontSize: 'sm',
-                                  fontWeight: isSelected ? 'semibold' : 'medium',
-                                  color: isSelected ? 'brand.200' : 'gray.200',
-                                  bg: isSelected ? 'gray.700' : 'transparent',
-                                  position: 'relative',
-                                  _hover: {
-                                    bg: 'gray.700',
-                                  },
-                                  _focus: {
-                                    bg: 'gray.600',
-                                  },
-                                })
-                              : css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '2',
-                                  px: '3',
-                                  py: '2',
-                                  rounded: 'md',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  fontSize: 'sm',
-                                  fontWeight: isSelected ? 'semibold' : 'medium',
-                                  color: isSelected ? 'brand.700' : 'gray.700',
-                                  bg: isSelected ? 'brand.50' : 'transparent',
-                                  position: 'relative',
-                                  _hover: {
-                                    bg: 'brand.50',
-                                  },
-                                  _focus: {
-                                    bg: 'brand.100',
-                                  },
-                                })
-                          }
-                        >
-                          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-                            {/* Warning indicator dot (same style as page buttons 1-3) */}
-                            {risk !== 'none' && (
+                          >
+                            {dropdownOptions.includes(pages)
+                              ? pages
+                              : dropdownOptions.length > 0
+                                ? `${dropdownOptions[0]}+`
+                                : '•••'}
+                            <span className={css({ fontSize: '2xs', opacity: 0.7 })}>▼</span>
+                            {/* Warning indicator dot - shows mildest warning from all dropdown items */}
+                            {getDropdownMildestWarning() !== 'none' && (
                               <span
                                 className={css({
+                                  position: 'absolute',
+                                  top: '-1',
+                                  right: '-1',
                                   w: '2',
                                   h: '2',
-                                  bg: risk === 'danger' ? 'red.500' : 'yellow.500',
+                                  bg:
+                                    getDropdownMildestWarning() === 'danger'
+                                      ? 'red.500'
+                                      : 'yellow.500',
                                   rounded: 'full',
-                                  flexShrink: 0,
                                 })}
                               />
                             )}
-                            <span>{pageCount} pages</span>
-                          </div>
-                          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-                            {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
-                          </div>
-                        </DropdownMenu.Item>
-                      )
+                          </button>
+                        </DropdownMenu.Trigger>
+                      </Tooltip.Trigger>
+                      {dropdownOptions.includes(pages) &&
+                        getTooltipMessage(getValidationForPageCount(pages)) && (
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              className={css({
+                                bg: isDark ? 'gray.800' : 'white',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                                px: '3',
+                                py: '2',
+                                rounded: 'lg',
+                                shadow: 'lg',
+                                border: '1px solid',
+                                borderColor: isDark ? 'gray.600' : 'gray.200',
+                                maxW: '64',
+                                fontSize: 'xs',
+                                lineHeight: '1.5',
+                                whiteSpace: 'pre-wrap',
+                                zIndex: 10000,
+                              })}
+                              sideOffset={5}
+                            >
+                              {getTooltipMessage(getValidationForPageCount(pages))}
+                              <Tooltip.Arrow
+                                className={css({
+                                  fill: isDark ? 'gray.800' : 'white',
+                                })}
+                              />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        )}
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
 
-                      // Wrap in tooltip if there's a warning message
-                      if (tooltipMessage) {
-                        return (
-                          <Tooltip.Provider key={pageCount}>
-                            <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
-                              <Tooltip.Trigger asChild>{menuItem}</Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  className={css({
-                                    bg: isDark ? 'gray.800' : 'white',
-                                    color: isDark ? 'gray.100' : 'gray.900',
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      className={css({
+                        bg: isDark ? 'gray.800' : 'white',
+                        rounded: 'lg',
+                        shadow: 'modal',
+                        border: '1px solid',
+                        borderColor: isDark ? 'gray.700' : 'gray.200',
+                        p: '2',
+                        minW: '24',
+                        zIndex: 50,
+                      })}
+                      sideOffset={5}
+                    >
+                      {dropdownOptions.map((pageCount) => {
+                        const isSelected = pages === pageCount
+                        const validation = getValidationForPageCount(pageCount)
+                        const risk = getRiskLevel(validation)
+                        const tooltipMessage = getTooltipMessage(validation)
+
+                        const menuItem = (
+                          <DropdownMenu.Item
+                            key={pageCount}
+                            data-action={`select-pages-${pageCount}`}
+                            onSelect={() => onPagesChange(pageCount)}
+                            className={
+                              isDark
+                                ? css({
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '2',
                                     px: '3',
                                     py: '2',
-                                    rounded: 'lg',
-                                    shadow: 'lg',
-                                    border: '1px solid',
-                                    borderColor: isDark ? 'gray.600' : 'gray.200',
-                                    maxW: '80',
-                                    fontSize: 'xs',
-                                    lineHeight: '1.5',
-                                    whiteSpace: 'pre-wrap',
-                                    zIndex: 10000,
+                                    rounded: 'md',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    fontSize: 'sm',
+                                    fontWeight: isSelected ? 'semibold' : 'medium',
+                                    color: isSelected ? 'brand.200' : 'gray.200',
+                                    bg: isSelected ? 'gray.700' : 'transparent',
+                                    position: 'relative',
+                                    _hover: {
+                                      bg: 'gray.700',
+                                    },
+                                    _focus: {
+                                      bg: 'gray.600',
+                                    },
+                                  })
+                                : css({
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '2',
+                                    px: '3',
+                                    py: '2',
+                                    rounded: 'md',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    fontSize: 'sm',
+                                    fontWeight: isSelected ? 'semibold' : 'medium',
+                                    color: isSelected ? 'brand.700' : 'gray.700',
+                                    bg: isSelected ? 'brand.50' : 'transparent',
+                                    position: 'relative',
+                                    _hover: {
+                                      bg: 'brand.50',
+                                    },
+                                    _focus: {
+                                      bg: 'brand.100',
+                                    },
+                                  })
+                            }
+                          >
+                            <div
+                              className={css({ display: 'flex', gap: '2', alignItems: 'center' })}
+                            >
+                              {/* Warning indicator dot (same style as page buttons 1-3) */}
+                              {risk !== 'none' && (
+                                <span
+                                  className={css({
+                                    w: '2',
+                                    h: '2',
+                                    bg: risk === 'danger' ? 'red.500' : 'yellow.500',
+                                    rounded: 'full',
+                                    flexShrink: 0,
                                   })}
-                                  side="left"
-                                  sideOffset={5}
-                                >
-                                  {tooltipMessage}
-                                  <Tooltip.Arrow
-                                    className={css({
-                                      fill: isDark ? 'gray.800' : 'white',
-                                    })}
-                                  />
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                                />
+                              )}
+                              <span>{pageCount} pages</span>
+                            </div>
+                            <div
+                              className={css({ display: 'flex', gap: '2', alignItems: 'center' })}
+                            >
+                              {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
+                            </div>
+                          </DropdownMenu.Item>
                         )
-                      }
 
-                      return menuItem
-                    })}
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
+                        // Wrap in tooltip if there's a warning message
+                        if (tooltipMessage) {
+                          return (
+                            <Tooltip.Provider key={pageCount}>
+                              <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
+                                <Tooltip.Trigger asChild>{menuItem}</Tooltip.Trigger>
+                                <Tooltip.Portal>
+                                  <Tooltip.Content
+                                    className={css({
+                                      bg: isDark ? 'gray.800' : 'white',
+                                      color: isDark ? 'gray.100' : 'gray.900',
+                                      px: '3',
+                                      py: '2',
+                                      rounded: 'lg',
+                                      shadow: 'lg',
+                                      border: '1px solid',
+                                      borderColor: isDark ? 'gray.600' : 'gray.200',
+                                      maxW: '80',
+                                      fontSize: 'xs',
+                                      lineHeight: '1.5',
+                                      whiteSpace: 'pre-wrap',
+                                      zIndex: 10000,
+                                    })}
+                                    side="left"
+                                    sideOffset={5}
+                                  >
+                                    {tooltipMessage}
+                                    <Tooltip.Arrow
+                                      className={css({
+                                        fill: isDark ? 'gray.800' : 'white',
+                                      })}
+                                    />
+                                  </Tooltip.Content>
+                                </Tooltip.Portal>
+                              </Tooltip.Root>
+                            </Tooltip.Provider>
+                          )
+                        }
+
+                        return menuItem
+                      })}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
               ) : null}
             </div>
           </div>

@@ -1,8 +1,73 @@
-// @ts-ignore - ESM/CommonJS compatibility
 import World from '@svg-maps/world'
-// @ts-ignore - ESM/CommonJS compatibility
 import USA from '@svg-maps/usa'
 import type { MapData, MapRegion } from './types'
+
+/**
+ * Difficulty level configuration for a map
+ */
+export interface DifficultyLevel {
+  id: string // e.g., 'easy', 'medium', 'hard', 'standard'
+  label: string // Display name
+  emoji?: string // Optional emoji
+  description?: string // Optional description for UI
+  // Filtering: either explicit exclusions OR percentage
+  excludeRegions?: string[] // Explicit region IDs to exclude
+  keepPercentile?: number // 0-1, keep this % of largest regions (default 1.0)
+}
+
+/**
+ * Per-map difficulty configuration
+ */
+export interface MapDifficultyConfig {
+  levels: DifficultyLevel[]
+  defaultLevel: string // ID of default level
+}
+
+/**
+ * Global default difficulty config for maps without custom config
+ */
+export const DEFAULT_DIFFICULTY_CONFIG: MapDifficultyConfig = {
+  levels: [
+    {
+      id: 'easy',
+      label: 'Easy',
+      emoji: '😊',
+      description: '85% largest regions',
+      keepPercentile: 0.85,
+    },
+    {
+      id: 'medium',
+      label: 'Medium',
+      emoji: '🙂',
+      description: '98% largest regions',
+      keepPercentile: 0.98,
+    },
+    {
+      id: 'hard',
+      label: 'Hard',
+      emoji: '😰',
+      description: 'All regions',
+      keepPercentile: 1.0,
+    },
+  ],
+  defaultLevel: 'medium',
+}
+
+/**
+ * USA map difficulty config - single level, all regions
+ */
+export const USA_DIFFICULTY_CONFIG: MapDifficultyConfig = {
+  levels: [
+    {
+      id: 'standard',
+      label: 'All States',
+      emoji: '🗺️',
+      description: 'All 50 states + DC',
+      keepPercentile: 1.0,
+    },
+  ],
+  defaultLevel: 'standard',
+}
 
 /**
  * Calculate the centroid (center of mass) of an SVG path
@@ -210,6 +275,7 @@ export const USA_MAP: MapData = {
   name: USA.label || 'Map of USA',
   viewBox: USA.viewBox,
   regions: convertToMapRegions(USA.locations || []),
+  difficultyConfig: USA_DIFFICULTY_CONFIG, // Single "Standard" level (all states)
 }
 
 // Log to help debug if data is missing
@@ -499,21 +565,130 @@ export function calculateContinentViewBox(
 }
 
 /**
- * Get filtered map data for a continent
+ * Calculate SVG bounding box area for a region path
+ */
+function calculateRegionArea(pathString: string): number {
+  const numbers = pathString.match(/-?\d+\.?\d*/g)?.map(Number) || []
+
+  if (numbers.length === 0) {
+    return 0
+  }
+
+  const xCoords: number[] = []
+  const yCoords: number[] = []
+
+  for (let i = 0; i < numbers.length; i += 2) {
+    xCoords.push(numbers[i])
+    if (i + 1 < numbers.length) {
+      yCoords.push(numbers[i + 1])
+    }
+  }
+
+  if (xCoords.length === 0 || yCoords.length === 0) {
+    return 0
+  }
+
+  const minX = Math.min(...xCoords)
+  const maxX = Math.max(...xCoords)
+  const minY = Math.min(...yCoords)
+  const maxY = Math.max(...yCoords)
+
+  const width = maxX - minX
+  const height = maxY - minY
+
+  return width * height
+}
+
+/**
+ * Filter regions based on difficulty level configuration
+ * Supports both explicit region exclusions and percentile-based filtering
+ */
+function filterRegionsByDifficulty(regions: MapRegion[], level: DifficultyLevel): MapRegion[] {
+  // Explicit exclusions take priority
+  if (level.excludeRegions && level.excludeRegions.length > 0) {
+    const filtered = regions.filter((r) => !level.excludeRegions!.includes(r.id))
+    console.log(
+      `[Difficulty Filter] ${level.id} mode: ${filtered.length}/${regions.length} regions (excluded: ${level.excludeRegions.join(', ')})`
+    )
+    return filtered
+  }
+
+  // Use percentile filtering
+  const percentile = level.keepPercentile ?? 1.0
+  if (percentile >= 1.0) {
+    return regions // Include all regions
+  }
+
+  // Calculate areas for all regions
+  const regionsWithAreas = regions.map((region) => ({
+    region,
+    area: calculateRegionArea(region.path),
+  }))
+
+  // Sort by area (largest first)
+  regionsWithAreas.sort((a, b) => b.area - a.area)
+
+  // Keep top N% of largest regions
+  const keepCount = Math.ceil(regions.length * percentile)
+  const filtered = regionsWithAreas.slice(0, keepCount).map((item) => item.region)
+
+  // Debug logging
+  const excluded = regionsWithAreas.slice(keepCount)
+  if (excluded.length > 0) {
+    console.log(
+      `[Difficulty Filter] EXCLUDED (smallest ${excluded.length}):`,
+      excluded.map((item) => `${item.region.name} (${item.area.toFixed(0)} units²)`)
+    )
+  }
+
+  console.log(
+    `[Difficulty Filter] ${level.id} mode: ${filtered.length}/${regions.length} regions (top ${(percentile * 100).toFixed(0)}%)`
+  )
+  return filtered
+}
+
+/**
+ * Get filtered map data for a continent and difficulty
  */
 export function getFilteredMapData(
   mapId: 'world' | 'usa',
-  continentId: ContinentId | 'all'
+  continentId: ContinentId | 'all',
+  difficultyLevelId?: string // Optional difficulty level ID (uses map's default if not provided)
 ): MapData {
   const mapData = getMapData(mapId)
 
-  // Continent filtering only applies to world map
-  if (mapId !== 'world' || continentId === 'all') {
-    return mapData
+  // Get difficulty config for this map (or use global default)
+  const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
+
+  // Find the difficulty level by ID (or use default)
+  const levelId = difficultyLevelId || difficultyConfig.defaultLevel
+  const difficultyLevel = difficultyConfig.levels.find((level) => level.id === levelId)
+
+  if (!difficultyLevel) {
+    console.warn(
+      `[getFilteredMapData] Difficulty level "${levelId}" not found for map "${mapId}". Using default.`
+    )
+    const defaultLevel = difficultyConfig.levels.find(
+      (level) => level.id === difficultyConfig.defaultLevel
+    )
+    if (!defaultLevel) {
+      throw new Error(`Invalid difficulty config for map "${mapId}": no default level found`)
+    }
   }
 
-  const filteredRegions = filterRegionsByContinent(mapData.regions, continentId)
-  const adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+  const level = difficultyLevel || difficultyConfig.levels[0]
+
+  let filteredRegions = mapData.regions
+  let adjustedViewBox = mapData.viewBox
+
+  // Apply continent filtering for world map
+  if (mapId === 'world' && continentId !== 'all') {
+    filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+  }
+
+  // Apply difficulty filtering
+  filteredRegions = filterRegionsByDifficulty(filteredRegions, level)
 
   return {
     ...mapData,

@@ -58,16 +58,23 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Need at least 1 player' }
     }
 
-    // Get map data and shuffle regions (with continent filter if applicable)
-    const mapData = getFilteredMapData(selectedMap, state.selectedContinent)
+    // Get map data and shuffle regions (with continent and difficulty filters)
+    const mapData = getFilteredMapData(selectedMap, state.selectedContinent, difficulty)
     console.log('[KnowYourWorld Validator] Map data loaded:', {
       map: mapData.id,
       continent: state.selectedContinent,
+      difficulty,
       regionsCount: mapData.regions.length,
+      regionIds: mapData.regions.map((r) => r.id).slice(0, 10),
+      regionNames: mapData.regions.map((r) => r.name).slice(0, 10),
     })
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
-    console.log('[KnowYourWorld Validator] First region to find:', shuffledRegions[0])
+    console.log('[KnowYourWorld Validator] First region to find:', {
+      id: shuffledRegions[0],
+      name: mapData.regions.find((r) => r.id === shuffledRegions[0])?.name,
+      totalShuffled: shuffledRegions.length,
+    })
 
     // Initialize scores and attempts
     const scores: Record<string, number> = {}
@@ -223,8 +230,8 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Can only start next round from results' }
     }
 
-    // Get map data and shuffle regions (with continent filter if applicable)
-    const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent)
+    // Get map data and shuffle regions (with continent and difficulty filters)
+    const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent, state.difficulty)
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 
@@ -301,10 +308,7 @@ export class KnowYourWorldValidator
     return { valid: true, newState }
   }
 
-  private validateSetDifficulty(
-    state: KnowYourWorldState,
-    difficulty: 'easy' | 'hard'
-  ): ValidationResult {
+  private validateSetDifficulty(state: KnowYourWorldState, difficulty: string): ValidationResult {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Can only change difficulty during setup' }
     }

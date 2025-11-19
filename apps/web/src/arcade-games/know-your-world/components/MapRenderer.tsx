@@ -13,6 +13,8 @@ import {
   getLabelTextShadow,
 } from '../mapColors'
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
+import { getMapData, getFilteredMapData, filterRegionsByContinent } from '../maps'
+import type { ContinentId } from '../continents'
 
 interface BoundingBox {
   minX: number
@@ -28,7 +30,9 @@ interface MapRendererProps {
   mapData: MapData
   regionsFound: string[]
   currentPrompt: string | null
-  difficulty: 'easy' | 'hard'
+  difficulty: string // Difficulty level ID
+  selectedMap: 'world' | 'usa' // Map ID for calculating excluded regions
+  selectedContinent: string // Continent ID for calculating excluded regions
   onRegionClick: (regionId: string, regionName: string) => void
   guessHistory: Array<{
     playerId: string
@@ -99,6 +103,8 @@ export function MapRenderer({
   regionsFound,
   currentPrompt,
   difficulty,
+  selectedMap,
+  selectedContinent,
   onRegionClick,
   guessHistory,
   playerMetadata,
@@ -115,6 +121,37 @@ export function MapRenderer({
   } = forceTuning
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Calculate excluded regions (regions filtered out by difficulty/continent)
+  const excludedRegions = useMemo(() => {
+    // Get full unfiltered map data
+    const fullMapData = getMapData(selectedMap)
+    let allRegions = fullMapData.regions
+
+    // Apply continent filter if world map
+    if (selectedMap === 'world' && selectedContinent !== 'all') {
+      allRegions = filterRegionsByContinent(allRegions, selectedContinent as ContinentId)
+    }
+
+    // Find regions in full data that aren't in filtered data
+    const includedRegionIds = new Set(mapData.regions.map((r) => r.id))
+    const excluded = allRegions.filter((r) => !includedRegionIds.has(r.id))
+
+    console.log('[MapRenderer] Excluded regions by difficulty:', {
+      total: allRegions.length,
+      included: includedRegionIds.size,
+      excluded: excluded.length,
+      excludedNames: excluded.map((r) => r.name),
+    })
+
+    return excluded
+  }, [mapData, selectedMap, selectedContinent])
+
+  // Create a set of excluded region IDs for quick lookup
+  const excludedRegionIds = useMemo(
+    () => new Set(excludedRegions.map((r) => r.id)),
+    [excludedRegions]
+  )
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -123,14 +160,55 @@ export function MapRenderer({
   const [showMagnifier, setShowMagnifier] = useState(false)
   const [targetZoom, setTargetZoom] = useState(10)
   const [targetOpacity, setTargetOpacity] = useState(0)
+  const [targetTop, setTargetTop] = useState(20)
+  const [targetLeft, setTargetLeft] = useState(20)
+
+  // Precision mode: automatic cursor dampening when over small regions
+  const lastCursorRef = useRef<{ x: number; y: number } | null>(null)
+  const lastMoveTimeRef = useRef<number>(Date.now())
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [precisionMode, setPrecisionMode] = useState(false)
+  const [superZoomActive, setSuperZoomActive] = useState(false)
+  const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
+
+  // Configuration
+  const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
+  const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels dampening/zoom
+  const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
+
+  // Adaptive dampening based on smallest region size
+  // For sub-pixel regions (< 1px): 3% speed (ultra precision)
+  // For tiny regions (1-5px): 10% speed (high precision)
+  // For small regions (5-15px): 25% speed (moderate precision)
+  const getDampeningFactor = (size: number): number => {
+    if (size < 1) return 0.03 // Ultra precision for sub-pixel regions like Gibraltar (0.08px)
+    if (size < 5) return 0.1 // High precision for regions like Jersey (0.82px)
+    return 0.25 // Moderate precision for regions like Rhode Island (11px)
+  }
 
   // Animated spring values for smooth transitions
+  // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
+  // Position animates with medium speed (300ms)
   const magnifierSpring = useSpring({
     zoom: targetZoom,
     opacity: targetOpacity,
-    config: {
-      tension: 200,
-      friction: 25,
+    top: targetTop,
+    left: targetLeft,
+    config: (key) => {
+      if (key === 'opacity') {
+        return targetOpacity === 1
+          ? { duration: 100 } // Fade in: 0.1 seconds
+          : { duration: 1000 } // Fade out: 1 second
+      }
+      // Position and zoom: medium speed
+      return { tension: 200, friction: 25 }
+    },
+    onChange: (result) => {
+      console.log('[Magnifier Spring] Animating:', {
+        opacity: result.value.opacity?.toFixed(2),
+        top: result.value.top?.toFixed(0),
+        left: result.value.left?.toFixed(0),
+      })
     },
   })
 
@@ -213,7 +291,8 @@ export function MapRenderer({
 
       const allLabelNodes: LabelNode[] = []
 
-      mapData.regions.forEach((region) => {
+      // Process both included regions and excluded regions for labeling
+      ;[...mapData.regions, ...excludedRegions].forEach((region) => {
         // Calculate centroid pixel position directly from SVG coordinates
         // Account for SVG offset within container (padding, etc.)
         const centroidPixelX = (region.center[0] - viewBoxX) * scaleX + svgOffsetX
@@ -243,7 +322,12 @@ export function MapRenderer({
 
         // Collect label nodes for regions that need labels
         // Only show arrow labels for small regions if showArrows flag is enabled
-        const shouldShowLabel = regionsFound.includes(region.id) || (isSmall && showArrows)
+        // Exception: Washington DC always gets arrow label (too small on USA map)
+        const isDC = region.id === 'dc'
+        const isExcluded = excludedRegionIds.has(region.id)
+        // Show label if: region is found, OR region is excluded (pre-found), OR it's small and arrows enabled
+        const shouldShowLabel =
+          regionsFound.includes(region.id) || isExcluded || (isSmall && (showArrows || isDC))
 
         if (shouldShowLabel) {
           const players = regionsFound.includes(region.id)
@@ -256,19 +340,32 @@ export function MapRenderer({
           const labelWidth = region.name.length * 7 + 15
           const labelHeight = isSmall ? 25 : 30
 
-          allLabelNodes.push({
-            id: region.id,
-            name: region.name,
-            x: pixelX, // Start directly on region - will spread out to avoid collisions
-            y: pixelY,
-            targetX: pixelX, // Anchor point to pull back toward
-            targetY: pixelY,
-            width: labelWidth,
-            height: labelHeight,
-            isFound: regionsFound.includes(region.id),
-            isSmall,
-            players,
-          })
+          // Regular found states (non-small) get positioned exactly at centroid
+          // Only small regions go through force simulation
+          if (isSmall) {
+            allLabelNodes.push({
+              id: region.id,
+              name: region.name,
+              x: pixelX, // Start directly on region - will spread out to avoid collisions
+              y: pixelY,
+              targetX: pixelX, // Anchor point to pull back toward
+              targetY: pixelY,
+              width: labelWidth,
+              height: labelHeight,
+              isFound: regionsFound.includes(region.id),
+              isSmall,
+              players,
+            })
+          } else {
+            // Add directly to positions array - no force simulation
+            positions.push({
+              regionId: region.id,
+              regionName: region.name,
+              x: pixelX,
+              y: pixelY,
+              players: players || [],
+            })
+          }
         }
       })
 
@@ -415,12 +512,18 @@ export function MapRenderer({
           }
         }
 
-        // Extract positions from simulation results
+        // Extract positions from simulation results (only small regions now)
         for (const node of allLabelNodes) {
-          if (node.isSmall) {
+          // Special handling for Washington DC - position off the map to avoid blocking other states
+          if (node.id === 'dc') {
+            // Position DC label to the right of the map, outside the main map area
+            const containerWidth = containerRect.width
+            const labelX = containerWidth - 80 // 80px from right edge
+            const labelY = svgOffsetY + svgRect.height * 0.35 // Upper-middle area
+
             const arrowStart = getArrowStartPoint(
-              node.x!,
-              node.y!,
+              labelX,
+              labelY,
               node.width,
               node.height,
               node.targetX,
@@ -431,22 +534,37 @@ export function MapRenderer({
               regionId: node.id,
               regionName: node.name,
               isFound: node.isFound,
-              labelX: node.x!,
-              labelY: node.y!,
+              labelX: labelX,
+              labelY: labelY,
               lineStartX: arrowStart.x,
               lineStartY: arrowStart.y,
               lineEndX: node.targetX,
               lineEndY: node.targetY,
             })
-          } else {
-            positions.push({
-              regionId: node.id,
-              regionName: node.name,
-              x: node.x!,
-              y: node.y!,
-              players: node.players || [],
-            })
+            continue // Skip normal processing
           }
+
+          // All remaining nodes are small regions (non-small are added directly to positions)
+          const arrowStart = getArrowStartPoint(
+            node.x!,
+            node.y!,
+            node.width,
+            node.height,
+            node.targetX,
+            node.targetY
+          )
+
+          smallPositions.push({
+            regionId: node.id,
+            regionName: node.name,
+            isFound: node.isFound,
+            labelX: node.x!,
+            labelY: node.y!,
+            lineStartX: arrowStart.x,
+            lineStartY: arrowStart.y,
+            lineEndX: node.targetX,
+            lineEndY: node.targetY,
+          })
         }
       }
 
@@ -473,7 +591,7 @@ export function MapRenderer({
       clearTimeout(timeoutId)
       window.removeEventListener('resize', updateLabelPositions)
     }
-  }, [mapData, regionsFound, guessHistory, svgDimensions])
+  }, [mapData, regionsFound, guessHistory, svgDimensions, excludedRegions, excludedRegionIds])
 
   // Calculate viewBox dimensions for label offset calculations
   const viewBoxParts = mapData.viewBox.split(' ').map(Number)
@@ -484,8 +602,14 @@ export function MapRenderer({
     // Easy mode: always show outlines
     if (difficulty === 'easy') return true
 
-    // Hard mode: only show outline on hover or if found
+    // Medium/Hard mode: only show outline on hover or if found
     return hoveredRegion === region.id || regionsFound.includes(region.id)
+  }
+
+  // Helper: Get the player who found a specific region
+  const getPlayerWhoFoundRegion = (regionId: string): string | null => {
+    const guess = guessHistory.find((g) => g.regionId === regionId && g.correct)
+    return guess?.playerId || null
   }
 
   // Handle mouse movement to track cursor and show magnifier when needed
@@ -506,24 +630,118 @@ export function MapRenderer({
       e.clientY >= svgRect.top &&
       e.clientY <= svgRect.bottom
 
+    // Don't hide magnifier if mouse is still in container (just moved to padding/magnifier area)
+    // Only update cursor position and check for regions if over SVG
     if (!isOverSvg) {
-      setShowMagnifier(false)
-      setTargetOpacity(0)
-      setCursorPosition(null)
+      // Keep magnifier visible but frozen at last position
+      // It will be hidden by handleMouseLeave when mouse exits container
       return
     }
 
-    setCursorPosition({ x: cursorX, y: cursorY })
+    // Calculate mouse velocity for quick-escape detection
+    const now = Date.now()
+    const timeDelta = now - lastMoveTimeRef.current
+    let velocity = 0
+
+    if (lastCursorRef.current && timeDelta > 0) {
+      const deltaX = cursorX - lastCursorRef.current.x
+      const deltaY = cursorY - lastCursorRef.current.y
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+      velocity = distance // Distance in pixels (effectively pixels per frame)
+    }
+
+    // Quick escape: If moving fast, cancel dampening and super zoom
+    if (velocity > QUICK_MOVE_THRESHOLD) {
+      console.log(
+        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px) - canceling precision mode and super zoom`
+      )
+      setPrecisionMode(false)
+      setSuperZoomActive(false)
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current)
+        hoverTimerRef.current = null
+      }
+    }
+
+    lastMoveTimeRef.current = now
+
+    // Apply cursor dampening in precision mode for better control over small regions
+    let finalCursorX = cursorX
+    let finalCursorY = cursorY
+
+    // Calculate adaptive dampening factor based on smallest region
+    const dampeningFactor = getDampeningFactor(smallestRegionSize)
+
+    console.log('[Precision Mode] Before dampening:', {
+      precisionMode,
+      hasLastCursor: !!lastCursorRef.current,
+      rawCursor: { x: cursorX, y: cursorY },
+      velocity: velocity.toFixed(0) + 'px/frame',
+      smallestRegionSize: smallestRegionSize.toFixed(2),
+      dampeningFactor,
+    })
+
+    if (precisionMode && lastCursorRef.current) {
+      // Interpolate cursor position: dampen movement by moving only a fraction of the distance
+      const deltaX = cursorX - lastCursorRef.current.x
+      const deltaY = cursorY - lastCursorRef.current.y
+      finalCursorX = lastCursorRef.current.x + deltaX * dampeningFactor
+      finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor
+
+      console.log('[Precision Mode] ✅ DAMPENING ACTIVE:', {
+        actual: { x: cursorX.toFixed(2), y: cursorY.toFixed(2) },
+        last: {
+          x: lastCursorRef.current.x.toFixed(2),
+          y: lastCursorRef.current.y.toFixed(2),
+        },
+        delta: { x: deltaX.toFixed(2), y: deltaY.toFixed(2) },
+        dampened: { x: finalCursorX.toFixed(2), y: finalCursorY.toFixed(2) },
+        smallestRegionSize: smallestRegionSize.toFixed(2) + 'px',
+        dampeningFactor: `${(dampeningFactor * 100).toFixed(0)}%`,
+      })
+    } else {
+      console.log('[Precision Mode] ❌ NO DAMPENING:', {
+        reason: !precisionMode
+          ? 'precisionMode is false'
+          : !lastCursorRef.current
+            ? 'no last cursor position'
+            : 'unknown',
+        precisionMode,
+        hasLastCursor: !!lastCursorRef.current,
+      })
+    }
+
+    // Update last cursor position for next frame
+    lastCursorRef.current = { x: finalCursorX, y: finalCursorY }
+
+    setCursorPosition({ x: finalCursorX, y: finalCursorY })
 
     // Define 50px × 50px detection box around cursor
     const detectionBoxSize = 50
     const halfBox = detectionBoxSize / 2
 
+    // Convert dampened cursor position back to client coordinates for region detection
+    // This ensures the detection box matches the crosshairs in the magnifier
+    const finalClientX = containerRect.left + finalCursorX
+    const finalClientY = containerRect.top + finalCursorY
+
+    console.log('[Region Detection] Using dampened cursor position:', {
+      raw: { x: e.clientX, y: e.clientY },
+      dampened: { x: finalClientX.toFixed(0), y: finalClientY.toFixed(0) },
+      delta: {
+        x: (finalClientX - e.clientX).toFixed(0),
+        y: (finalClientY - e.clientY).toFixed(0),
+      },
+    })
+
     // Count regions in the detection box and track their sizes
     let regionsInBox = 0
     let hasSmallRegion = false
     let totalRegionArea = 0
-    let smallestRegionSize = Infinity
+    let detectedSmallestSize = Infinity
+    const detectedRegions: string[] = []
+    let regionUnderCursor: string | null = null
+    let smallestDistanceToCenter = Infinity
 
     mapData.regions.forEach((region) => {
       const regionPath = svgRef.current?.querySelector(`path[data-region-id="${region.id}"]`)
@@ -531,11 +749,11 @@ export function MapRenderer({
 
       const pathRect = regionPath.getBoundingClientRect()
 
-      // Check if region overlaps with detection box
-      const boxLeft = e.clientX - halfBox
-      const boxRight = e.clientX + halfBox
-      const boxTop = e.clientY - halfBox
-      const boxBottom = e.clientY + halfBox
+      // Check if region overlaps with detection box (using dampened cursor position)
+      const boxLeft = finalClientX - halfBox
+      const boxRight = finalClientX + halfBox
+      const boxTop = finalClientY - halfBox
+      const boxBottom = finalClientY + halfBox
 
       const regionLeft = pathRect.left
       const regionRight = pathRect.right
@@ -548,23 +766,50 @@ export function MapRenderer({
         regionTop < boxBottom &&
         regionBottom > boxTop
 
+      // Also check if dampened cursor is directly over this region
+      const cursorInRegion =
+        finalClientX >= regionLeft &&
+        finalClientX <= regionRight &&
+        finalClientY >= regionTop &&
+        finalClientY <= regionBottom
+
+      if (cursorInRegion) {
+        // Calculate distance from cursor to region center to find the "best" match
+        const regionCenterX = (regionLeft + regionRight) / 2
+        const regionCenterY = (regionTop + regionBottom) / 2
+        const distanceToCenter = Math.sqrt(
+          (finalClientX - regionCenterX) ** 2 + (finalClientY - regionCenterY) ** 2
+        )
+
+        if (distanceToCenter < smallestDistanceToCenter) {
+          smallestDistanceToCenter = distanceToCenter
+          regionUnderCursor = region.id
+        }
+      }
+
       if (overlaps) {
         regionsInBox++
+        detectedRegions.push(region.id)
 
-        // Check if this region is very small (stricter threshold)
+        // Check if this region is very small (threshold tuned for Rhode Island ~11px)
         const pixelWidth = pathRect.width
         const pixelHeight = pathRect.height
         const pixelArea = pathRect.width * pathRect.height
-        const isVerySmall = pixelWidth < 8 || pixelHeight < 8 || pixelArea < 64
+        const isVerySmall = pixelWidth < 15 || pixelHeight < 15 || pixelArea < 200
 
         if (isVerySmall) {
           hasSmallRegion = true
+          console.log('[Magnifier] Small region detected:', region.id, {
+            width: pixelWidth,
+            height: pixelHeight,
+            area: pixelArea,
+          })
         }
 
-        // Track region sizes for adaptive zoom
+        // Track region sizes for adaptive zoom and dampening
         totalRegionArea += pixelArea
         const regionSize = Math.min(pixelWidth, pixelHeight)
-        smallestRegionSize = Math.min(smallestRegionSize, regionSize)
+        detectedSmallestSize = Math.min(detectedSmallestSize, regionSize)
       }
     })
 
@@ -572,8 +817,71 @@ export function MapRenderer({
     // Base zoom: 8x
     // More regions = more zoom (up to +8x for 10+ regions)
     // Smaller regions = more zoom (up to +8x for very tiny regions)
-    // Stricter threshold: 7+ regions OR very small regions (< 8px)
+    // Show magnifier if: 7+ regions in detection box OR any region smaller than 15px
     const shouldShow = regionsInBox >= 7 || hasSmallRegion
+
+    // Update smallest region size for adaptive cursor dampening
+    if (shouldShow && detectedSmallestSize !== Infinity) {
+      setSmallestRegionSize(detectedSmallestSize)
+    } else {
+      setSmallestRegionSize(Infinity)
+    }
+
+    // Set hover highlighting based on dampened cursor position
+    // This ensures the crosshairs match what's highlighted
+    if (regionUnderCursor !== hoveredRegion) {
+      console.log('[Hover Detection] Region under dampened cursor:', {
+        region: regionUnderCursor,
+        regionName: regionUnderCursor
+          ? mapData.regions.find((r) => r.id === regionUnderCursor)?.name
+          : null,
+        dampenedPos: { x: finalClientX.toFixed(0), y: finalClientY.toFixed(0) },
+        distanceToCenter: smallestDistanceToCenter.toFixed(2) + 'px',
+      })
+      setHoveredRegion(regionUnderCursor)
+    }
+
+    // Enable precision mode (cursor dampening) when magnifier is needed
+    // This gives users more control over tiny regions like Jersey
+    if (shouldShow !== precisionMode) {
+      console.log(
+        `[Precision Mode] ${shouldShow ? '🎯 ENABLING' : '❌ DISABLING'} precision mode (cursor dampening) | Smallest region: ${detectedSmallestSize.toFixed(2)}px`
+      )
+    }
+    setPrecisionMode(shouldShow)
+
+    // Auto super-zoom on hover: If hovering over sub-pixel regions (< 1px), start timer
+    const shouldEnableSuperZoom = detectedSmallestSize < 1 && shouldShow
+    if (shouldEnableSuperZoom && !hoverTimerRef.current && !superZoomActive) {
+      console.log(
+        `[Super Zoom] ⏱️ Starting hover timer (${HOVER_DELAY_MS}ms) for sub-pixel region: ${detectedSmallestSize.toFixed(2)}px`
+      )
+      hoverTimerRef.current = setTimeout(() => {
+        console.log('[Super Zoom] 🔍 ACTIVATING super zoom!')
+        setSuperZoomActive(true)
+        hoverTimerRef.current = null
+      }, HOVER_DELAY_MS)
+    } else if (!shouldEnableSuperZoom && hoverTimerRef.current) {
+      // Cancel timer if we move away from sub-pixel regions
+      console.log('[Super Zoom] ❌ Canceling hover timer (moved away from sub-pixel region)')
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    } else if (!shouldShow && superZoomActive) {
+      // Deactivate super zoom if we move away entirely
+      console.log('[Super Zoom] ❌ Deactivating super zoom (moved away from small regions)')
+      setSuperZoomActive(false)
+    }
+
+    // Debug logging
+    console.log('[Magnifier] Detection:', {
+      detectedRegions,
+      regionsInBox,
+      hasSmallRegion,
+      smallestRegionSize: detectedSmallestSize.toFixed(2) + 'px',
+      shouldShow,
+      precisionMode: shouldShow,
+      cursorPos: { x: e.clientX, y: e.clientY },
+    })
 
     if (shouldShow) {
       let adaptiveZoom = 8 // Base zoom
@@ -583,18 +891,46 @@ export function MapRenderer({
       adaptiveZoom += countFactor * 8
 
       // Add zoom based on smallest region size (tiny regions need more zoom)
-      if (smallestRegionSize !== Infinity) {
-        const sizeFactor = Math.max(0, 1 - smallestRegionSize / 20) // 0 to 1 (1 = very small)
+      if (detectedSmallestSize !== Infinity) {
+        const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1 (1 = very small)
         adaptiveZoom += sizeFactor * 8
       }
 
-      // Clamp zoom between 8x and 24x
-      adaptiveZoom = Math.max(8, Math.min(24, adaptiveZoom))
+      // Clamp zoom between 8x and 24x (or higher if super zoom active)
+      const maxZoom = superZoomActive ? 60 : 24 // Super zoom can go up to 60x
+      adaptiveZoom = Math.max(8, Math.min(maxZoom, adaptiveZoom))
 
+      // Apply super zoom multiplier if active
+      if (superZoomActive) {
+        adaptiveZoom = Math.min(maxZoom, adaptiveZoom * SUPER_ZOOM_MULTIPLIER)
+        console.log(
+          `[Super Zoom] 🔍 Applied ${SUPER_ZOOM_MULTIPLIER}x multiplier: ${adaptiveZoom.toFixed(1)}x zoom`
+        )
+      }
+
+      // Calculate magnifier position (opposite corner from cursor)
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const magnifierWidth = containerRect.width * 0.5
+      const magnifierHeight = magnifierWidth / 2
+      const isLeftHalf = cursorX < containerRect.width / 2
+      const isTopHalf = cursorY < containerRect.height / 2
+
+      const newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
+      const newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
+
+      console.log(
+        '[Magnifier] SHOWING with zoom:',
+        adaptiveZoom,
+        '| Setting opacity to 1, position:',
+        { top: newTop, left: newLeft }
+      )
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
+      setTargetTop(newTop)
+      setTargetLeft(newLeft)
     } else {
+      console.log('[Magnifier] HIDING - not enough regions or too large | Setting opacity to 0')
       setShowMagnifier(false)
       setTargetOpacity(0)
     }
@@ -604,6 +940,15 @@ export function MapRenderer({
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
+    setPrecisionMode(false)
+    setSuperZoomActive(false)
+    lastCursorRef.current = null
+
+    // Clear hover timer if active
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
   }
 
   return (
@@ -629,49 +974,61 @@ export function MapRenderer({
         className={css({
           width: '100%',
           height: 'auto',
-          cursor: 'pointer',
+          cursor: precisionMode ? 'crosshair' : 'pointer',
         })}
       >
         {/* Background */}
         <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
 
-        {/* Render all regions */}
-        {mapData.regions.map((region) => (
-          <g key={region.id}>
-            {/* Region path */}
-            <path
-              data-region-id={region.id}
-              d={region.path}
-              fill={getRegionColor(
-                region.id,
-                regionsFound.includes(region.id),
-                hoveredRegion === region.id,
-                isDark
-              )}
-              stroke={getRegionStroke(regionsFound.includes(region.id), isDark)}
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-              opacity={showOutline(region) ? 1 : 0.3}
-              onMouseEnter={() => setHoveredRegion(region.id)}
-              onMouseLeave={() => setHoveredRegion(null)}
-              onClick={() => onRegionClick(region.id, region.name)}
-              style={{
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            />
+        {/* Render all regions (included + excluded) */}
+        {[...mapData.regions, ...excludedRegions].map((region) => {
+          const isExcluded = excludedRegionIds.has(region.id)
+          const isFound = regionsFound.includes(region.id) || isExcluded // Treat excluded as pre-found
+          const playerId = !isExcluded && isFound ? getPlayerWhoFoundRegion(region.id) : null
 
-            {/* Ghost element for region center position tracking */}
-            <circle
-              cx={region.center[0]}
-              cy={region.center[1]}
-              r={0.1}
-              fill="none"
-              pointerEvents="none"
-              data-ghost-region={region.id}
-            />
-          </g>
-        ))}
+          // Special styling for excluded regions (grayed out, pre-labeled)
+          const fill = isExcluded
+            ? isDark
+              ? '#374151' // gray-700
+              : '#d1d5db' // gray-300
+            : isFound && playerId
+              ? `url(#player-pattern-${playerId})`
+              : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
+
+          return (
+            <g key={region.id}>
+              {/* Region path */}
+              <path
+                data-region-id={region.id}
+                d={region.path}
+                fill={fill}
+                stroke={getRegionStroke(isFound, isDark)}
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+                opacity={showOutline(region) ? 1 : 0.7} // Increased from 0.3 to 0.7 for better visibility
+                // When precision mode is active, hover is controlled by dampened cursor position
+                // Otherwise, use native mouse events
+                onMouseEnter={() => !isExcluded && !precisionMode && setHoveredRegion(region.id)}
+                onMouseLeave={() => !precisionMode && setHoveredRegion(null)}
+                onClick={() => !isExcluded && onRegionClick(region.id, region.name)} // Disable clicks on excluded regions
+                style={{
+                  cursor: isExcluded ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              />
+
+              {/* Ghost element for region center position tracking */}
+              <circle
+                cx={region.center[0]}
+                cy={region.center[1]}
+                r={0.1}
+                fill="none"
+                pointerEvents="none"
+                data-ghost-region={region.id}
+              />
+            </g>
+          )
+        })}
 
         {/* Arrow marker definition */}
         <defs>
@@ -688,6 +1045,29 @@ export function MapRenderer({
           >
             <polygon points="0 0, 10 3, 0 6" fill="#16a34a" />
           </marker>
+
+          {/* Player emoji patterns for region backgrounds */}
+          {Object.values(playerMetadata).map((player) => (
+            <pattern
+              key={`pattern-${player.id}`}
+              id={`player-pattern-${player.id}`}
+              width="60"
+              height="60"
+              patternUnits="userSpaceOnUse"
+            >
+              <rect width="60" height="60" fill={player.color} opacity="0.2" />
+              <text
+                x="30"
+                y="30"
+                fontSize="50"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                opacity="0.5"
+              >
+                {player.emoji}
+              </text>
+            </pattern>
+          ))}
         </defs>
 
         {/* Magnifier region indicator on main map */}
@@ -762,12 +1142,13 @@ export function MapRenderer({
           {/* Region name */}
           <div
             style={{
-              fontSize: '11px',
+              fontSize: '14px',
               fontWeight: 'bold',
               color: getLabelTextColor(isDark, true),
               textShadow: getLabelTextShadow(isDark, true),
               whiteSpace: 'nowrap',
               textAlign: 'center',
+              pointerEvents: 'none',
             }}
           >
             {label.regionName}
@@ -781,6 +1162,7 @@ export function MapRenderer({
                 gap: '2px',
                 marginTop: '2px',
                 justifyContent: 'center',
+                pointerEvents: 'none',
               }}
             >
               {label.players.map((playerId) => {
@@ -800,6 +1182,7 @@ export function MapRenderer({
                       justifyContent: 'center',
                       fontSize: '10px',
                       opacity: 0.9,
+                      pointerEvents: 'none',
                     }}
                   >
                     {player.emoji}
@@ -884,38 +1267,29 @@ export function MapRenderer({
         </div>
       ))}
 
-      {/* Magnifier Window */}
-      {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
+      {/* Magnifier Window - Always rendered when cursor exists, opacity controlled by spring */}
+      {cursorPosition && svgRef.current && containerRef.current && (
         <animated.div
           data-element="magnifier"
+          data-super-zoom={superZoomActive}
           style={{
             position: 'absolute',
-            // Dynamic positioning to avoid cursor
-            ...(() => {
-              const containerRect = containerRef.current!.getBoundingClientRect()
-              const magnifierWidth = containerRect.width * 0.5
-              const magnifierHeight = magnifierWidth / 2
-
-              // Determine which quadrant cursor is in
-              const isLeftHalf = cursorPosition.x < containerRect.width / 2
-              const isTopHalf = cursorPosition.y < containerRect.height / 2
-
-              // Position in opposite corner from cursor
-              return {
-                top: isTopHalf ? 'auto' : '20px',
-                bottom: isTopHalf ? '20px' : 'auto',
-                left: isLeftHalf ? 'auto' : '20px',
-                right: isLeftHalf ? '20px' : 'auto',
-              }
-            })(),
+            // Animated positioning - smoothly moves to opposite corner from cursor
+            top: magnifierSpring.top,
+            left: magnifierSpring.left,
             width: '50%',
             aspectRatio: '2/1',
-            border: `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
+            // Super zoom gets gold border, normal mode gets blue border
+            border: superZoomActive
+              ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
+              : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}`, // blue-400/blue-600
             borderRadius: '12px',
             overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: 100,
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+            boxShadow: superZoomActive
+              ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
+              : '0 10px 40px rgba(0, 0, 0, 0.5)',
             background: isDark ? '#111827' : '#f3f4f6',
             opacity: magnifierSpring.opacity,
           }}
@@ -961,22 +1335,26 @@ export function MapRenderer({
             <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
 
             {/* Render all regions in magnified view */}
-            {mapData.regions.map((region) => (
-              <path
-                key={`mag-${region.id}`}
-                d={region.path}
-                fill={getRegionColor(
-                  region.id,
-                  regionsFound.includes(region.id),
-                  hoveredRegion === region.id,
-                  isDark
-                )}
-                stroke={getRegionStroke(regionsFound.includes(region.id), isDark)}
-                strokeWidth={0.5}
-                vectorEffect="non-scaling-stroke"
-                opacity={showOutline(region) ? 1 : 0.3}
-              />
-            ))}
+            {mapData.regions.map((region) => {
+              const isFound = regionsFound.includes(region.id)
+              const playerId = isFound ? getPlayerWhoFoundRegion(region.id) : null
+              const fill =
+                isFound && playerId
+                  ? `url(#player-pattern-${playerId})`
+                  : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
+
+              return (
+                <path
+                  key={`mag-${region.id}`}
+                  d={region.path}
+                  fill={fill}
+                  stroke={getRegionStroke(isFound, isDark)}
+                  strokeWidth={0.5}
+                  vectorEffect="non-scaling-stroke"
+                  opacity={showOutline(region) ? 1 : 0.3}
+                />
+              )
+            })}
 
             {/* Crosshair at cursor position */}
             <g>

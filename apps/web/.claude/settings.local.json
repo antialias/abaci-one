@@ -46,13 +46,17 @@
       "Bash(npx @biomejs/biome:*)",
       "Bash(git rev-parse:*)",
       "Bash(gh run list:*)",
-      "Bash(npx biome:*)"
+      "Bash(npx biome:*)",
+      "WebFetch(domain:www.macintoshrepository.org)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(node -e:*)",
+      "Bash(npm search:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

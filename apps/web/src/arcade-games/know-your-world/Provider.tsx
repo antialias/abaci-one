@@ -9,6 +9,7 @@ import {
   useUpdateGameConfig,
   useViewerId,
 } from '@/lib/arcade/game-sdk'
+import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
 import type { KnowYourWorldState, KnowYourWorldMove } from './types'
 
 interface KnowYourWorldContextValue {
@@ -28,7 +29,7 @@ interface KnowYourWorldContextValue {
   // Setup actions
   setMap: (map: 'world' | 'usa') => void
   setMode: (mode: 'cooperative' | 'race' | 'turn-based') => void
-  setDifficulty: (difficulty: 'easy' | 'hard') => void
+  setDifficulty: (difficulty: string) => void
   setStudyDuration: (duration: 0 | 30 | 60 | 120) => void
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 }
@@ -81,7 +82,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       gamePhase: 'setup' as const,
       selectedMap: (gameConfig?.selectedMap as 'world' | 'usa') || 'world',
       gameMode: (gameConfig?.gameMode as 'cooperative' | 'race' | 'turn-based') || 'cooperative',
-      difficulty: (gameConfig?.difficulty as 'easy' | 'hard') || 'easy',
+      difficulty: gameConfig?.difficulty || 'medium',
       studyDuration,
       selectedContinent,
       studyTimeRemaining: 0,
@@ -136,42 +137,45 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Action: Click Region
   const clickRegion = useCallback(
     (regionId: string, regionName: string) => {
+      // Use the current player from game state (PLAYER ID, not USER ID)
+      // In turn-based mode, this is the player whose turn it is
+      // In other modes, all moves use the current player ID
       sendMove({
         type: 'CLICK_REGION',
-        playerId: viewerId || 'player-1',
+        playerId: state.currentPlayer, // CRITICAL: Use PLAYER ID from state, not USER ID
         userId: viewerId || '',
         data: { regionId, regionName },
       })
     },
-    [viewerId, sendMove]
+    [viewerId, sendMove, state.currentPlayer]
   )
 
   // Action: Next Round
   const nextRound = useCallback(() => {
     sendMove({
       type: 'NEXT_ROUND',
-      playerId: activePlayers[0] || 'player-1',
+      playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
     })
-  }, [activePlayers, viewerId, sendMove])
+  }, [activePlayers, viewerId, sendMove, state.currentPlayer])
 
   // Action: End Game
   const endGame = useCallback(() => {
     sendMove({
       type: 'END_GAME',
-      playerId: viewerId || 'player-1',
+      playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
     })
-  }, [viewerId, sendMove])
+  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
 
   // Setup Action: Set Map
   const setMap = useCallback(
     (selectedMap: 'world' | 'usa') => {
       sendMove({
         type: 'SET_MAP',
-        playerId: viewerId || 'player-1',
+        playerId: activePlayers[0] || '', // Use first active player
         userId: viewerId || '',
         data: { selectedMap },
       })
@@ -193,7 +197,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         })
       }
     },
-    [viewerId, sendMove, roomData, updateGameConfig]
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
   // Setup Action: Set Mode
@@ -201,7 +205,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     (gameMode: 'cooperative' | 'race' | 'turn-based') => {
       sendMove({
         type: 'SET_MODE',
-        playerId: viewerId || 'player-1',
+        playerId: activePlayers[0] || '', // Use first active player
         userId: viewerId || '',
         data: { gameMode },
       })
@@ -223,15 +227,15 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         })
       }
     },
-    [viewerId, sendMove, roomData, updateGameConfig]
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
   // Setup Action: Set Difficulty
   const setDifficulty = useCallback(
-    (difficulty: 'easy' | 'hard') => {
+    (difficulty: string) => {
       sendMove({
         type: 'SET_DIFFICULTY',
-        playerId: viewerId || 'player-1',
+        playerId: activePlayers[0] || '', // Use first active player
         userId: viewerId || '',
         data: { difficulty },
       })
@@ -253,7 +257,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         })
       }
     },
-    [viewerId, sendMove, roomData, updateGameConfig]
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
   // Setup Action: Set Study Duration
@@ -261,7 +265,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     (studyDuration: 0 | 30 | 60 | 120) => {
       sendMove({
         type: 'SET_STUDY_DURATION',
-        playerId: viewerId || 'player-1',
+        playerId: activePlayers[0] || '', // Use first active player
         userId: viewerId || '',
         data: { studyDuration },
       })
@@ -283,25 +287,25 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         })
       }
     },
-    [viewerId, sendMove, roomData, updateGameConfig]
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
   // Action: End Study
   const endStudy = useCallback(() => {
     sendMove({
       type: 'END_STUDY',
-      playerId: viewerId || 'player-1',
+      playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
     })
-  }, [viewerId, sendMove])
+  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
 
   // Setup Action: Set Continent
   const setContinent = useCallback(
     (selectedContinent: import('./continents').ContinentId | 'all') => {
       sendMove({
         type: 'SET_CONTINENT',
-        playerId: viewerId || 'player-1',
+        playerId: activePlayers[0] || '', // Use first active player
         userId: viewerId || '',
         data: { selectedContinent },
       })
@@ -323,18 +327,18 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         })
       }
     },
-    [viewerId, sendMove, roomData, updateGameConfig]
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
   // Action: Return to Setup
   const returnToSetup = useCallback(() => {
     sendMove({
       type: 'RETURN_TO_SETUP',
-      playerId: viewerId || 'player-1',
+      playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
     })
-  }, [viewerId, sendMove])
+  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
 
   return (
     <KnowYourWorldContext.Provider

@@ -77,7 +77,11 @@ const mockPlayerMetadata = {
 
 // Story template
 const Template = (args: any) => {
-  const mapData = getFilteredMapData('world', args.continent as ContinentId | 'all')
+  const mapData = getFilteredMapData(
+    'world',
+    args.continent as ContinentId | 'all',
+    args.difficulty
+  )
 
   // Simulate some found regions (first 5 regions)
   const regionsFound = mapData.regions.slice(0, 5).map((r) => r.id)

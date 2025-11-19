@@ -30,7 +30,7 @@ Choose from multiple maps (World, USA States) and difficulty levels!`,
 const defaultConfig: KnowYourWorldConfig = {
   selectedMap: 'world',
   gameMode: 'cooperative',
-  difficulty: 'easy',
+  difficulty: 'medium',
   studyDuration: 0,
   selectedContinent: 'all',
 }
@@ -59,7 +59,7 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     (config.gameMode === 'cooperative' ||
       config.gameMode === 'race' ||
       config.gameMode === 'turn-based') &&
-    (config.difficulty === 'easy' || config.difficulty === 'hard') &&
+    typeof config.difficulty === 'string' &&
     (config.studyDuration === 0 ||
       config.studyDuration === 30 ||
       config.studyDuration === 60 ||

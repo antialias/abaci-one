@@ -4,12 +4,26 @@ import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import { ContinentSelector } from './ContinentSelector'
+import { getMapData, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
 
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { state, startGame, setMap, setMode, setDifficulty, setStudyDuration, setContinent } =
     useKnowYourWorld()
+
+  // Get difficulty config for current map
+  const mapData = getMapData(state.selectedMap)
+  const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
+
+  // Color themes for difficulty buttons (cycles through these)
+  const difficultyColors = [
+    { border: 'green.500', bg: 'green', hover: 'green.400' },
+    { border: 'orange.500', bg: 'orange', hover: 'orange.400' },
+    { border: 'red.500', bg: 'red', hover: 'red.400' },
+    { border: 'purple.500', bg: 'purple', hover: 'purple.400' },
+    { border: 'blue.500', bg: 'blue', hover: 'blue.400' },
+  ]
 
   return (
     <div
@@ -244,88 +258,72 @@ export function SetupPhase() {
         </div>
       </div>
 
-      {/* Difficulty Selection */}
-      <div data-section="difficulty-selection">
-        <h2
-          className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            marginBottom: '4',
-            color: isDark ? 'gray.100' : 'gray.900',
-          })}
-        >
-          Difficulty ⭐
-        </h2>
-        <div
-          className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '4',
-          })}
-        >
-          <button
-            data-action="select-easy-difficulty"
-            onClick={() => setDifficulty('easy')}
+      {/* Difficulty Selection - Hide if only one level */}
+      {difficultyConfig.levels.length > 1 && (
+        <div data-section="difficulty-selection">
+          <h2
             className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.difficulty === 'easy' ? 'green.500' : 'transparent',
-              bg:
-                state.difficulty === 'easy'
-                  ? isDark
-                    ? 'green.900'
-                    : 'green.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              marginBottom: '4',
               color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'green.400',
-              },
             })}
           >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>😊</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Easy</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              All outlines visible
-            </div>
-          </button>
+            Difficulty ⭐
+          </h2>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: `repeat(${difficultyConfig.levels.length}, 1fr)`,
+              gap: '4',
+            })}
+          >
+            {difficultyConfig.levels.map((level, index) => {
+              const colors = difficultyColors[index % difficultyColors.length]
+              const isSelected = state.difficulty === level.id
 
-          <button
-            data-action="select-hard-difficulty"
-            onClick={() => setDifficulty('hard')}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.difficulty === 'hard' ? 'red.500' : 'transparent',
-              bg:
-                state.difficulty === 'hard'
-                  ? isDark
-                    ? 'red.900'
-                    : 'red.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'red.400',
-              },
+              return (
+                <button
+                  key={level.id}
+                  data-action={`select-${level.id}-difficulty`}
+                  onClick={() => setDifficulty(level.id)}
+                  className={css({
+                    padding: '4',
+                    rounded: 'lg',
+                    border: '2px solid',
+                    borderColor: isSelected ? colors.border : 'transparent',
+                    bg: isSelected
+                      ? isDark
+                        ? `${colors.bg}.900`
+                        : `${colors.bg}.50`
+                      : isDark
+                        ? 'gray.800'
+                        : 'gray.100',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    _hover: {
+                      borderColor: colors.hover,
+                    },
+                  })}
+                >
+                  {level.emoji && (
+                    <div className={css({ fontSize: '2xl', marginBottom: '2' })}>{level.emoji}</div>
+                  )}
+                  <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>{level.label}</div>
+                  {level.description && (
+                    <div
+                      className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}
+                    >
+                      {level.description}
+                    </div>
+                  )}
+                </button>
+              )
             })}
-          >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>🤔</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Hard</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Outlines on hover only
-            </div>
-          </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Study Mode Selection */}
       <div data-section="study-mode-selection">

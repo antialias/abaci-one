@@ -1,11 +1,12 @@
 import type { GameConfig, GameMove, GameState } from '@/lib/arcade/game-sdk'
 import type { ContinentId } from './continents'
+import type { MapDifficultyConfig } from './maps'
 
 // Game configuration (persisted to database)
 export interface KnowYourWorldConfig extends GameConfig {
   selectedMap: 'world' | 'usa'
   gameMode: 'cooperative' | 'race' | 'turn-based'
-  difficulty: 'easy' | 'hard'
+  difficulty: string // Difficulty level ID (e.g., 'easy', 'medium', 'hard', 'standard')
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 }
@@ -23,6 +24,7 @@ export interface MapData {
   name: string // "World" or "USA States"
   viewBox: string // SVG viewBox attribute (e.g., "0 0 1000 500")
   regions: MapRegion[]
+  difficultyConfig?: MapDifficultyConfig // Optional per-map difficulty config (uses global default if not provided)
 }
 
 // Individual guess record
@@ -42,7 +44,7 @@ export interface KnowYourWorldState extends GameState {
   // Setup configuration
   selectedMap: 'world' | 'usa'
   gameMode: 'cooperative' | 'race' | 'turn-based'
-  difficulty: 'easy' | 'hard'
+  difficulty: string // Difficulty level ID (e.g., 'easy', 'medium', 'hard', 'standard')
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 
@@ -82,7 +84,7 @@ export type KnowYourWorldMove =
         playerMetadata: Record<string, any>
         selectedMap: 'world' | 'usa'
         gameMode: 'cooperative' | 'race' | 'turn-based'
-        difficulty: 'easy' | 'hard'
+        difficulty: string // Difficulty level ID
       }
     }
   | {
@@ -133,7 +135,7 @@ export type KnowYourWorldMove =
       userId: string
       timestamp: number
       data: {
-        difficulty: 'easy' | 'hard'
+        difficulty: string // Difficulty level ID
       }
     }
   | {
