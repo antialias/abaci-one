@@ -183,8 +183,8 @@ export function MapRenderer({
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Configuration
-  const MAX_ZOOM = 120 // Maximum zoom level
-  const HIGH_ZOOM_THRESHOLD = 60 // Show gold border above this zoom level
+  const MAX_ZOOM = 500 // Maximum zoom level (for Gibraltar at 0.08px!)
+  const HIGH_ZOOM_THRESHOLD = 100 // Show gold border above this zoom level
 
   // Movement speed multiplier based on smallest region size
   // When pointer lock is active, apply this multiplier to movementX/movementY
@@ -870,25 +870,29 @@ export function MapRenderer({
     if (shouldShow) {
       // Unified adaptive zoom calculation
       // Zoom is based on region density and smallest region size
-      let adaptiveZoom = 8 // Base zoom
+      let adaptiveZoom = 10 // Base zoom
 
       // Add zoom based on region count (crowded areas need more zoom)
       const countFactor = Math.min(regionsInBox / 10, 1) // 0 to 1
-      adaptiveZoom += countFactor * 16 // Up to +16x for density
+      adaptiveZoom += countFactor * 20 // Up to +20x for density
 
-      // Add zoom based on smallest region size (tiny regions need MUCH more zoom)
+      // Add zoom based on smallest region size (tiny regions need EXTREME zoom)
       if (detectedSmallestSize !== Infinity) {
-        // For extremely small regions (< 1px), give massive zoom
-        // For 0.08px (Gibraltar): sizeFactor ≈ 0.996, adds ~96x
-        // For 1px: sizeFactor = 0.95, adds ~91x
-        // For 5px: sizeFactor = 0.75, adds ~72x
-        // For 10px: sizeFactor = 0.5, adds ~48x
-        const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1
-        adaptiveZoom += sizeFactor * 96 // Up to +96x for tiny regions
+        // For Gibraltar (0.08px): we need ~400x total
+        // Use exponential scaling for sub-pixel regions
+        if (detectedSmallestSize < 1) {
+          // Sub-pixel regions get exponential zoom
+          // 0.08px → ~470x, 0.5px → ~380x, 1px → ~200x
+          adaptiveZoom += 500 / (detectedSmallestSize + 0.05)
+        } else {
+          // Regular small regions use linear scaling
+          const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1
+          adaptiveZoom += sizeFactor * 150 // Up to +150x for small regions
+        }
       }
 
       // Clamp to max zoom
-      adaptiveZoom = Math.max(8, Math.min(MAX_ZOOM, adaptiveZoom))
+      adaptiveZoom = Math.max(10, Math.min(MAX_ZOOM, adaptiveZoom))
 
       // Debug logging for Gibraltar
       if (hasGibraltar) {
