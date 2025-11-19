@@ -180,18 +180,11 @@ export function MapRenderer({
 
   // Cursor position tracking (container-relative coordinates)
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
-  const lastMoveTimeRef = useRef<number>(Date.now())
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const [superZoomActive, setSuperZoomActive] = useState(false)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Configuration
-  const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
-  const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels super zoom
-  const SUPER_ZOOM_MULTIPLIER = 5.0 // Super zoom is 5x the normal adaptive zoom (for Gibraltar!)
-  const SUPER_ZOOM_SIZE_THRESHOLD = 3 // Activate super zoom for regions smaller than this (in pixels)
-  const MAX_ZOOM_NORMAL = 24 // Maximum zoom in normal mode
-  const MAX_ZOOM_SUPER = 120 // Maximum zoom in super zoom mode (for Gibraltar!)
+  const MAX_ZOOM = 120 // Maximum zoom level
+  const HIGH_ZOOM_THRESHOLD = 60 // Show gold border above this zoom level
 
   // Movement speed multiplier based on smallest region size
   // When pointer lock is active, apply this multiplier to movementX/movementY
@@ -758,19 +751,7 @@ export function MapRenderer({
       velocity = distance // Distance in pixels (effectively pixels per frame)
     }
 
-    // Quick escape: If moving fast, cancel super zoom
-    if (velocity > QUICK_MOVE_THRESHOLD) {
-      console.log(
-        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px > ${QUICK_MOVE_THRESHOLD}px) - canceling super zoom`
-      )
-      setSuperZoomActive(false)
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current)
-        hoverTimerRef.current = null
-      }
-    }
-
-    lastMoveTimeRef.current = now
+    // No longer need quick escape logic - zoom adapts immediately
 
     // Update cursor position ref for next frame
     cursorPositionRef.current = { x: cursorX, y: cursorY }
@@ -883,28 +864,6 @@ export function MapRenderer({
       setHoveredRegion(regionUnderCursor)
     }
 
-    // Auto super-zoom on hover: If hovering over very tiny regions, start timer
-    const shouldEnableSuperZoom = detectedSmallestSize < SUPER_ZOOM_SIZE_THRESHOLD && shouldShow
-    if (shouldEnableSuperZoom && !hoverTimerRef.current && !superZoomActive) {
-      console.log(
-        `[Super Zoom] ⏱️ Starting hover timer (${HOVER_DELAY_MS}ms) for tiny region: ${detectedSmallestSize.toFixed(2)}px (threshold: ${SUPER_ZOOM_SIZE_THRESHOLD}px)`
-      )
-      hoverTimerRef.current = setTimeout(() => {
-        console.log('[Super Zoom] 🔍 ACTIVATING super zoom!')
-        setSuperZoomActive(true)
-        hoverTimerRef.current = null
-      }, HOVER_DELAY_MS)
-    } else if (!shouldEnableSuperZoom && hoverTimerRef.current) {
-      // Cancel timer if we move away from tiny regions
-      console.log('[Super Zoom] ❌ Canceling hover timer (moved away from tiny region)')
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    } else if (!shouldShow && superZoomActive) {
-      // Deactivate super zoom if we move away entirely
-      console.log('[Super Zoom] ❌ Deactivating super zoom (moved away from small regions)')
-      setSuperZoomActive(false)
-    }
-
     // Debug logging - ONLY for Gibraltar or ultra-small regions (< 2px)
     const hasGibraltar = detectedRegions.some((r) => r.id === 'gi')
     if (hasGibraltar || detectedSmallestSize < 2) {
@@ -915,40 +874,38 @@ export function MapRenderer({
           regionsInBox,
           smallestSize: detectedSmallestSize.toFixed(2) + 'px',
           shouldShow,
-          superZoomActive,
           movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
         }
       )
     }
 
     if (shouldShow) {
+      // Unified adaptive zoom calculation
+      // Zoom is based on region density and smallest region size
       let adaptiveZoom = 8 // Base zoom
 
       // Add zoom based on region count (crowded areas need more zoom)
       const countFactor = Math.min(regionsInBox / 10, 1) // 0 to 1
-      adaptiveZoom += countFactor * 8
+      adaptiveZoom += countFactor * 16 // Up to +16x for density
 
-      // Add zoom based on smallest region size (tiny regions need more zoom)
+      // Add zoom based on smallest region size (tiny regions need MUCH more zoom)
       if (detectedSmallestSize !== Infinity) {
-        const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1 (1 = very small)
-        adaptiveZoom += sizeFactor * 8
+        // For extremely small regions (< 1px), give massive zoom
+        // For 0.08px (Gibraltar): sizeFactor ≈ 0.996, adds ~96x
+        // For 1px: sizeFactor = 0.95, adds ~91x
+        // For 5px: sizeFactor = 0.75, adds ~72x
+        // For 10px: sizeFactor = 0.5, adds ~48x
+        const sizeFactor = Math.max(0, 1 - detectedSmallestSize / 20) // 0 to 1
+        adaptiveZoom += sizeFactor * 96 // Up to +96x for tiny regions
       }
 
-      // Clamp zoom between 8x and max (24x normal, 120x super zoom)
-      const maxZoom = superZoomActive ? MAX_ZOOM_SUPER : MAX_ZOOM_NORMAL
-      adaptiveZoom = Math.max(8, Math.min(maxZoom, adaptiveZoom))
+      // Clamp to max zoom
+      adaptiveZoom = Math.max(8, Math.min(MAX_ZOOM, adaptiveZoom))
 
-      // Apply super zoom multiplier if active
-      if (superZoomActive) {
-        adaptiveZoom = Math.min(maxZoom, adaptiveZoom * SUPER_ZOOM_MULTIPLIER)
-        if (hasGibraltar) {
-          console.log(
-            `[Super Zoom] 🎯 GIBRALTAR: ${adaptiveZoom.toFixed(1)}x zoom (max: ${maxZoom}x, size: ${detectedSmallestSize.toFixed(2)}px)`
-          )
-        }
-      } else if (hasGibraltar) {
+      // Debug logging for Gibraltar
+      if (hasGibraltar) {
         console.log(
-          `[Zoom] 🎯 GIBRALTAR (normal): ${adaptiveZoom.toFixed(1)}x zoom (size: ${detectedSmallestSize.toFixed(2)}px)`
+          `[Zoom] 🎯 GIBRALTAR: ${adaptiveZoom.toFixed(1)}x zoom (size: ${detectedSmallestSize.toFixed(2)}px)`
         )
       }
 
@@ -991,14 +948,7 @@ export function MapRenderer({
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
-    setSuperZoomActive(false)
     cursorPositionRef.current = null
-
-    // Clear hover timer if active
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    }
   }
 
   return (
@@ -1416,7 +1366,6 @@ export function MapRenderer({
       {cursorPosition && svgRef.current && containerRef.current && (
         <animated.div
           data-element="magnifier"
-          data-super-zoom={superZoomActive}
           style={{
             position: 'absolute',
             // Animated positioning - smoothly moves to opposite corner from cursor
@@ -1424,17 +1373,21 @@ export function MapRenderer({
             left: magnifierSpring.left,
             width: '50%',
             aspectRatio: '2/1',
-            // Super zoom gets gold border, normal mode gets blue border
-            border: superZoomActive
-              ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
-              : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}`, // blue-400/blue-600
+            // High zoom (>60x) gets gold border, normal zoom gets blue border
+            border: magnifierSpring.zoom.to((zoom) =>
+              zoom > HIGH_ZOOM_THRESHOLD
+                ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
+                : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
+            ),
             borderRadius: '12px',
             overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: 100,
-            boxShadow: superZoomActive
-              ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
-              : '0 10px 40px rgba(0, 0, 0, 0.5)',
+            boxShadow: magnifierSpring.zoom.to((zoom) =>
+              zoom > HIGH_ZOOM_THRESHOLD
+                ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
+                : '0 10px 40px rgba(0, 0, 0, 0.5)'
+            ),
             background: isDark ? '#111827' : '#f3f4f6',
             opacity: magnifierSpring.opacity,
           }}
