@@ -168,13 +168,15 @@ export function MapRenderer({
   const dampenedCursorRef = useRef<{ x: number; y: number } | null>(null) // Dampened position
   const lastMoveTimeRef = useRef<number>(Date.now())
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const precisionModeCooldownRef = useRef<number>(0) // Timestamp when cooldown expires
   const [precisionMode, setPrecisionMode] = useState(false)
   const [superZoomActive, setSuperZoomActive] = useState(false)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Configuration
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
-  const QUICK_MOVE_THRESHOLD = 50 // Pixels per frame - exceeding this cancels dampening/zoom
+  const QUICK_MOVE_THRESHOLD = 30 // Pixels per frame - exceeding this cancels dampening/zoom
+  const PRECISION_MODE_COOLDOWN_MS = 800 // Cooldown after quick-escape before precision can re-activate
   const SUPER_ZOOM_MULTIPLIER = 2.5 // Super zoom is 2.5x the normal adaptive zoom
 
   // Adaptive dampening based on smallest region size
@@ -653,8 +655,10 @@ export function MapRenderer({
 
     // Quick escape: If moving fast, cancel dampening and super zoom
     if (velocity > QUICK_MOVE_THRESHOLD) {
+      const cooldownUntil = now + PRECISION_MODE_COOLDOWN_MS
+      precisionModeCooldownRef.current = cooldownUntil
       console.log(
-        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px) - canceling precision mode and super zoom`
+        `[Quick Escape] 💨 Fast movement detected (${velocity.toFixed(0)}px) - canceling precision mode and super zoom (cooldown until ${new Date(cooldownUntil).toLocaleTimeString()})`
       )
       setPrecisionMode(false)
       setSuperZoomActive(false)
@@ -855,12 +859,16 @@ export function MapRenderer({
 
     // Enable precision mode (cursor dampening) when magnifier is needed
     // This gives users more control over tiny regions like Jersey
-    if (shouldShow !== precisionMode) {
+    // Respect cooldown period after quick-escape to let user escape the area
+    const cooldownActive = now < precisionModeCooldownRef.current
+    const shouldEnablePrecisionMode = shouldShow && !cooldownActive
+
+    if (shouldEnablePrecisionMode !== precisionMode) {
       console.log(
-        `[Precision Mode] ${shouldShow ? '🎯 ENABLING' : '❌ DISABLING'} precision mode (cursor dampening) | Smallest region: ${detectedSmallestSize.toFixed(2)}px`
+        `[Precision Mode] ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode (cursor dampening) | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE)' : ''}`
       )
     }
-    setPrecisionMode(shouldShow)
+    setPrecisionMode(shouldEnablePrecisionMode)
 
     // Auto super-zoom on hover: If hovering over sub-pixel regions (< 1px), start timer
     const shouldEnableSuperZoom = detectedSmallestSize < 1 && shouldShow
@@ -956,6 +964,7 @@ export function MapRenderer({
     setSuperZoomActive(false)
     lastRawCursorRef.current = null
     dampenedCursorRef.current = null
+    precisionModeCooldownRef.current = 0
 
     // Clear hover timer if active
     if (hoverTimerRef.current) {
