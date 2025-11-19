@@ -15,6 +15,25 @@ A modular, plugin-based architecture for building multiplayer arcade games with 
 
 ---
 
+## Available Games
+
+### Know Your World
+
+**Location**: [`know-your-world/`](./know-your-world/)
+**Documentation**: [`know-your-world/README.md`](./know-your-world/README.md)
+
+A geography quiz game where players identify countries, states, and territories on unlabeled maps.
+
+**Key Features**:
+- **[Precision Controls](./know-your-world/PRECISION_CONTROLS.md)** - Automatic cursor dampening and super zoom for tiny regions (Gibraltar 0.08px)
+- **3 Game Modes**: Cooperative, Race, Turn-Based
+- **Multiple Maps**: World (256 countries), USA States (51 states)
+- **Adaptive Difficulty**: Per-map difficulty tiers with smart filtering
+- **Study Mode**: Optional memorization period before gameplay
+- **Visual Features**: Excluded region visualization, adaptive zoom magnifier, smart label positioning
+
+---
+
 ## Overview
 
 ### Goals

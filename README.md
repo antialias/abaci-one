@@ -804,6 +804,23 @@ MIT License - see LICENSE file for details.
 
 ## 📚 Additional Documentation
 
+### Arcade Game System
+
+**Location**: [`apps/web/src/arcade-games/`](./apps/web/src/arcade-games/)
+**Overview**: [`apps/web/src/arcade-games/README.md`](./apps/web/src/arcade-games/README.md)
+
+Modular, plugin-based architecture for building multiplayer arcade games with real-time synchronization.
+
+**Available Games**:
+- **[Know Your World](./apps/web/src/arcade-games/know-your-world/README.md)** - Geography quiz with precision controls for tiny regions ([Precision Controls Docs](./apps/web/src/arcade-games/know-your-world/PRECISION_CONTROLS.md))
+- Number Guesser - Hot/cold guessing game
+- Memory Quiz - Pattern matching challenge
+- Matching Pairs - Memory card game
+
+**Key Documentation**:
+- **[Game SDK](./apps/web/src/arcade-games/README.md)** - How to create new arcade games
+- **[Precision Controls](./apps/web/src/arcade-games/know-your-world/PRECISION_CONTROLS.md)** - Advanced cursor dampening and super zoom system
+
 ### Worksheet Generator
 
 **Location**: [`apps/web/src/app/create/worksheets/`](./apps/web/src/app/create/worksheets/)
