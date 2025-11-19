@@ -216,13 +216,29 @@ export function MapRenderer({
 
   // Request/release pointer lock based on precision mode
   useEffect(() => {
-    if (!containerRef.current) return
+    console.log('[Pointer Lock] Effect triggered:', {
+      precisionMode,
+      pointerLocked,
+      hasContainer: !!containerRef.current,
+      willRequest: precisionMode && !pointerLocked,
+      willRelease: !precisionMode && pointerLocked,
+    })
+
+    if (!containerRef.current) {
+      console.warn('[Pointer Lock] No container ref!')
+      return
+    }
 
     if (precisionMode && !pointerLocked) {
-      console.log('[Pointer Lock] Requesting pointer lock for precision mode')
-      containerRef.current.requestPointerLock()
+      console.log('[Pointer Lock] 🔒 REQUESTING pointer lock for precision mode')
+      try {
+        containerRef.current.requestPointerLock()
+        console.log('[Pointer Lock] Request sent successfully')
+      } catch (error) {
+        console.error('[Pointer Lock] Request failed:', error)
+      }
     } else if (!precisionMode && pointerLocked) {
-      console.log('[Pointer Lock] Releasing pointer lock')
+      console.log('[Pointer Lock] 🔓 RELEASING pointer lock')
       document.exitPointerLock()
     }
   }, [precisionMode, pointerLocked])
@@ -951,11 +967,12 @@ export function MapRenderer({
       currentPrecisionMode: precisionMode,
       willChangeTo: shouldEnablePrecisionMode,
       smallestRegion: detectedSmallestSize.toFixed(2) + 'px',
+      pointerLocked,
     })
 
     if (shouldEnablePrecisionMode !== precisionMode) {
       console.log(
-        `[Precision Mode] ⚡ CHANGING STATE: ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE - ' + cooldownTimeRemaining.toFixed(0) + 'ms remaining)' : ''}`
+        `[Precision Mode] ⚡ CHANGING STATE: ${shouldEnablePrecisionMode ? '🎯 ENABLING' : '❌ DISABLING'} precision mode | Smallest region: ${detectedSmallestSize.toFixed(2)}px${cooldownActive ? ' (COOLDOWN ACTIVE - ' + cooldownTimeRemaining.toFixed(0) + 'ms remaining)' : ''} | Pointer locked: ${pointerLocked}`
       )
     }
     setPrecisionMode(shouldEnablePrecisionMode)
