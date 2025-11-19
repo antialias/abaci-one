@@ -172,6 +172,7 @@ export function MapRenderer({
   const [precisionMode, setPrecisionMode] = useState(false)
   const [superZoomActive, setSuperZoomActive] = useState(false)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
+  const [pointerLocked, setPointerLocked] = useState(false)
 
   // Configuration
   const HOVER_DELAY_MS = 500 // Time to hover before super zoom activates
@@ -188,6 +189,43 @@ export function MapRenderer({
     if (size < 5) return 0.1 // High precision for regions like Jersey (0.82px)
     return 0.25 // Moderate precision for regions like Rhode Island (11px)
   }
+
+  // Pointer lock management for precision mode
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const handlePointerLockChange = () => {
+      const isLocked = document.pointerLockElement === containerRef.current
+      setPointerLocked(isLocked)
+      console.log('[Pointer Lock]', isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED')
+    }
+
+    const handlePointerLockError = () => {
+      console.error('[Pointer Lock] ❌ Failed to acquire pointer lock')
+      setPointerLocked(false)
+    }
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    document.addEventListener('pointerlockerror', handlePointerLockError)
+
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange)
+      document.removeEventListener('pointerlockerror', handlePointerLockError)
+    }
+  }, [])
+
+  // Request/release pointer lock based on precision mode
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    if (precisionMode && !pointerLocked) {
+      console.log('[Pointer Lock] Requesting pointer lock for precision mode')
+      containerRef.current.requestPointerLock()
+    } else if (!precisionMode && pointerLocked) {
+      console.log('[Pointer Lock] Releasing pointer lock')
+      document.exitPointerLock()
+    }
+  }, [precisionMode, pointerLocked])
 
   // Animated spring values for smooth transitions
   // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
@@ -623,15 +661,45 @@ export function MapRenderer({
     const svgRect = svgRef.current.getBoundingClientRect()
 
     // Get cursor position relative to container
-    const cursorX = e.clientX - containerRect.left
-    const cursorY = e.clientY - containerRect.top
+    let cursorX: number
+    let cursorY: number
+
+    if (pointerLocked) {
+      // When pointer is locked, use movement deltas to update position
+      // This prevents cursor from leaving the container
+      const lastX = lastRawCursorRef.current?.x ?? containerRect.width / 2
+      const lastY = lastRawCursorRef.current?.y ?? containerRect.height / 2
+
+      cursorX = lastX + e.movementX
+      cursorY = lastY + e.movementY
+
+      // Clamp to container bounds
+      cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
+      cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
+
+      console.log('[Pointer Lock] Movement:', {
+        movementX: e.movementX,
+        movementY: e.movementY,
+        newPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
+      })
+    } else {
+      // Normal mode: use absolute position
+      cursorX = e.clientX - containerRect.left
+      cursorY = e.clientY - containerRect.top
+    }
 
     // Check if cursor is over the SVG
-    const isOverSvg =
-      e.clientX >= svgRect.left &&
-      e.clientX <= svgRect.right &&
-      e.clientY >= svgRect.top &&
-      e.clientY <= svgRect.bottom
+    const isOverSvg = pointerLocked
+      ? // When pointer is locked, check if our calculated position is within SVG bounds
+        cursorX >= svgRect.left - containerRect.left &&
+        cursorX <= svgRect.right - containerRect.left &&
+        cursorY >= svgRect.top - containerRect.top &&
+        cursorY <= svgRect.bottom - containerRect.top
+      : // Normal mode: use real mouse position
+        e.clientX >= svgRect.left &&
+        e.clientX <= svgRect.right &&
+        e.clientY >= svgRect.top &&
+        e.clientY <= svgRect.bottom
 
     // Don't hide magnifier if mouse is still in container (just moved to padding/magnifier area)
     // Only update cursor position and check for regions if over SVG
@@ -979,6 +1047,13 @@ export function MapRenderer({
   }
 
   const handleMouseLeave = () => {
+    // Don't hide magnifier when pointer is locked (precision mode active)
+    // The real cursor may leave the container, but we're tracking movement deltas
+    if (pointerLocked) {
+      console.log('[Mouse Leave] Ignoring - pointer is locked')
+      return
+    }
+
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
