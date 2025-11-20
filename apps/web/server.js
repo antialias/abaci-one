@@ -39,7 +39,15 @@ app.prepare().then(() => {
   console.log(`   Upgrade handlers: ${server.listeners('upgrade').length}`)
 
   // Initialize Socket.IO
-  const { initializeSocketServer } = require('./dist/socket-server')
+  let initializeSocketServer
+  try {
+    const socketServer = require('./dist/socket-server')
+    initializeSocketServer = socketServer.initializeSocketServer
+    console.log('✅ Socket server module loaded successfully')
+  } catch (error) {
+    console.error('❌ Failed to load socket-server module:', error)
+    process.exit(1)
+  }
 
   console.log('📊 Stage 2 - Before initializeSocketServer:')
   console.log(`   Upgrade handlers: ${server.listeners('upgrade').length}`)
