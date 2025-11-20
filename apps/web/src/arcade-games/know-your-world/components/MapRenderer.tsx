@@ -57,6 +57,8 @@ interface MapRendererProps {
     useObstacles?: boolean
     obstaclePadding?: number
   }
+  // Debug flags
+  showDebugBoundingBoxes?: boolean
 }
 
 /**
@@ -109,6 +111,7 @@ export function MapRenderer({
   guessHistory,
   playerMetadata,
   forceTuning = {},
+  showDebugBoundingBoxes = false,
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -182,6 +185,15 @@ export function MapRenderer({
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
+  // Debug: Track bounding boxes for visualization
+  const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<
+    Array<{ regionId: string; x: number; y: number; width: number; height: number }>
+  >([])
+
+  // Pre-computed largest piece sizes for multi-piece regions
+  // Maps regionId -> {width, height} of the largest piece
+  const largestPieceSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map())
+
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
   const HIGH_ZOOM_THRESHOLD = 100 // Show gold border above this zoom level
@@ -244,6 +256,48 @@ export function MapRenderer({
     }
   }, [])
 
+  // Pre-compute largest piece sizes for multi-piece regions
+  useEffect(() => {
+    if (!svgRef.current) return
+
+    const largestPieceSizes = new Map<string, { width: number; height: number }>()
+
+    mapData.regions.forEach((region) => {
+      const pathData = region.path
+      const pieceSeparatorRegex = /(?<=z)\s*m\s*/i
+      const rawPieces = pathData.split(pieceSeparatorRegex)
+
+      if (rawPieces.length > 1) {
+        // Multi-piece region: use the FIRST piece (mainland), not largest
+        // The first piece is typically the mainland, with islands as subsequent pieces
+        const svg = svgRef.current
+        if (!svg) return
+
+        // Just measure the first piece
+        const tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        tempPath.setAttribute('d', rawPieces[0]) // First piece already has 'm' command
+        tempPath.style.visibility = 'hidden'
+        svg.appendChild(tempPath)
+
+        const bbox = tempPath.getBoundingClientRect()
+        const firstPieceSize = { width: bbox.width, height: bbox.height }
+
+        svg.removeChild(tempPath)
+
+        largestPieceSizes.set(region.id, firstPieceSize)
+
+        // Only log Portugal for debugging
+        if (region.id === 'pt') {
+          console.log(
+            `[Pre-compute] ${region.id}: Using first piece (mainland): ${firstPieceSize.width.toFixed(2)}px × ${firstPieceSize.height.toFixed(2)}px`
+          )
+        }
+      }
+    })
+
+    largestPieceSizesRef.current = largestPieceSizes
+  }, [mapData])
+
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log('[MapRenderer] Container clicked:', {
@@ -268,7 +322,8 @@ export function MapRenderer({
 
   // Animated spring values for smooth transitions
   // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
-  // Position animates with medium speed (300ms)
+  // Zoom: smooth, slower animation with gentle easing
+  // Position: medium speed (300ms)
   const magnifierSpring = useSpring({
     zoom: targetZoom,
     opacity: targetOpacity,
@@ -280,16 +335,14 @@ export function MapRenderer({
           ? { duration: 100 } // Fade in: 0.1 seconds
           : { duration: 1000 } // Fade out: 1 second
       }
-      // Position and zoom: medium speed
+      if (key === 'zoom') {
+        // Zoom: smooth, slower animation with gentle easing
+        return { tension: 120, friction: 30, mass: 1 }
+      }
+      // Position: medium speed
       return { tension: 200, friction: 25 }
     },
-    onChange: (result) => {
-      console.log('[Magnifier Spring] Animating:', {
-        opacity: result.value.opacity?.toFixed(2),
-        top: result.value.top?.toFixed(0),
-        left: result.value.left?.toFixed(0),
-      })
-    },
+    // onChange removed - was flooding console with animation frames
   })
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
@@ -820,11 +873,6 @@ export function MapRenderer({
 
         if (isVerySmall) {
           hasSmallRegion = true
-          console.log('[Magnifier] Small region detected:', region.id, {
-            width: pixelWidth,
-            height: pixelHeight,
-            area: pixelArea,
-          })
         }
 
         // Track smallest region size for cursor dampening (use smallest in detection box)
@@ -834,12 +882,39 @@ export function MapRenderer({
       }
     })
 
+    // Sort detected regions by size (smallest first) to prioritize tiny regions in zoom calculation
+    // This ensures Gibraltar (0.08px) is checked before Spain (81px) when finding optimal zoom
+    detectedRegions.sort((a, b) => {
+      const pathA = svgRef.current?.querySelector(`path[data-region-id="${a}"]`)
+      const pathB = svgRef.current?.querySelector(`path[data-region-id="${b}"]`)
+      if (!pathA || !pathB) return 0
+
+      const rectA = pathA.getBoundingClientRect()
+      const rectB = pathB.getBoundingClientRect()
+
+      // Use smallest dimension (width or height) for comparison
+      const sizeA = Math.min(rectA.width, rectA.height)
+      const sizeB = Math.min(rectB.width, rectB.height)
+
+      return sizeA - sizeB // Smallest first
+    })
+
+    if (pointerLocked && detectedRegions.length > 0) {
+      const sortedSizes = detectedRegions.map((id) => {
+        const path = svgRef.current?.querySelector(`path[data-region-id="${id}"]`)
+        if (!path) return `${id}: ?`
+        const rect = path.getBoundingClientRect()
+        const size = Math.min(rect.width, rect.height)
+        return `${id}: ${size.toFixed(2)}px`
+      })
+      console.log('[Zoom Search] Sorted regions (smallest first):', sortedSizes)
+    }
+
     // Calculate adaptive zoom level based on region density and size
     // Base zoom: 8x
     // More regions = more zoom (up to +8x for 10+ regions)
-    // Smaller regions = more zoom (up to +8x for very tiny regions)
-    // Show magnifier if: 7+ regions in detection box OR any region smaller than 15px
-    const shouldShow = regionsInBox >= 7 || hasSmallRegion
+    // Show magnifier only when there are small regions (< 15px)
+    const shouldShow = hasSmallRegion
 
     // Update smallest region size for adaptive cursor dampening
     if (shouldShow && detectedSmallestSize !== Infinity) {
@@ -854,135 +929,258 @@ export function MapRenderer({
       setHoveredRegion(regionUnderCursor)
     }
 
-    // Debug logging - ONLY for Gibraltar or ultra-small regions
-    const hasGibraltar = detectedRegions.includes('gi')
-    if (hasGibraltar || detectedSmallestSize < 1) {
-      console.log(
-        `[Magnifier] ${hasGibraltar ? '🎯 GIBRALTAR DETECTED' : '🔍 Tiny region'} Detection:`,
-        {
-          detectedRegionIds: detectedRegions,
-          regionsInBox,
-          smallestScreenSize: detectedSmallestSize.toFixed(4) + 'px',
-          shouldShow,
-          movementMultiplier: getMovementMultiplier(detectedSmallestSize).toFixed(2),
-        }
-      )
-    }
+    // Magnifier detection logging removed for performance
 
     if (shouldShow) {
-      // Binary search for optimal zoom level
-      // Goal: Find zoom where regions fit nicely in magnifier (taking 10-20% of area)
-      const TARGET_AREA_MIN = 0.10 // 10% of magnifier
-      const TARGET_AREA_MAX = 0.20 // 20% of magnifier
+      // Adaptive threshold based on smallest detected region
+      // For ultra-small regions (< 1px), we need a lower acceptance threshold
+      // Otherwise Gibraltar (0.08px) will never fit the 10-25% range even at 1000x zoom
+      let minAcceptableRatio = 0.1 // Default: 10% minimum
+      let maxAcceptableRatio = 0.25 // Default: 25% maximum
 
-      // Get magnifier dimensions
-      const magnifierWidth = containerRect.width * 0.5
-      const magnifierHeight = magnifierWidth / 2
-      const magnifierArea = magnifierWidth * magnifierHeight
+      if (detectedSmallestSize < 1) {
+        // Sub-pixel regions: accept 2-8% of magnifier
+        minAcceptableRatio = 0.02
+        maxAcceptableRatio = 0.08
+      } else if (detectedSmallestSize < 5) {
+        // Tiny regions (1-5px): accept 5-15% of magnifier
+        minAcceptableRatio = 0.05
+        maxAcceptableRatio = 0.15
+      }
 
-      // Get SVG viewBox for coordinate conversion
+      if (pointerLocked) {
+        console.log('[Zoom Search] Adaptive thresholds:', {
+          detectedSmallestSize: detectedSmallestSize.toFixed(4) + 'px',
+          minAcceptableRatio: (minAcceptableRatio * 100).toFixed(1) + '%',
+          maxAcceptableRatio: (maxAcceptableRatio * 100).toFixed(1) + '%',
+        })
+      }
+
+      // Zoom-out approach: Start from max zoom and reduce until a region fits nicely
+      // Goal: Find zoom where any region occupies ~15% of magnifier width or height
+      const TARGET_RATIO = 0.15 // Region should occupy 15% of magnifier dimension
+
+      // Get SVG viewBox for bounding box conversion
       const viewBoxParts = mapData.viewBox.split(' ').map(Number)
       const viewBoxWidth = viewBoxParts[2] || 1000
       const viewBoxHeight = viewBoxParts[3] || 1000
 
-      // Binary search bounds
-      let minZoom = 1
-      let maxZoom = MAX_ZOOM
-      let adaptiveZoom = 10
-      let iterations = 0
-      const MAX_ITERATIONS = 20
-
-      while (iterations < MAX_ITERATIONS && maxZoom - minZoom > 0.1) {
-        iterations++
-        const testZoom = (minZoom + maxZoom) / 2
-
-        // Calculate magnified viewBox dimensions at this zoom
-        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
-        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
-        const magnifiedViewBoxArea = magnifiedViewBoxWidth * magnifiedViewBoxHeight
-
-        // Check regions in detection box to see how they fit
-        let anyRegionFullyInside = false
-        let largestRegionRatio = 0
-
-        detectedRegions.forEach((regionId) => {
-          const region = mapData.regions.find((r) => r.id === regionId)
-          if (!region) return
-
-          const regionPath = svgRef.current?.querySelector(`path[data-region-id="${regionId}"]`)
-          if (!regionPath) return
-
-          const pathRect = regionPath.getBoundingClientRect()
-          const regionPixelArea = pathRect.width * pathRect.height
-
-          // Convert pixel area to viewBox area (approximate)
-          const scaleX = viewBoxWidth / svgRect.width
-          const scaleY = viewBoxHeight / svgRect.height
-          const regionViewBoxArea = regionPixelArea * scaleX * scaleY
-
-          // Check if region fits in magnified view
-          const regionRatioInMagnifier = regionViewBoxArea / magnifiedViewBoxArea
-
-          if (regionRatioInMagnifier < 1.0) {
-            anyRegionFullyInside = true
-            largestRegionRatio = Math.max(largestRegionRatio, regionRatioInMagnifier)
-          }
-        })
-
-        // Binary search logic
-        if (!anyRegionFullyInside) {
-          // No regions fit - zoom out
-          maxZoom = testZoom
-        } else if (largestRegionRatio < TARGET_AREA_MIN) {
-          // Regions too small - zoom in
-          minZoom = testZoom
-        } else if (largestRegionRatio > TARGET_AREA_MAX) {
-          // Regions too large - zoom out
-          maxZoom = testZoom
-        } else {
-          // Just right!
-          adaptiveZoom = testZoom
-          break
-        }
-
-        adaptiveZoom = testZoom
-      }
-
-      // Debug logging for Gibraltar
-      const hasGibraltar = detectedRegions.includes('gi')
-      if (hasGibraltar) {
-        console.log(`[Zoom] 🎯 BINARY SEARCH RESULT:`, {
-          iterations,
-          finalZoom: adaptiveZoom.toFixed(1),
-          detectedRegions,
-        })
-      }
-
-      // Calculate magnifier position (opposite corner from cursor)
-      // containerRect already declared at top of function
+      // Magnifier dimensions
       const magnifierWidth = containerRect.width * 0.5
       const magnifierHeight = magnifierWidth / 2
+
+      // Calculate target sizes: region should be this big in magnifier
+      const targetWidthPx = magnifierWidth * TARGET_RATIO
+      const targetHeightPx = magnifierHeight * TARGET_RATIO
+
+      // Track bounding boxes for debug visualization
+      const boundingBoxes: Array<{
+        regionId: string
+        x: number
+        y: number
+        width: number
+        height: number
+      }> = []
+
+      // Start from max zoom and work down until we find a good fit
+      let adaptiveZoom = MAX_ZOOM
+      let foundGoodZoom = false
+
+      // We'll test zoom levels by halving each time to find a good range quickly
+      const MIN_ZOOM = 1
+      const ZOOM_STEP = 0.9 // Reduce by 10% each iteration
+
+      // Convert cursor position to SVG coordinates
+      const scaleX = viewBoxWidth / svgRect.width
+      const scaleY = viewBoxHeight / svgRect.height
+      const viewBoxX = viewBoxParts[0] || 0
+      const viewBoxY = viewBoxParts[1] || 0
+      const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
+      const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
+
+      // Zoom search logging disabled for performance
+
+      for (let testZoom = MAX_ZOOM; testZoom >= MIN_ZOOM; testZoom *= ZOOM_STEP) {
+        // Calculate the SVG viewport that will be shown in the magnifier at this zoom
+        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
+        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
+
+        // The viewport is centered on cursor position, but clamped to map bounds
+        let viewportLeft = cursorSvgX - magnifiedViewBoxWidth / 2
+        let viewportRight = cursorSvgX + magnifiedViewBoxWidth / 2
+        let viewportTop = cursorSvgY - magnifiedViewBoxHeight / 2
+        let viewportBottom = cursorSvgY + magnifiedViewBoxHeight / 2
+
+        // Clamp viewport to stay within map bounds
+        const mapLeft = viewBoxX
+        const mapRight = viewBoxX + viewBoxWidth
+        const mapTop = viewBoxY
+        const mapBottom = viewBoxY + viewBoxHeight
+
+        let wasClamped = false
+        const originalViewport = {
+          left: viewportLeft,
+          right: viewportRight,
+          top: viewportTop,
+          bottom: viewportBottom,
+        }
+
+        // If viewport extends beyond left edge, shift it right
+        if (viewportLeft < mapLeft) {
+          const shift = mapLeft - viewportLeft
+          viewportLeft += shift
+          viewportRight += shift
+          wasClamped = true
+        }
+        // If viewport extends beyond right edge, shift it left
+        if (viewportRight > mapRight) {
+          const shift = viewportRight - mapRight
+          viewportLeft -= shift
+          viewportRight -= shift
+          wasClamped = true
+        }
+        // If viewport extends beyond top edge, shift it down
+        if (viewportTop < mapTop) {
+          const shift = mapTop - viewportTop
+          viewportTop += shift
+          viewportBottom += shift
+          wasClamped = true
+        }
+        // If viewport extends beyond bottom edge, shift it up
+        if (viewportBottom > mapBottom) {
+          const shift = viewportBottom - mapBottom
+          viewportTop -= shift
+          viewportBottom -= shift
+          wasClamped = true
+        }
+
+        // Viewport logging disabled for performance
+
+        // Check all detected regions to see if any are inside this viewport and fit nicely
+        let foundFit = false
+        const regionsChecked: Array<{ id: string; inside: boolean; ratio?: number }> = []
+
+        for (const regionId of detectedRegions) {
+          const region = mapData.regions.find((r) => r.id === regionId)
+          if (!region) continue
+
+          const regionPath = svgRef.current?.querySelector(`path[data-region-id="${regionId}"]`)
+          if (!regionPath) continue
+
+          // Use pre-computed largest piece size for multi-piece regions
+          let currentWidth: number
+          let currentHeight: number
+
+          const cachedSize = largestPieceSizesRef.current.get(regionId)
+          if (cachedSize) {
+            // Multi-piece region: use pre-computed largest piece
+            currentWidth = cachedSize.width
+            currentHeight = cachedSize.height
+          } else {
+            // Single-piece region: use normal bounding box
+            const pathRect = regionPath.getBoundingClientRect()
+            currentWidth = pathRect.width
+            currentHeight = pathRect.height
+          }
+
+          const pathRect = regionPath.getBoundingClientRect()
+
+          // Convert region bounding box to SVG coordinates
+          const regionSvgLeft = (pathRect.left - svgRect.left) * scaleX + viewBoxX
+          const regionSvgRight = regionSvgLeft + pathRect.width * scaleX
+          const regionSvgTop = (pathRect.top - svgRect.top) * scaleY + viewBoxY
+          const regionSvgBottom = regionSvgTop + pathRect.height * scaleY
+
+          // Check if region is inside the magnified viewport
+          const isInsideViewport =
+            regionSvgLeft < viewportRight &&
+            regionSvgRight > viewportLeft &&
+            regionSvgTop < viewportBottom &&
+            regionSvgBottom > viewportTop
+
+          regionsChecked.push({ id: regionId, inside: isInsideViewport })
+
+          if (!isInsideViewport) continue // Skip regions not in viewport
+
+          // Region is in viewport - check if it's a good size
+          const magnifiedWidth = currentWidth * testZoom
+          const magnifiedHeight = currentHeight * testZoom
+
+          const widthRatio = magnifiedWidth / magnifierWidth
+          const heightRatio = magnifiedHeight / magnifierHeight
+
+          // Update the checked region data with ratio
+          regionsChecked[regionsChecked.length - 1].ratio = Math.max(widthRatio, heightRatio)
+
+          // If either dimension is within our adaptive acceptance range, we found a good zoom
+          if (
+            (widthRatio >= minAcceptableRatio && widthRatio <= maxAcceptableRatio) ||
+            (heightRatio >= minAcceptableRatio && heightRatio <= maxAcceptableRatio)
+          ) {
+            adaptiveZoom = testZoom
+            foundFit = true
+            foundGoodZoom = true
+
+            // Only log when we actually accept a zoom
+            console.log(
+              `[Zoom] ✅ Accepted ${testZoom.toFixed(1)}x for ${regionId} (${currentWidth.toFixed(1)}px × ${currentHeight.toFixed(1)}px)`
+            )
+
+            // Save bounding box for this region
+            boundingBoxes.push({
+              regionId,
+              x: regionSvgLeft,
+              y: regionSvgTop,
+              width: pathRect.width * scaleX,
+              height: pathRect.height * scaleY,
+            })
+
+            break // Found a good zoom, stop checking regions
+          }
+        }
+
+        if (foundFit) break // Found a good zoom level, stop searching
+      }
+
+      if (!foundGoodZoom) {
+        // Didn't find a good zoom - use minimum
+        adaptiveZoom = MIN_ZOOM
+        if (pointerLocked) {
+          console.log(`[Zoom Search] ⚠️ No good zoom found, using minimum: ${MIN_ZOOM}x`)
+        }
+      }
+
+      // Save bounding boxes for rendering
+      setDebugBoundingBoxes(boundingBoxes)
+
+      // Calculate magnifier position (opposite corner from cursor)
+      // magnifierWidth and magnifierHeight already declared above
       const isLeftHalf = cursorX < containerRect.width / 2
       const isTopHalf = cursorY < containerRect.height / 2
 
       const newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
       const newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
 
-      console.log(
-        '[Magnifier] SHOWING with zoom:',
-        adaptiveZoom,
-        '| Setting opacity to 1, position:',
-        { top: newTop, left: newLeft }
-      )
+      if (pointerLocked) {
+        console.log(
+          '[Magnifier] SHOWING with zoom:',
+          adaptiveZoom,
+          '| Setting opacity to 1, position:',
+          { top: newTop, left: newLeft }
+        )
+      }
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
       setTargetTop(newTop)
       setTargetLeft(newLeft)
     } else {
-      console.log('[Magnifier] HIDING - not enough regions or too large | Setting opacity to 0')
+      if (pointerLocked) {
+        console.log('[Magnifier] HIDING - not enough regions or too large | Setting opacity to 0')
+      }
       setShowMagnifier(false)
       setTargetOpacity(0)
+      setDebugBoundingBoxes([]) // Clear bounding boxes when hiding
     }
   }
 
@@ -997,6 +1195,7 @@ export function MapRenderer({
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
+    setDebugBoundingBoxes([]) // Clear bounding boxes when leaving
     cursorPositionRef.current = null
   }
 
@@ -1114,6 +1313,39 @@ export function MapRenderer({
             </g>
           )
         })}
+
+        {/* Debug: Render bounding boxes (only if enabled) */}
+        {showDebugBoundingBoxes &&
+          debugBoundingBoxes.map((bbox) => (
+            <g key={`bbox-${bbox.regionId}`}>
+              <rect
+                x={bbox.x}
+                y={bbox.y}
+                width={bbox.width}
+                height={bbox.height}
+                fill="none"
+                stroke="#ff0000"
+                strokeWidth={viewBoxWidth / 500}
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray="3,3"
+                pointerEvents="none"
+                opacity={0.8}
+              />
+              {/* Label showing region ID */}
+              <text
+                x={bbox.x + bbox.width / 2}
+                y={bbox.y + bbox.height / 2}
+                fill="#ff0000"
+                fontSize={viewBoxWidth / 80}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                pointerEvents="none"
+                style={{ fontWeight: 'bold' }}
+              >
+                {bbox.regionId}
+              </text>
+            </g>
+          ))}
 
         {/* Arrow marker definition */}
         <defs>
@@ -1354,17 +1586,7 @@ export function MapRenderer({
 
       {/* Custom Cursor - Visible when pointer lock is active */}
       {(() => {
-        console.log('[Custom Cursor] Render check:', {
-          pointerLocked,
-          hasCursorPosition: !!cursorPosition,
-          cursorPosition,
-          shouldRender: pointerLocked && cursorPosition,
-        })
-
-        if (pointerLocked && cursorPosition) {
-          console.log('[Custom Cursor] ✅ RENDERING at position:', cursorPosition)
-        }
-
+        // Debug logging removed - was flooding console
         return pointerLocked && cursorPosition ? (
           <div
             data-element="custom-cursor"
@@ -1383,31 +1605,31 @@ export function MapRenderer({
               boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
             }}
           >
-          {/* Crosshair - Vertical line */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '0',
-              width: '2px',
-              height: '100%',
-              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-              transform: 'translateX(-50%)',
-            }}
-          />
-          {/* Crosshair - Horizontal line */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '0',
-              top: '50%',
-              width: '100%',
-              height: '2px',
-              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-              transform: 'translateY(-50%)',
-            }}
-          />
-        </div>
+            {/* Crosshair - Vertical line */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '0',
+                width: '2px',
+                height: '100%',
+                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+                transform: 'translateX(-50%)',
+              }}
+            />
+            {/* Crosshair - Horizontal line */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '0',
+                top: '50%',
+                width: '100%',
+                height: '2px',
+                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+                transform: 'translateY(-50%)',
+              }}
+            />
+          </div>
         ) : null
       })()}
 
@@ -1423,10 +1645,11 @@ export function MapRenderer({
             width: '50%',
             aspectRatio: '2/1',
             // High zoom (>60x) gets gold border, normal zoom gets blue border
-            border: magnifierSpring.zoom.to((zoom) =>
-              zoom > HIGH_ZOOM_THRESHOLD
-                ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
-                : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
+            border: magnifierSpring.zoom.to(
+              (zoom) =>
+                zoom > HIGH_ZOOM_THRESHOLD
+                  ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
+                  : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
             ),
             borderRadius: '12px',
             overflow: 'hidden',
