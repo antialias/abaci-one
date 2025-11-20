@@ -59,7 +59,8 @@
       "Bash(pnpm install:*)",
       "Bash(git checkout:*)",
       "Bash(node server.js:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

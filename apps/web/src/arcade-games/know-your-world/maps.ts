@@ -1,6 +1,10 @@
-import World from '@svg-maps/world'
-import USA from '@svg-maps/usa'
+import WorldData from './data/world.json'
+import USAData from './data/usa.json'
 import type { MapData, MapRegion } from './types'
+
+// Type the imported JSON data
+const World = WorldData as { label: string; viewBox: string; locations: Array<{ id: string; name: string; path: string }> }
+const USA = USAData as { label: string; viewBox: string; locations: Array<{ id: string; name: string; path: string }> }
 
 /**
  * Difficulty level configuration for a map
