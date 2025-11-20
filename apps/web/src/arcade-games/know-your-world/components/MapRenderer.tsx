@@ -324,11 +324,13 @@ export function MapRenderer({
   // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
   // Zoom: smooth, slower animation with gentle easing
   // Position: medium speed (300ms)
+  // Movement multiplier: gradual transitions for smooth cursor dampening
   const magnifierSpring = useSpring({
     zoom: targetZoom,
     opacity: targetOpacity,
     top: targetTop,
     left: targetLeft,
+    movementMultiplier: getMovementMultiplier(smallestRegionSize),
     config: (key) => {
       if (key === 'opacity') {
         return targetOpacity === 1
@@ -338,6 +340,11 @@ export function MapRenderer({
       if (key === 'zoom') {
         // Zoom: smooth, slower animation with gentle easing
         return { tension: 120, friction: 30, mass: 1 }
+      }
+      if (key === 'movementMultiplier') {
+        // Movement multiplier: smooth but responsive transitions
+        // Faster than zoom so cursor responsiveness changes quickly but not jarring
+        return { tension: 180, friction: 26 }
       }
       // Position: medium speed
       return { tension: 200, friction: 25 }
@@ -763,10 +770,11 @@ export function MapRenderer({
       const lastX = cursorPositionRef.current?.x ?? containerRect.width / 2
       const lastY = cursorPositionRef.current?.y ?? containerRect.height / 2
 
-      // Apply movement multiplier based on smallest region size for precision control
-      const movementMultiplier = getMovementMultiplier(smallestRegionSize)
-      cursorX = lastX + e.movementX * movementMultiplier
-      cursorY = lastY + e.movementY * movementMultiplier
+      // Apply smoothly animated movement multiplier for gradual cursor dampening transitions
+      // This prevents jarring changes when moving between regions of different sizes
+      const currentMultiplier = magnifierSpring.movementMultiplier.get()
+      cursorX = lastX + e.movementX * currentMultiplier
+      cursorY = lastY + e.movementY * currentMultiplier
 
       // Clamp to container bounds
       cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
