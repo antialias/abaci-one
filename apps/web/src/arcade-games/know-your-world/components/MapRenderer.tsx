@@ -1038,6 +1038,8 @@ export function MapRenderer({
       // Convert to numbers for use in calculations
       const cursorSvgX = cursorSvgXBig.toNumber()
       const cursorSvgY = cursorSvgYBig.toNumber()
+      const scaleX = scaleXBig.toNumber()
+      const scaleY = scaleYBig.toNumber()
 
       // Zoom search logging disabled for performance
 
