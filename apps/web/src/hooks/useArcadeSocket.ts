@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useContext } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { GameMove } from '@/lib/arcade/validation'
-import { useArcadeError } from '@/contexts/ArcadeErrorContext'
+import { ArcadeErrorContext } from '@/contexts/ArcadeErrorContext'
 
 export interface ArcadeSocketEvents {
   onSessionState?: (data: {
@@ -39,7 +39,10 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)
   const eventsRef = useRef(events)
-  const { addError } = useArcadeError()
+
+  // Get error context if available, but don't throw if it's not
+  const errorContext = useContext(ArcadeErrorContext)
+  const addError = errorContext?.addError || (() => {})
 
   // Update events ref when they change
   useEffect(() => {

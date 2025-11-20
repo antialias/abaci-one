@@ -7,7 +7,7 @@ interface ArcadeErrorContextValue {
   addError: (message: string, details?: string) => void
 }
 
-const ArcadeErrorContext = createContext<ArcadeErrorContextValue | null>(null)
+export const ArcadeErrorContext = createContext<ArcadeErrorContextValue | null>(null)
 
 /**
  * Provider for arcade error management
