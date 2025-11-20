@@ -1314,6 +1314,64 @@ export function MapRenderer({
           height: 'auto',
           cursor: pointerLocked ? 'crosshair' : 'pointer',
         })}
+        onClick={(e) => {
+          // Manual click detection using precise cursor position
+          // This bypasses browser's limited SVG hit-testing precision
+          if (!pointerLocked || !cursorPositionRef.current) return
+
+          // Use our precise Big.js cursor position
+          const preciseX = cursorPositionRef.current.x.toNumber()
+          const preciseY = cursorPositionRef.current.y.toNumber()
+
+          // Convert to SVG coordinates with Big.js precision
+          const containerRect = containerRef.current?.getBoundingClientRect()
+          const svgRect = svgRef.current?.getBoundingClientRect()
+          if (!containerRect || !svgRect) return
+
+          const scaleX = parseFloat(mapData.viewBox.split(' ')[2] || '0') / svgRect.width
+          const scaleY = parseFloat(mapData.viewBox.split(' ')[3] || '0') / svgRect.height
+          const viewBoxX = parseFloat(mapData.viewBox.split(' ')[0] || '0')
+          const viewBoxY = parseFloat(mapData.viewBox.split(' ')[1] || '0')
+
+          const svgX = (preciseX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
+          const svgY = (preciseY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
+
+          // Find smallest region containing this precise point
+          let clickedRegion: string | null = null
+          let smallestArea = Infinity
+
+          for (const region of mapData.regions) {
+            if (excludedRegionIds.has(region.id)) continue
+
+            const pathElement = svgRef.current?.querySelector(
+              `path[data-region-id="${region.id}"]`
+            ) as SVGPathElement
+            if (!pathElement) continue
+
+            // Use browser's isPointInPath for hit-testing
+            const point = svgRef.current!.createSVGPoint()
+            point.x = svgX
+            point.y = svgY
+            const isInside = pathElement.isPointInFill(point)
+
+            if (isInside) {
+              // If multiple regions contain point, choose smallest
+              const bbox = pathElement.getBBox()
+              const area = bbox.width * bbox.height
+              if (area < smallestArea) {
+                smallestArea = area
+                clickedRegion = region.id
+              }
+            }
+          }
+
+          if (clickedRegion) {
+            const region = mapData.regions.find((r) => r.id === clickedRegion)
+            if (region) {
+              onRegionClick(region.id, region.name)
+            }
+          }
+        }}
       >
         {/* Background */}
         <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
@@ -1348,10 +1406,11 @@ export function MapRenderer({
                 // Otherwise, use native mouse events
                 onMouseEnter={() => !isExcluded && !pointerLocked && setHoveredRegion(region.id)}
                 onMouseLeave={() => !pointerLocked && setHoveredRegion(null)}
-                onClick={() => !isExcluded && onRegionClick(region.id, region.name)} // Disable clicks on excluded regions
+                onClick={() => !isExcluded && !pointerLocked && onRegionClick(region.id, region.name)} // When pointer locked, use SVG container click handler instead
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
+                  pointerEvents: pointerLocked ? 'none' : 'all', // Disable individual path clicks when pointer locked
                 }}
               />
 
