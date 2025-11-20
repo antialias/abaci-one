@@ -15,6 +15,7 @@ import {
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import { getMapData, getFilteredMapData, filterRegionsByContinent } from '../maps'
 import type { ContinentId } from '../continents'
+import Big from 'big.js'
 
 interface BoundingBox {
   minX: number
@@ -182,7 +183,9 @@ export function MapRenderer({
   const [showLockPrompt, setShowLockPrompt] = useState(true)
 
   // Cursor position tracking (container-relative coordinates)
-  const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
+  // Using Big.js for arbitrary precision to handle ultra-precise cursor movements
+  // when dampened to 0.03x for sub-pixel regions like Vatican City
+  const cursorPositionRef = useRef<{ x: Big; y: Big } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Debug: Track bounding boxes for visualization
@@ -763,28 +766,45 @@ export function MapRenderer({
     const svgRect = svgRef.current.getBoundingClientRect()
 
     // Get cursor position relative to container
-    let cursorX: number
-    let cursorY: number
+    // Using Big.js for arbitrary precision in cursor tracking
+    let cursorXBig: Big
+    let cursorYBig: Big
 
     if (pointerLocked) {
       // When pointer is locked, use movement deltas with precision multiplier
-      const lastX = cursorPositionRef.current?.x ?? containerRect.width / 2
-      const lastY = cursorPositionRef.current?.y ?? containerRect.height / 2
+      const lastX = cursorPositionRef.current?.x ?? new Big(containerRect.width / 2)
+      const lastY = cursorPositionRef.current?.y ?? new Big(containerRect.height / 2)
 
       // Apply smoothly animated movement multiplier for gradual cursor dampening transitions
       // This prevents jarring changes when moving between regions of different sizes
       const currentMultiplier = magnifierSpring.movementMultiplier.get()
-      cursorX = lastX + e.movementX * currentMultiplier
-      cursorY = lastY + e.movementY * currentMultiplier
 
-      // Clamp to container bounds
-      cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
-      cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
+      // Use Big.js for precise delta calculation
+      // This maintains precision even with 0.03x multiplier for sub-pixel regions
+      const deltaX = new Big(e.movementX).times(currentMultiplier)
+      const deltaY = new Big(e.movementY).times(currentMultiplier)
+
+      cursorXBig = lastX.plus(deltaX)
+      cursorYBig = lastY.plus(deltaY)
+
+      // Clamp to container bounds (convert to Big for comparison)
+      const minBound = new Big(0)
+      const maxXBound = new Big(containerRect.width)
+      const maxYBound = new Big(containerRect.height)
+
+      if (cursorXBig.lt(minBound)) cursorXBig = minBound
+      if (cursorXBig.gt(maxXBound)) cursorXBig = maxXBound
+      if (cursorYBig.lt(minBound)) cursorYBig = minBound
+      if (cursorYBig.gt(maxYBound)) cursorYBig = maxYBound
     } else {
       // Normal mode: use absolute position
-      cursorX = e.clientX - containerRect.left
-      cursorY = e.clientY - containerRect.top
+      cursorXBig = new Big(e.clientX - containerRect.left)
+      cursorYBig = new Big(e.clientY - containerRect.top)
     }
+
+    // Convert to regular numbers for display and comparisons
+    const cursorX = cursorXBig.toNumber()
+    const cursorY = cursorYBig.toNumber()
 
     // Check if cursor is over the SVG
     const isOverSvg =
@@ -803,8 +823,8 @@ export function MapRenderer({
 
     // No velocity tracking needed - zoom adapts immediately to region size
 
-    // Update cursor position ref for next frame
-    cursorPositionRef.current = { x: cursorX, y: cursorY }
+    // Update cursor position ref for next frame (store Big values for precision)
+    cursorPositionRef.current = { x: cursorXBig, y: cursorYBig }
     setCursorPosition({ x: cursorX, y: cursorY })
 
     // Define 50px × 50px detection box around cursor
@@ -999,26 +1019,49 @@ export function MapRenderer({
       const MIN_ZOOM = 1
       const ZOOM_STEP = 0.9 // Reduce by 10% each iteration
 
-      // Convert cursor position to SVG coordinates
-      const scaleX = viewBoxWidth / svgRect.width
-      const scaleY = viewBoxHeight / svgRect.height
+      // Convert cursor position to SVG coordinates using Big.js for precision
+      const scaleXBig = new Big(viewBoxWidth).div(svgRect.width)
+      const scaleYBig = new Big(viewBoxHeight).div(svgRect.height)
       const viewBoxX = viewBoxParts[0] || 0
       const viewBoxY = viewBoxParts[1] || 0
-      const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
-      const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
+
+      // Use Big.js for precise coordinate transformation
+      const cursorSvgXBig = cursorXBig
+        .minus(svgRect.left - containerRect.left)
+        .times(scaleXBig)
+        .plus(viewBoxX)
+      const cursorSvgYBig = cursorYBig
+        .minus(svgRect.top - containerRect.top)
+        .times(scaleYBig)
+        .plus(viewBoxY)
+
+      // Convert to numbers for use in calculations
+      const cursorSvgX = cursorSvgXBig.toNumber()
+      const cursorSvgY = cursorSvgYBig.toNumber()
 
       // Zoom search logging disabled for performance
 
       for (let testZoom = MAX_ZOOM; testZoom >= MIN_ZOOM; testZoom *= ZOOM_STEP) {
         // Calculate the SVG viewport that will be shown in the magnifier at this zoom
-        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
-        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
+        // Use Big.js for precise viewport calculations at extreme zoom levels
+        const testZoomBig = new Big(testZoom)
+        const magnifiedViewBoxWidthBig = new Big(viewBoxWidth).div(testZoomBig)
+        const magnifiedViewBoxHeightBig = new Big(viewBoxHeight).div(testZoomBig)
 
         // The viewport is centered on cursor position, but clamped to map bounds
-        let viewportLeft = cursorSvgX - magnifiedViewBoxWidth / 2
-        let viewportRight = cursorSvgX + magnifiedViewBoxWidth / 2
-        let viewportTop = cursorSvgY - magnifiedViewBoxHeight / 2
-        let viewportBottom = cursorSvgY + magnifiedViewBoxHeight / 2
+        const halfWidthBig = magnifiedViewBoxWidthBig.div(2)
+        const halfHeightBig = magnifiedViewBoxHeightBig.div(2)
+
+        let viewportLeftBig = cursorSvgXBig.minus(halfWidthBig)
+        let viewportRightBig = cursorSvgXBig.plus(halfWidthBig)
+        let viewportTopBig = cursorSvgYBig.minus(halfHeightBig)
+        let viewportBottomBig = cursorSvgYBig.plus(halfHeightBig)
+
+        // Convert to regular numbers for comparison and display
+        let viewportLeft = viewportLeftBig.toNumber()
+        let viewportRight = viewportRightBig.toNumber()
+        let viewportTop = viewportTopBig.toNumber()
+        let viewportBottom = viewportBottomBig.toNumber()
 
         // Clamp viewport to stay within map bounds
         const mapLeft = viewBoxX
