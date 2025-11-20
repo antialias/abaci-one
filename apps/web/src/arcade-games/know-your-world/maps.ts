@@ -1,6 +1,19 @@
-import World from '@svg-maps/world'
-import USA from '@svg-maps/usa'
 import type { MapData, MapRegion } from './types'
+
+// Lazy-loaded map data to avoid ES module issues in Node.js server context
+let World: any = null
+let USA: any = null
+
+async function loadMapData() {
+  if (!World) {
+    const worldModule = await import('@svg-maps/world')
+    World = worldModule.default
+  }
+  if (!USA) {
+    const usaModule = await import('@svg-maps/usa')
+    USA = usaModule.default
+  }
+}
 
 /**
  * Difficulty level configuration for a map
@@ -257,57 +270,52 @@ function convertToMapRegions(
 
 /**
  * World map with all countries
- * Data from @svg-maps/world package
+ * Data from @svg-maps/world package (loaded dynamically)
  */
-export const WORLD_MAP: MapData = {
-  id: 'world',
-  name: World.label || 'Map of World',
-  viewBox: World.viewBox,
-  regions: convertToMapRegions(World.locations || []),
-}
-
-/**
- * USA map with all states
- * Data from @svg-maps/usa package
- */
-export const USA_MAP: MapData = {
-  id: 'usa',
-  name: USA.label || 'Map of USA',
-  viewBox: USA.viewBox,
-  regions: convertToMapRegions(USA.locations || []),
-  difficultyConfig: USA_DIFFICULTY_CONFIG, // Single "Standard" level (all states)
-}
-
-// Log to help debug if data is missing
-if (typeof window === 'undefined') {
-  // Server-side
-  console.log('[KnowYourWorld] Server: World regions loaded:', WORLD_MAP.regions.length)
-  console.log('[KnowYourWorld] Server: USA regions loaded:', USA_MAP.regions.length)
-} else {
-  // Client-side
-  console.log('[KnowYourWorld] Client: World regions loaded:', WORLD_MAP.regions.length)
-  console.log('[KnowYourWorld] Client: USA regions loaded:', USA_MAP.regions.length)
-}
-
-/**
- * Get map data by ID
- */
-export function getMapData(mapId: 'world' | 'usa'): MapData {
-  switch (mapId) {
-    case 'world':
-      return WORLD_MAP
-    case 'usa':
-      return USA_MAP
-    default:
-      return WORLD_MAP
+async function getWorldMap(): Promise<MapData> {
+  await loadMapData()
+  return {
+    id: 'world',
+    name: World.label || 'Map of World',
+    viewBox: World.viewBox,
+    regions: convertToMapRegions(World.locations || []),
   }
 }
 
 /**
- * Get a specific region by ID from a map
+ * USA map with all states
+ * Data from @svg-maps/usa package (loaded dynamically)
  */
-export function getRegionById(mapId: 'world' | 'usa', regionId: string) {
-  const mapData = getMapData(mapId)
+async function getUSAMap(): Promise<MapData> {
+  await loadMapData()
+  return {
+    id: 'usa',
+    name: USA.label || 'Map of USA',
+    viewBox: USA.viewBox,
+    regions: convertToMapRegions(USA.locations || []),
+    difficultyConfig: USA_DIFFICULTY_CONFIG, // Single "Standard" level (all states)
+  }
+}
+
+/**
+ * Get map data by ID (async - loads map data dynamically)
+ */
+export async function getMapData(mapId: 'world' | 'usa'): Promise<MapData> {
+  switch (mapId) {
+    case 'world':
+      return await getWorldMap()
+    case 'usa':
+      return await getUSAMap()
+    default:
+      return await getWorldMap()
+  }
+}
+
+/**
+ * Get a specific region by ID from a map (async)
+ */
+export async function getRegionById(mapId: 'world' | 'usa', regionId: string) {
+  const mapData = await getMapData(mapId)
   return mapData.regions.find((r) => r.id === regionId)
 }
 
@@ -648,14 +656,14 @@ function filterRegionsByDifficulty(regions: MapRegion[], level: DifficultyLevel)
 }
 
 /**
- * Get filtered map data for a continent and difficulty
+ * Get filtered map data for a continent and difficulty (async)
  */
-export function getFilteredMapData(
+export async function getFilteredMapData(
   mapId: 'world' | 'usa',
   continentId: ContinentId | 'all',
   difficultyLevelId?: string // Optional difficulty level ID (uses map's default if not provided)
-): MapData {
-  const mapData = getMapData(mapId)
+): Promise<MapData> {
+  const mapData = await getMapData(mapId)
 
   // Get difficulty config for this map (or use global default)
   const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
