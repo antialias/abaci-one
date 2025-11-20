@@ -338,8 +338,9 @@ export function MapRenderer({
           : { duration: 1000 } // Fade out: 1 second
       }
       if (key === 'zoom') {
-        // Zoom: smooth, slower animation with gentle easing
-        return { tension: 120, friction: 30, mass: 1 }
+        // Zoom: very slow, smooth animation (4x longer than before)
+        // Lower tension + higher mass = longer, more gradual transitions
+        return { tension: 30, friction: 30, mass: 4 }
       }
       if (key === 'movementMultiplier') {
         // Movement multiplier: smooth but responsive transitions
