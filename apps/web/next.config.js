@@ -17,7 +17,7 @@ const nextConfig = {
     optimizePackageImports: ['@soroban/core', '@soroban/client'],
     serverComponentsExternalPackages: ['@myriaddreamin/typst.ts'],
   },
-  transpilePackages: ['@soroban/core', '@soroban/client'],
+  transpilePackages: ['@soroban/core', '@soroban/client', '@svg-maps/world', '@svg-maps/usa'],
   webpack: (config, { isServer }) => {
     config.experiments = {
       ...config.experiments,
