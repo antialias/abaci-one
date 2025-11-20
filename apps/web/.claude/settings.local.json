@@ -57,7 +57,8 @@
       "Bash(pnpm remove:*)",
       "Bash(gh run view:*)",
       "Bash(pnpm install:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node server.js:*)"
     ],
     "deny": [],
     "ask": []

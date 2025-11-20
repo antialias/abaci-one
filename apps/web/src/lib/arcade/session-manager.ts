@@ -227,7 +227,7 @@ export async function applyGameMove(
   }
 
   // Validate the move with authorization context (use internal userId, not guestId)
-  const validationResult = validator.validateMove(session.gameState, move, {
+  const validationResult = await validator.validateMove(session.gameState, move, {
     userId: internalUserId || userId, // Use internal userId for room-based games
     playerOwnership,
   })

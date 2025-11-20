@@ -68,11 +68,12 @@ export interface ValidationContext {
 export interface GameValidator<TState = unknown, TMove extends GameMove = GameMove> {
   /**
    * Validate a game move and return the new state if valid
+   * Can be async to support lazy-loaded dependencies (e.g., ES modules)
    * @param state Current game state
    * @param move The move to validate
    * @param context Optional validation context for authorization checks
    */
-  validateMove(state: TState, move: TMove, context?: ValidationContext): ValidationResult
+  validateMove(state: TState, move: TMove, context?: ValidationContext): ValidationResult | Promise<ValidationResult>
 
   /**
    * Check if the game is in a terminal state (completed)

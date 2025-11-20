@@ -5,19 +5,27 @@ import type {
   KnowYourWorldState,
   GuessRecord,
 } from './types'
-import { getMapData, getFilteredMapData } from './maps'
+
+/**
+ * Lazy-load map functions to avoid importing ES modules at module init time
+ * This is critical for server-side usage where ES modules can't be required
+ */
+async function getFilteredMapDataLazy(...args: Parameters<typeof import('./maps').getFilteredMapData>) {
+  const { getFilteredMapData } = await import('./maps')
+  return getFilteredMapData(...args)
+}
 
 export class KnowYourWorldValidator
   implements GameValidator<KnowYourWorldState, KnowYourWorldMove>
 {
-  validateMove(state: KnowYourWorldState, move: KnowYourWorldMove): ValidationResult {
+  async validateMove(state: KnowYourWorldState, move: KnowYourWorldMove): Promise<ValidationResult> {
     switch (move.type) {
       case 'START_GAME':
-        return this.validateStartGame(state, move.data)
+        return await this.validateStartGame(state, move.data)
       case 'CLICK_REGION':
         return this.validateClickRegion(state, move.playerId, move.data)
       case 'NEXT_ROUND':
-        return this.validateNextRound(state)
+        return await this.validateNextRound(state)
       case 'END_GAME':
         return this.validateEndGame(state)
       case 'END_STUDY':
@@ -39,42 +47,21 @@ export class KnowYourWorldValidator
     }
   }
 
-  private validateStartGame(state: KnowYourWorldState, data: any): ValidationResult {
+  private async validateStartGame(state: KnowYourWorldState, data: any): Promise<ValidationResult> {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Can only start from setup phase' }
     }
 
     const { activePlayers, playerMetadata, selectedMap, gameMode, difficulty } = data
 
-    console.log('[KnowYourWorld Validator] Starting game with:', {
-      selectedMap,
-      gameMode,
-      difficulty,
-      studyDuration: state.studyDuration,
-      activePlayers: activePlayers?.length,
-    })
-
     if (!activePlayers || activePlayers.length === 0) {
       return { valid: false, error: 'Need at least 1 player' }
     }
 
     // Get map data and shuffle regions (with continent and difficulty filters)
-    const mapData = getFilteredMapData(selectedMap, state.selectedContinent, difficulty)
-    console.log('[KnowYourWorld Validator] Map data loaded:', {
-      map: mapData.id,
-      continent: state.selectedContinent,
-      difficulty,
-      regionsCount: mapData.regions.length,
-      regionIds: mapData.regions.map((r) => r.id).slice(0, 10),
-      regionNames: mapData.regions.map((r) => r.name).slice(0, 10),
-    })
+    const mapData = await getFilteredMapDataLazy(selectedMap, state.selectedContinent, difficulty)
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
-    console.log('[KnowYourWorld Validator] First region to find:', {
-      id: shuffledRegions[0],
-      name: mapData.regions.find((r) => r.id === shuffledRegions[0])?.name,
-      totalShuffled: shuffledRegions.length,
-    })
 
     // Initialize scores and attempts
     const scores: Record<string, number> = {}
@@ -225,13 +212,13 @@ export class KnowYourWorldValidator
     }
   }
 
-  private validateNextRound(state: KnowYourWorldState): ValidationResult {
+  private async validateNextRound(state: KnowYourWorldState): Promise<ValidationResult> {
     if (state.gamePhase !== 'results') {
       return { valid: false, error: 'Can only start next round from results' }
     }
 
     // Get map data and shuffle regions (with continent and difficulty filters)
-    const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent, state.difficulty)
+    const mapData = await getFilteredMapDataLazy(state.selectedMap, state.selectedContinent, state.difficulty)
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 
