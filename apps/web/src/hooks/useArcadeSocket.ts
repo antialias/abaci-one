@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { GameMove } from '@/lib/arcade/validation'
+import { useArcadeError } from '@/contexts/ArcadeErrorContext'
 
 export interface ArcadeSocketEvents {
   onSessionState?: (data: {
@@ -15,6 +16,8 @@ export interface ArcadeSocketEvents {
   onSessionEnded?: () => void
   onNoActiveSession?: () => void
   onError?: (error: { error: string }) => void
+  /** If true, errors will NOT show toasts (for cases where game handles errors directly) */
+  suppressErrorToasts?: boolean
 }
 
 export interface UseArcadeSocketReturn {
@@ -36,6 +39,7 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)
   const eventsRef = useRef(events)
+  const { addError } = useArcadeError()
 
   // Update events ref when they change
   useEffect(() => {
@@ -59,6 +63,25 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
     socketInstance.on('disconnect', () => {
       console.log('[ArcadeSocket] Disconnected')
       setConnected(false)
+
+      // Show error toast unless suppressed
+      if (!eventsRef.current.suppressErrorToasts) {
+        addError(
+          'Connection lost',
+          'The connection to the game server was lost. Attempting to reconnect...'
+        )
+      }
+    })
+
+    socketInstance.on('connect_error', (error) => {
+      console.error('[ArcadeSocket] Connection error', error)
+
+      if (!eventsRef.current.suppressErrorToasts) {
+        addError(
+          'Connection error',
+          `Failed to connect to the game server: ${error.message}\n\nPlease check your internet connection and try refreshing the page.`
+        )
+      }
     })
 
     socketInstance.on('session-state', (data) => {
@@ -66,6 +89,14 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
     })
 
     socketInstance.on('no-active-session', () => {
+      // Show error toast unless suppressed
+      if (!eventsRef.current.suppressErrorToasts) {
+        addError(
+          'No active session',
+          'No game session was found. Please start a new game or join an existing room.'
+        )
+      }
+
       eventsRef.current.onNoActiveSession?.()
     })
 
@@ -75,6 +106,15 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
 
     socketInstance.on('move-rejected', (data) => {
       console.log(`[ArcadeSocket] Move rejected: ${data.error}`)
+
+      // Show error toast for move rejections unless suppressed or it's a version conflict
+      if (!eventsRef.current.suppressErrorToasts && !data.versionConflict) {
+        addError(
+          'Move rejected',
+          `Your move was not accepted: ${data.error}\n\nMove type: ${data.move.type}`
+        )
+      }
+
       eventsRef.current.onMoveRejected?.(data)
     })
 
@@ -85,6 +125,15 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
 
     socketInstance.on('session-error', (data) => {
       console.error('[ArcadeSocket] Session error', data)
+
+      // Show error toast unless suppressed
+      if (!eventsRef.current.suppressErrorToasts) {
+        addError(
+          'Game session error',
+          `Error: ${data.error}\n\nThis usually means there was a problem loading or updating the game session. Please try refreshing the page or returning to the lobby.`
+        )
+      }
+
       eventsRef.current.onError?.(data)
     })
 
