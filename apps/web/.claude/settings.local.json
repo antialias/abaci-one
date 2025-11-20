@@ -52,11 +52,18 @@
       "Bash(npm install:*)",
       "Bash(pnpm add:*)",
       "Bash(node -e:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "Bash(git revert:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(gh run view:*)",
+      "Bash(pnpm install:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

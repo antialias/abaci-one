@@ -4,55 +4,70 @@
  * This is the single source of truth for game validators.
  * Both client and server import validators from here.
  *
+ * IMPORTANT: Uses lazy loading to avoid importing ES modules at module load time.
+ * This allows the registry to be loaded on the server without causing ES module errors.
+ *
  * To add a new game:
- * 1. Import the validator
- * 2. Add to validatorRegistry Map
+ * 1. Add the lazy loader function
+ * 2. Add to validatorLoaders Map
  * 3. GameName type will auto-update
  */
 
-import { matchingGameValidator } from '@/arcade-games/matching/Validator'
-import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
-import { complementRaceValidator } from '@/arcade-games/complement-race/Validator'
-import { cardSortingValidator } from '@/arcade-games/card-sorting/Validator'
-import { yjsDemoValidator } from '@/arcade-games/yjs-demo/Validator'
-import { rithmomachiaValidator } from '@/arcade-games/rithmomachia/Validator'
-import { knowYourWorldValidator } from '@/arcade-games/know-your-world/Validator'
 import type { GameValidator } from './validation/types'
 
 /**
- * Central registry of all game validators
- * Key: game name (matches manifest.name)
- * Value: validator instance
+ * Lazy validator loaders - import validators only when needed
  */
-export const validatorRegistry = {
-  matching: matchingGameValidator,
-  'memory-quiz': memoryQuizGameValidator,
-  'complement-race': complementRaceValidator,
-  'card-sorting': cardSortingValidator,
-  'yjs-demo': yjsDemoValidator,
-  rithmomachia: rithmomachiaValidator,
-  'know-your-world': knowYourWorldValidator,
+const validatorLoaders = {
+  matching: async () => (await import('@/arcade-games/matching/Validator')).matchingGameValidator,
+  'memory-quiz': async () =>
+    (await import('@/arcade-games/memory-quiz/Validator')).memoryQuizGameValidator,
+  'complement-race': async () =>
+    (await import('@/arcade-games/complement-race/Validator')).complementRaceValidator,
+  'card-sorting': async () =>
+    (await import('@/arcade-games/card-sorting/Validator')).cardSortingValidator,
+  'yjs-demo': async () => (await import('@/arcade-games/yjs-demo/Validator')).yjsDemoValidator,
+  rithmomachia: async () =>
+    (await import('@/arcade-games/rithmomachia/Validator')).rithmomachiaValidator,
+  'know-your-world': async () =>
+    (await import('@/arcade-games/know-your-world/Validator')).knowYourWorldValidator,
   // Add new games here - GameName type will auto-update
 } as const
+
+/**
+ * Cache for loaded validators
+ */
+const validatorCache = new Map<GameName, GameValidator>()
 
 /**
  * Auto-derived game name type from registry
  * No need to manually update this!
  */
-export type GameName = keyof typeof validatorRegistry
+export type GameName = keyof typeof validatorLoaders
 
 /**
- * Get validator for a game
+ * Get validator for a game (async - lazy loads validator)
  * @throws Error if game not found (fail fast)
  */
-export function getValidator(gameName: string): GameValidator {
-  const validator = validatorRegistry[gameName as GameName]
-  if (!validator) {
+export async function getValidator(gameName: string): Promise<GameValidator> {
+  const gameNameTyped = gameName as GameName
+
+  // Check cache first
+  if (validatorCache.has(gameNameTyped)) {
+    return validatorCache.get(gameNameTyped)!
+  }
+
+  const loader = validatorLoaders[gameNameTyped]
+  if (!loader) {
     throw new Error(
       `No validator found for game: ${gameName}. ` +
-        `Available games: ${Object.keys(validatorRegistry).join(', ')}`
+        `Available games: ${Object.keys(validatorLoaders).join(', ')}`
     )
   }
+
+  // Load and cache
+  const validator = await loader()
+  validatorCache.set(gameNameTyped, validator)
   return validator
 }
 
@@ -60,14 +75,14 @@ export function getValidator(gameName: string): GameValidator {
  * Check if a game has a registered validator
  */
 export function hasValidator(gameName: string): gameName is GameName {
-  return gameName in validatorRegistry
+  return gameName in validatorLoaders
 }
 
 /**
  * Get all registered game names
  */
 export function getRegisteredGameNames(): GameName[] {
-  return Object.keys(validatorRegistry) as GameName[]
+  return Object.keys(validatorLoaders) as GameName[]
 }
 
 /**
@@ -93,17 +108,4 @@ export function assertValidGameName(gameName: unknown): asserts gameName is Game
       `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(', ')}`
     )
   }
-}
-
-/**
- * Re-export validators for backwards compatibility
- */
-export {
-  matchingGameValidator,
-  memoryQuizGameValidator,
-  complementRaceValidator,
-  cardSortingValidator,
-  yjsDemoValidator,
-  rithmomachiaValidator,
-  knowYourWorldValidator,
 }

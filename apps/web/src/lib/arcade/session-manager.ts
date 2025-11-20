@@ -202,7 +202,7 @@ export async function applyGameMove(
   }
 
   // Get the validator for this game
-  const validator = getValidator(session.currentGame as GameName)
+  const validator = await getValidator(session.currentGame as GameName)
 
   // Fetch player ownership for authorization checks (room-based games)
   let playerOwnership: PlayerOwnershipMap | undefined

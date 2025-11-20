@@ -361,7 +361,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               const roomPlayerIds = await getRoomPlayerIds(roomId)
 
               // Get initial state from the correct validator based on game type
-              const validator = getValidator(room.gameName as GameName)
+              const validator = await getValidator(room.gameName as GameName)
 
               // Get game-specific config from database (type-safe)
               const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
@@ -418,7 +418,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             }
 
             // Get initial state from validator (this code path is matching-game specific)
-            const matchingValidator = getValidator('matching')
+            const matchingValidator = await getValidator('matching')
             const initialState = matchingValidator.getInitialState({
               difficulty: 6,
               gameType: 'abacus-numeral',
