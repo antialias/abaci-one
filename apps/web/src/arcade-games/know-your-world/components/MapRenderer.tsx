@@ -15,7 +15,6 @@ import {
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import { getMapData, getFilteredMapData, filterRegionsByContinent } from '../maps'
 import type { ContinentId } from '../continents'
-import Big from 'big.js'
 
 interface BoundingBox {
   minX: number
@@ -183,9 +182,7 @@ export function MapRenderer({
   const [showLockPrompt, setShowLockPrompt] = useState(true)
 
   // Cursor position tracking (container-relative coordinates)
-  // Using Big.js for arbitrary precision to handle ultra-precise cursor movements
-  // when dampened to 0.03x for sub-pixel regions like Vatican City
-  const cursorPositionRef = useRef<{ x: Big; y: Big } | null>(null)
+  const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Debug: Track bounding boxes for visualization
@@ -766,45 +763,28 @@ export function MapRenderer({
     const svgRect = svgRef.current.getBoundingClientRect()
 
     // Get cursor position relative to container
-    // Using Big.js for arbitrary precision in cursor tracking
-    let cursorXBig: Big
-    let cursorYBig: Big
+    let cursorX: number
+    let cursorY: number
 
     if (pointerLocked) {
       // When pointer is locked, use movement deltas with precision multiplier
-      const lastX = cursorPositionRef.current?.x ?? new Big(containerRect.width / 2)
-      const lastY = cursorPositionRef.current?.y ?? new Big(containerRect.height / 2)
+      const lastX = cursorPositionRef.current?.x ?? containerRect.width / 2
+      const lastY = cursorPositionRef.current?.y ?? containerRect.height / 2
 
       // Apply smoothly animated movement multiplier for gradual cursor dampening transitions
       // This prevents jarring changes when moving between regions of different sizes
       const currentMultiplier = magnifierSpring.movementMultiplier.get()
+      cursorX = lastX + e.movementX * currentMultiplier
+      cursorY = lastY + e.movementY * currentMultiplier
 
-      // Use Big.js for precise delta calculation
-      // This maintains precision even with 0.03x multiplier for sub-pixel regions
-      const deltaX = new Big(e.movementX).times(currentMultiplier)
-      const deltaY = new Big(e.movementY).times(currentMultiplier)
-
-      cursorXBig = lastX.plus(deltaX)
-      cursorYBig = lastY.plus(deltaY)
-
-      // Clamp to container bounds (convert to Big for comparison)
-      const minBound = new Big(0)
-      const maxXBound = new Big(containerRect.width)
-      const maxYBound = new Big(containerRect.height)
-
-      if (cursorXBig.lt(minBound)) cursorXBig = minBound
-      if (cursorXBig.gt(maxXBound)) cursorXBig = maxXBound
-      if (cursorYBig.lt(minBound)) cursorYBig = minBound
-      if (cursorYBig.gt(maxYBound)) cursorYBig = maxYBound
+      // Clamp to container bounds
+      cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
+      cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
     } else {
       // Normal mode: use absolute position
-      cursorXBig = new Big(e.clientX - containerRect.left)
-      cursorYBig = new Big(e.clientY - containerRect.top)
+      cursorX = e.clientX - containerRect.left
+      cursorY = e.clientY - containerRect.top
     }
-
-    // Convert to regular numbers for display and comparisons
-    const cursorX = cursorXBig.toNumber()
-    const cursorY = cursorYBig.toNumber()
 
     // Check if cursor is over the SVG
     const isOverSvg =
@@ -823,8 +803,8 @@ export function MapRenderer({
 
     // No velocity tracking needed - zoom adapts immediately to region size
 
-    // Update cursor position ref for next frame (store Big values for precision)
-    cursorPositionRef.current = { x: cursorXBig, y: cursorYBig }
+    // Update cursor position ref for next frame
+    cursorPositionRef.current = { x: cursorX, y: cursorY }
     setCursorPosition({ x: cursorX, y: cursorY })
 
     // Define 50px × 50px detection box around cursor
@@ -1019,51 +999,26 @@ export function MapRenderer({
       const MIN_ZOOM = 1
       const ZOOM_STEP = 0.9 // Reduce by 10% each iteration
 
-      // Convert cursor position to SVG coordinates using Big.js for precision
-      const scaleXBig = new Big(viewBoxWidth).div(svgRect.width)
-      const scaleYBig = new Big(viewBoxHeight).div(svgRect.height)
+      // Convert cursor position to SVG coordinates
+      const scaleX = viewBoxWidth / svgRect.width
+      const scaleY = viewBoxHeight / svgRect.height
       const viewBoxX = viewBoxParts[0] || 0
       const viewBoxY = viewBoxParts[1] || 0
-
-      // Use Big.js for precise coordinate transformation
-      const cursorSvgXBig = cursorXBig
-        .minus(svgRect.left - containerRect.left)
-        .times(scaleXBig)
-        .plus(viewBoxX)
-      const cursorSvgYBig = cursorYBig
-        .minus(svgRect.top - containerRect.top)
-        .times(scaleYBig)
-        .plus(viewBoxY)
-
-      // Convert to numbers for use in calculations
-      const cursorSvgX = cursorSvgXBig.toNumber()
-      const cursorSvgY = cursorSvgYBig.toNumber()
-      const scaleX = scaleXBig.toNumber()
-      const scaleY = scaleYBig.toNumber()
+      const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
+      const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
 
       // Zoom search logging disabled for performance
 
       for (let testZoom = MAX_ZOOM; testZoom >= MIN_ZOOM; testZoom *= ZOOM_STEP) {
         // Calculate the SVG viewport that will be shown in the magnifier at this zoom
-        // Use Big.js for precise viewport calculations at extreme zoom levels
-        const testZoomBig = new Big(testZoom)
-        const magnifiedViewBoxWidthBig = new Big(viewBoxWidth).div(testZoomBig)
-        const magnifiedViewBoxHeightBig = new Big(viewBoxHeight).div(testZoomBig)
+        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
+        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
 
         // The viewport is centered on cursor position, but clamped to map bounds
-        const halfWidthBig = magnifiedViewBoxWidthBig.div(2)
-        const halfHeightBig = magnifiedViewBoxHeightBig.div(2)
-
-        let viewportLeftBig = cursorSvgXBig.minus(halfWidthBig)
-        let viewportRightBig = cursorSvgXBig.plus(halfWidthBig)
-        let viewportTopBig = cursorSvgYBig.minus(halfHeightBig)
-        let viewportBottomBig = cursorSvgYBig.plus(halfHeightBig)
-
-        // Convert to regular numbers for comparison and display
-        let viewportLeft = viewportLeftBig.toNumber()
-        let viewportRight = viewportRightBig.toNumber()
-        let viewportTop = viewportTopBig.toNumber()
-        let viewportBottom = viewportBottomBig.toNumber()
+        let viewportLeft = cursorSvgX - magnifiedViewBoxWidth / 2
+        let viewportRight = cursorSvgX + magnifiedViewBoxWidth / 2
+        let viewportTop = cursorSvgY - magnifiedViewBoxHeight / 2
+        let viewportBottom = cursorSvgY + magnifiedViewBoxHeight / 2
 
         // Clamp viewport to stay within map bounds
         const mapLeft = viewBoxX
@@ -1314,64 +1269,6 @@ export function MapRenderer({
           height: 'auto',
           cursor: pointerLocked ? 'crosshair' : 'pointer',
         })}
-        onClick={(e) => {
-          // Manual click detection using precise cursor position
-          // This bypasses browser's limited SVG hit-testing precision
-          if (!pointerLocked || !cursorPositionRef.current) return
-
-          // Use our precise Big.js cursor position
-          const preciseX = cursorPositionRef.current.x.toNumber()
-          const preciseY = cursorPositionRef.current.y.toNumber()
-
-          // Convert to SVG coordinates with Big.js precision
-          const containerRect = containerRef.current?.getBoundingClientRect()
-          const svgRect = svgRef.current?.getBoundingClientRect()
-          if (!containerRect || !svgRect) return
-
-          const scaleX = parseFloat(mapData.viewBox.split(' ')[2] || '0') / svgRect.width
-          const scaleY = parseFloat(mapData.viewBox.split(' ')[3] || '0') / svgRect.height
-          const viewBoxX = parseFloat(mapData.viewBox.split(' ')[0] || '0')
-          const viewBoxY = parseFloat(mapData.viewBox.split(' ')[1] || '0')
-
-          const svgX = (preciseX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
-          const svgY = (preciseY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
-
-          // Find smallest region containing this precise point
-          let clickedRegion: string | null = null
-          let smallestArea = Infinity
-
-          for (const region of mapData.regions) {
-            if (excludedRegionIds.has(region.id)) continue
-
-            const pathElement = svgRef.current?.querySelector(
-              `path[data-region-id="${region.id}"]`
-            ) as SVGPathElement
-            if (!pathElement) continue
-
-            // Use browser's isPointInPath for hit-testing
-            const point = svgRef.current!.createSVGPoint()
-            point.x = svgX
-            point.y = svgY
-            const isInside = pathElement.isPointInFill(point)
-
-            if (isInside) {
-              // If multiple regions contain point, choose smallest
-              const bbox = pathElement.getBBox()
-              const area = bbox.width * bbox.height
-              if (area < smallestArea) {
-                smallestArea = area
-                clickedRegion = region.id
-              }
-            }
-          }
-
-          if (clickedRegion) {
-            const region = mapData.regions.find((r) => r.id === clickedRegion)
-            if (region) {
-              onRegionClick(region.id, region.name)
-            }
-          }
-        }}
       >
         {/* Background */}
         <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
@@ -1406,11 +1303,10 @@ export function MapRenderer({
                 // Otherwise, use native mouse events
                 onMouseEnter={() => !isExcluded && !pointerLocked && setHoveredRegion(region.id)}
                 onMouseLeave={() => !pointerLocked && setHoveredRegion(null)}
-                onClick={() => !isExcluded && !pointerLocked && onRegionClick(region.id, region.name)} // When pointer locked, use SVG container click handler instead
+                onClick={() => !isExcluded && onRegionClick(region.id, region.name)} // Disable clicks on excluded regions
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
-                  pointerEvents: pointerLocked ? 'none' : 'all', // Disable individual path clicks when pointer locked
                 }}
               />
 
