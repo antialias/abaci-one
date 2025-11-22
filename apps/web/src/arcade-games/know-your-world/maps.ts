@@ -46,10 +46,17 @@ async function ensureMapSourcesLoaded(): Promise<void> {
  * In browser context, load maps immediately at module initialization
  * This allows synchronous access in client components
  */
+let browserMapsLoadingPromise: Promise<void> | null = null
 if (typeof window !== 'undefined') {
-  // Browser: Start loading immediately
-  ensureMapSourcesLoaded().catch(err => {
+  // Browser: Start loading immediately and cache the promise
+  browserMapsLoadingPromise = (async () => {
+    await ensureMapSourcesLoaded()
+    // Populate the caches eagerly
+    await getWorldMapData()
+    await getUSAMapData()
+  })().catch(err => {
     console.error('[Maps] Failed to load map data in browser:', err)
+    throw err
   })
 }
 
@@ -363,13 +370,19 @@ async function getUSAMapData(): Promise<MapData> {
 
 /**
  * Get map data synchronously (for client components)
- * Throws if maps aren't loaded yet
+ * In browser, throws a promise to trigger React Suspense if not loaded yet
  */
 function getMapDataSync(mapId: 'world' | 'usa'): MapData {
   const cache = mapId === 'world' ? worldMapDataCache : usaMapDataCache
+
   if (!cache) {
+    // In browser, if maps are still loading, throw the promise to trigger Suspense
+    if (typeof window !== 'undefined' && browserMapsLoadingPromise) {
+      throw browserMapsLoadingPromise
+    }
     throw new Error(`[Maps] ${mapId} map not yet loaded. Use await getMapData() or ensure maps are preloaded.`)
   }
+
   return cache
 }
 
