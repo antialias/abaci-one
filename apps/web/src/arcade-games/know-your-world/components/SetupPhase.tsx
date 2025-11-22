@@ -4,7 +4,7 @@ import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import { ContinentSelector } from './ContinentSelector'
-import { getMapData, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
+import { WORLD_MAP, USA_MAP, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
 
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
@@ -13,7 +13,7 @@ export function SetupPhase() {
     useKnowYourWorld()
 
   // Get difficulty config for current map
-  const mapData = getMapData(state.selectedMap)
+  const mapData = state.selectedMap === 'world' ? WORLD_MAP : USA_MAP
   const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
 
   // Color themes for difficulty buttons (cycles through these)

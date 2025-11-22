@@ -1,11 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { MapRenderer } from './MapRenderer'
-import { getFilteredMapData } from '../maps'
+import { getFilteredMapDataSync } from '../maps'
 import type { ContinentId } from '../continents'
 
-const meta = {
+// Custom args type for stories (not actual component props)
+type StoryArgs = {
+  continent: ContinentId | 'all'
+  difficulty: 'easy' | 'hard'
+  showArrows: boolean
+  centeringStrength: number
+  collisionPadding: number
+  simulationIterations: number
+  useObstacles: boolean
+  obstaclePadding: number
+}
+
+const meta: Meta<StoryArgs> = {
   title: 'Arcade/KnowYourWorld/MapRenderer',
-  component: MapRenderer,
   parameters: {
     layout: 'fullscreen',
   },
@@ -54,10 +65,10 @@ const meta = {
       description: 'Extra padding around region obstacles',
     },
   },
-} satisfies Meta<typeof MapRenderer>
+}
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<StoryArgs>
 
 // Mock data
 const mockPlayerMetadata = {
@@ -76,10 +87,10 @@ const mockPlayerMetadata = {
 }
 
 // Story template
-const Template = (args: any) => {
-  const mapData = getFilteredMapData(
+const Template = (args: StoryArgs) => {
+  const mapData = getFilteredMapDataSync(
     'world',
-    args.continent as ContinentId | 'all',
+    args.continent,
     args.difficulty
   )
 

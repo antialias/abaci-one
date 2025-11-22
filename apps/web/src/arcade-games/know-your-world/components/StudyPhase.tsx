@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import { getFilteredMapData } from '../maps'
+import { getFilteredMapDataSync } from '../maps'
 import type { MapRegion } from '../types'
 import { getRegionColor, getLabelTextColor, getLabelTextShadow } from '../mapColors'
 
@@ -15,7 +15,7 @@ export function StudyPhase() {
 
   const [timeRemaining, setTimeRemaining] = useState(state.studyTimeRemaining)
 
-  const mapData = getFilteredMapData(state.selectedMap, state.selectedContinent, state.difficulty)
+  const mapData = getFilteredMapDataSync(state.selectedMap, state.selectedContinent, state.difficulty)
 
   // Countdown timer
   useEffect(() => {

@@ -1,10 +1,57 @@
-import WorldData from './data/world.json'
-import USAData from './data/usa.json'
 import type { MapData, MapRegion } from './types'
 
-// Type the imported JSON data
-const World = WorldData as { label: string; viewBox: string; locations: Array<{ id: string; name: string; path: string }> }
-const USA = USAData as { label: string; viewBox: string; locations: Array<{ id: string; name: string; path: string }> }
+/**
+ * Type definition for @svg-maps packages
+ */
+interface SvgMapData {
+  label: string
+  viewBox: string
+  locations: Array<{ id: string; name: string; path: string }>
+}
+
+/**
+ * Cached map data - will be populated either via static imports (browser)
+ * or dynamic imports (Node.js server)
+ */
+let worldMapSource: SvgMapData | null = null
+let usaMapSource: SvgMapData | null = null
+
+/**
+ * Load map sources dynamically (async - for server-side)
+ * In browser, this is called eagerly at module load time
+ * In Node.js server, this is called on-demand
+ */
+async function ensureMapSourcesLoaded(): Promise<void> {
+  if (worldMapSource && usaMapSource) {
+    return // Already loaded
+  }
+
+  // Dynamic import works in both browser (via Next.js bundler) and Node.js (native ESM support)
+  const [worldModule, usaModule] = await Promise.all([
+    import('@svg-maps/world'),
+    import('@svg-maps/usa')
+  ])
+
+  worldMapSource = worldModule.default
+  usaMapSource = usaModule.default
+
+  console.log('[Maps] Loaded via dynamic import:', {
+    world: worldMapSource?.locations?.length,
+    usa: usaMapSource?.locations?.length,
+    env: typeof window === 'undefined' ? 'server' : 'browser'
+  })
+}
+
+/**
+ * In browser context, load maps immediately at module initialization
+ * This allows synchronous access in client components
+ */
+if (typeof window !== 'undefined') {
+  // Browser: Start loading immediately
+  ensureMapSourcesLoaded().catch(err => {
+    console.error('[Maps] Failed to load map data in browser:', err)
+  })
+}
 
 /**
  * Difficulty level configuration for a map
@@ -260,58 +307,100 @@ function convertToMapRegions(
 }
 
 /**
- * World map with all countries
- * Data from @svg-maps/world package
+ * Cached MapData instances (after conversion)
  */
-export const WORLD_MAP: MapData = {
-  id: 'world',
-  name: World.label || 'Map of World',
-  viewBox: World.viewBox,
-  regions: convertToMapRegions(World.locations || []),
-}
+let worldMapDataCache: MapData | null = null
+let usaMapDataCache: MapData | null = null
 
 /**
- * USA map with all states
- * Data from @svg-maps/usa package
+ * Get World map data (async)
  */
-export const USA_MAP: MapData = {
-  id: 'usa',
-  name: USA.label || 'Map of USA',
-  viewBox: USA.viewBox,
-  regions: convertToMapRegions(USA.locations || []),
-  difficultyConfig: USA_DIFFICULTY_CONFIG, // Single "Standard" level (all states)
-}
-
-// Log to help debug if data is missing
-if (typeof window === 'undefined') {
-  // Server-side
-  console.log('[KnowYourWorld] Server: World regions loaded:', WORLD_MAP.regions.length)
-  console.log('[KnowYourWorld] Server: USA regions loaded:', USA_MAP.regions.length)
-} else {
-  // Client-side
-  console.log('[KnowYourWorld] Client: World regions loaded:', WORLD_MAP.regions.length)
-  console.log('[KnowYourWorld] Client: USA regions loaded:', USA_MAP.regions.length)
-}
-
-/**
- * Get map data by ID
- */
-export function getMapData(mapId: 'world' | 'usa'): MapData {
-  switch (mapId) {
-    case 'world':
-      return WORLD_MAP
-    case 'usa':
-      return USA_MAP
-    default:
-      return WORLD_MAP
+async function getWorldMapData(): Promise<MapData> {
+  if (worldMapDataCache) {
+    return worldMapDataCache
   }
+
+  await ensureMapSourcesLoaded()
+
+  if (!worldMapSource) {
+    throw new Error('[Maps] World map source not loaded')
+  }
+
+  worldMapDataCache = {
+    id: 'world',
+    name: worldMapSource.label || 'Map of World',
+    viewBox: worldMapSource.viewBox,
+    regions: convertToMapRegions(worldMapSource.locations || []),
+  }
+
+  return worldMapDataCache
 }
 
 /**
- * Get a specific region by ID from a map
+ * Get USA map data (async)
  */
-export function getRegionById(mapId: 'world' | 'usa', regionId: string) {
-  const mapData = getMapData(mapId)
+async function getUSAMapData(): Promise<MapData> {
+  if (usaMapDataCache) {
+    return usaMapDataCache
+  }
+
+  await ensureMapSourcesLoaded()
+
+  if (!usaMapSource) {
+    throw new Error('[Maps] USA map source not loaded')
+  }
+
+  usaMapDataCache = {
+    id: 'usa',
+    name: usaMapSource.label || 'Map of USA',
+    viewBox: usaMapSource.viewBox,
+    regions: convertToMapRegions(usaMapSource.locations || []),
+    difficultyConfig: USA_DIFFICULTY_CONFIG,
+  }
+
+  return usaMapDataCache
+}
+
+/**
+ * Get map data synchronously (for client components)
+ * Throws if maps aren't loaded yet
+ */
+function getMapDataSync(mapId: 'world' | 'usa'): MapData {
+  const cache = mapId === 'world' ? worldMapDataCache : usaMapDataCache
+  if (!cache) {
+    throw new Error(`[Maps] ${mapId} map not yet loaded. Use await getMapData() or ensure maps are preloaded.`)
+  }
+  return cache
+}
+
+/**
+ * Synchronous exports for client components
+ * These proxy to the cache and throw if accessed before loading
+ */
+export const WORLD_MAP: MapData = new Proxy({} as MapData, {
+  get(target, prop) {
+    return getMapDataSync('world')[prop as keyof MapData]
+  }
+})
+
+export const USA_MAP: MapData = new Proxy({} as MapData, {
+  get(target, prop) {
+    return getMapDataSync('usa')[prop as keyof MapData]
+  }
+})
+
+/**
+ * Get map data by ID (async - for server-side code)
+ */
+export async function getMapData(mapId: 'world' | 'usa'): Promise<MapData> {
+  return mapId === 'world' ? await getWorldMapData() : await getUSAMapData()
+}
+
+/**
+ * Get a specific region by ID from a map (async)
+ */
+export async function getRegionById(mapId: 'world' | 'usa', regionId: string) {
+  const mapData = await getMapData(mapId)
   return mapData.regions.find((r) => r.id === regionId)
 }
 
@@ -652,14 +741,14 @@ function filterRegionsByDifficulty(regions: MapRegion[], level: DifficultyLevel)
 }
 
 /**
- * Get filtered map data for a continent and difficulty
+ * Get filtered map data for a continent and difficulty (async - for server-side)
  */
-export function getFilteredMapData(
+export async function getFilteredMapData(
   mapId: 'world' | 'usa',
   continentId: ContinentId | 'all',
   difficultyLevelId?: string // Optional difficulty level ID (uses map's default if not provided)
-): MapData {
-  const mapData = getMapData(mapId)
+): Promise<MapData> {
+  const mapData = await getMapData(mapId)
 
   // Get difficulty config for this map (or use global default)
   const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
@@ -671,6 +760,57 @@ export function getFilteredMapData(
   if (!difficultyLevel) {
     console.warn(
       `[getFilteredMapData] Difficulty level "${levelId}" not found for map "${mapId}". Using default.`
+    )
+    const defaultLevel = difficultyConfig.levels.find(
+      (level) => level.id === difficultyConfig.defaultLevel
+    )
+    if (!defaultLevel) {
+      throw new Error(`Invalid difficulty config for map "${mapId}": no default level found`)
+    }
+  }
+
+  const level = difficultyLevel || difficultyConfig.levels[0]
+
+  let filteredRegions = mapData.regions
+  let adjustedViewBox = mapData.viewBox
+
+  // Apply continent filtering for world map
+  if (mapId === 'world' && continentId !== 'all') {
+    filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+  }
+
+  // Apply difficulty filtering
+  filteredRegions = filterRegionsByDifficulty(filteredRegions, level)
+
+  return {
+    ...mapData,
+    regions: filteredRegions,
+    viewBox: adjustedViewBox,
+  }
+}
+
+/**
+ * Get filtered map data synchronously (for client components)
+ * Uses the synchronous WORLD_MAP/USA_MAP proxies
+ */
+export function getFilteredMapDataSync(
+  mapId: 'world' | 'usa',
+  continentId: ContinentId | 'all',
+  difficultyLevelId?: string
+): MapData {
+  const mapData = mapId === 'world' ? WORLD_MAP : USA_MAP
+
+  // Get difficulty config for this map (or use global default)
+  const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
+
+  // Find the difficulty level by ID (or use default)
+  const levelId = difficultyLevelId || difficultyConfig.defaultLevel
+  const difficultyLevel = difficultyConfig.levels.find((level) => level.id === levelId)
+
+  if (!difficultyLevel) {
+    console.warn(
+      `[getFilteredMapDataSync] Difficulty level "${levelId}" not found for map "${mapId}". Using default.`
     )
     const defaultLevel = difficultyConfig.levels.find(
       (level) => level.id === difficultyConfig.defaultLevel

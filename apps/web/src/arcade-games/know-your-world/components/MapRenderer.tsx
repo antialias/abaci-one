@@ -13,7 +13,7 @@ import {
   getLabelTextShadow,
 } from '../mapColors'
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
-import { getMapData, getFilteredMapData, filterRegionsByContinent } from '../maps'
+import { WORLD_MAP, USA_MAP, filterRegionsByContinent } from '../maps'
 import type { ContinentId } from '../continents'
 
 interface BoundingBox {
@@ -128,7 +128,7 @@ export function MapRenderer({
   // Calculate excluded regions (regions filtered out by difficulty/continent)
   const excludedRegions = useMemo(() => {
     // Get full unfiltered map data
-    const fullMapData = getMapData(selectedMap)
+    const fullMapData = selectedMap === 'world' ? WORLD_MAP : USA_MAP
     let allRegions = fullMapData.regions
 
     // Apply continent filter if world map

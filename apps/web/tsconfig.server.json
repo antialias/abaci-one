@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2020",
+    "target": "es2022",
     "outDir": "./dist",
     "rootDir": "./src",
     "noEmit": false,
@@ -21,6 +21,9 @@
     "src/lib/arcade/**/*.ts",
     "src/arcade-games/**/Validator.ts",
     "src/arcade-games/**/types.ts",
+    "src/arcade-games/know-your-world/maps.ts",
+    "src/arcade-games/know-your-world/continents.ts",
+    "src/arcade-games/know-your-world/mapColors.ts",
     "src/app/games/matching/context/types.ts",
     "src/app/games/matching/utils/cardGeneration.ts",
     "src/app/games/matching/utils/matchValidation.ts",
@@ -35,6 +38,7 @@
     "src/hooks/**/*",
     "src/stories/**/*",
     "src/utils/**/*",
+    "src/arcade-games/**/components/**/*",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts"

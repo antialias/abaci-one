@@ -3,14 +3,14 @@
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import { getMapData } from '../maps'
+import { WORLD_MAP, USA_MAP } from '../maps'
 
 export function ResultsPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { state, nextRound } = useKnowYourWorld()
 
-  const mapData = getMapData(state.selectedMap)
+  const mapData = state.selectedMap === 'world' ? WORLD_MAP : USA_MAP
   const totalRegions = mapData.regions.length
   const elapsedTime = state.endTime ? state.endTime - state.startTime : 0
   const minutes = Math.floor(elapsedTime / 60000)
