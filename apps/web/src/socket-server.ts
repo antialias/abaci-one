@@ -391,7 +391,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           }
         } catch (error) {
           console.error('Error fetching session:', error)
-          socket.emit('session-error', { error: 'Failed to fetch session' })
+          socket.emit('session-error', {
+            error: error instanceof Error ? error.message : 'Failed to fetch session',
+          })
         }
       }
     )
@@ -518,7 +520,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       } catch (error) {
         console.error('Error processing move:', error)
         socket.emit('move-rejected', {
-          error: 'Server error processing move',
+          error: error instanceof Error ? error.message : 'Server error processing move',
           move: data.move,
         })
       }
@@ -531,7 +533,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         io!.to(`arcade:${userId}`).emit('session-ended')
       } catch (error) {
         console.error('Error ending session:', error)
-        socket.emit('session-error', { error: 'Failed to end session' })
+        socket.emit('session-error', {
+          error: error instanceof Error ? error.message : 'Failed to end session',
+        })
       }
     })
 
@@ -599,7 +603,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         })
       } catch (error) {
         console.error('Error joining room:', error)
-        socket.emit('room-error', { error: 'Failed to join room' })
+        socket.emit('room-error', {
+          error: error instanceof Error ? error.message : 'Failed to join room',
+        })
       }
     })
 
@@ -681,7 +687,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         })
       } catch (error) {
         console.error('Error updating room players:', error)
-        socket.emit('room-error', { error: 'Failed to update players' })
+        socket.emit('room-error', {
+          error: error instanceof Error ? error.message : 'Failed to update players',
+        })
       }
     })
 
