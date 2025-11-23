@@ -182,10 +182,14 @@ export function MapRenderer({
 
   // Cursor position tracking (container-relative coordinates)
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Cursor distortion at boundaries (for squish effect)
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 }) // Scale factors
+
+  // Track if we're animating back to release position
+  const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<
@@ -224,9 +228,17 @@ export function MapRenderer({
       })
       setPointerLocked(isLocked)
 
+      // When acquiring pointer lock, save the initial cursor position
+      if (isLocked && cursorPositionRef.current) {
+        initialCapturePositionRef.current = { ...cursorPositionRef.current }
+        console.log('[Pointer Lock] 📍 Saved initial capture position:', initialCapturePositionRef.current)
+      }
+
       // Reset cursor squish when lock state changes
       if (!isLocked) {
         setCursorSquish({ x: 1, y: 1 })
+        setIsReleasingPointerLock(false)
+        initialCapturePositionRef.current = null
       }
     }
 
@@ -758,6 +770,9 @@ export function MapRenderer({
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!svgRef.current || !containerRef.current) return
 
+    // Don't process mouse movement during pointer lock release animation
+    if (isReleasingPointerLock) return
+
     const containerRect = containerRef.current.getBoundingClientRect()
     const svgRect = svgRef.current.getBoundingClientRect()
 
@@ -773,8 +788,6 @@ export function MapRenderer({
       // Apply smoothly animated movement multiplier for gradual cursor dampening transitions
       // This prevents jarring changes when moving between regions of different sizes
       const currentMultiplier = magnifierSpring.movementMultiplier.get()
-      const newX = lastX + e.movementX * currentMultiplier
-      const newY = lastY + e.movementY * currentMultiplier
 
       // Boundary dampening and squish effect
       // As cursor approaches edge, dampen movement and visually squish the cursor
@@ -783,32 +796,25 @@ export function MapRenderer({
       const squishZone = 20 // Distance from edge where squish becomes visible (px)
       const escapeThreshold = 2 // When within this distance, escape! (px)
 
-      // Calculate distance from each edge
-      const distLeft = newX
-      const distRight = containerRect.width - newX
-      const distTop = newY
-      const distBottom = containerRect.height - newY
+      // Calculate SVG offset within container (SVG may be smaller due to aspect ratio)
+      const svgOffsetX = svgRect.left - containerRect.left
+      const svgOffsetY = svgRect.top - containerRect.top
+
+      // First, calculate undampened position to check how close we are to edges
+      const undampenedX = lastX + e.movementX * currentMultiplier
+      const undampenedY = lastY + e.movementY * currentMultiplier
+
+      // Calculate distance from SVG edges (not container edges!)
+      // This is critical - the interactive area is the SVG, not the container
+      const distLeft = undampenedX - svgOffsetX
+      const distRight = svgOffsetX + svgRect.width - undampenedX
+      const distTop = undampenedY - svgOffsetY
+      const distBottom = svgOffsetY + svgRect.height - undampenedY
 
       // Find closest edge distance
       const minDist = Math.min(distLeft, distRight, distTop, distBottom)
 
-      // Check if cursor has squished through and should escape
-      if (minDist < escapeThreshold) {
-        console.log('[Pointer Lock] 🔓 ESCAPING (squished through boundary):', {
-          minDist,
-          escapeThreshold,
-          cursorX: newX,
-          cursorY: newY,
-        })
-
-        // Release pointer lock - cursor has escaped!
-        document.exitPointerLock()
-
-        // Don't update cursor position - let it naturally transition
-        return
-      }
-
-      // Calculate dampening factor (1.0 = normal, < 1.0 = dampened)
+      // Calculate dampening factor based on proximity to edge
       let dampenFactor = 1.0
       if (minDist < dampenZone) {
         // Quadratic easing for smooth dampening
@@ -816,46 +822,136 @@ export function MapRenderer({
         dampenFactor = t * t // Squared for stronger dampening near edge
       }
 
-      // Apply dampening to movement
+      // Apply dampening to movement - this is the actual cursor position we'll use
       const dampenedDeltaX = e.movementX * currentMultiplier * dampenFactor
       const dampenedDeltaY = e.movementY * currentMultiplier * dampenFactor
       cursorX = lastX + dampenedDeltaX
       cursorY = lastY + dampenedDeltaY
 
-      // Calculate squish effect based on proximity to edges
+      // Now check escape threshold using the DAMPENED position (not undampened!)
+      // This is critical - we need to check where the cursor actually is, not where it would be without dampening
+      // And we must use SVG bounds, not container bounds!
+      const dampenedDistLeft = cursorX - svgOffsetX
+      const dampenedDistRight = svgOffsetX + svgRect.width - cursorX
+      const dampenedDistTop = cursorY - svgOffsetY
+      const dampenedDistBottom = svgOffsetY + svgRect.height - cursorY
+      const dampenedMinDist = Math.min(dampenedDistLeft, dampenedDistRight, dampenedDistTop, dampenedDistBottom)
+
+      // Debug logging for boundary proximity
+      if (dampenedMinDist < squishZone) {
+        console.log('[Squish Debug]', {
+          cursorPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
+          containerSize: { width: containerRect.width.toFixed(1), height: containerRect.height.toFixed(1) },
+          svgSize: { width: svgRect.width.toFixed(1), height: svgRect.height.toFixed(1) },
+          svgOffset: { x: svgOffsetX.toFixed(1), y: svgOffsetY.toFixed(1) },
+          distances: {
+            left: dampenedDistLeft.toFixed(1),
+            right: dampenedDistRight.toFixed(1),
+            top: dampenedDistTop.toFixed(1),
+            bottom: dampenedDistBottom.toFixed(1),
+            min: dampenedMinDist.toFixed(1),
+          },
+          dampenFactor: dampenFactor.toFixed(3),
+          thresholds: {
+            squishZone,
+            escapeThreshold,
+          },
+          willEscape: dampenedMinDist < escapeThreshold,
+        })
+      }
+
+      // Check if cursor has squished through and should escape (using dampened position!)
+      if (dampenedMinDist < escapeThreshold && !isReleasingPointerLock) {
+        console.log('[Pointer Lock] 🔓 ESCAPING (squished through boundary):', {
+          dampenedMinDist,
+          escapeThreshold,
+          cursorX,
+          cursorY,
+          whichEdge: {
+            left: dampenedDistLeft === dampenedMinDist,
+            right: dampenedDistRight === dampenedMinDist,
+            top: dampenedDistTop === dampenedMinDist,
+            bottom: dampenedDistBottom === dampenedMinDist,
+          },
+        })
+
+        // Start animation back to initial capture position
+        setIsReleasingPointerLock(true)
+
+        // Animate cursor back to initial position before releasing
+        if (initialCapturePositionRef.current) {
+          const startPos = { x: cursorX, y: cursorY }
+          const endPos = initialCapturePositionRef.current
+          const duration = 200 // ms
+          const startTime = performance.now()
+
+          const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime
+            const progress = Math.min(elapsed / duration, 1)
+
+            // Ease out cubic for smooth deceleration
+            const eased = 1 - Math.pow(1 - progress, 3)
+
+            const interpolatedX = startPos.x + (endPos.x - startPos.x) * eased
+            const interpolatedY = startPos.y + (endPos.y - startPos.y) * eased
+
+            // Update cursor position
+            cursorPositionRef.current = { x: interpolatedX, y: interpolatedY }
+            setCursorPosition({ x: interpolatedX, y: interpolatedY })
+
+            if (progress < 1) {
+              requestAnimationFrame(animate)
+            } else {
+              // Animation complete - now release pointer lock
+              console.log('[Pointer Lock] 🔓 Animation complete, releasing pointer lock')
+              document.exitPointerLock()
+            }
+          }
+
+          requestAnimationFrame(animate)
+        } else {
+          // No initial position saved, release immediately
+          document.exitPointerLock()
+        }
+
+        // Don't update cursor position in this frame - animation will handle it
+        return
+      }
+
+      // Calculate squish effect based on proximity to edges (using dampened position!)
+      // Handle horizontal and vertical squishing independently to support corners
       let squishX = 1.0
       let squishY = 1.0
 
-      if (distLeft < squishZone) {
-        // Squishing against left edge - compress horizontally, stretch vertically
-        const t = 1 - distLeft / squishZone
-        squishX = 1.0 - t * 0.5 // Compress to 50% width when fully squished
-        squishY = 1.0 + t * 0.4 // Stretch to 140% height when fully squished
-      } else if (distRight < squishZone) {
-        // Squishing against right edge
-        const t = 1 - distRight / squishZone
-        squishX = 1.0 - t * 0.5
-        squishY = 1.0 + t * 0.4
+      // Horizontal squishing (left/right edges)
+      if (dampenedDistLeft < squishZone) {
+        // Squishing against left edge - compress horizontally
+        const t = 1 - dampenedDistLeft / squishZone
+        squishX = Math.min(squishX, 1.0 - t * 0.5) // Compress to 50% width
+      } else if (dampenedDistRight < squishZone) {
+        // Squishing against right edge - compress horizontally
+        const t = 1 - dampenedDistRight / squishZone
+        squishX = Math.min(squishX, 1.0 - t * 0.5)
       }
 
-      if (distTop < squishZone) {
-        // Squishing against top edge - compress vertically, stretch horizontally
-        const t = 1 - distTop / squishZone
-        squishY = 1.0 - t * 0.5
-        squishX = 1.0 + t * 0.4
-      } else if (distBottom < squishZone) {
-        // Squishing against bottom edge
-        const t = 1 - distBottom / squishZone
-        squishY = 1.0 - t * 0.5
-        squishX = 1.0 + t * 0.4
+      // Vertical squishing (top/bottom edges)
+      if (dampenedDistTop < squishZone) {
+        // Squishing against top edge - compress vertically
+        const t = 1 - dampenedDistTop / squishZone
+        squishY = Math.min(squishY, 1.0 - t * 0.5)
+      } else if (dampenedDistBottom < squishZone) {
+        // Squishing against bottom edge - compress vertically
+        const t = 1 - dampenedDistBottom / squishZone
+        squishY = Math.min(squishY, 1.0 - t * 0.5)
       }
 
       // Update squish state
       setCursorSquish({ x: squishX, y: squishY })
 
-      // Clamp to container bounds (but allow reaching the escape threshold)
-      cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
-      cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
+      // Clamp to SVG bounds (not container bounds!)
+      // Allow cursor to reach escape threshold at SVG edges
+      cursorX = Math.max(svgOffsetX, Math.min(svgOffsetX + svgRect.width, cursorX))
+      cursorY = Math.max(svgOffsetY, Math.min(svgOffsetY + svgRect.height, cursorY))
     } else {
       // Normal mode: use absolute position
       cursorX = e.clientX - containerRect.left
