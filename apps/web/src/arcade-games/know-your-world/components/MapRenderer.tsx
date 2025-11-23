@@ -16,6 +16,12 @@ import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum
 import { WORLD_MAP, USA_MAP, filterRegionsByContinent } from '../maps'
 import type { ContinentId } from '../continents'
 
+// Debug flag: show technical info in magnifier (dev only)
+const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
+
+// Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
+const PRECISION_MODE_THRESHOLD = 20
+
 interface BoundingBox {
   minX: number
   maxX: number
@@ -231,7 +237,10 @@ export function MapRenderer({
       // When acquiring pointer lock, save the initial cursor position
       if (isLocked && cursorPositionRef.current) {
         initialCapturePositionRef.current = { ...cursorPositionRef.current }
-        console.log('[Pointer Lock] 📍 Saved initial capture position:', initialCapturePositionRef.current)
+        console.log(
+          '[Pointer Lock] 📍 Saved initial capture position:',
+          initialCapturePositionRef.current
+        )
       }
 
       // Reset cursor squish when lock state changes
@@ -835,13 +844,21 @@ export function MapRenderer({
       const dampenedDistRight = svgOffsetX + svgRect.width - cursorX
       const dampenedDistTop = cursorY - svgOffsetY
       const dampenedDistBottom = svgOffsetY + svgRect.height - cursorY
-      const dampenedMinDist = Math.min(dampenedDistLeft, dampenedDistRight, dampenedDistTop, dampenedDistBottom)
+      const dampenedMinDist = Math.min(
+        dampenedDistLeft,
+        dampenedDistRight,
+        dampenedDistTop,
+        dampenedDistBottom
+      )
 
       // Debug logging for boundary proximity
       if (dampenedMinDist < squishZone) {
         console.log('[Squish Debug]', {
           cursorPos: { x: cursorX.toFixed(1), y: cursorY.toFixed(1) },
-          containerSize: { width: containerRect.width.toFixed(1), height: containerRect.height.toFixed(1) },
+          containerSize: {
+            width: containerRect.width.toFixed(1),
+            height: containerRect.height.toFixed(1),
+          },
           svgSize: { width: svgRect.width.toFixed(1), height: svgRect.height.toFixed(1) },
           svgOffset: { x: svgOffsetX.toFixed(1), y: svgOffsetY.toFixed(1) },
           distances: {
@@ -890,7 +907,7 @@ export function MapRenderer({
             const progress = Math.min(elapsed / duration, 1)
 
             // Ease out cubic for smooth deceleration
-            const eased = 1 - Math.pow(1 - progress, 3)
+            const eased = 1 - (1 - progress) ** 3
 
             const interpolatedX = startPos.x + (endPos.x - startPos.x) * eased
             const interpolatedY = startPos.y + (endPos.y - startPos.y) * eased
@@ -1350,6 +1367,34 @@ export function MapRenderer({
           { top: newTop, left: newLeft }
         )
       }
+
+      // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
+      if (!pointerLocked && containerRef.current && svgRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const magnifierWidth = containerRect.width * 0.5
+        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
+
+        if (viewBoxWidth && !isNaN(viewBoxWidth)) {
+          // Calculate what the screen pixel ratio would be at this zoom
+          const magnifiedViewBoxWidth = viewBoxWidth / adaptiveZoom
+          const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+          const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+          const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+          // If it exceeds threshold, cap the zoom to stay at threshold
+          if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
+            // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
+            const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+            adaptiveZoom = Math.min(adaptiveZoom, maxZoom)
+            console.log(
+              `[Magnifier] Capping zoom at ${adaptiveZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px, would have been ${screenPixelRatio.toFixed(1)} px/px)`
+            )
+          }
+        }
+      }
+
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
@@ -1814,6 +1859,35 @@ export function MapRenderer({
           }}
         >
           <animated.svg
+            style={{
+              filter: (() => {
+                // Apply "disabled" visual effect when at threshold but not in precision mode
+                if (pointerLocked) return 'none'
+
+                const containerRect = containerRef.current?.getBoundingClientRect()
+                const svgRect = svgRef.current?.getBoundingClientRect()
+                if (!containerRect || !svgRect) return 'none'
+
+                const magnifierWidth = containerRect.width * 0.5
+                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxWidth = viewBoxParts[2]
+                if (!viewBoxWidth || isNaN(viewBoxWidth)) return 'none'
+
+                const currentZoom = magnifierSpring.zoom.get()
+                const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
+                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+                const screenPixelRatio =
+                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+                // When at or above threshold (but not in precision mode), add disabled effect
+                if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
+                  return 'brightness(0.6) saturate(0.5)'
+                }
+
+                return 'none'
+              })(),
+            }}
             viewBox={magnifierSpring.zoom.to((zoom) => {
               // Calculate magnified viewBox centered on cursor
               const containerRect = containerRef.current!.getBoundingClientRect()
@@ -1925,6 +1999,121 @@ export function MapRenderer({
                 )
               })()}
             </g>
+
+            {/* Pixel grid overlay - shows when approaching/at/above precision mode threshold */}
+            {(() => {
+              const containerRect = containerRef.current?.getBoundingClientRect()
+              const svgRect = svgRef.current?.getBoundingClientRect()
+              if (!containerRect || !svgRect) return null
+
+              const magnifierWidth = containerRect.width * 0.5
+              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxWidth = viewBoxParts[2]
+              const viewBoxHeight = viewBoxParts[3]
+              const viewBoxX = viewBoxParts[0] || 0
+              const viewBoxY = viewBoxParts[1] || 0
+
+              if (!viewBoxWidth || isNaN(viewBoxWidth)) return null
+
+              const currentZoom = magnifierSpring.zoom.get()
+              const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
+              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+              const screenPixelRatio =
+                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+              // Fade grid in/out within 30% range on both sides of threshold
+              // Visible from 70% to 130% of threshold (14 to 26 px/px at threshold=20)
+              const fadeStartRatio = PRECISION_MODE_THRESHOLD * 0.7
+              const fadeEndRatio = PRECISION_MODE_THRESHOLD * 1.3
+
+              if (screenPixelRatio < fadeStartRatio || screenPixelRatio > fadeEndRatio) return null
+
+              // Calculate opacity: 0 at edges (70% and 130%), 1 at threshold (100%)
+              let gridOpacity: number
+              if (screenPixelRatio <= PRECISION_MODE_THRESHOLD) {
+                // Fading in: 0 at 70%, 1 at 100%
+                gridOpacity =
+                  (screenPixelRatio - fadeStartRatio) / (PRECISION_MODE_THRESHOLD - fadeStartRatio)
+              } else {
+                // Fading out: 1 at 100%, 0 at 130%
+                gridOpacity =
+                  (fadeEndRatio - screenPixelRatio) / (fadeEndRatio - PRECISION_MODE_THRESHOLD)
+              }
+
+              // Calculate grid spacing in SVG units
+              // Each grid cell represents one screen pixel of mouse movement on the main map
+              const gridSpacingSvgUnits = mainMapSvgUnitsPerScreenPixel
+
+              // Get cursor position in SVG coordinates
+              const scaleX = viewBoxWidth / svgRect.width
+              const scaleY = viewBoxHeight / svgRect.height
+              const svgOffsetX = svgRect.left - containerRect.left
+              const svgOffsetY = svgRect.top - containerRect.top
+              const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
+              const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+
+              // Calculate grid bounds (magnifier viewport)
+              const magnifiedHeight = viewBoxHeight / currentZoom
+              const gridLeft = cursorSvgX - magnifiedViewBoxWidth / 2
+              const gridRight = cursorSvgX + magnifiedViewBoxWidth / 2
+              const gridTop = cursorSvgY - magnifiedHeight / 2
+              const gridBottom = cursorSvgY + magnifiedHeight / 2
+
+              // Calculate grid line positions aligned with cursor (crosshair center)
+              const lines: Array<{ type: 'h' | 'v'; pos: number }> = []
+
+              // Vertical lines (aligned with cursor X)
+              const firstVerticalLine =
+                Math.floor((gridLeft - cursorSvgX) / gridSpacingSvgUnits) * gridSpacingSvgUnits +
+                cursorSvgX
+              for (let x = firstVerticalLine; x <= gridRight; x += gridSpacingSvgUnits) {
+                lines.push({ type: 'v', pos: x })
+              }
+
+              // Horizontal lines (aligned with cursor Y)
+              const firstHorizontalLine =
+                Math.floor((gridTop - cursorSvgY) / gridSpacingSvgUnits) * gridSpacingSvgUnits +
+                cursorSvgY
+              for (let y = firstHorizontalLine; y <= gridBottom; y += gridSpacingSvgUnits) {
+                lines.push({ type: 'h', pos: y })
+              }
+
+              // Apply opacity to grid color
+              const baseOpacity = isDark ? 0.5 : 0.6
+              const finalOpacity = baseOpacity * gridOpacity
+              const gridColor = `rgba(251, 191, 36, ${finalOpacity})`
+
+              return (
+                <g data-element="pixel-grid-overlay">
+                  {lines.map((line, i) =>
+                    line.type === 'v' ? (
+                      <line
+                        key={`vgrid-${i}`}
+                        x1={line.pos}
+                        y1={gridTop}
+                        x2={line.pos}
+                        y2={gridBottom}
+                        stroke={gridColor}
+                        strokeWidth={viewBoxWidth / 2000}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ) : (
+                      <line
+                        key={`hgrid-${i}`}
+                        x1={gridLeft}
+                        y1={line.pos}
+                        x2={gridRight}
+                        y2={line.pos}
+                        stroke={gridColor}
+                        strokeWidth={viewBoxWidth / 2000}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )
+                  )}
+                </g>
+              )
+            })()}
           </animated.svg>
 
           {/* Magnifier label */}
@@ -1939,10 +2128,67 @@ export function MapRenderer({
               fontSize: '11px',
               fontWeight: 'bold',
               color: isDark ? '#60a5fa' : '#3b82f6',
-              pointerEvents: 'none',
+              pointerEvents: pointerLocked ? 'none' : 'auto',
+              cursor: pointerLocked ? 'default' : 'pointer',
             }}
+            onClick={(e) => {
+              // Request pointer lock when user clicks on notice
+              if (!pointerLocked && containerRef.current) {
+                e.stopPropagation() // Prevent click from bubbling to map
+                containerRef.current.requestPointerLock()
+              }
+            }}
+            data-element="magnifier-label"
           >
-            {magnifierSpring.zoom.to((z) => `${z.toFixed(1)}× Zoom`)}
+            {magnifierSpring.zoom.to((z) => {
+              const multiplier = magnifierSpring.movementMultiplier.get()
+
+              // When in pointer lock mode, show "Precision mode active" notice
+              if (pointerLocked) {
+                return 'Precision mode active'
+              }
+
+              // When NOT in pointer lock, calculate screen pixel ratio
+              const containerRect = containerRef.current?.getBoundingClientRect()
+              const svgRect = svgRef.current?.getBoundingClientRect()
+              if (!containerRect || !svgRect) {
+                return `${z.toFixed(1)}×`
+              }
+
+              const magnifierWidth = containerRect.width * 0.5
+              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxWidth = viewBoxParts[2]
+
+              if (!viewBoxWidth || isNaN(viewBoxWidth)) {
+                return `${z.toFixed(1)}×`
+              }
+
+              // SVG units visible in magnifier
+              const magnifiedViewBoxWidth = viewBoxWidth / z
+
+              // Screen pixels per SVG unit in magnifier window
+              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+
+              // SVG units per screen pixel on main map
+              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+
+              // Screen pixel movement in magnifier =
+              // (SVG units moved on main map) × (screen pixels per SVG unit in magnifier)
+              const screenPixelRatio =
+                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+              // If at or above threshold, show clickable notice to activate precision controls
+              if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
+                return 'Click here (not map) for precision mode'
+              }
+
+              // Below threshold - show debug info in dev, simple zoom in prod
+              if (SHOW_MAGNIFIER_DEBUG_INFO) {
+                return `${z.toFixed(1)}× | ${screenPixelRatio.toFixed(1)} px/px`
+              }
+
+              return `${z.toFixed(1)}×`
+            })}
           </animated.div>
         </animated.div>
       )}

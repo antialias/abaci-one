@@ -61,7 +61,22 @@
       "Bash(node server.js:*)",
       "Bash(git fetch:*)",
       "Bash(cat:*)",
-      "Bash(npm run test:run:*)"
+      "Bash(npm run test:run:*)",
+      "Bash(for:*)",
+      "Bash(do sleep 30)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(do sleep 120)",
+      "Bash(node --version)",
+      "Bash(docker run:*)",
+      "Bash(docker pull:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(node --input-type=module -e:*)"
     ],
     "deny": [],
     "ask": []

@@ -21,7 +21,7 @@ export function PlayingPhase() {
 
   // Get the display name for the current prompt
   const currentRegionName = state.currentPrompt
-    ? mapData.regions.find((r) => r.id === state.currentPrompt)?.name ?? null
+    ? (mapData.regions.find((r) => r.id === state.currentPrompt)?.name ?? null)
     : null
 
   // Debug logging
