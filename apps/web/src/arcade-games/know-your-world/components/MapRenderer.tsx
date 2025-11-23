@@ -1454,9 +1454,6 @@ export function MapRenderer({
           aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}`,
         }}
       >
-        {/* Background */}
-        <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
-
         {/* Render all regions (included + excluded) */}
         {[...mapData.regions, ...excludedRegions].map((region) => {
           const isExcluded = excludedRegionIds.has(region.id)
