@@ -29,7 +29,7 @@ async function ensureMapSourcesLoaded(): Promise<void> {
   // Dynamic import works in both browser (via Next.js bundler) and Node.js (native ESM support)
   const [worldModule, usaModule] = await Promise.all([
     import('@svg-maps/world'),
-    import('@svg-maps/usa')
+    import('@svg-maps/usa'),
   ])
 
   worldMapSource = worldModule.default
@@ -38,7 +38,7 @@ async function ensureMapSourcesLoaded(): Promise<void> {
   console.log('[Maps] Loaded via dynamic import:', {
     world: worldMapSource?.locations?.length,
     usa: usaMapSource?.locations?.length,
-    env: typeof window === 'undefined' ? 'server' : 'browser'
+    env: typeof window === 'undefined' ? 'server' : 'browser',
   })
 }
 
@@ -54,7 +54,7 @@ if (typeof window !== 'undefined') {
     // Populate the caches eagerly
     await getWorldMapData()
     await getUSAMapData()
-  })().catch(err => {
+  })().catch((err) => {
     console.error('[Maps] Failed to load map data in browser:', err)
     throw err
   })
@@ -380,7 +380,9 @@ function getMapDataSync(mapId: 'world' | 'usa'): MapData {
     if (typeof window !== 'undefined' && browserMapsLoadingPromise) {
       throw browserMapsLoadingPromise
     }
-    throw new Error(`[Maps] ${mapId} map not yet loaded. Use await getMapData() or ensure maps are preloaded.`)
+    throw new Error(
+      `[Maps] ${mapId} map not yet loaded. Use await getMapData() or ensure maps are preloaded.`
+    )
   }
 
   return cache
@@ -393,13 +395,13 @@ function getMapDataSync(mapId: 'world' | 'usa'): MapData {
 export const WORLD_MAP: MapData = new Proxy({} as MapData, {
   get(target, prop) {
     return getMapDataSync('world')[prop as keyof MapData]
-  }
+  },
 })
 
 export const USA_MAP: MapData = new Proxy({} as MapData, {
   get(target, prop) {
     return getMapDataSync('usa')[prop as keyof MapData]
-  }
+  },
 })
 
 /**

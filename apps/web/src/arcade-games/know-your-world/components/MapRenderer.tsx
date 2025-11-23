@@ -179,11 +179,13 @@ export function MapRenderer({
 
   // Pointer lock management
   const [pointerLocked, setPointerLocked] = useState(false)
-  const [showLockPrompt, setShowLockPrompt] = useState(true)
 
   // Cursor position tracking (container-relative coordinates)
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
+
+  // Cursor distortion at boundaries (for squish effect)
+  const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 }) // Scale factors
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<
@@ -221,11 +223,10 @@ export function MapRenderer({
         elementsMatch: document.pointerLockElement === containerRef.current,
       })
       setPointerLocked(isLocked)
-      if (isLocked) {
-        setShowLockPrompt(false) // Hide prompt when locked
-      } else {
-        // Show prompt again when lock is released (e.g., user hit Escape)
-        setShowLockPrompt(true)
+
+      // Reset cursor squish when lock state changes
+      if (!isLocked) {
+        setCursorSquish({ x: 1, y: 1 })
       }
     }
 
@@ -300,24 +301,18 @@ export function MapRenderer({
 
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log('[MapRenderer] Container clicked:', {
-      pointerLocked,
-      hasContainer: !!containerRef.current,
-      showLockPrompt,
-      willRequestLock: !pointerLocked && containerRef.current && showLockPrompt,
-      target: e.target,
-    })
-
-    if (!pointerLocked && containerRef.current && showLockPrompt) {
-      console.log('[Pointer Lock] 🔒 REQUESTING pointer lock (user clicked map)')
+    // Silently request pointer lock if not already locked
+    // This makes the first gameplay click also enable precision mode
+    if (!pointerLocked && containerRef.current) {
       try {
         containerRef.current.requestPointerLock()
-        console.log('[Pointer Lock] Request sent successfully')
+        console.log('[Pointer Lock] 🔒 Silently requested (user clicked map)')
       } catch (error) {
-        console.error('[Pointer Lock] Request failed with error:', error)
+        console.error('[Pointer Lock] Request failed:', error)
       }
-      setShowLockPrompt(false) // Hide prompt after first click attempt
     }
+
+    // Let region clicks still work (they have their own onClick handlers)
   }
 
   // Animated spring values for smooth transitions
@@ -368,7 +363,7 @@ export function MapRenderer({
     }>
   >([])
 
-  // Measure SVG element to get actual pixel dimensions
+  // Measure SVG element to get actual pixel dimensions using ResizeObserver
   useEffect(() => {
     if (!svgRef.current) return
 
@@ -379,12 +374,19 @@ export function MapRenderer({
       }
     }
 
+    // Use ResizeObserver to detect panel resizing (not just window resize)
+    const observer = new ResizeObserver((entries) => {
+      requestAnimationFrame(() => {
+        updateDimensions()
+      })
+    })
+
+    observer.observe(svgRef.current)
+
     // Initial measurement
     updateDimensions()
 
-    // Update on window resize
-    window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
+    return () => observer.disconnect()
   }, [mapData.viewBox]) // Re-measure when viewBox changes (continent/map selection)
 
   // Calculate label positions using ghost elements
@@ -728,11 +730,8 @@ export function MapRenderer({
     // Small delay to ensure ghost elements are rendered
     const timeoutId = setTimeout(updateLabelPositions, 0)
 
-    // Update on resize
-    window.addEventListener('resize', updateLabelPositions)
     return () => {
       clearTimeout(timeoutId)
-      window.removeEventListener('resize', updateLabelPositions)
     }
   }, [mapData, regionsFound, guessHistory, svgDimensions, excludedRegions, excludedRegionIds])
 
@@ -774,10 +773,87 @@ export function MapRenderer({
       // Apply smoothly animated movement multiplier for gradual cursor dampening transitions
       // This prevents jarring changes when moving between regions of different sizes
       const currentMultiplier = magnifierSpring.movementMultiplier.get()
-      cursorX = lastX + e.movementX * currentMultiplier
-      cursorY = lastY + e.movementY * currentMultiplier
+      const newX = lastX + e.movementX * currentMultiplier
+      const newY = lastY + e.movementY * currentMultiplier
 
-      // Clamp to container bounds
+      // Boundary dampening and squish effect
+      // As cursor approaches edge, dampen movement and visually squish the cursor
+      // When squished enough, the cursor "escapes" through the boundary and releases pointer lock
+      const dampenZone = 40 // Distance from edge where dampening starts (px)
+      const squishZone = 20 // Distance from edge where squish becomes visible (px)
+      const escapeThreshold = 2 // When within this distance, escape! (px)
+
+      // Calculate distance from each edge
+      const distLeft = newX
+      const distRight = containerRect.width - newX
+      const distTop = newY
+      const distBottom = containerRect.height - newY
+
+      // Find closest edge distance
+      const minDist = Math.min(distLeft, distRight, distTop, distBottom)
+
+      // Check if cursor has squished through and should escape
+      if (minDist < escapeThreshold) {
+        console.log('[Pointer Lock] 🔓 ESCAPING (squished through boundary):', {
+          minDist,
+          escapeThreshold,
+          cursorX: newX,
+          cursorY: newY,
+        })
+
+        // Release pointer lock - cursor has escaped!
+        document.exitPointerLock()
+
+        // Don't update cursor position - let it naturally transition
+        return
+      }
+
+      // Calculate dampening factor (1.0 = normal, < 1.0 = dampened)
+      let dampenFactor = 1.0
+      if (minDist < dampenZone) {
+        // Quadratic easing for smooth dampening
+        const t = minDist / dampenZone
+        dampenFactor = t * t // Squared for stronger dampening near edge
+      }
+
+      // Apply dampening to movement
+      const dampenedDeltaX = e.movementX * currentMultiplier * dampenFactor
+      const dampenedDeltaY = e.movementY * currentMultiplier * dampenFactor
+      cursorX = lastX + dampenedDeltaX
+      cursorY = lastY + dampenedDeltaY
+
+      // Calculate squish effect based on proximity to edges
+      let squishX = 1.0
+      let squishY = 1.0
+
+      if (distLeft < squishZone) {
+        // Squishing against left edge - compress horizontally, stretch vertically
+        const t = 1 - distLeft / squishZone
+        squishX = 1.0 - t * 0.5 // Compress to 50% width when fully squished
+        squishY = 1.0 + t * 0.4 // Stretch to 140% height when fully squished
+      } else if (distRight < squishZone) {
+        // Squishing against right edge
+        const t = 1 - distRight / squishZone
+        squishX = 1.0 - t * 0.5
+        squishY = 1.0 + t * 0.4
+      }
+
+      if (distTop < squishZone) {
+        // Squishing against top edge - compress vertically, stretch horizontally
+        const t = 1 - distTop / squishZone
+        squishY = 1.0 - t * 0.5
+        squishX = 1.0 + t * 0.4
+      } else if (distBottom < squishZone) {
+        // Squishing against bottom edge
+        const t = 1 - distBottom / squishZone
+        squishY = 1.0 - t * 0.5
+        squishX = 1.0 + t * 0.4
+      }
+
+      // Update squish state
+      setCursorSquish({ x: squishX, y: squishY })
+
+      // Clamp to container bounds (but allow reaching the escape threshold)
       cursorX = Math.max(0, Math.min(containerRect.width, cursorX))
       cursorY = Math.max(0, Math.min(containerRect.height, cursorY))
     } else {
@@ -1218,57 +1294,24 @@ export function MapRenderer({
       className={css({
         position: 'relative',
         width: '100%',
-        maxWidth: '1000px',
-        margin: '0 auto',
-        padding: '4',
+        height: '100%',
         bg: isDark ? 'gray.900' : 'gray.50',
-        rounded: 'xl',
-        shadow: 'lg',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       })}
     >
-      {/* Pointer Lock Prompt Overlay */}
-      {showLockPrompt && !pointerLocked && (
-        <div
-          data-element="pointer-lock-prompt"
-          className={css({
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            bg: isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
-            color: isDark ? 'white' : 'gray.900',
-            padding: '8',
-            rounded: 'xl',
-            border: '3px solid',
-            borderColor: 'blue.500',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-            zIndex: 10000,
-            textAlign: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            _hover: {
-              transform: 'translate(-50%, -50%) scale(1.05)',
-              borderColor: 'blue.400',
-            },
-          })}
-        >
-          <div className={css({ fontSize: '4xl', marginBottom: '4' })}>🎯</div>
-          <div className={css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '2' })}>
-            Enable Precision Controls
-          </div>
-          <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
-            Click anywhere to lock cursor for precise control
-          </div>
-        </div>
-      )}
       <svg
         ref={svgRef}
         viewBox={mapData.viewBox}
         className={css({
-          width: '100%',
-          height: 'auto',
+          maxWidth: '100%',
+          maxHeight: '100%',
           cursor: pointerLocked ? 'crosshair' : 'pointer',
         })}
+        style={{
+          aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}`,
+        }}
       >
         {/* Background */}
         <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
@@ -1609,9 +1652,10 @@ export function MapRenderer({
               borderRadius: '50%',
               pointerEvents: 'none',
               zIndex: 200,
-              transform: 'translate(-50%, -50%)',
+              transform: `translate(-50%, -50%) scale(${cursorSquish.x}, ${cursorSquish.y})`,
               backgroundColor: 'transparent',
               boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.1s ease-out', // Smooth squish animation
             }}
           >
             {/* Crosshair - Vertical line */}

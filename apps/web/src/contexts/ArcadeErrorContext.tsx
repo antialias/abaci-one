@@ -23,9 +23,7 @@ export function ArcadeErrorProvider({ children }: { children: ReactNode }) {
     [showError]
   )
 
-  return (
-    <ArcadeErrorContext.Provider value={{ addError }}>{children}</ArcadeErrorContext.Provider>
-  )
+  return <ArcadeErrorContext.Provider value={{ addError }}>{children}</ArcadeErrorContext.Provider>
 }
 
 /**

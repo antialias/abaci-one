@@ -10,7 +10,9 @@ import type {
  * Lazy-load map functions to avoid importing ES modules at module init time
  * This is critical for server-side usage where ES modules can't be required
  */
-async function getFilteredMapDataLazy(...args: Parameters<typeof import('./maps').getFilteredMapData>) {
+async function getFilteredMapDataLazy(
+  ...args: Parameters<typeof import('./maps').getFilteredMapData>
+) {
   const { getFilteredMapData } = await import('./maps')
   return getFilteredMapData(...args)
 }
@@ -18,7 +20,10 @@ async function getFilteredMapDataLazy(...args: Parameters<typeof import('./maps'
 export class KnowYourWorldValidator
   implements GameValidator<KnowYourWorldState, KnowYourWorldMove>
 {
-  async validateMove(state: KnowYourWorldState, move: KnowYourWorldMove): Promise<ValidationResult> {
+  async validateMove(
+    state: KnowYourWorldState,
+    move: KnowYourWorldMove
+  ): Promise<ValidationResult> {
     switch (move.type) {
       case 'START_GAME':
         return await this.validateStartGame(state, move.data)
@@ -218,7 +223,11 @@ export class KnowYourWorldValidator
     }
 
     // Get map data and shuffle regions (with continent and difficulty filters)
-    const mapData = await getFilteredMapDataLazy(state.selectedMap, state.selectedContinent, state.difficulty)
+    const mapData = await getFilteredMapDataLazy(
+      state.selectedMap,
+      state.selectedContinent,
+      state.difficulty
+    )
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 

@@ -15,7 +15,11 @@ export function StudyPhase() {
 
   const [timeRemaining, setTimeRemaining] = useState(state.studyTimeRemaining)
 
-  const mapData = getFilteredMapDataSync(state.selectedMap, state.selectedContinent, state.difficulty)
+  const mapData = getFilteredMapDataSync(
+    state.selectedMap,
+    state.selectedContinent,
+    state.difficulty
+  )
 
   // Countdown timer
   useEffect(() => {

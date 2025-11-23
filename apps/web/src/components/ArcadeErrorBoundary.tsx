@@ -103,8 +103,8 @@ function DefaultErrorFallback({ error, resetError }: { error: Error; resetError:
           maxWidth: '600px',
         })}
       >
-        The game encountered an unexpected error. Please try refreshing the page or returning to the arcade
-        lobby.
+        The game encountered an unexpected error. Please try refreshing the page or returning to the
+        arcade lobby.
       </p>
 
       {/* Action buttons */}

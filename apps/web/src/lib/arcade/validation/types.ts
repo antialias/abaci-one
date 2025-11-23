@@ -73,7 +73,11 @@ export interface GameValidator<TState = unknown, TMove extends GameMove = GameMo
    * @param move The move to validate
    * @param context Optional validation context for authorization checks
    */
-  validateMove(state: TState, move: TMove, context?: ValidationContext): ValidationResult | Promise<ValidationResult>
+  validateMove(
+    state: TState,
+    move: TMove,
+    context?: ValidationContext
+  ): ValidationResult | Promise<ValidationResult>
 
   /**
    * Check if the game is in a terminal state (completed)

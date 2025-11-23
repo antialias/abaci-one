@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { PageWithNav } from '@/components/PageWithNav'
+import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { useKnowYourWorld } from '../Provider'
 import { SetupPhase } from './SetupPhase'
 import { StudyPhase } from './StudyPhase'
@@ -18,6 +19,16 @@ export function GameComponent() {
       ? state.currentPlayer
       : undefined
 
+  // Use StandardGameLayout only for playing phase
+  const content = (
+    <>
+      {state.gamePhase === 'setup' && <SetupPhase />}
+      {state.gamePhase === 'studying' && <StudyPhase />}
+      {state.gamePhase === 'playing' && <PlayingPhase />}
+      {state.gamePhase === 'results' && <ResultsPhase />}
+    </>
+  )
+
   return (
     <PageWithNav
       navTitle="Know Your World"
@@ -32,10 +43,7 @@ export function GameComponent() {
       onSetup={state.gamePhase !== 'setup' ? returnToSetup : undefined}
       onNewGame={state.gamePhase !== 'setup' && state.gamePhase !== 'results' ? endGame : undefined}
     >
-      {state.gamePhase === 'setup' && <SetupPhase />}
-      {state.gamePhase === 'studying' && <StudyPhase />}
-      {state.gamePhase === 'playing' && <PlayingPhase />}
-      {state.gamePhase === 'results' && <ResultsPhase />}
+      {state.gamePhase === 'playing' ? <StandardGameLayout>{content}</StandardGameLayout> : content}
     </PageWithNav>
   )
 }
