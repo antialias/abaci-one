@@ -1924,9 +1924,6 @@ export function MapRenderer({
               height: '100%',
             }}
           >
-            {/* Background */}
-            <rect x="0" y="0" width="100%" height="100%" fill={isDark ? '#111827' : '#f3f4f6'} />
-
             {/* Render all regions in magnified view */}
             {mapData.regions.map((region) => {
               const isFound = regionsFound.includes(region.id)
