@@ -1,5 +1,5 @@
 # Multi-stage build for Soroban Abacus Flashcards
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install Python and build tools for better-sqlite3
 RUN apk add --no-cache python3 py3-setuptools make g++
@@ -46,7 +46,7 @@ RUN turbo build --filter=@soroban/web
 
 # Production dependencies stage - install only runtime dependencies
 # IMPORTANT: Must use same base as runner stage for binary compatibility (better-sqlite3)
-FROM node:18-slim AS deps
+FROM node:20-slim AS deps
 WORKDIR /app
 
 # Install build tools temporarily for better-sqlite3 installation
@@ -70,7 +70,7 @@ COPY packages/templates/package.json ./packages/templates/
 RUN pnpm install --frozen-lockfile --prod
 
 # Typst builder stage - download and prepare typst binary
-FROM node:18-slim AS typst-builder
+FROM node:20-slim AS typst-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     xz-utils \
@@ -92,7 +92,7 @@ RUN ARCH=$(uname -m) && \
     chmod +x /usr/local/bin/typst
 
 # Production image
-FROM node:18-slim AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)

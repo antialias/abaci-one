@@ -26,6 +26,22 @@ README.md (root)
 **Invalid:** Creating `/docs/some-feature.md` without linking from anywhere ❌
 **Valid:** Creating `/docs/some-feature.md` AND linking from root README ✅
 
+## CRITICAL: @svg-maps ES Module Imports Work Correctly
+
+**The @svg-maps packages (world, usa) USE ES module syntax and this WORKS correctly in production.**
+
+**Historical context:**
+- We went through multiple attempts to "fix" ES module import issues
+- Tried JSON data files, tried various dynamic import strategies
+- **The current implementation (dynamic imports in maps.ts) WORKS in production**
+- Games were successfully created and played in production with this approach
+- DO NOT try to replace with JSON files or other workarounds
+
+**If you see an error related to @svg-maps:**
+- Check what else changed, not the import mechanism
+- The imports themselves are NOT the problem
+- Look for validator issues, type errors, or other recent changes
+
 ## CRITICAL: Production Dependencies
 
 **NEVER add TypeScript execution tools to production dependencies.**
