@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { GameInfoPanel } from './GameInfoPanel'
-import type { MapData } from '../maps'
+import type { MapData } from '../types'
 
 // Mock the context
 vi.mock('@/contexts/ThemeContext', () => ({

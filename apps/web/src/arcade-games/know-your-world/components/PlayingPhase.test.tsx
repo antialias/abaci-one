@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PlayingPhase } from './PlayingPhase'
-import type { MapData } from '../maps'
+import type { MapData } from '../types'
 
 // Mock dependencies
 vi.mock('../Provider', () => ({

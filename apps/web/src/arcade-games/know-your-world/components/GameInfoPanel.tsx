@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import type { MapData } from '../maps'
+import type { MapData } from '../types'
 
 interface GameInfoPanelProps {
   mapData: MapData
