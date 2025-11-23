@@ -1859,35 +1859,6 @@ export function MapRenderer({
           }}
         >
           <animated.svg
-            style={{
-              filter: (() => {
-                // Apply "disabled" visual effect when at threshold but not in precision mode
-                if (pointerLocked) return 'none'
-
-                const containerRect = containerRef.current?.getBoundingClientRect()
-                const svgRect = svgRef.current?.getBoundingClientRect()
-                if (!containerRect || !svgRect) return 'none'
-
-                const magnifierWidth = containerRect.width * 0.5
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-                const viewBoxWidth = viewBoxParts[2]
-                if (!viewBoxWidth || isNaN(viewBoxWidth)) return 'none'
-
-                const currentZoom = magnifierSpring.zoom.get()
-                const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
-                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-                const screenPixelRatio =
-                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
-
-                // When at or above threshold (but not in precision mode), add disabled effect
-                if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
-                  return 'brightness(0.6) saturate(0.5)'
-                }
-
-                return 'none'
-              })(),
-            }}
             viewBox={magnifierSpring.zoom.to((zoom) => {
               // Calculate magnified viewBox centered on cursor
               const containerRect = containerRef.current!.getBoundingClientRect()
@@ -1922,6 +1893,33 @@ export function MapRenderer({
             style={{
               width: '100%',
               height: '100%',
+              filter: (() => {
+                // Apply "disabled" visual effect when at threshold but not in precision mode
+                if (pointerLocked) return 'none'
+
+                const containerRect = containerRef.current?.getBoundingClientRect()
+                const svgRect = svgRef.current?.getBoundingClientRect()
+                if (!containerRect || !svgRect) return 'none'
+
+                const magnifierWidth = containerRect.width * 0.5
+                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxWidth = viewBoxParts[2]
+                if (!viewBoxWidth || isNaN(viewBoxWidth)) return 'none'
+
+                const currentZoom = magnifierSpring.zoom.get()
+                const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
+                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+                const screenPixelRatio =
+                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+                // When at or above threshold (but not in precision mode), add disabled effect
+                if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
+                  return 'brightness(0.6) saturate(0.5)'
+                }
+
+                return 'none'
+              })(),
             }}
           >
             {/* Render all regions in magnified view */}
