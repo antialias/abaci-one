@@ -248,6 +248,17 @@ export function MapRenderer({
 
       // Reset cursor squish when lock state changes
       if (!isLocked) {
+        console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup and zoom recalculation')
+
+        // Get current zoom state before any changes
+        const currentZoom = magnifierSpring.zoom.get()
+        const currentTargetZoom = targetZoom
+        console.log('[Pointer Lock] Current zoom state:', {
+          currentZoom: currentZoom.toFixed(1),
+          targetZoom: currentTargetZoom.toFixed(1),
+          uncappedZoom: uncappedAdaptiveZoomRef.current?.toFixed(1) || 'null',
+        })
+
         setCursorSquish({ x: 1, y: 1 })
         setIsReleasingPointerLock(false)
         initialCapturePositionRef.current = null
@@ -261,6 +272,12 @@ export function MapRenderer({
           const viewBoxParts = mapData.viewBox.split(' ').map(Number)
           const viewBoxWidth = viewBoxParts[2]
 
+          console.log('[Pointer Lock] Zoom recalculation context:', {
+            magnifierWidth: magnifierWidth.toFixed(1),
+            viewBoxWidth: viewBoxWidth?.toFixed(1) || 'undefined',
+            svgWidth: svgRect.width.toFixed(1),
+          })
+
           if (viewBoxWidth && !isNaN(viewBoxWidth)) {
             // Calculate what the screen pixel ratio would be at the uncapped zoom
             const uncappedZoom = uncappedAdaptiveZoomRef.current
@@ -269,16 +286,35 @@ export function MapRenderer({
             const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
             const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
 
+            console.log('[Pointer Lock] Screen pixel ratio check:', {
+              uncappedZoom: uncappedZoom.toFixed(1),
+              screenPixelRatio: screenPixelRatio.toFixed(1),
+              threshold: PRECISION_MODE_THRESHOLD,
+              exceedsThreshold: screenPixelRatio > PRECISION_MODE_THRESHOLD,
+            })
+
             // If it exceeds threshold, cap the zoom to stay at threshold
             if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
               const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
               const cappedZoom = Math.min(uncappedZoom, maxZoom)
               console.log(
-                `[Pointer Lock] Released - capping zoom from ${uncappedZoom.toFixed(1)}× to ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
+                `[Pointer Lock] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
               )
               setTargetZoom(cappedZoom)
+            } else {
+              console.log(
+                `[Pointer Lock] ℹ️  No capping needed - zoom ${uncappedZoom.toFixed(1)}× is below threshold`
+              )
             }
+          } else {
+            console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - invalid viewBoxWidth')
           }
+        } else {
+          console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - missing refs:', {
+            hasContainer: !!containerRef.current,
+            hasSvg: !!svgRef.current,
+            hasUncappedZoom: uncappedAdaptiveZoomRef.current !== null,
+          })
         }
       }
 
@@ -421,6 +457,13 @@ export function MapRenderer({
     const currentZoom = magnifierSpring.zoom.get()
     const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
 
+    console.log('[Zoom Effect] Running with state:', {
+      currentZoom: currentZoom.toFixed(1),
+      targetZoom: targetZoom.toFixed(1),
+      zoomIsAnimating,
+      pointerLocked,
+    })
+
     // Check if CURRENT zoom is at/above the threshold (zoom is capped)
     const currentIsAtThreshold =
       !pointerLocked &&
@@ -465,6 +508,12 @@ export function MapRenderer({
         return screenPixelRatio >= PRECISION_MODE_THRESHOLD
       })()
 
+    console.log('[Zoom Effect] Threshold checks:', {
+      currentIsAtThreshold,
+      targetIsAtThreshold,
+      shouldPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
+    })
+
     // Pause conditions:
     // 1. Currently at threshold AND animating toward even higher zoom (would exceed threshold more)
     // 2. OR: Currently at threshold and target is also at threshold (should stay paused)
@@ -472,14 +521,15 @@ export function MapRenderer({
 
     if (shouldPause) {
       // Pause the zoom animation - we're waiting for precision mode
-      console.log('[Zoom] Pausing at threshold - waiting for precision mode')
+      console.log('[Zoom] ⏸️  Pausing at threshold - waiting for precision mode')
       magnifierApi.pause()
     } else {
       // Update spring values and ensure it's not paused
       // This will resume if we were paused and now target is below threshold (zooming out)
       if (currentIsAtThreshold && !targetIsAtThreshold) {
-        console.log('[Zoom] Resuming - target zoom is below threshold (zooming out)')
+        console.log('[Zoom] ▶️  Resuming - target zoom is below threshold (zooming out)')
       }
+      console.log('[Zoom] 🎬 Starting/updating animation to targetZoom:', targetZoom.toFixed(1))
       magnifierApi.start({
         zoom: targetZoom,
         opacity: targetOpacity,
