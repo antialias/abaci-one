@@ -278,6 +278,20 @@ export function MapRenderer({
     }
   }, [])
 
+  // When pointer lock state changes, update the spring target to current zoom
+  // This prevents jumps when transitioning between capped and uncapped zoom
+  useEffect(() => {
+    if (pointerLocked) {
+      // Just activated precision mode - set spring target to current value to avoid jump
+      const currentZoom = magnifierSpring.zoom.get()
+      setTargetZoom(currentZoom)
+      console.log(
+        '[Precision Mode] Activated - setting spring target to current zoom:',
+        currentZoom
+      )
+    }
+  }, [pointerLocked, magnifierSpring.zoom])
+
   // Pre-compute largest piece sizes for multi-piece regions
   useEffect(() => {
     if (!svgRef.current) return
