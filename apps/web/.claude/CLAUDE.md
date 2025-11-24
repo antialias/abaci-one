@@ -1,5 +1,32 @@
 # Claude Code Instructions for apps/web
 
+## CRITICAL: Always Check Imports Before Using React Hooks
+
+**MANDATORY: Before using ANY React hook or function, verify it's imported.**
+
+**The Process (EVERY TIME):**
+1. Read the imports section at the top of the file (lines 1-20)
+2. Check if the hook/function you need is already imported
+3. If missing, add it to the import statement IN THE SAME EDIT as your code
+4. Do NOT write code that uses a hook without checking imports first
+
+**Common mistakes:**
+- ❌ Using `useCallback` without checking if it's imported
+- ❌ Using `useMemo` without checking if it's imported
+- ❌ Using `useRef` without checking if it's imported
+- ✅ Read imports → verify → add if needed → write code
+
+**Why this matters:**
+- Missing imports break the app immediately
+- User has to reload and loses state
+- Wastes time debugging trivial import errors
+- Shows lack of attention to detail
+
+**If you forget this, you will:**
+- Break the user's development flow
+- Lose reproduction state for bugs being debugged
+- Annoy the user with preventable errors
+
 ## CRITICAL: Documentation Graph Requirement
 
 **ALL documentation must be reachable from the main README via a linked path.**

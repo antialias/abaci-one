@@ -141,8 +141,8 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     const currentZoom = magnifierSpring.zoom.get()
     const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
 
-
     // Check if CURRENT zoom is at/above threshold (zoom is capped)
+    let currentScreenPixelRatio = 0
     const currentIsAtThreshold =
       !pointerLocked &&
       containerRef.current &&
@@ -156,17 +156,18 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
 
         if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
-        const screenPixelRatio = calculateScreenPixelRatio({
+        currentScreenPixelRatio = calculateScreenPixelRatio({
           magnifierWidth,
           viewBoxWidth,
           svgWidth: svgRect.width,
           zoom: currentZoom,
         })
 
-        return isAboveThreshold(screenPixelRatio, threshold)
+        return isAboveThreshold(currentScreenPixelRatio, threshold)
       })()
 
     // Check if TARGET zoom is at/above threshold
+    let targetScreenPixelRatio = 0
     const targetIsAtThreshold =
       !pointerLocked &&
       containerRef.current &&
@@ -180,16 +181,15 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
 
         if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
-        const screenPixelRatio = calculateScreenPixelRatio({
+        targetScreenPixelRatio = calculateScreenPixelRatio({
           magnifierWidth,
           viewBoxWidth,
           svgWidth: svgRect.width,
           zoom: targetZoom,
         })
 
-        return isAboveThreshold(screenPixelRatio, threshold)
+        return isAboveThreshold(targetScreenPixelRatio, threshold)
       })()
-
 
     // Pause if:
     // - Currently at threshold AND
@@ -197,16 +197,45 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     // - Target is also at threshold
     const shouldPause = currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold
 
+    console.log('[useMagnifierZoom] Effect running:', {
+      currentZoom: currentZoom.toFixed(1),
+      targetZoom: targetZoom.toFixed(1),
+      currentScreenPixelRatio: currentScreenPixelRatio.toFixed(1),
+      targetScreenPixelRatio: targetScreenPixelRatio.toFixed(1),
+      threshold,
+      zoomIsAnimating,
+      currentIsAtThreshold,
+      targetIsAtThreshold,
+      pointerLocked,
+      shouldPause,
+    })
+
     if (shouldPause) {
       console.log('[useMagnifierZoom] ⏸️  Pausing at threshold - waiting for precision mode')
       magnifierApi.pause()
     } else {
       // Resume/update animation
+      // CRITICAL: Always resume first in case spring was paused
+      magnifierApi.resume()
+
       if (currentIsAtThreshold && !targetIsAtThreshold) {
         console.log('[useMagnifierZoom] ▶️  Resuming - target zoom is below threshold')
       }
-      console.log('[useMagnifierZoom] 🎬 Starting/updating animation to:', targetZoom.toFixed(1))
-      magnifierApi.start({ zoom: targetZoom })
+
+      // If current zoom is very far from target (>100× difference), snap immediately
+      // This prevents slow animations when recovering from stuck states
+      const zoomDifference = Math.abs(currentZoom - targetZoom)
+      const shouldSnapImmediate = zoomDifference > 100
+
+      if (shouldSnapImmediate) {
+        console.log(
+          `[useMagnifierZoom] ⚡ Snapping immediately from ${currentZoom.toFixed(1)}× to ${targetZoom.toFixed(1)}× (diff: ${zoomDifference.toFixed(1)}×)`
+        )
+        magnifierApi.start({ zoom: targetZoom, immediate: true })
+      } else {
+        console.log('[useMagnifierZoom] 🎬 Starting/updating animation to:', targetZoom.toFixed(1))
+        magnifierApi.start({ zoom: targetZoom })
+      }
     }
   }, [
     targetZoom, // Effect runs when target zoom changes

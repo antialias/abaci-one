@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useSpring, useSpringRef, animated } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -200,28 +200,33 @@ export function MapRenderer({
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
   const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
+  // Memoize pointer lock callbacks to prevent render loop
+  const handleLockAcquired = useCallback(() => {
+    // Save initial cursor position
+    if (cursorPositionRef.current) {
+      initialCapturePositionRef.current = { ...cursorPositionRef.current }
+      console.log(
+        '[Pointer Lock] 📍 Saved initial capture position:',
+        initialCapturePositionRef.current
+      )
+    }
+    // Note: Zoom update now handled by useMagnifierZoom hook
+  }, [])
+
+  const handleLockReleased = useCallback(() => {
+    console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup')
+
+    // Reset cursor squish
+    setCursorSquish({ x: 1, y: 1 })
+    setIsReleasingPointerLock(false)
+    // Note: Zoom recalculation now handled by useMagnifierZoom hook
+  }, [])
+
   // Pointer lock hook (needed by zoom hook)
   const { pointerLocked, requestPointerLock, exitPointerLock } = usePointerLock({
     containerRef,
-    onLockAcquired: () => {
-      // Save initial cursor position
-      if (cursorPositionRef.current) {
-        initialCapturePositionRef.current = { ...cursorPositionRef.current }
-        console.log(
-          '[Pointer Lock] 📍 Saved initial capture position:',
-          initialCapturePositionRef.current
-        )
-      }
-      // Note: Zoom update now handled by useMagnifierZoom hook
-    },
-    onLockReleased: () => {
-      console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup')
-
-      // Reset cursor squish
-      setCursorSquish({ x: 1, y: 1 })
-      setIsReleasingPointerLock(false)
-      // Note: Zoom recalculation now handled by useMagnifierZoom hook
-    },
+    onLockAcquired: handleLockAcquired,
+    onLockReleased: handleLockReleased,
   })
 
   // Magnifier zoom hook
@@ -317,9 +322,54 @@ export function MapRenderer({
     if (!pointerLocked) {
       requestPointerLock()
       console.log('[Pointer Lock] 🔒 Silently requested (user clicked map)')
+      return // Don't process region click on the first click that requests lock
     }
 
-    // Let region clicks still work (they have their own onClick handlers)
+    // When pointer lock is active, browser doesn't deliver click events to SVG children
+    // We need to manually detect which region is under the cursor
+    if (pointerLocked && cursorPositionRef.current && containerRef.current && svgRef.current) {
+      const { x: cursorX, y: cursorY } = cursorPositionRef.current
+
+      console.log('[CLICK] Pointer lock click at cursor position:', { cursorX, cursorY })
+
+      // Use the same detection logic as hover tracking (50px detection box)
+      // This checks the main map SVG at the cursor position
+      const { detectedRegions, regionUnderCursor } = detectRegions(cursorX, cursorY)
+
+      console.log('[CLICK] Detection results:', {
+        detectedRegions: detectedRegions.map((r) => r.id),
+        regionUnderCursor,
+        detectedCount: detectedRegions.length,
+      })
+
+      if (regionUnderCursor) {
+        // Find the region data to get the name
+        const region = mapData.regions.find((r) => r.id === regionUnderCursor)
+        if (region) {
+          console.log('[CLICK] Detected region under cursor:', {
+            regionId: regionUnderCursor,
+            regionName: region.name,
+          })
+          onRegionClick(regionUnderCursor, region.name)
+        } else {
+          console.log('[CLICK] Region ID found but not in mapData:', regionUnderCursor)
+        }
+      } else if (detectedRegions.length > 0) {
+        // If no region directly under cursor, use the closest detected region
+        const closestRegion = detectedRegions[0] // Already sorted by distance
+        const region = mapData.regions.find((r) => r.id === closestRegion.id)
+        if (region) {
+          console.log('[CLICK] Using closest detected region:', {
+            regionId: closestRegion.id,
+            regionName: region.name,
+            distance: closestRegion.distanceToCenter?.toFixed(2),
+          })
+          onRegionClick(closestRegion.id, region.name)
+        }
+      } else {
+        console.log('[CLICK] No regions detected at cursor position')
+      }
+    }
   }
 
   // Animated spring values for smooth transitions
@@ -1935,6 +1985,81 @@ export function MapRenderer({
               )
             })()}
         </animated.div>
+      )}
+
+      {/* Debug: Auto zoom detection visualization */}
+      {cursorPosition && containerRef.current && (
+        <>
+          {/* Detection box - 50px box around cursor */}
+          <div
+            style={{
+              position: 'absolute',
+              left: `${cursorPosition.x - 25}px`,
+              top: `${cursorPosition.y - 25}px`,
+              width: '50px',
+              height: '50px',
+              border: '2px dashed yellow',
+              pointerEvents: 'none',
+              zIndex: 150,
+            }}
+          />
+
+          {/* Detection info overlay - top left corner */}
+          {(() => {
+            const { detectedRegions, hasSmallRegion, detectedSmallestSize } = detectRegions(
+              cursorPosition.x,
+              cursorPosition.y
+            )
+
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  left: '10px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  color: 'white',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  pointerEvents: 'none',
+                  zIndex: 150,
+                  maxWidth: '300px',
+                }}
+              >
+                <div>
+                  <strong>Detection Box (50px)</strong>
+                </div>
+                <div>Regions detected: {detectedRegions.length}</div>
+                <div>Has small region: {hasSmallRegion ? 'YES' : 'NO'}</div>
+                <div>
+                  Smallest size: {detectedSmallestSize === Infinity ? '∞' : `${detectedSmallestSize.toFixed(1)}px`}
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <strong>Detected Regions:</strong>
+                </div>
+                {detectedRegions.slice(0, 5).map((region) => (
+                  <div key={region.id} style={{ fontSize: '10px', marginLeft: '8px' }}>
+                    • {region.id}: {region.pixelWidth.toFixed(1)}×{region.pixelHeight.toFixed(1)}px
+                    {region.isVerySmall ? ' (SMALL)' : ''}
+                  </div>
+                ))}
+                {detectedRegions.length > 5 && (
+                  <div style={{ fontSize: '10px', marginLeft: '8px', color: '#888' }}>
+                    ...and {detectedRegions.length - 5} more
+                  </div>
+                )}
+                <div style={{ marginTop: '8px' }}>
+                  <strong>Current Zoom:</strong> {getCurrentZoom().toFixed(1)}×
+                </div>
+                <div>
+                  <strong>Target Zoom:</strong> {targetZoom.toFixed(1)}×
+                </div>
+              </div>
+            )
+          })()}
+        </>
       )}
     </div>
   )
