@@ -2169,9 +2169,9 @@ export function MapRenderer({
               const screenPixelRatio =
                 mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
 
-              // If at or above threshold, show clickable notice to activate precision controls
+              // If at or above threshold, show notice about activating precision controls
               if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
-                return 'Click here (not map) for precision mode'
+                return 'Click to activate precision mode'
               }
 
               // Below threshold - show debug info in dev, simple zoom in prod
@@ -2182,6 +2182,42 @@ export function MapRenderer({
               return `${z.toFixed(1)}×`
             })}
           </animated.div>
+
+          {/* Scrim overlay - shows when at threshold to indicate barrier */}
+          {!pointerLocked &&
+            (() => {
+              const containerRect = containerRef.current?.getBoundingClientRect()
+              const svgRect = svgRef.current?.getBoundingClientRect()
+              if (!containerRect || !svgRect) return null
+
+              const magnifierWidth = containerRect.width * 0.5
+              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxWidth = viewBoxParts[2]
+              if (!viewBoxWidth || isNaN(viewBoxWidth)) return null
+
+              const currentZoom = magnifierSpring.zoom.get()
+              const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
+              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+              const screenPixelRatio =
+                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+              // Only show scrim when at or above threshold
+              if (screenPixelRatio < PRECISION_MODE_THRESHOLD) return null
+
+              return (
+                <div
+                  data-element="precision-mode-scrim"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(251, 191, 36, 0.15)', // Gold scrim
+                    pointerEvents: 'none',
+                    borderRadius: '12px',
+                  }}
+                />
+              )
+            })()}
         </animated.div>
       )}
     </div>
