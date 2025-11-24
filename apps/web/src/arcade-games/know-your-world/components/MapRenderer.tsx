@@ -1368,10 +1368,8 @@ export function MapRenderer({
         )
       }
 
-      // Note: We DO NOT cap adaptiveZoom here before setting targetZoom
-      // Instead, we let the spring animate toward the full target zoom
-      // and apply the cap when READING the zoom value in the viewBox calculation
-      // This creates a "pause" effect at the threshold rather than slow easing
+      // Don't cap the target zoom - let the spring animate to full target
+      // The capping will happen in the viewBox calculation where zoom is actually used
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
@@ -1854,10 +1852,10 @@ export function MapRenderer({
               const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
               const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
 
-              // Apply zoom cap when not in precision mode
-              // This creates a "pause" at the threshold while the spring continues to animate toward target
+              // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
+              // This creates a "pause" at the threshold while the spring continues to its target
               let effectiveZoom = zoom
-              if (!pointerLocked && containerRef.current) {
+              if (!pointerLocked) {
                 const magnifierWidth = containerRect.width * 0.5
                 // Calculate what the screen pixel ratio would be at this zoom
                 const magnifiedViewBoxWidth = viewBoxWidth / zoom
@@ -1868,12 +1866,13 @@ export function MapRenderer({
 
                 // If it exceeds threshold, cap the zoom to stay at threshold
                 if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
+                  // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
                   const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
                   effectiveZoom = Math.min(zoom, maxZoom)
                 }
               }
 
-              // Magnified view: adaptive zoom (using animated value, capped if needed)
+              // Magnified view: adaptive zoom (using capped value)
               const magnifiedWidth = viewBoxWidth / effectiveZoom
               const magnifiedHeight = viewBoxHeight / effectiveZoom
 
