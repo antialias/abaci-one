@@ -15,6 +15,12 @@ import {
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import { WORLD_MAP, USA_MAP, filterRegionsByContinent } from '../maps'
 import type { ContinentId } from '../continents'
+import {
+  calculateScreenPixelRatio,
+  calculateMaxZoomAtThreshold,
+  isAboveThreshold,
+  createZoomContext,
+} from '../utils/screenPixelRatio'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -278,24 +284,30 @@ export function MapRenderer({
             svgWidth: svgRect.width.toFixed(1),
           })
 
-          if (viewBoxWidth && !isNaN(viewBoxWidth)) {
+          if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
             // Calculate what the screen pixel ratio would be at the uncapped zoom
             const uncappedZoom = uncappedAdaptiveZoomRef.current
-            const magnifiedViewBoxWidth = viewBoxWidth / uncappedZoom
-            const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-            const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-            const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+            const screenPixelRatio = calculateScreenPixelRatio({
+              magnifierWidth,
+              viewBoxWidth,
+              svgWidth: svgRect.width,
+              zoom: uncappedZoom,
+            })
 
             console.log('[Pointer Lock] Screen pixel ratio check:', {
               uncappedZoom: uncappedZoom.toFixed(1),
               screenPixelRatio: screenPixelRatio.toFixed(1),
               threshold: PRECISION_MODE_THRESHOLD,
-              exceedsThreshold: screenPixelRatio > PRECISION_MODE_THRESHOLD,
+              exceedsThreshold: isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD),
             })
 
             // If it exceeds threshold, cap the zoom to stay at threshold
-            if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
-              const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+            if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
+              const maxZoom = calculateMaxZoomAtThreshold(
+                PRECISION_MODE_THRESHOLD,
+                magnifierWidth,
+                svgRect.width
+              )
               const cappedZoom = Math.min(uncappedZoom, maxZoom)
               console.log(
                 `[Pointer Lock] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
@@ -476,14 +488,16 @@ export function MapRenderer({
         const viewBoxParts = mapData.viewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
-        if (!viewBoxWidth || isNaN(viewBoxWidth)) return false
+        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
-        const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
-        const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-        const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-        const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+        const screenPixelRatio = calculateScreenPixelRatio({
+          magnifierWidth,
+          viewBoxWidth,
+          svgWidth: svgRect.width,
+          zoom: currentZoom,
+        })
 
-        return screenPixelRatio >= PRECISION_MODE_THRESHOLD
+        return isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
       })()
 
     // Check if TARGET zoom would be at/above the threshold
@@ -498,14 +512,16 @@ export function MapRenderer({
         const viewBoxParts = mapData.viewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
-        if (!viewBoxWidth || isNaN(viewBoxWidth)) return false
+        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
-        const magnifiedViewBoxWidth = viewBoxWidth / targetZoom
-        const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-        const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-        const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+        const screenPixelRatio = calculateScreenPixelRatio({
+          magnifierWidth,
+          viewBoxWidth,
+          svgWidth: svgRect.width,
+          zoom: targetZoom,
+        })
 
-        return screenPixelRatio >= PRECISION_MODE_THRESHOLD
+        return isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
       })()
 
     console.log('[Zoom Effect] Threshold checks:', {
@@ -1560,17 +1576,22 @@ export function MapRenderer({
         const viewBoxParts = mapData.viewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
-        if (viewBoxWidth && !isNaN(viewBoxWidth)) {
+        if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
           // Calculate what the screen pixel ratio would be at this zoom
-          const magnifiedViewBoxWidth = viewBoxWidth / adaptiveZoom
-          const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-          const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-          const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+          const screenPixelRatio = calculateScreenPixelRatio({
+            magnifierWidth,
+            viewBoxWidth,
+            svgWidth: svgRect.width,
+            zoom: adaptiveZoom,
+          })
 
           // If it exceeds threshold, cap the zoom to stay at threshold
-          if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
-            // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
-            const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+          if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
+            const maxZoom = calculateMaxZoomAtThreshold(
+              PRECISION_MODE_THRESHOLD,
+              magnifierWidth,
+              svgRect.width
+            )
             adaptiveZoom = Math.min(adaptiveZoom, maxZoom)
             console.log(
               `[Magnifier] Capping zoom at ${adaptiveZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px, would have been ${screenPixelRatio.toFixed(1)} px/px)`
@@ -2085,17 +2106,18 @@ export function MapRenderer({
                 const magnifierWidth = containerRect.width * 0.5
                 const viewBoxParts = mapData.viewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
-                if (!viewBoxWidth || isNaN(viewBoxWidth)) return 'none'
+                if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return 'none'
 
                 const currentZoom = magnifierSpring.zoom.get()
-                const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
-                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-                const screenPixelRatio =
-                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+                const screenPixelRatio = calculateScreenPixelRatio({
+                  magnifierWidth,
+                  viewBoxWidth,
+                  svgWidth: svgRect.width,
+                  zoom: currentZoom,
+                })
 
                 // When at or above threshold (but not in precision mode), add disabled effect
-                if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
+                if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
                   return 'brightness(0.6) saturate(0.5)'
                 }
 
