@@ -223,14 +223,16 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
       magnifierApi.start({ zoom: targetZoom })
     }
   }, [
-    targetZoom,
-    pointerLocked,
+    targetZoom, // Effect runs when target zoom changes
+    pointerLocked, // Effect runs when pointer lock state changes
     viewBox,
     threshold,
     containerRef,
     svgRef,
     magnifierApi,
-    magnifierSpring.zoom,
+    // NOTE: Do NOT include magnifierSpring.zoom here!
+    // Spring values don't trigger React effects correctly.
+    // We read spring.zoom.get() inside the effect, but don't depend on it.
   ])
 
   return {
