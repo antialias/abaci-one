@@ -1368,32 +1368,9 @@ export function MapRenderer({
         )
       }
 
-      // Cap the target zoom when not in precision mode
-      // When precision mode activates, the uncapped target will be set
-      let targetZoomValue = adaptiveZoom
-      if (!pointerLocked && containerRef.current && svgRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect()
-        const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-        const viewBoxWidth = viewBoxParts[2]
-
-        if (viewBoxWidth && !isNaN(viewBoxWidth)) {
-          // Calculate what the screen pixel ratio would be at this zoom
-          const magnifiedViewBoxWidth = viewBoxWidth / adaptiveZoom
-          const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-          const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-          const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
-
-          // If it exceeds threshold, cap the target zoom
-          if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
-            const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
-            targetZoomValue = Math.min(adaptiveZoom, maxZoom)
-          }
-        }
-      }
-
-      setTargetZoom(targetZoomValue)
+      // Always set the uncapped target zoom so spring animates quickly
+      // The capping will happen when rendering (in viewBox calculation)
+      setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
       setTargetTop(newTop)
@@ -1875,9 +1852,26 @@ export function MapRenderer({
               const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
               const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
 
-              // Magnified view: use spring zoom value directly (capping happens at setTargetZoom)
-              const magnifiedWidth = viewBoxWidth / zoom
-              const magnifiedHeight = viewBoxHeight / zoom
+              // Clamp zoom at threshold when not in precision mode
+              // This creates a "pause" - spring keeps animating but rendered zoom stops at threshold
+              let effectiveZoom = zoom
+              if (!pointerLocked) {
+                const magnifierWidth = containerRect.width * 0.5
+                const magnifiedViewBoxWidth = viewBoxWidth / zoom
+                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+                const screenPixelRatio =
+                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+                if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
+                  const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+                  effectiveZoom = Math.min(zoom, maxZoom)
+                }
+              }
+
+              // Magnified view: use effective (clamped) zoom
+              const magnifiedWidth = viewBoxWidth / effectiveZoom
+              const magnifiedHeight = viewBoxHeight / effectiveZoom
 
               // Center the magnified viewBox on the cursor
               const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
