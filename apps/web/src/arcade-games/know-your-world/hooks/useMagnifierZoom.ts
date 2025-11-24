@@ -34,8 +34,8 @@ export interface UseMagnifierZoomReturn {
   targetZoom: number
   /** Set the target zoom level */
   setTargetZoom: (zoom: number) => void
-  /** The animated spring value for zoom */
-  zoomSpring: number
+  /** The animated spring value for zoom (spring object, not a number) */
+  zoomSpring: any // Spring value that can be used with animated.div
   /** Get the current animated zoom value */
   getCurrentZoom: () => number
   /** Reference to the uncapped adaptive zoom (for pointer lock transitions) */
@@ -233,7 +233,7 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
   return {
     targetZoom,
     setTargetZoom,
-    zoomSpring: magnifierSpring.zoom.get(),
+    zoomSpring: magnifierSpring.zoom, // Return the spring object, not .get()
     getCurrentZoom: () => magnifierSpring.zoom.get(),
     uncappedAdaptiveZoomRef,
   }

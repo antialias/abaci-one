@@ -22,6 +22,7 @@ import {
 import { findOptimalZoom } from '../utils/adaptiveZoomSearch'
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { usePointerLock } from '../hooks/usePointerLock'
+import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -193,15 +194,13 @@ export function MapRenderer({
     smallRegionAreaThreshold: 200,
   })
 
-  // State that needs to be available for pointer lock callbacks
-  const [targetZoom, setTargetZoom] = useState(10)
-  const uncappedAdaptiveZoomRef = useRef<number | null>(null)
+  // State that needs to be available for hooks
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
   const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
-  // Pointer lock hook
+  // Pointer lock hook (needed by zoom hook)
   const { pointerLocked, requestPointerLock, exitPointerLock } = usePointerLock({
     containerRef,
     onLockAcquired: () => {
@@ -213,75 +212,28 @@ export function MapRenderer({
           initialCapturePositionRef.current
         )
       }
-
-      // Update target zoom to uncapped value
-      if (uncappedAdaptiveZoomRef.current !== null) {
-        console.log(
-          `[Pointer Lock] Updating target zoom to uncapped value: ${uncappedAdaptiveZoomRef.current.toFixed(1)}×`
-        )
-        setTargetZoom(uncappedAdaptiveZoomRef.current)
-      }
+      // Note: Zoom update now handled by useMagnifierZoom hook
     },
     onLockReleased: () => {
-      console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup and zoom recalculation')
+      console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup')
 
       // Reset cursor squish
       setCursorSquish({ x: 1, y: 1 })
       setIsReleasingPointerLock(false)
-
-      // Recalculate zoom with capping
-      if (uncappedAdaptiveZoomRef.current !== null && containerRef.current && svgRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect()
-        const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-        const viewBoxWidth = viewBoxParts[2]
-
-        if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
-          const uncappedZoom = uncappedAdaptiveZoomRef.current
-          const screenPixelRatio = calculateScreenPixelRatio({
-            magnifierWidth,
-            viewBoxWidth,
-            svgWidth: svgRect.width,
-            zoom: uncappedZoom,
-          })
-
-          console.log('[Pointer Lock] Screen pixel ratio check:', {
-            uncappedZoom: uncappedZoom.toFixed(1),
-            screenPixelRatio: screenPixelRatio.toFixed(1),
-            threshold: PRECISION_MODE_THRESHOLD,
-            exceedsThreshold: isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD),
-          })
-
-          // If it exceeds threshold, cap the zoom to stay at threshold
-          if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
-            const maxZoom = calculateMaxZoomAtThreshold(
-              PRECISION_MODE_THRESHOLD,
-              magnifierWidth,
-              svgRect.width
-            )
-            const cappedZoom = Math.min(uncappedZoom, maxZoom)
-            console.log(
-              `[Pointer Lock] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
-            )
-            setTargetZoom(cappedZoom)
-          } else {
-            console.log(
-              `[Pointer Lock] ℹ️  No capping needed - zoom ${uncappedZoom.toFixed(1)}× is below threshold`
-            )
-          }
-        } else {
-          console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - invalid viewBoxWidth')
-        }
-      } else {
-        console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - missing refs:', {
-          hasContainer: !!containerRef.current,
-          hasSvg: !!svgRef.current,
-          hasUncappedZoom: uncappedAdaptiveZoomRef.current !== null,
-        })
-      }
+      // Note: Zoom recalculation now handled by useMagnifierZoom hook
     },
   })
+
+  // Magnifier zoom hook
+  const { targetZoom, setTargetZoom, zoomSpring, getCurrentZoom, uncappedAdaptiveZoomRef } =
+    useMagnifierZoom({
+      containerRef,
+      svgRef,
+      viewBox: mapData.viewBox,
+      threshold: PRECISION_MODE_THRESHOLD,
+      pointerLocked,
+      initialZoom: 10,
+    })
 
   const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 500 })
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
@@ -371,15 +323,10 @@ export function MapRenderer({
   }
 
   // Animated spring values for smooth transitions
-  // Different fade speeds: fast fade-in (100ms), slow fade-out (1000ms)
-  // Zoom: smooth, slower animation with gentle easing
-  // Position: medium speed (300ms)
-  // Movement multiplier: gradual transitions for smooth cursor dampening
-  const springRef = useSpringRef()
+  // Note: Zoom animation is now handled by useMagnifierZoom hook
+  // This spring only handles: opacity, position, and movement multiplier
   const [magnifierSpring, magnifierApi] = useSpring(
     () => ({
-      ref: springRef,
-      zoom: targetZoom,
       opacity: targetOpacity,
       top: targetTop,
       left: targetLeft,
@@ -390,126 +337,27 @@ export function MapRenderer({
             ? { duration: 100 } // Fade in: 0.1 seconds
             : { duration: 1000 } // Fade out: 1 second
         }
-        if (key === 'zoom') {
-          // Zoom: very slow, smooth animation (4x longer than before)
-          // Lower tension + higher mass = longer, more gradual transitions
-          return { tension: 30, friction: 30, mass: 4 }
-        }
         if (key === 'movementMultiplier') {
           // Movement multiplier: smooth but responsive transitions
-          // Faster than zoom so cursor responsiveness changes quickly but not jarring
           return { tension: 180, friction: 26 }
         }
         // Position: medium speed
         return { tension: 200, friction: 25 }
       },
-      // onChange removed - was flooding console with animation frames
     }),
-    []
+    [targetOpacity, targetTop, targetLeft, smallestRegionSize]
   )
 
-  // Update spring values when targets change
-  // Handle pausing zoom animation when hitting threshold
+  // Note: Zoom animation with pause/resume is now handled by useMagnifierZoom hook
+  // This effect only updates the remaining spring properties: opacity, position, movement multiplier
   useEffect(() => {
-    const currentZoom = magnifierSpring.zoom.get()
-    const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
-
-    console.log('[Zoom Effect] Running with state:', {
-      currentZoom: currentZoom.toFixed(1),
-      targetZoom: targetZoom.toFixed(1),
-      zoomIsAnimating,
-      pointerLocked,
+    magnifierApi.start({
+      opacity: targetOpacity,
+      top: targetTop,
+      left: targetLeft,
+      movementMultiplier: getMovementMultiplier(smallestRegionSize),
     })
-
-    // Check if CURRENT zoom is at/above the threshold (zoom is capped)
-    const currentIsAtThreshold =
-      !pointerLocked &&
-      containerRef.current &&
-      svgRef.current &&
-      (() => {
-        const containerRect = containerRef.current.getBoundingClientRect()
-        const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-        const viewBoxWidth = viewBoxParts[2]
-
-        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
-
-        const screenPixelRatio = calculateScreenPixelRatio({
-          magnifierWidth,
-          viewBoxWidth,
-          svgWidth: svgRect.width,
-          zoom: currentZoom,
-        })
-
-        return isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
-      })()
-
-    // Check if TARGET zoom would be at/above the threshold
-    const targetIsAtThreshold =
-      !pointerLocked &&
-      containerRef.current &&
-      svgRef.current &&
-      (() => {
-        const containerRect = containerRef.current.getBoundingClientRect()
-        const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-        const viewBoxWidth = viewBoxParts[2]
-
-        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
-
-        const screenPixelRatio = calculateScreenPixelRatio({
-          magnifierWidth,
-          viewBoxWidth,
-          svgWidth: svgRect.width,
-          zoom: targetZoom,
-        })
-
-        return isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
-      })()
-
-    console.log('[Zoom Effect] Threshold checks:', {
-      currentIsAtThreshold,
-      targetIsAtThreshold,
-      shouldPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
-    })
-
-    // Pause conditions:
-    // 1. Currently at threshold AND animating toward even higher zoom (would exceed threshold more)
-    // 2. OR: Currently at threshold and target is also at threshold (should stay paused)
-    const shouldPause = currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold
-
-    if (shouldPause) {
-      // Pause the zoom animation - we're waiting for precision mode
-      console.log('[Zoom] ⏸️  Pausing at threshold - waiting for precision mode')
-      magnifierApi.pause()
-    } else {
-      // Update spring values and ensure it's not paused
-      // This will resume if we were paused and now target is below threshold (zooming out)
-      if (currentIsAtThreshold && !targetIsAtThreshold) {
-        console.log('[Zoom] ▶️  Resuming - target zoom is below threshold (zooming out)')
-      }
-      console.log('[Zoom] 🎬 Starting/updating animation to targetZoom:', targetZoom.toFixed(1))
-      magnifierApi.start({
-        zoom: targetZoom,
-        opacity: targetOpacity,
-        top: targetTop,
-        left: targetLeft,
-        movementMultiplier: getMovementMultiplier(smallestRegionSize),
-      })
-    }
-  }, [
-    targetZoom,
-    targetOpacity,
-    targetTop,
-    targetLeft,
-    smallestRegionSize,
-    pointerLocked,
-    mapData.viewBox,
-    magnifierApi,
-    magnifierSpring.zoom,
-  ])
+  }, [targetOpacity, targetTop, targetLeft, smallestRegionSize, magnifierApi])
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<
@@ -1438,7 +1286,7 @@ export function MapRenderer({
         {/* Magnifier region indicator on main map */}
         {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
           <animated.rect
-            x={magnifierSpring.zoom.to((zoom) => {
+            x={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
@@ -1454,7 +1302,7 @@ export function MapRenderer({
               const magnifiedWidth = viewBoxWidth / zoom
               return cursorSvgX - magnifiedWidth / 2
             })}
-            y={magnifierSpring.zoom.to((zoom) => {
+            y={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
@@ -1470,12 +1318,12 @@ export function MapRenderer({
               const magnifiedHeight = viewBoxHeight / zoom
               return cursorSvgY - magnifiedHeight / 2
             })}
-            width={magnifierSpring.zoom.to((zoom) => {
+            width={zoomSpring.to((zoom: number) => {
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
               const viewBoxWidth = viewBoxParts[2] || 1000
               return viewBoxWidth / zoom
             })}
-            height={magnifierSpring.zoom.to((zoom) => {
+            height={zoomSpring.to((zoom: number) => {
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
               const viewBoxHeight = viewBoxParts[3] || 1000
               return viewBoxHeight / zoom
@@ -1694,8 +1542,8 @@ export function MapRenderer({
             width: '50%',
             aspectRatio: '2/1',
             // High zoom (>60x) gets gold border, normal zoom gets blue border
-            border: magnifierSpring.zoom.to(
-              (zoom) =>
+            border: zoomSpring.to(
+              (zoom: number) =>
                 zoom > HIGH_ZOOM_THRESHOLD
                   ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
                   : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
@@ -1704,7 +1552,7 @@ export function MapRenderer({
             overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: 100,
-            boxShadow: magnifierSpring.zoom.to((zoom) =>
+            boxShadow: zoomSpring.to((zoom: number) =>
               zoom > HIGH_ZOOM_THRESHOLD
                 ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
                 : '0 10px 40px rgba(0, 0, 0, 0.5)'
@@ -1714,7 +1562,7 @@ export function MapRenderer({
           }}
         >
           <animated.svg
-            viewBox={magnifierSpring.zoom.to((zoom) => {
+            viewBox={zoomSpring.to((zoom: number) => {
               // Calculate magnified viewBox centered on cursor
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
@@ -1761,7 +1609,7 @@ export function MapRenderer({
                 const viewBoxWidth = viewBoxParts[2]
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return 'none'
 
-                const currentZoom = magnifierSpring.zoom.get()
+                const currentZoom = getCurrentZoom()
                 const screenPixelRatio = calculateScreenPixelRatio({
                   magnifierWidth,
                   viewBoxWidth,
@@ -1866,7 +1714,7 @@ export function MapRenderer({
 
               if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
-              const currentZoom = magnifierSpring.zoom.get()
+              const currentZoom = getCurrentZoom()
               const screenPixelRatio = calculateScreenPixelRatio({
                 magnifierWidth,
                 viewBoxWidth,
@@ -1996,7 +1844,7 @@ export function MapRenderer({
             }}
             data-element="magnifier-label"
           >
-            {magnifierSpring.zoom.to((z) => {
+            {zoomSpring.to((z: number) => {
               const multiplier = magnifierSpring.movementMultiplier.get()
 
               // When in pointer lock mode, show "Precision mode active" notice
@@ -2052,7 +1900,7 @@ export function MapRenderer({
               const viewBoxWidth = viewBoxParts[2]
               if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
-              const currentZoom = magnifierSpring.zoom.get()
+              const currentZoom = getCurrentZoom()
               const screenPixelRatio = calculateScreenPixelRatio({
                 magnifierWidth,
                 viewBoxWidth,
