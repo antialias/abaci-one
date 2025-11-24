@@ -206,6 +206,9 @@ export function MapRenderer({
   // Maps regionId -> {width, height} of the largest piece
   const largestPieceSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map())
 
+  // Store the uncapped adaptive zoom for use when pointer lock activates
+  const uncappedAdaptiveZoomRef = useRef<number | null>(null)
+
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
   const HIGH_ZOOM_THRESHOLD = 100 // Show gold border above this zoom level
@@ -250,20 +253,13 @@ export function MapRenderer({
         initialCapturePositionRef.current = null
       }
 
-      // Trigger a synthetic mouse move event to recalculate zoom without capping
-      // This allows the zoom animation to resume immediately when precision mode activates
-      if (isLocked && svgRef.current && cursorPositionRef.current) {
-        console.log('[Pointer Lock] Triggering zoom recalculation to resume animation')
-        // Create a synthetic mousemove event at the current cursor position
-        const syntheticEvent = new MouseEvent('mousemove', {
-          bubbles: true,
-          cancelable: true,
-          clientX: 0, // These don't matter for pointer lock mode
-          clientY: 0,
-          movementX: 0,
-          movementY: 0,
-        })
-        svgRef.current.dispatchEvent(syntheticEvent)
+      // When pointer lock activates, update target zoom to the uncapped value
+      // This allows the zoom animation to resume immediately
+      if (isLocked && uncappedAdaptiveZoomRef.current !== null) {
+        console.log(
+          `[Pointer Lock] Updating target zoom to uncapped value: ${uncappedAdaptiveZoomRef.current.toFixed(1)}×`
+        )
+        setTargetZoom(uncappedAdaptiveZoomRef.current)
       }
     }
 
@@ -1473,6 +1469,9 @@ export function MapRenderer({
           { top: newTop, left: newLeft }
         )
       }
+
+      // Store uncapped adaptive zoom before potentially capping it
+      uncappedAdaptiveZoomRef.current = adaptiveZoom
 
       // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
       if (!pointerLocked && containerRef.current && svgRef.current) {
