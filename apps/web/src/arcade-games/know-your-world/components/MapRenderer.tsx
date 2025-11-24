@@ -179,7 +179,6 @@ export function MapRenderer({
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
   const [showMagnifier, setShowMagnifier] = useState(false)
   const [targetZoom, setTargetZoom] = useState(10)
-  const desiredZoomRef = useRef(10) // Uncapped zoom that user wants to reach
   const [targetOpacity, setTargetOpacity] = useState(0)
   const [targetTop, setTargetTop] = useState(20)
   const [targetLeft, setTargetLeft] = useState(20)
@@ -241,14 +240,6 @@ export function MapRenderer({
         console.log(
           '[Pointer Lock] 📍 Saved initial capture position:',
           initialCapturePositionRef.current
-        )
-
-        // Resume zoom animation to reach desired zoom level
-        // (may have been paused at precision mode threshold)
-        setTargetZoom(desiredZoomRef.current)
-        springApi.current?.resume()
-        console.log(
-          `[Magnifier] Resuming zoom animation (pointer lock activated, target: ${desiredZoomRef.current.toFixed(1)}×)`
         )
       }
 
@@ -350,35 +341,93 @@ export function MapRenderer({
   // Zoom: smooth, slower animation with gentle easing
   // Position: medium speed (300ms)
   // Movement multiplier: gradual transitions for smooth cursor dampening
-  const springApi = useSpringRef()
-  const magnifierSpring = useSpring({
-    ref: springApi,
-    zoom: targetZoom,
-    opacity: targetOpacity,
-    top: targetTop,
-    left: targetLeft,
-    movementMultiplier: getMovementMultiplier(smallestRegionSize),
-    config: (key) => {
-      if (key === 'opacity') {
-        return targetOpacity === 1
-          ? { duration: 100 } // Fade in: 0.1 seconds
-          : { duration: 1000 } // Fade out: 1 second
-      }
-      if (key === 'zoom') {
-        // Zoom: very slow, smooth animation (4x longer than before)
-        // Lower tension + higher mass = longer, more gradual transitions
-        return { tension: 30, friction: 30, mass: 4 }
-      }
-      if (key === 'movementMultiplier') {
-        // Movement multiplier: smooth but responsive transitions
-        // Faster than zoom so cursor responsiveness changes quickly but not jarring
-        return { tension: 180, friction: 26 }
-      }
-      // Position: medium speed
-      return { tension: 200, friction: 25 }
-    },
-    // onChange removed - was flooding console with animation frames
-  })
+  const springRef = useSpringRef()
+  const [magnifierSpring, magnifierApi] = useSpring(
+    () => ({
+      ref: springRef,
+      zoom: targetZoom,
+      opacity: targetOpacity,
+      top: targetTop,
+      left: targetLeft,
+      movementMultiplier: getMovementMultiplier(smallestRegionSize),
+      config: (key) => {
+        if (key === 'opacity') {
+          return targetOpacity === 1
+            ? { duration: 100 } // Fade in: 0.1 seconds
+            : { duration: 1000 } // Fade out: 1 second
+        }
+        if (key === 'zoom') {
+          // Zoom: very slow, smooth animation (4x longer than before)
+          // Lower tension + higher mass = longer, more gradual transitions
+          return { tension: 30, friction: 30, mass: 4 }
+        }
+        if (key === 'movementMultiplier') {
+          // Movement multiplier: smooth but responsive transitions
+          // Faster than zoom so cursor responsiveness changes quickly but not jarring
+          return { tension: 180, friction: 26 }
+        }
+        // Position: medium speed
+        return { tension: 200, friction: 25 }
+      },
+      // onChange removed - was flooding console with animation frames
+    }),
+    []
+  )
+
+  // Update spring values when targets change
+  // Handle pausing zoom animation when hitting threshold
+  useEffect(() => {
+    const currentZoom = magnifierSpring.zoom.get()
+    const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
+
+    // Check if we're at the threshold (zoom is capped)
+    const isAtThreshold =
+      !pointerLocked &&
+      containerRef.current &&
+      svgRef.current &&
+      zoomIsAnimating &&
+      (() => {
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const magnifierWidth = containerRect.width * 0.5
+        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
+
+        if (!viewBoxWidth || isNaN(viewBoxWidth)) return false
+
+        const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
+        const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+        const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+        const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+        return screenPixelRatio >= PRECISION_MODE_THRESHOLD
+      })()
+
+    if (isAtThreshold) {
+      // Pause the zoom animation - we're waiting for precision mode
+      console.log('[Zoom] Pausing at threshold - waiting for precision mode')
+      magnifierApi.pause()
+    } else {
+      // Update spring values and ensure it's not paused
+      magnifierApi.start({
+        zoom: targetZoom,
+        opacity: targetOpacity,
+        top: targetTop,
+        left: targetLeft,
+        movementMultiplier: getMovementMultiplier(smallestRegionSize),
+      })
+    }
+  }, [
+    targetZoom,
+    targetOpacity,
+    targetTop,
+    targetLeft,
+    smallestRegionSize,
+    pointerLocked,
+    mapData.viewBox,
+    magnifierApi,
+    magnifierSpring.zoom,
+  ])
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<
@@ -1379,11 +1428,7 @@ export function MapRenderer({
         )
       }
 
-      // Store the desired zoom (uncapped) for later resume
-      desiredZoomRef.current = adaptiveZoom
-
       // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
-      // But pause the animation at the threshold rather than hard-capping
       if (!pointerLocked && containerRef.current && svgRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
@@ -1398,23 +1443,14 @@ export function MapRenderer({
           const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
           const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
 
-          // If it exceeds threshold, cap the zoom and pause animation
+          // If it exceeds threshold, cap the zoom to stay at threshold
           if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
             // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
             const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
-            const cappedZoom = Math.min(adaptiveZoom, maxZoom)
-
-            // Set target to capped value
-            setTargetZoom(cappedZoom)
-
-            // Pause the zoom animation at this threshold
-            // We'll resume it when pointer lock is activated
-            springApi.current?.pause()
-
+            adaptiveZoom = Math.min(adaptiveZoom, maxZoom)
             console.log(
-              `[Magnifier] Pausing zoom at threshold ${cappedZoom.toFixed(1)}× (desired: ${adaptiveZoom.toFixed(1)}×, threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
+              `[Magnifier] Capping zoom at ${adaptiveZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px, would have been ${screenPixelRatio.toFixed(1)} px/px)`
             )
-            return // Early return to skip the normal setTargetZoom below
           }
         }
       }
