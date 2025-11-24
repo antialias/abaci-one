@@ -144,6 +144,7 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     console.log('[useMagnifierZoom] Animation effect:', {
       currentZoom: currentZoom.toFixed(1),
       targetZoom: targetZoom.toFixed(1),
+      delta: Math.abs(currentZoom - targetZoom).toFixed(3),
       zoomIsAnimating,
       pointerLocked,
     })
@@ -196,10 +197,12 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
         return isAboveThreshold(screenPixelRatio, threshold)
       })()
 
-    console.log('[useMagnifierZoom] Threshold checks:', {
+    console.log('[DEBUG FREEZE] Threshold checks:', {
       currentIsAtThreshold,
       targetIsAtThreshold,
       shouldPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
+      willPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
+      willStart: !(currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold),
     })
 
     // Pause if:

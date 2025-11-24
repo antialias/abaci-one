@@ -1101,6 +1101,15 @@ export function MapRenderer({
         }
       }
 
+      console.log('[DEBUG FREEZE] Setting target zoom:', {
+        adaptiveZoom: adaptiveZoom.toFixed(1),
+        uncappedZoom: uncappedAdaptiveZoomRef.current?.toFixed(1),
+        currentZoom: getCurrentZoom().toFixed(1),
+        hasSmallRegion,
+        detectedSmallestSize: detectedSmallestSize.toFixed(2),
+        pointerLocked,
+      })
+
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
