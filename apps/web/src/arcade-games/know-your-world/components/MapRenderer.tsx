@@ -249,6 +249,22 @@ export function MapRenderer({
         setIsReleasingPointerLock(false)
         initialCapturePositionRef.current = null
       }
+
+      // Trigger a synthetic mouse move event to recalculate zoom without capping
+      // This allows the zoom animation to resume immediately when precision mode activates
+      if (isLocked && svgRef.current && cursorPositionRef.current) {
+        console.log('[Pointer Lock] Triggering zoom recalculation to resume animation')
+        // Create a synthetic mousemove event at the current cursor position
+        const syntheticEvent = new MouseEvent('mousemove', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 0, // These don't matter for pointer lock mode
+          clientY: 0,
+          movementX: 0,
+          movementY: 0,
+        })
+        svgRef.current.dispatchEvent(syntheticEvent)
+      }
     }
 
     const handlePointerLockError = () => {
