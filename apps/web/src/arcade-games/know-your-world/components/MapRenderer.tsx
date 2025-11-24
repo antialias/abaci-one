@@ -21,6 +21,7 @@ import {
 } from '../utils/screenPixelRatio'
 import { findOptimalZoom } from '../utils/adaptiveZoomSearch'
 import { useRegionDetection } from '../hooks/useRegionDetection'
+import { usePointerLock } from '../hooks/usePointerLock'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -191,27 +192,104 @@ export function MapRenderer({
     smallRegionThreshold: 15,
     smallRegionAreaThreshold: 200,
   })
+
+  // State that needs to be available for pointer lock callbacks
+  const [targetZoom, setTargetZoom] = useState(10)
+  const uncappedAdaptiveZoomRef = useRef<number | null>(null)
+  const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
+  const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
+  const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
+
+  // Pointer lock hook
+  const { pointerLocked, requestPointerLock, exitPointerLock } = usePointerLock({
+    containerRef,
+    onLockAcquired: () => {
+      // Save initial cursor position
+      if (cursorPositionRef.current) {
+        initialCapturePositionRef.current = { ...cursorPositionRef.current }
+        console.log(
+          '[Pointer Lock] 📍 Saved initial capture position:',
+          initialCapturePositionRef.current
+        )
+      }
+
+      // Update target zoom to uncapped value
+      if (uncappedAdaptiveZoomRef.current !== null) {
+        console.log(
+          `[Pointer Lock] Updating target zoom to uncapped value: ${uncappedAdaptiveZoomRef.current.toFixed(1)}×`
+        )
+        setTargetZoom(uncappedAdaptiveZoomRef.current)
+      }
+    },
+    onLockReleased: () => {
+      console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup and zoom recalculation')
+
+      // Reset cursor squish
+      setCursorSquish({ x: 1, y: 1 })
+      setIsReleasingPointerLock(false)
+
+      // Recalculate zoom with capping
+      if (uncappedAdaptiveZoomRef.current !== null && containerRef.current && svgRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const magnifierWidth = containerRect.width * 0.5
+        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
+
+        if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
+          const uncappedZoom = uncappedAdaptiveZoomRef.current
+          const screenPixelRatio = calculateScreenPixelRatio({
+            magnifierWidth,
+            viewBoxWidth,
+            svgWidth: svgRect.width,
+            zoom: uncappedZoom,
+          })
+
+          console.log('[Pointer Lock] Screen pixel ratio check:', {
+            uncappedZoom: uncappedZoom.toFixed(1),
+            screenPixelRatio: screenPixelRatio.toFixed(1),
+            threshold: PRECISION_MODE_THRESHOLD,
+            exceedsThreshold: isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD),
+          })
+
+          // If it exceeds threshold, cap the zoom to stay at threshold
+          if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
+            const maxZoom = calculateMaxZoomAtThreshold(
+              PRECISION_MODE_THRESHOLD,
+              magnifierWidth,
+              svgRect.width
+            )
+            const cappedZoom = Math.min(uncappedZoom, maxZoom)
+            console.log(
+              `[Pointer Lock] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
+            )
+            setTargetZoom(cappedZoom)
+          } else {
+            console.log(
+              `[Pointer Lock] ℹ️  No capping needed - zoom ${uncappedZoom.toFixed(1)}× is below threshold`
+            )
+          }
+        } else {
+          console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - invalid viewBoxWidth')
+        }
+      } else {
+        console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - missing refs:', {
+          hasContainer: !!containerRef.current,
+          hasSvg: !!svgRef.current,
+          hasUncappedZoom: uncappedAdaptiveZoomRef.current !== null,
+        })
+      }
+    },
+  })
+
   const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 500 })
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
   const [showMagnifier, setShowMagnifier] = useState(false)
-  const [targetZoom, setTargetZoom] = useState(10)
   const [targetOpacity, setTargetOpacity] = useState(0)
   const [targetTop, setTargetTop] = useState(20)
   const [targetLeft, setTargetLeft] = useState(20)
-
-  // Pointer lock management
-  const [pointerLocked, setPointerLocked] = useState(false)
-
-  // Cursor position tracking (container-relative coordinates)
-  const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
-  const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
-
-  // Cursor distortion at boundaries (for squish effect)
-  const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 }) // Scale factors
-
-  // Track if we're animating back to release position
-  const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<
@@ -221,9 +299,6 @@ export function MapRenderer({
   // Pre-computed largest piece sizes for multi-piece regions
   // Maps regionId -> {width, height} of the largest piece
   const largestPieceSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map())
-
-  // Store the uncapped adaptive zoom for use when pointer lock activates
-  const uncappedAdaptiveZoomRef = useRef<number | null>(null)
 
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
@@ -240,142 +315,6 @@ export function MapRenderer({
     if (size < 15) return 0.25 // Moderate precision for regions like Rhode Island (11px)
     return 1.0 // Normal speed for larger regions
   }
-
-  // Set up pointer lock event listeners
-  useEffect(() => {
-    const handlePointerLockChange = () => {
-      const isLocked = document.pointerLockElement === containerRef.current
-      console.log('[MapRenderer] Pointer lock change event:', {
-        isLocked,
-        pointerLockElement: document.pointerLockElement,
-        containerElement: containerRef.current,
-        elementsMatch: document.pointerLockElement === containerRef.current,
-      })
-      setPointerLocked(isLocked)
-
-      // When acquiring pointer lock, save the initial cursor position
-      if (isLocked && cursorPositionRef.current) {
-        initialCapturePositionRef.current = { ...cursorPositionRef.current }
-        console.log(
-          '[Pointer Lock] 📍 Saved initial capture position:',
-          initialCapturePositionRef.current
-        )
-      }
-
-      // Reset cursor squish when lock state changes
-      if (!isLocked) {
-        console.log('[Pointer Lock] 🔓 RELEASED - Starting cleanup and zoom recalculation')
-
-        // Get current zoom state before any changes
-        const currentZoom = magnifierSpring.zoom.get()
-        const currentTargetZoom = targetZoom
-        console.log('[Pointer Lock] Current zoom state:', {
-          currentZoom: currentZoom.toFixed(1),
-          targetZoom: currentTargetZoom.toFixed(1),
-          uncappedZoom: uncappedAdaptiveZoomRef.current?.toFixed(1) || 'null',
-        })
-
-        setCursorSquish({ x: 1, y: 1 })
-        setIsReleasingPointerLock(false)
-        initialCapturePositionRef.current = null
-
-        // When releasing pointer lock, recalculate zoom with capping applied
-        // The current zoom may be above the threshold (uncapped), so we need to cap it
-        if (containerRef.current && svgRef.current && uncappedAdaptiveZoomRef.current !== null) {
-          const containerRect = containerRef.current.getBoundingClientRect()
-          const svgRect = svgRef.current.getBoundingClientRect()
-          const magnifierWidth = containerRect.width * 0.5
-          const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-          const viewBoxWidth = viewBoxParts[2]
-
-          console.log('[Pointer Lock] Zoom recalculation context:', {
-            magnifierWidth: magnifierWidth.toFixed(1),
-            viewBoxWidth: viewBoxWidth?.toFixed(1) || 'undefined',
-            svgWidth: svgRect.width.toFixed(1),
-          })
-
-          if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
-            // Calculate what the screen pixel ratio would be at the uncapped zoom
-            const uncappedZoom = uncappedAdaptiveZoomRef.current
-            const screenPixelRatio = calculateScreenPixelRatio({
-              magnifierWidth,
-              viewBoxWidth,
-              svgWidth: svgRect.width,
-              zoom: uncappedZoom,
-            })
-
-            console.log('[Pointer Lock] Screen pixel ratio check:', {
-              uncappedZoom: uncappedZoom.toFixed(1),
-              screenPixelRatio: screenPixelRatio.toFixed(1),
-              threshold: PRECISION_MODE_THRESHOLD,
-              exceedsThreshold: isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD),
-            })
-
-            // If it exceeds threshold, cap the zoom to stay at threshold
-            if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
-              const maxZoom = calculateMaxZoomAtThreshold(
-                PRECISION_MODE_THRESHOLD,
-                magnifierWidth,
-                svgRect.width
-              )
-              const cappedZoom = Math.min(uncappedZoom, maxZoom)
-              console.log(
-                `[Pointer Lock] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
-              )
-              setTargetZoom(cappedZoom)
-            } else {
-              console.log(
-                `[Pointer Lock] ℹ️  No capping needed - zoom ${uncappedZoom.toFixed(1)}× is below threshold`
-              )
-            }
-          } else {
-            console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - invalid viewBoxWidth')
-          }
-        } else {
-          console.log('[Pointer Lock] ⚠️  Cannot recalculate zoom - missing refs:', {
-            hasContainer: !!containerRef.current,
-            hasSvg: !!svgRef.current,
-            hasUncappedZoom: uncappedAdaptiveZoomRef.current !== null,
-          })
-        }
-      }
-
-      // When pointer lock activates, update target zoom to the uncapped value
-      // This allows the zoom animation to resume immediately
-      if (isLocked && uncappedAdaptiveZoomRef.current !== null) {
-        console.log(
-          `[Pointer Lock] Updating target zoom to uncapped value: ${uncappedAdaptiveZoomRef.current.toFixed(1)}×`
-        )
-        setTargetZoom(uncappedAdaptiveZoomRef.current)
-      }
-    }
-
-    const handlePointerLockError = () => {
-      console.error('[Pointer Lock] ❌ Failed to acquire pointer lock')
-      setPointerLocked(false)
-    }
-
-    document.addEventListener('pointerlockchange', handlePointerLockChange)
-    document.addEventListener('pointerlockerror', handlePointerLockError)
-
-    console.log('[MapRenderer] Pointer lock listeners attached')
-
-    return () => {
-      document.removeEventListener('pointerlockchange', handlePointerLockChange)
-      document.removeEventListener('pointerlockerror', handlePointerLockError)
-      console.log('[MapRenderer] Pointer lock listeners removed')
-    }
-  }, [])
-
-  // Release pointer lock when component unmounts
-  useEffect(() => {
-    return () => {
-      if (document.pointerLockElement) {
-        console.log('[Pointer Lock] 🔓 RELEASING (MapRenderer unmount)')
-        document.exitPointerLock()
-      }
-    }
-  }, [])
 
   // Pre-compute largest piece sizes for multi-piece regions
   useEffect(() => {
@@ -423,13 +362,9 @@ export function MapRenderer({
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Silently request pointer lock if not already locked
     // This makes the first gameplay click also enable precision mode
-    if (!pointerLocked && containerRef.current) {
-      try {
-        containerRef.current.requestPointerLock()
-        console.log('[Pointer Lock] 🔒 Silently requested (user clicked map)')
-      } catch (error) {
-        console.error('[Pointer Lock] Request failed:', error)
-      }
+    if (!pointerLocked) {
+      requestPointerLock()
+      console.log('[Pointer Lock] 🔒 Silently requested (user clicked map)')
     }
 
     // Let region clicks still work (they have their own onClick handlers)
