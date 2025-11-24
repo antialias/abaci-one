@@ -1368,9 +1368,32 @@ export function MapRenderer({
         )
       }
 
-      // Don't cap the target zoom - let the spring animate to full target
-      // The capping will happen in the viewBox calculation where zoom is actually used
-      setTargetZoom(adaptiveZoom)
+      // Cap the target zoom when not in precision mode
+      // When precision mode activates, the uncapped target will be set
+      let targetZoomValue = adaptiveZoom
+      if (!pointerLocked && containerRef.current && svgRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const magnifierWidth = containerRect.width * 0.5
+        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
+
+        if (viewBoxWidth && !isNaN(viewBoxWidth)) {
+          // Calculate what the screen pixel ratio would be at this zoom
+          const magnifiedViewBoxWidth = viewBoxWidth / adaptiveZoom
+          const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+          const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+          const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+          // If it exceeds threshold, cap the target zoom
+          if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
+            const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+            targetZoomValue = Math.min(adaptiveZoom, maxZoom)
+          }
+        }
+      }
+
+      setTargetZoom(targetZoomValue)
       setShowMagnifier(true)
       setTargetOpacity(1)
       setTargetTop(newTop)
@@ -1852,29 +1875,9 @@ export function MapRenderer({
               const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
               const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
 
-              // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
-              // This creates a "pause" at the threshold while the spring continues to its target
-              let effectiveZoom = zoom
-              if (!pointerLocked) {
-                const magnifierWidth = containerRect.width * 0.5
-                // Calculate what the screen pixel ratio would be at this zoom
-                const magnifiedViewBoxWidth = viewBoxWidth / zoom
-                const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-                const screenPixelRatio =
-                  mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
-
-                // If it exceeds threshold, cap the zoom to stay at threshold
-                if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
-                  // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
-                  const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
-                  effectiveZoom = Math.min(zoom, maxZoom)
-                }
-              }
-
-              // Magnified view: adaptive zoom (using capped value)
-              const magnifiedWidth = viewBoxWidth / effectiveZoom
-              const magnifiedHeight = viewBoxHeight / effectiveZoom
+              // Magnified view: use spring zoom value directly (capping happens at setTargetZoom)
+              const magnifiedWidth = viewBoxWidth / zoom
+              const magnifiedHeight = viewBoxHeight / zoom
 
               // Center the magnified viewBox on the cursor
               const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
