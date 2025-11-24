@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { useSpring, animated } from '@react-spring/web'
+import { useSpring, useSpringRef, animated } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { MapData, MapRegion } from '../types'
@@ -179,6 +179,7 @@ export function MapRenderer({
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
   const [showMagnifier, setShowMagnifier] = useState(false)
   const [targetZoom, setTargetZoom] = useState(10)
+  const desiredZoomRef = useRef(10) // Uncapped zoom that user wants to reach
   const [targetOpacity, setTargetOpacity] = useState(0)
   const [targetTop, setTargetTop] = useState(20)
   const [targetLeft, setTargetLeft] = useState(20)
@@ -242,9 +243,13 @@ export function MapRenderer({
           initialCapturePositionRef.current
         )
 
-        // Resume zoom animation if it was paused at precision mode threshold
-        magnifierSpringApi.resume()
-        console.log('[Pointer Lock] ▶️  Resumed zoom animation (precision mode activated)')
+        // Resume zoom animation to reach desired zoom level
+        // (may have been paused at precision mode threshold)
+        setTargetZoom(desiredZoomRef.current)
+        springApi.current?.resume()
+        console.log(
+          `[Magnifier] Resuming zoom animation (pointer lock activated, target: ${desiredZoomRef.current.toFixed(1)}×)`
+        )
       }
 
       // Reset cursor squish when lock state changes
@@ -345,7 +350,9 @@ export function MapRenderer({
   // Zoom: smooth, slower animation with gentle easing
   // Position: medium speed (300ms)
   // Movement multiplier: gradual transitions for smooth cursor dampening
-  const [magnifierSpringProps, magnifierSpringApi] = useSpring(() => ({
+  const springApi = useSpringRef()
+  const magnifierSpring = useSpring({
+    ref: springApi,
     zoom: targetZoom,
     opacity: targetOpacity,
     top: targetTop,
@@ -371,8 +378,7 @@ export function MapRenderer({
       return { tension: 200, friction: 25 }
     },
     // onChange removed - was flooding console with animation frames
-  }))
-  const magnifierSpring = magnifierSpringProps
+  })
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<
@@ -1373,7 +1379,11 @@ export function MapRenderer({
         )
       }
 
-      // Handle precision mode threshold - pause zoom animation if needed
+      // Store the desired zoom (uncapped) for later resume
+      desiredZoomRef.current = adaptiveZoom
+
+      // Cap zoom if not in pointer lock mode to prevent excessive screen pixel ratios
+      // But pause the animation at the threshold rather than hard-capping
       if (!pointerLocked && containerRef.current && svgRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
@@ -1388,29 +1398,23 @@ export function MapRenderer({
           const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
           const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
 
-          // If target zoom exceeds threshold, pause at threshold instead of capping
+          // If it exceeds threshold, cap the zoom and pause animation
           if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
-            // Calculate the exact zoom level that hits the threshold
-            const thresholdZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+            // Solve for max zoom: ratio = zoom * (magnifierWidth / mainMapWidth)
+            const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+            const cappedZoom = Math.min(adaptiveZoom, maxZoom)
 
-            // Get current animated zoom value
-            const currentZoom = magnifierSpring.zoom.get()
+            // Set target to capped value
+            setTargetZoom(cappedZoom)
 
-            // If we're approaching or at threshold, pause the animation at threshold
-            if (currentZoom < thresholdZoom) {
-              // Still animating towards threshold - set target to threshold and let it continue
-              setTargetZoom(thresholdZoom)
-              console.log(
-                `[Magnifier] Approaching threshold - target set to ${thresholdZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
-              )
-            } else {
-              // At or past threshold - pause the animation
-              magnifierSpringApi.pause()
-              console.log(
-                `[Magnifier] Paused at threshold ${currentZoom.toFixed(1)}× (waiting for precision mode)`
-              )
-            }
-            return // Don't set target zoom below, we've handled it
+            // Pause the zoom animation at this threshold
+            // We'll resume it when pointer lock is activated
+            springApi.current?.pause()
+
+            console.log(
+              `[Magnifier] Pausing zoom at threshold ${cappedZoom.toFixed(1)}× (desired: ${adaptiveZoom.toFixed(1)}×, threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
+            )
+            return // Early return to skip the normal setTargetZoom below
           }
         }
       }
