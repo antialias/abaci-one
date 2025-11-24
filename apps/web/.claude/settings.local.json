@@ -76,11 +76,14 @@
       "Bash(docker rm:*)",
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
-      "Bash(node --input-type=module -e:*)"
+      "Bash(node --input-type=module -e:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
