@@ -251,6 +251,35 @@ export function MapRenderer({
         setCursorSquish({ x: 1, y: 1 })
         setIsReleasingPointerLock(false)
         initialCapturePositionRef.current = null
+
+        // When releasing pointer lock, recalculate zoom with capping applied
+        // The current zoom may be above the threshold (uncapped), so we need to cap it
+        if (containerRef.current && svgRef.current && uncappedAdaptiveZoomRef.current !== null) {
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const svgRect = svgRef.current.getBoundingClientRect()
+          const magnifierWidth = containerRect.width * 0.5
+          const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+          const viewBoxWidth = viewBoxParts[2]
+
+          if (viewBoxWidth && !isNaN(viewBoxWidth)) {
+            // Calculate what the screen pixel ratio would be at the uncapped zoom
+            const uncappedZoom = uncappedAdaptiveZoomRef.current
+            const magnifiedViewBoxWidth = viewBoxWidth / uncappedZoom
+            const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+            const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+            const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+            // If it exceeds threshold, cap the zoom to stay at threshold
+            if (screenPixelRatio > PRECISION_MODE_THRESHOLD) {
+              const maxZoom = PRECISION_MODE_THRESHOLD / (magnifierWidth / svgRect.width)
+              const cappedZoom = Math.min(uncappedZoom, maxZoom)
+              console.log(
+                `[Pointer Lock] Released - capping zoom from ${uncappedZoom.toFixed(1)}× to ${cappedZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px)`
+              )
+              setTargetZoom(cappedZoom)
+            }
+          }
+        }
       }
 
       // When pointer lock activates, update target zoom to the uncapped value
