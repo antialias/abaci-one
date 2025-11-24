@@ -2211,14 +2211,15 @@ export function MapRenderer({
               const viewBoxX = viewBoxParts[0] || 0
               const viewBoxY = viewBoxParts[1] || 0
 
-              if (!viewBoxWidth || isNaN(viewBoxWidth)) return null
+              if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
               const currentZoom = magnifierSpring.zoom.get()
-              const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
-              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-              const screenPixelRatio =
-                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+              const screenPixelRatio = calculateScreenPixelRatio({
+                magnifierWidth,
+                viewBoxWidth,
+                svgWidth: svgRect.width,
+                zoom: currentZoom,
+              })
 
               // Fade grid in/out within 30% range on both sides of threshold
               // Visible from 70% to 130% of threshold (14 to 26 px/px at threshold=20)
@@ -2241,7 +2242,11 @@ export function MapRenderer({
 
               // Calculate grid spacing in SVG units
               // Each grid cell represents one screen pixel of mouse movement on the main map
+              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
               const gridSpacingSvgUnits = mainMapSvgUnitsPerScreenPixel
+
+              // Calculate magnified viewport dimensions for grid bounds
+              const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
 
               // Get cursor position in SVG coordinates
               const scaleX = viewBoxWidth / svgRect.width
@@ -2357,26 +2362,19 @@ export function MapRenderer({
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
               const viewBoxWidth = viewBoxParts[2]
 
-              if (!viewBoxWidth || isNaN(viewBoxWidth)) {
+              if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) {
                 return `${z.toFixed(1)}×`
               }
 
-              // SVG units visible in magnifier
-              const magnifiedViewBoxWidth = viewBoxWidth / z
-
-              // Screen pixels per SVG unit in magnifier window
-              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-
-              // SVG units per screen pixel on main map
-              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-
-              // Screen pixel movement in magnifier =
-              // (SVG units moved on main map) × (screen pixels per SVG unit in magnifier)
-              const screenPixelRatio =
-                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+              const screenPixelRatio = calculateScreenPixelRatio({
+                magnifierWidth,
+                viewBoxWidth,
+                svgWidth: svgRect.width,
+                zoom: z,
+              })
 
               // If at or above threshold, show notice about activating precision controls
-              if (screenPixelRatio >= PRECISION_MODE_THRESHOLD) {
+              if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
                 return 'Click to activate precision mode'
               }
 
@@ -2399,17 +2397,18 @@ export function MapRenderer({
               const magnifierWidth = containerRect.width * 0.5
               const viewBoxParts = mapData.viewBox.split(' ').map(Number)
               const viewBoxWidth = viewBoxParts[2]
-              if (!viewBoxWidth || isNaN(viewBoxWidth)) return null
+              if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
               const currentZoom = magnifierSpring.zoom.get()
-              const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
-              const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
-              const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
-              const screenPixelRatio =
-                mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+              const screenPixelRatio = calculateScreenPixelRatio({
+                magnifierWidth,
+                viewBoxWidth,
+                svgWidth: svgRect.width,
+                zoom: currentZoom,
+              })
 
               // Only show scrim when at or above threshold
-              if (screenPixelRatio < PRECISION_MODE_THRESHOLD) return null
+              if (!isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) return null
 
               return (
                 <div
