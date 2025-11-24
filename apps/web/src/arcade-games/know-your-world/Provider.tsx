@@ -137,6 +137,15 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Action: Click Region
   const clickRegion = useCallback(
     (regionId: string, regionName: string) => {
+      console.log('[CLICK] clickRegion called:', {
+        regionId,
+        regionName,
+        currentPlayer: state.currentPlayer,
+        viewerId,
+        currentPrompt: state.currentPrompt,
+        isCorrect: regionId === state.currentPrompt,
+      })
+
       // Use the current player from game state (PLAYER ID, not USER ID)
       // In turn-based mode, this is the player whose turn it is
       // In other modes, all moves use the current player ID
@@ -146,8 +155,10 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         userId: viewerId || '',
         data: { regionId, regionName },
       })
+
+      console.log('[CLICK] sendMove dispatched')
     },
-    [viewerId, sendMove, state.currentPlayer]
+    [viewerId, sendMove, state.currentPlayer, state.currentPrompt]
   )
 
   // Action: Next Round

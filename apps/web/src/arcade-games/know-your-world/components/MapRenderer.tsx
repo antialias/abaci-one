@@ -1101,15 +1101,6 @@ export function MapRenderer({
         }
       }
 
-      console.log('[DEBUG FREEZE] Setting target zoom:', {
-        adaptiveZoom: adaptiveZoom.toFixed(1),
-        uncappedZoom: uncappedAdaptiveZoomRef.current?.toFixed(1),
-        currentZoom: getCurrentZoom().toFixed(1),
-        hasSmallRegion,
-        detectedSmallestSize: detectedSmallestSize.toFixed(2),
-        pointerLocked,
-      })
-
       setTargetZoom(adaptiveZoom)
       setShowMagnifier(true)
       setTargetOpacity(1)
@@ -1199,7 +1190,17 @@ export function MapRenderer({
                 // Otherwise, use native mouse events
                 onMouseEnter={() => !isExcluded && !pointerLocked && setHoveredRegion(region.id)}
                 onMouseLeave={() => !pointerLocked && setHoveredRegion(null)}
-                onClick={() => !isExcluded && onRegionClick(region.id, region.name)} // Disable clicks on excluded regions
+                onClick={() => {
+                  console.log('[CLICK] Region clicked:', {
+                    regionId: region.id,
+                    regionName: region.name,
+                    isExcluded,
+                    willCall: !isExcluded,
+                  })
+                  if (!isExcluded) {
+                    onRegionClick(region.id, region.name)
+                  }
+                }} // Disable clicks on excluded regions
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',

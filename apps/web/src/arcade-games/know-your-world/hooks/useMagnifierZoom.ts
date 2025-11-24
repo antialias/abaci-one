@@ -141,13 +141,6 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     const currentZoom = magnifierSpring.zoom.get()
     const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
 
-    console.log('[useMagnifierZoom] Animation effect:', {
-      currentZoom: currentZoom.toFixed(1),
-      targetZoom: targetZoom.toFixed(1),
-      delta: Math.abs(currentZoom - targetZoom).toFixed(3),
-      zoomIsAnimating,
-      pointerLocked,
-    })
 
     // Check if CURRENT zoom is at/above threshold (zoom is capped)
     const currentIsAtThreshold =
@@ -197,13 +190,6 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
         return isAboveThreshold(screenPixelRatio, threshold)
       })()
 
-    console.log('[DEBUG FREEZE] Threshold checks:', {
-      currentIsAtThreshold,
-      targetIsAtThreshold,
-      shouldPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
-      willPause: currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold,
-      willStart: !(currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold),
-    })
 
     // Pause if:
     // - Currently at threshold AND
