@@ -8,7 +8,6 @@ import type { MapData, MapRegion } from '../types'
 import {
   getRegionColor,
   getRegionStroke,
-  getRegionStrokeWidth,
   getLabelTextColor,
   getLabelTextShadow,
 } from '../mapColors'
@@ -19,8 +18,8 @@ import {
   calculateScreenPixelRatio,
   calculateMaxZoomAtThreshold,
   isAboveThreshold,
-  createZoomContext,
 } from '../utils/screenPixelRatio'
+import { findOptimalZoom } from '../utils/adaptiveZoomSearch'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -1327,226 +1326,31 @@ export function MapRenderer({
     // Magnifier detection logging removed for performance
 
     if (shouldShow) {
-      // Adaptive threshold based on smallest detected region
-      // For ultra-small regions (< 1px), we need a lower acceptance threshold
-      // Otherwise Gibraltar (0.08px) will never fit the 10-25% range even at 1000x zoom
-      let minAcceptableRatio = 0.1 // Default: 10% minimum
-      let maxAcceptableRatio = 0.25 // Default: 25% maximum
+      // Use adaptive zoom search utility to find optimal zoom
+      const zoomSearchResult = findOptimalZoom({
+        detectedRegions,
+        detectedSmallestSize,
+        cursorX,
+        cursorY,
+        containerRect,
+        svgRect,
+        mapData,
+        svgElement: svgRef.current!,
+        largestPieceSizesCache: largestPieceSizesRef.current,
+        maxZoom: MAX_ZOOM,
+        minZoom: 1,
+        pointerLocked,
+      })
 
-      if (detectedSmallestSize < 1) {
-        // Sub-pixel regions: accept 2-8% of magnifier
-        minAcceptableRatio = 0.02
-        maxAcceptableRatio = 0.08
-      } else if (detectedSmallestSize < 5) {
-        // Tiny regions (1-5px): accept 5-15% of magnifier
-        minAcceptableRatio = 0.05
-        maxAcceptableRatio = 0.15
-      }
-
-      if (pointerLocked) {
-        console.log('[Zoom Search] Adaptive thresholds:', {
-          detectedSmallestSize: detectedSmallestSize.toFixed(4) + 'px',
-          minAcceptableRatio: (minAcceptableRatio * 100).toFixed(1) + '%',
-          maxAcceptableRatio: (maxAcceptableRatio * 100).toFixed(1) + '%',
-        })
-      }
-
-      // Zoom-out approach: Start from max zoom and reduce until a region fits nicely
-      // Goal: Find zoom where any region occupies ~15% of magnifier width or height
-      const TARGET_RATIO = 0.15 // Region should occupy 15% of magnifier dimension
-
-      // Get SVG viewBox for bounding box conversion
-      const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-      const viewBoxWidth = viewBoxParts[2] || 1000
-      const viewBoxHeight = viewBoxParts[3] || 1000
-
-      // Magnifier dimensions
-      const magnifierWidth = containerRect.width * 0.5
-      const magnifierHeight = magnifierWidth / 2
-
-      // Calculate target sizes: region should be this big in magnifier
-      const targetWidthPx = magnifierWidth * TARGET_RATIO
-      const targetHeightPx = magnifierHeight * TARGET_RATIO
-
-      // Track bounding boxes for debug visualization
-      const boundingBoxes: Array<{
-        regionId: string
-        x: number
-        y: number
-        width: number
-        height: number
-      }> = []
-
-      // Start from max zoom and work down until we find a good fit
-      let adaptiveZoom = MAX_ZOOM
-      let foundGoodZoom = false
-
-      // We'll test zoom levels by halving each time to find a good range quickly
-      const MIN_ZOOM = 1
-      const ZOOM_STEP = 0.9 // Reduce by 10% each iteration
-
-      // Convert cursor position to SVG coordinates
-      const scaleX = viewBoxWidth / svgRect.width
-      const scaleY = viewBoxHeight / svgRect.height
-      const viewBoxX = viewBoxParts[0] || 0
-      const viewBoxY = viewBoxParts[1] || 0
-      const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
-      const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
-
-      // Zoom search logging disabled for performance
-
-      for (let testZoom = MAX_ZOOM; testZoom >= MIN_ZOOM; testZoom *= ZOOM_STEP) {
-        // Calculate the SVG viewport that will be shown in the magnifier at this zoom
-        const magnifiedViewBoxWidth = viewBoxWidth / testZoom
-        const magnifiedViewBoxHeight = viewBoxHeight / testZoom
-
-        // The viewport is centered on cursor position, but clamped to map bounds
-        let viewportLeft = cursorSvgX - magnifiedViewBoxWidth / 2
-        let viewportRight = cursorSvgX + magnifiedViewBoxWidth / 2
-        let viewportTop = cursorSvgY - magnifiedViewBoxHeight / 2
-        let viewportBottom = cursorSvgY + magnifiedViewBoxHeight / 2
-
-        // Clamp viewport to stay within map bounds
-        const mapLeft = viewBoxX
-        const mapRight = viewBoxX + viewBoxWidth
-        const mapTop = viewBoxY
-        const mapBottom = viewBoxY + viewBoxHeight
-
-        let wasClamped = false
-        const originalViewport = {
-          left: viewportLeft,
-          right: viewportRight,
-          top: viewportTop,
-          bottom: viewportBottom,
-        }
-
-        // If viewport extends beyond left edge, shift it right
-        if (viewportLeft < mapLeft) {
-          const shift = mapLeft - viewportLeft
-          viewportLeft += shift
-          viewportRight += shift
-          wasClamped = true
-        }
-        // If viewport extends beyond right edge, shift it left
-        if (viewportRight > mapRight) {
-          const shift = viewportRight - mapRight
-          viewportLeft -= shift
-          viewportRight -= shift
-          wasClamped = true
-        }
-        // If viewport extends beyond top edge, shift it down
-        if (viewportTop < mapTop) {
-          const shift = mapTop - viewportTop
-          viewportTop += shift
-          viewportBottom += shift
-          wasClamped = true
-        }
-        // If viewport extends beyond bottom edge, shift it up
-        if (viewportBottom > mapBottom) {
-          const shift = viewportBottom - mapBottom
-          viewportTop -= shift
-          viewportBottom -= shift
-          wasClamped = true
-        }
-
-        // Viewport logging disabled for performance
-
-        // Check all detected regions to see if any are inside this viewport and fit nicely
-        let foundFit = false
-        const regionsChecked: Array<{ id: string; inside: boolean; ratio?: number }> = []
-
-        for (const regionId of detectedRegions) {
-          const region = mapData.regions.find((r) => r.id === regionId)
-          if (!region) continue
-
-          const regionPath = svgRef.current?.querySelector(`path[data-region-id="${regionId}"]`)
-          if (!regionPath) continue
-
-          // Use pre-computed largest piece size for multi-piece regions
-          let currentWidth: number
-          let currentHeight: number
-
-          const cachedSize = largestPieceSizesRef.current.get(regionId)
-          if (cachedSize) {
-            // Multi-piece region: use pre-computed largest piece
-            currentWidth = cachedSize.width
-            currentHeight = cachedSize.height
-          } else {
-            // Single-piece region: use normal bounding box
-            const pathRect = regionPath.getBoundingClientRect()
-            currentWidth = pathRect.width
-            currentHeight = pathRect.height
-          }
-
-          const pathRect = regionPath.getBoundingClientRect()
-
-          // Convert region bounding box to SVG coordinates
-          const regionSvgLeft = (pathRect.left - svgRect.left) * scaleX + viewBoxX
-          const regionSvgRight = regionSvgLeft + pathRect.width * scaleX
-          const regionSvgTop = (pathRect.top - svgRect.top) * scaleY + viewBoxY
-          const regionSvgBottom = regionSvgTop + pathRect.height * scaleY
-
-          // Check if region is inside the magnified viewport
-          const isInsideViewport =
-            regionSvgLeft < viewportRight &&
-            regionSvgRight > viewportLeft &&
-            regionSvgTop < viewportBottom &&
-            regionSvgBottom > viewportTop
-
-          regionsChecked.push({ id: regionId, inside: isInsideViewport })
-
-          if (!isInsideViewport) continue // Skip regions not in viewport
-
-          // Region is in viewport - check if it's a good size
-          const magnifiedWidth = currentWidth * testZoom
-          const magnifiedHeight = currentHeight * testZoom
-
-          const widthRatio = magnifiedWidth / magnifierWidth
-          const heightRatio = magnifiedHeight / magnifierHeight
-
-          // Update the checked region data with ratio
-          regionsChecked[regionsChecked.length - 1].ratio = Math.max(widthRatio, heightRatio)
-
-          // If either dimension is within our adaptive acceptance range, we found a good zoom
-          if (
-            (widthRatio >= minAcceptableRatio && widthRatio <= maxAcceptableRatio) ||
-            (heightRatio >= minAcceptableRatio && heightRatio <= maxAcceptableRatio)
-          ) {
-            adaptiveZoom = testZoom
-            foundFit = true
-            foundGoodZoom = true
-
-            // Only log when we actually accept a zoom
-            console.log(
-              `[Zoom] ✅ Accepted ${testZoom.toFixed(1)}x for ${regionId} (${currentWidth.toFixed(1)}px × ${currentHeight.toFixed(1)}px)`
-            )
-
-            // Save bounding box for this region
-            boundingBoxes.push({
-              regionId,
-              x: regionSvgLeft,
-              y: regionSvgTop,
-              width: pathRect.width * scaleX,
-              height: pathRect.height * scaleY,
-            })
-
-            break // Found a good zoom, stop checking regions
-          }
-        }
-
-        if (foundFit) break // Found a good zoom level, stop searching
-      }
-
-      if (!foundGoodZoom) {
-        // Didn't find a good zoom - use minimum
-        adaptiveZoom = MIN_ZOOM
-        if (pointerLocked) {
-          console.log(`[Zoom Search] ⚠️ No good zoom found, using minimum: ${MIN_ZOOM}x`)
-        }
-      }
+      let adaptiveZoom = zoomSearchResult.zoom
+      const boundingBoxes = zoomSearchResult.boundingBoxes
 
       // Save bounding boxes for rendering
       setDebugBoundingBoxes(boundingBoxes)
+
+      // Calculate magnifier dimensions (needed for positioning)
+      const magnifierWidth = containerRect.width * 0.5
+      const magnifierHeight = magnifierWidth / 2
 
       // Calculate magnifier position (opposite corner from cursor)
       // magnifierWidth and magnifierHeight already declared above
