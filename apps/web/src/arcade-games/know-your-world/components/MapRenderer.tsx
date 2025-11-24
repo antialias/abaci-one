@@ -380,12 +380,11 @@ export function MapRenderer({
     const currentZoom = magnifierSpring.zoom.get()
     const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
 
-    // Check if we're at the threshold (zoom is capped)
-    const isAtThreshold =
+    // Check if CURRENT zoom is at/above the threshold (zoom is capped)
+    const currentIsAtThreshold =
       !pointerLocked &&
       containerRef.current &&
       svgRef.current &&
-      zoomIsAnimating &&
       (() => {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
@@ -403,12 +402,43 @@ export function MapRenderer({
         return screenPixelRatio >= PRECISION_MODE_THRESHOLD
       })()
 
-    if (isAtThreshold) {
+    // Check if TARGET zoom would be at/above the threshold
+    const targetIsAtThreshold =
+      !pointerLocked &&
+      containerRef.current &&
+      svgRef.current &&
+      (() => {
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const magnifierWidth = containerRect.width * 0.5
+        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
+
+        if (!viewBoxWidth || isNaN(viewBoxWidth)) return false
+
+        const magnifiedViewBoxWidth = viewBoxWidth / targetZoom
+        const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+        const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+        const screenPixelRatio = mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+
+        return screenPixelRatio >= PRECISION_MODE_THRESHOLD
+      })()
+
+    // Pause conditions:
+    // 1. Currently at threshold AND animating toward even higher zoom (would exceed threshold more)
+    // 2. OR: Currently at threshold and target is also at threshold (should stay paused)
+    const shouldPause = currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold
+
+    if (shouldPause) {
       // Pause the zoom animation - we're waiting for precision mode
       console.log('[Zoom] Pausing at threshold - waiting for precision mode')
       magnifierApi.pause()
     } else {
       // Update spring values and ensure it's not paused
+      // This will resume if we were paused and now target is below threshold (zooming out)
+      if (currentIsAtThreshold && !targetIsAtThreshold) {
+        console.log('[Zoom] Resuming - target zoom is below threshold (zooming out)')
+      }
       magnifierApi.start({
         zoom: targetZoom,
         opacity: targetOpacity,
