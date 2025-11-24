@@ -20,6 +20,7 @@ import {
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
 import { findOptimalZoom } from '../utils/adaptiveZoomSearch'
+import { useRegionDetection } from '../hooks/useRegionDetection'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -177,9 +178,19 @@ export function MapRenderer({
     () => new Set(excludedRegions.map((r) => r.id)),
     [excludedRegions]
   )
-  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
+
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Region detection hook
+  const { detectRegions, hoveredRegion, setHoveredRegion } = useRegionDetection({
+    svgRef,
+    containerRef,
+    mapData,
+    detectionBoxSize: 50,
+    smallRegionThreshold: 15,
+    smallRegionAreaThreshold: 200,
+  })
   const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 500 })
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
   const [showMagnifier, setShowMagnifier] = useState(false)
@@ -1192,121 +1203,26 @@ export function MapRenderer({
     cursorPositionRef.current = { x: cursorX, y: cursorY }
     setCursorPosition({ x: cursorX, y: cursorY })
 
-    // Define 50px × 50px detection box around cursor
-    const detectionBoxSize = 50
-    const halfBox = detectionBoxSize / 2
+    // Use region detection hook to find regions near cursor
+    const detectionResult = detectRegions(cursorX, cursorY)
+    const {
+      detectedRegions: detectedRegionObjects,
+      regionUnderCursor,
+      regionUnderCursorArea,
+      regionsInBox,
+      hasSmallRegion,
+      detectedSmallestSize,
+      totalRegionArea,
+    } = detectionResult
 
-    // Convert cursor position to client coordinates for region detection
-    const cursorClientX = containerRect.left + cursorX
-    const cursorClientY = containerRect.top + cursorY
-
-    // Count regions in the detection box and track their sizes
-    let regionsInBox = 0
-    let hasSmallRegion = false
-    let totalRegionArea = 0
-    let detectedSmallestSize = Infinity // For dampening (smallest in detection box)
-    const detectedRegions: string[] = []
-    let regionUnderCursor: string | null = null
-    let regionUnderCursorArea = 0 // For zoom calculation (area of hovered region)
-    let smallestDistanceToCenter = Infinity
-
-    mapData.regions.forEach((region) => {
-      const regionPath = svgRef.current?.querySelector(`path[data-region-id="${region.id}"]`)
-      if (!regionPath) return
-
-      const pathRect = regionPath.getBoundingClientRect()
-
-      // Check if region overlaps with detection box
-      const boxLeft = cursorClientX - halfBox
-      const boxRight = cursorClientX + halfBox
-      const boxTop = cursorClientY - halfBox
-      const boxBottom = cursorClientY + halfBox
-
-      const regionLeft = pathRect.left
-      const regionRight = pathRect.right
-      const regionTop = pathRect.top
-      const regionBottom = pathRect.bottom
-
-      const overlaps =
-        regionLeft < boxRight &&
-        regionRight > boxLeft &&
-        regionTop < boxBottom &&
-        regionBottom > boxTop
-
-      // Also check if cursor is directly over this region
-      const cursorInRegion =
-        cursorClientX >= regionLeft &&
-        cursorClientX <= regionRight &&
-        cursorClientY >= regionTop &&
-        cursorClientY <= regionBottom
-
-      if (cursorInRegion) {
-        // Calculate distance from cursor to region center to find the "best" match
-        const regionCenterX = (regionLeft + regionRight) / 2
-        const regionCenterY = (regionTop + regionBottom) / 2
-        const distanceToCenter = Math.sqrt(
-          (cursorClientX - regionCenterX) ** 2 + (cursorClientY - regionCenterY) ** 2
-        )
-
-        if (distanceToCenter < smallestDistanceToCenter) {
-          smallestDistanceToCenter = distanceToCenter
-          regionUnderCursor = region.id
-          regionUnderCursorArea = pathRect.width * pathRect.height
-        }
-      }
-
-      if (overlaps) {
-        regionsInBox++
-        detectedRegions.push(region.id)
-
-        // Check if this region is very small (threshold tuned for Rhode Island ~11px)
-        const pixelWidth = pathRect.width
-        const pixelHeight = pathRect.height
-        const pixelArea = pathRect.width * pathRect.height
-        const isVerySmall = pixelWidth < 15 || pixelHeight < 15 || pixelArea < 200
-
-        if (isVerySmall) {
-          hasSmallRegion = true
-        }
-
-        // Track smallest region size for cursor dampening (use smallest in detection box)
-        const screenSize = Math.min(pixelWidth, pixelHeight)
-        totalRegionArea += pixelArea
-        detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
-      }
-    })
-
-    // Sort detected regions by size (smallest first) to prioritize tiny regions in zoom calculation
-    // This ensures Gibraltar (0.08px) is checked before Spain (81px) when finding optimal zoom
-    detectedRegions.sort((a, b) => {
-      const pathA = svgRef.current?.querySelector(`path[data-region-id="${a}"]`)
-      const pathB = svgRef.current?.querySelector(`path[data-region-id="${b}"]`)
-      if (!pathA || !pathB) return 0
-
-      const rectA = pathA.getBoundingClientRect()
-      const rectB = pathB.getBoundingClientRect()
-
-      // Use smallest dimension (width or height) for comparison
-      const sizeA = Math.min(rectA.width, rectA.height)
-      const sizeB = Math.min(rectB.width, rectB.height)
-
-      return sizeA - sizeB // Smallest first
-    })
+    // Extract region IDs for zoom search (already sorted smallest-first by hook)
+    const detectedRegions = detectedRegionObjects.map((r) => r.id)
 
     if (pointerLocked && detectedRegions.length > 0) {
-      const sortedSizes = detectedRegions.map((id) => {
-        const path = svgRef.current?.querySelector(`path[data-region-id="${id}"]`)
-        if (!path) return `${id}: ?`
-        const rect = path.getBoundingClientRect()
-        const size = Math.min(rect.width, rect.height)
-        return `${id}: ${size.toFixed(2)}px`
-      })
+      const sortedSizes = detectedRegionObjects.map((r) => `${r.id}: ${r.screenSize.toFixed(2)}px`)
       console.log('[Zoom Search] Sorted regions (smallest first):', sortedSizes)
     }
 
-    // Calculate adaptive zoom level based on region density and size
-    // Base zoom: 8x
-    // More regions = more zoom (up to +8x for 10+ regions)
     // Show magnifier only when there are small regions (< 15px)
     const shouldShow = hasSmallRegion
 
@@ -1322,8 +1238,6 @@ export function MapRenderer({
     if (regionUnderCursor !== hoveredRegion) {
       setHoveredRegion(regionUnderCursor)
     }
-
-    // Magnifier detection logging removed for performance
 
     if (shouldShow) {
       // Use adaptive zoom search utility to find optimal zoom
