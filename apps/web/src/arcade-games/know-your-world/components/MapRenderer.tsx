@@ -1942,7 +1942,128 @@ export function MapRenderer({
                 </g>
               )
             })()}
+
+            {/* Debug: Bounding boxes for detected regions in magnifier */}
+            {SHOW_DEBUG_BOUNDING_BOXES &&
+              debugBoundingBoxes.map((bbox) => {
+                const importance = bbox.importance ?? 0
+
+                // Color-code by importance
+                let strokeColor = '#888888' // Gray for low importance
+                if (bbox.wasAccepted) {
+                  strokeColor = '#00ff00' // Green for accepted region
+                } else if (importance > 1.5) {
+                  strokeColor = '#ff6600' // Orange for high importance
+                } else if (importance > 0.5) {
+                  strokeColor = '#ffcc00' // Yellow for medium importance
+                }
+
+                return (
+                  <rect
+                    key={`mag-bbox-${bbox.regionId}`}
+                    x={bbox.x}
+                    y={bbox.y}
+                    width={bbox.width}
+                    height={bbox.height}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={1}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                )
+              })}
           </animated.svg>
+
+          {/* Debug: Bounding box labels in magnifier as HTML overlays */}
+          {SHOW_DEBUG_BOUNDING_BOXES &&
+            containerRef.current &&
+            svgRef.current &&
+            debugBoundingBoxes.map((bbox) => {
+              const importance = bbox.importance ?? 0
+              let strokeColor = '#888888'
+
+              if (bbox.wasAccepted) {
+                strokeColor = '#00ff00'
+              } else if (importance > 1.5) {
+                strokeColor = '#ff6600'
+              } else if (importance > 0.5) {
+                strokeColor = '#ffcc00'
+              }
+
+              // Get magnifier dimensions
+              const containerRect = containerRef.current!.getBoundingClientRect()
+              const magnifierWidth = containerRect.width * 0.5
+              const magnifierHeight = magnifierWidth / 2
+
+              // Parse viewBox
+              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxX = viewBoxParts[0] || 0
+              const viewBoxY = viewBoxParts[1] || 0
+              const viewBoxWidth = viewBoxParts[2] || 1000
+              const viewBoxHeight = viewBoxParts[3] || 1000
+
+              // Get current zoom (use animated value)
+              const currentZoom = getCurrentZoom()
+
+              // Calculate magnified viewBox (same logic as the magnifier's viewBox calculation)
+              const svgRect = svgRef.current!.getBoundingClientRect()
+              const scaleX = viewBoxWidth / svgRect.width
+              const scaleY = viewBoxHeight / svgRect.height
+              const svgOffsetX = svgRect.left - containerRect.left
+              const svgOffsetY = svgRect.top - containerRect.top
+
+              if (!cursorPosition) return null
+
+              const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
+              const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+
+              const magnifiedWidth = viewBoxWidth / currentZoom
+              const magnifiedHeight = viewBoxHeight / currentZoom
+
+              const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
+              const magnifiedViewBoxY = cursorSvgY - magnifiedHeight / 2
+
+              // Convert bbox center from SVG coords to magnifier pixel coords
+              const bboxCenterSvgX = bbox.x + bbox.width / 2
+              const bboxCenterSvgY = bbox.y + bbox.height / 2
+
+              // Calculate position within magnified viewBox
+              const relativeX = (bboxCenterSvgX - magnifiedViewBoxX) / magnifiedWidth
+              const relativeY = (bboxCenterSvgY - magnifiedViewBoxY) / magnifiedHeight
+
+              // Check if bbox is within magnified viewport
+              if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) {
+                return null // Don't show labels for regions outside magnifier viewport
+              }
+
+              // Convert to pixel position within magnifier
+              const labelX = relativeX * magnifierWidth
+              const labelY = relativeY * magnifierHeight
+
+              return (
+                <div
+                  key={`mag-bbox-label-${bbox.regionId}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${labelX}px`,
+                    top: `${labelY}px`,
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                    zIndex: 15,
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    color: strokeColor,
+                    textAlign: 'center',
+                    textShadow: '0 0 2px black, 0 0 2px black, 0 0 2px black',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <div>{bbox.regionId}</div>
+                  <div style={{ fontSize: '8px', fontWeight: 'normal' }}>{importance.toFixed(2)}</div>
+                </div>
+              )
+            })}
 
           {/* Magnifier label */}
           <animated.div
