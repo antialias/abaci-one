@@ -56,6 +56,7 @@ export interface KnowYourWorldState extends GameState {
   currentPrompt: string | null // Region name to find (e.g., "France")
   regionsToFind: string[] // Queue of region IDs still to find
   regionsFound: string[] // Region IDs already found
+  regionsGivenUp: string[] // Region IDs that were given up (for re-asking and scoring)
   currentPlayer: string // For turn-based mode
 
   // Scoring
@@ -70,6 +71,13 @@ export interface KnowYourWorldState extends GameState {
   // Multiplayer
   activePlayers: string[]
   playerMetadata: Record<string, any>
+
+  // Give up reveal state (for animation)
+  giveUpReveal: {
+    regionId: string
+    regionName: string
+    timestamp: number // For animation timing key
+  } | null
 }
 
 // Move types
@@ -169,4 +177,11 @@ export type KnowYourWorldMove =
       data: {
         selectedContinent: ContinentId | 'all'
       }
+    }
+  | {
+      type: 'GIVE_UP'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {}
     }

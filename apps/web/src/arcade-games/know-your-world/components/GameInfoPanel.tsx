@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import type { MapData } from '../types'
+
+// Animation duration in ms - must match MapRenderer
+const GIVE_UP_ANIMATION_DURATION = 2000
 
 interface GameInfoPanelProps {
   mapData: MapData
@@ -23,7 +26,54 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError } = useKnowYourWorld()
+  const { state, lastError, clearError, giveUp } = useKnowYourWorld()
+
+  // Track if animation is in progress (local state based on timestamp)
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  // Check if animation is in progress based on timestamp
+  useEffect(() => {
+    if (!state.giveUpReveal?.timestamp) {
+      setIsAnimating(false)
+      return
+    }
+
+    const elapsed = Date.now() - state.giveUpReveal.timestamp
+    if (elapsed < GIVE_UP_ANIMATION_DURATION) {
+      setIsAnimating(true)
+      // Clear animation flag after remaining time
+      const timeout = setTimeout(() => {
+        setIsAnimating(false)
+      }, GIVE_UP_ANIMATION_DURATION - elapsed)
+      return () => clearTimeout(timeout)
+    } else {
+      setIsAnimating(false)
+    }
+  }, [state.giveUpReveal?.timestamp])
+
+  // Handle give up with keyboard shortcut (G key)
+  const handleGiveUp = useCallback(() => {
+    if (!isAnimating && state.gamePhase === 'playing') {
+      giveUp()
+    }
+  }, [isAnimating, state.gamePhase, giveUp])
+
+  // Keyboard shortcut for give up (works even in pointer lock mode)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 'G' key for Give Up
+      if (e.key === 'g' || e.key === 'G') {
+        // Don't trigger if user is typing in an input
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return
+        }
+        handleGiveUp()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleGiveUp])
 
   // Auto-dismiss errors after 3 seconds
   useEffect(() => {
@@ -67,6 +117,9 @@ export function GameInfoPanel({
             border: '2px solid',
             borderColor: 'blue.500',
             minWidth: 0, // Allow shrinking
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1',
           })}
         >
           <div

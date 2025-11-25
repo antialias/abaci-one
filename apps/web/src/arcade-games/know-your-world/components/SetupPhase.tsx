@@ -322,6 +322,23 @@ export function SetupPhase() {
               )
             })}
           </div>
+          {/* Give Up behavior note */}
+          <div
+            data-element="give-up-note"
+            className={css({
+              marginTop: '3',
+              padding: '3',
+              bg: isDark ? 'gray.800' : 'gray.100',
+              rounded: 'md',
+              fontSize: 'sm',
+              color: isDark ? 'gray.400' : 'gray.600',
+            })}
+          >
+            <strong>Tip:</strong> Press G or click "Give Up" to skip a region you don't know.{' '}
+            {state.difficulty === 'easy'
+              ? 'On Easy, skipped regions will be re-asked after a few turns.'
+              : 'On Hard, skipped regions will be re-asked at the end.'}
+          </div>
         </div>
       )}
 

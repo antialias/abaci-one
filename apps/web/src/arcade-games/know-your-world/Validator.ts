@@ -47,6 +47,8 @@ export class KnowYourWorldValidator
         return this.validateSetStudyDuration(state, move.data.studyDuration)
       case 'SET_CONTINENT':
         return this.validateSetContinent(state, move.data.selectedContinent)
+      case 'GIVE_UP':
+        return await this.validateGiveUp(state, move.playerId)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
@@ -92,11 +94,13 @@ export class KnowYourWorldValidator
       currentPrompt: shouldStudy ? null : shuffledRegions[0],
       regionsToFind: shuffledRegions.slice(shouldStudy ? 0 : 1),
       regionsFound: [],
+      regionsGivenUp: [],
       currentPlayer: activePlayers[0],
       scores,
       attempts,
       guessHistory: [],
       startTime: Date.now(),
+      giveUpReveal: null,
     }
 
     return { valid: true, newState }
@@ -160,6 +164,7 @@ export class KnowYourWorldValidator
           scores: newScores,
           guessHistory,
           endTime: Date.now(),
+          giveUpReveal: null,
         }
         return { valid: true, newState }
       }
@@ -184,6 +189,7 @@ export class KnowYourWorldValidator
         currentPlayer: nextPlayer,
         scores: newScores,
         guessHistory,
+        giveUpReveal: null,
       }
 
       return { valid: true, newState }
@@ -250,12 +256,14 @@ export class KnowYourWorldValidator
       currentPrompt: shouldStudy ? null : shuffledRegions[0],
       regionsToFind: shuffledRegions.slice(shouldStudy ? 0 : 1),
       regionsFound: [],
+      regionsGivenUp: [],
       currentPlayer: state.activePlayers[0],
       scores,
       attempts,
       guessHistory: [],
       startTime: Date.now(),
       endTime: undefined,
+      giveUpReveal: null,
     }
 
     return { valid: true, newState }
@@ -382,6 +390,7 @@ export class KnowYourWorldValidator
       currentPrompt: null,
       regionsToFind: [],
       regionsFound: [],
+      regionsGivenUp: [],
       currentPlayer: '',
       scores: {},
       attempts: {},
@@ -390,6 +399,83 @@ export class KnowYourWorldValidator
       endTime: undefined,
       studyTimeRemaining: 0,
       studyStartTime: 0,
+      giveUpReveal: null,
+    }
+
+    return { valid: true, newState }
+  }
+
+  private async validateGiveUp(
+    state: KnowYourWorldState,
+    playerId: string
+  ): Promise<ValidationResult> {
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Can only give up during playing phase' }
+    }
+
+    if (!state.currentPrompt) {
+      return { valid: false, error: 'No region to give up on' }
+    }
+
+    // For turn-based: check if it's this player's turn
+    if (state.gameMode === 'turn-based' && state.currentPlayer !== playerId) {
+      return { valid: false, error: 'Not your turn' }
+    }
+
+    // Get region info for the reveal
+    const mapData = await getFilteredMapDataLazy(
+      state.selectedMap,
+      state.selectedContinent,
+      state.difficulty
+    )
+    const region = mapData.regions.find((r) => r.id === state.currentPrompt)
+
+    if (!region) {
+      return { valid: false, error: 'Region not found' }
+    }
+
+    // Track this region as given up (add if not already tracked)
+    // Use fallback for older game states that don't have regionsGivenUp
+    const existingGivenUp = state.regionsGivenUp ?? []
+    const regionsGivenUp = existingGivenUp.includes(region.id)
+      ? existingGivenUp
+      : [...existingGivenUp, region.id]
+
+    // Determine re-ask position based on difficulty
+    // Easy: re-ask soon (after 2-3 regions)
+    // Hard: re-ask at the end
+    const reaskDelay = state.difficulty === 'easy' ? 3 : state.regionsToFind.length
+
+    // Build new regions queue: take next regions, then insert given-up region at appropriate position
+    const remainingRegions = [...state.regionsToFind]
+
+    // Insert the given-up region back into the queue
+    const insertPosition = Math.min(reaskDelay, remainingRegions.length)
+    remainingRegions.splice(insertPosition, 0, region.id)
+
+    // If there are no other regions (only the one we just gave up), it will be re-asked immediately
+    const nextPrompt = remainingRegions[0]
+    const newRegionsToFind = remainingRegions.slice(1)
+
+    // For turn-based, rotate player
+    let nextPlayer = state.currentPlayer
+    if (state.gameMode === 'turn-based') {
+      const currentIndex = state.activePlayers.indexOf(state.currentPlayer)
+      const nextIndex = (currentIndex + 1) % state.activePlayers.length
+      nextPlayer = state.activePlayers[nextIndex]
+    }
+
+    const newState: KnowYourWorldState = {
+      ...state,
+      currentPrompt: nextPrompt,
+      regionsToFind: newRegionsToFind,
+      regionsGivenUp,
+      currentPlayer: nextPlayer,
+      giveUpReveal: {
+        regionId: region.id,
+        regionName: region.name,
+        timestamp: Date.now(),
+      },
     }
 
     return { valid: true, newState }
@@ -414,6 +500,7 @@ export class KnowYourWorldValidator
       currentPrompt: null,
       regionsToFind: [],
       regionsFound: [],
+      regionsGivenUp: [],
       currentPlayer: '',
       scores: {},
       attempts: {},
@@ -421,6 +508,7 @@ export class KnowYourWorldValidator
       startTime: 0,
       activePlayers: [],
       playerMetadata: {},
+      giveUpReveal: null,
     }
   }
 

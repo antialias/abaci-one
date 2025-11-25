@@ -53,15 +53,16 @@ export function getRegionColor(
     // Found: use base color with full opacity
     return color.base
   } else if (isHovered) {
-    // Hovered: use light color with medium opacity
+    // Hovered: use light color with good opacity for clear feedback
     return isDark
-      ? `${color.light}66` // 40% opacity in dark mode
-      : `${color.base}55` // 33% opacity in light mode
+      ? `${color.light}99` // 60% opacity in dark mode
+      : `${color.base}77` // 47% opacity in light mode
   } else {
-    // Not found: use very light color with low opacity
+    // Not found: use earth-tone colors for land masses
+    // Higher opacity and warmer colors distinguish land from sea
     return isDark
-      ? `${color.light}33` // 20% opacity in dark mode
-      : `${color.light}44` // 27% opacity in light mode
+      ? '#4a5568' // Warm gray in dark mode - clearly land
+      : '#d4c4a8' // Sandy/earthy beige in light mode - clearly land
   }
 }
 
@@ -72,7 +73,8 @@ export function getRegionStroke(isFound: boolean, isDark: boolean): string {
   if (isFound) {
     return isDark ? '#ffffff' : '#000000' // High contrast for found regions
   }
-  return isDark ? '#1f2937' : '#ffffff' // Subtle border for unfound regions
+  // More visible borders for unfound regions - darker to contrast with land colors
+  return isDark ? '#2d3748' : '#8b7355' // Dark gray / brown border
 }
 
 /**

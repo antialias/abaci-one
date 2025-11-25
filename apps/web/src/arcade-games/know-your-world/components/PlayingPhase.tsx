@@ -8,7 +8,7 @@ import { MapRenderer } from './MapRenderer'
 import { GameInfoPanel } from './GameInfoPanel'
 
 export function PlayingPhase() {
-  const { state, clickRegion } = useKnowYourWorld()
+  const { state, clickRegion, giveUp } = useKnowYourWorld()
 
   const mapData = getFilteredMapDataSync(
     state.selectedMap,
@@ -112,6 +112,8 @@ export function PlayingPhase() {
               onRegionClick={clickRegion}
               guessHistory={state.guessHistory}
               playerMetadata={state.playerMetadata}
+              giveUpReveal={state.giveUpReveal}
+              onGiveUp={giveUp}
             />
           </div>
         </Panel>

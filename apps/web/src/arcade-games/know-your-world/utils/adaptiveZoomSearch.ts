@@ -220,7 +220,7 @@ function calculateRegionImportance(
   // - Faster decrease at mid-range
   // - Very gradual approach to zero at edge (no discontinuity)
   const normalizedDistance = Math.min(distanceToCursor / 50, 1)
-  const distanceWeight = Math.max(0, 1 - Math.pow(normalizedDistance, 3))
+  const distanceWeight = Math.max(0, 1 - normalizedDistance ** 3)
 
   // 2. Size factor: Smaller regions get boosted importance
   // This ensures San Marino can be targeted even when Italy is closer to cursor
@@ -353,34 +353,36 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   }
 
   // Track bounding boxes for debug visualization - add ALL detected regions upfront
-  const boundingBoxes: BoundingBox[] = sortedRegions.map(({ region: detectedRegion, importance }) => {
-    const regionPath = svgElement.querySelector(`path[data-region-id="${detectedRegion.id}"]`)
-    if (!regionPath) {
+  const boundingBoxes: BoundingBox[] = sortedRegions
+    .map(({ region: detectedRegion, importance }) => {
+      const regionPath = svgElement.querySelector(`path[data-region-id="${detectedRegion.id}"]`)
+      if (!regionPath) {
+        return {
+          regionId: detectedRegion.id,
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          importance,
+          wasAccepted: false,
+        }
+      }
+
+      const pathRect = regionPath.getBoundingClientRect()
+      const regionSvgLeft = (pathRect.left - svgRect.left) * scaleX + viewBoxX
+      const regionSvgTop = (pathRect.top - svgRect.top) * scaleY + viewBoxY
+
       return {
         regionId: detectedRegion.id,
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
+        x: regionSvgLeft,
+        y: regionSvgTop,
+        width: pathRect.width * scaleX,
+        height: pathRect.height * scaleY,
         importance,
         wasAccepted: false,
       }
-    }
-
-    const pathRect = regionPath.getBoundingClientRect()
-    const regionSvgLeft = (pathRect.left - svgRect.left) * scaleX + viewBoxX
-    const regionSvgTop = (pathRect.top - svgRect.top) * scaleY + viewBoxY
-
-    return {
-      regionId: detectedRegion.id,
-      x: regionSvgLeft,
-      y: regionSvgTop,
-      width: pathRect.width * scaleX,
-      height: pathRect.height * scaleY,
-      importance,
-      wasAccepted: false,
-    }
-  }).filter((bbox) => bbox.width > 0 && bbox.height > 0)
+    })
+    .filter((bbox) => bbox.width > 0 && bbox.height > 0)
 
   // Track detailed decision information for each region
   const regionDecisions: RegionZoomDecision[] = []
@@ -539,7 +541,9 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     // Didn't find a good zoom - use calculated minimum
     optimalZoom = calculatedMinZoom
     if (pointerLocked) {
-      console.log(`[Zoom Search] ⚠️ No good zoom found, using calculated minimum: ${calculatedMinZoom}x`)
+      console.log(
+        `[Zoom Search] ⚠️ No good zoom found, using calculated minimum: ${calculatedMinZoom}x`
+      )
     }
   }
 

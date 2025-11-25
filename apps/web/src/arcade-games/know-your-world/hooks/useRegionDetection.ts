@@ -61,6 +61,10 @@ export interface UseRegionDetectionOptions {
   smallRegionThreshold?: number
   /** Area threshold for small regions (default: 200px²) */
   smallRegionAreaThreshold?: number
+  /** Cache of pre-computed sizes for multi-piece regions (mainland only) */
+  largestPieceSizesCache?: Map<string, { width: number; height: number }>
+  /** Regions that have been found - excluded from zoom level calculations */
+  regionsFound?: string[]
 }
 
 export interface UseRegionDetectionReturn {
@@ -92,6 +96,8 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
     detectionBoxSize = 50,
     smallRegionThreshold = 15,
     smallRegionAreaThreshold = 200,
+    largestPieceSizesCache,
+    regionsFound = [],
   } = options
 
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
@@ -172,32 +178,7 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         }
       }
 
-      const viewBoxParts = mapData.viewBox.split(' ').map(Number)
-      const viewBoxX = viewBoxParts[0] || 0
-      const viewBoxY = viewBoxParts[1] || 0
-
       mapData.regions.forEach((region) => {
-        // PERFORMANCE: Quick distance check using pre-computed center
-        // This avoids expensive DOM queries for regions far from cursor
-        // Region center is in SVG coordinates, convert to screen coords
-        const svgCenter = svgElement.createSVGPoint()
-        svgCenter.x = region.center[0]
-        svgCenter.y = region.center[1]
-        const screenCenter = svgCenter.matrixTransform(screenCTM)
-
-        // Calculate rough distance from cursor to region center
-        const dx = screenCenter.x - cursorClientX
-        const dy = screenCenter.y - cursorClientY
-        const distanceSquared = dx * dx + dy * dy
-
-        // Skip regions whose centers are very far from the detection box
-        // Detection box is 50px, but we check 100px radius to provide smooth transitions
-        // Regions at 50-100px will have very low importance (smooth cubic falloff)
-        const MAX_DISTANCE = 100
-        if (distanceSquared > MAX_DISTANCE * MAX_DISTANCE) {
-          return // Region is definitely too far away
-        }
-
         // Get cached path element (populated in useEffect)
         const regionPath = pathElementCache.current.get(region.id)
         if (!regionPath) return
@@ -205,6 +186,8 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         const pathRect = regionPath.getBoundingClientRect()
 
         // Check if bounding box overlaps with detection box
+        // This is efficient and works correctly for regions of all sizes
+        // (unlike center-distance checks which fail for large regions like Russia)
         const regionLeft = pathRect.left
         const regionRight = pathRect.right
         const regionTop = pathRect.top
@@ -253,21 +236,28 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
         // If detection box overlaps with actual path geometry, add to detected regions
         if (overlaps) {
-          const pixelWidth = pathRect.width
-          const pixelHeight = pathRect.height
+          // Use cached size for multi-piece regions (mainland only, not full bounding box)
+          const cachedSize = largestPieceSizesCache?.get(region.id)
+          const pixelWidth = cachedSize?.width ?? pathRect.width
+          const pixelHeight = cachedSize?.height ?? pathRect.height
           const pixelArea = pixelWidth * pixelHeight
           const isVerySmall =
             pixelWidth < smallRegionThreshold ||
             pixelHeight < smallRegionThreshold ||
             pixelArea < smallRegionAreaThreshold
 
-          if (isVerySmall) {
-            hasSmallRegion = true
-          }
-
           const screenSize = Math.min(pixelWidth, pixelHeight)
-          totalRegionArea += pixelArea
-          detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
+
+          // Only count unfound regions toward zoom calculations
+          // Found regions shouldn't influence hasSmallRegion or detectedSmallestSize
+          const isFound = regionsFound.includes(region.id)
+          if (!isFound) {
+            if (isVerySmall) {
+              hasSmallRegion = true
+            }
+            totalRegionArea += pixelArea
+            detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
+          }
 
           detected.push({
             id: region.id,
@@ -300,6 +290,8 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
       detectionBoxSize,
       smallRegionThreshold,
       smallRegionAreaThreshold,
+      largestPieceSizesCache,
+      regionsFound,
     ]
   )
 

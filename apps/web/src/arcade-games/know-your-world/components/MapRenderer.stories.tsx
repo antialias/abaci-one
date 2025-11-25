@@ -112,6 +112,8 @@ const Template = (args: StoryArgs) => {
         onRegionClick={(id, name) => console.log('Clicked:', id, name)}
         guessHistory={guessHistory}
         playerMetadata={mockPlayerMetadata}
+        giveUpReveal={null}
+        onGiveUp={() => console.log('Give Up clicked')}
         forceTuning={{
           showArrows: args.showArrows,
           centeringStrength: args.centeringStrength,
