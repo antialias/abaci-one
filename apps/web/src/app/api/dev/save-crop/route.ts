@@ -121,8 +121,14 @@ function writeCropsFile(crops: Record<string, Record<string, string>>): void {
     formattedCrops = '{}'
   } else {
     formattedCrops = JSON.stringify(crops, null, 2)
-      .replace(/"([^"]+)":/g, '$1:') // Remove quotes from keys
+      // Only remove quotes from keys that are valid JS identifiers (no hyphens, spaces, etc.)
+      // Valid identifiers: start with letter/$/_,  contain only letters/digits/$/_
+      .replace(/"([a-zA-Z_$][a-zA-Z0-9_$]*)":/g, '$1:')
+      // Keep quotes but convert to single quotes for keys with special chars (like hyphens)
+      .replace(/"([^"]+)":/g, "'$1':")
       .replace(/"/g, "'") // Use single quotes for values
+      // Add trailing commas before closing braces/brackets
+      .replace(/([^,{\s])\n(\s*[}\]])/g, '$1,\n$2')
   }
 
   // Replace the object
