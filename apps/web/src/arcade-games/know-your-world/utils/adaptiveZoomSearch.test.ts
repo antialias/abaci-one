@@ -281,9 +281,7 @@ describe('adaptiveZoomSearch', () => {
       const region1: Bounds = { left: 150, right: 250, top: 150, bottom: 250 }
       const region2: Bounds = { left: 100, right: 200, top: 100, bottom: 200 }
 
-      expect(isRegionInViewport(region1, region2)).toBe(
-        isRegionInViewport(region2, region1)
-      )
+      expect(isRegionInViewport(region1, region2)).toBe(isRegionInViewport(region2, region1))
     })
   })
 })

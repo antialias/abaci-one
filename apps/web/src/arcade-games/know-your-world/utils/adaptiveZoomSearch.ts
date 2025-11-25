@@ -14,10 +14,11 @@
  */
 
 import type { MapData } from '../types'
+import type { DetectedRegion } from '../hooks/useRegionDetection'
 
 export interface AdaptiveZoomSearchContext {
-  /** Detected region IDs, sorted by size (smallest first) */
-  detectedRegions: string[]
+  /** Detected region objects with size and metadata */
+  detectedRegions: DetectedRegion[]
   /** Size of the smallest detected region in pixels */
   detectedSmallestSize: number
   /** Cursor position in container coordinates */
@@ -43,12 +44,21 @@ export interface AdaptiveZoomSearchContext {
   pointerLocked?: boolean
 }
 
+export interface Bounds {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
 export interface BoundingBox {
   regionId: string
   x: number
   y: number
   width: number
   height: number
+  importance?: number
+  wasAccepted?: boolean
 }
 
 export interface AdaptiveZoomSearchResult {
@@ -56,7 +66,7 @@ export interface AdaptiveZoomSearchResult {
   zoom: number
   /** Whether a good zoom was found (false = using minimum zoom as fallback) */
   foundGoodZoom: boolean
-  /** Debug bounding boxes for visualization */
+  /** Debug bounding boxes for visualization (includes all detected regions) */
   boundingBoxes: BoundingBox[]
 }
 
@@ -96,9 +106,9 @@ export function calculateAdaptiveThresholds(smallestSize: number): {
  * @returns Clamped viewport bounds
  */
 export function clampViewportToMapBounds(
-  viewport: { left: number; right: number; top: number; bottom: number },
-  mapBounds: { left: number; right: number; top: number; bottom: number }
-): { left: number; right: number; top: number; bottom: number; wasClamped: boolean } {
+  viewport: Bounds,
+  mapBounds: Bounds
+): Bounds & { wasClamped: boolean } {
   let { left, right, top, bottom } = viewport
   let wasClamped = false
 
@@ -144,16 +154,55 @@ export function clampViewportToMapBounds(
  * @param viewport - Viewport bounds in SVG coordinates
  * @returns True if region overlaps viewport
  */
-export function isRegionInViewport(
-  regionBounds: { left: number; right: number; top: number; bottom: number },
-  viewport: { left: number; right: number; top: number; bottom: number }
-): boolean {
+export function isRegionInViewport(regionBounds: Bounds, viewport: Bounds): boolean {
   return (
     regionBounds.left < viewport.right &&
     regionBounds.right > viewport.left &&
     regionBounds.top < viewport.bottom &&
     regionBounds.bottom > viewport.top
   )
+}
+
+/**
+ * Calculate importance score for a region based on distance from cursor and size.
+ *
+ * Smaller regions and regions closer to cursor get higher importance scores.
+ * This ensures we zoom appropriately for the region the user is actually targeting.
+ *
+ * @param region - Detected region with size metadata
+ * @param cursorX - Cursor X in container coordinates
+ * @param cursorY - Cursor Y in container coordinates
+ * @param regionCenterX - Region center X in screen coordinates
+ * @param regionCenterY - Region center Y in screen coordinates
+ * @param containerRect - Container bounding rect
+ * @returns Importance score (higher = more important)
+ */
+function calculateRegionImportance(
+  region: DetectedRegion,
+  cursorX: number,
+  cursorY: number,
+  regionCenterX: number,
+  regionCenterY: number,
+  containerRect: DOMRect
+): number {
+  // 1. Distance factor: Closer to cursor = more important
+  const cursorClientX = containerRect.left + cursorX
+  const cursorClientY = containerRect.top + cursorY
+  const distanceToCursor = Math.sqrt(
+    (cursorClientX - regionCenterX) ** 2 + (cursorClientY - regionCenterY) ** 2
+  )
+
+  // Normalize distance to 0-1 range (0 = at cursor, 1 = 50px away or more)
+  // Use 50px as reference since that's our detection box size
+  const normalizedDistance = Math.min(distanceToCursor / 50, 1)
+  const distanceWeight = 1 - normalizedDistance // Invert: closer = higher weight
+
+  // 2. Size factor: Smaller regions get boosted importance
+  // This ensures San Marino can be targeted even when Italy is closer to cursor
+  const sizeWeight = region.isVerySmall ? 2.0 : 1.0
+
+  // Combined importance score
+  return distanceWeight * sizeWeight
 }
 
 /**
@@ -225,8 +274,69 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     bottom: viewBoxY + viewBoxHeight,
   }
 
-  // Track bounding boxes for debug visualization
-  const boundingBoxes: BoundingBox[] = []
+  // Calculate importance scores for all detected regions
+  // This weights regions by distance from cursor and size
+  const regionsWithScores = detectedRegions.map((detectedRegion) => {
+    const regionPath = svgElement.querySelector(`path[data-region-id="${detectedRegion.id}"]`)
+    if (!regionPath) {
+      return { region: detectedRegion, importance: 0, centerX: 0, centerY: 0 }
+    }
+
+    const pathRect = regionPath.getBoundingClientRect()
+    const regionCenterX = pathRect.left + pathRect.width / 2
+    const regionCenterY = pathRect.top + pathRect.height / 2
+
+    const importance = calculateRegionImportance(
+      detectedRegion,
+      cursorX,
+      cursorY,
+      regionCenterX,
+      regionCenterY,
+      containerRect
+    )
+
+    return { region: detectedRegion, importance, centerX: regionCenterX, centerY: regionCenterY }
+  })
+
+  // Sort by importance (highest first)
+  const sortedRegions = regionsWithScores.sort((a, b) => b.importance - a.importance)
+
+  if (pointerLocked) {
+    console.log(
+      '[Zoom Search] Region importance scores:',
+      sortedRegions.map((r) => `${r.region.id}: ${r.importance.toFixed(2)}`)
+    )
+  }
+
+  // Track bounding boxes for debug visualization - add ALL detected regions upfront
+  const boundingBoxes: BoundingBox[] = sortedRegions.map(({ region: detectedRegion, importance }) => {
+    const regionPath = svgElement.querySelector(`path[data-region-id="${detectedRegion.id}"]`)
+    if (!regionPath) {
+      return {
+        regionId: detectedRegion.id,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        importance,
+        wasAccepted: false,
+      }
+    }
+
+    const pathRect = regionPath.getBoundingClientRect()
+    const regionSvgLeft = (pathRect.left - svgRect.left) * scaleX + viewBoxX
+    const regionSvgTop = (pathRect.top - svgRect.top) * scaleY + viewBoxY
+
+    return {
+      regionId: detectedRegion.id,
+      x: regionSvgLeft,
+      y: regionSvgTop,
+      width: pathRect.width * scaleX,
+      height: pathRect.height * scaleY,
+      importance,
+      wasAccepted: false,
+    }
+  }).filter((bbox) => bbox.width > 0 && bbox.height > 0)
 
   // Search for optimal zoom
   let optimalZoom = maxZoom
@@ -248,21 +358,21 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     // Clamp viewport to stay within map bounds
     const viewport = clampViewportToMapBounds(initialViewport, mapBounds)
 
-    // Check all detected regions to see if any are inside this viewport and fit nicely
+    // Check regions in order of importance (most important first)
     let foundFit = false
 
-    for (const regionId of detectedRegions) {
-      const region = mapData.regions.find((r) => r.id === regionId)
+    for (const { region: detectedRegion } of sortedRegions) {
+      const region = mapData.regions.find((r) => r.id === detectedRegion.id)
       if (!region) continue
 
-      const regionPath = svgElement.querySelector(`path[data-region-id="${regionId}"]`)
+      const regionPath = svgElement.querySelector(`path[data-region-id="${detectedRegion.id}"]`)
       if (!regionPath) continue
 
       // Use pre-computed largest piece size for multi-piece regions
       let currentWidth: number
       let currentHeight: number
 
-      const cachedSize = largestPieceSizesCache.get(regionId)
+      const cachedSize = largestPieceSizesCache.get(detectedRegion.id)
       if (cachedSize) {
         // Multi-piece region: use pre-computed largest piece
         currentWidth = cachedSize.width
@@ -312,17 +422,14 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
 
         // Log when we accept a zoom
         console.log(
-          `[Zoom] ✅ Accepted ${testZoom.toFixed(1)}x for ${regionId} (${currentWidth.toFixed(1)}px × ${currentHeight.toFixed(1)}px)`
+          `[Zoom] ✅ Accepted ${testZoom.toFixed(1)}x for ${detectedRegion.id} (${currentWidth.toFixed(1)}px × ${currentHeight.toFixed(1)}px)`
         )
 
-        // Save bounding box for this region
-        boundingBoxes.push({
-          regionId,
-          x: regionSvgLeft,
-          y: regionSvgTop,
-          width: pathRect.width * scaleX,
-          height: pathRect.height * scaleY,
-        })
+        // Mark this region's bounding box as accepted
+        const acceptedBox = boundingBoxes.find((bbox) => bbox.regionId === detectedRegion.id)
+        if (acceptedBox) {
+          acceptedBox.wasAccepted = true
+        }
 
         break // Found a good zoom, stop checking regions
       }

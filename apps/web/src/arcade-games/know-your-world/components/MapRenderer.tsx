@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { useSpring, useSpringRef, animated } from '@react-spring/web'
+import { useSpring, animated } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { MapData, MapRegion } from '../types'
@@ -19,13 +19,19 @@ import {
   calculateMaxZoomAtThreshold,
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
-import { findOptimalZoom } from '../utils/adaptiveZoomSearch'
+import {
+  findOptimalZoom,
+  type BoundingBox as DebugBoundingBox,
+} from '../utils/adaptiveZoomSearch'
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { usePointerLock } from '../hooks/usePointerLock'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
+
+// Debug flag: show bounding boxes with importance scores (dev only)
+const SHOW_DEBUG_BOUNDING_BOXES = process.env.NODE_ENV === 'development'
 
 // Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
 const PRECISION_MODE_THRESHOLD = 20
@@ -125,7 +131,7 @@ export function MapRenderer({
   guessHistory,
   playerMetadata,
   forceTuning = {},
-  showDebugBoundingBoxes = false,
+  showDebugBoundingBoxes = SHOW_DEBUG_BOUNDING_BOXES,
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -249,9 +255,7 @@ export function MapRenderer({
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
   // Debug: Track bounding boxes for visualization
-  const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<
-    Array<{ regionId: string; x: number; y: number; width: number; height: number }>
-  >([])
+  const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<DebugBoundingBox[]>([])
 
   // Pre-computed largest piece sizes for multi-piece regions
   // Maps regionId -> {width, height} of the largest piece
@@ -362,7 +366,6 @@ export function MapRenderer({
           console.log('[CLICK] Using closest detected region:', {
             regionId: closestRegion.id,
             regionName: region.name,
-            distance: closestRegion.distanceToCenter?.toFixed(2),
           })
           onRegionClick(closestRegion.id, region.name)
         }
@@ -1048,10 +1051,7 @@ export function MapRenderer({
       totalRegionArea,
     } = detectionResult
 
-    // Extract region IDs for zoom search (already sorted smallest-first by hook)
-    const detectedRegions = detectedRegionObjects.map((r) => r.id)
-
-    if (pointerLocked && detectedRegions.length > 0) {
+    if (pointerLocked && detectedRegionObjects.length > 0) {
       const sortedSizes = detectedRegionObjects.map((r) => `${r.id}: ${r.screenSize.toFixed(2)}px`)
       console.log('[Zoom Search] Sorted regions (smallest first):', sortedSizes)
     }
@@ -1075,7 +1075,7 @@ export function MapRenderer({
     if (shouldShow) {
       // Use adaptive zoom search utility to find optimal zoom
       const zoomSearchResult = findOptimalZoom({
-        detectedRegions,
+        detectedRegions: detectedRegionObjects,
         detectedSmallestSize,
         cursorX,
         cursorY,
@@ -1272,36 +1272,42 @@ export function MapRenderer({
 
         {/* Debug: Render bounding boxes (only if enabled) */}
         {showDebugBoundingBoxes &&
-          debugBoundingBoxes.map((bbox) => (
-            <g key={`bbox-${bbox.regionId}`}>
-              <rect
-                x={bbox.x}
-                y={bbox.y}
-                width={bbox.width}
-                height={bbox.height}
-                fill="none"
-                stroke="#ff0000"
-                strokeWidth={viewBoxWidth / 500}
-                vectorEffect="non-scaling-stroke"
-                strokeDasharray="3,3"
-                pointerEvents="none"
-                opacity={0.8}
-              />
-              {/* Label showing region ID */}
-              <text
-                x={bbox.x + bbox.width / 2}
-                y={bbox.y + bbox.height / 2}
-                fill="#ff0000"
-                fontSize={viewBoxWidth / 80}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                pointerEvents="none"
-                style={{ fontWeight: 'bold' }}
-              >
-                {bbox.regionId}
-              </text>
-            </g>
-          ))}
+          debugBoundingBoxes.map((bbox) => {
+            // Color based on acceptance and importance
+            // Green = accepted, Orange = high importance, Yellow = medium, Gray = low
+            const importance = bbox.importance ?? 0
+            let strokeColor = '#888888' // Default gray for low importance
+            let fillColor = 'rgba(136, 136, 136, 0.1)'
+
+            if (bbox.wasAccepted) {
+              strokeColor = '#00ff00' // Green for accepted region
+              fillColor = 'rgba(0, 255, 0, 0.15)'
+            } else if (importance > 1.5) {
+              strokeColor = '#ff6600' // Orange for high importance (2.0× boost + close)
+              fillColor = 'rgba(255, 102, 0, 0.1)'
+            } else if (importance > 0.5) {
+              strokeColor = '#ffcc00' // Yellow for medium importance
+              fillColor = 'rgba(255, 204, 0, 0.1)'
+            }
+
+            return (
+              <g key={`bbox-${bbox.regionId}`}>
+                <rect
+                  x={bbox.x}
+                  y={bbox.y}
+                  width={bbox.width}
+                  height={bbox.height}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                  strokeWidth={viewBoxWidth / 500}
+                  vectorEffect="non-scaling-stroke"
+                  strokeDasharray="3,3"
+                  pointerEvents="none"
+                  opacity={0.9}
+                />
+              </g>
+            )
+          })}
 
         {/* Arrow marker definition */}
         <defs>
@@ -1539,6 +1545,64 @@ export function MapRenderer({
           </div>
         </div>
       ))}
+
+      {/* Debug: Bounding box labels as HTML overlays */}
+      {showDebugBoundingBoxes &&
+        containerRef.current &&
+        svgRef.current &&
+        debugBoundingBoxes.map((bbox) => {
+          const importance = bbox.importance ?? 0
+          let strokeColor = '#888888'
+
+          if (bbox.wasAccepted) {
+            strokeColor = '#00ff00'
+          } else if (importance > 1.5) {
+            strokeColor = '#ff6600'
+          } else if (importance > 0.5) {
+            strokeColor = '#ffcc00'
+          }
+
+          // Convert SVG coordinates to pixel coordinates
+          const containerRect = containerRef.current!.getBoundingClientRect()
+          const svgRect = svgRef.current!.getBoundingClientRect()
+          const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+          const viewBoxX = viewBoxParts[0] || 0
+          const viewBoxY = viewBoxParts[1] || 0
+          const viewBoxWidth = viewBoxParts[2] || 1000
+          const viewBoxHeight = viewBoxParts[3] || 1000
+
+          const scaleX = svgRect.width / viewBoxWidth
+          const scaleY = svgRect.height / viewBoxHeight
+          const svgOffsetX = svgRect.left - containerRect.left
+          const svgOffsetY = svgRect.top - containerRect.top
+
+          // Convert bbox center from SVG coords to pixels
+          const centerX = (bbox.x + bbox.width / 2 - viewBoxX) * scaleX + svgOffsetX
+          const centerY = (bbox.y + bbox.height / 2 - viewBoxY) * scaleY + svgOffsetY
+
+          return (
+            <div
+              key={`bbox-label-${bbox.regionId}`}
+              style={{
+                position: 'absolute',
+                left: `${centerX}px`,
+                top: `${centerY}px`,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 15,
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: strokeColor,
+                textAlign: 'center',
+                textShadow: '0 0 2px black, 0 0 2px black, 0 0 2px black',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <div>{bbox.regionId}</div>
+              <div style={{ fontSize: '8px', fontWeight: 'normal' }}>{importance.toFixed(2)}</div>
+            </div>
+          )
+        })}
 
       {/* Custom Cursor - Visible when pointer lock is active */}
       {(() => {
@@ -2034,7 +2098,8 @@ export function MapRenderer({
                 <div>Regions detected: {detectedRegions.length}</div>
                 <div>Has small region: {hasSmallRegion ? 'YES' : 'NO'}</div>
                 <div>
-                  Smallest size: {detectedSmallestSize === Infinity ? '∞' : `${detectedSmallestSize.toFixed(1)}px`}
+                  Smallest size:{' '}
+                  {detectedSmallestSize === Infinity ? '∞' : `${detectedSmallestSize.toFixed(1)}px`}
                 </div>
                 <div style={{ marginTop: '8px' }}>
                   <strong>Detected Regions:</strong>
