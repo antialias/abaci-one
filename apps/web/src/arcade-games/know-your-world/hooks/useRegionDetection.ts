@@ -173,7 +173,46 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
       let totalRegionArea = 0
       let detectedSmallestSize = Infinity
 
+      // Get SVG transformation for converting region centers to screen coords
+      const screenCTM = svgElement.getScreenCTM()
+      if (!screenCTM) {
+        return {
+          detectedRegions: [],
+          regionUnderCursor: null,
+          regionUnderCursorArea: 0,
+          regionsInBox: 0,
+          hasSmallRegion: false,
+          detectedSmallestSize: Infinity,
+          totalRegionArea: 0,
+        }
+      }
+
+      const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+      const viewBoxX = viewBoxParts[0] || 0
+      const viewBoxY = viewBoxParts[1] || 0
+
       mapData.regions.forEach((region) => {
+        // PERFORMANCE: Quick distance check using pre-computed center
+        // This avoids expensive DOM queries for regions far from cursor
+        // Region center is in SVG coordinates, convert to screen coords
+        const svgCenter = svgElement.createSVGPoint()
+        svgCenter.x = region.center[0]
+        svgCenter.y = region.center[1]
+        const screenCenter = svgCenter.matrixTransform(screenCTM)
+
+        // Calculate rough distance from cursor to region center
+        const dx = screenCenter.x - cursorClientX
+        const dy = screenCenter.y - cursorClientY
+        const distanceSquared = dx * dx + dy * dy
+
+        // Skip regions whose centers are far from the detection box
+        // Use generous threshold to avoid false negatives (detection box is 50px, so check 150px)
+        const MAX_DISTANCE = 150
+        if (distanceSquared > MAX_DISTANCE * MAX_DISTANCE) {
+          return // Region is definitely too far away
+        }
+
+        // Region is close enough - now do proper DOM-based checks
         const regionPath = svgElement.querySelector(`path[data-region-id="${region.id}"]`)
         if (!regionPath || !(regionPath instanceof SVGGeometryElement)) return
 
@@ -183,7 +222,7 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         // Sample multiple points within the detection box to check for intersection
         // This prevents false positives from irregularly shaped regions
 
-        // First quick check: does bounding box even overlap? (fast rejection)
+        // Second check: does bounding box overlap? (fast rejection)
         const regionLeft = pathRect.left
         const regionRight = pathRect.right
         const regionTop = pathRect.top
