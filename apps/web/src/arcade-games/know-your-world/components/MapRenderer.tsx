@@ -254,6 +254,9 @@ export function MapRenderer({
   const [targetLeft, setTargetLeft] = useState(20)
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
 
+  // Track whether current target region needs magnification
+  const [targetNeedsMagnification, setTargetNeedsMagnification] = useState(false)
+
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<DebugBoundingBox[]>([])
   // Debug: Track full zoom search result for detailed panel
@@ -415,6 +418,48 @@ export function MapRenderer({
       movementMultiplier: getMovementMultiplier(smallestRegionSize),
     })
   }, [targetOpacity, targetTop, targetLeft, smallestRegionSize, magnifierApi])
+
+  // Check if current target region needs magnification
+  useEffect(() => {
+    if (!currentPrompt || !svgRef.current || !containerRef.current) {
+      setTargetNeedsMagnification(false)
+      return
+    }
+
+    // Find the path element for the target region
+    const svgElement = svgRef.current
+    const path = svgElement.querySelector(`path[data-region-id="${currentPrompt}"]`)
+    if (!path || !(path instanceof SVGGeometryElement)) {
+      setTargetNeedsMagnification(false)
+      return
+    }
+
+    // Get the bounding box size
+    const bbox = path.getBoundingClientRect()
+    const pixelWidth = bbox.width
+    const pixelHeight = bbox.height
+    const pixelArea = pixelWidth * pixelHeight
+
+    // Use same thresholds as region detection
+    const SMALL_REGION_THRESHOLD = 15 // pixels
+    const SMALL_REGION_AREA_THRESHOLD = 200 // px²
+
+    const isVerySmall =
+      pixelWidth < SMALL_REGION_THRESHOLD ||
+      pixelHeight < SMALL_REGION_THRESHOLD ||
+      pixelArea < SMALL_REGION_AREA_THRESHOLD
+
+    setTargetNeedsMagnification(isVerySmall)
+
+    console.log('[MapRenderer] Target region magnification check:', {
+      regionId: currentPrompt,
+      pixelWidth: pixelWidth.toFixed(2),
+      pixelHeight: pixelHeight.toFixed(2),
+      pixelArea: pixelArea.toFixed(2),
+      isVerySmall,
+      needsMagnification: isVerySmall,
+    })
+  }, [currentPrompt, svgDimensions]) // Re-check when prompt or SVG size changes
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<
@@ -1060,8 +1105,8 @@ export function MapRenderer({
       console.log('[Zoom Search] Sorted regions (smallest first):', sortedSizes)
     }
 
-    // Show magnifier only when there are small regions (< 15px)
-    const shouldShow = hasSmallRegion
+    // Show magnifier only when the current target region needs magnification
+    const shouldShow = targetNeedsMagnification && hasSmallRegion
 
     // Update smallest region size for adaptive cursor dampening
     if (shouldShow && detectedSmallestSize !== Infinity) {
