@@ -2402,8 +2402,7 @@ export function MapRenderer({
                 )
               })()}
 
-              {/* Debug: Bounding boxes with labels for detected regions in magnifier */}
-              {/* Labels are rendered as SVG text inside the SVG to ensure perfect alignment */}
+              {/* Debug: Bounding boxes for detected regions in magnifier */}
               {SHOW_DEBUG_BOUNDING_BOXES &&
                 debugBoundingBoxes.map((bbox) => {
                   const importance = bbox.importance ?? 0
@@ -2418,52 +2417,112 @@ export function MapRenderer({
                     strokeColor = '#ffcc00' // Yellow for medium importance
                   }
 
-                  // Calculate bbox center for label positioning
-                  const bboxCenterX = bbox.x + bbox.width / 2
-                  const bboxCenterY = bbox.y + bbox.height / 2
-
                   return (
-                    <g key={`mag-bbox-${bbox.regionId}`}>
-                      <rect
-                        x={bbox.x}
-                        y={bbox.y}
-                        width={bbox.width}
-                        height={bbox.height}
-                        fill="none"
-                        stroke={strokeColor}
-                        strokeWidth={1}
-                        vectorEffect="non-scaling-stroke"
-                        pointerEvents="none"
-                      />
-                      {/* Label text - uses vectorEffect to maintain readable size */}
-                      <text
-                        x={bboxCenterX}
-                        y={bboxCenterY}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill={strokeColor}
-                        fontSize="10"
-                        fontWeight="bold"
-                        style={{
-                          paintOrder: 'stroke fill',
-                          stroke: 'black',
-                          strokeWidth: '3px',
-                          strokeLinejoin: 'round',
-                        }}
-                        vectorEffect="non-scaling-stroke"
-                        pointerEvents="none"
-                      >
-                        <tspan x={bboxCenterX} dy="-0.3em">
-                          {bbox.regionId}
-                        </tspan>
-                        <tspan x={bboxCenterX} dy="1.2em" fontSize="8" fontWeight="normal">
-                          {importance.toFixed(2)}
-                        </tspan>
-                      </text>
-                    </g>
+                    <rect
+                      key={`mag-bbox-${bbox.regionId}`}
+                      x={bbox.x}
+                      y={bbox.y}
+                      width={bbox.width}
+                      height={bbox.height}
+                      fill="none"
+                      stroke={strokeColor}
+                      strokeWidth={1}
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
                   )
                 })}
             </animated.svg>
+
+            {/* Debug: Bounding box labels as HTML overlays - positioned using animated values */}
+            {SHOW_DEBUG_BOUNDING_BOXES &&
+              containerRef.current &&
+              svgRef.current &&
+              debugBoundingBoxes.map((bbox) => {
+                const importance = bbox.importance ?? 0
+                let strokeColor = '#888888'
+
+                if (bbox.wasAccepted) {
+                  strokeColor = '#00ff00'
+                } else if (importance > 1.5) {
+                  strokeColor = '#ff6600'
+                } else if (importance > 0.5) {
+                  strokeColor = '#ffcc00'
+                }
+
+                // Get magnifier dimensions
+                const containerRect = containerRef.current!.getBoundingClientRect()
+                const magnifierWidth = containerRect.width * 0.5
+                const magnifierHeight = magnifierWidth / 2
+
+                // Parse viewBox
+                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxX = viewBoxParts[0] || 0
+                const viewBoxY = viewBoxParts[1] || 0
+                const viewBoxWidth = viewBoxParts[2] || 1000
+                const viewBoxHeight = viewBoxParts[3] || 1000
+
+                // Calculate bbox center
+                const bboxCenterSvgX = bbox.x + bbox.width / 2
+                const bboxCenterSvgY = bbox.y + bbox.height / 2
+
+                // Use animated interpolation to sync with magnifier viewBox
+                return (
+                  <animated.div
+                    key={`mag-bbox-label-${bbox.regionId}`}
+                    style={{
+                      position: 'absolute',
+                      // Calculate position using the same spring that controls the magnifier viewBox
+                      left: zoomSpring.to((zoom: number) => {
+                        const svgRect = svgRef.current?.getBoundingClientRect()
+                        if (!svgRect || !cursorPosition) return '-9999px'
+
+                        const scaleX = viewBoxWidth / svgRect.width
+                        const svgOffsetX = svgRect.left - containerRect.left
+                        const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
+
+                        const magnifiedWidth = viewBoxWidth / zoom
+                        const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
+
+                        const relativeX = (bboxCenterSvgX - magnifiedViewBoxX) / magnifiedWidth
+                        if (relativeX < 0 || relativeX > 1) return '-9999px'
+
+                        return `${relativeX * magnifierWidth}px`
+                      }),
+                      top: zoomSpring.to((zoom: number) => {
+                        const svgRect = svgRef.current?.getBoundingClientRect()
+                        if (!svgRect || !cursorPosition) return '-9999px'
+
+                        const scaleY = viewBoxHeight / svgRect.height
+                        const svgOffsetY = svgRect.top - containerRect.top
+                        const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+
+                        const magnifiedHeight = viewBoxHeight / zoom
+                        const magnifiedViewBoxY = cursorSvgY - magnifiedHeight / 2
+
+                        const relativeY = (bboxCenterSvgY - magnifiedViewBoxY) / magnifiedHeight
+                        if (relativeY < 0 || relativeY > 1) return '-9999px'
+
+                        return `${relativeY * magnifierHeight}px`
+                      }),
+                      transform: 'translate(-50%, -50%)',
+                      pointerEvents: 'none',
+                      zIndex: 15,
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      color: strokeColor,
+                      textAlign: 'center',
+                      textShadow: '0 0 2px black, 0 0 2px black, 0 0 2px black',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <div>{bbox.regionId}</div>
+                    <div style={{ fontSize: '8px', fontWeight: 'normal' }}>
+                      {importance.toFixed(2)}
+                    </div>
+                  </animated.div>
+                )
+              })}
 
             {/* Magnifier label */}
             <animated.div
