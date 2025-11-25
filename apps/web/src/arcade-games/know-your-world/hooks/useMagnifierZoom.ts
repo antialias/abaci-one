@@ -222,20 +222,9 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
         console.log('[useMagnifierZoom] ▶️  Resuming - target zoom is below threshold')
       }
 
-      // If current zoom is very far from target (>100× difference), snap immediately
-      // This prevents slow animations when recovering from stuck states
-      const zoomDifference = Math.abs(currentZoom - targetZoom)
-      const shouldSnapImmediate = zoomDifference > 100
-
-      if (shouldSnapImmediate) {
-        console.log(
-          `[useMagnifierZoom] ⚡ Snapping immediately from ${currentZoom.toFixed(1)}× to ${targetZoom.toFixed(1)}× (diff: ${zoomDifference.toFixed(1)}×)`
-        )
-        magnifierApi.start({ zoom: targetZoom, immediate: true })
-      } else {
-        console.log('[useMagnifierZoom] 🎬 Starting/updating animation to:', targetZoom.toFixed(1))
-        magnifierApi.start({ zoom: targetZoom })
-      }
+      // Always animate smoothly - react-spring will handle the transition
+      console.log('[useMagnifierZoom] 🎬 Starting/updating animation to:', targetZoom.toFixed(1))
+      magnifierApi.start({ zoom: targetZoom })
     }
   }, [
     targetZoom, // Effect runs when target zoom changes

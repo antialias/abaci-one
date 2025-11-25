@@ -1,42 +1,18 @@
 /**
  * Region Detection Hook
  *
- * Detects which regions are near the cursor using actual SVG path geometry.
- * Uses isPointInFill() to test if sample points within the detection box
- * intersect with the actual region shapes (not just bounding boxes).
+ * Detects which regions are near the cursor using bounding box overlap.
+ * Uses isPointInFill() to determine which region is directly under the cursor.
  *
  * Returns information about detected regions including:
- * - Which regions overlap with the detection box (using actual geometry)
- * - Which region is directly under the cursor (using actual geometry)
+ * - Which regions overlap with the detection box (using bounding box)
+ * - Which region is directly under the cursor (using isPointInFill)
  * - Size information for adaptive cursor dampening
  * - Whether there are small regions requiring magnifier zoom
- *
- * CRITICAL: All detection uses SVG path geometry via isPointInFill(), not
- * bounding boxes. This prevents false positives from irregularly shaped regions.
  */
 
 import { useState, useCallback, useRef, useEffect, type RefObject } from 'react'
 import type { MapData } from '../types'
-import { Polygon, Box, point as Point } from '@flatten-js/core'
-
-/**
- * Sample points along an SVG path element to create a Polygon for geometric operations.
- * Uses SVG's native getPointAtLength() to sample the actual path geometry.
- */
-function pathToPolygon(pathElement: SVGGeometryElement, samplesCount = 50): Polygon {
-  const pathLength = pathElement.getTotalLength()
-  const points: Array<[number, number]> = []
-
-  // Sample points evenly along the path
-  for (let i = 0; i <= samplesCount; i++) {
-    const distance = (pathLength * i) / samplesCount
-    const pt = pathElement.getPointAtLength(distance)
-    points.push([pt.x, pt.y])
-  }
-
-  // Create polygon from points
-  return new Polygon(points.map(([x, y]) => Point(x, y)))
-}
 
 export interface DetectionBox {
   left: number
@@ -120,13 +96,22 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
 
-  // Cache polygons to avoid expensive recomputation on every mouse move
-  const polygonCache = useRef<Map<string, Polygon>>(new Map())
+  // Cache path elements to avoid repeated querySelector calls
+  const pathElementCache = useRef<Map<string, SVGGeometryElement>>(new Map())
 
-  // Clear cache when map data changes
+  // Populate path element cache when SVG is available
   useEffect(() => {
-    polygonCache.current.clear()
-  }, [mapData])
+    const svgElement = svgRef.current
+    if (!svgElement) return
+
+    pathElementCache.current.clear()
+    for (const region of mapData.regions) {
+      const path = svgElement.querySelector(`path[data-region-id="${region.id}"]`)
+      if (path && path instanceof SVGGeometryElement) {
+        pathElementCache.current.set(region.id, path)
+      }
+    }
+  }, [svgRef, mapData])
 
   /**
    * Detect regions at the given cursor position.
@@ -205,24 +190,21 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         const dy = screenCenter.y - cursorClientY
         const distanceSquared = dx * dx + dy * dy
 
-        // Skip regions whose centers are far from the detection box
-        // Use generous threshold to avoid false negatives (detection box is 50px, so check 150px)
-        const MAX_DISTANCE = 150
+        // Skip regions whose centers are very far from the detection box
+        // Detection box is 50px, but we check 100px radius to provide smooth transitions
+        // Regions at 50-100px will have very low importance (smooth cubic falloff)
+        const MAX_DISTANCE = 100
         if (distanceSquared > MAX_DISTANCE * MAX_DISTANCE) {
           return // Region is definitely too far away
         }
 
-        // Region is close enough - now do proper DOM-based checks
-        const regionPath = svgElement.querySelector(`path[data-region-id="${region.id}"]`)
-        if (!regionPath || !(regionPath instanceof SVGGeometryElement)) return
+        // Get cached path element (populated in useEffect)
+        const regionPath = pathElementCache.current.get(region.id)
+        if (!regionPath) return
 
         const pathRect = regionPath.getBoundingClientRect()
 
-        // CRITICAL: Use actual SVG path geometry, not bounding box
-        // Sample multiple points within the detection box to check for intersection
-        // This prevents false positives from irregularly shaped regions
-
-        // Second check: does bounding box overlap? (fast rejection)
+        // Check if bounding box overlaps with detection box
         const regionLeft = pathRect.left
         const regionRight = pathRect.right
         const regionTop = pathRect.top
@@ -239,92 +221,19 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           return
         }
 
-        // Bounding box overlaps - now check actual path geometry using flatten-js
-        let overlaps = false
-        let cursorInRegion = false
+        // SIMPLE AND FAST: Use bounding box overlap for detection
+        // If bounding box overlaps, the region is detected
+        const overlaps = boundingBoxOverlaps
 
-        // Get the transformation matrix to convert screen coordinates to SVG coordinates
-        const screenCTM = svgElement.getScreenCTM()
-        if (!screenCTM) {
-          // Fallback to bounding box if we can't get coordinate transform
-          overlaps = true
-          cursorInRegion =
-            cursorClientX >= regionLeft &&
-            cursorClientX <= regionRight &&
-            cursorClientY >= regionTop &&
-            cursorClientY <= regionBottom
-        } else {
-          const inverseMatrix = screenCTM.inverse()
+        // Use the screenCTM we already got at the top (guaranteed non-null)
+        const inverseMatrix = screenCTM.inverse()
 
-          // Check if cursor point is inside the actual region path
-          let svgPoint = svgElement.createSVGPoint()
-          svgPoint.x = cursorClientX
-          svgPoint.y = cursorClientY
-          svgPoint = svgPoint.matrixTransform(inverseMatrix)
-          cursorInRegion = regionPath.isPointInFill(svgPoint)
-
-          // For overlap detection, use flatten-js for precise geometric intersection
-          try {
-            // Get or create cached polygon for this region
-            let regionPolygon = polygonCache.current.get(region.id)
-            if (!regionPolygon) {
-              regionPolygon = pathToPolygon(regionPath)
-              polygonCache.current.set(region.id, regionPolygon)
-            }
-
-            // Convert detection box to SVG coordinates
-            const boxTopLeft = svgElement.createSVGPoint()
-            boxTopLeft.x = boxLeft
-            boxTopLeft.y = boxTop
-            const boxBottomRight = svgElement.createSVGPoint()
-            boxBottomRight.x = boxRight
-            boxBottomRight.y = boxBottom
-
-            const svgTopLeft = boxTopLeft.matrixTransform(inverseMatrix)
-            const svgBottomRight = boxBottomRight.matrixTransform(inverseMatrix)
-
-            // Create detection box in SVG coordinates
-            const detectionBox = new Box(
-              Math.min(svgTopLeft.x, svgBottomRight.x),
-              Math.min(svgTopLeft.y, svgBottomRight.y),
-              Math.max(svgTopLeft.x, svgBottomRight.x),
-              Math.max(svgTopLeft.y, svgBottomRight.y)
-            )
-
-            // Check for intersection or containment
-            const intersects = regionPolygon.intersect(detectionBox).length > 0
-            const boxContainsRegion = detectionBox.contains(regionPolygon.box)
-
-            overlaps = intersects || boxContainsRegion
-          } catch (error) {
-            // If flatten-js fails (e.g., complex path), fall back to point sampling
-            console.warn('flatten-js intersection failed, using fallback:', error)
-
-            // Fallback: check 9 strategic points
-            const testPoints = [
-              { x: boxLeft, y: boxTop },
-              { x: boxRight, y: boxTop },
-              { x: boxLeft, y: boxBottom },
-              { x: boxRight, y: boxBottom },
-              { x: cursorClientX, y: cursorClientY },
-              { x: (boxLeft + boxRight) / 2, y: boxTop },
-              { x: (boxLeft + boxRight) / 2, y: boxBottom },
-              { x: boxLeft, y: (boxTop + boxBottom) / 2 },
-              { x: boxRight, y: (boxTop + boxBottom) / 2 },
-            ]
-
-            for (const point of testPoints) {
-              const pt = svgElement.createSVGPoint()
-              pt.x = point.x
-              pt.y = point.y
-              const svgPt = pt.matrixTransform(inverseMatrix)
-              if (regionPath.isPointInFill(svgPt)) {
-                overlaps = true
-                break
-              }
-            }
-          }
-        }
+        // Check if cursor point is inside the actual region path (for "region under cursor")
+        let svgPoint = svgElement.createSVGPoint()
+        svgPoint.x = cursorClientX
+        svgPoint.y = cursorClientY
+        svgPoint = svgPoint.matrixTransform(inverseMatrix)
+        const cursorInRegion = regionPath.isPointInFill(svgPoint)
 
         // If cursor is inside region, track it as region under cursor
         if (cursorInRegion) {

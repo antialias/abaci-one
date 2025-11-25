@@ -209,17 +209,27 @@ function calculateRegionImportance(
     (cursorClientX - regionCenterX) ** 2 + (cursorClientY - regionCenterY) ** 2
   )
 
-  // Normalize distance to 0-1 range (0 = at cursor, 1 = 50px away or more)
-  // Use 50px as reference since that's our detection box size
+  // SMOOTH EDGE FALLOFF: Create a continuous importance curve
+  // - At cursor (0px): importance = 1.0 (maximum)
+  // - At 25px: importance ≈ 0.5 (half)
+  // - At 50px (edge): importance ≈ 0.0 (minimal, but not zero for continuity)
+  //
+  // Use smooth cubic falloff: (1 - (d/50)^3)
+  // This provides:
+  // - Slow decrease near cursor (plateau at center)
+  // - Faster decrease at mid-range
+  // - Very gradual approach to zero at edge (no discontinuity)
   const normalizedDistance = Math.min(distanceToCursor / 50, 1)
-  const distanceWeight = 1 - normalizedDistance // Invert: closer = higher weight
+  const distanceWeight = Math.max(0, 1 - Math.pow(normalizedDistance, 3))
 
   // 2. Size factor: Smaller regions get boosted importance
   // This ensures San Marino can be targeted even when Italy is closer to cursor
-  const sizeWeight = region.isVerySmall ? 2.0 : 1.0
+  // HOWEVER: Only apply boost if region has meaningful distance weight (> 0.1)
+  // This prevents tiny regions at the edge from suddenly dominating
+  const sizeBoost = region.isVerySmall && distanceWeight > 0.1 ? 1.5 : 1.0
 
   // Combined importance score
-  return distanceWeight * sizeWeight
+  return distanceWeight * sizeBoost
 }
 
 /**
@@ -280,6 +290,23 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   // Convert cursor position to SVG coordinates
   const scaleX = viewBoxWidth / svgRect.width
   const scaleY = viewBoxHeight / svgRect.height
+
+  // CRITICAL: Calculate minimum zoom to ensure magnified viewport doesn't exceed detection box
+  // Detection box is 50px, so magnified area should not show more than 50px of screen space
+  // At zoom Z, the magnifier shows svgRect.height/Z pixels vertically
+  // We need: svgRect.height/minZoom <= 50
+  // Therefore: minZoom >= svgRect.height/50
+  const calculatedMinZoom = Math.max(svgRect.height / 50, minZoom)
+
+  if (pointerLocked) {
+    console.log('[Zoom Search] Min zoom constraint:', {
+      svgHeight: svgRect.height,
+      detectionBox: 50,
+      calculatedMinZoom,
+      providedMinZoom: minZoom,
+      finalMinZoom: calculatedMinZoom,
+    })
+  }
   const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
   const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
 
@@ -363,7 +390,7 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   let optimalZoom = maxZoom
   let foundGoodZoom = false
 
-  for (let testZoom = maxZoom; testZoom >= minZoom; testZoom *= zoomStep) {
+  for (let testZoom = maxZoom; testZoom >= calculatedMinZoom; testZoom *= zoomStep) {
     // Calculate the SVG viewport that will be shown in the magnifier at this zoom
     const magnifiedViewBoxWidth = viewBoxWidth / testZoom
     const magnifiedViewBoxHeight = viewBoxHeight / testZoom
@@ -509,10 +536,10 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   }
 
   if (!foundGoodZoom) {
-    // Didn't find a good zoom - use minimum
-    optimalZoom = minZoom
+    // Didn't find a good zoom - use calculated minimum
+    optimalZoom = calculatedMinZoom
     if (pointerLocked) {
-      console.log(`[Zoom Search] ⚠️ No good zoom found, using minimum: ${minZoom}x`)
+      console.log(`[Zoom Search] ⚠️ No good zoom found, using calculated minimum: ${calculatedMinZoom}x`)
     }
   }
 

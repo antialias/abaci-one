@@ -2247,65 +2247,33 @@ export function MapRenderer({
                     </div>
 
                     <div style={{ marginTop: '8px' }}>
-                      <strong>Region Analysis:</strong>
+                      <strong>Region Analysis (top 3):</strong>
                     </div>
-                    {zoomSearchDebugInfo.regionDecisions
+                    {Array.from(
+                      new Map(
+                        zoomSearchDebugInfo.regionDecisions.map((d) => [d.regionId, d])
+                      ).values()
+                    )
                       .sort((a, b) => b.importance - a.importance)
-                      .slice(0, 5)
+                      .slice(0, 3)
                       .map((decision) => {
-                        const bgColor = decision.wasAccepted
-                          ? 'rgba(0, 255, 0, 0.15)'
-                          : 'rgba(128, 128, 128, 0.1)'
-                        const textColor = decision.wasAccepted ? '#0f0' : '#ccc'
-
+                        const marker = decision.wasAccepted ? '✓' : '✗'
+                        const color = decision.wasAccepted ? '#0f0' : '#888'
                         return (
                           <div
-                            key={decision.regionId}
+                            key={`decision-${decision.regionId}`}
                             style={{
                               fontSize: '9px',
                               marginLeft: '8px',
-                              marginTop: '4px',
-                              padding: '4px',
-                              backgroundColor: bgColor,
-                              borderLeft: `2px solid ${textColor}`,
-                              paddingLeft: '6px',
+                              color,
                             }}
                           >
-                            <div style={{ fontWeight: 'bold', color: textColor }}>
-                              {decision.regionId} (importance: {decision.importance.toFixed(2)})
-                            </div>
-                            <div>
-                              Size: {decision.currentSize.width.toFixed(1)}×
-                              {decision.currentSize.height.toFixed(1)}px
-                            </div>
-                            {decision.testedZoom && (
-                              <>
-                                <div>
-                                  @ {decision.testedZoom.toFixed(1)}×: {decision.magnifiedSize?.width.toFixed(0)}×
-                                  {decision.magnifiedSize?.height.toFixed(0)}px
-                                </div>
-                                <div>
-                                  Ratio: {((decision.sizeRatio?.width ?? 0) * 100).toFixed(1)}% ×{' '}
-                                  {((decision.sizeRatio?.height ?? 0) * 100).toFixed(1)}%
-                                </div>
-                              </>
-                            )}
-                            {decision.rejectionReason && (
-                              <div style={{ color: '#f88', fontStyle: 'italic' }}>
-                                ✗ {decision.rejectionReason}
-                              </div>
-                            )}
-                            {decision.wasAccepted && (
-                              <div style={{ color: '#0f0', fontWeight: 'bold' }}>✓ ACCEPTED</div>
-                            )}
+                            {marker} {decision.regionId}: {decision.currentSize.width.toFixed(0)}×
+                            {decision.currentSize.height.toFixed(0)}px
+                            {decision.rejectionReason && ` (${decision.rejectionReason})`}
                           </div>
                         )
                       })}
-                    {zoomSearchDebugInfo.regionDecisions.length > 5 && (
-                      <div style={{ fontSize: '9px', marginLeft: '8px', color: '#888', marginTop: '4px' }}>
-                        ...and {zoomSearchDebugInfo.regionDecisions.length - 5} more regions
-                      </div>
-                    )}
                   </>
                 )}
 
