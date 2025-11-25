@@ -180,22 +180,39 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         let overlaps = false
         let cursorInRegion = false
 
-        // Create SVG point for reuse
-        const svgPoint = svgElement.createSVGPoint()
+        // Get the transformation matrix to convert screen coordinates to SVG coordinates
+        const screenCTM = svgElement.getScreenCTM()
+        if (!screenCTM) {
+          // Fallback to bounding box if we can't get coordinate transform
+          overlaps = true
+          cursorInRegion =
+            cursorClientX >= regionLeft &&
+            cursorClientX <= regionRight &&
+            cursorClientY >= regionTop &&
+            cursorClientY <= regionBottom
+        } else {
+          const inverseMatrix = screenCTM.inverse()
 
-        // Check if cursor point is inside the actual region path
-        svgPoint.x = cursorClientX
-        svgPoint.y = cursorClientY
-        cursorInRegion = regionPath.isPointInFill(svgPoint)
+          // Create SVG point for reuse
+          let svgPoint = svgElement.createSVGPoint()
 
-        // Sample points in detection box to check for overlap
-        for (let i = 0; i < samplesPerSide && !overlaps; i++) {
-          for (let j = 0; j < samplesPerSide && !overlaps; j++) {
-            svgPoint.x = boxLeft + i * sampleStep
-            svgPoint.y = boxTop + j * sampleStep
-            if (regionPath.isPointInFill(svgPoint)) {
-              overlaps = true
-              break
+          // Check if cursor point is inside the actual region path
+          svgPoint.x = cursorClientX
+          svgPoint.y = cursorClientY
+          svgPoint = svgPoint.matrixTransform(inverseMatrix)
+          cursorInRegion = regionPath.isPointInFill(svgPoint)
+
+          // Sample points in detection box to check for overlap
+          for (let i = 0; i < samplesPerSide && !overlaps; i++) {
+            for (let j = 0; j < samplesPerSide && !overlaps; j++) {
+              svgPoint = svgElement.createSVGPoint()
+              svgPoint.x = boxLeft + i * sampleStep
+              svgPoint.y = boxTop + j * sampleStep
+              svgPoint = svgPoint.matrixTransform(inverseMatrix)
+              if (regionPath.isPointInFill(svgPoint)) {
+                overlaps = true
+                break
+              }
             }
           }
         }
