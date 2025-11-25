@@ -70,10 +70,6 @@ export interface KnowYourWorldState extends GameState {
   // Multiplayer
   activePlayers: string[]
   playerMetadata: Record<string, any>
-
-  // Give up animation state
-  giveUpRegionId: string | null // Region ID to show/flash when user gives up
-  giveUpTimestamp: number // When the give up was triggered (for animation timing)
 }
 
 // Move types
@@ -173,11 +169,4 @@ export type KnowYourWorldMove =
       data: {
         selectedContinent: ContinentId | 'all'
       }
-    }
-  | {
-      type: 'GIVE_UP'
-      playerId: string
-      userId: string
-      timestamp: number
-      data: {}
     }

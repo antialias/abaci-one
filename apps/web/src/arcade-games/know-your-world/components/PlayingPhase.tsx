@@ -112,8 +112,6 @@ export function PlayingPhase() {
               onRegionClick={clickRegion}
               guessHistory={state.guessHistory}
               playerMetadata={state.playerMetadata}
-              giveUpRegionId={state.giveUpRegionId}
-              giveUpTimestamp={state.giveUpTimestamp}
             />
           </div>
         </Panel>

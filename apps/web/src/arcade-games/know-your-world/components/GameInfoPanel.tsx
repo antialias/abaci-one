@@ -23,7 +23,7 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError, giveUp } = useKnowYourWorld()
+  const { state, lastError, clearError } = useKnowYourWorld()
 
   // Auto-dismiss errors after 3 seconds
   useEffect(() => {
@@ -67,9 +67,6 @@ export function GameInfoPanel({
             border: '2px solid',
             borderColor: 'blue.500',
             minWidth: 0, // Allow shrinking
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1',
           })}
         >
           <div
@@ -93,28 +90,6 @@ export function GameInfoPanel({
           >
             {currentRegionName || '...'}
           </div>
-          <button
-            onClick={giveUp}
-            data-action="give-up"
-            className={css({
-              padding: '1',
-              fontSize: '2xs',
-              cursor: 'pointer',
-              bg: isDark ? 'yellow.800' : 'yellow.100',
-              color: isDark ? 'yellow.200' : 'yellow.800',
-              rounded: 'sm',
-              border: '1px solid',
-              borderColor: isDark ? 'yellow.600' : 'yellow.400',
-              fontWeight: 'bold',
-              transition: 'all 0.2s',
-              _hover: {
-                bg: isDark ? 'yellow.700' : 'yellow.200',
-                transform: 'scale(1.02)',
-              },
-            })}
-          >
-            Give Up
-          </button>
         </div>
 
         {/* Progress - compact */}

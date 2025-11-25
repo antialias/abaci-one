@@ -421,8 +421,6 @@ export class KnowYourWorldValidator
       startTime: 0,
       activePlayers: [],
       playerMetadata: {},
-      giveUpRegionId: null,
-      giveUpTimestamp: 0,
     }
   }
 

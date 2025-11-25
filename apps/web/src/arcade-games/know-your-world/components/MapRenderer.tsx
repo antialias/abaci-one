@@ -68,9 +68,6 @@ interface MapRendererProps {
       color: string
     }
   >
-  // Give up animation
-  giveUpRegionId: string | null
-  giveUpTimestamp: number
   // Force simulation tuning parameters
   forceTuning?: {
     showArrows?: boolean
@@ -133,8 +130,6 @@ export function MapRenderer({
   onRegionClick,
   guessHistory,
   playerMetadata,
-  giveUpRegionId,
-  giveUpTimestamp,
   forceTuning = {},
   showDebugBoundingBoxes = SHOW_DEBUG_BOUNDING_BOXES,
 }: MapRendererProps) {
@@ -261,10 +256,6 @@ export function MapRenderer({
 
   // Track whether current target region needs magnification
   const [targetNeedsMagnification, setTargetNeedsMagnification] = useState(false)
-
-  // Track give up animation state
-  const [isGivingUpAnimation, setIsGivingUpAnimation] = useState(false)
-  const [giveUpAnimationProgress, setGiveUpAnimationProgress] = useState(0) // 0-1 for flash animation
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<DebugBoundingBox[]>([])
@@ -469,44 +460,6 @@ export function MapRenderer({
       needsMagnification: isVerySmall,
     })
   }, [currentPrompt, svgDimensions]) // Re-check when prompt or SVG size changes
-
-  // Handle give up animation
-  useEffect(() => {
-    if (!giveUpRegionId) {
-      setIsGivingUpAnimation(false)
-      setGiveUpAnimationProgress(0)
-      return
-    }
-
-    console.log('[GiveUp] Starting animation for region:', giveUpRegionId)
-    setIsGivingUpAnimation(true)
-    setShowMagnifier(true)
-    setTargetOpacity(1)
-
-    // Animate flash over 3 seconds (3 pulses)
-    const duration = 3000 // 3 seconds total
-    const startTime = Date.now()
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-
-      // Create pulsing effect: 0 -> 1 -> 0 -> 1 -> 0 -> 1 -> 0 (3 full pulses)
-      const pulseProgress = Math.sin(progress * Math.PI * 3) ** 2
-
-      setGiveUpAnimationProgress(pulseProgress)
-
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      } else {
-        setIsGivingUpAnimation(false)
-        setGiveUpAnimationProgress(0)
-        console.log('[GiveUp] Animation complete')
-      }
-    }
-
-    requestAnimationFrame(animate)
-  }, [giveUpRegionId, giveUpTimestamp])
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<

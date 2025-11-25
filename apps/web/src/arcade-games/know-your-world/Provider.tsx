@@ -23,7 +23,6 @@ interface KnowYourWorldContextValue {
   clickRegion: (regionId: string, regionName: string) => void
   nextRound: () => void
   endGame: () => void
-  giveUp: () => void
   endStudy: () => void
   returnToSetup: () => void
 
@@ -98,8 +97,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       startTime: 0,
       activePlayers: [],
       playerMetadata: {},
-      giveUpRegionId: null,
-      giveUpTimestamp: 0,
     }
   }, [roomData])
 
@@ -178,16 +175,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const endGame = useCallback(() => {
     sendMove({
       type: 'END_GAME',
-      playerId: state.currentPlayer || activePlayers[0] || '',
-      userId: viewerId || '',
-      data: {},
-    })
-  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
-
-  // Action: Give Up (show current region and advance)
-  const giveUp = useCallback(() => {
-    sendMove({
-      type: 'GIVE_UP',
       playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
@@ -375,7 +362,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         clickRegion,
         nextRound,
         endGame,
-        giveUp,
         endStudy,
         returnToSetup,
         setMap,
