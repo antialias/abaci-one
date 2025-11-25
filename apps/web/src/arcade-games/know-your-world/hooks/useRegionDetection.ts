@@ -173,8 +173,10 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         }
 
         // Bounding box overlaps - now check actual path geometry
-        // Sample a grid of points within the detection box
-        const samplesPerSide = 5 // 5×5 = 25 sample points
+        // Sample a dense grid of points within the detection box
+        // For 50px box: 11×11 = 121 sample points (every ~5px)
+        // This ensures we don't miss tiny regions like San Marino (1-2px)
+        const samplesPerSide = 11
         const sampleStep = detectionBoxSize / (samplesPerSide - 1)
 
         let overlaps = false

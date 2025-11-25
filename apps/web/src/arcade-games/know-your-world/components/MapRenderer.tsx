@@ -2310,19 +2310,14 @@ export function MapRenderer({
                 )}
 
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #444' }}>
-                  <strong>Detected Regions:</strong>
+                  <strong>Detected Regions ({detectedRegions.length}):</strong>
                 </div>
-                {detectedRegions.slice(0, 5).map((region) => (
+                {detectedRegions.map((region) => (
                   <div key={region.id} style={{ fontSize: '10px', marginLeft: '8px' }}>
                     • {region.id}: {region.pixelWidth.toFixed(1)}×{region.pixelHeight.toFixed(1)}px
                     {region.isVerySmall ? ' (SMALL)' : ''}
                   </div>
                 ))}
-                {detectedRegions.length > 5 && (
-                  <div style={{ fontSize: '10px', marginLeft: '8px', color: '#888' }}>
-                    ...and {detectedRegions.length - 5} more
-                  </div>
-                )}
                 <div style={{ marginTop: '8px' }}>
                   <strong>Current Zoom:</strong> {getCurrentZoom().toFixed(1)}×
                 </div>
