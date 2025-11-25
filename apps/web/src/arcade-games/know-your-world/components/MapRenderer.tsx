@@ -2436,8 +2436,6 @@ export function MapRenderer({
 
             {/* Debug: Bounding box labels as HTML overlays - positioned using animated values */}
             {SHOW_DEBUG_BOUNDING_BOXES &&
-              containerRef.current &&
-              svgRef.current &&
               debugBoundingBoxes.map((bbox) => {
                 const importance = bbox.importance ?? 0
                 let strokeColor = '#888888'
@@ -2450,23 +2448,19 @@ export function MapRenderer({
                   strokeColor = '#ffcc00'
                 }
 
-                // Get magnifier dimensions
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                const magnifierWidth = containerRect.width * 0.5
-                const magnifierHeight = magnifierWidth / 2
-
-                // Parse viewBox
+                // Parse viewBox - these are stable values from mapData
                 const viewBoxParts = mapData.viewBox.split(' ').map(Number)
                 const viewBoxX = viewBoxParts[0] || 0
                 const viewBoxY = viewBoxParts[1] || 0
                 const viewBoxWidth = viewBoxParts[2] || 1000
                 const viewBoxHeight = viewBoxParts[3] || 1000
 
-                // Calculate bbox center
+                // Calculate bbox center in SVG coordinates
                 const bboxCenterSvgX = bbox.x + bbox.width / 2
                 const bboxCenterSvgY = bbox.y + bbox.height / 2
 
                 // Use animated interpolation to sync with magnifier viewBox
+                // ALL measurements must be taken inside the callback to stay in sync
                 return (
                   <animated.div
                     key={`mag-bbox-label-${bbox.regionId}`}
@@ -2474,32 +2468,47 @@ export function MapRenderer({
                       position: 'absolute',
                       // Calculate position using the same spring that controls the magnifier viewBox
                       left: zoomSpring.to((zoom: number) => {
+                        const containerRect = containerRef.current?.getBoundingClientRect()
                         const svgRect = svgRef.current?.getBoundingClientRect()
-                        if (!svgRect || !cursorPosition) return '-9999px'
+                        if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
+                        // Magnifier dimensions
+                        const magnifierWidth = containerRect.width * 0.5
+
+                        // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
                         const scaleX = viewBoxWidth / svgRect.width
                         const svgOffsetX = svgRect.left - containerRect.left
                         const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
 
+                        // Magnified viewport in SVG coordinates
                         const magnifiedWidth = viewBoxWidth / zoom
                         const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
 
+                        // Position of bbox center relative to magnified viewport (0-1)
                         const relativeX = (bboxCenterSvgX - magnifiedViewBoxX) / magnifiedWidth
                         if (relativeX < 0 || relativeX > 1) return '-9999px'
 
                         return `${relativeX * magnifierWidth}px`
                       }),
                       top: zoomSpring.to((zoom: number) => {
+                        const containerRect = containerRef.current?.getBoundingClientRect()
                         const svgRect = svgRef.current?.getBoundingClientRect()
-                        if (!svgRect || !cursorPosition) return '-9999px'
+                        if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
+                        // Magnifier dimensions (2:1 aspect ratio)
+                        const magnifierWidth = containerRect.width * 0.5
+                        const magnifierHeight = magnifierWidth / 2
+
+                        // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
                         const scaleY = viewBoxHeight / svgRect.height
                         const svgOffsetY = svgRect.top - containerRect.top
                         const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
 
+                        // Magnified viewport in SVG coordinates
                         const magnifiedHeight = viewBoxHeight / zoom
                         const magnifiedViewBoxY = cursorSvgY - magnifiedHeight / 2
 
+                        // Position of bbox center relative to magnified viewport (0-1)
                         const relativeY = (bboxCenterSvgY - magnifiedViewBoxY) / magnifiedHeight
                         if (relativeY < 0 || relativeY > 1) return '-9999px'
 
