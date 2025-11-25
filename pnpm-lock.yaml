@@ -59,6 +59,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
+      '@flatten-js/core':
+        specifier: ^1.6.8
+        version: 1.6.8
       '@number-flow/react':
         specifier: ^0.5.10
         version: 0.5.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1869,6 +1872,14 @@ packages:
 
   '@fal-works/esbuild-plugin-global-externals@2.1.2':
     resolution: {integrity: sha512-cEee/Z+I12mZcFJshKcCqC8tuX5hG3s+d+9nZ3LabqKF1vKdF41B92pJVCBggjAGORAeOzyyDDKrZwIkLffeOQ==}
+
+  '@flatten-js/core@1.6.8':
+    resolution: {integrity: sha512-ju165/r1fy7S0dN4xLy69XLgQnIDFJ8gMR4xZueZPhOeU1LuEFr6vx+M2R1iDKvCX2KYg/W+6Z/7DbsBJuFDoQ==}
+    engines: {node: '>=4.2.4'}
+
+  '@flatten-js/interval-tree@2.0.3':
+    resolution: {integrity: sha512-Lv3eaITqU20WD+5W8L7JeJdjDXC9hfTUEzY0cRLx/sXj1+P3XdK6Fig4UdxvsekakTK8XeOwnpAKEpTI728U4g==}
+    engines: {node: '>=16.0.0'}
 
   '@floating-ui/core@1.7.3':
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -11397,6 +11408,14 @@ snapshots:
   '@eslint/js@8.57.1': {}
 
   '@fal-works/esbuild-plugin-global-externals@2.1.2': {}
+
+  '@flatten-js/core@1.6.8':
+    dependencies:
+      '@flatten-js/interval-tree': 2.0.3
+
+  '@flatten-js/interval-tree@2.0.3':
+    dependencies:
+      tslib: 2.8.1
 
   '@floating-ui/core@1.7.3':
     dependencies:

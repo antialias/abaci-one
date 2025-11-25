@@ -17,6 +17,26 @@
 
 import { useState, useCallback, type RefObject } from 'react'
 import type { MapData } from '../types'
+import { Polygon, Box, point as Point } from '@flatten-js/core'
+
+/**
+ * Sample points along an SVG path element to create a Polygon for geometric operations.
+ * Uses SVG's native getPointAtLength() to sample the actual path geometry.
+ */
+function pathToPolygon(pathElement: SVGGeometryElement, samplesCount = 50): Polygon {
+  const pathLength = pathElement.getTotalLength()
+  const points: Array<[number, number]> = []
+
+  // Sample points evenly along the path
+  for (let i = 0; i <= samplesCount; i++) {
+    const distance = (pathLength * i) / samplesCount
+    const pt = pathElement.getPointAtLength(distance)
+    points.push([pt.x, pt.y])
+  }
+
+  // Create polygon from points
+  return new Polygon(points.map(([x, y]) => Point(x, y)))
+}
 
 export interface DetectionBox {
   left: number
@@ -172,7 +192,7 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           return
         }
 
-        // Bounding box overlaps - now check actual path geometry
+        // Bounding box overlaps - now check actual path geometry using flatten-js
         let overlaps = false
         let cursorInRegion = false
 
@@ -189,71 +209,67 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         } else {
           const inverseMatrix = screenCTM.inverse()
 
-          // Create SVG point for reuse
-          let svgPoint = svgElement.createSVGPoint()
-
           // Check if cursor point is inside the actual region path
+          let svgPoint = svgElement.createSVGPoint()
           svgPoint.x = cursorClientX
           svgPoint.y = cursorClientY
           svgPoint = svgPoint.matrixTransform(inverseMatrix)
           cursorInRegion = regionPath.isPointInFill(svgPoint)
 
-          // For overlap detection, we need to check if:
-          // 1. Any corner of the detection box is inside the region, OR
-          // 2. Any point of the region is inside the detection box
-          //
-          // Since we can't easily check #2 without path APIs, we'll use a hybrid approach:
-          // - Check all 4 corners of detection box
-          // - Check center point
-          // - Check midpoints of each edge (for regions that touch edges but not corners)
-          // This gives us 9 strategic points that catch most intersections
+          // For overlap detection, use flatten-js for precise geometric intersection
+          try {
+            // Convert region path to Polygon (in SVG coordinates)
+            const regionPolygon = pathToPolygon(regionPath)
 
-          const testPoints = [
-            // Four corners
-            { x: boxLeft, y: boxTop },
-            { x: boxRight, y: boxTop },
-            { x: boxLeft, y: boxBottom },
-            { x: boxRight, y: boxBottom },
-            // Center
-            { x: cursorClientX, y: cursorClientY },
-            // Edge midpoints
-            { x: (boxLeft + boxRight) / 2, y: boxTop },
-            { x: (boxLeft + boxRight) / 2, y: boxBottom },
-            { x: boxLeft, y: (boxTop + boxBottom) / 2 },
-            { x: boxRight, y: (boxTop + boxBottom) / 2 },
-          ]
+            // Convert detection box to SVG coordinates
+            const boxTopLeft = svgElement.createSVGPoint()
+            boxTopLeft.x = boxLeft
+            boxTopLeft.y = boxTop
+            const boxBottomRight = svgElement.createSVGPoint()
+            boxBottomRight.x = boxRight
+            boxBottomRight.y = boxBottom
 
-          for (const point of testPoints) {
-            svgPoint = svgElement.createSVGPoint()
-            svgPoint.x = point.x
-            svgPoint.y = point.y
-            svgPoint = svgPoint.matrixTransform(inverseMatrix)
-            if (regionPath.isPointInFill(svgPoint)) {
-              overlaps = true
-              break
-            }
-          }
+            const svgTopLeft = boxTopLeft.matrixTransform(inverseMatrix)
+            const svgBottomRight = boxBottomRight.matrixTransform(inverseMatrix)
 
-          // Additional check: if region is entirely contained within detection box,
-          // the above tests might miss it. Check if region's bounding box center
-          // is inside detection box AND the region is small enough to fit
-          if (!overlaps) {
-            const regionCenterX = (regionLeft + regionRight) / 2
-            const regionCenterY = (regionTop + regionBottom) / 2
-            const regionInBox =
-              regionCenterX >= boxLeft &&
-              regionCenterX <= boxRight &&
-              regionCenterY >= boxTop &&
-              regionCenterY <= boxBottom
+            // Create detection box in SVG coordinates
+            const detectionBox = new Box(
+              Math.min(svgTopLeft.x, svgBottomRight.x),
+              Math.min(svgTopLeft.y, svgBottomRight.y),
+              Math.max(svgTopLeft.x, svgBottomRight.x),
+              Math.max(svgTopLeft.y, svgBottomRight.y)
+            )
 
-            if (regionInBox) {
-              // Region center is in box - verify the center point is actually in the region
-              svgPoint = svgElement.createSVGPoint()
-              svgPoint.x = regionCenterX
-              svgPoint.y = regionCenterY
-              svgPoint = svgPoint.matrixTransform(inverseMatrix)
-              if (regionPath.isPointInFill(svgPoint)) {
+            // Check for intersection or containment
+            const intersects = regionPolygon.intersect(detectionBox).length > 0
+            const boxContainsRegion = detectionBox.contains(regionPolygon.box)
+
+            overlaps = intersects || boxContainsRegion
+          } catch (error) {
+            // If flatten-js fails (e.g., complex path), fall back to point sampling
+            console.warn('flatten-js intersection failed, using fallback:', error)
+
+            // Fallback: check 9 strategic points
+            const testPoints = [
+              { x: boxLeft, y: boxTop },
+              { x: boxRight, y: boxTop },
+              { x: boxLeft, y: boxBottom },
+              { x: boxRight, y: boxBottom },
+              { x: cursorClientX, y: cursorClientY },
+              { x: (boxLeft + boxRight) / 2, y: boxTop },
+              { x: (boxLeft + boxRight) / 2, y: boxBottom },
+              { x: boxLeft, y: (boxTop + boxBottom) / 2 },
+              { x: boxRight, y: (boxTop + boxBottom) / 2 },
+            ]
+
+            for (const point of testPoints) {
+              const pt = svgElement.createSVGPoint()
+              pt.x = point.x
+              pt.y = point.y
+              const svgPt = pt.matrixTransform(inverseMatrix)
+              if (regionPath.isPointInFill(svgPt)) {
                 overlaps = true
+                break
               }
             }
           }
