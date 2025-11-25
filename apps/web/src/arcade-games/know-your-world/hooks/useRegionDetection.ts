@@ -1,12 +1,18 @@
 /**
  * Region Detection Hook
  *
- * Detects which regions are near the cursor using a detection box.
+ * Detects which regions are near the cursor using actual SVG path geometry.
+ * Uses isPointInFill() to test if sample points within the detection box
+ * intersect with the actual region shapes (not just bounding boxes).
+ *
  * Returns information about detected regions including:
- * - Which regions overlap with the detection box
- * - Which region is directly under the cursor
+ * - Which regions overlap with the detection box (using actual geometry)
+ * - Which region is directly under the cursor (using actual geometry)
  * - Size information for adaptive cursor dampening
  * - Whether there are small regions requiring magnifier zoom
+ *
+ * CRITICAL: All detection uses SVG path geometry via isPointInFill(), not
+ * bounding boxes. This prevents false positives from irregularly shaped regions.
  */
 
 import { useState, useCallback, type RefObject } from 'react'
@@ -141,31 +147,62 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
       mapData.regions.forEach((region) => {
         const regionPath = svgElement.querySelector(`path[data-region-id="${region.id}"]`)
-        if (!regionPath) return
+        if (!regionPath || !(regionPath instanceof SVGGeometryElement)) return
 
         const pathRect = regionPath.getBoundingClientRect()
 
+        // CRITICAL: Use actual SVG path geometry, not bounding box
+        // Sample multiple points within the detection box to check for intersection
+        // This prevents false positives from irregularly shaped regions
+
+        // First quick check: does bounding box even overlap? (fast rejection)
         const regionLeft = pathRect.left
         const regionRight = pathRect.right
         const regionTop = pathRect.top
         const regionBottom = pathRect.bottom
 
-        // Check if region overlaps with detection box
-        const overlaps =
+        const boundingBoxOverlaps =
           regionLeft < boxRight &&
           regionRight > boxLeft &&
           regionTop < boxBottom &&
           regionBottom > boxTop
 
-        // Check if cursor is directly over this region
-        const cursorInRegion =
-          cursorClientX >= regionLeft &&
-          cursorClientX <= regionRight &&
-          cursorClientY >= regionTop &&
-          cursorClientY <= regionBottom
+        if (!boundingBoxOverlaps) {
+          // Bounding box doesn't overlap, so actual path definitely doesn't
+          return
+        }
 
+        // Bounding box overlaps - now check actual path geometry
+        // Sample a grid of points within the detection box
+        const samplesPerSide = 5 // 5×5 = 25 sample points
+        const sampleStep = detectionBoxSize / (samplesPerSide - 1)
+
+        let overlaps = false
+        let cursorInRegion = false
+
+        // Create SVG point for reuse
+        const svgPoint = svgElement.createSVGPoint()
+
+        // Check if cursor point is inside the actual region path
+        svgPoint.x = cursorClientX
+        svgPoint.y = cursorClientY
+        cursorInRegion = regionPath.isPointInFill(svgPoint)
+
+        // Sample points in detection box to check for overlap
+        for (let i = 0; i < samplesPerSide && !overlaps; i++) {
+          for (let j = 0; j < samplesPerSide && !overlaps; j++) {
+            svgPoint.x = boxLeft + i * sampleStep
+            svgPoint.y = boxTop + j * sampleStep
+            if (regionPath.isPointInFill(svgPoint)) {
+              overlaps = true
+              break
+            }
+          }
+        }
+
+        // If cursor is inside region, track it as region under cursor
         if (cursorInRegion) {
-          // Calculate distance from cursor to region center
+          // Calculate distance from cursor to region center (using bounding box center as approximation)
           const regionCenterX = (regionLeft + regionRight) / 2
           const regionCenterY = (regionTop + regionBottom) / 2
           const distanceToCenter = Math.sqrt(
@@ -179,6 +216,7 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           }
         }
 
+        // If detection box overlaps with actual path geometry, add to detected regions
         if (overlaps) {
           const pixelWidth = pathRect.width
           const pixelHeight = pathRect.height
