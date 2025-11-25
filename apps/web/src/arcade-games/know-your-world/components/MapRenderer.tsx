@@ -23,6 +23,7 @@ import { findOptimalZoom, type BoundingBox as DebugBoundingBox } from '../utils/
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { usePointerLock } from '../hooks/usePointerLock'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
+import { DevCropTool } from './DevCropTool'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -3092,6 +3093,15 @@ export function MapRenderer({
           </button>
         )
       })()}
+
+      {/* Dev-only crop tool for getting custom viewBox coordinates */}
+      <DevCropTool
+        svgRef={svgRef}
+        containerRef={containerRef}
+        viewBox={mapData.viewBox}
+        mapId={selectedMap}
+        continentId={selectedContinent}
+      />
     </div>
   )
 }

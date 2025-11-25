@@ -1,4 +1,5 @@
 import type { MapData, MapRegion } from './types'
+import { getCustomCrop } from './customCrops'
 
 /**
  * Type definition for @svg-maps packages
@@ -640,15 +641,23 @@ export function filterRegionsByContinent(
 
 /**
  * Calculate adjusted viewBox for a continent
- * Adds padding around the bounding box
+ * Uses custom crop if available, otherwise calculates from bounding box with padding
  */
 export function calculateContinentViewBox(
   regions: MapRegion[],
   continentId: ContinentId | 'all',
-  originalViewBox: string
+  originalViewBox: string,
+  mapId: string = 'world'
 ): string {
   if (continentId === 'all') {
     return originalViewBox
+  }
+
+  // Check for custom crop override first
+  const customCrop = getCustomCrop(mapId, continentId)
+  if (customCrop) {
+    console.log(`[Maps] Using custom crop for ${mapId}/${continentId}: ${customCrop}`)
+    return customCrop
   }
 
   const filteredRegions = filterRegionsByContinent(regions, continentId)
@@ -792,7 +801,12 @@ export async function getFilteredMapData(
   // Apply continent filtering for world map
   if (mapId === 'world' && continentId !== 'all') {
     filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
-    adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+    adjustedViewBox = calculateContinentViewBox(
+      mapData.regions,
+      continentId,
+      mapData.viewBox,
+      mapId
+    )
   }
 
   // Apply difficulty filtering
@@ -843,7 +857,12 @@ export function getFilteredMapDataSync(
   // Apply continent filtering for world map
   if (mapId === 'world' && continentId !== 'all') {
     filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
-    adjustedViewBox = calculateContinentViewBox(mapData.regions, continentId, mapData.viewBox)
+    adjustedViewBox = calculateContinentViewBox(
+      mapData.regions,
+      continentId,
+      mapData.viewBox,
+      mapId
+    )
   }
 
   // Apply difficulty filtering
