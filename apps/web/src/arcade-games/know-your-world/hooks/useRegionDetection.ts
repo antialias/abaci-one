@@ -173,12 +173,6 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         }
 
         // Bounding box overlaps - now check actual path geometry
-        // Sample a dense grid of points within the detection box
-        // For 50px box: 11×11 = 121 sample points (every ~5px)
-        // This ensures we don't miss tiny regions like San Marino (1-2px)
-        const samplesPerSide = 11
-        const sampleStep = detectionBoxSize / (samplesPerSide - 1)
-
         let overlaps = false
         let cursorInRegion = false
 
@@ -204,16 +198,62 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           svgPoint = svgPoint.matrixTransform(inverseMatrix)
           cursorInRegion = regionPath.isPointInFill(svgPoint)
 
-          // Sample points in detection box to check for overlap
-          for (let i = 0; i < samplesPerSide && !overlaps; i++) {
-            for (let j = 0; j < samplesPerSide && !overlaps; j++) {
+          // For overlap detection, we need to check if:
+          // 1. Any corner of the detection box is inside the region, OR
+          // 2. Any point of the region is inside the detection box
+          //
+          // Since we can't easily check #2 without path APIs, we'll use a hybrid approach:
+          // - Check all 4 corners of detection box
+          // - Check center point
+          // - Check midpoints of each edge (for regions that touch edges but not corners)
+          // This gives us 9 strategic points that catch most intersections
+
+          const testPoints = [
+            // Four corners
+            { x: boxLeft, y: boxTop },
+            { x: boxRight, y: boxTop },
+            { x: boxLeft, y: boxBottom },
+            { x: boxRight, y: boxBottom },
+            // Center
+            { x: cursorClientX, y: cursorClientY },
+            // Edge midpoints
+            { x: (boxLeft + boxRight) / 2, y: boxTop },
+            { x: (boxLeft + boxRight) / 2, y: boxBottom },
+            { x: boxLeft, y: (boxTop + boxBottom) / 2 },
+            { x: boxRight, y: (boxTop + boxBottom) / 2 },
+          ]
+
+          for (const point of testPoints) {
+            svgPoint = svgElement.createSVGPoint()
+            svgPoint.x = point.x
+            svgPoint.y = point.y
+            svgPoint = svgPoint.matrixTransform(inverseMatrix)
+            if (regionPath.isPointInFill(svgPoint)) {
+              overlaps = true
+              break
+            }
+          }
+
+          // Additional check: if region is entirely contained within detection box,
+          // the above tests might miss it. Check if region's bounding box center
+          // is inside detection box AND the region is small enough to fit
+          if (!overlaps) {
+            const regionCenterX = (regionLeft + regionRight) / 2
+            const regionCenterY = (regionTop + regionBottom) / 2
+            const regionInBox =
+              regionCenterX >= boxLeft &&
+              regionCenterX <= boxRight &&
+              regionCenterY >= boxTop &&
+              regionCenterY <= boxBottom
+
+            if (regionInBox) {
+              // Region center is in box - verify the center point is actually in the region
               svgPoint = svgElement.createSVGPoint()
-              svgPoint.x = boxLeft + i * sampleStep
-              svgPoint.y = boxTop + j * sampleStep
+              svgPoint.x = regionCenterX
+              svgPoint.y = regionCenterY
               svgPoint = svgPoint.matrixTransform(inverseMatrix)
               if (regionPath.isPointInFill(svgPoint)) {
                 overlaps = true
-                break
               }
             }
           }
