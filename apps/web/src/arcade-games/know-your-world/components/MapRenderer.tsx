@@ -256,6 +256,10 @@ export function MapRenderer({
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<DebugBoundingBox[]>([])
+  // Debug: Track full zoom search result for detailed panel
+  const [zoomSearchDebugInfo, setZoomSearchDebugInfo] = useState<ReturnType<
+    typeof findOptimalZoom
+  > | null>(null)
 
   // Pre-computed largest piece sizes for multi-piece regions
   // Maps regionId -> {width, height} of the largest piece
@@ -1094,6 +1098,8 @@ export function MapRenderer({
 
       // Save bounding boxes for rendering
       setDebugBoundingBoxes(boundingBoxes)
+      // Save full zoom search result for debug panel
+      setZoomSearchDebugInfo(zoomSearchResult)
 
       // Calculate magnifier dimensions (needed for positioning)
       const magnifierWidth = containerRect.width * 0.5
@@ -2222,7 +2228,88 @@ export function MapRenderer({
                   Smallest size:{' '}
                   {detectedSmallestSize === Infinity ? '∞' : `${detectedSmallestSize.toFixed(1)}px`}
                 </div>
-                <div style={{ marginTop: '8px' }}>
+                {/* Zoom Decision Details */}
+                {zoomSearchDebugInfo && (
+                  <>
+                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #444' }}>
+                      <strong>Zoom Decision:</strong>
+                    </div>
+                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
+                      Final zoom: <strong>{zoomSearchDebugInfo.zoom.toFixed(1)}×</strong>
+                      {!zoomSearchDebugInfo.foundGoodZoom && ' (fallback to min)'}
+                    </div>
+                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
+                      Accepted: <strong>{zoomSearchDebugInfo.acceptedRegionId || 'none'}</strong>
+                    </div>
+                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
+                      Thresholds: {(zoomSearchDebugInfo.acceptanceThresholds.min * 100).toFixed(0)}% -{' '}
+                      {(zoomSearchDebugInfo.acceptanceThresholds.max * 100).toFixed(0)}% of magnifier
+                    </div>
+
+                    <div style={{ marginTop: '8px' }}>
+                      <strong>Region Analysis:</strong>
+                    </div>
+                    {zoomSearchDebugInfo.regionDecisions
+                      .sort((a, b) => b.importance - a.importance)
+                      .slice(0, 5)
+                      .map((decision) => {
+                        const bgColor = decision.wasAccepted
+                          ? 'rgba(0, 255, 0, 0.15)'
+                          : 'rgba(128, 128, 128, 0.1)'
+                        const textColor = decision.wasAccepted ? '#0f0' : '#ccc'
+
+                        return (
+                          <div
+                            key={decision.regionId}
+                            style={{
+                              fontSize: '9px',
+                              marginLeft: '8px',
+                              marginTop: '4px',
+                              padding: '4px',
+                              backgroundColor: bgColor,
+                              borderLeft: `2px solid ${textColor}`,
+                              paddingLeft: '6px',
+                            }}
+                          >
+                            <div style={{ fontWeight: 'bold', color: textColor }}>
+                              {decision.regionId} (importance: {decision.importance.toFixed(2)})
+                            </div>
+                            <div>
+                              Size: {decision.currentSize.width.toFixed(1)}×
+                              {decision.currentSize.height.toFixed(1)}px
+                            </div>
+                            {decision.testedZoom && (
+                              <>
+                                <div>
+                                  @ {decision.testedZoom.toFixed(1)}×: {decision.magnifiedSize?.width.toFixed(0)}×
+                                  {decision.magnifiedSize?.height.toFixed(0)}px
+                                </div>
+                                <div>
+                                  Ratio: {((decision.sizeRatio?.width ?? 0) * 100).toFixed(1)}% ×{' '}
+                                  {((decision.sizeRatio?.height ?? 0) * 100).toFixed(1)}%
+                                </div>
+                              </>
+                            )}
+                            {decision.rejectionReason && (
+                              <div style={{ color: '#f88', fontStyle: 'italic' }}>
+                                ✗ {decision.rejectionReason}
+                              </div>
+                            )}
+                            {decision.wasAccepted && (
+                              <div style={{ color: '#0f0', fontWeight: 'bold' }}>✓ ACCEPTED</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    {zoomSearchDebugInfo.regionDecisions.length > 5 && (
+                      <div style={{ fontSize: '9px', marginLeft: '8px', color: '#888', marginTop: '4px' }}>
+                        ...and {zoomSearchDebugInfo.regionDecisions.length - 5} more regions
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #444' }}>
                   <strong>Detected Regions:</strong>
                 </div>
                 {detectedRegions.slice(0, 5).map((region) => (

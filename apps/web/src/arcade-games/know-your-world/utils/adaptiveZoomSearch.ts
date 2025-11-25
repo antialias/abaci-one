@@ -61,6 +61,17 @@ export interface BoundingBox {
   wasAccepted?: boolean
 }
 
+export interface RegionZoomDecision {
+  regionId: string
+  importance: number
+  currentSize: { width: number; height: number } // Screen pixels
+  testedZoom: number | null // Zoom level tested for this region (null if not in viewport)
+  magnifiedSize: { width: number; height: number } | null // Size at tested zoom
+  sizeRatio: { width: number; height: number } | null // Ratio of magnified size to magnifier
+  wasAccepted: boolean
+  rejectionReason: string | null // Why this region was rejected (if applicable)
+}
+
 export interface AdaptiveZoomSearchResult {
   /** The optimal zoom level found */
   zoom: number
@@ -68,6 +79,12 @@ export interface AdaptiveZoomSearchResult {
   foundGoodZoom: boolean
   /** Debug bounding boxes for visualization (includes all detected regions) */
   boundingBoxes: BoundingBox[]
+  /** Detailed decision information for each region */
+  regionDecisions: RegionZoomDecision[]
+  /** The acceptance thresholds used */
+  acceptanceThresholds: { min: number; max: number }
+  /** The region that was accepted (if any) */
+  acceptedRegionId: string | null
 }
 
 /**
@@ -338,6 +355,10 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     }
   }).filter((bbox) => bbox.width > 0 && bbox.height > 0)
 
+  // Track detailed decision information for each region
+  const regionDecisions: RegionZoomDecision[] = []
+  let acceptedRegionId: string | null = null
+
   // Search for optimal zoom
   let optimalZoom = maxZoom
   let foundGoodZoom = false
@@ -361,7 +382,7 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     // Check regions in order of importance (most important first)
     let foundFit = false
 
-    for (const { region: detectedRegion } of sortedRegions) {
+    for (const { region: detectedRegion, importance } of sortedRegions) {
       const region = mapData.regions.find((r) => r.id === detectedRegion.id)
       if (!region) continue
 
@@ -400,7 +421,23 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
         bottom: regionSvgBottom,
       }
 
-      if (!isRegionInViewport(regionBounds, viewport)) {
+      const inViewport = isRegionInViewport(regionBounds, viewport)
+
+      if (!inViewport) {
+        // Record decision: Not in viewport at this zoom
+        const existingDecision = regionDecisions.find((d) => d.regionId === detectedRegion.id)
+        if (!existingDecision) {
+          regionDecisions.push({
+            regionId: detectedRegion.id,
+            importance,
+            currentSize: { width: currentWidth, height: currentHeight },
+            testedZoom: null,
+            magnifiedSize: null,
+            sizeRatio: null,
+            wasAccepted: false,
+            rejectionReason: 'Not in viewport',
+          })
+        }
         continue // Skip regions not in viewport
       }
 
@@ -412,13 +449,14 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
       const heightRatio = magnifiedHeight / magnifierHeight
 
       // If either dimension is within our adaptive acceptance range, we found a good zoom
-      if (
-        (widthRatio >= minAcceptableRatio && widthRatio <= maxAcceptableRatio) ||
-        (heightRatio >= minAcceptableRatio && heightRatio <= maxAcceptableRatio)
-      ) {
+      const widthFits = widthRatio >= minAcceptableRatio && widthRatio <= maxAcceptableRatio
+      const heightFits = heightRatio >= minAcceptableRatio && heightRatio <= maxAcceptableRatio
+
+      if (widthFits || heightFits) {
         optimalZoom = testZoom
         foundFit = true
         foundGoodZoom = true
+        acceptedRegionId = detectedRegion.id
 
         // Log when we accept a zoom
         console.log(
@@ -431,7 +469,39 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
           acceptedBox.wasAccepted = true
         }
 
+        // Record the acceptance decision
+        regionDecisions.push({
+          regionId: detectedRegion.id,
+          importance,
+          currentSize: { width: currentWidth, height: currentHeight },
+          testedZoom: testZoom,
+          magnifiedSize: { width: magnifiedWidth, height: magnifiedHeight },
+          sizeRatio: { width: widthRatio, height: heightRatio },
+          wasAccepted: true,
+          rejectionReason: null,
+        })
+
         break // Found a good zoom, stop checking regions
+      } else {
+        // Record rejection: Size doesn't fit
+        const reason =
+          widthRatio < minAcceptableRatio || heightRatio < minAcceptableRatio
+            ? 'Too small (below min threshold)'
+            : 'Too large (above max threshold)'
+
+        const existingDecision = regionDecisions.find((d) => d.regionId === detectedRegion.id)
+        if (!existingDecision) {
+          regionDecisions.push({
+            regionId: detectedRegion.id,
+            importance,
+            currentSize: { width: currentWidth, height: currentHeight },
+            testedZoom: testZoom,
+            magnifiedSize: { width: magnifiedWidth, height: magnifiedHeight },
+            sizeRatio: { width: widthRatio, height: heightRatio },
+            wasAccepted: false,
+            rejectionReason: reason,
+          })
+        }
       }
     }
 
@@ -450,5 +520,8 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
     zoom: optimalZoom,
     foundGoodZoom,
     boundingBoxes,
+    regionDecisions,
+    acceptanceThresholds: thresholds,
+    acceptedRegionId,
   }
 }
