@@ -15,7 +15,7 @@
  * bounding boxes. This prevents false positives from irregularly shaped regions.
  */
 
-import { useState, useCallback, type RefObject } from 'react'
+import { useState, useCallback, useRef, useEffect, type RefObject } from 'react'
 import type { MapData } from '../types'
 import { Polygon, Box, point as Point } from '@flatten-js/core'
 
@@ -120,6 +120,14 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
 
+  // Cache polygons to avoid expensive recomputation on every mouse move
+  const polygonCache = useRef<Map<string, Polygon>>(new Map())
+
+  // Clear cache when map data changes
+  useEffect(() => {
+    polygonCache.current.clear()
+  }, [mapData])
+
   /**
    * Detect regions at the given cursor position.
    *
@@ -218,8 +226,12 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
           // For overlap detection, use flatten-js for precise geometric intersection
           try {
-            // Convert region path to Polygon (in SVG coordinates)
-            const regionPolygon = pathToPolygon(regionPath)
+            // Get or create cached polygon for this region
+            let regionPolygon = polygonCache.current.get(region.id)
+            if (!regionPolygon) {
+              regionPolygon = pathToPolygon(regionPath)
+              polygonCache.current.set(region.id, regionPolygon)
+            }
 
             // Convert detection box to SVG coordinates
             const boxTopLeft = svgElement.createSVGPoint()
