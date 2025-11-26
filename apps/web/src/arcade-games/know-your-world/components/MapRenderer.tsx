@@ -1566,6 +1566,7 @@ export function MapRenderer({
         position: 'relative',
         width: '100%',
         height: '100%',
+        flex: 1, // Fill available space in parent flex container
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
