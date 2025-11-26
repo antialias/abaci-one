@@ -31,6 +31,7 @@ import { usePointerLock } from '../hooks/usePointerLock'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 import { useRegionHint, useHasRegionHint } from '../hooks/useRegionHint'
 import { useSpeakHint } from '../hooks/useSpeakHint'
+import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
 import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 import { DevCropTool } from './DevCropTool'
 import type { HintMap } from '../messages'
@@ -487,6 +488,12 @@ export function MapRenderer({
     return localStorage.getItem('knowYourWorld.autoHint') === 'true'
   })
 
+  // Hot/cold audio feedback setting persisted in localStorage
+  const [hotColdEnabled, setHotColdEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
+  })
+
   // Persist auto-speak setting
   const handleAutoSpeakChange = useCallback((enabled: boolean) => {
     setAutoSpeak(enabled)
@@ -503,6 +510,12 @@ export function MapRenderer({
   const handleAutoHintChange = useCallback((enabled: boolean) => {
     setAutoHint(enabled)
     localStorage.setItem('knowYourWorld.autoHint', String(enabled))
+  }, [])
+
+  // Persist hot/cold audio setting
+  const handleHotColdChange = useCallback((enabled: boolean) => {
+    setHotColdEnabled(enabled)
+    localStorage.setItem('knowYourWorld.hotColdAudio', String(enabled))
   }, [])
 
   // Pointer lock button registry and hooks for Give Up and Hint buttons
@@ -594,6 +607,21 @@ export function MapRenderer({
     onClick: handleAutoHintToggle,
   })
 
+  // Hot/cold audio checkbox pointer lock support
+  const handleHotColdToggle = useCallback(() => {
+    handleHotColdChange(!hotColdEnabled)
+  }, [hotColdEnabled, handleHotColdChange])
+
+  const hotColdCheckbox = usePointerLockButton({
+    id: 'hot-cold-checkbox',
+    disabled: false,
+    active: showHintBubble && isSpeechSupported,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: handleHotColdToggle,
+  })
+
   // Register buttons with the registry for centralized click handling
   useEffect(() => {
     buttonRegistry.register('give-up', giveUpButton.checkClick, onGiveUp)
@@ -602,6 +630,7 @@ export function MapRenderer({
     buttonRegistry.register('auto-speak-checkbox', autoSpeakCheckbox.checkClick, handleAutoSpeakToggle)
     buttonRegistry.register('with-accent-checkbox', withAccentCheckbox.checkClick, handleWithAccentToggle)
     buttonRegistry.register('auto-hint-checkbox', autoHintCheckbox.checkClick, handleAutoHintToggle)
+    buttonRegistry.register('hot-cold-checkbox', hotColdCheckbox.checkClick, handleHotColdToggle)
     return () => {
       buttonRegistry.unregister('give-up')
       buttonRegistry.unregister('hint')
@@ -609,8 +638,9 @@ export function MapRenderer({
       buttonRegistry.unregister('auto-speak-checkbox')
       buttonRegistry.unregister('with-accent-checkbox')
       buttonRegistry.unregister('auto-hint-checkbox')
+      buttonRegistry.unregister('hot-cold-checkbox')
     }
-  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, speakButton.checkClick, autoSpeakCheckbox.checkClick, withAccentCheckbox.checkClick, autoHintCheckbox.checkClick, onGiveUp, handleSpeakClick, handleAutoSpeakToggle, handleWithAccentToggle, handleAutoHintToggle])
+  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, speakButton.checkClick, autoSpeakCheckbox.checkClick, withAccentCheckbox.checkClick, autoHintCheckbox.checkClick, hotColdCheckbox.checkClick, onGiveUp, handleSpeakClick, handleAutoSpeakToggle, handleWithAccentToggle, handleAutoHintToggle, handleHotColdToggle])
 
   // Track previous showHintBubble state to detect when it opens
   const prevShowHintBubbleRef = useRef(false)
@@ -632,9 +662,11 @@ export function MapRenderer({
   const autoHintRef = useRef(autoHint)
   const autoSpeakRef = useRef(autoSpeak)
   const withAccentRef = useRef(withAccent)
+  const hotColdEnabledRef = useRef(hotColdEnabled)
   autoHintRef.current = autoHint
   autoSpeakRef.current = autoSpeak
   withAccentRef.current = withAccent
+  hotColdEnabledRef.current = hotColdEnabled
 
   // Handle hint bubble and auto-speak when the prompt changes (new region to find)
   // Only runs when currentPrompt changes, not when settings change
@@ -653,6 +685,23 @@ export function MapRenderer({
       setShowHintBubble(false)
     }
   }, [currentPrompt, hasHint, hintText, isSpeechSupported, speakHint])
+
+  // Detect touch devices (hot/cold feedback is desktop-only)
+  const isTouchDevice =
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
+  // Hot/cold audio feedback hook
+  const { checkPosition: checkHotCold, reset: resetHotCold } = useHotColdFeedback({
+    enabled: hotColdEnabled && !isTouchDevice,
+    targetRegionId: currentPrompt,
+    isSpeaking,
+  })
+
+  // Reset hot/cold feedback when prompt changes
+  useEffect(() => {
+    resetHotCold()
+  }, [currentPrompt, resetHotCold])
 
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
@@ -1771,6 +1820,33 @@ export function MapRenderer({
     // This ensures the crosshairs match what's highlighted
     if (regionUnderCursor !== hoveredRegion) {
       setHoveredRegion(regionUnderCursor)
+    }
+
+    // Hot/cold audio feedback
+    // Only run if enabled and we have a target region
+    if (hotColdEnabledRef.current && currentPrompt && !isTouchDevice) {
+      // Find target region's SVG center
+      const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
+      if (targetRegion) {
+        // Parse viewBox for coordinate conversion
+        const viewBoxParts = displayViewBox.split(' ').map(Number)
+        const viewBoxX = viewBoxParts[0] || 0
+        const viewBoxY = viewBoxParts[1] || 0
+        const viewBoxW = viewBoxParts[2] || 1000
+        const viewBoxH = viewBoxParts[3] || 500
+        // Convert SVG center to pixel coordinates
+        const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+        const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+        const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+        const targetPixelX = (targetRegion.center[0] - viewBoxX) * viewport.scale + svgOffsetX
+        const targetPixelY = (targetRegion.center[1] - viewBoxY) * viewport.scale + svgOffsetY
+
+        checkHotCold({
+          cursorPosition: { x: cursorX, y: cursorY },
+          targetCenter: { x: targetPixelX, y: targetPixelY },
+          hoveredRegionId: regionUnderCursor,
+        })
+      }
     }
 
     // Send cursor position to other players (in SVG coordinates)
@@ -4401,6 +4477,46 @@ export function MapRenderer({
                             })}
                           />
                           Speak
+                        </label>
+                      )}
+
+                      {/* Hot/Cold audio feedback checkbox */}
+                      {isSpeechSupported && (
+                        <label
+                          ref={hotColdCheckbox.refCallback}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1',
+                            cursor: 'pointer',
+                            padding: '0.5',
+                            rounded: 'sm',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              color: isDark ? 'gray.200' : 'gray.700',
+                            },
+                          })}
+                          style={{
+                            ...(hotColdCheckbox.isHovered
+                              ? { color: isDark ? '#e5e7eb' : '#374151' }
+                              : {}),
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={hotColdEnabled}
+                            onChange={(e) => handleHotColdChange(e.target.checked)}
+                            className={css({
+                              width: '12px',
+                              height: '12px',
+                              cursor: 'pointer',
+                              accentColor: isDark ? '#3b82f6' : '#2563eb',
+                            })}
+                          />
+                          Hot/Cold
                         </label>
                       )}
                     </div>
