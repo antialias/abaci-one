@@ -584,6 +584,11 @@ export function MapRenderer({
       return
     }
 
+    // Track if this effect has been cleaned up (prevents stale animations)
+    let isCancelled = false
+    let animationFrameId: number | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
     // Start animation
     setIsGiveUpAnimating(true)
     console.log('[GiveUp Zoom] giveUpReveal triggered:', giveUpReveal)
@@ -647,6 +652,12 @@ export function MapRenderer({
     const startTime = Date.now()
 
     const animate = () => {
+      // Check if this animation has been cancelled (new give-up started)
+      if (isCancelled) {
+        console.log('[GiveUp Zoom] Animation cancelled - new give-up started')
+        return
+      }
+
       const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
 
@@ -655,22 +666,36 @@ export function MapRenderer({
       setGiveUpFlashProgress(pulseProgress)
 
       if (progress < 1) {
-        requestAnimationFrame(animate)
+        animationFrameId = requestAnimationFrame(animate)
       } else {
         // Animation complete - zoom back out to default
         console.log('[GiveUp Zoom] Zooming back out to default')
         setGiveUpZoomTarget({ scale: 1, translateX: 0, translateY: 0 })
 
         // Clear reveal state after a short delay to let zoom-out start
-        setTimeout(() => {
-          setGiveUpFlashProgress(0)
-          setIsGiveUpAnimating(false)
-          setSavedButtonPosition(null)
+        timeoutId = setTimeout(() => {
+          if (!isCancelled) {
+            setGiveUpFlashProgress(0)
+            setIsGiveUpAnimating(false)
+            setSavedButtonPosition(null)
+          }
         }, 100)
       }
     }
 
-    requestAnimationFrame(animate)
+    animationFrameId = requestAnimationFrame(animate)
+
+    // Cleanup: cancel animation if giveUpReveal changes before animation completes
+    return () => {
+      isCancelled = true
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
+      console.log('[GiveUp Zoom] Cleanup - cancelling previous animation')
+    }
   }, [giveUpReveal?.timestamp]) // Re-run when timestamp changes
 
   // Shift key listener - show magnifier when Shift is held
