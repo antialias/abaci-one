@@ -135,7 +135,9 @@ function writeCropsFile(crops: Record<string, Record<string, string>>): void {
   const newContent =
     currentContent.slice(0, objStart) + formattedCrops + currentContent.slice(endIndex)
 
+  console.log('[DevCropTool] Writing new content to file:', formattedCrops)
   writeFileSync(CUSTOM_CROPS_PATH, newContent, 'utf-8')
+  console.log('[DevCropTool] File written successfully')
 }
 
 interface CropRequest {
@@ -212,9 +214,11 @@ export async function DELETE(request: Request) {
     }
 
     const crops = parseCropsFile()
+    console.log('[DevCropTool] Parsed crops before delete:', JSON.stringify(crops))
 
     // Check if crop exists
     if (!crops[mapId]?.[continentId]) {
+      console.log(`[DevCropTool] No crop found for ${mapId}/${continentId}`)
       return NextResponse.json({
         success: true,
         message: `No crop found for ${mapId}/${continentId}`,
@@ -223,13 +227,16 @@ export async function DELETE(request: Request) {
     }
 
     // Delete the crop
+    console.log(`[DevCropTool] Deleting ${mapId}/${continentId}`)
     delete crops[mapId][continentId]
 
     // Clean up empty map objects
     if (Object.keys(crops[mapId]).length === 0) {
+      console.log(`[DevCropTool] Removing empty map object for ${mapId}`)
       delete crops[mapId]
     }
 
+    console.log('[DevCropTool] Crops after delete:', JSON.stringify(crops))
     writeCropsFile(crops)
 
     console.log(`[DevCropTool] Deleted crop for ${mapId}/${continentId}`)
