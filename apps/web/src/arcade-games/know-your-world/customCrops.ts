@@ -12,7 +12,13 @@ export interface CropOverrides {
   }
 }
 
-export const customCrops: CropOverrides = {}
+export const customCrops: CropOverrides = {
+  world: {
+    europe: '399.10 106.44 200.47 263.75',
+    africa: '472.47 346.18 95.84 227.49',
+    oceania: '775.56 437.22 233.73 161.35',
+  }
+}
 
 /**
  * Get custom crop viewBox for a map/continent combination

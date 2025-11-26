@@ -37,9 +37,6 @@ const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
 // Debug flag: show bounding boxes with importance scores (dev only)
 const SHOW_DEBUG_BOUNDING_BOXES = process.env.NODE_ENV === 'development'
 
-// Debug flag: show custom crop region outline (dev only)
-const SHOW_CROP_REGION_DEBUG = process.env.NODE_ENV === 'development'
-
 // Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
 const PRECISION_MODE_THRESHOLD = 20
 
@@ -137,6 +134,12 @@ interface MapRendererProps {
   }
   // Debug flags
   showDebugBoundingBoxes?: boolean
+  // Multiplayer cursor sharing
+  gameMode?: 'cooperative' | 'race' | 'turn-based'
+  currentPlayer?: string // The player whose turn it is (for turn-based mode)
+  localPlayerId?: string // The local player's ID (to filter out our own cursor from others)
+  otherPlayerCursors?: Record<string, { x: number; y: number } | null>
+  onCursorUpdate?: (cursorPosition: { x: number; y: number } | null) => void
 }
 
 /**
@@ -192,6 +195,11 @@ export function MapRenderer({
   onGiveUp,
   forceTuning = {},
   showDebugBoundingBoxes = SHOW_DEBUG_BOUNDING_BOXES,
+  gameMode,
+  currentPlayer,
+  localPlayerId,
+  otherPlayerCursors = {},
+  onCursorUpdate,
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -537,6 +545,64 @@ export function MapRenderer({
     }
   }, [displayViewBox])
 
+  // Compute which regions network cursors are hovering over
+  // Returns a map of regionId -> { playerId, color } for regions with network hovers
+  const networkHoveredRegions = useMemo(() => {
+    const result: Record<string, { playerId: string; color: string }> = {}
+
+    // Skip if no SVG ref or no cursors
+    if (!svgRef.current) return result
+
+    Object.entries(otherPlayerCursors).forEach(([playerId, position]) => {
+      // Skip our own cursor and null positions
+      if (playerId === localPlayerId || !position) return
+
+      // In turn-based mode, only show hover when it's not our turn
+      if (gameMode === 'turn-based' && currentPlayer === localPlayerId) return
+
+      // Get player color
+      const player = playerMetadata[playerId]
+      if (!player) return
+
+      // Use SVG's native hit testing
+      // Create an SVGPoint and use getIntersectionList or check each path
+      const svg = svgRef.current
+      if (!svg) return
+
+      // Find the region element under this point using elementFromPoint
+      // First convert SVG coords to screen coords
+      const viewBoxParts = displayViewBox.split(' ').map(Number)
+      const viewBoxX = viewBoxParts[0] || 0
+      const viewBoxY = viewBoxParts[1] || 0
+      const viewBoxW = viewBoxParts[2] || 1000
+      const viewBoxH = viewBoxParts[3] || 500
+      const svgRect = svg.getBoundingClientRect()
+      const scaleX = svgRect.width / viewBoxW
+      const scaleY = svgRect.height / viewBoxH
+      const screenX = (position.x - viewBoxX) * scaleX + svgRect.left
+      const screenY = (position.y - viewBoxY) * scaleY + svgRect.top
+
+      // Get element at this screen position
+      const element = document.elementFromPoint(screenX, screenY)
+      if (element && element.hasAttribute('data-region-id')) {
+        const regionId = element.getAttribute('data-region-id')
+        if (regionId) {
+          result[regionId] = { playerId, color: player.color }
+        }
+      }
+    })
+
+    return result
+  }, [
+    otherPlayerCursors,
+    localPlayerId,
+    gameMode,
+    currentPlayer,
+    playerMetadata,
+    displayViewBox,
+    svgDimensions, // Re-run when SVG size changes
+  ])
+
   // State for give-up zoom animation target values
   const [giveUpZoomTarget, setGiveUpZoomTarget] = useState({
     scale: 1,
@@ -772,31 +838,33 @@ export function MapRenderer({
     }>
   >([])
 
-  // Measure SVG element to get actual pixel dimensions using ResizeObserver
+  // Measure container element to get available space for viewBox calculation
+  // IMPORTANT: We measure the container, not the SVG, to avoid circular dependency:
+  // The SVG fills the container, and the viewBox is calculated based on container aspect ratio
   useEffect(() => {
-    if (!svgRef.current) return
+    if (!containerRef.current) return
 
     const updateDimensions = () => {
-      const rect = svgRef.current?.getBoundingClientRect()
+      const rect = containerRef.current?.getBoundingClientRect()
       if (rect) {
         setSvgDimensions({ width: rect.width, height: rect.height })
       }
     }
 
     // Use ResizeObserver to detect panel resizing (not just window resize)
-    const observer = new ResizeObserver((entries) => {
+    const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         updateDimensions()
       })
     })
 
-    observer.observe(svgRef.current)
+    observer.observe(containerRef.current)
 
     // Initial measurement
     updateDimensions()
 
     return () => observer.disconnect()
-  }, [displayViewBox]) // Re-measure when viewBox changes (continent/map selection)
+  }, []) // No dependencies - container size doesn't depend on viewBox
 
   // Calculate label positions using ghost elements
   useEffect(() => {
@@ -1386,6 +1454,28 @@ export function MapRenderer({
     cursorPositionRef.current = { x: cursorX, y: cursorY }
     setCursorPosition({ x: cursorX, y: cursorY })
 
+    // Send cursor position to other players (in SVG coordinates)
+    // In turn-based mode, only broadcast when it's our turn
+    const shouldBroadcastCursor =
+      onCursorUpdate &&
+      svgRef.current &&
+      (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
+
+    if (shouldBroadcastCursor) {
+      const viewBoxParts = displayViewBox.split(' ').map(Number)
+      const viewBoxX = viewBoxParts[0] || 0
+      const viewBoxY = viewBoxParts[1] || 0
+      const viewBoxW = viewBoxParts[2] || 1000
+      const viewBoxH = viewBoxParts[3] || 500
+      const svgOffsetX = svgRect.left - containerRect.left
+      const svgOffsetY = svgRect.top - containerRect.top
+      const scaleX = viewBoxW / svgRect.width
+      const scaleY = viewBoxH / svgRect.height
+      const cursorSvgX = (cursorX - svgOffsetX) * scaleX + viewBoxX
+      const cursorSvgY = (cursorY - svgOffsetY) * scaleY + viewBoxY
+      onCursorUpdate({ x: cursorSvgX, y: cursorSvgY })
+    }
+
     // Check if fake cursor is hovering over Give Up button (for pointer lock mode)
     if (pointerLocked) {
       const buttonBounds = giveUpButtonBoundsRef.current
@@ -1556,6 +1646,12 @@ export function MapRenderer({
     setCursorPosition(null)
     setDebugBoundingBoxes([]) // Clear bounding boxes when leaving
     cursorPositionRef.current = null
+
+    // Notify other players that cursor left
+    // In turn-based mode, only broadcast when it's our turn
+    if (onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)) {
+      onCursorUpdate(null)
+    }
   }
 
   return (
@@ -1615,13 +1711,15 @@ export function MapRenderer({
         ref={svgRef}
         viewBox={displayViewBox}
         className={css({
-          maxWidth: '100%',
-          maxHeight: '100%',
+          // Fill the entire container - viewBox controls what portion of map is visible
+          width: '100%',
+          height: '100%',
           cursor: pointerLocked ? 'crosshair' : 'pointer',
           transformOrigin: 'center center',
         })}
         style={{
-          aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}`,
+          // No aspectRatio - the SVG fills the container and viewBox is calculated
+          // to match the container's aspect ratio via calculateFitCropViewBox
           // CSS transform for zoom animation during give-up reveal
           transform: to(
             [mainMapSpring.scale, mainMapSpring.translateX, mainMapSpring.translateY],
@@ -1658,8 +1756,24 @@ export function MapRenderer({
             : getRegionStroke(isFound, isDark)
           const strokeWidth = isBeingRevealed ? 3 : isFound ? 1 : 1.5
 
+          // Check if a network cursor is hovering over this region
+          const networkHover = networkHoveredRegions[region.id]
+
           return (
             <g key={region.id} style={{ opacity: dimmedOpacity }}>
+              {/* Glow effect for network-hovered region (other player's cursor) */}
+              {networkHover && !isBeingRevealed && (
+                <path
+                  d={region.path}
+                  fill="none"
+                  stroke={networkHover.color}
+                  strokeWidth={6}
+                  vectorEffect="non-scaling-stroke"
+                  opacity={0.5}
+                  style={{ filter: 'blur(3px)' }}
+                  pointerEvents="none"
+                />
+              )}
               {/* Glow effect for revealed region */}
               {isBeingRevealed && (
                 <path
@@ -1669,6 +1783,19 @@ export function MapRenderer({
                   strokeWidth={8}
                   vectorEffect="non-scaling-stroke"
                   style={{ filter: 'blur(4px)' }}
+                />
+              )}
+              {/* Network hover border (crisp outline in player color) */}
+              {networkHover && !isBeingRevealed && (
+                <path
+                  d={region.path}
+                  fill="none"
+                  stroke={networkHover.color}
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                  opacity={0.8}
+                  strokeDasharray="4,2"
+                  pointerEvents="none"
                 />
               )}
               {/* Region path */}
@@ -1848,30 +1975,6 @@ export function MapRenderer({
           />
         )}
 
-        {/* Debug: Show custom crop region outline */}
-        {SHOW_CROP_REGION_DEBUG && mapData.customCrop && (() => {
-          const cropParts = mapData.customCrop.split(' ').map(Number)
-          const cropX = cropParts[0] || 0
-          const cropY = cropParts[1] || 0
-          const cropWidth = cropParts[2] || 100
-          const cropHeight = cropParts[3] || 100
-          return (
-            <rect
-              data-element="crop-region-debug"
-              x={cropX}
-              y={cropY}
-              width={cropWidth}
-              height={cropHeight}
-              fill="none"
-              stroke="#ff00ff"
-              strokeWidth={2}
-              vectorEffect="non-scaling-stroke"
-              strokeDasharray="8,4"
-              pointerEvents="none"
-              opacity={0.8}
-            />
-          )
-        })()}
       </animated.svg>
 
       {/* HTML labels positioned absolutely over the SVG */}
@@ -2968,8 +3071,8 @@ export function MapRenderer({
         )
       })()}
 
-      {/* Debug: Auto zoom detection visualization */}
-      {cursorPosition && containerRef.current && (
+      {/* Debug: Auto zoom detection visualization (dev only) */}
+      {SHOW_MAGNIFIER_DEBUG_INFO && cursorPosition && containerRef.current && (
         <>
           {/* Detection box - 50px box around cursor */}
           <div
@@ -3090,6 +3193,137 @@ export function MapRenderer({
           })()}
         </>
       )}
+
+      {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
+      {svgRef.current &&
+        containerRef.current &&
+        Object.entries(otherPlayerCursors).map(([playerId, position]) => {
+          // Skip our own cursor and null positions
+          if (playerId === localPlayerId || !position) return null
+
+          // In turn-based mode, only show other cursors when it's not our turn
+          if (gameMode === 'turn-based' && currentPlayer === localPlayerId) return null
+
+          // Get player metadata for emoji and color
+          const player = playerMetadata[playerId]
+          if (!player) return null
+
+          // Convert SVG coordinates to screen coordinates
+          const svgRect = svgRef.current!.getBoundingClientRect()
+          const containerRect = containerRef.current!.getBoundingClientRect()
+          const viewBoxParts = displayViewBox.split(' ').map(Number)
+          const viewBoxX = viewBoxParts[0] || 0
+          const viewBoxY = viewBoxParts[1] || 0
+          const viewBoxW = viewBoxParts[2] || 1000
+          const viewBoxH = viewBoxParts[3] || 500
+          const svgOffsetX = svgRect.left - containerRect.left
+          const svgOffsetY = svgRect.top - containerRect.top
+          const scaleX = svgRect.width / viewBoxW
+          const scaleY = svgRect.height / viewBoxH
+          const screenX = (position.x - viewBoxX) * scaleX + svgOffsetX
+          const screenY = (position.y - viewBoxY) * scaleY + svgOffsetY
+
+          // Check if cursor is within SVG bounds
+          if (
+            screenX < svgOffsetX ||
+            screenX > svgOffsetX + svgRect.width ||
+            screenY < svgOffsetY ||
+            screenY > svgOffsetY + svgRect.height
+          ) {
+            return null
+          }
+
+          return (
+            <div
+              key={`cursor-${playerId}`}
+              data-element="other-player-cursor"
+              data-player-id={playerId}
+              style={{
+                position: 'absolute',
+                left: screenX,
+                top: screenY,
+                pointerEvents: 'none',
+                zIndex: 100,
+              }}
+            >
+              {/* Crosshair - centered on the cursor position */}
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                style={{
+                  position: 'absolute',
+                  left: -12, // Half of width to center
+                  top: -12, // Half of height to center
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
+                }}
+              >
+                {/* Outer ring */}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                  fill="none"
+                  stroke={player.color}
+                  strokeWidth="2"
+                  opacity="0.8"
+                />
+                {/* Cross lines */}
+                <line
+                  x1="12"
+                  y1="2"
+                  x2="12"
+                  y2="8"
+                  stroke={player.color}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="12"
+                  y1="16"
+                  x2="12"
+                  y2="22"
+                  stroke={player.color}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="2"
+                  y1="12"
+                  x2="8"
+                  y2="12"
+                  stroke={player.color}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="16"
+                  y1="12"
+                  x2="22"
+                  y2="12"
+                  stroke={player.color}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                {/* Center dot */}
+                <circle cx="12" cy="12" r="2" fill={player.color} />
+              </svg>
+              {/* Player emoji label - positioned below crosshair */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 14, // Below the crosshair (12px half-height + 2px gap)
+                  transform: 'translateX(-50%)',
+                  fontSize: '16px',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                }}
+              >
+                {player.emoji}
+              </div>
+            </div>
+          )
+        })}
 
       {/* Give Up button overlay - positioned within SVG bounds for pointer lock accessibility */}
       {(() => {

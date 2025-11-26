@@ -33,6 +33,10 @@ interface KnowYourWorldContextValue {
   setDifficulty: (difficulty: string) => void
   setStudyDuration: (duration: 0 | 30 | 60 | 120) => void
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
+
+  // Cursor position sharing (for multiplayer)
+  otherPlayerCursors: Record<string, { x: number; y: number } | null>
+  sendCursorUpdate: (cursorPosition: { x: number; y: number } | null) => void
 }
 
 const KnowYourWorldContext = createContext<KnowYourWorldContextValue | null>(null)
@@ -103,13 +107,30 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     }
   }, [roomData])
 
-  const { state, sendMove, exitSession, lastError, clearError } =
-    useArcadeSession<KnowYourWorldState>({
-      userId: viewerId || '',
-      roomId: roomData?.id,
-      initialState,
-      applyMove: (state) => state, // Server handles all state updates
-    })
+  const {
+    state,
+    sendMove,
+    exitSession,
+    lastError,
+    clearError,
+    otherPlayerCursors,
+    sendCursorUpdate: sessionSendCursorUpdate,
+  } = useArcadeSession<KnowYourWorldState>({
+    userId: viewerId || '',
+    roomId: roomData?.id,
+    initialState,
+    applyMove: (state) => state, // Server handles all state updates
+  })
+
+  // Wrap sendCursorUpdate to automatically include the current player ID
+  const sendCursorUpdate = useCallback(
+    (cursorPosition: { x: number; y: number } | null) => {
+      if (state.currentPlayer) {
+        sessionSendCursorUpdate(state.currentPlayer, cursorPosition)
+      }
+    },
+    [state.currentPlayer, sessionSendCursorUpdate]
+  )
 
   // Action: Start Game
   const startGame = useCallback(() => {
@@ -383,6 +404,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         setDifficulty,
         setStudyDuration,
         setContinent,
+        otherPlayerCursors,
+        sendCursorUpdate,
       }}
     >
       {children}

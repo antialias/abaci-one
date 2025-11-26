@@ -6,9 +6,17 @@ import { useKnowYourWorld } from '../Provider'
 import { getFilteredMapDataSync } from '../maps'
 import { MapRenderer } from './MapRenderer'
 import { GameInfoPanel } from './GameInfoPanel'
+import { useViewerId } from '@/lib/arcade/game-sdk'
+import { useGameMode } from '@/lib/arcade/game-sdk'
 
 export function PlayingPhase() {
-  const { state, clickRegion, giveUp } = useKnowYourWorld()
+  const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate } = useKnowYourWorld()
+  const { data: viewerId } = useViewerId()
+  const { activePlayers } = useGameMode()
+
+  // Find the local player ID (first player that belongs to this viewer)
+  // In most cases, each user controls one player
+  const localPlayerId = Array.from(activePlayers)[0] || ''
 
   const mapData = getFilteredMapDataSync(
     state.selectedMap,
@@ -114,6 +122,11 @@ export function PlayingPhase() {
               playerMetadata={state.playerMetadata}
               giveUpReveal={state.giveUpReveal}
               onGiveUp={giveUp}
+              gameMode={state.gameMode}
+              currentPlayer={state.currentPlayer}
+              localPlayerId={localPlayerId}
+              otherPlayerCursors={otherPlayerCursors}
+              onCursorUpdate={sendCursorUpdate}
             />
           </div>
         </Panel>

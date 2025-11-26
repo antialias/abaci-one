@@ -693,6 +693,27 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
+    // Cursor position update (ephemeral, not persisted)
+    // Used for showing other players' cursors in real-time games
+    socket.on(
+      'cursor-update',
+      ({
+        roomId,
+        playerId,
+        cursorPosition,
+      }: {
+        roomId: string
+        playerId: string
+        cursorPosition: { x: number; y: number } | null // SVG coordinates, null when cursor leaves
+      }) => {
+        // Broadcast to all other sockets in the game room (exclude sender)
+        socket.to(`game:${roomId}`).emit('cursor-update', {
+          playerId,
+          cursorPosition,
+        })
+      }
+    )
+
     socket.on('disconnect', () => {
       // Don't delete session on disconnect - it persists across devices
     })

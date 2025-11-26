@@ -16,6 +16,11 @@ export interface ArcadeSocketEvents {
   onSessionEnded?: () => void
   onNoActiveSession?: () => void
   onError?: (error: { error: string }) => void
+  /** Cursor position update from another player (ephemeral, real-time) */
+  onCursorUpdate?: (data: {
+    playerId: string
+    cursorPosition: { x: number; y: number } | null
+  }) => void
   /** If true, errors will NOT show toasts (for cases where game handles errors directly) */
   suppressErrorToasts?: boolean
 }
@@ -27,6 +32,12 @@ export interface UseArcadeSocketReturn {
   sendMove: (userId: string, move: GameMove, roomId?: string) => void
   exitSession: (userId: string) => void
   pingSession: (userId: string) => void
+  /** Send cursor position update to other players in the room (ephemeral, real-time) */
+  sendCursorUpdate: (
+    roomId: string,
+    playerId: string,
+    cursorPosition: { x: number; y: number } | null
+  ) => void
 }
 
 /**
@@ -144,6 +155,11 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       console.log('[ArcadeSocket] Pong received')
     })
 
+    // Cursor position update from other players (ephemeral, real-time)
+    socketInstance.on('cursor-update', (data) => {
+      eventsRef.current.onCursorUpdate?.(data)
+    })
+
     setSocket(socketInstance)
 
     return () => {
@@ -198,6 +214,14 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
     [socket]
   )
 
+  const sendCursorUpdate = useCallback(
+    (roomId: string, playerId: string, cursorPosition: { x: number; y: number } | null) => {
+      if (!socket) return
+      socket.emit('cursor-update', { roomId, playerId, cursorPosition })
+    },
+    [socket]
+  )
+
   return {
     socket,
     connected,
@@ -205,5 +229,6 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
     sendMove,
     exitSession,
     pingSession,
+    sendCursorUpdate,
   }
 }

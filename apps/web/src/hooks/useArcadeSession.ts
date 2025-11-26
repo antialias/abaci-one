@@ -78,6 +78,22 @@ export interface UseArcadeSessionReturn<TState> {
    * Manually sync with server (useful after reconnect)
    */
   refresh: () => void
+
+  /**
+   * Other players' cursor positions (ephemeral, real-time)
+   * Map of playerId -> { x, y } in SVG coordinates, or null if cursor left
+   */
+  otherPlayerCursors: Record<string, { x: number; y: number } | null>
+
+  /**
+   * Send cursor position update to other players (ephemeral, real-time)
+   * @param playerId - The player ID sending the cursor update
+   * @param cursorPosition - SVG coordinates, or null when cursor leaves the map
+   */
+  sendCursorUpdate: (
+    playerId: string,
+    cursorPosition: { x: number; y: number } | null
+  ) => void
 }
 
 /**
@@ -133,6 +149,10 @@ export function useArcadeSession<TState>(
       refresh: () => {
         // Mock: do nothing in preview
       },
+      otherPlayerCursors: {},
+      sendCursorUpdate: () => {
+        // Mock: do nothing in preview
+      },
     }
   }
 
@@ -147,6 +167,11 @@ export function useArcadeSession<TState>(
     timestamp: null,
   })
 
+  // Track other players' cursor positions (ephemeral, real-time)
+  const [otherPlayerCursors, setOtherPlayerCursors] = useState<
+    Record<string, { x: number; y: number } | null>
+  >({})
+
   // WebSocket connection
   const {
     socket,
@@ -154,6 +179,7 @@ export function useArcadeSession<TState>(
     joinSession,
     sendMove: socketSendMove,
     exitSession: socketExitSession,
+    sendCursorUpdate: socketSendCursorUpdate,
   } = useArcadeSocket({
     onSessionState: (data) => {
       optimistic.syncWithServer(data.gameState as TState, data.version)
@@ -243,6 +269,13 @@ export function useArcadeSession<TState>(
     onError: (data) => {
       console.error(`[ArcadeSession] Error: ${data.error}`)
     },
+
+    onCursorUpdate: (data) => {
+      setOtherPlayerCursors((prev) => ({
+        ...prev,
+        [data.playerId]: data.cursorPosition,
+      }))
+    },
   })
 
   // Auto-join session when connected
@@ -286,6 +319,15 @@ export function useArcadeSession<TState>(
     }
   }, [connected, userId, roomId, joinSession])
 
+  // Send cursor position update to other players (ephemeral, real-time)
+  const sendCursorUpdate = useCallback(
+    (playerId: string, cursorPosition: { x: number; y: number } | null) => {
+      if (!roomId) return // Only works in room-based games
+      socketSendCursorUpdate(roomId, playerId, cursorPosition)
+    },
+    [roomId, socketSendCursorUpdate]
+  )
+
   return {
     state: optimistic.state,
     version: optimistic.version,
@@ -297,5 +339,7 @@ export function useArcadeSession<TState>(
     exitSession,
     clearError: optimistic.clearError,
     refresh,
+    otherPlayerCursors,
+    sendCursorUpdate,
   }
 }
