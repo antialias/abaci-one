@@ -1588,20 +1588,40 @@ export function MapRenderer({
       const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
       const magnifierHeight = containerRect.height * MAGNIFIER_SIZE_RATIO
 
-      // Calculate magnifier position (opposite corner from cursor)
-      // magnifierWidth and magnifierHeight already declared above
-      const isLeftHalf = cursorX < containerRect.width / 2
-      const isTopHalf = cursorY < containerRect.height / 2
+      // Lazy magnifier positioning: only move if cursor would be obscured
+      // Check if cursor is within current magnifier bounds (with padding)
+      const padding = 10 // pixels of buffer around magnifier
+      const currentMagLeft = targetLeft
+      const currentMagTop = targetTop
+      const currentMagRight = currentMagLeft + magnifierWidth
+      const currentMagBottom = currentMagTop + magnifierHeight
 
-      const newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
-      const newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
+      const cursorInMagnifier =
+        cursorX >= currentMagLeft - padding &&
+        cursorX <= currentMagRight + padding &&
+        cursorY >= currentMagTop - padding &&
+        cursorY <= currentMagBottom + padding
+
+      // Only calculate new position if cursor would be obscured
+      let newTop = targetTop
+      let newLeft = targetLeft
+
+      if (cursorInMagnifier) {
+        // Move to opposite corner from cursor
+        const isLeftHalf = cursorX < containerRect.width / 2
+        const isTopHalf = cursorY < containerRect.height / 2
+
+        newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
+        newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
+      }
 
       if (pointerLocked) {
         console.log(
           '[Magnifier] SHOWING with zoom:',
           adaptiveZoom,
           '| Setting opacity to 1, position:',
-          { top: newTop, left: newLeft }
+          { top: newTop, left: newLeft },
+          cursorInMagnifier ? '(moved - cursor was in magnifier)' : '(staying put)'
         )
       }
 
