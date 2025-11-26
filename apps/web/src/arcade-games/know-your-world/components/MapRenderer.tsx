@@ -626,23 +626,31 @@ export function MapRenderer({
 
   // Track previous prompt to detect region changes
   const prevPromptRef = useRef<string | null>(null)
+  // Store autoHint/autoSpeak in refs so we can read current values without triggering effect
+  const autoHintRef = useRef(autoHint)
+  const autoSpeakRef = useRef(autoSpeak)
+  const withAccentRef = useRef(withAccent)
+  autoHintRef.current = autoHint
+  autoSpeakRef.current = autoSpeak
+  withAccentRef.current = withAccent
 
   // Handle hint bubble and auto-speak when the prompt changes (new region to find)
+  // Only runs when currentPrompt changes, not when settings change
   useEffect(() => {
     const isNewRegion = prevPromptRef.current !== null && prevPromptRef.current !== currentPrompt
     prevPromptRef.current = currentPrompt
 
-    if (autoHint && hasHint) {
+    if (autoHintRef.current && hasHint) {
       setShowHintBubble(true)
       // If region changed and both auto-hint and auto-speak are enabled, speak immediately
       // This handles the case where the bubble was already open
-      if (isNewRegion && autoSpeak && hintText && isSpeechSupported) {
-        speakHint(hintText, withAccent)
+      if (isNewRegion && autoSpeakRef.current && hintText && isSpeechSupported) {
+        speakHint(hintText, withAccentRef.current)
       }
     } else {
       setShowHintBubble(false)
     }
-  }, [currentPrompt, autoHint, hasHint, autoSpeak, hintText, isSpeechSupported, speakHint, withAccent])
+  }, [currentPrompt, hasHint, hintText, isSpeechSupported, speakHint])
 
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
