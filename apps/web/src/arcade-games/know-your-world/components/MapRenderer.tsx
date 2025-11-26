@@ -37,6 +37,9 @@ const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
 // Debug flag: show bounding boxes with importance scores (dev only)
 const SHOW_DEBUG_BOUNDING_BOXES = process.env.NODE_ENV === 'development'
 
+// Debug flag: show custom crop region outline (dev only)
+const SHOW_CROP_REGION_DEBUG = process.env.NODE_ENV === 'development'
+
 // Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
 const PRECISION_MODE_THRESHOLD = 20
 
@@ -1844,6 +1847,31 @@ export function MapRenderer({
             opacity={0.8}
           />
         )}
+
+        {/* Debug: Show custom crop region outline */}
+        {SHOW_CROP_REGION_DEBUG && mapData.customCrop && (() => {
+          const cropParts = mapData.customCrop.split(' ').map(Number)
+          const cropX = cropParts[0] || 0
+          const cropY = cropParts[1] || 0
+          const cropWidth = cropParts[2] || 100
+          const cropHeight = cropParts[3] || 100
+          return (
+            <rect
+              data-element="crop-region-debug"
+              x={cropX}
+              y={cropY}
+              width={cropWidth}
+              height={cropHeight}
+              fill="none"
+              stroke="#ff00ff"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+              strokeDasharray="8,4"
+              pointerEvents="none"
+              opacity={0.8}
+            />
+          )
+        })()}
       </animated.svg>
 
       {/* HTML labels positioned absolutely over the SVG */}
