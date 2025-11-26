@@ -427,6 +427,8 @@ export function MapRenderer({
   const [isMagnifierDragging, setIsMagnifierDragging] = useState(false)
   const magnifierTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const magnifierDidMoveRef = useRef(false) // Track if user actually dragged (vs just tapped)
+  const magnifierRef = useRef<HTMLDivElement>(null) // Ref to magnifier element for tap position calculation
+  const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null) // Where user tapped on magnifier
 
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
@@ -1949,6 +1951,16 @@ export function MapRenderer({
     const touch = e.touches[0]
     magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
     magnifierDidMoveRef.current = false // Reset movement tracking
+
+    // Record tap position relative to magnifier for tap-to-select
+    if (magnifierRef.current) {
+      const magnifierRect = magnifierRef.current.getBoundingClientRect()
+      magnifierTapPositionRef.current = {
+        x: touch.clientX - magnifierRect.left,
+        y: touch.clientY - magnifierRect.top,
+      }
+    }
+
     setIsMagnifierDragging(true)
     e.preventDefault() // Prevent scrolling
   }, [])
@@ -1971,16 +1983,22 @@ export function MapRenderer({
       // Update start position for next move
       magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
 
-      // Apply movement multiplier (same as pointer lock mode)
-      const currentMultiplier = magnifierSpring.movementMultiplier.get()
+      // For touch panning, use 1:1 mapping so the content follows the finger exactly.
+      //
+      // The cursor position controls where the magnifier is centered on the main map.
+      // Moving the cursor by 1 screen pixel shifts what's shown in the magnifier.
+      //
+      // For 1:1 feel: when user drags N pixels, move cursor by N pixels.
+      // This makes the content appear to move with the finger at the zoom level.
+      const touchMultiplier = 1.0
 
       // Invert the delta - dragging right on magnifier should show content to the right
       // (which means moving the cursor right in the map coordinate space)
       // Actually, dragging the "paper" under the magnifier means:
       // - Drag finger right = paper moves right = magnifier shows what was to the LEFT
       // - So we SUBTRACT the delta to move the cursor in the opposite direction
-      const newCursorX = cursorPositionRef.current.x - deltaX * currentMultiplier
-      const newCursorY = cursorPositionRef.current.y - deltaY * currentMultiplier
+      const newCursorX = cursorPositionRef.current.x - deltaX * touchMultiplier
+      const newCursorY = cursorPositionRef.current.y - deltaY * touchMultiplier
 
       // Clamp to SVG bounds
       const containerRect = containerRef.current.getBoundingClientRect()
@@ -2023,7 +2041,6 @@ export function MapRenderer({
     },
     [
       isMagnifierDragging,
-      magnifierSpring.movementMultiplier,
       detectRegions,
       onCursorUpdate,
       gameMode,
@@ -2036,33 +2053,80 @@ export function MapRenderer({
   const handleMagnifierTouchEnd = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       // Check if this was a tap (no significant movement) vs a drag
-      // If the user just tapped on the magnifier, select the region under cursor
+      // If the user just tapped on the magnifier, select the region at the tap position
       const didMove = magnifierDidMoveRef.current
+      const tapPosition = magnifierTapPositionRef.current
       setIsMagnifierDragging(false)
       magnifierTouchStartRef.current = null
       magnifierDidMoveRef.current = false
+      magnifierTapPositionRef.current = null
 
-      // If there was a changed touch that ended, check if it's a tap
-      if (e.changedTouches.length === 1 && cursorPositionRef.current) {
-        // Run region detection at current position
-        const { regionUnderCursor } = detectRegions(
-          cursorPositionRef.current.x,
-          cursorPositionRef.current.y
-        )
+      // If there was a changed touch that ended and it wasn't a drag, check for tap-to-select
+      if (e.changedTouches.length === 1 && !didMove && tapPosition) {
+        // Convert tap position on magnifier to SVG coordinates
+        if (
+          magnifierRef.current &&
+          svgRef.current &&
+          containerRef.current &&
+          cursorPositionRef.current
+        ) {
+          const magnifierRect = magnifierRef.current.getBoundingClientRect()
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const svgRect = svgRef.current.getBoundingClientRect()
 
-        // If we have a region and this wasn't a significant drag, trigger selection
-        // We rely on the touch move handler to have already updated cursor position
-        // If the user dragged significantly, don't select (they're navigating, not selecting)
-        if (regionUnderCursor && !didMove) {
-          const region = mapData.regions.find((r) => r.id === regionUnderCursor)
-          if (region) {
-            console.log('[Touch] Tapped on magnifier to select region:', regionUnderCursor)
-            onRegionClick(regionUnderCursor, region.name)
+          // Get the current zoom level
+          const currentZoom = zoomSpring.get()
+
+          // Parse the main map viewBox
+          const viewBoxParts = displayViewBox.split(' ').map(Number)
+          const viewBoxX = viewBoxParts[0] || 0
+          const viewBoxY = viewBoxParts[1] || 0
+          const viewBoxW = viewBoxParts[2] || 1000
+          const viewBoxH = viewBoxParts[3] || 1000
+
+          // Get viewport info for coordinate conversion
+          const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+
+          // Current cursor position in SVG coordinates (center of magnifier view)
+          const cursorSvgX =
+            (cursorPositionRef.current.x - svgOffsetX) / viewport.scale + viewBoxX
+          const cursorSvgY =
+            (cursorPositionRef.current.y - svgOffsetY) / viewport.scale + viewBoxY
+
+          // Magnifier viewBox dimensions
+          const magnifiedWidth = viewBoxW / currentZoom
+          const magnifiedHeight = viewBoxH / currentZoom
+
+          // Convert tap position (relative to magnifier) to SVG coordinates
+          // Tap at (0,0) is top-left of magnifier = cursorSvg - magnifiedSize/2
+          // Tap at (magnifierWidth, magnifierHeight) is bottom-right = cursorSvg + magnifiedSize/2
+          const tapSvgX =
+            cursorSvgX - magnifiedWidth / 2 + (tapPosition.x / magnifierRect.width) * magnifiedWidth
+          const tapSvgY =
+            cursorSvgY -
+            magnifiedHeight / 2 +
+            (tapPosition.y / magnifierRect.height) * magnifiedHeight
+
+          // Convert SVG coordinates back to container coordinates for region detection
+          const tapContainerX = (tapSvgX - viewBoxX) * viewport.scale + svgOffsetX
+          const tapContainerY = (tapSvgY - viewBoxY) * viewport.scale + svgOffsetY
+
+          // Run region detection at the tap position
+          const { regionUnderCursor } = detectRegions(tapContainerX, tapContainerY)
+
+          if (regionUnderCursor) {
+            const region = mapData.regions.find((r) => r.id === regionUnderCursor)
+            if (region) {
+              console.log('[Touch] Tapped on magnifier to select region:', regionUnderCursor)
+              onRegionClick(regionUnderCursor, region.name)
+            }
           }
         }
       }
     },
-    [detectRegions, mapData.regions, onRegionClick]
+    [detectRegions, mapData.regions, onRegionClick, displayViewBox, zoomSpring]
   )
 
   return (
@@ -2695,6 +2759,7 @@ export function MapRenderer({
 
         return (
           <animated.div
+            ref={magnifierRef}
             data-element="magnifier"
             onTouchStart={handleMagnifierTouchStart}
             onTouchMove={handleMagnifierTouchMove}
