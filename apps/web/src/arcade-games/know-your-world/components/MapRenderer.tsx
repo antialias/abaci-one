@@ -207,8 +207,14 @@ interface MapRendererProps {
   gameMode?: 'cooperative' | 'race' | 'turn-based'
   currentPlayer?: string // The player whose turn it is (for turn-based mode)
   localPlayerId?: string // The local player's ID (to filter out our own cursor from others)
-  otherPlayerCursors?: Record<string, { x: number; y: number; userId: string } | null>
-  onCursorUpdate?: (cursorPosition: { x: number; y: number } | null) => void
+  otherPlayerCursors?: Record<
+    string,
+    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+  >
+  onCursorUpdate?: (
+    cursorPosition: { x: number; y: number } | null,
+    hoveredRegionId: string | null
+  ) => void
   // Unanimous give-up voting (for cooperative multiplayer)
   giveUpVotes?: string[] // Session/viewer IDs (userIds) who have voted to give up
   activeUserIds?: string[] // All unique session IDs participating (to show "1/2 sessions voted")
@@ -629,9 +635,6 @@ export function MapRenderer({
   const networkHoveredRegions = useMemo(() => {
     const result: Record<string, { playerId: string; color: string }> = {}
 
-    // Skip if no SVG ref or no cursors
-    if (!svgRef.current) return result
-
     Object.entries(otherPlayerCursors).forEach(([playerId, position]) => {
       // Skip our own cursor and null positions
       if (playerId === localPlayerId || !position) return
@@ -643,43 +646,15 @@ export function MapRenderer({
       const player = playerMetadata[playerId]
       if (!player) return
 
-      // Use SVG's native hit testing
-      // Create an SVGPoint and use getIntersectionList or check each path
-      const svg = svgRef.current
-      if (!svg) return
-
-      // Find the region element under this point using elementFromPoint
-      // First convert SVG coords to screen coords (accounting for preserveAspectRatio letterboxing)
-      const viewBoxParts = displayViewBox.split(' ').map(Number)
-      const viewBoxX = viewBoxParts[0] || 0
-      const viewBoxY = viewBoxParts[1] || 0
-      const viewBoxW = viewBoxParts[2] || 1000
-      const viewBoxH = viewBoxParts[3] || 500
-      const svgRect = svg.getBoundingClientRect()
-      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
-      const screenX = (position.x - viewBoxX) * viewport.scale + svgRect.left + viewport.letterboxX
-      const screenY = (position.y - viewBoxY) * viewport.scale + svgRect.top + viewport.letterboxY
-
-      // Get element at this screen position
-      const element = document.elementFromPoint(screenX, screenY)
-      if (element && element.hasAttribute('data-region-id')) {
-        const regionId = element.getAttribute('data-region-id')
-        if (regionId) {
-          result[regionId] = { playerId, color: player.color }
-        }
+      // Use the transmitted hoveredRegionId directly (avoids hit-testing discrepancies
+      // due to pixel scaling/rendering differences between clients)
+      if (position.hoveredRegionId) {
+        result[position.hoveredRegionId] = { playerId, color: player.color }
       }
     })
 
     return result
-  }, [
-    otherPlayerCursors,
-    localPlayerId,
-    gameMode,
-    currentPlayer,
-    playerMetadata,
-    displayViewBox,
-    svgDimensions, // Re-run when SVG size changes
-  ])
+  }, [otherPlayerCursors, localPlayerId, gameMode, currentPlayer, playerMetadata])
 
   // State for give-up zoom animation target values
   const [giveUpZoomTarget, setGiveUpZoomTarget] = useState({
@@ -1542,29 +1517,6 @@ export function MapRenderer({
     cursorPositionRef.current = { x: cursorX, y: cursorY }
     setCursorPosition({ x: cursorX, y: cursorY })
 
-    // Send cursor position to other players (in SVG coordinates)
-    // In turn-based mode, only broadcast when it's our turn
-    const shouldBroadcastCursor =
-      onCursorUpdate &&
-      svgRef.current &&
-      (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
-
-    if (shouldBroadcastCursor) {
-      const viewBoxParts = displayViewBox.split(' ').map(Number)
-      const viewBoxX = viewBoxParts[0] || 0
-      const viewBoxY = viewBoxParts[1] || 0
-      const viewBoxW = viewBoxParts[2] || 1000
-      const viewBoxH = viewBoxParts[3] || 500
-      // Account for preserveAspectRatio letterboxing when converting to SVG coords
-      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
-      const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-      const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-      // Use inverse of viewport.scale to convert pixels to viewBox units
-      const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
-      const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
-      onCursorUpdate({ x: cursorSvgX, y: cursorSvgY })
-    }
-
     // Check if fake cursor is hovering over Give Up button (for pointer lock mode)
     if (pointerLocked) {
       const buttonBounds = giveUpButtonBoundsRef.current
@@ -1620,6 +1572,32 @@ export function MapRenderer({
     // This ensures the crosshairs match what's highlighted
     if (regionUnderCursor !== hoveredRegion) {
       setHoveredRegion(regionUnderCursor)
+    }
+
+    // Send cursor position to other players (in SVG coordinates)
+    // In turn-based mode, only broadcast when it's our turn
+    // We do this AFTER detectRegions so we can include the exact hovered region
+    const shouldBroadcastCursor =
+      onCursorUpdate &&
+      svgRef.current &&
+      (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
+
+    if (shouldBroadcastCursor) {
+      const viewBoxParts = displayViewBox.split(' ').map(Number)
+      const viewBoxX = viewBoxParts[0] || 0
+      const viewBoxY = viewBoxParts[1] || 0
+      const viewBoxW = viewBoxParts[2] || 1000
+      const viewBoxH = viewBoxParts[3] || 500
+      // Account for preserveAspectRatio letterboxing when converting to SVG coords
+      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+      const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+      const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+      // Use inverse of viewport.scale to convert pixels to viewBox units
+      const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
+      const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
+      // Pass the exact region under cursor (from local hit-testing) so other clients
+      // don't need to re-do hit-testing which can yield different results due to scaling
+      onCursorUpdate({ x: cursorSvgX, y: cursorSvgY }, regionUnderCursor)
     }
 
     if (shouldShow) {
@@ -1764,7 +1742,7 @@ export function MapRenderer({
     // Notify other players that cursor left
     // In turn-based mode, only broadcast when it's our turn
     if (onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)) {
-      onCursorUpdate(null)
+      onCursorUpdate(null, null)
     }
   }
 

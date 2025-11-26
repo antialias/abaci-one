@@ -21,6 +21,7 @@ export interface ArcadeSocketEvents {
     playerId: string
     userId: string // Session ID that owns this cursor
     cursorPosition: { x: number; y: number } | null
+    hoveredRegionId: string | null // Region being hovered (determined by sender's local hit-testing)
   }) => void
   /** If true, errors will NOT show toasts (for cases where game handles errors directly) */
   suppressErrorToasts?: boolean
@@ -38,7 +39,8 @@ export interface UseArcadeSocketReturn {
     roomId: string,
     playerId: string,
     userId: string,
-    cursorPosition: { x: number; y: number } | null
+    cursorPosition: { x: number; y: number } | null,
+    hoveredRegionId: string | null
   ) => void
 }
 
@@ -221,10 +223,11 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       roomId: string,
       playerId: string,
       userId: string,
-      cursorPosition: { x: number; y: number } | null
+      cursorPosition: { x: number; y: number } | null,
+      hoveredRegionId: string | null
     ) => {
       if (!socket) return
-      socket.emit('cursor-update', { roomId, playerId, userId, cursorPosition })
+      socket.emit('cursor-update', { roomId, playerId, userId, cursorPosition, hoveredRegionId })
     },
     [socket]
   )

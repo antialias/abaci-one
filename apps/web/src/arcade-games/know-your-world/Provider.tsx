@@ -35,11 +35,15 @@ interface KnowYourWorldContextValue {
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 
   // Cursor position sharing (for multiplayer)
-  otherPlayerCursors: Record<string, { x: number; y: number; userId: string } | null>
+  otherPlayerCursors: Record<
+    string,
+    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+  >
   sendCursorUpdate: (
     playerId: string,
     userId: string,
-    cursorPosition: { x: number; y: number } | null
+    cursorPosition: { x: number; y: number } | null,
+    hoveredRegionId: string | null
   ) => void
 
   // Member players mapping (userId -> players) for cursor emoji display
@@ -133,9 +137,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
   // Pass through cursor updates with the provided player ID and userId
   const sendCursorUpdate = useCallback(
-    (playerId: string, sessionUserId: string, cursorPosition: { x: number; y: number } | null) => {
+    (
+      playerId: string,
+      sessionUserId: string,
+      cursorPosition: { x: number; y: number } | null,
+      hoveredRegionId: string | null
+    ) => {
       if (playerId && sessionUserId) {
-        sessionSendCursorUpdate(playerId, sessionUserId, cursorPosition)
+        sessionSendCursorUpdate(playerId, sessionUserId, cursorPosition, hoveredRegionId)
       }
     },
     [sessionSendCursorUpdate]

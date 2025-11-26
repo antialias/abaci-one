@@ -31,9 +31,9 @@ export function PlayingPhase() {
 
   // Wrap sendCursorUpdate to include localPlayerId and viewerId (session ID)
   const handleCursorUpdate = useCallback(
-    (cursorPosition: { x: number; y: number } | null) => {
+    (cursorPosition: { x: number; y: number } | null, hoveredRegionId: string | null) => {
       if (viewerId) {
-        sendCursorUpdate(localPlayerId, viewerId, cursorPosition)
+        sendCursorUpdate(localPlayerId, viewerId, cursorPosition, hoveredRegionId)
       }
     },
     [localPlayerId, viewerId, sendCursorUpdate]

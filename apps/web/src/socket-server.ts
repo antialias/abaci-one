@@ -702,17 +702,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         playerId,
         userId,
         cursorPosition,
+        hoveredRegionId,
       }: {
         roomId: string
         playerId: string
         userId: string // Session ID that owns this cursor
         cursorPosition: { x: number; y: number } | null // SVG coordinates, null when cursor leaves
+        hoveredRegionId: string | null // Region being hovered (determined by sender's local hit-testing)
       }) => {
         // Broadcast to all other sockets in the game room (exclude sender)
         socket.to(`game:${roomId}`).emit('cursor-update', {
           playerId,
           userId,
           cursorPosition,
+          hoveredRegionId,
         })
       }
     )

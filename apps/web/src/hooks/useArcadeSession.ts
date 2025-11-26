@@ -81,20 +81,25 @@ export interface UseArcadeSessionReturn<TState> {
 
   /**
    * Other players' cursor positions (ephemeral, real-time)
-   * Map of playerId -> { x, y, userId } in SVG coordinates, or null if cursor left
+   * Map of playerId -> { x, y, userId, hoveredRegionId } in SVG coordinates, or null if cursor left
    */
-  otherPlayerCursors: Record<string, { x: number; y: number; userId: string } | null>
+  otherPlayerCursors: Record<
+    string,
+    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+  >
 
   /**
    * Send cursor position update to other players (ephemeral, real-time)
    * @param playerId - The player ID sending the cursor update
    * @param userId - The session/viewer ID that owns this cursor
    * @param cursorPosition - SVG coordinates, or null when cursor leaves the map
+   * @param hoveredRegionId - Region being hovered (from local hit-testing), or null
    */
   sendCursorUpdate: (
     playerId: string,
     userId: string,
-    cursorPosition: { x: number; y: number } | null
+    cursorPosition: { x: number; y: number } | null,
+    hoveredRegionId: string | null
   ) => void
 }
 
@@ -171,7 +176,7 @@ export function useArcadeSession<TState>(
 
   // Track other players' cursor positions (ephemeral, real-time)
   const [otherPlayerCursors, setOtherPlayerCursors] = useState<
-    Record<string, { x: number; y: number; userId: string } | null>
+    Record<string, { x: number; y: number; userId: string; hoveredRegionId: string | null } | null>
   >({})
 
   // WebSocket connection
@@ -276,7 +281,7 @@ export function useArcadeSession<TState>(
       setOtherPlayerCursors((prev) => ({
         ...prev,
         [data.playerId]: data.cursorPosition
-          ? { ...data.cursorPosition, userId: data.userId }
+          ? { ...data.cursorPosition, userId: data.userId, hoveredRegionId: data.hoveredRegionId }
           : null,
       }))
     },
@@ -325,9 +330,14 @@ export function useArcadeSession<TState>(
 
   // Send cursor position update to other players (ephemeral, real-time)
   const sendCursorUpdate = useCallback(
-    (playerId: string, sessionUserId: string, cursorPosition: { x: number; y: number } | null) => {
+    (
+      playerId: string,
+      sessionUserId: string,
+      cursorPosition: { x: number; y: number } | null,
+      hoveredRegionId: string | null
+    ) => {
       if (!roomId) return // Only works in room-based games
-      socketSendCursorUpdate(roomId, playerId, sessionUserId, cursorPosition)
+      socketSendCursorUpdate(roomId, playerId, sessionUserId, cursorPosition, hoveredRegionId)
     },
     [roomId, socketSendCursorUpdate]
   )
