@@ -44,8 +44,22 @@ const PRECISION_MODE_THRESHOLD = 20
 const LABEL_FADE_RADIUS = 150 // pixels - labels within this radius fade
 const LABEL_MIN_OPACITY = 0.08 // minimum opacity for faded labels
 
-// Magnifier size as fraction of container dimensions (1/3 of width and height)
-const MAGNIFIER_SIZE_RATIO = 1 / 3
+// Magnifier size ratios - responsive to container aspect ratio
+const MAGNIFIER_SIZE_SMALL = 1 / 3 // Used for the constrained dimension
+const MAGNIFIER_SIZE_LARGE = 1 / 2 // Used for the unconstrained dimension
+
+/**
+ * Calculate magnifier dimensions based on container aspect ratio.
+ * - Landscape (wider): 1/3 width, 1/2 height (more vertical space available)
+ * - Portrait (taller): 1/2 width, 1/3 height (more horizontal space available)
+ */
+function getMagnifierDimensions(containerWidth: number, containerHeight: number) {
+  const isLandscape = containerWidth > containerHeight
+  return {
+    width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
+    height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
+  }
+}
 
 /**
  * Calculate label opacity based on distance from cursor and animation state.
@@ -1584,9 +1598,11 @@ export function MapRenderer({
       // Save full zoom search result for debug panel
       setZoomSearchDebugInfo(zoomSearchResult)
 
-      // Calculate magnifier dimensions (needed for positioning)
-      const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
-      const magnifierHeight = containerRect.height * MAGNIFIER_SIZE_RATIO
+      // Calculate magnifier dimensions (responsive to aspect ratio)
+      const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
+        containerRect.width,
+        containerRect.height
+      )
 
       // Lazy magnifier positioning: only move if cursor would be obscured
       // Check if cursor is within current magnifier bounds (with padding)
@@ -1632,7 +1648,7 @@ export function MapRenderer({
       if (!pointerLocked && containerRef.current && svgRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+        const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
         const viewBoxParts = displayViewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
@@ -2303,6 +2319,12 @@ export function MapRenderer({
           return null
         }
 
+        // Calculate magnifier size percentages based on container aspect ratio
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const isLandscape = containerRect.width > containerRect.height
+        const widthPercent = (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE) * 100
+        const heightPercent = (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL) * 100
+
         return (
           <animated.div
             data-element="magnifier"
@@ -2311,8 +2333,8 @@ export function MapRenderer({
               // Animated positioning - smoothly moves to opposite corner from cursor
               top: magnifierSpring.top,
               left: magnifierSpring.left,
-              width: `${MAGNIFIER_SIZE_RATIO * 100}%`,
-              height: `${MAGNIFIER_SIZE_RATIO * 100}%`,
+              width: `${widthPercent}%`,
+              height: `${heightPercent}%`,
               // High zoom (>60x) gets gold border, normal zoom gets blue border
               border: zoomSpring.to(
                 (zoom: number) =>
@@ -2376,7 +2398,7 @@ export function MapRenderer({
                   const svgRect = svgRef.current?.getBoundingClientRect()
                   if (!containerRect || !svgRect) return 'none'
 
-                  const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+                  const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
                   const viewBoxParts = displayViewBox.split(' ').map(Number)
                   const viewBoxWidth = viewBoxParts[2]
                   if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return 'none'
@@ -2517,7 +2539,7 @@ export function MapRenderer({
                 const svgRect = svgRef.current?.getBoundingClientRect()
                 if (!containerRect || !svgRect) return null
 
-                const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 const viewBoxHeight = viewBoxParts[3]
@@ -2704,7 +2726,7 @@ export function MapRenderer({
                         if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
                         // Magnifier dimensions
-                        const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+                        const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
 
                         // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
                         const scaleX = viewBoxWidth / svgRect.width
@@ -2726,9 +2748,9 @@ export function MapRenderer({
                         const svgRect = svgRef.current?.getBoundingClientRect()
                         if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
-                        // Magnifier dimensions (2:1 aspect ratio)
-                        const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
-                        const magnifierHeight = containerRect.height * MAGNIFIER_SIZE_RATIO
+                        // Magnifier dimensions (responsive to aspect ratio)
+                        const { width: magnifierWidth, height: magnifierHeight } =
+                          getMagnifierDimensions(containerRect.width, containerRect.height)
 
                         // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
                         const scaleY = viewBoxHeight / svgRect.height
@@ -2803,7 +2825,7 @@ export function MapRenderer({
                   return `${z.toFixed(1)}×`
                 }
 
-                const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
 
@@ -2839,7 +2861,7 @@ export function MapRenderer({
                 const svgRect = svgRef.current?.getBoundingClientRect()
                 if (!containerRect || !svgRect) return null
 
-                const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
+                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
@@ -2881,9 +2903,11 @@ export function MapRenderer({
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
 
-        // Get magnifier dimensions and position
-        const magnifierWidth = containerRect.width * MAGNIFIER_SIZE_RATIO
-        const magnifierHeight = containerRect.height * MAGNIFIER_SIZE_RATIO // aspectRatio 2/1
+        // Get magnifier dimensions (responsive to aspect ratio)
+        const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
+          containerRect.width,
+          containerRect.height
+        )
 
         // Magnifier position (animated via spring, but we use target for calculation)
         const magTop = targetTop
