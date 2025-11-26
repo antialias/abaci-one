@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { css } from '@styled/css'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useKnowYourWorld } from '../Provider'
@@ -12,11 +13,20 @@ import { useGameMode } from '@/lib/arcade/game-sdk'
 export function PlayingPhase() {
   const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate } = useKnowYourWorld()
   const { data: viewerId } = useViewerId()
-  const { activePlayers } = useGameMode()
+  const { activePlayers, players } = useGameMode()
 
-  // Find the local player ID (first player that belongs to this viewer)
-  // In most cases, each user controls one player
-  const localPlayerId = Array.from(activePlayers)[0] || ''
+  // Find the local player ID (the player that belongs to this viewer)
+  // Look for a player marked as isLocal, or fall back to first active player
+  const localPlayerId = useMemo(() => {
+    for (const playerId of activePlayers) {
+      const player = players.get(playerId)
+      if (player?.isLocal) {
+        return playerId
+      }
+    }
+    // Fallback: return first active player (shouldn't happen in normal flow)
+    return Array.from(activePlayers)[0] || ''
+  }, [activePlayers, players])
 
   const mapData = getFilteredMapDataSync(
     state.selectedMap,
