@@ -46,6 +46,7 @@ export function DevCropTool({
 
   // Reset crop for current map/continent
   const resetCrop = useCallback(() => {
+    console.log(`[DevCropTool] Resetting crop for ${mapId}/${continentId}`)
     setSaveStatus('saving')
     fetch(`/api/dev/save-crop?mapId=${mapId}&continentId=${continentId}`, {
       method: 'DELETE',
@@ -135,9 +136,12 @@ export function DevCropTool({
         }
       }
       // R to reset crop (when in crop mode)
-      if (e.key.toLowerCase() === 'r' && isActive && !isDrawing) {
-        e.preventDefault()
-        resetCrop()
+      if (e.key.toLowerCase() === 'r') {
+        console.log('[DevCropTool] R pressed, isActive:', isActive, 'isDrawing:', isDrawing)
+        if (isActive && !isDrawing) {
+          e.preventDefault()
+          resetCrop()
+        }
       }
       // Escape to deactivate
       if (e.key === 'Escape' && isActive) {
