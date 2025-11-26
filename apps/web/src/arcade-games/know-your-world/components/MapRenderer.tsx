@@ -30,6 +30,7 @@ import { useRegionDetection } from '../hooks/useRegionDetection'
 import { usePointerLock } from '../hooks/usePointerLock'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 import { useRegionHint, useHasRegionHint } from '../hooks/useRegionHint'
+import { useSpeakHint } from '../hooks/useSpeakHint'
 import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 import { DevCropTool } from './DevCropTool'
 import type { HintMap } from '../messages'
@@ -445,9 +446,62 @@ export function MapRenderer({
 
   // Hint feature state
   const [showHintBubble, setShowHintBubble] = useState(false)
+  // Determine which hint map to use:
+  // - For USA map, use 'usa'
+  // - For World map with specific continent, use the continent name (e.g., 'europe', 'africa')
+  // - For World map with 'all' continents, use 'world'
+  const hintMapKey: HintMap =
+    selectedMap === 'usa'
+      ? 'usa'
+      : selectedContinent !== 'all'
+        ? (selectedContinent as HintMap)
+        : 'world'
   // Get hint for current region (if available)
-  const hintText = useRegionHint(selectedMap as HintMap, currentPrompt)
-  const hasHint = useHasRegionHint(selectedMap as HintMap, currentPrompt)
+  const hintText = useRegionHint(hintMapKey, currentPrompt)
+  const hasHint = useHasRegionHint(hintMapKey, currentPrompt)
+
+  // Speech synthesis for reading hints aloud
+  const { speak: speakHint, stop: stopSpeaking, isSpeaking, isSupported: isSpeechSupported, hasAccentOption } = useSpeakHint(
+    hintMapKey,
+    currentPrompt
+  )
+
+  // Auto-speak setting persisted in localStorage
+  const [autoSpeak, setAutoSpeak] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('knowYourWorld.autoSpeakHint') === 'true'
+  })
+
+  // With accent setting persisted in localStorage (default true)
+  const [withAccent, setWithAccent] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const stored = localStorage.getItem('knowYourWorld.withAccent')
+    return stored === null ? true : stored === 'true'
+  })
+
+  // Auto-hint setting persisted in localStorage (auto-opens hint on region advance)
+  const [autoHint, setAutoHint] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('knowYourWorld.autoHint') === 'true'
+  })
+
+  // Persist auto-speak setting
+  const handleAutoSpeakChange = useCallback((enabled: boolean) => {
+    setAutoSpeak(enabled)
+    localStorage.setItem('knowYourWorld.autoSpeakHint', String(enabled))
+  }, [])
+
+  // Persist with-accent setting
+  const handleWithAccentChange = useCallback((enabled: boolean) => {
+    setWithAccent(enabled)
+    localStorage.setItem('knowYourWorld.withAccent', String(enabled))
+  }, [])
+
+  // Persist auto-hint setting
+  const handleAutoHintChange = useCallback((enabled: boolean) => {
+    setAutoHint(enabled)
+    localStorage.setItem('knowYourWorld.autoHint', String(enabled))
+  }, [])
 
   // Pointer lock button registry and hooks for Give Up and Hint buttons
   const buttonRegistry = usePointerLockButtonRegistry()
@@ -474,20 +528,121 @@ export function MapRenderer({
     onClick: () => setShowHintBubble((prev) => !prev),
   })
 
+  // Speak hint button pointer lock support
+  const handleSpeakClick = useCallback(() => {
+    if (isSpeaking) {
+      stopSpeaking()
+    } else if (hintText) {
+      speakHint(hintText, withAccent)
+    }
+  }, [isSpeaking, stopSpeaking, hintText, speakHint, withAccent])
+
+  const speakButton = usePointerLockButton({
+    id: 'speak-hint',
+    disabled: !hintText,
+    active: showHintBubble && isSpeechSupported,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: handleSpeakClick,
+  })
+
+  // Auto-speak checkbox pointer lock support
+  const handleAutoSpeakToggle = useCallback(() => {
+    handleAutoSpeakChange(!autoSpeak)
+  }, [autoSpeak, handleAutoSpeakChange])
+
+  const autoSpeakCheckbox = usePointerLockButton({
+    id: 'auto-speak-checkbox',
+    disabled: false,
+    active: showHintBubble && isSpeechSupported,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: handleAutoSpeakToggle,
+  })
+
+  // With accent checkbox pointer lock support
+  const handleWithAccentToggle = useCallback(() => {
+    handleWithAccentChange(!withAccent)
+  }, [withAccent, handleWithAccentChange])
+
+  const withAccentCheckbox = usePointerLockButton({
+    id: 'with-accent-checkbox',
+    disabled: false,
+    active: showHintBubble && isSpeechSupported && hasAccentOption,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: handleWithAccentToggle,
+  })
+
+  // Auto-hint checkbox pointer lock support
+  const handleAutoHintToggle = useCallback(() => {
+    handleAutoHintChange(!autoHint)
+  }, [autoHint, handleAutoHintChange])
+
+  const autoHintCheckbox = usePointerLockButton({
+    id: 'auto-hint-checkbox',
+    disabled: false,
+    active: showHintBubble,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: handleAutoHintToggle,
+  })
+
   // Register buttons with the registry for centralized click handling
   useEffect(() => {
     buttonRegistry.register('give-up', giveUpButton.checkClick, onGiveUp)
     buttonRegistry.register('hint', hintButton.checkClick, () => setShowHintBubble((prev) => !prev))
+    buttonRegistry.register('speak-hint', speakButton.checkClick, handleSpeakClick)
+    buttonRegistry.register('auto-speak-checkbox', autoSpeakCheckbox.checkClick, handleAutoSpeakToggle)
+    buttonRegistry.register('with-accent-checkbox', withAccentCheckbox.checkClick, handleWithAccentToggle)
+    buttonRegistry.register('auto-hint-checkbox', autoHintCheckbox.checkClick, handleAutoHintToggle)
     return () => {
       buttonRegistry.unregister('give-up')
       buttonRegistry.unregister('hint')
+      buttonRegistry.unregister('speak-hint')
+      buttonRegistry.unregister('auto-speak-checkbox')
+      buttonRegistry.unregister('with-accent-checkbox')
+      buttonRegistry.unregister('auto-hint-checkbox')
     }
-  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, onGiveUp])
+  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, speakButton.checkClick, autoSpeakCheckbox.checkClick, withAccentCheckbox.checkClick, autoHintCheckbox.checkClick, onGiveUp, handleSpeakClick, handleAutoSpeakToggle, handleWithAccentToggle, handleAutoHintToggle])
 
-  // Close hint bubble when the prompt changes (new region to find)
+  // Track previous showHintBubble state to detect when it opens
+  const prevShowHintBubbleRef = useRef(false)
+
+  // Auto-speak hint when bubble opens (if enabled)
+  // Only triggers when bubble transitions from closed to open, not when hintText changes
   useEffect(() => {
-    setShowHintBubble(false)
-  }, [currentPrompt])
+    const justOpened = showHintBubble && !prevShowHintBubbleRef.current
+    prevShowHintBubbleRef.current = showHintBubble
+
+    if (justOpened && autoSpeak && hintText && isSpeechSupported) {
+      speakHint(hintText, withAccent)
+    }
+  }, [showHintBubble, autoSpeak, hintText, isSpeechSupported, speakHint, withAccent])
+
+  // Track previous prompt to detect region changes
+  const prevPromptRef = useRef<string | null>(null)
+
+  // Handle hint bubble and auto-speak when the prompt changes (new region to find)
+  useEffect(() => {
+    const isNewRegion = prevPromptRef.current !== null && prevPromptRef.current !== currentPrompt
+    prevPromptRef.current = currentPrompt
+
+    if (autoHint && hasHint) {
+      setShowHintBubble(true)
+      // If region changed and both auto-hint and auto-speak are enabled, speak immediately
+      // This handles the case where the bubble was already open
+      if (isNewRegion && autoSpeak && hintText && isSpeechSupported) {
+        speakHint(hintText, withAccent)
+      }
+    } else {
+      setShowHintBubble(false)
+    }
+  }, [currentPrompt, autoHint, hasHint, autoSpeak, hintText, isSpeechSupported, speakHint, withAccent])
 
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
@@ -3942,7 +4097,231 @@ export function MapRenderer({
                     },
                   })}
                 >
-                  {hintText}
+                  {/* Hint text */}
+                  <div className={css({ marginBottom: '3', lineHeight: '1.5' })}>{hintText}</div>
+
+                  {/* Controls section */}
+                  <div
+                    className={css({
+                      borderTop: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      paddingTop: '3',
+                    })}
+                  >
+                    {/* Speech row - speak button with accent option */}
+                    {isSpeechSupported && (
+                      <div
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2',
+                          marginBottom: hasAccentOption ? '2' : '3',
+                        })}
+                      >
+                        {/* Speak button */}
+                        <button
+                          ref={speakButton.refCallback}
+                          data-action="speak-hint"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSpeakClick()
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '1.5',
+                            paddingX: '3',
+                            paddingY: '1.5',
+                            rounded: 'md',
+                            bg: isSpeaking
+                              ? isDark
+                                ? 'blue.600'
+                                : 'blue.500'
+                              : isDark
+                                ? 'gray.700'
+                                : 'gray.100',
+                            color: isSpeaking
+                              ? 'white'
+                              : isDark
+                                ? 'gray.300'
+                                : 'gray.600',
+                            border: '1px solid',
+                            borderColor: isSpeaking
+                              ? isDark
+                                ? 'blue.500'
+                                : 'blue.400'
+                              : isDark
+                                ? 'gray.600'
+                                : 'gray.300',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            fontSize: 'xs',
+                            fontWeight: 'medium',
+                            _hover: {
+                              bg: isSpeaking
+                                ? isDark
+                                  ? 'blue.500'
+                                  : 'blue.600'
+                                : isDark
+                                  ? 'gray.600'
+                                  : 'gray.200',
+                            },
+                          })}
+                          style={{
+                            ...(speakButton.isHovered
+                              ? {
+                                  backgroundColor: isSpeaking
+                                    ? isDark
+                                      ? '#3b82f6'
+                                      : '#2563eb'
+                                    : isDark
+                                      ? '#4b5563'
+                                      : '#e5e7eb',
+                                }
+                              : {}),
+                          }}
+                          title={isSpeaking ? 'Stop' : 'Read aloud'}
+                        >
+                          {isSpeaking ? '⏹' : '🔊'}
+                          <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                        </button>
+
+                        {/* With accent checkbox - inline with speak button */}
+                        {hasAccentOption && (
+                          <label
+                            ref={withAccentCheckbox.refCallback}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                            }}
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '1.5',
+                              cursor: 'pointer',
+                              fontSize: 'xs',
+                              color: isDark ? 'gray.400' : 'gray.500',
+                              padding: '1',
+                              rounded: 'sm',
+                              transition: 'all 0.15s',
+                              _hover: {
+                                color: isDark ? 'gray.200' : 'gray.700',
+                              },
+                            })}
+                            style={{
+                              ...(withAccentCheckbox.isHovered
+                                ? { color: isDark ? '#e5e7eb' : '#374151' }
+                                : {}),
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={withAccent}
+                              onChange={(e) => handleWithAccentChange(e.target.checked)}
+                              className={css({
+                                width: '12px',
+                                height: '12px',
+                                cursor: 'pointer',
+                                accentColor: isDark ? '#3b82f6' : '#2563eb',
+                              })}
+                            />
+                            With accent
+                          </label>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Auto options row - horizontal compact layout */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        fontSize: 'xs',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      })}
+                    >
+                      <span className={css({ fontWeight: 'medium' })}>Auto:</span>
+
+                      {/* Auto-hint checkbox */}
+                      <label
+                        ref={autoHintCheckbox.refCallback}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1',
+                          cursor: 'pointer',
+                          padding: '0.5',
+                          rounded: 'sm',
+                          transition: 'all 0.15s',
+                          _hover: {
+                            color: isDark ? 'gray.200' : 'gray.700',
+                          },
+                        })}
+                        style={{
+                          ...(autoHintCheckbox.isHovered
+                            ? { color: isDark ? '#e5e7eb' : '#374151' }
+                            : {}),
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={autoHint}
+                          onChange={(e) => handleAutoHintChange(e.target.checked)}
+                          className={css({
+                            width: '12px',
+                            height: '12px',
+                            cursor: 'pointer',
+                            accentColor: isDark ? '#3b82f6' : '#2563eb',
+                          })}
+                        />
+                        Hint
+                      </label>
+
+                      {/* Auto-speak checkbox */}
+                      {isSpeechSupported && (
+                        <label
+                          ref={autoSpeakCheckbox.refCallback}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1',
+                            cursor: 'pointer',
+                            padding: '0.5',
+                            rounded: 'sm',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              color: isDark ? 'gray.200' : 'gray.700',
+                            },
+                          })}
+                          style={{
+                            ...(autoSpeakCheckbox.isHovered
+                              ? { color: isDark ? '#e5e7eb' : '#374151' }
+                              : {}),
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={autoSpeak}
+                            onChange={(e) => handleAutoSpeakChange(e.target.checked)}
+                            className={css({
+                              width: '12px',
+                              height: '12px',
+                              cursor: 'pointer',
+                              accentColor: isDark ? '#3b82f6' : '#2563eb',
+                            })}
+                          />
+                          Speak
+                        </label>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </>

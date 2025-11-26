@@ -25,11 +25,13 @@ export const knowYourWorldMessages = {
 /**
  * Type for hint lookup
  */
-export type HintMap = 'usa' | 'world'
+export type HintMap = 'usa' | 'world' | 'europe' | 'africa'
 export type HintsData = {
   hints: {
     usa: Record<string, string[]>
     world: Record<string, string[]>
+    europe: Record<string, string[]>
+    africa: Record<string, string[]>
   }
 }
 
