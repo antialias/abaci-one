@@ -26,9 +26,9 @@ export class KnowYourWorldValidator
   ): Promise<ValidationResult> {
     switch (move.type) {
       case 'START_GAME':
-        return await this.validateStartGame(state, move.data)
+        return await this.validateStartGame(state, move.userId, move.data)
       case 'CLICK_REGION':
-        return this.validateClickRegion(state, move.playerId, move.data)
+        return this.validateClickRegion(state, move.playerId, move.userId, move.data)
       case 'NEXT_ROUND':
         return await this.validateNextRound(state)
       case 'END_GAME':
@@ -48,13 +48,17 @@ export class KnowYourWorldValidator
       case 'SET_CONTINENT':
         return this.validateSetContinent(state, move.data.selectedContinent)
       case 'GIVE_UP':
-        return await this.validateGiveUp(state, move.playerId)
+        return await this.validateGiveUp(state, move.playerId, move.userId)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
   }
 
-  private async validateStartGame(state: KnowYourWorldState, data: any): Promise<ValidationResult> {
+  private async validateStartGame(
+    state: KnowYourWorldState,
+    userId: string,
+    data: any
+  ): Promise<ValidationResult> {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Can only start from setup phase' }
     }
@@ -81,10 +85,14 @@ export class KnowYourWorldValidator
     // Check if we should go to study phase or directly to playing
     const shouldStudy = state.studyDuration > 0
 
+    // Track the initial userId (session) - other sessions will be added as they make moves
+    const activeUserIds = userId ? [userId] : []
+
     const newState: KnowYourWorldState = {
       ...state,
       gamePhase: shouldStudy ? 'studying' : 'playing',
       activePlayers,
+      activeUserIds,
       playerMetadata,
       selectedMap,
       gameMode,
@@ -101,6 +109,7 @@ export class KnowYourWorldValidator
       guessHistory: [],
       startTime: Date.now(),
       giveUpReveal: null,
+      giveUpVotes: [],
     }
 
     return { valid: true, newState }
@@ -109,6 +118,7 @@ export class KnowYourWorldValidator
   private validateClickRegion(
     state: KnowYourWorldState,
     playerId: string,
+    userId: string,
     data: any
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
@@ -125,6 +135,9 @@ export class KnowYourWorldValidator
     if (state.gameMode === 'turn-based' && state.currentPlayer !== playerId) {
       return { valid: false, error: 'Not your turn' }
     }
+
+    // Track this session if not already known
+    const activeUserIds = this.addUserIdIfNew(state.activeUserIds, userId)
 
     const isCorrect = regionId === state.currentPrompt
     const guessRecord: GuessRecord = {
@@ -165,6 +178,8 @@ export class KnowYourWorldValidator
           guessHistory,
           endTime: Date.now(),
           giveUpReveal: null,
+          giveUpVotes: [], // Clear votes when game ends
+          activeUserIds,
         }
         return { valid: true, newState }
       }
@@ -190,6 +205,8 @@ export class KnowYourWorldValidator
         scores: newScores,
         guessHistory,
         giveUpReveal: null,
+        giveUpVotes: [], // Clear votes when moving to next region
+        activeUserIds,
       }
 
       return { valid: true, newState }
@@ -213,6 +230,7 @@ export class KnowYourWorldValidator
         attempts: newAttempts,
         guessHistory,
         currentPlayer: nextPlayer,
+        activeUserIds,
       }
 
       return {
@@ -221,6 +239,15 @@ export class KnowYourWorldValidator
         error: `Incorrect! Try again. Looking for: ${state.currentPrompt}`,
       }
     }
+  }
+
+  // Helper: Add userId to activeUserIds if not already present
+  private addUserIdIfNew(activeUserIds: string[] | undefined, userId: string): string[] {
+    const existing = activeUserIds ?? []
+    if (!userId || existing.includes(userId)) {
+      return existing
+    }
+    return [...existing, userId]
   }
 
   private async validateNextRound(state: KnowYourWorldState): Promise<ValidationResult> {
@@ -264,6 +291,7 @@ export class KnowYourWorldValidator
       startTime: Date.now(),
       endTime: undefined,
       giveUpReveal: null,
+      giveUpVotes: [],
     }
 
     return { valid: true, newState }
@@ -407,7 +435,8 @@ export class KnowYourWorldValidator
 
   private async validateGiveUp(
     state: KnowYourWorldState,
-    playerId: string
+    playerId: string,
+    userId: string
   ): Promise<ValidationResult> {
     if (state.gamePhase !== 'playing') {
       return { valid: false, error: 'Can only give up during playing phase' }
@@ -422,6 +451,47 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Not your turn' }
     }
 
+    // Track this session if not already known
+    const activeUserIds = this.addUserIdIfNew(state.activeUserIds, userId)
+
+    // For cooperative mode with multiple sessions: require unanimous vote by session
+    // (All local players on the same session count as one vote since they can discuss together)
+    const isCooperativeMultiplayer = state.gameMode === 'cooperative' && activeUserIds.length > 1
+
+    if (isCooperativeMultiplayer) {
+      // Check if this session has already voted
+      const existingVotes = state.giveUpVotes ?? []
+      if (existingVotes.includes(userId)) {
+        return { valid: false, error: 'Your session has already voted to give up' }
+      }
+
+      // Add this session's vote
+      const newVotes = [...existingVotes, userId]
+
+      // Check if unanimous (all sessions have voted)
+      const isUnanimous = activeUserIds.every((uid) => newVotes.includes(uid))
+
+      if (!isUnanimous) {
+        // Not unanimous yet - just record the vote
+        const newState: KnowYourWorldState = {
+          ...state,
+          giveUpVotes: newVotes,
+          activeUserIds,
+        }
+        return { valid: true, newState }
+      }
+
+      // Unanimous! Fall through to execute the give up
+    }
+
+    // Execute the actual give up (single session, turn-based, or unanimous cooperative)
+    return this.executeGiveUp(state, activeUserIds)
+  }
+
+  private async executeGiveUp(
+    state: KnowYourWorldState,
+    activeUserIds: string[]
+  ): Promise<ValidationResult> {
     // Get region info for the reveal
     const mapData = await getFilteredMapDataLazy(
       state.selectedMap,
@@ -476,6 +546,8 @@ export class KnowYourWorldValidator
         regionName: region.name,
         timestamp: Date.now(),
       },
+      giveUpVotes: [], // Clear votes after give up is executed
+      activeUserIds,
     }
 
     return { valid: true, newState }
@@ -507,8 +579,10 @@ export class KnowYourWorldValidator
       guessHistory: [],
       startTime: 0,
       activePlayers: [],
+      activeUserIds: [],
       playerMetadata: {},
       giveUpReveal: null,
+      giveUpVotes: [],
     }
   }
 

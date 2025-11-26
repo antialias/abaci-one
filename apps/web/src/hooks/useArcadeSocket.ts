@@ -19,6 +19,7 @@ export interface ArcadeSocketEvents {
   /** Cursor position update from another player (ephemeral, real-time) */
   onCursorUpdate?: (data: {
     playerId: string
+    userId: string // Session ID that owns this cursor
     cursorPosition: { x: number; y: number } | null
   }) => void
   /** If true, errors will NOT show toasts (for cases where game handles errors directly) */
@@ -36,6 +37,7 @@ export interface UseArcadeSocketReturn {
   sendCursorUpdate: (
     roomId: string,
     playerId: string,
+    userId: string,
     cursorPosition: { x: number; y: number } | null
   ) => void
 }
@@ -215,9 +217,14 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
   )
 
   const sendCursorUpdate = useCallback(
-    (roomId: string, playerId: string, cursorPosition: { x: number; y: number } | null) => {
+    (
+      roomId: string,
+      playerId: string,
+      userId: string,
+      cursorPosition: { x: number; y: number } | null
+    ) => {
       if (!socket) return
-      socket.emit('cursor-update', { roomId, playerId, cursorPosition })
+      socket.emit('cursor-update', { roomId, playerId, userId, cursorPosition })
     },
     [socket]
   )

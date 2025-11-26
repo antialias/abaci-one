@@ -47,8 +47,10 @@ describe('KnowYourWorldValidator', () => {
     guessHistory: [],
     startTime: Date.now(),
     activePlayers: ['player-1'],
+    activeUserIds: ['user-1'],
     playerMetadata: { 'player-1': { name: 'Player 1' } },
     giveUpReveal: null,
+    giveUpVotes: [],
     ...overrides,
   })
 

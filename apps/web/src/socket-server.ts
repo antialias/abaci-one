@@ -700,15 +700,18 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       ({
         roomId,
         playerId,
+        userId,
         cursorPosition,
       }: {
         roomId: string
         playerId: string
+        userId: string // Session ID that owns this cursor
         cursorPosition: { x: number; y: number } | null // SVG coordinates, null when cursor leaves
       }) => {
         // Broadcast to all other sockets in the game room (exclude sender)
         socket.to(`game:${roomId}`).emit('cursor-update', {
           playerId,
+          userId,
           cursorPosition,
         })
       }

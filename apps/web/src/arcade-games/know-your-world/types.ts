@@ -72,6 +72,7 @@ export interface KnowYourWorldState extends GameState {
 
   // Multiplayer
   activePlayers: string[]
+  activeUserIds: string[] // Unique session/viewer IDs participating in the game
   playerMetadata: Record<string, any>
 
   // Give up reveal state (for animation)
@@ -80,6 +81,9 @@ export interface KnowYourWorldState extends GameState {
     regionName: string
     timestamp: number // For animation timing key
   } | null
+
+  // Unanimous give-up voting (for cooperative multiplayer)
+  giveUpVotes: string[] // Session/viewer IDs (userIds) who have voted to give up on current prompt
 }
 
 // Move types

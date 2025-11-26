@@ -81,17 +81,19 @@ export interface UseArcadeSessionReturn<TState> {
 
   /**
    * Other players' cursor positions (ephemeral, real-time)
-   * Map of playerId -> { x, y } in SVG coordinates, or null if cursor left
+   * Map of playerId -> { x, y, userId } in SVG coordinates, or null if cursor left
    */
-  otherPlayerCursors: Record<string, { x: number; y: number } | null>
+  otherPlayerCursors: Record<string, { x: number; y: number; userId: string } | null>
 
   /**
    * Send cursor position update to other players (ephemeral, real-time)
    * @param playerId - The player ID sending the cursor update
+   * @param userId - The session/viewer ID that owns this cursor
    * @param cursorPosition - SVG coordinates, or null when cursor leaves the map
    */
   sendCursorUpdate: (
     playerId: string,
+    userId: string,
     cursorPosition: { x: number; y: number } | null
   ) => void
 }
@@ -169,7 +171,7 @@ export function useArcadeSession<TState>(
 
   // Track other players' cursor positions (ephemeral, real-time)
   const [otherPlayerCursors, setOtherPlayerCursors] = useState<
-    Record<string, { x: number; y: number } | null>
+    Record<string, { x: number; y: number; userId: string } | null>
   >({})
 
   // WebSocket connection
@@ -273,7 +275,9 @@ export function useArcadeSession<TState>(
     onCursorUpdate: (data) => {
       setOtherPlayerCursors((prev) => ({
         ...prev,
-        [data.playerId]: data.cursorPosition,
+        [data.playerId]: data.cursorPosition
+          ? { ...data.cursorPosition, userId: data.userId }
+          : null,
       }))
     },
   })
@@ -321,9 +325,9 @@ export function useArcadeSession<TState>(
 
   // Send cursor position update to other players (ephemeral, real-time)
   const sendCursorUpdate = useCallback(
-    (playerId: string, cursorPosition: { x: number; y: number } | null) => {
+    (playerId: string, sessionUserId: string, cursorPosition: { x: number; y: number } | null) => {
       if (!roomId) return // Only works in room-based games
-      socketSendCursorUpdate(roomId, playerId, cursorPosition)
+      socketSendCursorUpdate(roomId, playerId, sessionUserId, cursorPosition)
     },
     [roomId, socketSendCursorUpdate]
   )

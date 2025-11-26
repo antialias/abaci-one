@@ -35,8 +35,15 @@ interface KnowYourWorldContextValue {
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 
   // Cursor position sharing (for multiplayer)
-  otherPlayerCursors: Record<string, { x: number; y: number } | null>
-  sendCursorUpdate: (playerId: string, cursorPosition: { x: number; y: number } | null) => void
+  otherPlayerCursors: Record<string, { x: number; y: number; userId: string } | null>
+  sendCursorUpdate: (
+    playerId: string,
+    userId: string,
+    cursorPosition: { x: number; y: number } | null
+  ) => void
+
+  // Member players mapping (userId -> players) for cursor emoji display
+  memberPlayers: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
 }
 
 const KnowYourWorldContext = createContext<KnowYourWorldContextValue | null>(null)
@@ -102,8 +109,10 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       guessHistory: [],
       startTime: 0,
       activePlayers: [],
+      activeUserIds: [],
       playerMetadata: {},
       giveUpReveal: null,
+      giveUpVotes: [],
     }
   }, [roomData])
 
@@ -122,11 +131,11 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     applyMove: (state) => state, // Server handles all state updates
   })
 
-  // Pass through cursor updates with the provided player ID
+  // Pass through cursor updates with the provided player ID and userId
   const sendCursorUpdate = useCallback(
-    (playerId: string, cursorPosition: { x: number; y: number } | null) => {
-      if (playerId) {
-        sessionSendCursorUpdate(playerId, cursorPosition)
+    (playerId: string, sessionUserId: string, cursorPosition: { x: number; y: number } | null) => {
+      if (playerId && sessionUserId) {
+        sessionSendCursorUpdate(playerId, sessionUserId, cursorPosition)
       }
     },
     [sessionSendCursorUpdate]
@@ -134,7 +143,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
   // Action: Start Game
   const startGame = useCallback(() => {
-    const playerMetadata = buildPlayerMetadata(activePlayers, {}, players, viewerId || undefined)
+    // Build ownership map from roomData to correctly map players to their owners
+    const ownershipMap = buildPlayerOwnershipFromRoomData(roomData)
+    const playerMetadata = buildPlayerMetadata(
+      activePlayers,
+      ownershipMap,
+      players,
+      viewerId || undefined
+    )
 
     sendMove({
       type: 'START_GAME',
@@ -152,6 +168,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     activePlayers,
     players,
     viewerId,
+    roomData,
     sendMove,
     state.selectedMap,
     state.gameMode,
@@ -385,6 +402,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     })
   }, [viewerId, sendMove, state.currentPlayer, activePlayers])
 
+  // Memoize memberPlayers from roomData for cursor emoji display
+  const memberPlayers = useMemo(() => {
+    return (roomData?.memberPlayers ?? {}) as Record<
+      string,
+      Array<{ id: string; name: string; emoji: string; color: string }>
+    >
+  }, [roomData?.memberPlayers])
+
   return (
     <KnowYourWorldContext.Provider
       value={{
@@ -406,6 +431,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         setContinent,
         otherPlayerCursors,
         sendCursorUpdate,
+        memberPlayers,
       }}
     >
       {children}

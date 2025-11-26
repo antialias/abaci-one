@@ -11,7 +11,8 @@ import { useViewerId } from '@/lib/arcade/game-sdk'
 import { useGameMode } from '@/lib/arcade/game-sdk'
 
 export function PlayingPhase() {
-  const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate } = useKnowYourWorld()
+  const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate, memberPlayers } =
+    useKnowYourWorld()
   const { data: viewerId } = useViewerId()
   const { activePlayers, players } = useGameMode()
 
@@ -28,12 +29,14 @@ export function PlayingPhase() {
     return Array.from(activePlayers)[0] || ''
   }, [activePlayers, players])
 
-  // Wrap sendCursorUpdate to include localPlayerId
+  // Wrap sendCursorUpdate to include localPlayerId and viewerId (session ID)
   const handleCursorUpdate = useCallback(
     (cursorPosition: { x: number; y: number } | null) => {
-      sendCursorUpdate(localPlayerId, cursorPosition)
+      if (viewerId) {
+        sendCursorUpdate(localPlayerId, viewerId, cursorPosition)
+      }
     },
-    [localPlayerId, sendCursorUpdate]
+    [localPlayerId, viewerId, sendCursorUpdate]
   )
 
   const mapData = getFilteredMapDataSync(
@@ -145,6 +148,10 @@ export function PlayingPhase() {
               localPlayerId={localPlayerId}
               otherPlayerCursors={otherPlayerCursors}
               onCursorUpdate={handleCursorUpdate}
+              giveUpVotes={state.giveUpVotes}
+              activeUserIds={state.activeUserIds}
+              viewerId={viewerId ?? undefined}
+              memberPlayers={memberPlayers}
             />
           </div>
         </Panel>

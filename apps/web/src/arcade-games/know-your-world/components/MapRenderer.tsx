@@ -113,6 +113,7 @@ interface MapRendererProps {
       name: string
       emoji: string
       color: string
+      userId?: string // Session ID that owns this player
     }
   >
   // Give up reveal animation
@@ -138,8 +139,14 @@ interface MapRendererProps {
   gameMode?: 'cooperative' | 'race' | 'turn-based'
   currentPlayer?: string // The player whose turn it is (for turn-based mode)
   localPlayerId?: string // The local player's ID (to filter out our own cursor from others)
-  otherPlayerCursors?: Record<string, { x: number; y: number } | null>
+  otherPlayerCursors?: Record<string, { x: number; y: number; userId: string } | null>
   onCursorUpdate?: (cursorPosition: { x: number; y: number } | null) => void
+  // Unanimous give-up voting (for cooperative multiplayer)
+  giveUpVotes?: string[] // Session/viewer IDs (userIds) who have voted to give up
+  activeUserIds?: string[] // All unique session IDs participating (to show "1/2 sessions voted")
+  viewerId?: string // This viewer's userId (to check if local session has voted)
+  // Member players mapping (userId -> players) for cursor emoji display
+  memberPlayers?: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
 }
 
 /**
@@ -200,6 +207,10 @@ export function MapRenderer({
   localPlayerId,
   otherPlayerCursors = {},
   onCursorUpdate,
+  giveUpVotes = [],
+  activeUserIds = [],
+  viewerId,
+  memberPlayers = {},
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -1210,7 +1221,15 @@ export function MapRenderer({
     return () => {
       clearTimeout(timeoutId)
     }
-  }, [mapData, regionsFound, guessHistory, svgDimensions, excludedRegions, excludedRegionIds, displayViewBox])
+  }, [
+    mapData,
+    regionsFound,
+    guessHistory,
+    svgDimensions,
+    excludedRegions,
+    excludedRegionIds,
+    displayViewBox,
+  ])
 
   // Calculate viewBox dimensions for label offset calculations and sea background
   const viewBoxParts = displayViewBox.split(' ').map(Number)
@@ -1974,7 +1993,6 @@ export function MapRenderer({
             opacity={0.8}
           />
         )}
-
       </animated.svg>
 
       {/* HTML labels positioned absolutely over the SVG */}
@@ -3208,6 +3226,14 @@ export function MapRenderer({
           const player = playerMetadata[playerId]
           if (!player) return null
 
+          // In collaborative mode, find all players from the same session and show all their emojis
+          // Use memberPlayers (from roomData) which is the canonical source of player ownership
+          const cursorUserId = position.userId
+          const sessionPlayers =
+            gameMode === 'cooperative' && cursorUserId && memberPlayers[cursorUserId]
+              ? memberPlayers[cursorUserId]
+              : [player]
+
           // Convert SVG coordinates to screen coordinates
           const svgRect = svgRef.current!.getBoundingClientRect()
           const containerRect = containerRef.current!.getBoundingClientRect()
@@ -3308,7 +3334,8 @@ export function MapRenderer({
                 {/* Center dot */}
                 <circle cx="12" cy="12" r="2" fill={player.color} />
               </svg>
-              {/* Player emoji label - positioned below crosshair */}
+              {/* Player emoji label(s) - positioned below crosshair */}
+              {/* In collaborative mode, show all emojis from the same session */}
               <div
                 style={{
                   position: 'absolute',
@@ -3317,9 +3344,10 @@ export function MapRenderer({
                   transform: 'translateX(-50%)',
                   fontSize: '16px',
                   textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                {player.emoji}
+                {sessionPlayers.map((p) => p.emoji).join('')}
               </div>
             </div>
           )
@@ -3418,10 +3446,78 @@ export function MapRenderer({
               },
             })}
           >
-            Give Up (G)
+            {(() => {
+              // Determine button text based on game mode and voting state
+              // Voting is per-session (userId), not per-player
+              const isCooperativeMultiplayer =
+                gameMode === 'cooperative' && activeUserIds.length > 1
+              const hasLocalSessionVoted = viewerId && giveUpVotes.includes(viewerId)
+              const voteCount = giveUpVotes.length
+              const totalSessions = activeUserIds.length
+
+              if (isCooperativeMultiplayer) {
+                if (hasLocalSessionVoted) {
+                  return (
+                    <span>
+                      ✓ Voted ({voteCount}/{totalSessions})
+                    </span>
+                  )
+                }
+                if (voteCount > 0) {
+                  return (
+                    <span>
+                      Give Up ({voteCount}/{totalSessions}) (G)
+                    </span>
+                  )
+                }
+              }
+              return 'Give Up (G)'
+            })()}
           </button>
         )
       })()}
+
+      {/* Show waiting message for give up voting (cooperative multiplayer with multiple sessions) */}
+      {gameMode === 'cooperative' &&
+        activeUserIds.length > 1 &&
+        giveUpVotes.length > 0 &&
+        giveUpVotes.length < activeUserIds.length &&
+        viewerId &&
+        giveUpVotes.includes(viewerId) &&
+        (() => {
+          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
+
+          const svgRect = svgRef.current.getBoundingClientRect()
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const svgOffsetY = svgRect.top - containerRect.top
+          const buttonRight =
+            containerRect.width - (svgRect.left - containerRect.left + svgRect.width) + 8
+
+          const remaining = activeUserIds.length - giveUpVotes.length
+
+          return (
+            <div
+              data-element="give-up-voters"
+              className={css({
+                position: 'absolute',
+                fontSize: 'xs',
+                color: isDark ? 'yellow.300' : 'yellow.700',
+                bg: isDark ? 'gray.800/90' : 'white/90',
+                padding: '1 2',
+                rounded: 'md',
+                border: '1px solid',
+                borderColor: isDark ? 'yellow.600' : 'yellow.400',
+                zIndex: 49,
+              })}
+              style={{
+                top: `${svgOffsetY + 44}px`, // Below the Give Up button
+                right: `${buttonRight}px`,
+              }}
+            >
+              Waiting for {remaining} other {remaining === 1 ? 'player' : 'players'}...
+            </div>
+          )
+        })()}
 
       {/* Dev-only crop tool for getting custom viewBox coordinates */}
       <DevCropTool
