@@ -1648,7 +1648,10 @@ export function MapRenderer({
       if (!pointerLocked && containerRef.current && svgRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
-        const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+        const { width: magnifierWidth } = getMagnifierDimensions(
+          containerRect.width,
+          containerRect.height
+        )
         const viewBoxParts = displayViewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
@@ -2398,7 +2401,10 @@ export function MapRenderer({
                   const svgRect = svgRef.current?.getBoundingClientRect()
                   if (!containerRect || !svgRect) return 'none'
 
-                  const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+                  const { width: magnifierWidth } = getMagnifierDimensions(
+                    containerRect.width,
+                    containerRect.height
+                  )
                   const viewBoxParts = displayViewBox.split(' ').map(Number)
                   const viewBoxWidth = viewBoxParts[2]
                   if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return 'none'
@@ -2539,7 +2545,10 @@ export function MapRenderer({
                 const svgRect = svgRef.current?.getBoundingClientRect()
                 if (!containerRect || !svgRect) return null
 
-                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+                const { width: magnifierWidth } = getMagnifierDimensions(
+                  containerRect.width,
+                  containerRect.height
+                )
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 const viewBoxHeight = viewBoxParts[3]
@@ -2726,7 +2735,10 @@ export function MapRenderer({
                         if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
                         // Magnifier dimensions
-                        const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+                        const { width: magnifierWidth } = getMagnifierDimensions(
+                          containerRect.width,
+                          containerRect.height
+                        )
 
                         // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
                         const scaleX = viewBoxWidth / svgRect.width
@@ -2825,7 +2837,10 @@ export function MapRenderer({
                   return `${z.toFixed(1)}×`
                 }
 
-                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+                const { width: magnifierWidth } = getMagnifierDimensions(
+                  containerRect.width,
+                  containerRect.height
+                )
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
 
@@ -2861,7 +2876,10 @@ export function MapRenderer({
                 const svgRect = svgRef.current?.getBoundingClientRect()
                 if (!containerRect || !svgRect) return null
 
-                const { width: magnifierWidth } = getMagnifierDimensions(containerRect.width, containerRect.height)
+                const { width: magnifierWidth } = getMagnifierDimensions(
+                  containerRect.width,
+                  containerRect.height
+                )
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
@@ -3153,19 +3171,24 @@ export function MapRenderer({
             }}
           />
 
-          {/* Detection info overlay - top left corner */}
+          {/* Detection info overlay - opposite side from magnifier */}
           {(() => {
             const { detectedRegions, hasSmallRegion, detectedSmallestSize } = detectRegions(
               cursorPosition.x,
               cursorPosition.y
             )
 
+            // Position on opposite side from magnifier
+            const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0
+            const magnifierOnLeft = targetLeft < containerWidth / 2
+
             return (
               <div
                 style={{
                   position: 'absolute',
                   top: '10px',
-                  left: '10px',
+                  left: magnifierOnLeft ? undefined : '10px',
+                  right: magnifierOnLeft ? '10px' : undefined,
                   backgroundColor: 'rgba(0, 0, 0, 0.8)',
                   color: 'white',
                   padding: '10px',
