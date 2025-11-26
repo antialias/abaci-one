@@ -63,6 +63,8 @@ function parseCropsFile(): Record<string, Record<string, string>> {
       .replace(/\/\/.*$/gm, '') // Remove comments
       .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
       .replace(/'/g, '"') // Convert single quotes to double
+      // Add quotes around unquoted keys (e.g., `world:` -> `"world":`)
+      .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1"$2"$3')
     return JSON.parse(cleanedObject)
   } catch (e) {
     console.error('[DevCropTool] Failed to parse crops:', e, objectStr)
