@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { css } from '@styled/css'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useKnowYourWorld } from '../Provider'
@@ -27,6 +27,14 @@ export function PlayingPhase() {
     // Fallback: return first active player (shouldn't happen in normal flow)
     return Array.from(activePlayers)[0] || ''
   }, [activePlayers, players])
+
+  // Wrap sendCursorUpdate to include localPlayerId
+  const handleCursorUpdate = useCallback(
+    (cursorPosition: { x: number; y: number } | null) => {
+      sendCursorUpdate(localPlayerId, cursorPosition)
+    },
+    [localPlayerId, sendCursorUpdate]
+  )
 
   const mapData = getFilteredMapDataSync(
     state.selectedMap,
@@ -136,7 +144,7 @@ export function PlayingPhase() {
               currentPlayer={state.currentPlayer}
               localPlayerId={localPlayerId}
               otherPlayerCursors={otherPlayerCursors}
-              onCursorUpdate={sendCursorUpdate}
+              onCursorUpdate={handleCursorUpdate}
             />
           </div>
         </Panel>

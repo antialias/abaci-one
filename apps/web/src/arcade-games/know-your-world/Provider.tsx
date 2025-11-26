@@ -36,7 +36,7 @@ interface KnowYourWorldContextValue {
 
   // Cursor position sharing (for multiplayer)
   otherPlayerCursors: Record<string, { x: number; y: number } | null>
-  sendCursorUpdate: (cursorPosition: { x: number; y: number } | null) => void
+  sendCursorUpdate: (playerId: string, cursorPosition: { x: number; y: number } | null) => void
 }
 
 const KnowYourWorldContext = createContext<KnowYourWorldContextValue | null>(null)
@@ -122,14 +122,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     applyMove: (state) => state, // Server handles all state updates
   })
 
-  // Wrap sendCursorUpdate to automatically include the current player ID
+  // Pass through cursor updates with the provided player ID
   const sendCursorUpdate = useCallback(
-    (cursorPosition: { x: number; y: number } | null) => {
-      if (state.currentPlayer) {
-        sessionSendCursorUpdate(state.currentPlayer, cursorPosition)
+    (playerId: string, cursorPosition: { x: number; y: number } | null) => {
+      if (playerId) {
+        sessionSendCursorUpdate(playerId, cursorPosition)
       }
     },
-    [state.currentPlayer, sessionSendCursorUpdate]
+    [sessionSendCursorUpdate]
   )
 
   // Action: Start Game
