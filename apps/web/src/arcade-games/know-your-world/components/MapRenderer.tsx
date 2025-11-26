@@ -1052,11 +1052,21 @@ export function MapRenderer({
     }
   }, [giveUpReveal?.timestamp]) // Re-run when timestamp changes
 
-  // Shift key listener - show magnifier when Shift is held
+  // Keyboard shortcuts - Shift for magnifier, H for hint
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
       if (e.key === 'Shift' && !e.repeat) {
         setShiftPressed(true)
+      }
+
+      // 'H' key to toggle hint bubble
+      if ((e.key === 'h' || e.key === 'H') && !e.repeat && hasHint) {
+        setShowHintBubble((prev) => !prev)
       }
     }
 
@@ -1073,7 +1083,7 @@ export function MapRenderer({
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [hasHint])
 
   const [labelPositions, setLabelPositions] = useState<RegionLabelPosition[]>([])
   const [smallRegionLabelPositions, setSmallRegionLabelPositions] = useState<
@@ -4120,7 +4130,7 @@ export function MapRenderer({
                   },
                 })}
               >
-                💡 Hint
+                💡 Hint (H)
               </button>
 
               {/* Speech bubble for hint */}
