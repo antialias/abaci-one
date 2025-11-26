@@ -29,7 +29,10 @@ import { findOptimalZoom, type BoundingBox as DebugBoundingBox } from '../utils/
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { usePointerLock } from '../hooks/usePointerLock'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
+import { useRegionHint, useHasRegionHint } from '../hooks/useRegionHint'
+import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 import { DevCropTool } from './DevCropTool'
+import type { HintMap } from '../messages'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
@@ -363,15 +366,6 @@ export function MapRenderer({
   // State that needs to be available for hooks
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
-  // Ref to track Give Up button bounds for pointer lock click detection
-  const giveUpButtonBoundsRef = useRef<{
-    left: number
-    top: number
-    right: number
-    bottom: number
-  } | null>(null)
-  // Track if fake cursor is hovering over Give Up button (for pointer lock mode)
-  const [isFakeCursorOverGiveUp, setIsFakeCursorOverGiveUp] = useState(false)
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
   const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
@@ -394,8 +388,7 @@ export function MapRenderer({
     // Reset cursor squish
     setCursorSquish({ x: 1, y: 1 })
     setIsReleasingPointerLock(false)
-    // Reset fake cursor hover state
-    setIsFakeCursorOverGiveUp(false)
+    // Note: Button hover states reset automatically via usePointerLockButton hook
     // Note: Zoom recalculation now handled by useMagnifierZoom hook
   }, [])
 
@@ -429,6 +422,11 @@ export function MapRenderer({
   // Track whether current target region needs magnification
   const [targetNeedsMagnification, setTargetNeedsMagnification] = useState(false)
 
+  // Mobile magnifier touch drag state
+  const [isMagnifierDragging, setIsMagnifierDragging] = useState(false)
+  const magnifierTouchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const magnifierDidMoveRef = useRef(false) // Track if user actually dragged (vs just tapped)
+
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
   const [isGiveUpAnimating, setIsGiveUpAnimating] = useState(false) // Track if animation in progress
@@ -444,6 +442,52 @@ export function MapRenderer({
   const [zoomSearchDebugInfo, setZoomSearchDebugInfo] = useState<ReturnType<
     typeof findOptimalZoom
   > | null>(null)
+
+  // Hint feature state
+  const [showHintBubble, setShowHintBubble] = useState(false)
+  // Get hint for current region (if available)
+  const hintText = useRegionHint(selectedMap as HintMap, currentPrompt)
+  const hasHint = useHasRegionHint(selectedMap as HintMap, currentPrompt)
+
+  // Pointer lock button registry and hooks for Give Up and Hint buttons
+  const buttonRegistry = usePointerLockButtonRegistry()
+
+  // Give Up button pointer lock support
+  const giveUpButton = usePointerLockButton({
+    id: 'give-up',
+    disabled: isGiveUpAnimating,
+    active: true,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: onGiveUp,
+  })
+
+  // Hint button pointer lock support
+  const hintButton = usePointerLockButton({
+    id: 'hint',
+    disabled: false,
+    active: hasHint,
+    pointerLocked,
+    cursorPosition,
+    containerRef,
+    onClick: () => setShowHintBubble((prev) => !prev),
+  })
+
+  // Register buttons with the registry for centralized click handling
+  useEffect(() => {
+    buttonRegistry.register('give-up', giveUpButton.checkClick, onGiveUp)
+    buttonRegistry.register('hint', hintButton.checkClick, () => setShowHintBubble((prev) => !prev))
+    return () => {
+      buttonRegistry.unregister('give-up')
+      buttonRegistry.unregister('hint')
+    }
+  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, onGiveUp])
+
+  // Close hint bubble when the prompt changes (new region to find)
+  useEffect(() => {
+    setShowHintBubble(false)
+  }, [currentPrompt])
 
   // Configuration
   const MAX_ZOOM = 1000 // Maximum zoom level (for Gibraltar at 0.08px!)
@@ -520,18 +564,8 @@ export function MapRenderer({
 
       console.log('[CLICK] Pointer lock click at cursor position:', { cursorX, cursorY })
 
-      // Check if clicking on Give Up button (pointer lock mode requires manual detection)
-      const buttonBounds = giveUpButtonBoundsRef.current
-      if (
-        buttonBounds &&
-        !isGiveUpAnimating &&
-        cursorX >= buttonBounds.left &&
-        cursorX <= buttonBounds.right &&
-        cursorY >= buttonBounds.top &&
-        cursorY <= buttonBounds.bottom
-      ) {
-        console.log('[CLICK] Give Up button clicked via pointer lock')
-        onGiveUp()
+      // Check if clicking on any registered button (Give Up, Hint, etc.)
+      if (buttonRegistry.handleClick(cursorX, cursorY)) {
         return
       }
 
@@ -1517,17 +1551,7 @@ export function MapRenderer({
     cursorPositionRef.current = { x: cursorX, y: cursorY }
     setCursorPosition({ x: cursorX, y: cursorY })
 
-    // Check if fake cursor is hovering over Give Up button (for pointer lock mode)
-    if (pointerLocked) {
-      const buttonBounds = giveUpButtonBoundsRef.current
-      const isOverButton =
-        buttonBounds &&
-        cursorX >= buttonBounds.left &&
-        cursorX <= buttonBounds.right &&
-        cursorY >= buttonBounds.top &&
-        cursorY <= buttonBounds.bottom
-      setIsFakeCursorOverGiveUp(!!isOverButton)
-    }
+    // Note: Button hover detection is handled by usePointerLockButton hooks
 
     // Use region detection hook to find regions near cursor
     const detectionResult = detectRegions(cursorX, cursorY)
@@ -1658,8 +1682,17 @@ export function MapRenderer({
         const isLeftHalf = cursorX < containerRect.width / 2
         const isTopHalf = cursorY < containerRect.height / 2
 
+        // Default: opposite corner from cursor
         newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
         newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
+
+        // When hint bubble is shown, blacklist the upper-right corner
+        // If magnifier would go to top-right (cursor in bottom-left), go to bottom-right instead
+        const wouldGoToTopRight = !isTopHalf && isLeftHalf
+        if (showHintBubble && wouldGoToTopRight) {
+          newTop = containerRect.height - magnifierHeight - 20 // Move to bottom
+          // newLeft stays at right
+        }
       }
 
       if (pointerLocked) {
@@ -1745,6 +1778,129 @@ export function MapRenderer({
       onCursorUpdate(null, null)
     }
   }
+
+  // Mobile magnifier touch handlers - allow panning by dragging on the magnifier
+  const handleMagnifierTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) return // Only handle single-finger touch
+
+    const touch = e.touches[0]
+    magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    magnifierDidMoveRef.current = false // Reset movement tracking
+    setIsMagnifierDragging(true)
+    e.preventDefault() // Prevent scrolling
+  }, [])
+
+  const handleMagnifierTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!isMagnifierDragging || e.touches.length !== 1) return
+      if (!magnifierTouchStartRef.current || !cursorPositionRef.current) return
+      if (!svgRef.current || !containerRef.current) return
+
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - magnifierTouchStartRef.current.x
+      const deltaY = touch.clientY - magnifierTouchStartRef.current.y
+
+      // Track if user has moved significantly (more than 5px = definitely a drag, not a tap)
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        magnifierDidMoveRef.current = true
+      }
+
+      // Update start position for next move
+      magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+
+      // Apply movement multiplier (same as pointer lock mode)
+      const currentMultiplier = magnifierSpring.movementMultiplier.get()
+
+      // Invert the delta - dragging right on magnifier should show content to the right
+      // (which means moving the cursor right in the map coordinate space)
+      // Actually, dragging the "paper" under the magnifier means:
+      // - Drag finger right = paper moves right = magnifier shows what was to the LEFT
+      // - So we SUBTRACT the delta to move the cursor in the opposite direction
+      const newCursorX = cursorPositionRef.current.x - deltaX * currentMultiplier
+      const newCursorY = cursorPositionRef.current.y - deltaY * currentMultiplier
+
+      // Clamp to SVG bounds
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const svgRect = svgRef.current.getBoundingClientRect()
+      const svgOffsetX = svgRect.left - containerRect.left
+      const svgOffsetY = svgRect.top - containerRect.top
+
+      const clampedX = Math.max(svgOffsetX, Math.min(svgOffsetX + svgRect.width, newCursorX))
+      const clampedY = Math.max(svgOffsetY, Math.min(svgOffsetY + svgRect.height, newCursorY))
+
+      // Update cursor position
+      cursorPositionRef.current = { x: clampedX, y: clampedY }
+      setCursorPosition({ x: clampedX, y: clampedY })
+
+      // Run region detection to update hoveredRegionId (so user sees which region is under cursor)
+      // We don't update zoom during drag to avoid disorienting zoom changes while panning
+      const { regionUnderCursor } = detectRegions(clampedX, clampedY)
+
+      // Broadcast cursor update to other players (if in multiplayer)
+      if (
+        onCursorUpdate &&
+        (gameMode !== 'turn-based' || currentPlayer === localPlayerId) &&
+        containerRef.current &&
+        svgRef.current
+      ) {
+        const viewBoxParts = displayViewBox.split(' ').map(Number)
+        const viewBoxX = viewBoxParts[0] || 0
+        const viewBoxY = viewBoxParts[1] || 0
+        const viewBoxW = viewBoxParts[2] || 1000
+        const viewBoxH = viewBoxParts[3] || 500
+        const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+        const svgOffsetXWithLetterbox = svgRect.left - containerRect.left + viewport.letterboxX
+        const svgOffsetYWithLetterbox = svgRect.top - containerRect.top + viewport.letterboxY
+        const cursorSvgX = (clampedX - svgOffsetXWithLetterbox) / viewport.scale + viewBoxX
+        const cursorSvgY = (clampedY - svgOffsetYWithLetterbox) / viewport.scale + viewBoxY
+        onCursorUpdate({ x: cursorSvgX, y: cursorSvgY }, regionUnderCursor)
+      }
+
+      e.preventDefault() // Prevent scrolling
+    },
+    [
+      isMagnifierDragging,
+      magnifierSpring.movementMultiplier,
+      detectRegions,
+      onCursorUpdate,
+      gameMode,
+      currentPlayer,
+      localPlayerId,
+      displayViewBox,
+    ]
+  )
+
+  const handleMagnifierTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      // Check if this was a tap (no significant movement) vs a drag
+      // If the user just tapped on the magnifier, select the region under cursor
+      const didMove = magnifierDidMoveRef.current
+      setIsMagnifierDragging(false)
+      magnifierTouchStartRef.current = null
+      magnifierDidMoveRef.current = false
+
+      // If there was a changed touch that ended, check if it's a tap
+      if (e.changedTouches.length === 1 && cursorPositionRef.current) {
+        // Run region detection at current position
+        const { regionUnderCursor } = detectRegions(
+          cursorPositionRef.current.x,
+          cursorPositionRef.current.y
+        )
+
+        // If we have a region and this wasn't a significant drag, trigger selection
+        // We rely on the touch move handler to have already updated cursor position
+        // If the user dragged significantly, don't select (they're navigating, not selecting)
+        if (regionUnderCursor && !didMove) {
+          const region = mapData.regions.find((r) => r.id === regionUnderCursor)
+          if (region) {
+            console.log('[Touch] Tapped on magnifier to select region:', regionUnderCursor)
+            onRegionClick(regionUnderCursor, region.name)
+          }
+        }
+      }
+    },
+    [detectRegions, mapData.regions, onRegionClick]
+  )
 
   return (
     <div
@@ -2377,6 +2533,10 @@ export function MapRenderer({
         return (
           <animated.div
             data-element="magnifier"
+            onTouchStart={handleMagnifierTouchStart}
+            onTouchMove={handleMagnifierTouchMove}
+            onTouchEnd={handleMagnifierTouchEnd}
+            onTouchCancel={handleMagnifierTouchEnd}
             style={{
               position: 'absolute',
               // Animated positioning - smoothly moves to opposite corner from cursor
@@ -2393,7 +2553,10 @@ export function MapRenderer({
               ),
               borderRadius: '12px',
               overflow: 'hidden',
-              pointerEvents: 'none',
+              // Enable touch events on mobile for panning, but keep mouse events disabled
+              // This allows touch-based panning while not interfering with mouse-based interactions
+              pointerEvents: 'auto',
+              touchAction: 'none', // Prevent browser handling of touch gestures
               zIndex: 100,
               boxShadow: zoomSpring.to((zoom: number) =>
                 zoom > HIGH_ZOOM_THRESHOLD
@@ -3269,7 +3432,7 @@ export function MapRenderer({
               <div
                 style={{
                   position: 'absolute',
-                  top: '10px',
+                  bottom: '10px',
                   left: magnifierOnLeft ? undefined : '10px',
                   right: magnifierOnLeft ? '10px' : undefined,
                   backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -3532,19 +3695,7 @@ export function MapRenderer({
 
         return (
           <button
-            ref={(el) => {
-              // Update button bounds for pointer lock click detection
-              if (el && containerRef.current) {
-                const buttonRect = el.getBoundingClientRect()
-                const containerRect = containerRef.current.getBoundingClientRect()
-                giveUpButtonBoundsRef.current = {
-                  left: buttonRect.left - containerRect.left,
-                  top: buttonRect.top - containerRect.top,
-                  right: buttonRect.right - containerRect.left,
-                  bottom: buttonRect.bottom - containerRect.top,
-                }
-              }
-            }}
+            ref={giveUpButton.refCallback}
             onClick={(e) => {
               e.stopPropagation() // Don't trigger map click
               if (!isGiveUpAnimating) {
@@ -3559,7 +3710,7 @@ export function MapRenderer({
               top: `${buttonTop}px`,
               right: `${buttonRight}px`,
               // Apply hover styles when fake cursor is over button (pointer lock mode)
-              ...(isFakeCursorOverGiveUp && !isGiveUpAnimating
+              ...(giveUpButton.isHovered
                 ? {
                     backgroundColor: isDark ? '#a16207' : '#fef08a', // yellow.700 / yellow.200
                     transform: 'scale(1.05)',
@@ -3668,6 +3819,133 @@ export function MapRenderer({
             >
               Waiting for {remaining} other {remaining === 1 ? 'player' : 'players'}...
             </div>
+          )
+        })()}
+
+      {/* Hint button - only show if hint exists for current region */}
+      {hasHint &&
+        (() => {
+          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
+
+          // During give-up animation, use saved position to prevent jumping
+          let buttonTop: number
+          let buttonRight: number
+
+          if (isGiveUpAnimating && savedButtonPosition) {
+            buttonTop = savedButtonPosition.top
+            // Position hint button to the left of give up button
+            buttonRight = savedButtonPosition.right + 100 // Give Up button width + gap
+          } else {
+            const svgRect = svgRef.current.getBoundingClientRect()
+            const containerRect = containerRef.current.getBoundingClientRect()
+            const svgOffsetX = svgRect.left - containerRect.left
+            const svgOffsetY = svgRect.top - containerRect.top
+            buttonTop = svgOffsetY + 8
+            // Position hint button to the left of give up button (give up is ~85px + 8 gap)
+            buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8 + 100
+          }
+
+          return (
+            <>
+              <button
+                ref={hintButton.refCallback}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowHintBubble((prev) => !prev)
+                }}
+                data-action="hint-button"
+                title="Get a hint (H)"
+                style={{
+                  position: 'absolute',
+                  top: `${buttonTop}px`,
+                  right: `${buttonRight}px`,
+                  // Apply hover styles when fake cursor is over button (pointer lock mode)
+                  ...(hintButton.isHovered
+                    ? {
+                        backgroundColor: isDark ? '#1e40af' : '#bfdbfe', // blue.800 darker / blue.200
+                        transform: 'scale(1.05)',
+                      }
+                    : {}),
+                  ...(isGiveUpAnimating
+                    ? {
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                      }
+                    : {}),
+                }}
+                className={css({
+                  padding: '2 3',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  bg: isDark ? 'blue.800' : 'blue.100',
+                  color: isDark ? 'blue.200' : 'blue.800',
+                  rounded: 'md',
+                  border: '2px solid',
+                  borderColor: isDark ? 'blue.600' : 'blue.400',
+                  fontWeight: 'bold',
+                  transition: 'all 0.2s',
+                  zIndex: 50,
+                  boxShadow: 'md',
+                  _hover: {
+                    bg: isDark ? 'blue.700' : 'blue.200',
+                    transform: 'scale(1.05)',
+                  },
+                })}
+              >
+                💡 Hint
+              </button>
+
+              {/* Speech bubble for hint */}
+              {showHintBubble && hintText && (
+                <div
+                  data-element="hint-bubble"
+                  style={{
+                    position: 'absolute',
+                    top: `${buttonTop + 44}px`, // Below the hint button
+                    right: `${buttonRight - 50}px`, // Centered relative to button
+                    maxWidth: '280px',
+                  }}
+                  className={css({
+                    bg: isDark ? 'gray.800' : 'white',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                    padding: '3',
+                    rounded: 'lg',
+                    border: '2px solid',
+                    borderColor: isDark ? 'blue.500' : 'blue.400',
+                    boxShadow: 'lg',
+                    fontSize: 'sm',
+                    lineHeight: 'relaxed',
+                    zIndex: 51,
+                    position: 'relative',
+                    // Speech bubble pointer (pointing up to button)
+                    _before: {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-10px',
+                      right: '70px',
+                      borderWidth: '0 10px 10px 10px',
+                      borderStyle: 'solid',
+                      borderColor: isDark
+                        ? 'transparent transparent token(colors.blue.500) transparent'
+                        : 'transparent transparent token(colors.blue.400) transparent',
+                    },
+                    _after: {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-7px',
+                      right: '72px',
+                      borderWidth: '0 8px 8px 8px',
+                      borderStyle: 'solid',
+                      borderColor: isDark
+                        ? 'transparent transparent token(colors.gray.800) transparent'
+                        : 'transparent transparent white transparent',
+                    },
+                  })}
+                >
+                  {hintText}
+                </div>
+              )}
+            </>
           )
         })()}
 

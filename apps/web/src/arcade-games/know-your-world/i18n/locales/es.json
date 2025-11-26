@@ -1,0 +1,280 @@
+{
+  "hints": {
+    "usa": {
+      "ak": [
+        "Este estado grande está muy arriba, lejos de los otros estados.",
+        "Busca el estado enorme cerca del Polo Norte. ¡Hace mucho frío allí!",
+        "Este estado está al lado de Canadá y tiene mucha nieve y osos polares.",
+        "Encuentra el estado que está solito, muy lejos de los demás."
+      ],
+      "al": [
+        "Este estado está en el sur, junto al agua del Golfo de México.",
+        "Busca el estado que toca Florida por un lado.",
+        "Encuentra el estado que parece un rectángulo en el sureste."
+      ],
+      "ar": [
+        "Este estado está en el medio del país, un poquito hacia el sur.",
+        "Busca el estado justo arriba de Louisiana.",
+        "Encuentra el estado que está al lado este de Texas."
+      ],
+      "az": [
+        "Este estado está en el desierto caliente del suroeste.",
+        "Busca el estado abajo a la izquierda que toca México.",
+        "Encuentra el estado a la derecha de California.",
+        "¡Este estado tiene el Gran Cañón!"
+      ],
+      "ca": [
+        "Este estado largo está a la izquierda, junto al océano grande.",
+        "Busca el estado en la costa oeste que va de arriba a abajo.",
+        "Encuentra el estado muy largo junto al Océano Pacífico.",
+        "¡Aquí están Disneyland y Hollywood!"
+      ],
+      "co": [
+        "Este estado tiene forma de rectángulo perfecto en el medio.",
+        "Busca el estado cuadrado con montañas.",
+        "Encuentra el estado en el medio que parece una caja."
+      ],
+      "ct": [
+        "Este estado pequeñito está en la esquina de arriba a la derecha, cerca del océano.",
+        "Busca uno de los estados más pequeños en el noreste.",
+        "Encuentra el estado pequeño debajo de Massachusetts."
+      ],
+      "dc": [
+        "Este es un cuadradito pequeño entre Maryland y Virginia.",
+        "Busca el puntito más pequeño en el mapa en el este.",
+        "Encuentra el lugarcito donde vive el Presidente.",
+        "¡Aquí está la Casa Blanca!"
+      ],
+      "de": [
+        "Este estado pequeñito está en la costa este, con forma de dedito.",
+        "Busca uno de los estados más pequeños cerca del océano a la derecha.",
+        "Encuentra el estado pequeño al lado de Maryland."
+      ],
+      "fl": [
+        "Este estado sale hacia el agua como un dedo apuntando hacia abajo.",
+        "Busca el estado abajo a la derecha que parece que está tocando el mar.",
+        "Encuentra el estado con forma de pulgar apuntando hacia abajo.",
+        "¡Aquí viven cocodrilos y palmeras!",
+        "Busca el estado que tiene agua por tres lados."
+      ],
+      "ga": [
+        "Este estado está en el sureste, justo arriba de Florida.",
+        "Busca el estado que parece un guante arriba de Florida.",
+        "Encuentra el estado en el este que toca el océano.",
+        "¡Este estado tiene muchos duraznos!"
+      ],
+      "hi": [
+        "Estas islas están muy lejos en el medio del Océano Pacífico.",
+        "Busca las islitas que flotan solitas muy lejos de todo.",
+        "Encuentra el estado que está hecho de islitas en el océano.",
+        "¡Este estado está más cerca de la playa y las palmeras!"
+      ],
+      "ia": [
+        "Este estado está en el medio del país, con forma de carita de cerdo.",
+        "Busca el estado entre Minnesota y Missouri.",
+        "Encuentra el estado en el medio con muchas granjas de maíz."
+      ],
+      "id": [
+        "Este estado está en el noroeste y tiene una forma graciosa arriba.",
+        "Busca el estado que parece que tiene un gorrito puntiagudo.",
+        "Encuentra el estado al lado de Montana que parece una silla."
+      ],
+      "il": [
+        "Este estado está en el medio y tiene una ciudad grande llamada Chicago.",
+        "Busca el estado que parece que apunta hacia abajo.",
+        "Encuentra el estado al lado del lago grande arriba."
+      ],
+      "in": [
+        "Este estado está en el medio, justo al lado de Illinois.",
+        "Busca el estado que parece una media de Navidad.",
+        "Encuentra el estado entre Illinois y Ohio."
+      ],
+      "ks": [
+        "Este estado tiene forma de rectángulo justo en el medio del país.",
+        "Busca el estado con forma de caja en el centro.",
+        "¡Encuentra el estado plano donde vivía Dorothy del Mago de Oz!"
+      ],
+      "ky": [
+        "Este estado tiene una forma graciosa con bultos, como una pata de pollo.",
+        "Busca el estado que serpentea por el centro-este.",
+        "Encuentra el estado largo y delgado que va de lado."
+      ],
+      "la": [
+        "Este estado está abajo y parece una bota.",
+        "Busca el estado que entra en el Golfo de México.",
+        "Encuentra el estado con forma de letra L abajo.",
+        "¡Este estado tiene pantanos y cocodrilos!"
+      ],
+      "ma": [
+        "Este estado está en la esquina de arriba a la derecha con un bracito que sale.",
+        "Busca el estado que parece tener un brazo doblado en el noreste.",
+        "Encuentra el estado con Cape Cod que parece un músculo flexionado."
+      ],
+      "md": [
+        "Este estado tiene una forma muy loca y con bultos en la costa este.",
+        "Busca el estado que rodea una bahía grande.",
+        "Encuentra el estado con bordes en zigzag cerca de Washington DC."
+      ],
+      "me": [
+        "Este estado está en la esquina de arriba a la derecha del país.",
+        "Busca el estado que sube hacia Canadá en el noreste.",
+        "Encuentra el estado que está solito arriba en la costa este.",
+        "¡Este estado es el primero en ver el amanecer cada día!"
+      ],
+      "mi": [
+        "¡Este estado parece un guante! Tiene dos partes.",
+        "Busca el estado con forma de manopla cerca de los lagos grandes.",
+        "Encuentra los dos pedazos de tierra rodeados por los Grandes Lagos.",
+        "¡Este estado toca cuatro de los cinco Grandes Lagos!"
+      ],
+      "mn": [
+        "Este estado está arriba, cerca de Canadá, con muchos lagos.",
+        "Busca el estado de arriba que tiene un borde superior con bultos.",
+        "¡Encuentra el estado que se llama la tierra de los 10,000 lagos!"
+      ],
+      "mo": [
+        "Este estado está justo en el medio del país.",
+        "Busca el estado donde se encuentran los dos ríos grandes.",
+        "Encuentra el estado entre Kansas e Illinois."
+      ],
+      "ms": [
+        "Este estado está en el sur, con forma de rectángulo.",
+        "Busca el estado al oeste de Alabama.",
+        "Encuentra el estado junto al río grande que tiene el mismo nombre."
+      ],
+      "mt": [
+        "Este estado grande está arriba, al lado de Canadá.",
+        "Busca el rectángulo grande de arriba con montañas.",
+        "Encuentra el estado llamado País del Gran Cielo arriba a la izquierda."
+      ],
+      "nc": [
+        "Este estado está en la costa este y es largo y delgado.",
+        "Busca el estado que se estira de lado arriba de South Carolina.",
+        "Encuentra el estado que sale hacia el océano a la derecha."
+      ],
+      "nd": [
+        "Este estado está muy arriba, con forma de rectángulo.",
+        "Busca el estado justo debajo de Canadá en el centro-arriba.",
+        "Encuentra el estado con forma de caja al lado de Montana."
+      ],
+      "ne": [
+        "Este estado está en el medio y parece una sartén con mango.",
+        "Busca el estado que tiene un bultito en un lado.",
+        "Encuentra el estado que parece una sartén."
+      ],
+      "nh": [
+        "Este estado delgadito está arriba a la derecha, al lado de Vermont.",
+        "Busca el estado alto y delgado debajo de Maine.",
+        "Encuentra el estado que parece un cohete apuntando arriba."
+      ],
+      "nj": [
+        "Este estado pequeño en la costa este parece la letra J.",
+        "Busca el estado pequeño debajo de New York que se curva.",
+        "Encuentra el estado con forma de S de lado cerca del océano."
+      ],
+      "nm": [
+        "Este estado está en el suroeste, con forma de cuadrado con un escalón.",
+        "Busca el estado debajo de Colorado que parece que le dieron una mordida.",
+        "Encuentra el estado al oeste de Texas."
+      ],
+      "nv": [
+        "Este estado está en el oeste y parece un triángulo apuntando hacia abajo.",
+        "Busca el estado al lado de California que parece un pedazo de pizza.",
+        "Encuentra el estado donde está Las Vegas, en el desierto.",
+        "Este estado parece una casita al revés."
+      ],
+      "ny": [
+        "Este estado está en el noreste y tiene una ciudad grande con el mismo nombre.",
+        "Busca el estado que parece que tiene brazos saliendo.",
+        "¡Encuentra el estado con la Estatua de la Libertad!",
+        "Este estado tiene Long Island que sale como un pez."
+      ],
+      "oh": [
+        "Este estado parece un corazón de lado.",
+        "Busca el estado redondito al lado del lago arriba.",
+        "Encuentra el estado entre Pennsylvania e Indiana."
+      ],
+      "ok": [
+        "Este estado parece una sartén con un mango largo.",
+        "Busca el estado con el rectángulo gracioso que sale hacia la izquierda.",
+        "Encuentra el estado que parece que está apuntando a Texas."
+      ],
+      "or": [
+        "Este estado está en la esquina de arriba a la izquierda, junto al océano.",
+        "Busca el estado arriba de California en la costa oeste.",
+        "Encuentra el estado debajo de Washington."
+      ],
+      "pa": [
+        "Este estado tiene forma de rectángulo en el noreste.",
+        "Busca el estado ancho debajo de New York.",
+        "¡Encuentra el estado donde está la Campana de la Libertad!"
+      ],
+      "ri": [
+        "¡Este es el estado más pequeñito! Está en la esquina de arriba a la derecha.",
+        "Busca el estado más pequeño de todo el mapa, junto al océano.",
+        "Encuentra el estado pequeño debajo de Massachusetts.",
+        "¡Este estado es tan pequeño que casi no lo ves!"
+      ],
+      "sc": [
+        "Este estado está en la costa sureste, debajo de North Carolina.",
+        "Busca el estado que parece un triángulo apuntando a la izquierda.",
+        "Encuentra el estado más pequeño debajo del largo y delgado en el este."
+      ],
+      "sd": [
+        "Este estado está en el centro-arriba, con forma de rectángulo.",
+        "Busca el estado debajo de North Dakota.",
+        "¡Encuentra el estado donde las caras están talladas en una montaña!"
+      ],
+      "tn": [
+        "Este estado es largo y delgado, yendo de lado por el mapa.",
+        "Busca el estado que parece un rectángulo estirado.",
+        "¡Encuentra el estado delgado que toca ocho estados!"
+      ],
+      "tx": [
+        "¡Este es el estado más grande en la parte de abajo del país!",
+        "Busca el estado enorme abajo que parece una estrella.",
+        "Encuentra el estado gigante que toca México.",
+        "¡Este estado es tan grande que todo es más grande allí!",
+        "Busca el estado que parece que tiene una bota puntiaguda."
+      ],
+      "ut": [
+        "Este estado parece la letra L en el oeste.",
+        "Busca el estado que tiene una esquina cortada arriba.",
+        "Encuentra el estado al lado de Colorado que parece una bota pisando."
+      ],
+      "va": [
+        "Este estado está en la costa este y tiene forma triangular.",
+        "Busca el estado que apunta hacia el océano a la derecha.",
+        "¡Encuentra el estado de donde vinieron muchos Presidentes!"
+      ],
+      "vt": [
+        "Este estado pequeño está arriba a la derecha, con forma de triángulo.",
+        "Busca el estado pequeño al lado de New Hampshire.",
+        "Encuentra el estado que parece un pedazo de pastel en el noreste."
+      ],
+      "wa": [
+        "Este estado está en la esquina de arriba a la izquierda, junto al océano.",
+        "Busca el estado de arriba en la costa oeste.",
+        "Encuentra el estado al lado de Canadá en la esquina noroeste.",
+        "Este estado tiene forma cuadrada graciosa con un hundido arriba."
+      ],
+      "wi": [
+        "Este estado parece un guante, cerca de los lagos grandes.",
+        "Busca el estado que parece que tiene un pulgar que sale.",
+        "Encuentra el estado entre Minnesota y Michigan.",
+        "¡Este estado es famoso por el queso!"
+      ],
+      "wv": [
+        "Este estado tiene una forma muy loca con bultos y dos bultitos arriba.",
+        "Busca el estado que parece que tiene dos orejitas.",
+        "Encuentra el estado todo ondulado en el este."
+      ],
+      "wy": [
+        "Este estado es un rectángulo perfecto en el oeste.",
+        "Busca el estado cuadrado debajo de Montana.",
+        "¡Encuentra el estado con forma de caja con el Parque Yellowstone!"
+      ]
+    },
+    "world": {}
+  }
+}

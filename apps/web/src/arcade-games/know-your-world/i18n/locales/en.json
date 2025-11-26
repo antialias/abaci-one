@@ -1,0 +1,280 @@
+{
+  "hints": {
+    "usa": {
+      "ak": [
+        "This big state is way up at the top, far away from the other states.",
+        "Look for the really big state near the North Pole. It's cold there!",
+        "This state is next to Canada and has lots of snow and polar bears.",
+        "Find the state that looks like it's sitting by itself, far from the others."
+      ],
+      "al": [
+        "This state is in the south, next to the Gulf of Mexico water.",
+        "Look for the state that touches Florida on one side.",
+        "Find the state that's shaped a bit like a rectangle in the southeast."
+      ],
+      "ar": [
+        "This state is in the middle of the country, a little to the south.",
+        "Look for the state right above Louisiana.",
+        "Find the state that's next to Texas on the east side."
+      ],
+      "az": [
+        "This state is in the hot desert in the southwest.",
+        "Look for the state at the bottom left that touches Mexico.",
+        "Find the state next to California on the right side.",
+        "This state has the Grand Canyon!"
+      ],
+      "ca": [
+        "This long state is on the left side, next to the big ocean.",
+        "Look for the state on the west coast that goes up and down.",
+        "Find the really long state by the Pacific Ocean.",
+        "This is where Disneyland and Hollywood are!"
+      ],
+      "co": [
+        "This state is shaped like a perfect rectangle in the middle.",
+        "Look for the square-shaped state with mountains.",
+        "Find the state in the middle that looks like a box."
+      ],
+      "ct": [
+        "This tiny state is in the top right corner near the ocean.",
+        "Look for one of the smallest states in the northeast.",
+        "Find the little state below Massachusetts."
+      ],
+      "dc": [
+        "This is a tiny square between Maryland and Virginia.",
+        "Look for the smallest spot on the map in the east.",
+        "Find the little area where the President lives.",
+        "This is where the White House is!"
+      ],
+      "de": [
+        "This tiny state is on the east coast, shaped like a little finger.",
+        "Look for one of the smallest states near the ocean on the right.",
+        "Find the little state next to Maryland."
+      ],
+      "fl": [
+        "This state sticks out into the water like a finger pointing down.",
+        "Look for the state at the bottom right that looks like it's reaching into the ocean.",
+        "Find the state shaped like a thumb pointing down.",
+        "This is where alligators and palm trees live!",
+        "Look for the state that's surrounded by water on three sides."
+      ],
+      "ga": [
+        "This state is in the southeast, right above Florida.",
+        "Look for the state shaped a bit like a mitten above Florida.",
+        "Find the state on the east side that touches the ocean.",
+        "This state has lots of peaches!"
+      ],
+      "hi": [
+        "These islands are way out in the middle of the Pacific Ocean.",
+        "Look for the tiny islands floating by themselves far from everything.",
+        "Find the state that's made of little islands in the ocean.",
+        "This state is closest to the beach and palm trees!"
+      ],
+      "ia": [
+        "This state is in the middle of the country, shaped like a pig's face.",
+        "Look for the state between Minnesota and Missouri.",
+        "Find the state right in the middle that has lots of corn farms."
+      ],
+      "id": [
+        "This state is in the northwest and has a funny shape at the top.",
+        "Look for the state that looks like it has a pointy hat.",
+        "Find the state next to Montana that looks like a chair."
+      ],
+      "il": [
+        "This state is in the middle and has a big city called Chicago.",
+        "Look for the state that looks like it's pointing down at the bottom.",
+        "Find the state next to the big lake at the top."
+      ],
+      "in": [
+        "This state is in the middle, right next to Illinois.",
+        "Look for the state shaped a bit like a Christmas stocking.",
+        "Find the state between Illinois and Ohio."
+      ],
+      "ks": [
+        "This state is shaped like a rectangle right in the middle of the country.",
+        "Look for the box-shaped state in the center.",
+        "Find the flat state where Dorothy from Wizard of Oz lived!"
+      ],
+      "ky": [
+        "This state has a funny bumpy shape, like a drumstick.",
+        "Look for the state that wiggles across the middle-east part.",
+        "Find the state that's long and skinny going sideways."
+      ],
+      "la": [
+        "This state is at the bottom and looks like a boot.",
+        "Look for the state that sticks into the Gulf of Mexico.",
+        "Find the state shaped like the letter L at the bottom.",
+        "This state has swamps and alligators!"
+      ],
+      "ma": [
+        "This state is in the top right corner and has a funny arm sticking out.",
+        "Look for the state that looks like it has a bent arm in the northeast.",
+        "Find the state with Cape Cod that looks like a flexing muscle."
+      ],
+      "md": [
+        "This state has a really crazy, bumpy shape on the east coast.",
+        "Look for the state that wraps around a big bay.",
+        "Find the state with the zigzag edges near Washington DC."
+      ],
+      "me": [
+        "This state is at the very top right corner of the country.",
+        "Look for the state that's reaching up toward Canada in the northeast.",
+        "Find the state that's all by itself at the top of the east coast.",
+        "This is the first state to see the sunrise every day!"
+      ],
+      "mi": [
+        "This state looks like a mitten! It has two parts.",
+        "Look for the state shaped like a glove near the big lakes.",
+        "Find the two pieces of land surrounded by the Great Lakes.",
+        "This state is touching four of the five Great Lakes!"
+      ],
+      "mn": [
+        "This state is at the top, near Canada, with lots of lakes.",
+        "Look for the state at the top that has a bumpy top edge.",
+        "Find the state that's called the land of 10,000 lakes!"
+      ],
+      "mo": [
+        "This state is right in the middle of the country.",
+        "Look for the state where the two big rivers meet.",
+        "Find the state between Kansas and Illinois."
+      ],
+      "ms": [
+        "This state is in the south, shaped like a rectangle.",
+        "Look for the state next to Alabama on the west side.",
+        "Find the state along the big river with the same name."
+      ],
+      "mt": [
+        "This big state is at the top, next to Canada.",
+        "Look for the big rectangle at the top with mountains.",
+        "Find the state called Big Sky Country at the top left area."
+      ],
+      "nc": [
+        "This state is on the east coast and is long and skinny.",
+        "Look for the state that stretches sideways above South Carolina.",
+        "Find the state that reaches out into the ocean on the right."
+      ],
+      "nd": [
+        "This state is at the very top, shaped like a rectangle.",
+        "Look for the state right below Canada in the middle-top.",
+        "Find the box-shaped state next to Montana."
+      ],
+      "ne": [
+        "This state is in the middle and looks like a pan with a handle.",
+        "Look for the state that has a bump sticking out on one side.",
+        "Find the state shaped a bit like a frying pan."
+      ],
+      "nh": [
+        "This skinny state is in the top right, next to Vermont.",
+        "Look for the tall, thin state below Maine.",
+        "Find the state that looks like a rocket pointing up."
+      ],
+      "nj": [
+        "This small state on the east coast looks like the letter J.",
+        "Look for the little state below New York that curves.",
+        "Find the state shaped like a sideways S near the ocean."
+      ],
+      "nm": [
+        "This state is in the southwest, shaped like a square with a step.",
+        "Look for the state below Colorado that has a little bite taken out.",
+        "Find the state next to Texas on the west side."
+      ],
+      "nv": [
+        "This state is in the west and is shaped like a triangle pointing down.",
+        "Look for the state next to California that looks like a slice of pizza.",
+        "Find the state where Las Vegas is, in the desert.",
+        "This state is shaped like an upside-down house."
+      ],
+      "ny": [
+        "This state is in the northeast and has a big city with the same name.",
+        "Look for the state that looks like it has arms reaching out.",
+        "Find the state with the Statue of Liberty!",
+        "This state has Long Island that sticks out like a fish."
+      ],
+      "oh": [
+        "This state is shaped a bit like a heart on its side.",
+        "Look for the round-ish state next to the lake at the top.",
+        "Find the state between Pennsylvania and Indiana."
+      ],
+      "ok": [
+        "This state looks like a pan with a long handle sticking out.",
+        "Look for the state with the funny rectangle sticking out to the left.",
+        "Find the state that looks like it's pointing at Texas."
+      ],
+      "or": [
+        "This state is in the top left corner, by the ocean.",
+        "Look for the state above California on the west coast.",
+        "Find the state next to Washington on the bottom."
+      ],
+      "pa": [
+        "This state is shaped like a rectangle in the northeast.",
+        "Look for the wide state below New York.",
+        "Find the state where the Liberty Bell is!"
+      ],
+      "ri": [
+        "This is the tiniest state! It's in the top right corner.",
+        "Look for the smallest state on the whole map, by the ocean.",
+        "Find the little state below Massachusetts.",
+        "This state is so small you might miss it!"
+      ],
+      "sc": [
+        "This state is on the southeast coast, below North Carolina.",
+        "Look for the state that looks like a triangle pointing left.",
+        "Find the smaller state under the long, skinny one on the east."
+      ],
+      "sd": [
+        "This state is in the top middle, shaped like a rectangle.",
+        "Look for the state below North Dakota.",
+        "Find the state where the faces are carved into a mountain!"
+      ],
+      "tn": [
+        "This state is long and skinny, going sideways across the map.",
+        "Look for the state that looks like a stretched rectangle.",
+        "Find the skinny state that touches eight other states!"
+      ],
+      "tx": [
+        "This is the biggest state in the bottom part of the country!",
+        "Look for the really big state shaped like a star at the bottom.",
+        "Find the huge state that touches Mexico.",
+        "This state is so big, everything is bigger there!",
+        "Look for the state that looks like it has a pointy boot."
+      ],
+      "ut": [
+        "This state is shaped like the letter L in the west.",
+        "Look for the state with a corner cut out at the top.",
+        "Find the state next to Colorado that looks like a boot stepping."
+      ],
+      "va": [
+        "This state is on the east coast and has a triangular shape.",
+        "Look for the state that points toward the ocean on the right.",
+        "Find the state where lots of Presidents came from!"
+      ],
+      "vt": [
+        "This small state is in the top right, shaped like a triangle.",
+        "Look for the little state next to New Hampshire.",
+        "Find the state that looks like a slice of pie in the northeast."
+      ],
+      "wa": [
+        "This state is in the very top left corner, by the ocean.",
+        "Look for the state at the top of the west coast.",
+        "Find the state next to Canada in the northwest corner.",
+        "This state has a funny square shape with a dip at the top."
+      ],
+      "wi": [
+        "This state is shaped a bit like a mitten, near the big lakes.",
+        "Look for the state that looks like it has a thumb sticking out.",
+        "Find the state between Minnesota and Michigan.",
+        "This state is famous for cheese!"
+      ],
+      "wv": [
+        "This state has a really bumpy, crazy shape with two bumps at top.",
+        "Look for the state that looks like it has two ears.",
+        "Find the state that's all wiggly in the east."
+      ],
+      "wy": [
+        "This state is a perfect rectangle in the west.",
+        "Look for the square state below Montana.",
+        "Find the box-shaped state with Yellowstone Park!"
+      ]
+    },
+    "world": {}
+  }
+}
