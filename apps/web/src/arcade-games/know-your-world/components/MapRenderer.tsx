@@ -62,6 +62,57 @@ function getMagnifierDimensions(containerWidth: number, containerHeight: number)
 }
 
 /**
+ * Calculate the actual rendered viewport within an SVG element.
+ * SVG uses preserveAspectRatio="xMidYMid meet" by default, which:
+ * - Scales uniformly to fit within the element while preserving aspect ratio
+ * - Centers the content, creating letterboxing if aspect ratios don't match
+ *
+ * Returns the rendered dimensions, offset from SVG element origin, and scale factors.
+ */
+function getRenderedViewport(
+  svgRect: DOMRect,
+  viewBoxX: number,
+  viewBoxY: number,
+  viewBoxWidth: number,
+  viewBoxHeight: number
+) {
+  const svgAspect = svgRect.width / svgRect.height
+  const viewBoxAspect = viewBoxWidth / viewBoxHeight
+
+  let renderedWidth: number
+  let renderedHeight: number
+  let letterboxX: number
+  let letterboxY: number
+
+  if (svgAspect > viewBoxAspect) {
+    // SVG element is wider than viewBox - letterboxing on sides
+    renderedHeight = svgRect.height
+    renderedWidth = renderedHeight * viewBoxAspect
+    letterboxX = (svgRect.width - renderedWidth) / 2
+    letterboxY = 0
+  } else {
+    // SVG element is taller than viewBox - letterboxing on top/bottom
+    renderedWidth = svgRect.width
+    renderedHeight = renderedWidth / viewBoxAspect
+    letterboxX = 0
+    letterboxY = (svgRect.height - renderedHeight) / 2
+  }
+
+  // Scale factor is uniform (same for X and Y due to preserveAspectRatio)
+  const scale = renderedWidth / viewBoxWidth
+
+  return {
+    renderedWidth,
+    renderedHeight,
+    letterboxX, // Offset from SVG element left edge to rendered content
+    letterboxY, // Offset from SVG element top edge to rendered content
+    scale, // Pixels per viewBox unit
+    viewBoxX,
+    viewBoxY,
+  }
+}
+
+/**
  * Calculate label opacity based on distance from cursor and animation state.
  * Labels fade to low opacity when cursor is near to reduce visual clutter.
  * During give-up animation, all labels are hidden so the flashing region is visible.
@@ -598,17 +649,16 @@ export function MapRenderer({
       if (!svg) return
 
       // Find the region element under this point using elementFromPoint
-      // First convert SVG coords to screen coords
+      // First convert SVG coords to screen coords (accounting for preserveAspectRatio letterboxing)
       const viewBoxParts = displayViewBox.split(' ').map(Number)
       const viewBoxX = viewBoxParts[0] || 0
       const viewBoxY = viewBoxParts[1] || 0
       const viewBoxW = viewBoxParts[2] || 1000
       const viewBoxH = viewBoxParts[3] || 500
       const svgRect = svg.getBoundingClientRect()
-      const scaleX = svgRect.width / viewBoxW
-      const scaleY = svgRect.height / viewBoxH
-      const screenX = (position.x - viewBoxX) * scaleX + svgRect.left
-      const screenY = (position.y - viewBoxY) * scaleY + svgRect.top
+      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+      const screenX = (position.x - viewBoxX) * viewport.scale + svgRect.left + viewport.letterboxX
+      const screenY = (position.y - viewBoxY) * viewport.scale + svgRect.top + viewport.letterboxY
 
       // Get element at this screen position
       const element = document.elementFromPoint(screenX, screenY)
@@ -915,12 +965,14 @@ export function MapRenderer({
       const svgRect = svgRef.current?.getBoundingClientRect()
       if (!svgRect) return
 
-      const scaleX = svgRect.width / viewBoxWidth
-      const scaleY = svgRect.height / viewBoxHeight
+      // Get the actual rendered viewport accounting for preserveAspectRatio letterboxing
+      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight)
+      const scaleX = viewport.scale
+      const scaleY = viewport.scale // Same as scaleX due to uniform scaling
 
-      // Calculate SVG offset within container (accounts for padding)
-      const svgOffsetX = svgRect.left - containerRect.left
-      const svgOffsetY = svgRect.top - containerRect.top
+      // Calculate SVG offset within container (accounts for padding + letterboxing)
+      const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+      const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
       // Collect all regions with their info for force simulation
       interface LabelNode extends SimulationNodeDatum {
@@ -1503,12 +1555,13 @@ export function MapRenderer({
       const viewBoxY = viewBoxParts[1] || 0
       const viewBoxW = viewBoxParts[2] || 1000
       const viewBoxH = viewBoxParts[3] || 500
-      const svgOffsetX = svgRect.left - containerRect.left
-      const svgOffsetY = svgRect.top - containerRect.top
-      const scaleX = viewBoxW / svgRect.width
-      const scaleY = viewBoxH / svgRect.height
-      const cursorSvgX = (cursorX - svgOffsetX) * scaleX + viewBoxX
-      const cursorSvgY = (cursorY - svgOffsetY) * scaleY + viewBoxY
+      // Account for preserveAspectRatio letterboxing when converting to SVG coords
+      const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+      const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+      const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+      // Use inverse of viewport.scale to convert pixels to viewBox units
+      const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
+      const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
       onCursorUpdate({ x: cursorSvgX, y: cursorSvgY })
     }
 
@@ -1992,11 +2045,16 @@ export function MapRenderer({
               const viewBoxY = viewBoxParts[1] || 0
               const viewBoxWidth = viewBoxParts[2] || 1000
               const viewBoxHeight = viewBoxParts[3] || 1000
-              const scaleX = viewBoxWidth / svgRect.width
-              const scaleY = viewBoxHeight / svgRect.height
-              const svgOffsetX = svgRect.left - containerRect.left
-              const svgOffsetY = svgRect.top - containerRect.top
-              const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
+              // Account for preserveAspectRatio letterboxing
+              const viewport = getRenderedViewport(
+                svgRect,
+                viewBoxX,
+                viewBoxY,
+                viewBoxWidth,
+                viewBoxHeight
+              )
+              const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+              const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
               const magnifiedWidth = viewBoxWidth / zoom
               return cursorSvgX - magnifiedWidth / 2
             })}
@@ -2008,11 +2066,16 @@ export function MapRenderer({
               const viewBoxY = viewBoxParts[1] || 0
               const viewBoxWidth = viewBoxParts[2] || 1000
               const viewBoxHeight = viewBoxParts[3] || 1000
-              const scaleX = viewBoxWidth / svgRect.width
-              const scaleY = viewBoxHeight / svgRect.height
-              const svgOffsetX = svgRect.left - containerRect.left
-              const svgOffsetY = svgRect.top - containerRect.top
-              const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+              // Account for preserveAspectRatio letterboxing
+              const viewport = getRenderedViewport(
+                svgRect,
+                viewBoxX,
+                viewBoxY,
+                viewBoxWidth,
+                viewBoxHeight
+              )
+              const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+              const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
               const magnifiedHeight = viewBoxHeight / zoom
               return cursorSvgY - magnifiedHeight / 2
             })}
@@ -2224,7 +2287,7 @@ export function MapRenderer({
             strokeColor = '#ffcc00'
           }
 
-          // Convert SVG coordinates to pixel coordinates
+          // Convert SVG coordinates to pixel coordinates (accounting for preserveAspectRatio)
           const containerRect = containerRef.current!.getBoundingClientRect()
           const svgRect = svgRef.current!.getBoundingClientRect()
           const viewBoxParts = displayViewBox.split(' ').map(Number)
@@ -2233,14 +2296,19 @@ export function MapRenderer({
           const viewBoxWidth = viewBoxParts[2] || 1000
           const viewBoxHeight = viewBoxParts[3] || 1000
 
-          const scaleX = svgRect.width / viewBoxWidth
-          const scaleY = svgRect.height / viewBoxHeight
-          const svgOffsetX = svgRect.left - containerRect.left
-          const svgOffsetY = svgRect.top - containerRect.top
+          const viewport = getRenderedViewport(
+            svgRect,
+            viewBoxX,
+            viewBoxY,
+            viewBoxWidth,
+            viewBoxHeight
+          )
+          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
           // Convert bbox center from SVG coords to pixels
-          const centerX = (bbox.x + bbox.width / 2 - viewBoxX) * scaleX + svgOffsetX
-          const centerY = (bbox.y + bbox.height / 2 - viewBoxY) * scaleY + svgOffsetY
+          const centerX = (bbox.x + bbox.width / 2 - viewBoxX) * viewport.scale + svgOffsetX
+          const centerY = (bbox.y + bbox.height / 2 - viewBoxY) * viewport.scale + svgOffsetY
 
           return (
             <div
@@ -2364,21 +2432,26 @@ export function MapRenderer({
                 const containerRect = containerRef.current!.getBoundingClientRect()
                 const svgRect = svgRef.current!.getBoundingClientRect()
 
-                // Convert cursor position to SVG coordinates
+                // Convert cursor position to SVG coordinates (accounting for preserveAspectRatio)
                 const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxX = viewBoxParts[0] || 0
                 const viewBoxY = viewBoxParts[1] || 0
                 const viewBoxWidth = viewBoxParts[2] || 1000
                 const viewBoxHeight = viewBoxParts[3] || 1000
 
-                const scaleX = viewBoxWidth / svgRect.width
-                const scaleY = viewBoxHeight / svgRect.height
+                const viewport = getRenderedViewport(
+                  svgRect,
+                  viewBoxX,
+                  viewBoxY,
+                  viewBoxWidth,
+                  viewBoxHeight
+                )
 
                 // Center position relative to SVG (uses reveal center during give-up animation)
-                const svgOffsetX = svgRect.left - containerRect.left
-                const svgOffsetY = svgRect.top - containerRect.top
-                const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
-                const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+                const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
+                const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
                 // Magnified view: adaptive zoom (using animated value)
                 const magnifiedWidth = viewBoxWidth / zoom
@@ -2498,12 +2571,18 @@ export function MapRenderer({
                   const viewBoxY = viewBoxParts[1] || 0
                   const viewBoxWidth = viewBoxParts[2] || 1000
                   const viewBoxHeight = viewBoxParts[3] || 1000
-                  const scaleX = viewBoxWidth / svgRect.width
-                  const scaleY = viewBoxHeight / svgRect.height
-                  const svgOffsetX = svgRect.left - containerRect.left
-                  const svgOffsetY = svgRect.top - containerRect.top
-                  const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
-                  const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+                  // Account for preserveAspectRatio letterboxing
+                  const viewport = getRenderedViewport(
+                    svgRect,
+                    viewBoxX,
+                    viewBoxY,
+                    viewBoxWidth,
+                    viewBoxHeight
+                  )
+                  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                  const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
+                  const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
                   return (
                     <>
@@ -2586,21 +2665,28 @@ export function MapRenderer({
                     (fadeEndRatio - screenPixelRatio) / (fadeEndRatio - PRECISION_MODE_THRESHOLD)
                 }
 
+                // Account for preserveAspectRatio letterboxing
+                const viewport = getRenderedViewport(
+                  svgRect,
+                  viewBoxX,
+                  viewBoxY,
+                  viewBoxWidth,
+                  viewBoxHeight
+                )
+
                 // Calculate grid spacing in SVG units
                 // Each grid cell represents one screen pixel of mouse movement on the main map
-                const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgRect.width
+                const mainMapSvgUnitsPerScreenPixel = 1 / viewport.scale
                 const gridSpacingSvgUnits = mainMapSvgUnitsPerScreenPixel
 
                 // Calculate magnified viewport dimensions for grid bounds
                 const magnifiedViewBoxWidth = viewBoxWidth / currentZoom
 
                 // Get center position in SVG coordinates (uses reveal center during give-up animation)
-                const scaleX = viewBoxWidth / svgRect.width
-                const scaleY = viewBoxHeight / svgRect.height
-                const svgOffsetX = svgRect.left - containerRect.left
-                const svgOffsetY = svgRect.top - containerRect.top
-                const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
-                const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+                const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
+                const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
                 // Calculate grid bounds (magnifier viewport)
                 const magnifiedHeight = viewBoxHeight / currentZoom
@@ -2740,10 +2826,17 @@ export function MapRenderer({
                           containerRect.height
                         )
 
-                        // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
-                        const scaleX = viewBoxWidth / svgRect.width
-                        const svgOffsetX = svgRect.left - containerRect.left
-                        const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
+                        // Convert cursor to SVG coordinates (accounting for preserveAspectRatio)
+                        const viewport = getRenderedViewport(
+                          svgRect,
+                          viewBoxX,
+                          viewBoxY,
+                          viewBoxWidth,
+                          viewBoxHeight
+                        )
+                        const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                        const cursorSvgX =
+                          (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
 
                         // Magnified viewport in SVG coordinates
                         const magnifiedWidth = viewBoxWidth / zoom
@@ -2764,10 +2857,17 @@ export function MapRenderer({
                         const { width: magnifierWidth, height: magnifierHeight } =
                           getMagnifierDimensions(containerRect.width, containerRect.height)
 
-                        // Convert cursor to SVG coordinates (same as magnifier viewBox calc)
-                        const scaleY = viewBoxHeight / svgRect.height
-                        const svgOffsetY = svgRect.top - containerRect.top
-                        const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+                        // Convert cursor to SVG coordinates (accounting for preserveAspectRatio)
+                        const viewport = getRenderedViewport(
+                          svgRect,
+                          viewBoxX,
+                          viewBoxY,
+                          viewBoxWidth,
+                          viewBoxHeight
+                        )
+                        const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                        const cursorSvgY =
+                          (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
                         // Magnified viewport in SVG coordinates
                         const magnifiedHeight = viewBoxHeight / zoom
@@ -2942,14 +3042,19 @@ export function MapRenderer({
         const indicatorWidth = viewBoxWidth / currentZoom
         const indicatorHeight = viewBoxHeight / currentZoom
 
-        // Convert cursor to SVG coordinates
-        const scaleX = viewBoxWidth / svgRect.width
-        const scaleY = viewBoxHeight / svgRect.height
-        const svgOffsetX = svgRect.left - containerRect.left
-        const svgOffsetY = svgRect.top - containerRect.top
+        // Convert cursor to SVG coordinates (accounting for preserveAspectRatio)
+        const viewport = getRenderedViewport(
+          svgRect,
+          viewBoxX,
+          viewBoxY,
+          viewBoxWidth,
+          viewBoxHeight
+        )
+        const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+        const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
-        const cursorSvgX = (cursorPosition.x - svgOffsetX) * scaleX + viewBoxX
-        const cursorSvgY = (cursorPosition.y - svgOffsetY) * scaleY + viewBoxY
+        const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
+        const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
         // Indicator box in SVG coordinates
         const indSvgLeft = cursorSvgX - indicatorWidth / 2
@@ -2959,8 +3064,8 @@ export function MapRenderer({
 
         // Convert indicator corners to screen coordinates
         const svgToScreen = (svgX: number, svgY: number) => ({
-          x: (svgX - viewBoxX) / scaleX + svgOffsetX,
-          y: (svgY - viewBoxY) / scaleY + svgOffsetY,
+          x: (svgX - viewBoxX) * viewport.scale + svgOffsetX,
+          y: (svgY - viewBoxY) * viewport.scale + svgOffsetY,
         })
 
         const indTL = svgToScreen(indSvgLeft, indSvgTop)
@@ -3304,7 +3409,7 @@ export function MapRenderer({
               ? memberPlayers[cursorUserId]
               : [player]
 
-          // Convert SVG coordinates to screen coordinates
+          // Convert SVG coordinates to screen coordinates (accounting for preserveAspectRatio letterboxing)
           const svgRect = svgRef.current!.getBoundingClientRect()
           const containerRect = containerRef.current!.getBoundingClientRect()
           const viewBoxParts = displayViewBox.split(' ').map(Number)
@@ -3312,19 +3417,18 @@ export function MapRenderer({
           const viewBoxY = viewBoxParts[1] || 0
           const viewBoxW = viewBoxParts[2] || 1000
           const viewBoxH = viewBoxParts[3] || 500
-          const svgOffsetX = svgRect.left - containerRect.left
-          const svgOffsetY = svgRect.top - containerRect.top
-          const scaleX = svgRect.width / viewBoxW
-          const scaleY = svgRect.height / viewBoxH
-          const screenX = (position.x - viewBoxX) * scaleX + svgOffsetX
-          const screenY = (position.y - viewBoxY) * scaleY + svgOffsetY
+          const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+          const screenX = (position.x - viewBoxX) * viewport.scale + svgOffsetX
+          const screenY = (position.y - viewBoxY) * viewport.scale + svgOffsetY
 
-          // Check if cursor is within SVG bounds
+          // Check if cursor is within rendered viewport bounds
           if (
             screenX < svgOffsetX ||
-            screenX > svgOffsetX + svgRect.width ||
+            screenX > svgOffsetX + viewport.renderedWidth ||
             screenY < svgOffsetY ||
-            screenY > svgOffsetY + svgRect.height
+            screenY > svgOffsetY + viewport.renderedHeight
           ) {
             return null
           }
