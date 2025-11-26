@@ -2291,8 +2291,8 @@ export function MapRenderer({
               // Animated positioning - smoothly moves to opposite corner from cursor
               top: magnifierSpring.top,
               left: magnifierSpring.left,
-              width: '50%',
-              aspectRatio: '2/1',
+              width: `${MAGNIFIER_SIZE_RATIO * 100}%`,
+              height: `${MAGNIFIER_SIZE_RATIO * 100}%`,
               // High zoom (>60x) gets gold border, normal zoom gets blue border
               border: zoomSpring.to(
                 (zoom: number) =>
