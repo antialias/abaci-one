@@ -275,6 +275,512 @@
         "Findi daz scatulohafta lant mit dem Yellowstone Parke!"
       ]
     },
-    "world": {}
+    "world": {},
+    "europe": {
+      "al": [
+        "Diz luzil lant ist an dem ōstōde, so ein blat.",
+        "Suochi daz lant zwischen Griechen unta Montenegro.",
+        "Findi daz lant ubar fon Italia huohila."
+      ],
+      "ad": [
+        "Diz luzilōsta lant ist in bergan zwischen Hispania unta Francia.",
+        "Suochi einaz der luzilōstōn lando, hōh in den Pyrenaeun bergan.",
+        "Findi daz luzila puncti zwischen zwēin grōzun landon in sundwestan."
+      ],
+      "at": [
+        "Diz lant ist so ein huonobein in mitten Europae.",
+        "Suochi daz lant daz filu nahebūro in mittun Europae habet.",
+        "Findi daz lant dār diu Alpēs alagrōzōst sint!",
+        "Diz lant habet Mozartes unta suozan gebacka!"
+      ],
+      "by": [
+        "Diz grōza lant ist eban, nāh Rūzlande.",
+        "Suochi daz lant obana Ukraine daz so ein massa scinit.",
+        "Findi daz lant zwischen Polonia unta Rūzlande."
+      ],
+      "be": [
+        "Diz luzil lant ist mari mit chocolāte unta wafflon!",
+        "Suochi daz lant zwischen Francia, Germania, unta Nederland.",
+        "Findi daz luzila lant nāh dem Nordōstōn Sēwe."
+      ],
+      "ba": [
+        "Diz lant habet drīeggohta forma an dem ōstōde.",
+        "Suochi daz lant gicruccitaz zwischen Croatia unta Serbia.",
+        "Findi daz lant daz so ein herza mit luzilemo ōstōde scinit."
+      ],
+      "bg": [
+        "Diz lant ist an dem Swarzon Sēwe in sundōstan.",
+        "Suochi daz lant untar Romania.",
+        "Findi daz lant daz marca mit Turcoslavia in Europae teilit."
+      ],
+      "hr": [
+        "Diz lant ist so ein bumerango odor buohstab C!",
+        "Suochi daz lant daz Bosnia umbigēt.",
+        "Findi daz lant mit langemo bogohaftemo ōstōde an dem Adriatiscōn Sēwe."
+      ],
+      "cy": [
+        "Diu ouwa ist in dem Mediterraneum Sēwe nāh Turcoslavia.",
+        "Suochi diu ouwa in sundōstan winchile Europae.",
+        "Findi diu ouwa diu so ein brātphanna scinit."
+      ],
+      "cz": [
+        "Diz lant ist so ein diccer phīlo der winstarhalf wīsōt.",
+        "Suochi daz lant in mitten umbistan fon Germania, Polonia, Slovakia, unta Austria.",
+        "Findi daz lant mit Prague, scōneru alton burg!"
+      ],
+      "dk": [
+        "Diz lant habet peninsula der obana Germania strekkit.",
+        "Suochi daz lant daz an Swēden strekkit.",
+        "Findi daz lant fon peninsula unta filun ouwon gitan.",
+        "Hiar quam LEGO!"
+      ],
+      "ee": [
+        "Diz luzil lant ist obanōst der Baltiscōn lando.",
+        "Suochi daz lant ubar dem wazzare fon Finnia.",
+        "Findi daz nordōstōsta der driu luzilōn lando nāh dem Baltiscōn Sēwe."
+      ],
+      "fi": [
+        "Diz lant scinit daz arm wenkōt in obana Europae.",
+        "Suochi daz lant nāh Swēden mit filun sēwun.",
+        "Findi daz lant dār Santa Claus wīsōt!",
+        "Diz lant habet forma eines mannes mit arme ūf."
+      ],
+      "fr": [
+        "Diz grōza lant ist so ein hexagōnus.",
+        "Suochi daz lant mit dem Turre Eiffeles!",
+        "Findi daz grōza lant zwischen Hispania unta Germania.",
+        "Diz lant ist mari mit croissanton unta dem Turre Eiffeles!"
+      ],
+      "de": [
+        "Diz grōza lant ist in mitten Europae.",
+        "Suochi daz lant so ein houbit winstarhalf sicōn.",
+        "Findi daz lant zwischen Francia unta Polonia.",
+        "Hiar quāmun wagana so BMW unta Mercedes!"
+      ],
+      "gr": [
+        "Diz lant habet lant unta FILU ouwono.",
+        "Suochi daz lant nidarun der Balkanōn.",
+        "Findi daz lant mari mit alton ruīnon unta den Olympiscōn Spilon!",
+        "Diz lant scinit so ein hant in den sēwe strekken."
+      ],
+      "hu": [
+        "Diz lant ist so ein oval in mitten Europae.",
+        "Suochi daz lant umbistan fon sibun anderen landon!",
+        "Findi daz lant dār diu Danuwa duruh diu haubitburg flīzit."
+      ],
+      "is": [
+        "Diu ouwa ist ferro in dem Nordatlantiscōn Sēwe, eino.",
+        "Suochi diu ouwa zwischen Groenlanda unta Europae.",
+        "Findi diu ouwa mit volcānōn unta heizun quelon!",
+        "Diz lant habet fiur UNTA īs!"
+      ],
+      "ie": [
+        "Diu gruona ouwa ist westarhalf Britanniae.",
+        "Suochi diu ouwa diu so ein bero scinit.",
+        "Findi daz lant mari mit seamrogum unta lepreconōn!"
+      ],
+      "it": [
+        "Diz lant ist so ein scuoh ballun trettent!",
+        "Suochi daz langa lant daz in daz Mediterraneum gēt.",
+        "Findi daz lant dānan pizza unta pasta quāmun!",
+        "Diz scuohhafta lant habet zwā ouwon nāh imo."
+      ],
+      "xk": [
+        "Diz luzil lant ist in mitten der Balkanōn ān sēwe.",
+        "Suochi daz luzila lant zwischen Serbia unta Albania.",
+        "Findi daz luzila lant so ein diamanto."
+      ],
+      "lv": [
+        "Diz lant ist daz mittila der driu Baltiscōn lando.",
+        "Suochi daz lant zwischen Estonia unta Lithuania.",
+        "Findi daz lant an dem Baltiscōn Sēwe mit Riga thero haubitburg."
+      ],
+      "li": [
+        "Diz luzilōsta lant ist gicruccitaz zwischen der Suitzia unta Austria.",
+        "Suochi einaz der luzilōstōn lando in den Alpēn.",
+        "Findi daz luzilōsta lant nāh der Rīnes ahu."
+      ],
+      "lt": [
+        "Diz lant ist daz sundōstōsta der driu Baltiscōn lando.",
+        "Suochi daz lant untar Latvia mit wuntarlīhheru formu.",
+        "Findi daz lant daz Polonia unta Belarus rīnit."
+      ],
+      "lu": [
+        "Diz luzilōsta lant ist zwischen Belgia, Francia, unta Germania.",
+        "Suochi einaz der luzilōstōn lando in westun Europae.",
+        "Findi daz luzila lant daz wuntarlīhho rīhhi ist!"
+      ],
+      "mk": [
+        "Diz lant ist so ein circus ān sēwe.",
+        "Suochi daz lant zwischen Serbia unta Griechen.",
+        "Findi daz lant mit sunnu in sinemo fanon!"
+      ],
+      "mt": [
+        "Diu luzilōsta ouwa ist sundan Siciliae in dem Mediterraneum.",
+        "Suochi diu luzilun ouwon untar Italia scuohe.",
+        "Findi daz archipelagus fon luzilōstun ouwon gitan."
+      ],
+      "md": [
+        "Diz lant ist gicruccitaz zwischen Romania unta Ukraine.",
+        "Suochi daz luzila lant daz so wīntrūbun scinit.",
+        "Findi daz lant ān sēwe ōstarhalf Romania."
+      ],
+      "mc": [
+        "Diz ist einaz der luzilōstōn lando, an dem Franciscōn Riviera ōstōde!",
+        "Suochi daz luzila puncti an dem Mediterraneum ōstōde nāh Italia.",
+        "Findi daz superluzila lant mari mit waganan unta casīnō."
+      ],
+      "me": [
+        "Diz luzil lant habet scōnun bergun unta ōstōde.",
+        "Suochi daz luzila lant untar Croatia an dem Adriatiscōn.",
+        "Findi daz lant daz namo 'Swarzero Bergo' meinit."
+      ],
+      "nl": [
+        "Diz ebanaz lant ist mari mit windmulīnōn unta tulipānōn!",
+        "Suochi daz lant an dem Nordōstōn Sēwe mit wuntarlīhheru formu.",
+        "Findi daz lant nāh Belgia unta Germania.",
+        "Diz lant ist alaebanozt unta habet filu bicyclōn!"
+      ],
+      "no": [
+        "Diz langa lant strekkit nāh Scandinaviae westōde.",
+        "Suochi daz lant mit wuntarlīhhemo ōstōde fullu fiordōn.",
+        "Findi daz lant daz so ein leffilo nāh Swēden scinit.",
+        "Diz lant habet daz Nordōst Lioht!"
+      ],
+      "pl": [
+        "Diz grōza lant ist so ein fiurstecca in mittun Europae.",
+        "Suochi daz lant zwischen Germania unta Ukraine.",
+        "Findi daz lant an dem Baltiscōn Sēwe mit Warsawia thero haubitburg."
+      ],
+      "pt": [
+        "Diz lant ist ein fiurstecca in westun orte Europae.",
+        "Suochi daz lant westarhalf Hispaniae an dem Atlantiscōn ōstōde.",
+        "Findi daz lant in sundwestun winchile Europae."
+      ],
+      "ro": [
+        "Diz lant habet bogohafta forma an dem Swarzon Sēwe.",
+        "Suochi daz lant mit den Carpathiāniscōn Bergan.",
+        "Findi daz lant dār Draculaes sloz ist!"
+      ],
+      "ru": [
+        "Diz ist daz GRŌZŌSTA lant in aller werolti!",
+        "Suochi daz ungafuora lant daz fon Europae ad Asiam gēt.",
+        "Findi daz grōzlīhha lant nordan Ukraine unta Kazakhstan."
+      ],
+      "sm": [
+        "Diz luzilōsta lant ist allaz fon Italia umbistan!",
+        "Suochi einaz der luzilōstōn lando, in Italia.",
+        "Findi daz luzila lant in berge in Italia."
+      ],
+      "rs": [
+        "Diz lant ist in mitten der Balkanōn ān sēwe.",
+        "Suochi daz lant umbistan fon filun nahebūron.",
+        "Findi daz lant zwischen Hungaria unta Macedonia."
+      ],
+      "sk": [
+        "Diz lant scinit so ein gistrekkita rūpa.",
+        "Suochi daz lant zwischen Polonia unta Hungaria.",
+        "Findi daz lant mit bergan in mitten Europae."
+      ],
+      "si": [
+        "Diz luzil lant ist so ein huon.",
+        "Suochi daz luzila lant zwischen Italia unta Croatia.",
+        "Findi daz lant obana an dem Adriatiscōn Sēwe."
+      ],
+      "es": [
+        "Diz grōza lant nimet meista der Iberiscōn Peninsulae.",
+        "Suochi daz grōza lant mit Portugal an sineru winstarhalf.",
+        "Findi daz lant mari mit flamencodanse unta stieron!",
+        "Diz lant ist so ein stieres hūt!"
+      ],
+      "se": [
+        "Diz langa lant strekkit nāh Scandinaviae ōstōde.",
+        "Suochi daz lant nāh Norwegen daz so ein ski scinit.",
+        "Findi daz lant zwischen Norwegen unta Finnia.",
+        "Hiar quam IKEA!"
+      ],
+      "ch": [
+        "Diz luzil lant ist mari mit chocolāte, kāse, unta horologiīs!",
+        "Suochi daz lant in den Alpēn zwischen Francia unta Germania.",
+        "Findi daz cruccohafta lant umbistan fon bergan."
+      ],
+      "ua": [
+        "Diz grōza lant ist daz grōzōsta allaz in Europae.",
+        "Suochi daz lant zwischen Polonia unta Rūzlande.",
+        "Findi daz gelwo unta blāwo lant an dem Swarzon Sēwe."
+      ],
+      "gb": [
+        "Diu ouwa scinit so ein wīgga in besen sizzent!",
+        "Suochi diu grōza ouwa westarhalf Franciae.",
+        "Findi daz lant mit Big Ben unta thero Queninginno palas!",
+        "Diz lant habet Engeland, Scotland, Wales, unta NordIrland."
+      ],
+      "va": [
+        "Diz ist daz LUZILŌSTA lant in aller werolti!",
+        "Suochi daz luzilōsta puncti in Romae, Italia.",
+        "Findi dār der Papa wīsōt!"
+      ]
+    },
+    "africa": {
+      "dz": [
+        "Diz ist daz GRŌZŌSTA lant in Africa!",
+        "Suochi daz ungafuora lant in nordan daz daz Mediterraneum rīnit.",
+        "Findi daz lant daz grōzan teil der Sahara Wuosti deckit."
+      ],
+      "ao": [
+        "Diz lant ist an dem sundwestun ōstōde Africae.",
+        "Suochi daz lant untar Congo mit luzilemo stucke ūzgēn.",
+        "Findi daz lant daz so ein luzila handhaba obana habēn scinit."
+      ],
+      "bj": [
+        "Diz smala lant scinit so ein sluzzilo staphent.",
+        "Suochi daz smala lant zwischen Togo unta Nigeria.",
+        "Findi daz lant so ein clubba."
+      ],
+      "bw": [
+        "Diz lant ist in sundan Africae ān sēwe.",
+        "Suochi daz lant so ein scilt.",
+        "Findi daz lant mit der Kalahari Wuosti."
+      ],
+      "bf": [
+        "Diz lant ist so ein fīfalto ān sēwe.",
+        "Suochi daz lant obana Ghana unta Côte d'Ivoire.",
+        "Findi daz lant umbistan fon filun nahebūron in Westun Africa."
+      ],
+      "bi": [
+        "Diz luzil lant ist einaz der luzilōstōn in Africa.",
+        "Suochi daz luzila lant nāh Rwanda.",
+        "Findi daz herzohafta lant nāh den Grōzun Sēwun."
+      ],
+      "cm": [
+        "Diz lant ist so ein huonobein odor numero 7.",
+        "Suochi daz lant daz an den Sinum Guineae wīsōt.",
+        "Findi daz lant zwischen Nigeria unta Central African Republic."
+      ],
+      "cf": [
+        "Diz lant ist in mitten Africae!",
+        "Suochi daz lant so ein fīfalto in mittun Africa.",
+        "Findi daz lant ān sēwe sundan Chad."
+      ],
+      "td": [
+        "Diz grōza lant ist so eines wībes profil.",
+        "Suochi daz lant sundan Libya.",
+        "Findi daz lant mit dem Sēwe Chad an sineru westun marcu."
+      ],
+      "cd": [
+        "Diz ungafuora lant ist in mitten, so eines elephantes houbit.",
+        "Suochi daz grōza lant mit der Congo Ahu.",
+        "Findi einaz der grōzōstōn lando Africae in mitten."
+      ],
+      "cg": [
+        "Diz lant habet langa bogohafta forma nāh der Congo Ahu.",
+        "Suochi daz lant westarhalf der Democratic Republic of Congo.",
+        "Findi daz lant daz an nordan strekkit."
+      ],
+      "ci": [
+        "Thizes landes namo meinit 'Elephantōs Ōstōde'.",
+        "Suochi daz lant an dem sinus ōstōde zwischen Liberia unta Ghana.",
+        "Findi daz lant so ein fiurstecca mit huckilun."
+      ],
+      "dj": [
+        "Diz luzilōsta lant wachtōt den ingango ad daz Rōtaz Sēwe.",
+        "Suochi daz luzila lant zwischen Eritrea unta Somalia.",
+        "Findi daz lant in dem Horn Africae, nāh dem wazzare."
+      ],
+      "eg": [
+        "Hiar sint diu mārun pyramidēs!",
+        "Suochi daz lant in nordōstan mit der Niles Ahu.",
+        "Findi daz lant zwischen Libya unta dem Rōton Sēwe.",
+        "Diz lant habet den Sphinx unta altun pharaōnēs!"
+      ],
+      "gq": [
+        "Diz luzil lant habet lant unta ouwa.",
+        "Suochi daz luzilōsta lant zwischen Cameroon unta Gabon.",
+        "Findi daz luzila lant an dem Sinu Guineae."
+      ],
+      "er": [
+        "Diz lant strekkit nāh dem Rōton Sēwe ōstōde.",
+        "Suochi daz lant nordan Ethiopia an dem sēwe.",
+        "Findi daz lant so ein crocodilus."
+      ],
+      "sz": [
+        "Diz luzila cuningrīhhi ist fasto umbistan fon South Africa.",
+        "Suochi daz luzila lant in dem winchile South Africae.",
+        "Findi einaz der luzilōstōn lando Africae nāh Mozambique."
+      ],
+      "et": [
+        "Diz grōza lant ist in dem Horn Africae.",
+        "Suochi daz grōza lant ān sēwe obana Kenya.",
+        "Findi daz lant so eines rinōs horn.",
+        "Diz lant habet altun kirchōn in steine giscrotanun!"
+      ],
+      "ga": [
+        "Diz lant stēt ubor dem aequator an dem westun ōstōde.",
+        "Suochi daz lant so ein sizzenter man.",
+        "Findi daz lant zwischen Cameroon unta Congo."
+      ],
+      "gm": [
+        "Diz luzilōsta lant ist umbistan fon Senegal an driu sītun!",
+        "Suochi daz smala lant nāh der ahu in Senegal.",
+        "Findi daz luzilōsta lant in mainland Africa."
+      ],
+      "gh": [
+        "Diz lant ist an dem Sinu Guineae ōstōde.",
+        "Suochi daz lant so ein fiurstecca mit huckilun obana.",
+        "Findi daz lant zwischen Côte d'Ivoire unta Togo.",
+        "Diz lant macōt filu cacawo furi chocolāte!"
+      ],
+      "gn": [
+        "Diz lant ist so ein croissant an dem westun ōstōde.",
+        "Suochi daz lant zwischen Guinea-Bissau unta Sierra Leone.",
+        "Findi daz lant mit bogohafteru formu in Westun Africa."
+      ],
+      "gw": [
+        "Diz luzil lant ist an dem Atlantiscōn ōstōde.",
+        "Suochi daz luzila lant nordan Guinea.",
+        "Findi daz lant mit filun ouwon nāh sinemo ōstōde."
+      ],
+      "ke": [
+        "Diz lant ist an dem ōstun ōstōde mit wuntarlīhhun wildun tieron!",
+        "Suochi daz lant in aequatore mit dem Indiscōn Sēwe ōstōde.",
+        "Findi daz lant dār leuwa unta elephantēs sicōs!",
+        "Diz lant ist mari mit safari ahteihūrun!"
+      ],
+      "ls": [
+        "Diz luzila bergo cuningrīhhi ist allaz in South Africa!",
+        "Suochi daz lant daz so ein loh in South Africa ist.",
+        "Findi daz 'Cuningrīhhi in dem Himile' umbistan fon einemo lande."
+      ],
+      "lr": [
+        "Diz lant wart githuwingan fon friithun Americāniscōn scalcon.",
+        "Suochi daz lant an dem westun ōstōde obana Côte d'Ivoire.",
+        "Findi daz lant so ein hantscuoh."
+      ],
+      "ly": [
+        "Diz grōza lant ist an dem Mediterraneum ōstōde.",
+        "Suochi daz grōza lant zwischen Egypt unta Algeria.",
+        "Findi daz lant daz meistaz Sahara Wuosti ist."
+      ],
+      "mg": [
+        "Diu ungafuora ouwa ist diu 4ta grōzōsta in werolti!",
+        "Suochi diu grōza ouwa fon dem ōstun ōstōde Africae.",
+        "Findi diu ouwa diu so ein fuozzespor scinit.",
+        "Diu ouwa habet tioru nirgend anderaz fundanun, so lemuros!"
+      ],
+      "mw": [
+        "Diz langa smala lant habet grōzan sēwe an sineru sītun.",
+        "Suochi daz smala lant zwischen Zambia unta Mozambique.",
+        "Findi daz lant mit dem Sēwe Malawi nāh sineru marcu."
+      ],
+      "ml": [
+        "Diz grōza lant habet wuntarlīhha forma so ein bowtī.",
+        "Suochi daz grōza lant in Westun Africa untar Algeria.",
+        "Findi daz lant ān sēwe mit Timbuktu."
+      ],
+      "mr": [
+        "Diz grōza lant strekkit fon dem Atlantiscōn in diu Sahara.",
+        "Suochi daz lant zwischen Western Sahara unta Senegal.",
+        "Findi daz lant so ein hantscuoh nidar wīsōn."
+      ],
+      "ma": [
+        "Diz lant ist in nordwestun winchile Africae.",
+        "Suochi daz lant ubar fon Hispania.",
+        "Findi daz lant mit bergan unta wuosti.",
+        "Diz lant ist nāh ginoug ad Europam sicōn!"
+      ],
+      "mz": [
+        "Diz langa lant strekkit nāh dem sundōstun ōstōde.",
+        "Suochi daz lant so ein lang giwero.",
+        "Findi daz lant zwischen Tanzania unta South Africa an dem ōstōde."
+      ],
+      "na": [
+        "Diz lant habet diu Namib Wuosti nāh sinemo ōstōde.",
+        "Suochi daz lant an dem sundwestun ōstōde.",
+        "Findi daz lant zwischen Angola unta South Africa."
+      ],
+      "ne": [
+        "Diz grōza lant ist meistaz wuosti ān sēwe.",
+        "Suochi daz lant so ein brātphanna.",
+        "Findi daz lant zwischen Algeria unta Nigeria."
+      ],
+      "ng": [
+        "Diz ist Africae meista-befolkota lant!",
+        "Suochi daz grōza lant an dem Sinu Guineae.",
+        "Findi daz lant so ein diccero scuoh.",
+        "Diz lant habet ubor zwā hundrad milionēs luiteo!"
+      ],
+      "rw": [
+        "Diz luzil lant ist giheizit 'Lant Dūsuntes Hugilo'.",
+        "Suochi daz luzilōsta lant zwischen Uganda unta Burundi.",
+        "Findi einaz der luzilōstōn Africae lando abur hugiligoztōstōn."
+      ],
+      "sn": [
+        "Diz lant gēt umbi Gambia.",
+        "Suochi daz lant an dem westōstōn orte Africae.",
+        "Findi daz lant daz fasto anderaz luzilaz lant umbigēt."
+      ],
+      "sl": [
+        "Diz lant ist an dem westun ōstōde mit leuwa in sinemo namon.",
+        "Suochi daz lant zwischen Guinea unta Liberia.",
+        "Findi daz lant daz namo 'Leuwabero' meinit."
+      ],
+      "so": [
+        "Diz lant tuit den Horn Africae!",
+        "Suochi daz lant so numero 7.",
+        "Findi daz lant daz in daz Indiscōn Sēwe ūzgēt."
+      ],
+      "za": [
+        "Diz lant ist nidarun in allem Africae.",
+        "Suochi daz lant daz Lesotho umbigēt.",
+        "Findi daz lant mit driu haubitburgun!",
+        "Diz lant habet penguīnos UNTA leuwas!"
+      ],
+      "ss": [
+        "Diz ist Africae nīwōsta lant!",
+        "Suochi daz lant obana Uganda unta Kenya.",
+        "Findi daz lant ān sēwe sundan Sudan."
+      ],
+      "sd": [
+        "Diz grōza lant ist in nordōstan Africae.",
+        "Suochi daz lant nāh der Niles Ahu.",
+        "Findi daz grōza lant zwischen Egypt unta South Sudan."
+      ],
+      "tz": [
+        "Diz lant habet Africae hōhōstan bergo, Kilimanjaro!",
+        "Suochi daz lant untar Kenya.",
+        "Findi daz lant mit Zanzibar ouwa.",
+        "Hiar magt thu den hōhōstan bergo in Africa stīgan!"
+      ],
+      "tg": [
+        "Diz alasmalozt lant ist gicruccitaz zwischen Ghana unta Benin.",
+        "Suochi daz smala lant an dem Sinu Guineae.",
+        "Findi daz lant so ein fingar."
+      ],
+      "tn": [
+        "Diz luzil lant ist obana allem Africae.",
+        "Suochi daz lant zwischen Algeria unta Libya.",
+        "Findi daz lant nāhōst Siciliae, Italia."
+      ],
+      "ug": [
+        "Diz lant habet den Sēwe Victoria ān sēwe.",
+        "Suochi daz lant zwischen Kenya unta Congo.",
+        "Findi daz lant mari mit bergo gorillis!"
+      ],
+      "eh": [
+        "Diz strītīgaz territorium ist an dem nordwestun ōstōde.",
+        "Suochi daz stecki sundan Morocco.",
+        "Findi daz territorium westarhalf Algeria unta Mauritania."
+      ],
+      "zm": [
+        "Diz lant habet Victoria Falls an sineru marcu!",
+        "Suochi daz lant so ein fīfalto.",
+        "Findi daz lant ān sēwe zwischen Congo unta Zimbabwe."
+      ],
+      "zw": [
+        "Diz lant ist mari mit Victoria Falls ān sēwe!",
+        "Suochi daz lant zwischen Zambia unta South Africa.",
+        "Findi daz lant so ein teaphanna."
+      ]
+    }
   }
 }

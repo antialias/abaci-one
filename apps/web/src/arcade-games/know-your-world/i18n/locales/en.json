@@ -275,6 +275,512 @@
         "Find the box-shaped state with Yellowstone Park!"
       ]
     },
-    "world": {}
+    "world": {},
+    "europe": {
+      "al": [
+        "This small country is on the coast, shaped like a leaf.",
+        "Look for the country between Greece and Montenegro.",
+        "Find the country across from Italy's boot heel."
+      ],
+      "ad": [
+        "This tiny country hides in the mountains between Spain and France.",
+        "Look for one of the smallest countries, high in the Pyrenees mountains.",
+        "Find the little dot between two big countries in the southwest."
+      ],
+      "at": [
+        "This country is shaped like a chicken drumstick in the middle of Europe.",
+        "Look for the country surrounded by lots of neighbors in central Europe.",
+        "Find the country where the Alps are really tall!",
+        "This country is home to Mozart and yummy pastries!"
+      ],
+      "by": [
+        "This country is big and flat, next to Russia.",
+        "Look for the country above Ukraine that's shaped like a blob.",
+        "Find the country between Poland and Russia."
+      ],
+      "be": [
+        "This small country is famous for chocolate and waffles!",
+        "Look for the country between France, Germany, and the Netherlands.",
+        "Find the small country near the North Sea coast."
+      ],
+      "ba": [
+        "This country has a funny triangle shape on the coast.",
+        "Look for the country squeezed between Croatia and Serbia.",
+        "Find the country that looks like a heart with a tiny bit of coast."
+      ],
+      "bg": [
+        "This country is on the Black Sea coast in the southeast.",
+        "Look for the country below Romania.",
+        "Find the country that shares a border with Turkey in Europe."
+      ],
+      "hr": [
+        "This country is shaped like a boomerang or the letter C!",
+        "Look for the country that wraps around Bosnia.",
+        "Find the country with the long curvy coastline on the Adriatic Sea."
+      ],
+      "cy": [
+        "This island country sits in the Mediterranean Sea near Turkey.",
+        "Look for the island in the far southeast corner of Europe.",
+        "Find the island that's shaped a bit like a frying pan."
+      ],
+      "cz": [
+        "This country is shaped like a fat arrow pointing left.",
+        "Look for the country in the middle surrounded by Germany, Poland, Slovakia, and Austria.",
+        "Find the country with Prague, a beautiful old city!"
+      ],
+      "dk": [
+        "This country has a funny peninsula sticking up above Germany.",
+        "Look for the country that looks like it's reaching toward Sweden.",
+        "Find the country made of a peninsula and lots of islands.",
+        "This is where LEGO comes from!"
+      ],
+      "ee": [
+        "This small country is at the top of the Baltic states.",
+        "Look for the country just across the water from Finland.",
+        "Find the northernmost of the three little countries by the Baltic Sea."
+      ],
+      "fi": [
+        "This country looks like it's waving an arm at the top of Europe.",
+        "Look for the country next to Sweden with lots of lakes.",
+        "Find the country where Santa Claus lives!",
+        "This country has the shape of a person with their arm up."
+      ],
+      "fr": [
+        "This big country is shaped like a hexagon.",
+        "Look for the country with the Eiffel Tower!",
+        "Find the large country between Spain and Germany.",
+        "This country is famous for croissants and the Eiffel Tower!"
+      ],
+      "de": [
+        "This big country is right in the middle of Europe.",
+        "Look for the country shaped a bit like a head looking left.",
+        "Find the country between France and Poland.",
+        "This is where cars like BMW and Mercedes come from!"
+      ],
+      "gr": [
+        "This country has a mainland and LOTS of islands.",
+        "Look for the country at the bottom of the Balkans.",
+        "Find the country that's famous for ancient ruins and the Olympics!",
+        "This country looks like a hand reaching into the sea."
+      ],
+      "hu": [
+        "This country is shaped like an oval in the middle of Europe.",
+        "Look for the country surrounded by seven other countries!",
+        "Find the country where the Danube River flows through the capital."
+      ],
+      "is": [
+        "This island country is way up in the North Atlantic, all by itself.",
+        "Look for the island between Greenland and Europe.",
+        "Find the island with volcanoes and hot springs!",
+        "This country has fire AND ice!"
+      ],
+      "ie": [
+        "This green island is west of Great Britain.",
+        "Look for the island that looks like a teddy bear.",
+        "Find the country famous for shamrocks and leprechauns!"
+      ],
+      "it": [
+        "This country is shaped like a boot kicking a ball!",
+        "Look for the long country sticking down into the Mediterranean.",
+        "Find the country where pizza and pasta come from!",
+        "This boot-shaped country has two islands near it."
+      ],
+      "xk": [
+        "This small country is landlocked in the Balkans.",
+        "Look for the small country between Serbia and Albania.",
+        "Find the little country shaped like a diamond."
+      ],
+      "lv": [
+        "This country is the middle one of three Baltic states.",
+        "Look for the country between Estonia and Lithuania.",
+        "Find the country on the Baltic Sea with Riga as its capital."
+      ],
+      "li": [
+        "This tiny country is squeezed between Switzerland and Austria.",
+        "Look for one of the smallest countries in the Alps.",
+        "Find the tiny country along the Rhine River."
+      ],
+      "lt": [
+        "This country is the southernmost of the three Baltic states.",
+        "Look for the country below Latvia with a funny shape.",
+        "Find the country that borders Poland and Belarus."
+      ],
+      "lu": [
+        "This tiny country is between Belgium, France, and Germany.",
+        "Look for one of the smallest countries in western Europe.",
+        "Find the little country that's surprisingly rich!"
+      ],
+      "mk": [
+        "This landlocked country is shaped like a circle.",
+        "Look for the country between Serbia and Greece.",
+        "Find the country with a sun on its flag!"
+      ],
+      "mt": [
+        "This tiny island country is south of Sicily in the Mediterranean.",
+        "Look for the small islands below Italy's boot.",
+        "Find the archipelago made of a few tiny islands."
+      ],
+      "md": [
+        "This country is squeezed between Romania and Ukraine.",
+        "Look for the small country that looks like a bunch of grapes.",
+        "Find the landlocked country east of Romania."
+      ],
+      "mc": [
+        "This is one of the tiniest countries, on the French Riviera coast!",
+        "Look for the tiny dot on the Mediterranean coast near Italy.",
+        "Find the super small country famous for fancy cars and a casino."
+      ],
+      "me": [
+        "This small country has beautiful mountains and a coast.",
+        "Look for the small country below Croatia on the Adriatic.",
+        "Find the country whose name means 'Black Mountain'."
+      ],
+      "nl": [
+        "This flat country is famous for windmills and tulips!",
+        "Look for the country on the North Sea with a funny shape.",
+        "Find the country next to Belgium and Germany.",
+        "This country is super flat and has lots of bicycles!"
+      ],
+      "no": [
+        "This long country stretches along Scandinavia's west coast.",
+        "Look for the country with the wiggly coastline full of fjords.",
+        "Find the country that looks like a spoon next to Sweden.",
+        "This country has the Northern Lights!"
+      ],
+      "pl": [
+        "This big country is shaped like a square in central Europe.",
+        "Look for the country between Germany and Ukraine.",
+        "Find the country on the Baltic Sea coast with Warsaw as capital."
+      ],
+      "pt": [
+        "This country is a rectangle on the western edge of Europe.",
+        "Look for the country west of Spain on the Atlantic coast.",
+        "Find the country at the very southwest corner of Europe."
+      ],
+      "ro": [
+        "This country has a curvy shape on the Black Sea.",
+        "Look for the country with the Carpathian Mountains.",
+        "Find the country where Dracula's castle is!"
+      ],
+      "ru": [
+        "This is the BIGGEST country in the world!",
+        "Look for the huge country that goes from Europe all the way to Asia.",
+        "Find the enormous country north of Ukraine and Kazakhstan."
+      ],
+      "sm": [
+        "This tiny country is completely surrounded by Italy!",
+        "Look for one of the smallest countries, inside Italy.",
+        "Find the little country on a mountain in Italy."
+      ],
+      "rs": [
+        "This landlocked country is in the middle of the Balkans.",
+        "Look for the country surrounded by lots of neighbors.",
+        "Find the country between Hungary and North Macedonia."
+      ],
+      "sk": [
+        "This country looks like a stretched caterpillar.",
+        "Look for the country between Poland and Hungary.",
+        "Find the country with mountains in the middle of Europe."
+      ],
+      "si": [
+        "This small country is shaped like a chicken.",
+        "Look for the small country between Italy and Croatia.",
+        "Find the country at the top of the Adriatic Sea."
+      ],
+      "es": [
+        "This large country takes up most of the Iberian Peninsula.",
+        "Look for the big country with Portugal on its left.",
+        "Find the country famous for flamenco dancing and bulls!",
+        "This country is shaped like a bull's hide!"
+      ],
+      "se": [
+        "This long country stretches down Scandinavia's east side.",
+        "Look for the country next to Norway that's shaped like a ski.",
+        "Find the country between Norway and Finland.",
+        "This is where IKEA comes from!"
+      ],
+      "ch": [
+        "This small country is famous for chocolate, cheese, and watches!",
+        "Look for the country in the Alps between France and Germany.",
+        "Find the cross-shaped country surrounded by mountains."
+      ],
+      "ua": [
+        "This big country is the largest entirely in Europe.",
+        "Look for the country between Poland and Russia.",
+        "Find the yellow and blue country on the Black Sea."
+      ],
+      "gb": [
+        "This island country looks like a witch on a broomstick!",
+        "Look for the big island west of France.",
+        "Find the country with Big Ben and the Queen's palace!",
+        "This country includes England, Scotland, Wales, and Northern Ireland."
+      ],
+      "va": [
+        "This is the SMALLEST country in the world!",
+        "Look for the tiny dot inside Rome, Italy.",
+        "Find where the Pope lives!"
+      ]
+    },
+    "africa": {
+      "dz": [
+        "This is the BIGGEST country in Africa!",
+        "Look for the huge country in the north that touches the Mediterranean.",
+        "Find the country that covers a big part of the Sahara Desert."
+      ],
+      "ao": [
+        "This country is on the southwest coast of Africa.",
+        "Look for the country below Congo with a little piece sticking out.",
+        "Find the country that looks like it has a small handle on top."
+      ],
+      "bj": [
+        "This skinny country looks like a key standing up.",
+        "Look for the thin country between Togo and Nigeria.",
+        "Find the country shaped like a club."
+      ],
+      "bw": [
+        "This landlocked country is in southern Africa.",
+        "Look for the country shaped like a shield.",
+        "Find the country with the Kalahari Desert."
+      ],
+      "bf": [
+        "This landlocked country is shaped like a butterfly.",
+        "Look for the country above Ghana and Côte d'Ivoire.",
+        "Find the country surrounded by many neighbors in West Africa."
+      ],
+      "bi": [
+        "This small country is one of the tiniest in Africa.",
+        "Look for the small country next to Rwanda.",
+        "Find the heart-shaped country near the Great Lakes."
+      ],
+      "cm": [
+        "This country is shaped like a drumstick or number 7.",
+        "Look for the country that points toward the Gulf of Guinea.",
+        "Find the country between Nigeria and Central African Republic."
+      ],
+      "cf": [
+        "This country is right in the middle of Africa!",
+        "Look for the country shaped like a butterfly in central Africa.",
+        "Find the landlocked country south of Chad."
+      ],
+      "td": [
+        "This big country is shaped like a woman's profile.",
+        "Look for the country south of Libya.",
+        "Find the country with Lake Chad on its western border."
+      ],
+      "cd": [
+        "This huge country is in the middle, shaped like an elephant head.",
+        "Look for the big country with the Congo River.",
+        "Find one of Africa's largest countries in the center."
+      ],
+      "cg": [
+        "This country has a long curvy shape along the Congo River.",
+        "Look for the country west of the Democratic Republic of Congo.",
+        "Find the country that looks like it's reaching up to the north."
+      ],
+      "ci": [
+        "This country's name means 'Ivory Coast'.",
+        "Look for the country on the gulf coast between Liberia and Ghana.",
+        "Find the country shaped like a square with bumps."
+      ],
+      "dj": [
+        "This tiny country guards the entrance to the Red Sea.",
+        "Look for the small country between Eritrea and Somalia.",
+        "Find the country at the Horn of Africa, near the water."
+      ],
+      "eg": [
+        "This is where the famous pyramids are!",
+        "Look for the country in the northeast corner with the Nile River.",
+        "Find the country between Libya and the Red Sea.",
+        "This country has the Sphinx and ancient pharaohs!"
+      ],
+      "gq": [
+        "This small country has a mainland and an island.",
+        "Look for the tiny country between Cameroon and Gabon.",
+        "Find the small country on the Gulf of Guinea."
+      ],
+      "er": [
+        "This country stretches along the Red Sea coast.",
+        "Look for the country north of Ethiopia on the sea.",
+        "Find the country shaped like a crocodile."
+      ],
+      "sz": [
+        "This tiny kingdom is almost surrounded by South Africa.",
+        "Look for the small country in the corner of South Africa.",
+        "Find one of Africa's smallest countries near Mozambique."
+      ],
+      "et": [
+        "This big country is in the Horn of Africa.",
+        "Look for the large landlocked country above Kenya.",
+        "Find the country shaped like a rhino horn.",
+        "This country has ancient churches carved from rock!"
+      ],
+      "ga": [
+        "This country straddles the equator on the west coast.",
+        "Look for the country shaped like a sitting person.",
+        "Find the country between Cameroon and Congo."
+      ],
+      "gm": [
+        "This tiny country is surrounded by Senegal on three sides!",
+        "Look for the skinny country along a river inside Senegal.",
+        "Find the smallest country in mainland Africa."
+      ],
+      "gh": [
+        "This country is on the Gulf of Guinea coast.",
+        "Look for the country shaped like a rectangle with bumpy top.",
+        "Find the country between Côte d'Ivoire and Togo.",
+        "This country produces lots of cocoa for chocolate!"
+      ],
+      "gn": [
+        "This country is shaped like a croissant on the west coast.",
+        "Look for the country between Guinea-Bissau and Sierra Leone.",
+        "Find the country with a curvy shape in West Africa."
+      ],
+      "gw": [
+        "This small country is on the Atlantic coast.",
+        "Look for the small country north of Guinea.",
+        "Find the country with lots of islands along its coast."
+      ],
+      "ke": [
+        "This country is on the east coast with amazing wildlife!",
+        "Look for the country on the equator with the Indian Ocean coast.",
+        "Find the country where you can see lions and elephants!",
+        "This country is famous for safari adventures!"
+      ],
+      "ls": [
+        "This small mountain kingdom is completely inside South Africa!",
+        "Look for the country that's like a hole in South Africa.",
+        "Find the 'Kingdom in the Sky' surrounded by one country."
+      ],
+      "lr": [
+        "This country was founded by freed American slaves.",
+        "Look for the country on the west coast above Côte d'Ivoire.",
+        "Find the country shaped like a mitten."
+      ],
+      "ly": [
+        "This big country is on the Mediterranean coast.",
+        "Look for the large country between Egypt and Algeria.",
+        "Find the country that's mostly Sahara Desert."
+      ],
+      "mg": [
+        "This huge island is the 4th largest in the world!",
+        "Look for the big island off the east coast of Africa.",
+        "Find the island that looks like a footprint.",
+        "This island has animals found nowhere else, like lemurs!"
+      ],
+      "mw": [
+        "This long thin country has a big lake on its side.",
+        "Look for the skinny country between Zambia and Mozambique.",
+        "Find the country with Lake Malawi along its border."
+      ],
+      "ml": [
+        "This big country has an interesting shape like a bowtie.",
+        "Look for the large country in West Africa below Algeria.",
+        "Find the landlocked country with Timbuktu."
+      ],
+      "mr": [
+        "This big country stretches from the Atlantic into the Sahara.",
+        "Look for the country between Western Sahara and Senegal.",
+        "Find the country shaped like a mitten pointing down."
+      ],
+      "ma": [
+        "This country is in the northwest corner of Africa.",
+        "Look for the country across from Spain.",
+        "Find the country with mountains and desert.",
+        "This country is close enough to see Europe!"
+      ],
+      "mz": [
+        "This long country stretches along the southeast coast.",
+        "Look for the country shaped like a long rifle.",
+        "Find the country between Tanzania and South Africa on the coast."
+      ],
+      "na": [
+        "This country has the Namib Desert along its coast.",
+        "Look for the country on the southwest coast.",
+        "Find the country between Angola and South Africa."
+      ],
+      "ne": [
+        "This big landlocked country is mostly desert.",
+        "Look for the country shaped like a frying pan.",
+        "Find the country between Algeria and Nigeria."
+      ],
+      "ng": [
+        "This is Africa's most populated country!",
+        "Look for the big country on the Gulf of Guinea.",
+        "Find the country shaped like a chunky boot.",
+        "This country has over 200 million people!"
+      ],
+      "rw": [
+        "This small country is called the 'Land of a Thousand Hills'.",
+        "Look for the tiny country between Uganda and Burundi.",
+        "Find one of Africa's smallest but hilliest countries."
+      ],
+      "sn": [
+        "This country wraps around Gambia.",
+        "Look for the country on the westernmost tip of Africa.",
+        "Find the country that almost surrounds another tiny country."
+      ],
+      "sl": [
+        "This country is on the west coast with a lion in its name.",
+        "Look for the country between Guinea and Liberia.",
+        "Find the country whose name means 'Lion Mountain'."
+      ],
+      "so": [
+        "This country forms the Horn of Africa!",
+        "Look for the country shaped like the number 7.",
+        "Find the country that sticks out into the Indian Ocean."
+      ],
+      "za": [
+        "This country is at the very bottom of Africa.",
+        "Look for the country that wraps around Lesotho.",
+        "Find the country with three capital cities!",
+        "This country has penguins AND lions!"
+      ],
+      "ss": [
+        "This is Africa's newest country!",
+        "Look for the country above Uganda and Kenya.",
+        "Find the landlocked country south of Sudan."
+      ],
+      "sd": [
+        "This big country is in northeast Africa.",
+        "Look for the country along the Nile River.",
+        "Find the large country between Egypt and South Sudan."
+      ],
+      "tz": [
+        "This country has Africa's tallest mountain, Kilimanjaro!",
+        "Look for the country below Kenya.",
+        "Find the country with Zanzibar island.",
+        "This is where you can climb the highest peak in Africa!"
+      ],
+      "tg": [
+        "This very skinny country is squeezed between Ghana and Benin.",
+        "Look for the thin country on the Gulf of Guinea.",
+        "Find the country shaped like a finger."
+      ],
+      "tn": [
+        "This small country is at the top of Africa.",
+        "Look for the country between Algeria and Libya.",
+        "Find the country closest to Sicily, Italy."
+      ],
+      "ug": [
+        "This landlocked country has Lake Victoria.",
+        "Look for the country between Kenya and Congo.",
+        "Find the country known for mountain gorillas!"
+      ],
+      "eh": [
+        "This disputed territory is on the northwest coast.",
+        "Look for the area south of Morocco.",
+        "Find the territory west of Algeria and Mauritania."
+      ],
+      "zm": [
+        "This country has Victoria Falls on its border!",
+        "Look for the country shaped like a butterfly.",
+        "Find the landlocked country between Congo and Zimbabwe."
+      ],
+      "zw": [
+        "This landlocked country is famous for Victoria Falls!",
+        "Look for the country between Zambia and South Africa.",
+        "Find the country shaped like a teapot."
+      ]
+    }
   }
 }

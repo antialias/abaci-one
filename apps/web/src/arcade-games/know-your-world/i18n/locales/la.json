@@ -275,6 +275,512 @@
         "Invenias civitatem sicut capsa formatam cum Parco Yellowstone!"
       ]
     },
-    "world": {}
+    "world": {},
+    "europe": {
+      "al": [
+        "Haec parva terra in litore est, sicut folium formata.",
+        "Quaere terram inter Graeciam et Montenegro.",
+        "Invenias terram trans calcem caligae Italiae."
+      ],
+      "ad": [
+        "Haec minima terra in montibus inter Hispaniam et Galliam latet.",
+        "Quaere unam ex minimis terris, alte in montibus Pyrenaeis.",
+        "Invenias parvum punctum inter duas magnas terras in parte meridionali-occidentali."
+      ],
+      "at": [
+        "Haec terra sicut crus pulli in medio Europae formata est.",
+        "Quaere terram multis vicinis in Europa centrali circumdatam.",
+        "Invenias terram ubi Alpes valde altae sunt!",
+        "Haec terra Mozartum et dulcia crustula habet!"
+      ],
+      "by": [
+        "Haec terra magna et plana est, iuxta Russiam.",
+        "Quaere terram supra Ucrainam quae sicut massa formata est.",
+        "Invenias terram inter Poloniam et Russiam."
+      ],
+      "be": [
+        "Haec parva terra chocolato et crustis clara est!",
+        "Quaere terram inter Galliam, Germaniam, et Bataviam.",
+        "Invenias parvam terram prope litus Maris Septentrionalis."
+      ],
+      "ba": [
+        "Haec terra formam trianguli mirabilem in litore habet.",
+        "Quaere terram inter Croatiam et Serbiam compressam.",
+        "Invenias terram quae sicut cor cum parvo litore videtur."
+      ],
+      "bg": [
+        "Haec terra in litore Maris Nigri in parte meridionali-orientali est.",
+        "Quaere terram infra Romania.",
+        "Invenias terram quae fines cum Turcia in Europa communicat."
+      ],
+      "hr": [
+        "Haec terra sicut remex vel littera C formata est!",
+        "Quaere terram quae Bosniam circumdat.",
+        "Invenias terram cum longo litore curvato ad Mare Adriaticum."
+      ],
+      "cy": [
+        "Haec insula in Mari Mediterraneo prope Turciam sedet.",
+        "Quaere insulam in angulo meridionali-orientali Europae.",
+        "Invenias insulam quae sicut sartago formata est."
+      ],
+      "cz": [
+        "Haec terra sicut sagitta crassa sinistrorsum formata est.",
+        "Quaere terram in medio Germania, Polonia, Slovakia, et Austria circumdatam.",
+        "Invenias terram cum Praga, pulchra veteri urbe!"
+      ],
+      "dk": [
+        "Haec terra mirabilem peninsulam supra Germaniam habet.",
+        "Quaere terram quae ad Sueciam extendere videtur.",
+        "Invenias terram ex peninsula et multis insulis factam.",
+        "Hic LEGO nascitur!"
+      ],
+      "ee": [
+        "Haec parva terra in summo terrarum Balticarum est.",
+        "Quaere terram trans aquam a Finnia.",
+        "Invenias terram maximam septentrionalem ex tribus parvis terris ad Mare Balticum."
+      ],
+      "fi": [
+        "Haec terra sicut brachio agitans in summo Europae videtur.",
+        "Quaere terram iuxta Sueciam cum multis lacubus.",
+        "Invenias terram ubi Sanctus Nicolaus habitat!",
+        "Haec terra formam hominis cum brachio sursum habet."
+      ],
+      "fr": [
+        "Haec magna terra sicut hexagonum formata est.",
+        "Quaere terram cum Turre Eiffel!",
+        "Invenias magnam terram inter Hispaniam et Germaniam.",
+        "Haec terra croissantis et Turre Eiffel clara est!"
+      ],
+      "de": [
+        "Haec magna terra in medio Europae est.",
+        "Quaere terram sicut caput sinistrorsum spectans formatam.",
+        "Invenias terram inter Galliam et Poloniam.",
+        "Hic curriculae sicut BMW et Mercedes fiunt!"
+      ],
+      "gr": [
+        "Haec terra continentem et MULTAS insulas habet.",
+        "Quaere terram in imo Balcanorum.",
+        "Invenias terram antiquis ruinis et Olympicis claram!",
+        "Haec terra sicut manus in mare extendens videtur."
+      ],
+      "hu": [
+        "Haec terra sicut ovum in medio Europae formata est.",
+        "Quaere terram septem aliis terris circumdatam!",
+        "Invenias terram ubi flumen Danubius per capitalem fluit."
+      ],
+      "is": [
+        "Haec insula longe in Oceano Atlantico Septentrionali sola est.",
+        "Quaere insulam inter Groenlandiam et Europam.",
+        "Invenias insulam cum vulcanis et fontibus calidis!",
+        "Haec terra ignem ET glaciem habet!"
+      ],
+      "ie": [
+        "Haec insula viridis ad occidentem Magnae Britanniae est.",
+        "Quaere insulam quae sicut ursus formata videtur.",
+        "Invenias terram trifoliis et lepraunis claram!"
+      ],
+      "it": [
+        "Haec terra sicut caliga pilam calcans formata est!",
+        "Quaere longam terram in Mare Mediterraneum extensam.",
+        "Invenias terram unde pizza et pasta veniunt!",
+        "Haec terra formae caligae duas insulas prope habet."
+      ],
+      "xk": [
+        "Haec parva terra in Balcanis inclusa est.",
+        "Quaere parvam terram inter Serbiam et Albaniam.",
+        "Invenias parvam terram sicut adamas formatam."
+      ],
+      "lv": [
+        "Haec terra media ex tribus terris Balticis est.",
+        "Quaere terram inter Estonia et Lithuania.",
+        "Invenias terram ad Mare Balticum cum Riga urbe principali."
+      ],
+      "li": [
+        "Haec minima terra inter Helvetiam et Austriam compressa est.",
+        "Quaere unam ex minimis terris in Alpibus.",
+        "Invenias minimam terram iuxta flumen Rhenum."
+      ],
+      "lt": [
+        "Haec terra maxima meridionalis ex tribus terris Balticis est.",
+        "Quaere terram infra Latvia cum forma mirabili.",
+        "Invenias terram quae fines cum Polonia et Belarus communicat."
+      ],
+      "lu": [
+        "Haec minima terra inter Belgium, Galliam, et Germaniam est.",
+        "Quaere unam ex minimis terris in Europa occidentali.",
+        "Invenias parvam terram quae mirabiliter dives est!"
+      ],
+      "mk": [
+        "Haec terra inclusa sicut circulus formata est.",
+        "Quaere terram inter Serbiam et Graeciam.",
+        "Invenias terram cum sole in vexillo!"
+      ],
+      "mt": [
+        "Haec minima insula meridiem Siciliae in Mari Mediterraneo est.",
+        "Quaere parvas insulas infra caligam Italiae.",
+        "Invenias archipelagum ex paucis minimis insulis factum."
+      ],
+      "md": [
+        "Haec terra inter Romania et Ucrainam compressa est.",
+        "Quaere parvam terram quae sicut botrus uvarum videtur.",
+        "Invenias terram inclusam ad orientem Romaniae."
+      ],
+      "mc": [
+        "Haec una ex minimis terris est, in litore Galliae!",
+        "Quaere minimum punctum in litore Mediterraneo prope Italiam.",
+        "Invenias parvissimam terram curriculis elegantibus et casina claram."
+      ],
+      "me": [
+        "Haec parva terra montes pulchros et litus habet.",
+        "Quaere parvam terram infra Croatia ad Mare Adriaticum.",
+        "Invenias terram cuius nomen 'Montem Nigrum' significat."
+      ],
+      "nl": [
+        "Haec plana terra molis ventosis et tulipis clara est!",
+        "Quaere terram ad Mare Septentrionale cum forma mirabili.",
+        "Invenias terram iuxta Belgium et Germaniam.",
+        "Haec terra planissima est et multas rotarum bigas habet!"
+      ],
+      "no": [
+        "Haec longa terra per litus occidentale Scandinaviae extenditur.",
+        "Quaere terram cum litore unduloso pleno sinuum.",
+        "Invenias terram quae sicut cochlear iuxta Sueciam videtur.",
+        "Haec terra Lucem Septentrionalem habet!"
+      ],
+      "pl": [
+        "Haec magna terra sicut quadratum in Europa centrali formata est.",
+        "Quaere terram inter Germaniam et Ucrainam.",
+        "Invenias terram in litore Maris Baltici cum Varsavia urbe principali."
+      ],
+      "pt": [
+        "Haec terra rectangulum in margine occidentali Europae est.",
+        "Quaere terram ad occidentem Hispaniae in litore Atlantico.",
+        "Invenias terram in angulo meridionali-occidentali Europae."
+      ],
+      "ro": [
+        "Haec terra formam curvam ad Mare Nigrum habet.",
+        "Quaere terram cum Montibus Carpathicis.",
+        "Invenias terram ubi castellum Draculae est!"
+      ],
+      "ru": [
+        "Haec est MAXIMA terra in mundo!",
+        "Quaere ingentem terram quae ab Europa usque ad Asiam extenditur.",
+        "Invenias immensam terram septentrionem Ucrainiae et Kazachstaniae."
+      ],
+      "sm": [
+        "Haec minima terra omnino Italia circumdatur!",
+        "Quaere unam ex minimis terris, intra Italiam.",
+        "Invenias parvam terram in monte in Italia."
+      ],
+      "rs": [
+        "Haec terra inclusa in medio Balcanorum est.",
+        "Quaere terram multis vicinis circumdatam.",
+        "Invenias terram inter Hungariam et Macedonia Septentrionalem."
+      ],
+      "sk": [
+        "Haec terra sicut eruca extensa videtur.",
+        "Quaere terram inter Poloniam et Hungariam.",
+        "Invenias terram cum montibus in medio Europae."
+      ],
+      "si": [
+        "Haec parva terra sicut pullus formata est.",
+        "Quaere parvam terram inter Italiam et Croatiam.",
+        "Invenias terram in summo Maris Adriatici."
+      ],
+      "es": [
+        "Haec magna terra maximam partem Peninsulae Ibericae occupat.",
+        "Quaere magnam terram cum Portugallia in sinistra.",
+        "Invenias terram saltatione flamenco et tauris claram!",
+        "Haec terra sicut pellis tauri formata est!"
+      ],
+      "se": [
+        "Haec longa terra per orientem Scandinaviae extenditur.",
+        "Quaere terram iuxta Norvegiam quae sicut ski formata est.",
+        "Invenias terram inter Norvegiam et Finniam.",
+        "Hic IKEA nascitur!"
+      ],
+      "ch": [
+        "Haec parva terra chocolato, caseo, et horologiis clara est!",
+        "Quaere terram in Alpibus inter Galliam et Germaniam.",
+        "Invenias terram cruci similem montibus circumdatam."
+      ],
+      "ua": [
+        "Haec magna terra maxima omnino in Europa est.",
+        "Quaere terram inter Poloniam et Russiam.",
+        "Invenias terram flavam et caeruleam ad Mare Nigrum."
+      ],
+      "gb": [
+        "Haec insula sicut saga in scope volans videtur!",
+        "Quaere magnam insulam ad occidentem Galliae.",
+        "Invenias terram cum Big Ben et regio domo!",
+        "Haec terra Angliam, Scotiam, Valliam, et Hiberian Septentrionalem includit."
+      ],
+      "va": [
+        "Haec est MINIMA terra in mundo!",
+        "Quaere minimum punctum intra Romam, Italiam.",
+        "Invenias ubi Papa habitat!"
+      ]
+    },
+    "africa": {
+      "dz": [
+        "Haec est MAXIMA terra in Africa!",
+        "Quaere ingentem terram in septentrione quae Mare Mediterraneum tangit.",
+        "Invenias terram quae magnam partem Deserti Saharae tegit."
+      ],
+      "ao": [
+        "Haec terra in litore meridionali-occidentali Africae est.",
+        "Quaere terram infra Congo cum parva parte extensa.",
+        "Invenias terram quae parvum manubrium in summo habere videtur."
+      ],
+      "bj": [
+        "Haec tenuis terra sicut clavis stans videtur.",
+        "Quaere tenuem terram inter Togo et Nigeriam.",
+        "Invenias terram sicut clavam formatam."
+      ],
+      "bw": [
+        "Haec terra inclusa in Africa meridionali est.",
+        "Quaere terram sicut scutum formatam.",
+        "Invenias terram cum Deserto Kalahari."
+      ],
+      "bf": [
+        "Haec terra inclusa sicut papilio formata est.",
+        "Quaere terram supra Ghana et Côte d'Ivoire.",
+        "Invenias terram multis vicinis in Africa Occidentali circumdatam."
+      ],
+      "bi": [
+        "Haec parva terra una ex minimis in Africa est.",
+        "Quaere parvam terram iuxta Rwanda.",
+        "Invenias terram sicut cor formatam prope Magnos Lacus."
+      ],
+      "cm": [
+        "Haec terra sicut crus pulli vel numerus 7 formata est.",
+        "Quaere terram quae ad Sinum Guineae ostendit.",
+        "Invenias terram inter Nigeria et Rem Publicam Africae Centralis."
+      ],
+      "cf": [
+        "Haec terra in medio Africae est!",
+        "Quaere terram sicut papilio in Africa centrali formatam.",
+        "Invenias terram inclusam meridiem Chad."
+      ],
+      "td": [
+        "Haec magna terra sicut facies mulieris formata est.",
+        "Quaere terram meridiem Libyae.",
+        "Invenias terram cum Lacu Chad in fine occidentali."
+      ],
+      "cd": [
+        "Haec ingens terra in medio est, sicut caput elephanti formata.",
+        "Quaere magnam terram cum Flumine Congo.",
+        "Invenias unam ex maximis terris Africae in centro."
+      ],
+      "cg": [
+        "Haec terra formam longam curvam iuxta Flumen Congo habet.",
+        "Quaere terram ad occidentem Rei Publicae Democraticae Congonis.",
+        "Invenias terram quae septentrionem extendere videtur."
+      ],
+      "ci": [
+        "Huius terrae nomen 'Litus Eburneum' significat.",
+        "Quaere terram in litore sinus inter Liberiam et Ghana.",
+        "Invenias terram sicut quadratum cum gibbis formatam."
+      ],
+      "dj": [
+        "Haec minima terra aditum ad Mare Rubrum custodit.",
+        "Quaere parvam terram inter Eritream et Somaliam.",
+        "Invenias terram ad Cornu Africae, prope aquam."
+      ],
+      "eg": [
+        "Hic pyramides clarae sunt!",
+        "Quaere terram in angulo septentrionali-orientali cum Flumine Nilo.",
+        "Invenias terram inter Libyam et Mare Rubrum.",
+        "Haec terra Sphingem et antiquos Pharaones habet!"
+      ],
+      "gq": [
+        "Haec parva terra continentem et insulam habet.",
+        "Quaere minimam terram inter Camerun et Gabon.",
+        "Invenias parvam terram ad Sinum Guineae."
+      ],
+      "er": [
+        "Haec terra per litus Maris Rubri extenditur.",
+        "Quaere terram septentrionem Aethiopiae ad mare.",
+        "Invenias terram sicut crocodilum formatam."
+      ],
+      "sz": [
+        "Hoc minimum regnum paene Africa Meridionali circumdatur.",
+        "Quaere parvam terram in angulo Africae Meridionalis.",
+        "Invenias unam ex minimis terris Africae prope Mozambique."
+      ],
+      "et": [
+        "Haec magna terra in Cornu Africae est.",
+        "Quaere magnam terram inclusam supra Kenya.",
+        "Invenias terram sicut cornu rhinocerotis formatam.",
+        "Haec terra antiquas ecclesias ex petra sculptas habet!"
+      ],
+      "ga": [
+        "Haec terra aequatorem in litore occidentali transit.",
+        "Quaere terram sicut hominem sedentem formatam.",
+        "Invenias terram inter Camerun et Congo."
+      ],
+      "gm": [
+        "Haec minima terra tribus lateribus Senegal circumdatur!",
+        "Quaere tenuem terram iuxta flumen intra Senegal.",
+        "Invenias minimam terram in continenti Africae."
+      ],
+      "gh": [
+        "Haec terra in litore Sinus Guineae est.",
+        "Quaere terram sicut rectangulum cum summo gibboso formatam.",
+        "Invenias terram inter Côte d'Ivoire et Togo.",
+        "Haec terra multum cacao pro chocolato facit!"
+      ],
+      "gn": [
+        "Haec terra sicut croissant in litore occidentali formata est.",
+        "Quaere terram inter Guinea-Bissau et Sierra Leone.",
+        "Invenias terram cum forma curva in Africa Occidentali."
+      ],
+      "gw": [
+        "Haec parva terra in litore Atlantico est.",
+        "Quaere parvam terram septentrionem Guinea.",
+        "Invenias terram cum multis insulis iuxta litus."
+      ],
+      "ke": [
+        "Haec terra in litore orientali cum animalibus mirabilibus est!",
+        "Quaere terram in aequatore cum litore Oceani Indici.",
+        "Invenias terram ubi leones et elephantos videre potes!",
+        "Haec terra safari clara est!"
+      ],
+      "ls": [
+        "Hoc parvum regnum montanum omnino intra Africa Meridionalem est!",
+        "Quaere terram quae sicut foramen in Africa Meridionali est.",
+        "Invenias 'Regnum in Caelo' una terra circumdatum."
+      ],
+      "lr": [
+        "Haec terra a servis Americanis liberatis condita est.",
+        "Quaere terram in litore occidentali supra Côte d'Ivoire.",
+        "Invenias terram sicut manicam formatam."
+      ],
+      "ly": [
+        "Haec magna terra in litore Mediterraneo est.",
+        "Quaere magnam terram inter Aegyptum et Algeriam.",
+        "Invenias terram quae maxime Desertum Sahara est."
+      ],
+      "mg": [
+        "Haec ingens insula quarta maxima in mundo est!",
+        "Quaere magnam insulam extra litus orientale Africae.",
+        "Invenias insulam quae sicut vestigium pedis videtur.",
+        "Haec insula animalia nullibi alibi inventa habet, sicut lemures!"
+      ],
+      "mw": [
+        "Haec longa tenuis terra magnum lacum in latere habet.",
+        "Quaere tenuem terram inter Zambia et Mozambique.",
+        "Invenias terram cum Lacu Malawi iuxta finem."
+      ],
+      "ml": [
+        "Haec magna terra formam mirabilem sicut nodus habet.",
+        "Quaere magnam terram in Africa Occidentali infra Algeriam.",
+        "Invenias terram inclusam cum Timbuktu."
+      ],
+      "mr": [
+        "Haec magna terra ab Atlantico in Saharam extenditur.",
+        "Quaere terram inter Sahara Occidentalem et Senegal.",
+        "Invenias terram sicut manicam deorsum formatam."
+      ],
+      "ma": [
+        "Haec terra in angulo septentrionali-occidentali Africae est.",
+        "Quaere terram trans ab Hispania.",
+        "Invenias terram cum montibus et deserto.",
+        "Haec terra Europam satis prope videre potest!"
+      ],
+      "mz": [
+        "Haec longa terra per litus meridionale-orientale extenditur.",
+        "Quaere terram sicut sclopetum longum formatam.",
+        "Invenias terram inter Tanzania et Africa Meridionalem in litore."
+      ],
+      "na": [
+        "Haec terra Desertum Namib iuxta litus habet.",
+        "Quaere terram in litore meridionali-occidentali.",
+        "Invenias terram inter Angola et Africa Meridionalem."
+      ],
+      "ne": [
+        "Haec magna terra inclusa maxime desertum est.",
+        "Quaere terram sicut sartaginem formatam.",
+        "Invenias terram inter Algeriam et Nigeriam."
+      ],
+      "ng": [
+        "Haec terra populatissima Africae est!",
+        "Quaere magnam terram ad Sinum Guineae.",
+        "Invenias terram sicut caligam crassam formatam.",
+        "Haec terra plus quam ducenta milia hominum habet!"
+      ],
+      "rw": [
+        "Haec parva terra 'Terra Mille Collium' vocatur.",
+        "Quaere minimam terram inter Uganda et Burundi.",
+        "Invenias unam ex minimis sed collibus plenam terris Africae."
+      ],
+      "sn": [
+        "Haec terra Gambia circumdat.",
+        "Quaere terram in cacumine occidentalissimo Africae.",
+        "Invenias terram quae paene aliam minimam terram circumdat."
+      ],
+      "sl": [
+        "Haec terra in litore occidentali cum leone in nomine est.",
+        "Quaere terram inter Guinea et Liberia.",
+        "Invenias terram cuius nomen 'Montem Leonis' significat."
+      ],
+      "so": [
+        "Haec terra Cornu Africae format!",
+        "Quaere terram sicut numerum 7 formatam.",
+        "Invenias terram quae in Oceanum Indicum extenditur."
+      ],
+      "za": [
+        "Haec terra in imo Africae est.",
+        "Quaere terram quae Lesotho circumdat.",
+        "Invenias terram cum tribus urbibus principalibus!",
+        "Haec terra pinguinos ET leones habet!"
+      ],
+      "ss": [
+        "Haec novissima terra Africae est!",
+        "Quaere terram supra Uganda et Kenya.",
+        "Invenias terram inclusam meridiem Sudan."
+      ],
+      "sd": [
+        "Haec magna terra in Africa septentrionali-orientali est.",
+        "Quaere terram iuxta Flumen Nilum.",
+        "Invenias magnam terram inter Aegyptum et Sudan Meridionalem."
+      ],
+      "tz": [
+        "Haec terra montem altissimum Africae habet, Kilimanjaro!",
+        "Quaere terram infra Kenya.",
+        "Invenias terram cum insula Zanzibar.",
+        "Hic cacumen altissimum in Africa scandere potes!"
+      ],
+      "tg": [
+        "Haec terra valde tenuis inter Ghana et Benin compressa est.",
+        "Quaere tenuem terram ad Sinum Guineae.",
+        "Invenias terram sicut digitum formatam."
+      ],
+      "tn": [
+        "Haec parva terra in summo Africae est.",
+        "Quaere terram inter Algeriam et Libyam.",
+        "Invenias terram Siciliae, Italiae proximam."
+      ],
+      "ug": [
+        "Haec terra inclusa Lacum Victoria habet.",
+        "Quaere terram inter Kenya et Congo.",
+        "Invenias terram gorillis montanis claram!"
+      ],
+      "eh": [
+        "Hoc territorium disputatum in litore septentrionali-occidentali est.",
+        "Quaere locum meridiem Maroci.",
+        "Invenias territorium ad occidentem Algeriae et Mauritaniae."
+      ],
+      "zm": [
+        "Haec terra Casus Victoria in fine habet!",
+        "Quaere terram sicut papilio formatam.",
+        "Invenias terram inclusam inter Congo et Zimbabwe."
+      ],
+      "zw": [
+        "Haec terra inclusa Casibus Victoria clara est!",
+        "Quaere terram inter Zambia et Africa Meridionalem.",
+        "Invenias terram sicut vas theae formatam."
+      ]
+    }
   }
 }

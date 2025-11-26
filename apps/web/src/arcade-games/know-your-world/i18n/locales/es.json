@@ -275,6 +275,512 @@
         "¡Encuentra el estado con forma de caja con el Parque Yellowstone!"
       ]
     },
-    "world": {}
+    "world": {},
+    "europe": {
+      "al": [
+        "Este país pequeño está en la costa, con forma de hoja.",
+        "Busca el país entre Grecia y Montenegro.",
+        "Encuentra el país frente al talón de la bota de Italia."
+      ],
+      "ad": [
+        "Este país pequeñito se esconde en las montañas entre España y Francia.",
+        "Busca uno de los países más pequeños, alto en las montañas de los Pirineos.",
+        "Encuentra el puntito entre dos países grandes en el suroeste."
+      ],
+      "at": [
+        "Este país parece una pata de pollo en el medio de Europa.",
+        "Busca el país rodeado de muchos vecinos en el centro de Europa.",
+        "¡Encuentra el país donde los Alpes son muy altos!",
+        "¡Este país es el hogar de Mozart y pasteles deliciosos!"
+      ],
+      "by": [
+        "Este país es grande y plano, al lado de Rusia.",
+        "Busca el país arriba de Ucrania que parece una mancha.",
+        "Encuentra el país entre Polonia y Rusia."
+      ],
+      "be": [
+        "¡Este país pequeño es famoso por el chocolate y los waffles!",
+        "Busca el país entre Francia, Alemania y los Países Bajos.",
+        "Encuentra el país pequeño cerca de la costa del Mar del Norte."
+      ],
+      "ba": [
+        "Este país tiene una forma triangular graciosa en la costa.",
+        "Busca el país entre Croacia y Serbia.",
+        "Encuentra el país que parece un corazón con un poquito de costa."
+      ],
+      "bg": [
+        "Este país está en la costa del Mar Negro en el sureste.",
+        "Busca el país debajo de Rumania.",
+        "Encuentra el país que comparte frontera con Turquía en Europa."
+      ],
+      "hr": [
+        "¡Este país parece un bumerán o la letra C!",
+        "Busca el país que rodea a Bosnia.",
+        "Encuentra el país con la costa larga y curva en el Mar Adriático."
+      ],
+      "cy": [
+        "Esta isla está en el Mar Mediterráneo cerca de Turquía.",
+        "Busca la isla en la esquina lejana del sureste de Europa.",
+        "Encuentra la isla que parece un poquito como una sartén."
+      ],
+      "cz": [
+        "Este país parece una flecha gordita apuntando a la izquierda.",
+        "Busca el país en el medio rodeado por Alemania, Polonia, Eslovaquia y Austria.",
+        "¡Encuentra el país con Praga, una ciudad antigua hermosa!"
+      ],
+      "dk": [
+        "Este país tiene una península graciosa que sube arriba de Alemania.",
+        "Busca el país que parece que está alcanzando a Suecia.",
+        "Encuentra el país hecho de una península y muchas islas.",
+        "¡Este es de donde vienen los LEGO!"
+      ],
+      "ee": [
+        "Este país pequeño está arriba de los países bálticos.",
+        "Busca el país justo al otro lado del agua de Finlandia.",
+        "Encuentra el más al norte de los tres países pequeños junto al Mar Báltico."
+      ],
+      "fi": [
+        "Este país parece que está saludando con un brazo arriba en Europa.",
+        "Busca el país al lado de Suecia con muchos lagos.",
+        "¡Encuentra el país donde vive Santa Claus!",
+        "Este país tiene forma de una persona con el brazo arriba."
+      ],
+      "fr": [
+        "Este país grande tiene forma de hexágono.",
+        "¡Busca el país con la Torre Eiffel!",
+        "Encuentra el país grande entre España y Alemania.",
+        "¡Este país es famoso por croissants y la Torre Eiffel!"
+      ],
+      "de": [
+        "Este país grande está justo en el medio de Europa.",
+        "Busca el país que parece una cabeza mirando a la izquierda.",
+        "Encuentra el país entre Francia y Polonia.",
+        "¡Este es de donde vienen carros como BMW y Mercedes!"
+      ],
+      "gr": [
+        "Este país tiene un continente y MUCHAS islas.",
+        "Busca el país en el fondo de los Balcanes.",
+        "¡Encuentra el país famoso por ruinas antiguas y las Olimpiadas!",
+        "Este país parece una mano alcanzando al mar."
+      ],
+      "hu": [
+        "Este país tiene forma de óvalo en el medio de Europa.",
+        "¡Busca el país rodeado por siete otros países!",
+        "Encuentra el país donde el río Danubio pasa por la capital."
+      ],
+      "is": [
+        "Esta isla está muy arriba en el Atlántico Norte, toda solita.",
+        "Busca la isla entre Groenlandia y Europa.",
+        "¡Encuentra la isla con volcanes y manantiales calientes!",
+        "¡Este país tiene fuego Y hielo!"
+      ],
+      "ie": [
+        "Esta isla verde está al oeste de Gran Bretaña.",
+        "Busca la isla que parece un osito de peluche.",
+        "¡Encuentra el país famoso por tréboles y duendes!"
+      ],
+      "it": [
+        "¡Este país parece una bota pateando una pelota!",
+        "Busca el país largo que baja hacia el Mediterráneo.",
+        "¡Encuentra el país de donde vienen la pizza y la pasta!",
+        "Esta bota tiene dos islas cerca."
+      ],
+      "xk": [
+        "Este país pequeño no tiene salida al mar en los Balcanes.",
+        "Busca el país pequeño entre Serbia y Albania.",
+        "Encuentra el país pequeñito con forma de diamante."
+      ],
+      "lv": [
+        "Este país es el del medio de los tres países bálticos.",
+        "Busca el país entre Estonia y Lituania.",
+        "Encuentra el país en el Mar Báltico con Riga como capital."
+      ],
+      "li": [
+        "Este país pequeñito está entre Suiza y Austria.",
+        "Busca uno de los países más pequeños en los Alpes.",
+        "Encuentra el país pequeñito junto al río Rin."
+      ],
+      "lt": [
+        "Este país es el más al sur de los tres países bálticos.",
+        "Busca el país debajo de Letonia con forma graciosa.",
+        "Encuentra el país que tiene fronteras con Polonia y Bielorrusia."
+      ],
+      "lu": [
+        "Este país pequeñito está entre Bélgica, Francia y Alemania.",
+        "Busca uno de los países más pequeños en Europa occidental.",
+        "¡Encuentra el país pequeñito que es sorprendentemente rico!"
+      ],
+      "mk": [
+        "Este país sin salida al mar tiene forma de círculo.",
+        "Busca el país entre Serbia y Grecia.",
+        "¡Encuentra el país con un sol en su bandera!"
+      ],
+      "mt": [
+        "Esta isla pequeñita está al sur de Sicilia en el Mediterráneo.",
+        "Busca las islas pequeñas debajo de la bota de Italia.",
+        "Encuentra el archipiélago hecho de unas islitas pequeñas."
+      ],
+      "md": [
+        "Este país está entre Rumania y Ucrania.",
+        "Busca el país pequeño que parece un racimo de uvas.",
+        "Encuentra el país sin salida al mar al este de Rumania."
+      ],
+      "mc": [
+        "¡Este es uno de los países más pequeños, en la costa de la Riviera francesa!",
+        "Busca el puntito en la costa del Mediterráneo cerca de Italia.",
+        "Encuentra el país súper pequeño famoso por carros lujosos y un casino."
+      ],
+      "me": [
+        "Este país pequeño tiene montañas hermosas y una costa.",
+        "Busca el país pequeño debajo de Croacia en el Adriático.",
+        "Encuentra el país cuyo nombre significa 'Montaña Negra'."
+      ],
+      "nl": [
+        "¡Este país plano es famoso por molinos de viento y tulipanes!",
+        "Busca el país en el Mar del Norte con forma graciosa.",
+        "Encuentra el país al lado de Bélgica y Alemania.",
+        "¡Este país es súper plano y tiene muchas bicicletas!"
+      ],
+      "no": [
+        "Este país largo se extiende por la costa oeste de Escandinavia.",
+        "Busca el país con la costa ondulada llena de fiordos.",
+        "Encuentra el país que parece una cuchara al lado de Suecia.",
+        "¡Este país tiene las auroras boreales!"
+      ],
+      "pl": [
+        "Este país grande tiene forma de cuadrado en el centro de Europa.",
+        "Busca el país entre Alemania y Ucrania.",
+        "Encuentra el país en la costa del Mar Báltico con Varsovia como capital."
+      ],
+      "pt": [
+        "Este país es un rectángulo en el borde oeste de Europa.",
+        "Busca el país al oeste de España en la costa del Atlántico.",
+        "Encuentra el país en la esquina suroeste de Europa."
+      ],
+      "ro": [
+        "Este país tiene forma curva en el Mar Negro.",
+        "Busca el país con las montañas de los Cárpatos.",
+        "¡Encuentra el país donde está el castillo de Drácula!"
+      ],
+      "ru": [
+        "¡Este es el país MÁS GRANDE del mundo!",
+        "Busca el país enorme que va desde Europa hasta Asia.",
+        "Encuentra el país gigantesco al norte de Ucrania y Kazajistán."
+      ],
+      "sm": [
+        "¡Este país pequeñito está completamente rodeado por Italia!",
+        "Busca uno de los países más pequeños, dentro de Italia.",
+        "Encuentra el país pequeño en una montaña en Italia."
+      ],
+      "rs": [
+        "Este país sin salida al mar está en el medio de los Balcanes.",
+        "Busca el país rodeado de muchos vecinos.",
+        "Encuentra el país entre Hungría y Macedonia del Norte."
+      ],
+      "sk": [
+        "Este país parece una oruga estirada.",
+        "Busca el país entre Polonia y Hungría.",
+        "Encuentra el país con montañas en el medio de Europa."
+      ],
+      "si": [
+        "Este país pequeño parece un pollito.",
+        "Busca el país pequeño entre Italia y Croacia.",
+        "Encuentra el país arriba del Mar Adriático."
+      ],
+      "es": [
+        "Este país grande ocupa la mayor parte de la Península Ibérica.",
+        "Busca el país grande con Portugal a su izquierda.",
+        "¡Encuentra el país famoso por baile flamenco y toros!",
+        "¡Este país parece la piel de un toro!"
+      ],
+      "se": [
+        "Este país largo se extiende por el lado este de Escandinavia.",
+        "Busca el país al lado de Noruega que parece un esquí.",
+        "Encuentra el país entre Noruega y Finlandia.",
+        "¡Este es de donde viene IKEA!"
+      ],
+      "ch": [
+        "¡Este país pequeño es famoso por chocolate, queso y relojes!",
+        "Busca el país en los Alpes entre Francia y Alemania.",
+        "Encuentra el país en forma de cruz rodeado de montañas."
+      ],
+      "ua": [
+        "Este país grande es el más grande completamente en Europa.",
+        "Busca el país entre Polonia y Rusia.",
+        "Encuentra el país amarillo y azul en el Mar Negro."
+      ],
+      "gb": [
+        "¡Esta isla parece una bruja en una escoba!",
+        "Busca la isla grande al oeste de Francia.",
+        "¡Encuentra el país con Big Ben y el palacio de la Reina!",
+        "Este país incluye Inglaterra, Escocia, Gales e Irlanda del Norte."
+      ],
+      "va": [
+        "¡Este es el país MÁS PEQUEÑO del mundo!",
+        "Busca el puntito dentro de Roma, Italia.",
+        "¡Encuentra donde vive el Papa!"
+      ]
+    },
+    "africa": {
+      "dz": [
+        "¡Este es el país MÁS GRANDE de África!",
+        "Busca el país enorme en el norte que toca el Mediterráneo.",
+        "Encuentra el país que cubre gran parte del Desierto del Sahara."
+      ],
+      "ao": [
+        "Este país está en la costa suroeste de África.",
+        "Busca el país debajo del Congo con un pedacito que sale.",
+        "Encuentra el país que parece que tiene un mango pequeño arriba."
+      ],
+      "bj": [
+        "Este país delgadito parece una llave de pie.",
+        "Busca el país delgado entre Togo y Nigeria.",
+        "Encuentra el país con forma de palo de golf."
+      ],
+      "bw": [
+        "Este país sin salida al mar está en el sur de África.",
+        "Busca el país con forma de escudo.",
+        "Encuentra el país con el Desierto de Kalahari."
+      ],
+      "bf": [
+        "Este país sin salida al mar parece una mariposa.",
+        "Busca el país arriba de Ghana y Costa de Marfil.",
+        "Encuentra el país rodeado de muchos vecinos en África Occidental."
+      ],
+      "bi": [
+        "Este país pequeño es uno de los más pequeños de África.",
+        "Busca el país pequeño al lado de Ruanda.",
+        "Encuentra el país con forma de corazón cerca de los Grandes Lagos."
+      ],
+      "cm": [
+        "Este país parece una pata de pollo o el número 7.",
+        "Busca el país que apunta hacia el Golfo de Guinea.",
+        "Encuentra el país entre Nigeria y la República Centroafricana."
+      ],
+      "cf": [
+        "¡Este país está justo en el medio de África!",
+        "Busca el país con forma de mariposa en el centro de África.",
+        "Encuentra el país sin salida al mar al sur de Chad."
+      ],
+      "td": [
+        "Este país grande parece el perfil de una mujer.",
+        "Busca el país al sur de Libia.",
+        "Encuentra el país con el Lago Chad en su frontera oeste."
+      ],
+      "cd": [
+        "Este país enorme está en el medio, con forma de cabeza de elefante.",
+        "Busca el país grande con el río Congo.",
+        "Encuentra uno de los países más grandes de África en el centro."
+      ],
+      "cg": [
+        "Este país tiene forma larga y curva a lo largo del río Congo.",
+        "Busca el país al oeste de la República Democrática del Congo.",
+        "Encuentra el país que parece que está alcanzando hacia el norte."
+      ],
+      "ci": [
+        "El nombre de este país significa 'Costa de Marfil'.",
+        "Busca el país en la costa del golfo entre Liberia y Ghana.",
+        "Encuentra el país con forma de cuadrado con bultos."
+      ],
+      "dj": [
+        "Este país pequeñito guarda la entrada al Mar Rojo.",
+        "Busca el país pequeño entre Eritrea y Somalia.",
+        "Encuentra el país en el Cuerno de África, cerca del agua."
+      ],
+      "eg": [
+        "¡Aquí están las pirámides famosas!",
+        "Busca el país en la esquina noreste con el río Nilo.",
+        "Encuentra el país entre Libia y el Mar Rojo.",
+        "¡Este país tiene la Esfinge y faraones antiguos!"
+      ],
+      "gq": [
+        "Este país pequeño tiene tierra firme y una isla.",
+        "Busca el país pequeñito entre Camerún y Gabón.",
+        "Encuentra el país pequeño en el Golfo de Guinea."
+      ],
+      "er": [
+        "Este país se extiende por la costa del Mar Rojo.",
+        "Busca el país al norte de Etiopía en el mar.",
+        "Encuentra el país con forma de cocodrilo."
+      ],
+      "sz": [
+        "Este reino pequeñito está casi rodeado por Sudáfrica.",
+        "Busca el país pequeño en la esquina de Sudáfrica.",
+        "Encuentra uno de los países más pequeños de África cerca de Mozambique."
+      ],
+      "et": [
+        "Este país grande está en el Cuerno de África.",
+        "Busca el país grande sin salida al mar arriba de Kenia.",
+        "Encuentra el país con forma de cuerno de rinoceronte.",
+        "¡Este país tiene iglesias antiguas talladas en roca!"
+      ],
+      "ga": [
+        "Este país está sobre el ecuador en la costa oeste.",
+        "Busca el país con forma de persona sentada.",
+        "Encuentra el país entre Camerún y Congo."
+      ],
+      "gm": [
+        "¡Este país pequeñito está rodeado por Senegal por tres lados!",
+        "Busca el país delgadito a lo largo de un río dentro de Senegal.",
+        "Encuentra el país más pequeño en África continental."
+      ],
+      "gh": [
+        "Este país está en la costa del Golfo de Guinea.",
+        "Busca el país con forma de rectángulo con parte de arriba con bultos.",
+        "Encuentra el país entre Costa de Marfil y Togo.",
+        "¡Este país produce mucho cacao para chocolate!"
+      ],
+      "gn": [
+        "Este país parece un croissant en la costa oeste.",
+        "Busca el país entre Guinea-Bisáu y Sierra Leona.",
+        "Encuentra el país con forma curva en África Occidental."
+      ],
+      "gw": [
+        "Este país pequeño está en la costa del Atlántico.",
+        "Busca el país pequeño al norte de Guinea.",
+        "Encuentra el país con muchas islas a lo largo de su costa."
+      ],
+      "ke": [
+        "¡Este país está en la costa este con animales salvajes increíbles!",
+        "Busca el país en el ecuador con costa del Océano Índico.",
+        "¡Encuentra el país donde puedes ver leones y elefantes!",
+        "¡Este país es famoso por aventuras de safari!"
+      ],
+      "ls": [
+        "¡Este reino de montañas pequeño está completamente dentro de Sudáfrica!",
+        "Busca el país que es como un hoyo en Sudáfrica.",
+        "Encuentra el 'Reino en el Cielo' rodeado por un país."
+      ],
+      "lr": [
+        "Este país fue fundado por esclavos americanos liberados.",
+        "Busca el país en la costa oeste arriba de Costa de Marfil.",
+        "Encuentra el país con forma de guante."
+      ],
+      "ly": [
+        "Este país grande está en la costa del Mediterráneo.",
+        "Busca el país grande entre Egipto y Argelia.",
+        "Encuentra el país que es mayormente Desierto del Sahara."
+      ],
+      "mg": [
+        "¡Esta isla enorme es la cuarta más grande del mundo!",
+        "Busca la isla grande en la costa este de África.",
+        "Encuentra la isla que parece una huella de pie.",
+        "¡Esta isla tiene animales que no se encuentran en ningún otro lugar, como los lémures!"
+      ],
+      "mw": [
+        "Este país largo y delgado tiene un lago grande a su lado.",
+        "Busca el país delgadito entre Zambia y Mozambique.",
+        "Encuentra el país con el Lago Malaui a lo largo de su frontera."
+      ],
+      "ml": [
+        "Este país grande tiene forma interesante como corbata de moño.",
+        "Busca el país grande en África Occidental debajo de Argelia.",
+        "Encuentra el país sin salida al mar con Tombuctú."
+      ],
+      "mr": [
+        "Este país grande se extiende desde el Atlántico hasta el Sahara.",
+        "Busca el país entre Sahara Occidental y Senegal.",
+        "Encuentra el país con forma de guante apuntando hacia abajo."
+      ],
+      "ma": [
+        "Este país está en la esquina noroeste de África.",
+        "Busca el país frente a España.",
+        "Encuentra el país con montañas y desierto.",
+        "¡Este país está lo suficientemente cerca para ver Europa!"
+      ],
+      "mz": [
+        "Este país largo se extiende por la costa sureste.",
+        "Busca el país con forma de rifle largo.",
+        "Encuentra el país entre Tanzania y Sudáfrica en la costa."
+      ],
+      "na": [
+        "Este país tiene el Desierto de Namib a lo largo de su costa.",
+        "Busca el país en la costa suroeste.",
+        "Encuentra el país entre Angola y Sudáfrica."
+      ],
+      "ne": [
+        "Este país grande sin salida al mar es mayormente desierto.",
+        "Busca el país con forma de sartén.",
+        "Encuentra el país entre Argelia y Nigeria."
+      ],
+      "ng": [
+        "¡Este es el país más poblado de África!",
+        "Busca el país grande en el Golfo de Guinea.",
+        "Encuentra el país con forma de bota gordita.",
+        "¡Este país tiene más de 200 millones de personas!"
+      ],
+      "rw": [
+        "Este país pequeño se llama la 'Tierra de las Mil Colinas'.",
+        "Busca el país pequeñito entre Uganda y Burundi.",
+        "Encuentra uno de los países más pequeños pero con más colinas de África."
+      ],
+      "sn": [
+        "Este país rodea a Gambia.",
+        "Busca el país en la punta más al oeste de África.",
+        "Encuentra el país que casi rodea a otro país pequeñito."
+      ],
+      "sl": [
+        "Este país está en la costa oeste con un león en su nombre.",
+        "Busca el país entre Guinea y Liberia.",
+        "Encuentra el país cuyo nombre significa 'Montaña del León'."
+      ],
+      "so": [
+        "¡Este país forma el Cuerno de África!",
+        "Busca el país con forma de número 7.",
+        "Encuentra el país que sobresale hacia el Océano Índico."
+      ],
+      "za": [
+        "Este país está en el fondo de África.",
+        "Busca el país que rodea a Lesoto.",
+        "¡Encuentra el país con tres ciudades capitales!",
+        "¡Este país tiene pingüinos Y leones!"
+      ],
+      "ss": [
+        "¡Este es el país más nuevo de África!",
+        "Busca el país arriba de Uganda y Kenia.",
+        "Encuentra el país sin salida al mar al sur de Sudán."
+      ],
+      "sd": [
+        "Este país grande está en el noreste de África.",
+        "Busca el país a lo largo del río Nilo.",
+        "Encuentra el país grande entre Egipto y Sudán del Sur."
+      ],
+      "tz": [
+        "¡Este país tiene la montaña más alta de África, el Kilimanjaro!",
+        "Busca el país debajo de Kenia.",
+        "Encuentra el país con la isla de Zanzíbar.",
+        "¡Aquí puedes subir el pico más alto de África!"
+      ],
+      "tg": [
+        "Este país muy delgadito está entre Ghana y Benín.",
+        "Busca el país delgado en el Golfo de Guinea.",
+        "Encuentra el país con forma de dedo."
+      ],
+      "tn": [
+        "Este país pequeño está arriba de África.",
+        "Busca el país entre Argelia y Libia.",
+        "Encuentra el país más cercano a Sicilia, Italia."
+      ],
+      "ug": [
+        "Este país sin salida al mar tiene el Lago Victoria.",
+        "Busca el país entre Kenia y Congo.",
+        "¡Encuentra el país conocido por los gorilas de montaña!"
+      ],
+      "eh": [
+        "Este territorio disputado está en la costa noroeste.",
+        "Busca el área al sur de Marruecos.",
+        "Encuentra el territorio al oeste de Argelia y Mauritania."
+      ],
+      "zm": [
+        "¡Este país tiene las Cataratas Victoria en su frontera!",
+        "Busca el país con forma de mariposa.",
+        "Encuentra el país sin salida al mar entre Congo y Zimbabue."
+      ],
+      "zw": [
+        "¡Este país sin salida al mar es famoso por las Cataratas Victoria!",
+        "Busca el país entre Zambia y Sudáfrica.",
+        "Encuentra el país con forma de tetera."
+      ]
+    }
   }
 }

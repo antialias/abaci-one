@@ -275,6 +275,512 @@
         "Finde den kastenförmigen Staat mit dem Yellowstone-Park!"
       ]
     },
-    "world": {}
+    "world": {},
+    "europe": {
+      "al": [
+        "Dieses kleine Land ist an der Küste, geformt wie ein Blatt.",
+        "Suche das Land zwischen Griechenland und Montenegro.",
+        "Finde das Land gegenüber vom Stiefelabsatz Italiens."
+      ],
+      "ad": [
+        "Dieses winzige Land versteckt sich in den Bergen zwischen Spanien und Frankreich.",
+        "Suche eines der kleinsten Länder, hoch in den Pyrenäen.",
+        "Finde den kleinen Punkt zwischen zwei großen Ländern im Südwesten."
+      ],
+      "at": [
+        "Dieses Land sieht aus wie ein Hühnerbein in der Mitte Europas.",
+        "Suche das Land, das von vielen Nachbarn in Mitteleuropa umgeben ist.",
+        "Finde das Land, wo die Alpen richtig hoch sind!",
+        "Dieses Land ist die Heimat von Mozart und leckeren Gebäckstücken!"
+      ],
+      "by": [
+        "Dieses Land ist groß und flach, neben Russland.",
+        "Suche das Land über der Ukraine, das wie ein Klecks aussieht.",
+        "Finde das Land zwischen Polen und Russland."
+      ],
+      "be": [
+        "Dieses kleine Land ist berühmt für Schokolade und Waffeln!",
+        "Suche das Land zwischen Frankreich, Deutschland und den Niederlanden.",
+        "Finde das kleine Land nahe der Nordseeküste."
+      ],
+      "ba": [
+        "Dieses Land hat eine lustige Dreiecksform an der Küste.",
+        "Suche das Land, das zwischen Kroatien und Serbien eingeklemmt ist.",
+        "Finde das Land, das wie ein Herz mit einem winzigen Stück Küste aussieht."
+      ],
+      "bg": [
+        "Dieses Land ist an der Schwarzmeerküste im Südosten.",
+        "Suche das Land unter Rumänien.",
+        "Finde das Land, das eine Grenze mit der Türkei in Europa teilt."
+      ],
+      "hr": [
+        "Dieses Land sieht aus wie ein Bumerang oder der Buchstabe C!",
+        "Suche das Land, das sich um Bosnien herum wickelt.",
+        "Finde das Land mit der langen geschwungenen Küste an der Adria."
+      ],
+      "cy": [
+        "Dieses Inselland liegt im Mittelmeer nahe der Türkei.",
+        "Suche die Insel in der südöstlichen Ecke Europas.",
+        "Finde die Insel, die ein bisschen wie eine Bratpfanne geformt ist."
+      ],
+      "cz": [
+        "Dieses Land sieht aus wie ein dicker Pfeil, der nach links zeigt.",
+        "Suche das Land in der Mitte, umgeben von Deutschland, Polen, der Slowakei und Österreich.",
+        "Finde das Land mit Prag, einer schönen alten Stadt!"
+      ],
+      "dk": [
+        "Dieses Land hat eine lustige Halbinsel, die über Deutschland hinausragt.",
+        "Suche das Land, das aussieht, als würde es nach Schweden greifen.",
+        "Finde das Land aus einer Halbinsel und vielen Inseln.",
+        "Hier kommt LEGO her!"
+      ],
+      "ee": [
+        "Dieses kleine Land ist oben bei den baltischen Staaten.",
+        "Suche das Land direkt gegenüber von Finnland über dem Wasser.",
+        "Finde das nördlichste der drei kleinen Länder an der Ostsee."
+      ],
+      "fi": [
+        "Dieses Land sieht aus, als würde es oben in Europa winken.",
+        "Suche das Land neben Schweden mit vielen Seen.",
+        "Finde das Land, wo der Weihnachtsmann wohnt!",
+        "Dieses Land hat die Form von einer Person mit erhobenem Arm."
+      ],
+      "fr": [
+        "Dieses große Land sieht aus wie ein Sechseck.",
+        "Suche das Land mit dem Eiffelturm!",
+        "Finde das große Land zwischen Spanien und Deutschland.",
+        "Dieses Land ist berühmt für Croissants und den Eiffelturm!"
+      ],
+      "de": [
+        "Dieses große Land ist genau in der Mitte Europas.",
+        "Suche das Land, das ein bisschen wie ein Kopf aussieht, der nach links schaut.",
+        "Finde das Land zwischen Frankreich und Polen.",
+        "Hier kommen Autos wie BMW und Mercedes her!"
+      ],
+      "gr": [
+        "Dieses Land hat ein Festland und VIELE Inseln.",
+        "Suche das Land unten auf dem Balkan.",
+        "Finde das Land, das berühmt ist für antike Ruinen und die Olympischen Spiele!",
+        "Dieses Land sieht aus wie eine Hand, die ins Meer greift."
+      ],
+      "hu": [
+        "Dieses Land sieht aus wie ein Oval in der Mitte Europas.",
+        "Suche das Land, das von sieben anderen Ländern umgeben ist!",
+        "Finde das Land, wo die Donau durch die Hauptstadt fließt."
+      ],
+      "is": [
+        "Dieses Inselland ist weit oben im Nordatlantik, ganz alleine.",
+        "Suche die Insel zwischen Grönland und Europa.",
+        "Finde die Insel mit Vulkanen und heißen Quellen!",
+        "Dieses Land hat Feuer UND Eis!"
+      ],
+      "ie": [
+        "Diese grüne Insel ist westlich von Großbritannien.",
+        "Suche die Insel, die wie ein Teddybär aussieht.",
+        "Finde das Land, das berühmt ist für Kleeblätter und Kobolde!"
+      ],
+      "it": [
+        "Dieses Land sieht aus wie ein Stiefel, der einen Ball tritt!",
+        "Suche das lange Land, das ins Mittelmeer hineinragt.",
+        "Finde das Land, wo Pizza und Pasta herkommen!",
+        "Dieses stiefelförmige Land hat zwei Inseln in seiner Nähe."
+      ],
+      "xk": [
+        "Dieses kleine Land ist landumschlossen auf dem Balkan.",
+        "Suche das kleine Land zwischen Serbien und Albanien.",
+        "Finde das kleine Land, das wie ein Diamant geformt ist."
+      ],
+      "lv": [
+        "Dieses Land ist das mittlere der drei baltischen Staaten.",
+        "Suche das Land zwischen Estland und Litauen.",
+        "Finde das Land an der Ostsee mit Riga als Hauptstadt."
+      ],
+      "li": [
+        "Dieses winzige Land ist zwischen der Schweiz und Österreich eingeklemmt.",
+        "Suche eines der kleinsten Länder in den Alpen.",
+        "Finde das winzige Land am Rhein."
+      ],
+      "lt": [
+        "Dieses Land ist das südlichste der drei baltischen Staaten.",
+        "Suche das Land unter Lettland mit einer lustigen Form.",
+        "Finde das Land, das an Polen und Belarus grenzt."
+      ],
+      "lu": [
+        "Dieses winzige Land ist zwischen Belgien, Frankreich und Deutschland.",
+        "Suche eines der kleinsten Länder in Westeuropa.",
+        "Finde das kleine Land, das überraschend reich ist!"
+      ],
+      "mk": [
+        "Dieses landumschlossene Land sieht aus wie ein Kreis.",
+        "Suche das Land zwischen Serbien und Griechenland.",
+        "Finde das Land mit einer Sonne auf der Flagge!"
+      ],
+      "mt": [
+        "Dieses winzige Inselland ist südlich von Sizilien im Mittelmeer.",
+        "Suche die kleinen Inseln unter dem Stiefel Italiens.",
+        "Finde den Archipel aus ein paar winzigen Inseln."
+      ],
+      "md": [
+        "Dieses Land ist zwischen Rumänien und der Ukraine eingeklemmt.",
+        "Suche das kleine Land, das wie eine Weintraube aussieht.",
+        "Finde das landumschlossene Land östlich von Rumänien."
+      ],
+      "mc": [
+        "Das ist eines der winzigsten Länder, an der französischen Riviera!",
+        "Suche den winzigen Punkt an der Mittelmeerküste nahe Italien.",
+        "Finde das super kleine Land, berühmt für schicke Autos und ein Casino."
+      ],
+      "me": [
+        "Dieses kleine Land hat schöne Berge und eine Küste.",
+        "Suche das kleine Land unter Kroatien an der Adria.",
+        "Finde das Land, dessen Name 'Schwarzer Berg' bedeutet."
+      ],
+      "nl": [
+        "Dieses flache Land ist berühmt für Windmühlen und Tulpen!",
+        "Suche das Land an der Nordsee mit einer lustigen Form.",
+        "Finde das Land neben Belgien und Deutschland.",
+        "Dieses Land ist super flach und hat viele Fahrräder!"
+      ],
+      "no": [
+        "Dieses lange Land erstreckt sich entlang der Westküste Skandinaviens.",
+        "Suche das Land mit der welligen Küste voller Fjorde.",
+        "Finde das Land, das wie ein Löffel neben Schweden aussieht.",
+        "Dieses Land hat Nordlichter!"
+      ],
+      "pl": [
+        "Dieses große Land sieht aus wie ein Quadrat in Mitteleuropa.",
+        "Suche das Land zwischen Deutschland und der Ukraine.",
+        "Finde das Land an der Ostseeküste mit Warschau als Hauptstadt."
+      ],
+      "pt": [
+        "Dieses Land ist ein Rechteck am westlichen Rand Europas.",
+        "Suche das Land westlich von Spanien an der Atlantikküste.",
+        "Finde das Land in der südwestlichen Ecke Europas."
+      ],
+      "ro": [
+        "Dieses Land hat eine geschwungene Form am Schwarzen Meer.",
+        "Suche das Land mit den Karpaten.",
+        "Finde das Land, wo Draculas Schloss ist!"
+      ],
+      "ru": [
+        "Das ist das GRÖSSTE Land der Welt!",
+        "Suche das riesige Land, das von Europa bis nach Asien geht.",
+        "Finde das enorme Land nördlich der Ukraine und Kasachstans."
+      ],
+      "sm": [
+        "Dieses winzige Land ist komplett von Italien umgeben!",
+        "Suche eines der kleinsten Länder, innerhalb von Italien.",
+        "Finde das kleine Land auf einem Berg in Italien."
+      ],
+      "rs": [
+        "Dieses landumschlossene Land ist in der Mitte des Balkans.",
+        "Suche das Land, das von vielen Nachbarn umgeben ist.",
+        "Finde das Land zwischen Ungarn und Nordmazedonien."
+      ],
+      "sk": [
+        "Dieses Land sieht aus wie eine gestreckte Raupe.",
+        "Suche das Land zwischen Polen und Ungarn.",
+        "Finde das Land mit Bergen in der Mitte Europas."
+      ],
+      "si": [
+        "Dieses kleine Land sieht aus wie ein Huhn.",
+        "Suche das kleine Land zwischen Italien und Kroatien.",
+        "Finde das Land oben an der Adria."
+      ],
+      "es": [
+        "Dieses große Land nimmt den größten Teil der Iberischen Halbinsel ein.",
+        "Suche das große Land mit Portugal auf der linken Seite.",
+        "Finde das Land, das berühmt ist für Flamenco-Tanzen und Stiere!",
+        "Dieses Land sieht aus wie ein Stierfell!"
+      ],
+      "se": [
+        "Dieses lange Land erstreckt sich an der Ostseite Skandinaviens.",
+        "Suche das Land neben Norwegen, das wie ein Ski aussieht.",
+        "Finde das Land zwischen Norwegen und Finnland.",
+        "Hier kommt IKEA her!"
+      ],
+      "ch": [
+        "Dieses kleine Land ist berühmt für Schokolade, Käse und Uhren!",
+        "Suche das Land in den Alpen zwischen Frankreich und Deutschland.",
+        "Finde das kreuzförmige Land, umgeben von Bergen."
+      ],
+      "ua": [
+        "Dieses große Land ist das größte komplett in Europa.",
+        "Suche das Land zwischen Polen und Russland.",
+        "Finde das gelb-blaue Land am Schwarzen Meer."
+      ],
+      "gb": [
+        "Dieses Inselland sieht aus wie eine Hexe auf einem Besen!",
+        "Suche die große Insel westlich von Frankreich.",
+        "Finde das Land mit Big Ben und dem Palast der Königin!",
+        "Dieses Land umfasst England, Schottland, Wales und Nordirland."
+      ],
+      "va": [
+        "Das ist das KLEINSTE Land der Welt!",
+        "Suche den winzigen Punkt in Rom, Italien.",
+        "Finde den Ort, wo der Papst lebt!"
+      ]
+    },
+    "africa": {
+      "dz": [
+        "Das ist das GRÖSSTE Land in Afrika!",
+        "Suche das riesige Land im Norden, das das Mittelmeer berührt.",
+        "Finde das Land, das einen großen Teil der Sahara-Wüste bedeckt."
+      ],
+      "ao": [
+        "Dieses Land ist an der Südwestküste Afrikas.",
+        "Suche das Land unter dem Kongo mit einem kleinen Stück, das herausragt.",
+        "Finde das Land, das aussieht, als hätte es einen kleinen Griff oben."
+      ],
+      "bj": [
+        "Dieses dünne Land sieht aus wie ein stehender Schlüssel.",
+        "Suche das dünne Land zwischen Togo und Nigeria.",
+        "Finde das Land, das wie eine Keule geformt ist."
+      ],
+      "bw": [
+        "Dieses landumschlossene Land ist im südlichen Afrika.",
+        "Suche das Land, das wie ein Schild geformt ist.",
+        "Finde das Land mit der Kalahari-Wüste."
+      ],
+      "bf": [
+        "Dieses landumschlossene Land sieht aus wie ein Schmetterling.",
+        "Suche das Land über Ghana und der Elfenbeinküste.",
+        "Finde das Land, das von vielen Nachbarn in Westafrika umgeben ist."
+      ],
+      "bi": [
+        "Dieses kleine Land ist eines der winzigsten in Afrika.",
+        "Suche das kleine Land neben Ruanda.",
+        "Finde das herzförmige Land bei den Großen Seen."
+      ],
+      "cm": [
+        "Dieses Land sieht aus wie ein Hühnerbein oder die Zahl 7.",
+        "Suche das Land, das zum Golf von Guinea zeigt.",
+        "Finde das Land zwischen Nigeria und der Zentralafrikanischen Republik."
+      ],
+      "cf": [
+        "Dieses Land ist genau in der Mitte Afrikas!",
+        "Suche das Land, das wie ein Schmetterling in Zentralafrika geformt ist.",
+        "Finde das landumschlossene Land südlich vom Tschad."
+      ],
+      "td": [
+        "Dieses große Land sieht aus wie das Profil einer Frau.",
+        "Suche das Land südlich von Libyen.",
+        "Finde das Land mit dem Tschadsee an der Westgrenze."
+      ],
+      "cd": [
+        "Dieses riesige Land ist in der Mitte, geformt wie ein Elefantenkopf.",
+        "Suche das große Land mit dem Kongo-Fluss.",
+        "Finde eines der größten Länder Afrikas im Zentrum."
+      ],
+      "cg": [
+        "Dieses Land hat eine lange geschwungene Form entlang des Kongo-Flusses.",
+        "Suche das Land westlich der Demokratischen Republik Kongo.",
+        "Finde das Land, das aussieht, als würde es nach Norden greifen."
+      ],
+      "ci": [
+        "Der Name dieses Landes bedeutet 'Elfenbeinküste'.",
+        "Suche das Land an der Golfküste zwischen Liberia und Ghana.",
+        "Finde das Land, das wie ein Quadrat mit Buckeln aussieht."
+      ],
+      "dj": [
+        "Dieses winzige Land bewacht den Eingang zum Roten Meer.",
+        "Suche das kleine Land zwischen Eritrea und Somalia.",
+        "Finde das Land am Horn von Afrika, nahe am Wasser."
+      ],
+      "eg": [
+        "Hier sind die berühmten Pyramiden!",
+        "Suche das Land in der nordöstlichen Ecke mit dem Nil.",
+        "Finde das Land zwischen Libyen und dem Roten Meer.",
+        "Dieses Land hat die Sphinx und antike Pharaonen!"
+      ],
+      "gq": [
+        "Dieses kleine Land hat ein Festland und eine Insel.",
+        "Suche das winzige Land zwischen Kamerun und Gabun.",
+        "Finde das kleine Land am Golf von Guinea."
+      ],
+      "er": [
+        "Dieses Land erstreckt sich entlang der Rotmeerküste.",
+        "Suche das Land nördlich von Äthiopien am Meer.",
+        "Finde das Land, das wie ein Krokodil geformt ist."
+      ],
+      "sz": [
+        "Dieses winzige Königreich ist fast von Südafrika umgeben.",
+        "Suche das kleine Land in der Ecke von Südafrika.",
+        "Finde eines der kleinsten Länder Afrikas nahe Mosambik."
+      ],
+      "et": [
+        "Dieses große Land ist am Horn von Afrika.",
+        "Suche das große landumschlossene Land über Kenia.",
+        "Finde das Land, das wie ein Rhinozeroshorn geformt ist.",
+        "Dieses Land hat antike Kirchen aus Fels gemeißelt!"
+      ],
+      "ga": [
+        "Dieses Land liegt am Äquator an der Westküste.",
+        "Suche das Land, das wie eine sitzende Person geformt ist.",
+        "Finde das Land zwischen Kamerun und dem Kongo."
+      ],
+      "gm": [
+        "Dieses winzige Land ist auf drei Seiten von Senegal umgeben!",
+        "Suche das dünne Land entlang eines Flusses innerhalb von Senegal.",
+        "Finde das kleinste Land auf dem afrikanischen Festland."
+      ],
+      "gh": [
+        "Dieses Land ist an der Küste des Golfs von Guinea.",
+        "Suche das Land, das wie ein Rechteck mit huckeliger Oberseite aussieht.",
+        "Finde das Land zwischen der Elfenbeinküste und Togo.",
+        "Dieses Land produziert viel Kakao für Schokolade!"
+      ],
+      "gn": [
+        "Dieses Land sieht aus wie ein Croissant an der Westküste.",
+        "Suche das Land zwischen Guinea-Bissau und Sierra Leone.",
+        "Finde das Land mit einer geschwungenen Form in Westafrika."
+      ],
+      "gw": [
+        "Dieses kleine Land ist an der Atlantikküste.",
+        "Suche das kleine Land nördlich von Guinea.",
+        "Finde das Land mit vielen Inseln entlang seiner Küste."
+      ],
+      "ke": [
+        "Dieses Land ist an der Ostküste mit erstaunlichen Wildtieren!",
+        "Suche das Land am Äquator mit der Küste am Indischen Ozean.",
+        "Finde das Land, wo du Löwen und Elefanten sehen kannst!",
+        "Dieses Land ist berühmt für Safari-Abenteuer!"
+      ],
+      "ls": [
+        "Dieses kleine Bergkönigreich ist komplett in Südafrika!",
+        "Suche das Land, das wie ein Loch in Südafrika ist.",
+        "Finde das 'Königreich im Himmel', umgeben von einem Land."
+      ],
+      "lr": [
+        "Dieses Land wurde von befreiten amerikanischen Sklaven gegründet.",
+        "Suche das Land an der Westküste über der Elfenbeinküste.",
+        "Finde das Land, das wie ein Handschuh geformt ist."
+      ],
+      "ly": [
+        "Dieses große Land ist an der Mittelmeerküste.",
+        "Suche das große Land zwischen Ägypten und Algerien.",
+        "Finde das Land, das größtenteils Sahara-Wüste ist."
+      ],
+      "mg": [
+        "Diese riesige Insel ist die viertgrößte der Welt!",
+        "Suche die große Insel vor der Ostküste Afrikas.",
+        "Finde die Insel, die wie ein Fußabdruck aussieht.",
+        "Diese Insel hat Tiere, die es nirgendwo sonst gibt, wie Lemuren!"
+      ],
+      "mw": [
+        "Dieses lange dünne Land hat einen großen See an seiner Seite.",
+        "Suche das dünne Land zwischen Sambia und Mosambik.",
+        "Finde das Land mit dem Malawisee an der Grenze."
+      ],
+      "ml": [
+        "Dieses große Land hat eine interessante Form wie eine Fliege.",
+        "Suche das große Land in Westafrika unter Algerien.",
+        "Finde das landumschlossene Land mit Timbuktu."
+      ],
+      "mr": [
+        "Dieses große Land erstreckt sich vom Atlantik in die Sahara.",
+        "Suche das Land zwischen Westsahara und Senegal.",
+        "Finde das Land, das wie ein Handschuh aussieht, der nach unten zeigt."
+      ],
+      "ma": [
+        "Dieses Land ist in der nordwestlichen Ecke Afrikas.",
+        "Suche das Land gegenüber von Spanien.",
+        "Finde das Land mit Bergen und Wüste.",
+        "Dieses Land ist nah genug, um Europa zu sehen!"
+      ],
+      "mz": [
+        "Dieses lange Land erstreckt sich entlang der Südostküste.",
+        "Suche das Land, das wie ein langes Gewehr geformt ist.",
+        "Finde das Land zwischen Tansania und Südafrika an der Küste."
+      ],
+      "na": [
+        "Dieses Land hat die Namib-Wüste entlang der Küste.",
+        "Suche das Land an der Südwestküste.",
+        "Finde das Land zwischen Angola und Südafrika."
+      ],
+      "ne": [
+        "Dieses große landumschlossene Land ist größtenteils Wüste.",
+        "Suche das Land, das wie eine Bratpfanne geformt ist.",
+        "Finde das Land zwischen Algerien und Nigeria."
+      ],
+      "ng": [
+        "Das ist Afrikas bevölkerungsreichstes Land!",
+        "Suche das große Land am Golf von Guinea.",
+        "Finde das Land, das wie ein klobiger Stiefel geformt ist.",
+        "Dieses Land hat über 200 Millionen Menschen!"
+      ],
+      "rw": [
+        "Dieses kleine Land wird 'Land der tausend Hügel' genannt.",
+        "Suche das winzige Land zwischen Uganda und Burundi.",
+        "Finde eines der kleinsten, aber hügeligsten Länder Afrikas."
+      ],
+      "sn": [
+        "Dieses Land umschließt Gambia.",
+        "Suche das Land an der westlichsten Spitze Afrikas.",
+        "Finde das Land, das fast ein anderes winziges Land umgibt."
+      ],
+      "sl": [
+        "Dieses Land ist an der Westküste mit einem Löwen im Namen.",
+        "Suche das Land zwischen Guinea und Liberia.",
+        "Finde das Land, dessen Name 'Löwenberg' bedeutet."
+      ],
+      "so": [
+        "Dieses Land bildet das Horn von Afrika!",
+        "Suche das Land, das wie die Zahl 7 geformt ist.",
+        "Finde das Land, das in den Indischen Ozean hineinragt."
+      ],
+      "za": [
+        "Dieses Land ist ganz unten in Afrika.",
+        "Suche das Land, das Lesotho umschließt.",
+        "Finde das Land mit drei Hauptstädten!",
+        "Dieses Land hat Pinguine UND Löwen!"
+      ],
+      "ss": [
+        "Das ist Afrikas neuestes Land!",
+        "Suche das Land über Uganda und Kenia.",
+        "Finde das landumschlossene Land südlich vom Sudan."
+      ],
+      "sd": [
+        "Dieses große Land ist in Nordostafrika.",
+        "Suche das Land entlang des Nils.",
+        "Finde das große Land zwischen Ägypten und dem Südsudan."
+      ],
+      "tz": [
+        "Dieses Land hat Afrikas höchsten Berg, den Kilimandscharo!",
+        "Suche das Land unter Kenia.",
+        "Finde das Land mit der Insel Sansibar.",
+        "Hier kannst du den höchsten Gipfel Afrikas besteigen!"
+      ],
+      "tg": [
+        "Dieses sehr dünne Land ist zwischen Ghana und Benin eingeklemmt.",
+        "Suche das dünne Land am Golf von Guinea.",
+        "Finde das Land, das wie ein Finger geformt ist."
+      ],
+      "tn": [
+        "Dieses kleine Land ist oben in Afrika.",
+        "Suche das Land zwischen Algerien und Libyen.",
+        "Finde das Land am nächsten zu Sizilien, Italien."
+      ],
+      "ug": [
+        "Dieses landumschlossene Land hat den Victoriasee.",
+        "Suche das Land zwischen Kenia und dem Kongo.",
+        "Finde das Land, das für Berggorillas bekannt ist!"
+      ],
+      "eh": [
+        "Dieses umstrittene Gebiet ist an der Nordwestküste.",
+        "Suche das Gebiet südlich von Marokko.",
+        "Finde das Gebiet westlich von Algerien und Mauretanien."
+      ],
+      "zm": [
+        "Dieses Land hat die Victoriafälle an seiner Grenze!",
+        "Suche das Land, das wie ein Schmetterling geformt ist.",
+        "Finde das landumschlossene Land zwischen dem Kongo und Simbabwe."
+      ],
+      "zw": [
+        "Dieses landumschlossene Land ist berühmt für die Victoriafälle!",
+        "Suche das Land zwischen Sambia und Südafrika.",
+        "Finde das Land, das wie eine Teekanne geformt ist."
+      ]
+    }
   }
 }
