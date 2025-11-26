@@ -338,6 +338,8 @@ async function getWorldMapData(): Promise<MapData> {
     id: 'world',
     name: worldMapSource.label || 'Map of World',
     viewBox: worldMapSource.viewBox,
+    originalViewBox: worldMapSource.viewBox, // Same as viewBox for base map
+    customCrop: null, // No custom crop for base map
     regions: convertToMapRegions(worldMapSource.locations || []),
   }
 
@@ -362,6 +364,8 @@ async function getUSAMapData(): Promise<MapData> {
     id: 'usa',
     name: usaMapSource.label || 'Map of USA',
     viewBox: usaMapSource.viewBox,
+    originalViewBox: usaMapSource.viewBox, // Same as viewBox for base map
+    customCrop: null, // No custom crop for base map
     regions: convertToMapRegions(usaMapSource.locations || []),
     difficultyConfig: USA_DIFFICULTY_CONFIG,
   }
@@ -682,6 +686,96 @@ export function calculateContinentViewBox(
 }
 
 /**
+ * Parse a viewBox string into numeric components
+ */
+export function parseViewBox(viewBox: string): {
+  x: number
+  y: number
+  width: number
+  height: number
+} {
+  const parts = viewBox.split(' ').map(Number)
+  return {
+    x: parts[0] || 0,
+    y: parts[1] || 0,
+    width: parts[2] || 1000,
+    height: parts[3] || 500,
+  }
+}
+
+/**
+ * Calculate a display viewBox that:
+ * 1. Guarantees the crop region is fully visible and centered
+ * 2. Fills any remaining viewport space with more of the map (no letterboxing)
+ * 3. Stays within the original map's bounds
+ *
+ * This creates a "fit crop with fill" effect - the crop region is the minimum
+ * visible area, but we expand to fill the container's aspect ratio.
+ *
+ * @param originalViewBox - The full map's viewBox (bounds)
+ * @param cropRegion - The custom crop that MUST be visible
+ * @param containerAspect - The container's width/height ratio
+ * @returns The display viewBox string
+ */
+export function calculateFitCropViewBox(
+  originalViewBox: { x: number; y: number; width: number; height: number },
+  cropRegion: { x: number; y: number; width: number; height: number },
+  containerAspect: number // width / height
+): string {
+  const cropAspect = cropRegion.width / cropRegion.height
+
+  let viewBoxWidth: number
+  let viewBoxHeight: number
+
+  // Step 1: Calculate dimensions to fill container while containing crop
+  if (containerAspect > cropAspect) {
+    // Container is WIDER than crop - expand horizontally
+    viewBoxHeight = cropRegion.height
+    viewBoxWidth = viewBoxHeight * containerAspect
+  } else {
+    // Container is TALLER than crop - expand vertically
+    viewBoxWidth = cropRegion.width
+    viewBoxHeight = viewBoxWidth / containerAspect
+  }
+
+  // Step 2: Center on crop region
+  const cropCenterX = cropRegion.x + cropRegion.width / 2
+  const cropCenterY = cropRegion.y + cropRegion.height / 2
+
+  let viewBoxX = cropCenterX - viewBoxWidth / 2
+  let viewBoxY = cropCenterY - viewBoxHeight / 2
+
+  // Step 3: Clamp to original map bounds (shift if needed, don't resize)
+
+  // Clamp X
+  if (viewBoxX < originalViewBox.x) {
+    viewBoxX = originalViewBox.x
+  } else if (viewBoxX + viewBoxWidth > originalViewBox.x + originalViewBox.width) {
+    viewBoxX = originalViewBox.x + originalViewBox.width - viewBoxWidth
+  }
+
+  // Clamp Y
+  if (viewBoxY < originalViewBox.y) {
+    viewBoxY = originalViewBox.y
+  } else if (viewBoxY + viewBoxHeight > originalViewBox.y + originalViewBox.height) {
+    viewBoxY = originalViewBox.y + originalViewBox.height - viewBoxHeight
+  }
+
+  // Step 4: Handle case where expanded viewBox exceeds map bounds
+  // (show entire map dimension, may result in letterboxing on that axis)
+  if (viewBoxWidth > originalViewBox.width) {
+    viewBoxWidth = originalViewBox.width
+    viewBoxX = originalViewBox.x
+  }
+  if (viewBoxHeight > originalViewBox.height) {
+    viewBoxHeight = originalViewBox.height
+    viewBoxY = originalViewBox.y
+  }
+
+  return `${viewBoxX.toFixed(2)} ${viewBoxY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}`
+}
+
+/**
  * Calculate SVG bounding box area for a region path
  */
 function calculateRegionArea(pathString: string): number {
@@ -797,10 +891,13 @@ export async function getFilteredMapData(
 
   let filteredRegions = mapData.regions
   let adjustedViewBox = mapData.viewBox
+  let customCrop: string | null = null
 
   // Apply continent filtering for world map
   if (mapId === 'world' && continentId !== 'all') {
     filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    // Check for custom crop - this is what we'll use for fit-crop-with-fill
+    customCrop = getCustomCrop(mapId, continentId)
     adjustedViewBox = calculateContinentViewBox(
       mapData.regions,
       continentId,
@@ -816,6 +913,8 @@ export async function getFilteredMapData(
     ...mapData,
     regions: filteredRegions,
     viewBox: adjustedViewBox,
+    originalViewBox: mapData.viewBox, // Always the base map's viewBox
+    customCrop, // The custom crop region if any (for fit-crop-with-fill)
   }
 }
 
@@ -853,10 +952,13 @@ export function getFilteredMapDataSync(
 
   let filteredRegions = mapData.regions
   let adjustedViewBox = mapData.viewBox
+  let customCrop: string | null = null
 
   // Apply continent filtering for world map
   if (mapId === 'world' && continentId !== 'all') {
     filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    // Check for custom crop - this is what we'll use for fit-crop-with-fill
+    customCrop = getCustomCrop(mapId, continentId)
     adjustedViewBox = calculateContinentViewBox(
       mapData.regions,
       continentId,
@@ -872,5 +974,7 @@ export function getFilteredMapDataSync(
     ...mapData,
     regions: filteredRegions,
     viewBox: adjustedViewBox,
+    originalViewBox: mapData.viewBox, // Always the base map's viewBox
+    customCrop, // The custom crop region if any (for fit-crop-with-fill)
   }
 }

@@ -12,7 +12,13 @@ import {
   getLabelTextShadow,
 } from '../mapColors'
 import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
-import { WORLD_MAP, USA_MAP, filterRegionsByContinent } from '../maps'
+import {
+  WORLD_MAP,
+  USA_MAP,
+  filterRegionsByContinent,
+  parseViewBox,
+  calculateFitCropViewBox,
+} from '../maps'
 import type { ContinentId } from '../continents'
 import {
   calculateScreenPixelRatio,
@@ -490,16 +496,43 @@ export function MapRenderer({
     [targetOpacity, targetTop, targetLeft, smallestRegionSize]
   )
 
-  // Parse the default viewBox for animation
+  // Calculate the display viewBox using fit-crop-with-fill strategy
+  // This ensures the custom crop region is visible while filling the container
+  const displayViewBox = useMemo(() => {
+    // If no custom crop, use the regular viewBox (which may be a calculated bounding box)
+    if (!mapData.customCrop) {
+      return mapData.viewBox
+    }
+
+    // Need container dimensions to calculate aspect ratio
+    if (svgDimensions.width <= 0 || svgDimensions.height <= 0) {
+      return mapData.viewBox
+    }
+
+    const containerAspect = svgDimensions.width / svgDimensions.height
+    const originalBounds = parseViewBox(mapData.originalViewBox)
+    const cropRegion = parseViewBox(mapData.customCrop)
+
+    const result = calculateFitCropViewBox(originalBounds, cropRegion, containerAspect)
+    console.log('[MapRenderer] Calculated displayViewBox:', {
+      customCrop: mapData.customCrop,
+      originalViewBox: mapData.originalViewBox,
+      containerAspect: containerAspect.toFixed(2),
+      result,
+    })
+    return result
+  }, [mapData.customCrop, mapData.originalViewBox, mapData.viewBox, svgDimensions])
+
+  // Parse the display viewBox for animation and calculations
   const defaultViewBoxParts = useMemo(() => {
-    const parts = mapData.viewBox.split(' ').map(Number)
+    const parts = displayViewBox.split(' ').map(Number)
     return {
       x: parts[0] || 0,
       y: parts[1] || 0,
       width: parts[2] || 1000,
       height: parts[3] || 500,
     }
-  }, [mapData.viewBox])
+  }, [displayViewBox])
 
   // State for give-up zoom animation target values
   const [giveUpZoomTarget, setGiveUpZoomTarget] = useState({
@@ -760,7 +793,7 @@ export function MapRenderer({
     updateDimensions()
 
     return () => observer.disconnect()
-  }, [mapData.viewBox]) // Re-measure when viewBox changes (continent/map selection)
+  }, [displayViewBox]) // Re-measure when viewBox changes (continent/map selection)
 
   // Calculate label positions using ghost elements
   useEffect(() => {
@@ -774,7 +807,7 @@ export function MapRenderer({
       const smallPositions: typeof smallRegionLabelPositions = []
 
       // Parse viewBox for scale calculations
-      const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+      const viewBoxParts = displayViewBox.split(' ').map(Number)
       const viewBoxX = viewBoxParts[0] || 0
       const viewBoxY = viewBoxParts[1] || 0
       const viewBoxWidth = viewBoxParts[2] || 1000
@@ -1106,10 +1139,10 @@ export function MapRenderer({
     return () => {
       clearTimeout(timeoutId)
     }
-  }, [mapData, regionsFound, guessHistory, svgDimensions, excludedRegions, excludedRegionIds])
+  }, [mapData, regionsFound, guessHistory, svgDimensions, excludedRegions, excludedRegionIds, displayViewBox])
 
   // Calculate viewBox dimensions for label offset calculations and sea background
-  const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+  const viewBoxParts = displayViewBox.split(' ').map(Number)
   const viewBoxX = viewBoxParts[0] || 0
   const viewBoxY = viewBoxParts[1] || 0
   const viewBoxWidth = viewBoxParts[2] || 1000
@@ -1465,7 +1498,7 @@ export function MapRenderer({
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
         const magnifierWidth = containerRect.width * 0.5
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxParts = displayViewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
         if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
@@ -1576,7 +1609,7 @@ export function MapRenderer({
     >
       <animated.svg
         ref={svgRef}
-        viewBox={mapData.viewBox}
+        viewBox={displayViewBox}
         className={css({
           maxWidth: '100%',
           maxHeight: '100%',
@@ -1762,7 +1795,7 @@ export function MapRenderer({
             x={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
-              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxParts = displayViewBox.split(' ').map(Number)
               const viewBoxX = viewBoxParts[0] || 0
               const viewBoxY = viewBoxParts[1] || 0
               const viewBoxWidth = viewBoxParts[2] || 1000
@@ -1778,7 +1811,7 @@ export function MapRenderer({
             y={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
-              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxParts = displayViewBox.split(' ').map(Number)
               const viewBoxX = viewBoxParts[0] || 0
               const viewBoxY = viewBoxParts[1] || 0
               const viewBoxWidth = viewBoxParts[2] || 1000
@@ -1792,12 +1825,12 @@ export function MapRenderer({
               return cursorSvgY - magnifiedHeight / 2
             })}
             width={zoomSpring.to((zoom: number) => {
-              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxParts = displayViewBox.split(' ').map(Number)
               const viewBoxWidth = viewBoxParts[2] || 1000
               return viewBoxWidth / zoom
             })}
             height={zoomSpring.to((zoom: number) => {
-              const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+              const viewBoxParts = displayViewBox.split(' ').map(Number)
               const viewBoxHeight = viewBoxParts[3] || 1000
               return viewBoxHeight / zoom
             })}
@@ -2002,7 +2035,7 @@ export function MapRenderer({
           // Convert SVG coordinates to pixel coordinates
           const containerRect = containerRef.current!.getBoundingClientRect()
           const svgRect = svgRef.current!.getBoundingClientRect()
-          const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+          const viewBoxParts = displayViewBox.split(' ').map(Number)
           const viewBoxX = viewBoxParts[0] || 0
           const viewBoxY = viewBoxParts[1] || 0
           const viewBoxWidth = viewBoxParts[2] || 1000
@@ -2134,7 +2167,7 @@ export function MapRenderer({
                 const svgRect = svgRef.current!.getBoundingClientRect()
 
                 // Convert cursor position to SVG coordinates
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxX = viewBoxParts[0] || 0
                 const viewBoxY = viewBoxParts[1] || 0
                 const viewBoxWidth = viewBoxParts[2] || 1000
@@ -2171,7 +2204,7 @@ export function MapRenderer({
                   if (!containerRect || !svgRect) return 'none'
 
                   const magnifierWidth = containerRect.width * 0.5
-                  const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                  const viewBoxParts = displayViewBox.split(' ').map(Number)
                   const viewBoxWidth = viewBoxParts[2]
                   if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return 'none'
 
@@ -2194,7 +2227,7 @@ export function MapRenderer({
             >
               {/* Sea/ocean background for magnifier - solid color to match container */}
               {(() => {
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 return (
                   <rect
                     x={viewBoxParts[0] || 0}
@@ -2259,7 +2292,7 @@ export function MapRenderer({
                 {(() => {
                   const containerRect = containerRef.current!.getBoundingClientRect()
                   const svgRect = svgRef.current!.getBoundingClientRect()
-                  const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                  const viewBoxParts = displayViewBox.split(' ').map(Number)
                   const viewBoxX = viewBoxParts[0] || 0
                   const viewBoxY = viewBoxParts[1] || 0
                   const viewBoxWidth = viewBoxParts[2] || 1000
@@ -2312,7 +2345,7 @@ export function MapRenderer({
                 if (!containerRect || !svgRect) return null
 
                 const magnifierWidth = containerRect.width * 0.5
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 const viewBoxHeight = viewBoxParts[3]
                 const viewBoxX = viewBoxParts[0] || 0
@@ -2474,7 +2507,7 @@ export function MapRenderer({
                 }
 
                 // Parse viewBox - these are stable values from mapData
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxX = viewBoxParts[0] || 0
                 const viewBoxY = viewBoxParts[1] || 0
                 const viewBoxWidth = viewBoxParts[2] || 1000
@@ -2598,7 +2631,7 @@ export function MapRenderer({
                 }
 
                 const magnifierWidth = containerRect.width * 0.5
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
 
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) {
@@ -2634,7 +2667,7 @@ export function MapRenderer({
                 if (!containerRect || !svgRect) return null
 
                 const magnifierWidth = containerRect.width * 0.5
-                const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 const viewBoxWidth = viewBoxParts[2]
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
@@ -2684,7 +2717,7 @@ export function MapRenderer({
         const magLeft = targetLeft
 
         // Calculate indicator box position in screen coordinates
-        const viewBoxParts = mapData.viewBox.split(' ').map(Number)
+        const viewBoxParts = displayViewBox.split(' ').map(Number)
         const viewBoxX = viewBoxParts[0] || 0
         const viewBoxY = viewBoxParts[1] || 0
         const viewBoxWidth = viewBoxParts[2] || 1000
@@ -3131,7 +3164,7 @@ export function MapRenderer({
       <DevCropTool
         svgRef={svgRef}
         containerRef={containerRef}
-        viewBox={mapData.viewBox}
+        viewBox={displayViewBox}
         mapId={selectedMap}
         continentId={selectedContinent}
       />

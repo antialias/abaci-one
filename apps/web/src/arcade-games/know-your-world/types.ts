@@ -22,7 +22,9 @@ export interface MapRegion {
 export interface MapData {
   id: string // "world" or "usa"
   name: string // "World" or "USA States"
-  viewBox: string // SVG viewBox attribute (e.g., "0 0 1000 500")
+  viewBox: string // SVG viewBox attribute - may be cropped (e.g., "346.40 53.73 247.56 360.70" for Europe)
+  originalViewBox: string // Original full map viewBox (e.g., "0 0 1000 500") - used for fit-crop-with-fill
+  customCrop: string | null // Custom crop region if any, null if no custom crop applied
   regions: MapRegion[]
   difficultyConfig?: MapDifficultyConfig // Optional per-map difficulty config (uses global default if not provided)
 }
