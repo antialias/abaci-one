@@ -1,10 +1,73 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { css } from '@styled/css'
+import { animated, useSpring } from '@react-spring/web'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { MapData } from '../types'
 import { getRegionColor } from '../mapColors'
+
+/**
+ * Animated SVG path component for smooth color/style transitions
+ */
+interface AnimatedRegionProps {
+  id: string
+  path: string
+  fill: string
+  stroke: string
+  strokeWidth: number
+  opacity: number
+  isExcluded: boolean
+  isPreviewAdd: boolean
+  isPreviewRemove: boolean
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+  onClick: (e: React.MouseEvent) => void
+}
+
+const AnimatedRegion = memo(function AnimatedRegion({
+  id,
+  path,
+  fill,
+  stroke,
+  strokeWidth,
+  opacity,
+  isExcluded,
+  isPreviewAdd,
+  isPreviewRemove,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+}: AnimatedRegionProps) {
+  const springProps = useSpring({
+    fill,
+    stroke,
+    strokeWidth,
+    opacity,
+    config: { duration: 400 },
+  })
+
+  return (
+    <animated.path
+      data-region={id}
+      data-excluded={isExcluded ? 'true' : undefined}
+      data-preview-add={isPreviewAdd ? 'true' : undefined}
+      data-preview-remove={isPreviewRemove ? 'true' : undefined}
+      d={path}
+      fill={springProps.fill}
+      stroke={springProps.stroke}
+      strokeWidth={springProps.strokeWidth}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+      style={{
+        cursor: 'pointer',
+        pointerEvents: 'all',
+        opacity: springProps.opacity,
+      }}
+    />
+  )
+})
 
 interface MapSelectorMapProps {
   /** Map data to display */
@@ -43,6 +106,16 @@ interface MapSelectorMapProps {
    * These will be shown dimmed/grayed out.
    */
   excludedRegions?: string[]
+  /**
+   * Regions that would be ADDED to the selection if the user clicks.
+   * Shown with a distinct "preview add" style (e.g., green tint).
+   */
+  previewAddRegions?: string[]
+  /**
+   * Regions that would be REMOVED from the selection if the user clicks.
+   * Shown with a distinct "preview remove" style (e.g., red/orange tint).
+   */
+  previewRemoveRegions?: string[]
 }
 
 export function MapSelectorMap({
@@ -57,6 +130,8 @@ export function MapSelectorMap({
   selectedGroup,
   hoverableRegions,
   excludedRegions = [],
+  previewAddRegions = [],
+  previewRemoveRegions = [],
 }: MapSelectorMapProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -103,14 +178,36 @@ export function MapSelectorMap({
     return excludedRegions.includes(regionId)
   }
 
+  // Check if a region would be added in a preview
+  const isRegionPreviewAdd = (regionId: string): boolean => {
+    return previewAddRegions.includes(regionId)
+  }
+
+  // Check if a region would be removed in a preview
+  const isRegionPreviewRemove = (regionId: string): boolean => {
+    return previewRemoveRegions.includes(regionId)
+  }
+
   // Get fill color for a region
   const getRegionFill = (regionId: string): string => {
     const isExcluded = isRegionExcluded(regionId)
+    const isPreviewAdd = isRegionPreviewAdd(regionId)
+    const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
 
-    // Excluded regions are dimmed
+    // Preview states take precedence - show what would happen on click
+    if (isPreviewAdd) {
+      // Region would be ADDED - show with green/teal tint
+      return isDark ? '#065f46' : '#a7f3d0'
+    }
+    if (isPreviewRemove) {
+      // Region would be REMOVED - show with amber/orange tint
+      return isDark ? '#78350f' : '#fde68a'
+    }
+
+    // Excluded regions are dimmed (but not if preview is showing something else)
     if (isExcluded) {
       return isDark ? '#1f2937' : '#e5e7eb' // Gray out excluded regions
     }
@@ -140,9 +237,19 @@ export function MapSelectorMap({
   // Get stroke color for a region
   const getRegionStroke = (regionId: string): string => {
     const isExcluded = isRegionExcluded(regionId)
+    const isPreviewAdd = isRegionPreviewAdd(regionId)
+    const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
+
+    // Preview states take precedence
+    if (isPreviewAdd) {
+      return isDark ? '#10b981' : '#059669' // Green border
+    }
+    if (isPreviewRemove) {
+      return isDark ? '#f59e0b' : '#d97706' // Amber border
+    }
 
     // Excluded regions get subtle stroke
     if (isExcluded) {
@@ -167,14 +274,29 @@ export function MapSelectorMap({
 
   // Get stroke width for a region
   const getRegionStrokeWidth = (regionId: string): number => {
+    const isPreviewAdd = isRegionPreviewAdd(regionId)
+    const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
 
+    if (isPreviewAdd || isPreviewRemove) return 1.5
     if (isHovered) return 2
     if (isSelected) return 1.5
     if (hasSubMap) return 1.5
     return 0.5
+  }
+
+  // Get opacity for a region (preview regions should be fully visible)
+  const getRegionOpacity = (regionId: string): number => {
+    const isExcluded = isRegionExcluded(regionId)
+    const isPreviewAdd = isRegionPreviewAdd(regionId)
+    const isPreviewRemove = isRegionPreviewRemove(regionId)
+
+    // Preview states override excluded opacity
+    if (isPreviewAdd || isPreviewRemove) return 1
+    if (isExcluded) return 0.5
+    return 1
   }
 
   return (
@@ -213,29 +335,28 @@ export function MapSelectorMap({
           fill={isDark ? '#111827' : '#e0f2fe'}
         />
 
-        {/* Render each region */}
+        {/* Render each region with smooth animations */}
         {displayRegions.map((region) => {
           const isExcluded = excludedRegions.includes(region.id)
+          const isPreviewAdd = previewAddRegions.includes(region.id)
+          const isPreviewRemove = previewRemoveRegions.includes(region.id)
           return (
-            <path
+            <AnimatedRegion
               key={region.id}
-              data-region={region.id}
-              data-excluded={isExcluded ? 'true' : undefined}
-              d={region.path}
+              id={region.id}
+              path={region.path}
               fill={getRegionFill(region.id)}
               stroke={getRegionStroke(region.id)}
               strokeWidth={getRegionStrokeWidth(region.id)}
+              opacity={getRegionOpacity(region.id)}
+              isExcluded={isExcluded}
+              isPreviewAdd={isPreviewAdd}
+              isPreviewRemove={isPreviewRemove}
               onMouseEnter={() => onRegionHover(region.id)}
               onMouseLeave={() => onRegionHover(null)}
               onClick={(e) => {
                 e.stopPropagation()
                 onRegionClick(region.id)
-              }}
-              style={{
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                pointerEvents: 'all',
-                opacity: isExcluded ? 0.5 : 1,
               }}
             />
           )

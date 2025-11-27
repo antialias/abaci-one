@@ -1,8 +1,12 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import * as Checkbox from '@radix-ui/react-checkbox'
 import { css } from '@styled/css'
+import {
+  RangeThermometer,
+  type ThermometerOption,
+  type RangePreviewState,
+} from '@/components/Thermometer'
 import { useTheme } from '@/contexts/ThemeContext'
 import { MapSelectorMap } from './MapSelectorMap'
 import {
@@ -26,6 +30,35 @@ import {
   COUNTRY_TO_CONTINENT,
   type ContinentId,
 } from '../continents'
+
+/**
+ * Size options for the range thermometer, ordered from largest to smallest
+ */
+const SIZE_OPTIONS: ThermometerOption<RegionSize>[] = ALL_REGION_SIZES.map((size) => ({
+  value: size,
+  label: REGION_SIZE_CONFIG[size].label,
+  shortLabel: REGION_SIZE_CONFIG[size].label,
+  emoji: REGION_SIZE_CONFIG[size].emoji,
+}))
+
+/**
+ * Convert an array of sizes to min/max values for the range thermometer
+ */
+function sizesToRange(sizes: RegionSize[]): [RegionSize, RegionSize] {
+  const sorted = [...sizes].sort(
+    (a, b) => ALL_REGION_SIZES.indexOf(a) - ALL_REGION_SIZES.indexOf(b)
+  )
+  return [sorted[0], sorted[sorted.length - 1]]
+}
+
+/**
+ * Convert min/max range values back to an array of sizes
+ */
+function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
+  const minIdx = ALL_REGION_SIZES.indexOf(min)
+  const maxIdx = ALL_REGION_SIZES.indexOf(max)
+  return ALL_REGION_SIZES.slice(minIdx, maxIdx + 1)
+}
 
 /**
  * Selection path for drill-down navigation:
@@ -111,6 +144,9 @@ export function DrillDownMapSelector({
 
   const [path, setPath] = useState<SelectionPath>(getInitialPath)
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
+  const [sizeRangePreview, setSizeRangePreview] = useState<RangePreviewState<RegionSize> | null>(
+    null
+  )
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -275,6 +311,54 @@ export function DrillDownMapSelector({
     }
     return excluded
   }, [currentLevel, path, selectedContinent, includeSizes])
+
+  // Calculate preview regions based on hovering over the size thermometer
+  // Shows what regions would be added or removed if the user clicks
+  const { previewAddRegions, previewRemoveRegions } = useMemo(() => {
+    if (!sizeRangePreview) {
+      return { previewAddRegions: [], previewRemoveRegions: [] }
+    }
+
+    // Determine which map we're looking at
+    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
+    const continentId: ContinentId | 'all' =
+      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
+
+    // Get current included region IDs
+    const currentIncluded = getFilteredMapDataBySizesSync(
+      mapId as 'world' | 'usa',
+      continentId,
+      includeSizes
+    )
+    const currentIncludedIds = new Set(currentIncluded.regions.map((r) => r.id))
+
+    // Get preview included region IDs (if user clicked)
+    const previewSizes = rangeToSizes(sizeRangePreview.previewMin, sizeRangePreview.previewMax)
+    const previewIncluded = getFilteredMapDataBySizesSync(
+      mapId as 'world' | 'usa',
+      continentId,
+      previewSizes
+    )
+    const previewIncludedIds = new Set(previewIncluded.regions.map((r) => r.id))
+
+    // Regions that would be ADDED (in preview but not currently included)
+    const addRegions: string[] = []
+    for (const id of previewIncludedIds) {
+      if (!currentIncludedIds.has(id)) {
+        addRegions.push(id)
+      }
+    }
+
+    // Regions that would be REMOVED (currently included but not in preview)
+    const removeRegions: string[] = []
+    for (const id of currentIncludedIds) {
+      if (!previewIncludedIds.has(id)) {
+        removeRegions.push(id)
+      }
+    }
+
+    return { previewAddRegions: addRegions, previewRemoveRegions: removeRegions }
+  }, [sizeRangePreview, currentLevel, path, selectedContinent, includeSizes])
 
   // Compute the label to display for the hovered region
   // Shows the next drill-down level name, not the individual region name
@@ -623,6 +707,8 @@ export function DrillDownMapSelector({
           }
           hoverableRegions={currentLevel === 1 ? highlightedRegions : undefined}
           excludedRegions={excludedRegions}
+          previewAddRegions={previewAddRegions}
+          previewRemoveRegions={previewRemoveRegions}
         />
 
         {/* Zoom Out Button - positioned inside map, upper right */}
@@ -725,17 +811,13 @@ export function DrillDownMapSelector({
             )
           })()}
 
-        {/* Region Size Filters - positioned inside map, right side as column */}
+        {/* Region Size Range Selector - positioned inside map, right side */}
         <div
           data-element="region-size-filters"
           className={css({
             position: 'absolute',
             top: '3',
             right: '3',
-            bottom: '3',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1',
             padding: '2',
             bg: isDark ? 'gray.800/90' : 'white/90',
             backdropFilter: 'blur(4px)',
@@ -746,147 +828,17 @@ export function DrillDownMapSelector({
             zIndex: 10,
           })}
         >
-          {/* Select All button */}
-          <button
-            data-action="select-all-sizes"
-            onClick={() => onRegionSizesChange([...ALL_REGION_SIZES])}
-            disabled={includeSizes.length === ALL_REGION_SIZES.length}
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1',
-              paddingX: '2',
-              paddingY: '1',
-              bg: isDark ? 'green.800' : 'green.500',
-              color: 'white',
-              border: '1px solid',
-              borderColor: isDark ? 'green.600' : 'green.600',
-              rounded: 'md',
-              cursor: includeSizes.length === ALL_REGION_SIZES.length ? 'default' : 'pointer',
-              opacity: includeSizes.length === ALL_REGION_SIZES.length ? 0.5 : 1,
-              transition: 'all 0.15s',
-              fontSize: 'xs',
-              fontWeight: '600',
-              _hover:
-                includeSizes.length === ALL_REGION_SIZES.length
-                  ? {}
-                  : {
-                      bg: isDark ? 'green.700' : 'green.600',
-                    },
-            })}
-          >
-            <span>✓</span>
-            <span>All</span>
-          </button>
-
-          {/* Size checkboxes in a column */}
-          <div
-            className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1',
-              flex: 1,
-            })}
-          >
-            {ALL_REGION_SIZES.map((size) => {
-              const config = REGION_SIZE_CONFIG[size]
-              const isChecked = includeSizes.includes(size)
-              const isOnlyOne = includeSizes.length === 1 && isChecked
-              const count = regionCountsBySize[size] || 0
-
-              const handleToggle = () => {
-                if (isOnlyOne) return
-                if (isChecked) {
-                  onRegionSizesChange(includeSizes.filter((s) => s !== size))
-                } else {
-                  onRegionSizesChange([...includeSizes, size])
-                }
-              }
-
-              return (
-                <Checkbox.Root
-                  key={size}
-                  checked={isChecked}
-                  onCheckedChange={handleToggle}
-                  disabled={isOnlyOne}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1',
-                    paddingX: '2',
-                    paddingY: '1',
-                    bg: isChecked
-                      ? isDark
-                        ? 'blue.800'
-                        : 'blue.500'
-                      : isDark
-                        ? 'gray.700'
-                        : 'gray.100',
-                    border: '1px solid',
-                    borderColor: isChecked
-                      ? isDark
-                        ? 'blue.600'
-                        : 'blue.600'
-                      : isDark
-                        ? 'gray.600'
-                        : 'gray.300',
-                    rounded: 'full',
-                    cursor: isOnlyOne ? 'not-allowed' : 'pointer',
-                    opacity: isOnlyOne ? 0.5 : 1,
-                    transition: 'all 0.15s',
-                    fontSize: 'xs',
-                    _hover: isOnlyOne
-                      ? {}
-                      : {
-                          bg: isChecked
-                            ? isDark
-                              ? 'blue.700'
-                              : 'blue.600'
-                            : isDark
-                              ? 'gray.600'
-                              : 'gray.200',
-                        },
-                  })}
-                >
-                  <span>{config.emoji}</span>
-                  <span
-                    className={css({
-                      fontWeight: '500',
-                      color: isChecked ? 'white' : isDark ? 'gray.200' : 'gray.700',
-                    })}
-                  >
-                    {config.label}
-                  </span>
-                  <span
-                    className={css({
-                      fontWeight: '600',
-                      color: isChecked
-                        ? isDark
-                          ? 'blue.200'
-                          : 'blue.100'
-                        : isDark
-                          ? 'gray.400'
-                          : 'gray.500',
-                      bg: isChecked
-                        ? isDark
-                          ? 'blue.700'
-                          : 'blue.600'
-                        : isDark
-                          ? 'gray.600'
-                          : 'gray.200',
-                      paddingX: '1',
-                      rounded: 'full',
-                      minWidth: '4',
-                      textAlign: 'center',
-                    })}
-                  >
-                    {count}
-                  </span>
-                </Checkbox.Root>
-              )
-            })}
-          </div>
+          <RangeThermometer
+            options={SIZE_OPTIONS}
+            minValue={sizesToRange(includeSizes)[0]}
+            maxValue={sizesToRange(includeSizes)[1]}
+            onChange={(min, max) => onRegionSizesChange(rangeToSizes(min, max))}
+            orientation="vertical"
+            isDark={isDark}
+            counts={regionCountsBySize as Partial<Record<RegionSize, number>>}
+            showTotalCount
+            onHoverPreview={setSizeRangePreview}
+          />
         </div>
       </div>
 
