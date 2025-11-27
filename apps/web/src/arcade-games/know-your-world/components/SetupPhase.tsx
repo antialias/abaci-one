@@ -532,25 +532,6 @@ export function SetupPhase() {
         </div>
       </div>
 
-      {/* Tips Section */}
-      <div
-        data-element="tips"
-        className={css({
-          padding: '3',
-          bg: isDark ? 'gray.800/30' : 'gray.100/30',
-          rounded: 'lg',
-          fontSize: 'sm',
-          color: isDark ? 'gray.400' : 'gray.600',
-          textAlign: 'center',
-        })}
-      >
-        <strong>Tip:</strong> Press G to give up on a region.{' '}
-        {(state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful') &&
-          'Skipped regions return after 2-3 turns.'}
-        {state.assistanceLevel === 'standard' && 'Giving up counts against your score.'}
-        {state.assistanceLevel === 'none' && 'No assistance available in this mode.'}
-        {selectedAssistance?.hintsMode === 'onRequest' && ' Press H for hints!'}
-      </div>
     </div>
   )
 }
