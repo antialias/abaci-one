@@ -30,7 +30,8 @@ Choose from multiple maps (World, USA States) and difficulty levels!`,
 const defaultConfig: KnowYourWorldConfig = {
   selectedMap: 'world',
   gameMode: 'cooperative',
-  difficulty: 'medium',
+  includeSizes: ['huge', 'large', 'medium'],
+  assistanceLevel: 'helpful',
   studyDuration: 0,
   selectedContinent: 'all',
 }
@@ -47,19 +48,26 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     'antarctica',
   ]
 
+  const validSizes = ['huge', 'large', 'medium', 'small', 'tiny']
+  const validAssistanceLevels = ['guided', 'helpful', 'standard', 'none']
+
   return (
     typeof config === 'object' &&
     config !== null &&
     'selectedMap' in config &&
     'gameMode' in config &&
-    'difficulty' in config &&
+    'includeSizes' in config &&
+    'assistanceLevel' in config &&
     'studyDuration' in config &&
     'selectedContinent' in config &&
     (config.selectedMap === 'world' || config.selectedMap === 'usa') &&
     (config.gameMode === 'cooperative' ||
       config.gameMode === 'race' ||
       config.gameMode === 'turn-based') &&
-    typeof config.difficulty === 'string' &&
+    Array.isArray(config.includeSizes) &&
+    config.includeSizes.every((s: unknown) => typeof s === 'string' && validSizes.includes(s)) &&
+    typeof config.assistanceLevel === 'string' &&
+    validAssistanceLevels.includes(config.assistanceLevel) &&
     (config.studyDuration === 0 ||
       config.studyDuration === 30 ||
       config.studyDuration === 60 ||

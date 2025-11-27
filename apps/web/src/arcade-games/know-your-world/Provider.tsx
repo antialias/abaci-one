@@ -10,7 +10,8 @@ import {
   useViewerId,
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
-import type { KnowYourWorldState, KnowYourWorldMove } from './types'
+import type { KnowYourWorldState, AssistanceLevel } from './types'
+import type { RegionSize } from './maps'
 
 interface KnowYourWorldContextValue {
   state: KnowYourWorldState
@@ -24,13 +25,15 @@ interface KnowYourWorldContextValue {
   nextRound: () => void
   endGame: () => void
   giveUp: () => void
+  requestHint: () => void
   endStudy: () => void
   returnToSetup: () => void
 
   // Setup actions
   setMap: (map: 'world' | 'usa') => void
   setMode: (mode: 'cooperative' | 'race' | 'turn-based') => void
-  setDifficulty: (difficulty: string) => void
+  setRegionSizes: (sizes: RegionSize[]) => void
+  setAssistanceLevel: (level: AssistanceLevel) => void
   setStudyDuration: (duration: 0 | 30 | 60 | 120) => void
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 
@@ -94,11 +97,27 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         ? (rawContinent as any)
         : 'all'
 
+    // Validate includeSizes - should be an array of valid size strings
+    const validSizes: RegionSize[] = ['huge', 'large', 'medium', 'small', 'tiny']
+    const rawSizes = gameConfig?.includeSizes
+    const includeSizes: RegionSize[] = Array.isArray(rawSizes)
+      ? rawSizes.filter((s: string) => validSizes.includes(s as RegionSize))
+      : ['huge', 'large', 'medium'] // Default to most regions
+
+    // Validate assistanceLevel
+    const validAssistanceLevels = ['guided', 'helpful', 'standard', 'none']
+    const rawAssistance = gameConfig?.assistanceLevel
+    const assistanceLevel: AssistanceLevel =
+      typeof rawAssistance === 'string' && validAssistanceLevels.includes(rawAssistance)
+        ? (rawAssistance as AssistanceLevel)
+        : 'helpful'
+
     return {
       gamePhase: 'setup' as const,
       selectedMap: (gameConfig?.selectedMap as 'world' | 'usa') || 'world',
       gameMode: (gameConfig?.gameMode as 'cooperative' | 'race' | 'turn-based') || 'cooperative',
-      difficulty: gameConfig?.difficulty || 'medium',
+      includeSizes,
+      assistanceLevel,
       studyDuration,
       selectedContinent,
       studyTimeRemaining: 0,
@@ -117,6 +136,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       playerMetadata: {},
       giveUpReveal: null,
       giveUpVotes: [],
+      hintsUsed: 0,
+      hintActive: null,
     }
   }, [roomData])
 
@@ -170,7 +191,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         playerMetadata,
         selectedMap: state.selectedMap,
         gameMode: state.gameMode,
-        difficulty: state.difficulty,
+        includeSizes: state.includeSizes,
+        assistanceLevel: state.assistanceLevel,
       },
     })
   }, [
@@ -181,7 +203,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     sendMove,
     state.selectedMap,
     state.gameMode,
-    state.difficulty,
+    state.includeSizes,
+    state.assistanceLevel,
   ])
 
   // Action: Click Region
@@ -235,6 +258,16 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const giveUp = useCallback(() => {
     sendMove({
       type: 'GIVE_UP',
+      playerId: state.currentPlayer || activePlayers[0] || '',
+      userId: viewerId || '',
+      data: {},
+    })
+  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
+
+  // Action: Request Hint (highlight current region briefly)
+  const requestHint = useCallback(() => {
+    sendMove({
+      type: 'REQUEST_HINT',
       playerId: state.currentPlayer || activePlayers[0] || '',
       userId: viewerId || '',
       data: {},
@@ -301,14 +334,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
-  // Setup Action: Set Difficulty
-  const setDifficulty = useCallback(
-    (difficulty: string) => {
+  // Setup Action: Set Region Sizes (which sizes to include)
+  const setRegionSizes = useCallback(
+    (includeSizes: RegionSize[]) => {
       sendMove({
-        type: 'SET_DIFFICULTY',
-        playerId: activePlayers[0] || '', // Use first active player
+        type: 'SET_REGION_SIZES',
+        playerId: activePlayers[0] || '',
         userId: viewerId || '',
-        data: { difficulty },
+        data: { includeSizes },
       })
 
       // Persist to database
@@ -322,7 +355,37 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
             ...currentGameConfig,
             'know-your-world': {
               ...currentConfig,
-              difficulty,
+              includeSizes,
+            },
+          },
+        })
+      }
+    },
+    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
+  )
+
+  // Setup Action: Set Assistance Level
+  const setAssistanceLevel = useCallback(
+    (assistanceLevel: AssistanceLevel) => {
+      sendMove({
+        type: 'SET_ASSISTANCE_LEVEL',
+        playerId: activePlayers[0] || '',
+        userId: viewerId || '',
+        data: { assistanceLevel },
+      })
+
+      // Persist to database
+      if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentConfig = (currentGameConfig['know-your-world'] as Record<string, any>) || {}
+
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: {
+            ...currentGameConfig,
+            'know-your-world': {
+              ...currentConfig,
+              assistanceLevel,
             },
           },
         })
@@ -431,11 +494,13 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         nextRound,
         endGame,
         giveUp,
+        requestHint,
         endStudy,
         returnToSetup,
         setMap,
         setMode,
-        setDifficulty,
+        setRegionSizes,
+        setAssistanceLevel,
         setStudyDuration,
         setContinent,
         otherPlayerCursors,

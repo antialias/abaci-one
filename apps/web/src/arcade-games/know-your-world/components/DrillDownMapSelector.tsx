@@ -14,7 +14,9 @@ import {
   getSubMapsForContinent,
   parseViewBox,
   calculateFitCropViewBox,
+  getFilteredMapDataBySizesSync,
 } from '../maps'
+import type { RegionSize } from '../maps'
 import {
   CONTINENTS,
   getContinentForCountry,
@@ -31,16 +33,28 @@ import {
 export type SelectionPath = [] | [ContinentId] | [ContinentId, string]
 
 /**
+ * Planet data type for joke placeholder
+ */
+interface PlanetData {
+  id: string
+  name: string
+  color: string
+  size: number
+  hasStripes?: boolean
+  hasRings?: boolean
+}
+
+/**
  * Joke placeholder: Other planets for when viewing Earth (world map)
  * Just for fun - these don't actually do anything
  */
-const PLANETS = [
+const PLANETS: PlanetData[] = [
   { id: 'mercury', name: 'Mercury', color: '#b0b0b0', size: 0.38 },
   { id: 'venus', name: 'Venus', color: '#e6c87a', size: 0.95 },
   { id: 'mars', name: 'Mars', color: '#c1440e', size: 0.53 },
   { id: 'jupiter', name: 'Jupiter', color: '#d8ca9d', size: 2.0, hasStripes: true },
   { id: 'saturn', name: 'Saturn', color: '#ead6b8', size: 1.7, hasRings: true },
-] as const
+]
 
 interface DrillDownMapSelectorProps {
   /** Callback when selection changes (map/continent for game start) */
@@ -51,6 +65,8 @@ interface DrillDownMapSelectorProps {
   selectedMap: 'world' | 'usa'
   /** Current selected continent (for initial state sync) */
   selectedContinent: ContinentId | 'all'
+  /** Region sizes to include (for showing excluded regions dimmed) */
+  includeSizes: RegionSize[]
 }
 
 interface BreadcrumbItem {
@@ -65,6 +81,7 @@ export function DrillDownMapSelector({
   onStartGame,
   selectedMap,
   selectedContinent,
+  includeSizes,
 }: DrillDownMapSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -215,6 +232,40 @@ export function DrillDownMapSelector({
     }
     return groups
   }, [currentLevel])
+
+  // Calculate excluded regions based on includeSizes
+  // These are regions that exist but are filtered out by size settings
+  const excludedRegions = useMemo(() => {
+    // Determine which map we're looking at
+    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
+    const continentId: ContinentId | 'all' =
+      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
+
+    // Get all regions (unfiltered by size)
+    const allRegionsMapData = getFilteredMapDataBySizesSync(
+      mapId as 'world' | 'usa',
+      continentId,
+      ['huge', 'large', 'medium', 'small', 'tiny'] // All sizes
+    )
+    const allRegionIds = new Set(allRegionsMapData.regions.map((r) => r.id))
+
+    // Get filtered regions (based on current includeSizes)
+    const filteredMapData = getFilteredMapDataBySizesSync(
+      mapId as 'world' | 'usa',
+      continentId,
+      includeSizes
+    )
+    const filteredRegionIds = new Set(filteredMapData.regions.map((r) => r.id))
+
+    // Excluded = all regions minus filtered regions
+    const excluded: string[] = []
+    for (const regionId of allRegionIds) {
+      if (!filteredRegionIds.has(regionId)) {
+        excluded.push(regionId)
+      }
+    }
+    return excluded
+  }, [currentLevel, path, selectedContinent, includeSizes])
 
   // Compute the label to display for the hovered region
   // Shows the next drill-down level name, not the individual region name
@@ -562,6 +613,7 @@ export function DrillDownMapSelector({
             currentLevel === 0 && selectedContinent !== 'all' ? selectedContinent : null
           }
           hoverableRegions={currentLevel === 1 ? highlightedRegions : undefined}
+          excludedRegions={excludedRegions}
         />
 
         {/* Zoom Out Button - positioned inside map, upper right */}
@@ -679,7 +731,8 @@ export function DrillDownMapSelector({
           {peers.map((peer) => {
             // Check if this is a planet (joke at world level)
             const isPlanet = 'isPlanet' in peer && peer.isPlanet
-            const planetData = 'planetData' in peer ? peer.planetData : null
+            const planetData =
+              'planetData' in peer ? (peer.planetData as PlanetData | null) : null
 
             // Calculate viewBox for this peer's continent (only for non-planets)
             const peerContinentId = peer.path[0]

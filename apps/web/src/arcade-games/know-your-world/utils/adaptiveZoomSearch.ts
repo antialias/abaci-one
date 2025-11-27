@@ -487,10 +487,7 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
         foundGoodZoom = true
         acceptedRegionId = detectedRegion.id
 
-        // Log when we accept a zoom
-        console.log(
-          `[Zoom] ✅ Accepted ${testZoom.toFixed(1)}x for ${detectedRegion.id} (${currentWidth.toFixed(1)}px × ${currentHeight.toFixed(1)}px)`
-        )
+        // Zoom accepted (log removed to reduce spam)
 
         // Mark this region's bounding box as accepted
         const acceptedBox = boundingBoxes.find((bbox) => bbox.regionId === detectedRegion.id)

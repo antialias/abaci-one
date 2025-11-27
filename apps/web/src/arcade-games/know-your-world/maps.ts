@@ -88,20 +88,50 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * Region size category for difficulty-based filtering
+ */
+export type RegionSize = 'huge' | 'large' | 'medium' | 'small' | 'tiny'
+
+/**
+ * Hints mode for difficulty levels
+ */
+export type HintsMode = 'onRequest' | 'limited' | 'none'
+
+/**
+ * Give up behavior mode
+ */
+export type GiveUpMode = 'reaskSoon' | 'reaskEnd' | 'countsAgainst' | 'skipEntirely'
+
+/**
  * Difficulty level configuration for a map
  */
 export interface DifficultyLevel {
-  id: string // e.g., 'easy', 'medium', 'hard', 'standard'
+  id: string // e.g., 'learning', 'easy', 'normal', 'expert'
   label: string // Display name
   emoji?: string // Optional emoji
-  description?: string // Optional description for UI
-  // Filtering: either explicit exclusions OR percentage
+  description?: string // Short description for UI
+  detailedDescription?: string // Longer description for tooltip/modal
+
+  // Region filtering (new size-based system)
+  includeSizes?: RegionSize[] // Which size categories to include
+
+  // Legacy filtering (for backwards compatibility)
   excludeRegions?: string[] // Explicit region IDs to exclude
   keepPercentile?: number // 0-1, keep this % of largest regions (default 1.0)
+
+  // Feature flags
+  hotColdEnabled?: boolean // Hot/cold feedback when clicking wrong regions
+  hintsMode?: HintsMode // How hints work
+  hintLimit?: number // For 'limited' mode, how many hints per game
+  autoHintDefault?: boolean // Default state of auto-hint checkbox
+  struggleHintEnabled?: boolean // Show hint after struggling (timer-based)
+  giveUpMode?: GiveUpMode // What happens when player gives up
+  wrongClickShowsName?: boolean // Show "That was [name]" vs just "Wrong!"
 }
 
 /**
  * Per-map difficulty configuration
+ * @deprecated Use AssistanceLevelConfig instead - difficulty conflated region filtering with assistance
  */
 export interface MapDifficultyConfig {
   levels: DifficultyLevel[]
@@ -109,49 +139,688 @@ export interface MapDifficultyConfig {
 }
 
 /**
+ * Assistance level configuration - controls gameplay features separate from region filtering
+ */
+export interface AssistanceLevelConfig {
+  id: 'guided' | 'helpful' | 'standard' | 'none'
+  label: string
+  emoji: string
+  description: string
+  // Feature flags
+  hotColdEnabled: boolean
+  hintsMode: HintsMode
+  hintLimit?: number // For 'limited' mode
+  autoHintDefault: boolean
+  struggleHintEnabled: boolean
+  giveUpMode: GiveUpMode
+  wrongClickShowsName: boolean
+}
+
+/**
+ * Assistance levels - separate from region filtering
+ */
+export const ASSISTANCE_LEVELS: AssistanceLevelConfig[] = [
+  {
+    id: 'guided',
+    label: 'Guided',
+    emoji: '🎓',
+    description: 'Maximum help - hot/cold feedback, auto-hints, shows names on wrong clicks',
+    hotColdEnabled: true,
+    hintsMode: 'onRequest',
+    autoHintDefault: true,
+    struggleHintEnabled: true,
+    giveUpMode: 'reaskSoon',
+    wrongClickShowsName: true,
+  },
+  {
+    id: 'helpful',
+    label: 'Helpful',
+    emoji: '💡',
+    description: 'Hot/cold feedback and hints available on request',
+    hotColdEnabled: true,
+    hintsMode: 'onRequest',
+    autoHintDefault: false,
+    struggleHintEnabled: false,
+    giveUpMode: 'reaskEnd',
+    wrongClickShowsName: true,
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    emoji: '🎯',
+    description: 'Limited hints (3), no hot/cold feedback',
+    hotColdEnabled: false,
+    hintsMode: 'limited',
+    hintLimit: 3,
+    autoHintDefault: false,
+    struggleHintEnabled: false,
+    giveUpMode: 'countsAgainst',
+    wrongClickShowsName: false,
+  },
+  {
+    id: 'none',
+    label: 'No Assistance',
+    emoji: '🏆',
+    description: 'Pure challenge - no hints or feedback',
+    hotColdEnabled: false,
+    hintsMode: 'none',
+    autoHintDefault: false,
+    struggleHintEnabled: false,
+    giveUpMode: 'skipEntirely',
+    wrongClickShowsName: false,
+  },
+]
+
+/**
+ * Get assistance level config by ID
+ */
+export function getAssistanceLevel(id: string): AssistanceLevelConfig {
+  return ASSISTANCE_LEVELS.find((l) => l.id === id) || ASSISTANCE_LEVELS[1] // Default to 'helpful'
+}
+
+/**
+ * Default region sizes to include (all sizes = complete set)
+ */
+export const ALL_REGION_SIZES: RegionSize[] = ['huge', 'large', 'medium', 'small', 'tiny']
+
+/**
+ * Display configuration for each region size
+ */
+export const REGION_SIZE_CONFIG: Record<RegionSize, { label: string; emoji: string; description: string }> = {
+  huge: {
+    label: 'Major',
+    emoji: '🌍',
+    description: 'Large, well-known countries/states',
+  },
+  large: {
+    label: 'Large',
+    emoji: '🗺️',
+    description: 'Large territories',
+  },
+  medium: {
+    label: 'Medium',
+    emoji: '📍',
+    description: 'Mid-sized territories',
+  },
+  small: {
+    label: 'Small',
+    emoji: '🏝️',
+    description: 'Small territories and islands',
+  },
+  tiny: {
+    label: 'Tiny',
+    emoji: '🔍',
+    description: 'Microstates and remote territories',
+  },
+}
+
+/**
+ * Default assistance level
+ */
+export const DEFAULT_ASSISTANCE_LEVEL = 'helpful'
+
+/**
+ * Default region sizes (medium difficulty - most regions)
+ */
+export const DEFAULT_REGION_SIZES: RegionSize[] = ['huge', 'large', 'medium']
+
+/**
  * Global default difficulty config for maps without custom config
+ * @deprecated - kept for backwards compatibility, use ASSISTANCE_LEVELS instead
+ * New 4-level system: Learning, Easy, Normal, Expert
  */
 export const DEFAULT_DIFFICULTY_CONFIG: MapDifficultyConfig = {
   levels: [
     {
+      id: 'learning',
+      label: 'Learning',
+      emoji: '🌱',
+      description: 'Guided exploration with maximum help',
+      detailedDescription:
+        'Large countries only (~57). Hot/cold feedback guides you. Hints auto-open and appear if stuck.',
+      includeSizes: ['huge', 'large'],
+      hotColdEnabled: true,
+      hintsMode: 'onRequest',
+      autoHintDefault: true,
+      struggleHintEnabled: true,
+      giveUpMode: 'reaskSoon',
+      wrongClickShowsName: true,
+    },
+    {
       id: 'easy',
       label: 'Easy',
       emoji: '😊',
-      description: '85% largest regions',
-      keepPercentile: 0.85,
+      description: 'Helpful feedback as you learn',
+      detailedDescription: 'Most countries (~163). Hot/cold feedback. Press H for hints anytime.',
+      includeSizes: ['huge', 'large', 'medium'],
+      hotColdEnabled: true,
+      hintsMode: 'onRequest',
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      giveUpMode: 'reaskEnd',
+      wrongClickShowsName: true,
     },
     {
-      id: 'medium',
-      label: 'Medium',
-      emoji: '🙂',
-      description: '98% largest regions',
-      keepPercentile: 0.98,
+      id: 'normal',
+      label: 'Normal',
+      emoji: '🎯',
+      description: 'Standard challenge',
+      detailedDescription: 'Nearly all countries (~223). No hot/cold. 3 hints per game.',
+      includeSizes: ['huge', 'large', 'medium', 'small'],
+      hotColdEnabled: false,
+      hintsMode: 'limited',
+      hintLimit: 3,
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      giveUpMode: 'countsAgainst',
+      wrongClickShowsName: false,
     },
     {
-      id: 'hard',
-      label: 'Hard',
-      emoji: '😰',
-      description: 'All regions',
-      keepPercentile: 1.0,
+      id: 'expert',
+      label: 'Expert',
+      emoji: '🏆',
+      description: 'Test your knowledge',
+      detailedDescription: 'All countries including tiny islands (256). No hints. Pure geography.',
+      includeSizes: ['huge', 'large', 'medium', 'small', 'tiny'],
+      hotColdEnabled: false,
+      hintsMode: 'none',
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      giveUpMode: 'skipEntirely',
+      wrongClickShowsName: false,
     },
   ],
-  defaultLevel: 'medium',
+  defaultLevel: 'easy',
 }
 
 /**
- * USA map difficulty config - single level, all regions
+ * USA state size categories (by geographic area and recognition)
+ * Uses state abbreviations (lowercase) from @svg-maps/usa
+ */
+const USA_STATE_SIZE_CATEGORIES: Record<RegionSize, Set<string>> = {
+  // Huge: Instantly recognizable, largest states (~8)
+  huge: new Set([
+    'ca', // California
+    'tx', // Texas
+    'fl', // Florida
+    'ny', // New York
+    'ak', // Alaska
+    'mt', // Montana
+    'az', // Arizona
+    'nv', // Nevada
+  ]),
+
+  // Large: Major states, clearly visible (~10)
+  large: new Set([
+    'nm', // New Mexico
+    'co', // Colorado
+    'or', // Oregon
+    'wa', // Washington
+    'ut', // Utah
+    'wy', // Wyoming
+    'mi', // Michigan
+    'il', // Illinois
+    'pa', // Pennsylvania
+    'oh', // Ohio
+  ]),
+
+  // Medium: Recognizable states, moderate size (~17)
+  medium: new Set([
+    'id', // Idaho
+    'nd', // North Dakota
+    'sd', // South Dakota
+    'ne', // Nebraska
+    'ks', // Kansas
+    'ok', // Oklahoma
+    'mn', // Minnesota
+    'ia', // Iowa
+    'mo', // Missouri
+    'ar', // Arkansas
+    'la', // Louisiana
+    'wi', // Wisconsin
+    'in', // Indiana
+    'ga', // Georgia
+    'nc', // North Carolina
+    'va', // Virginia
+    'tn', // Tennessee
+  ]),
+
+  // Small: Smaller states (~10)
+  small: new Set([
+    'sc', // South Carolina
+    'al', // Alabama
+    'ms', // Mississippi
+    'ky', // Kentucky
+    'wv', // West Virginia
+    'md', // Maryland
+    'nj', // New Jersey
+    'ma', // Massachusetts
+    'me', // Maine
+    'hi', // Hawaii
+  ]),
+
+  // Tiny: Small states, harder to find (~6)
+  tiny: new Set([
+    'vt', // Vermont
+    'nh', // New Hampshire
+    'ct', // Connecticut
+    'ri', // Rhode Island
+    'de', // Delaware
+    'dc', // District of Columbia
+  ]),
+}
+
+/**
+ * Get the size category for a US state
+ */
+function getUSAStateSizeCategory(stateId: string): RegionSize | null {
+  for (const [size, ids] of Object.entries(USA_STATE_SIZE_CATEGORIES)) {
+    if (ids.has(stateId)) {
+      return size as RegionSize
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a US state should be included based on difficulty level's size requirements
+ */
+function shouldIncludeUSAState(stateId: string, includeSizes: RegionSize[]): boolean {
+  const category = getUSAStateSizeCategory(stateId)
+  if (!category) {
+    // If no category found, include by default
+    return true
+  }
+  return includeSizes.includes(category)
+}
+
+/**
+ * USA map difficulty config - 4 levels like world map
  */
 export const USA_DIFFICULTY_CONFIG: MapDifficultyConfig = {
   levels: [
     {
-      id: 'standard',
-      label: 'All States',
-      emoji: '🗺️',
-      description: 'All 50 states + DC',
-      keepPercentile: 1.0,
+      id: 'learning',
+      label: 'Learning',
+      emoji: '🌱',
+      description: 'Guided exploration with maximum help',
+      detailedDescription:
+        'Major states only (~18). Hot/cold feedback guides you. Hints auto-open and appear if stuck.',
+      includeSizes: ['huge', 'large'],
+      hotColdEnabled: true,
+      hintsMode: 'onRequest',
+      autoHintDefault: true,
+      struggleHintEnabled: true,
+      wrongClickShowsName: true,
+      giveUpMode: 'reaskSoon',
+    },
+    {
+      id: 'easy',
+      label: 'Easy',
+      emoji: '😊',
+      description: 'Comfortable challenge with guidance',
+      detailedDescription: 'Most states (~35). Hot/cold feedback. Press H for hints anytime.',
+      includeSizes: ['huge', 'large', 'medium'],
+      hotColdEnabled: true,
+      hintsMode: 'onRequest',
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      wrongClickShowsName: true,
+      giveUpMode: 'reaskEnd',
+    },
+    {
+      id: 'normal',
+      label: 'Normal',
+      emoji: '🎯',
+      description: 'Standard challenge with limited hints',
+      detailedDescription: 'Nearly all states (~45). No hot/cold. 3 hints per game.',
+      includeSizes: ['huge', 'large', 'medium', 'small'],
+      hotColdEnabled: false,
+      hintsMode: 'limited',
+      hintLimit: 3,
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      giveUpMode: 'countsAgainst',
+      wrongClickShowsName: false,
+    },
+    {
+      id: 'expert',
+      label: 'Expert',
+      emoji: '🏆',
+      description: 'Full challenge, no assistance',
+      detailedDescription: 'All 51 states/territories. No hints. Pure geography.',
+      includeSizes: ['huge', 'large', 'medium', 'small', 'tiny'],
+      hotColdEnabled: false,
+      hintsMode: 'none',
+      autoHintDefault: false,
+      struggleHintEnabled: false,
+      giveUpMode: 'skipEntirely',
+      wrongClickShowsName: false,
     },
   ],
-  defaultLevel: 'standard',
+  defaultLevel: 'easy',
+}
+
+/**
+ * Region size categories for world map
+ * Curated based on actual geographic size and prominence (not bounding box area)
+ * ISO 3166-1 alpha-2 codes (lowercase)
+ */
+const REGION_SIZE_CATEGORIES: Record<RegionSize, Set<string>> = {
+  // Huge: Major powers, instantly recognizable (~15)
+  huge: new Set([
+    'ru', // Russia
+    'cn', // China
+    'us', // United States
+    'ca', // Canada
+    'br', // Brazil
+    'au', // Australia
+    'in', // India
+    'ar', // Argentina
+    'kz', // Kazakhstan
+    'dz', // Algeria
+    'cd', // DR Congo
+    'sa', // Saudi Arabia
+    'mx', // Mexico
+    'id', // Indonesia
+    'ly', // Libya
+  ]),
+
+  // Large: Major countries, clearly visible (~42)
+  large: new Set([
+    'sd',
+    'ir',
+    'mn',
+    'pe',
+    'td',
+    'ne',
+    'ao',
+    'ml',
+    'za',
+    'co',
+    've',
+    'et',
+    'eg',
+    'mr',
+    'bo',
+    'ng',
+    'tz',
+    'cl',
+    'zm',
+    'mm',
+    'af',
+    'so',
+    'cf',
+    'ss',
+    'mg',
+    'mz',
+    'pk',
+    'tr',
+    'ke',
+    'fr',
+    'th',
+    'es',
+    'cm',
+    'pg',
+    'ma',
+    'ua',
+    'jp',
+    'de',
+    'pl',
+    'no',
+    'se',
+    'fi',
+  ]),
+
+  // Medium: Recognizable countries, moderate size (~106)
+  medium: new Set([
+    // Europe
+    'gb',
+    'it',
+    'ro',
+    'gr',
+    'bg',
+    'hu',
+    'by',
+    'at',
+    'cz',
+    'rs',
+    'ie',
+    'lt',
+    'lv',
+    'hr',
+    'ba',
+    'sk',
+    'ee',
+    'dk',
+    'nl',
+    'be',
+    'ch',
+    'pt',
+    'al',
+    'md',
+    'mk',
+    'si',
+    'me',
+    'xk',
+    'is',
+    // Asia
+    'vn',
+    'my',
+    'ph',
+    'np',
+    'bd',
+    'kh',
+    'la',
+    'kp',
+    'kr',
+    'tw',
+    'uz',
+    'tm',
+    'kg',
+    'tj',
+    'iq',
+    'sy',
+    'jo',
+    'il',
+    'lb',
+    'az',
+    'ge',
+    'am',
+    'ye',
+    'om',
+    'ae',
+    'bt',
+    'ps',
+    'tl',
+    // Africa
+    'ci',
+    'bf',
+    'gh',
+    'gn',
+    'sn',
+    'ug',
+    'ga',
+    'tg',
+    'bj',
+    'er',
+    'mw',
+    'ls',
+    'sz',
+    'rw',
+    'bi',
+    'sl',
+    'lr',
+    'gm',
+    'gw',
+    'cg',
+    'gq',
+    'dj',
+    'tn',
+    'bw',
+    'na',
+    'zw',
+    'eh',
+    // Americas
+    'ec',
+    'py',
+    'uy',
+    'sr',
+    'gy',
+    'pa',
+    'cr',
+    'ni',
+    'hn',
+    'gt',
+    'bz',
+    'sv',
+    'cu',
+    'do',
+    'ht',
+    'jm',
+    'bs',
+    'tt',
+    'gf',
+    'gl',
+    // Oceania
+    'nz',
+    'fj',
+  ]),
+
+  // Small: Smaller countries, harder to find (~60)
+  small: new Set([
+    // Caribbean
+    'bb',
+    'ag',
+    'dm',
+    'lc',
+    'vc',
+    'gd',
+    'kn',
+    'aw',
+    'cw',
+    'bq',
+    'sx',
+    'mf',
+    'bl',
+    'tc',
+    'vg',
+    'vi',
+    'ky',
+    'ai',
+    'ms',
+    'pr',
+    'bm',
+    'gp',
+    'mq',
+    // Europe
+    'lu',
+    'cy',
+    'mt',
+    'ax',
+    'fo',
+    'gg',
+    'im',
+    'je',
+    // Middle East
+    'kw',
+    'qa',
+    'bh',
+    // Africa
+    'cv',
+    'st',
+    'km',
+    'mu',
+    're',
+    'yt',
+    'sc',
+    'sh',
+    // Asia
+    'bn',
+    'sg',
+    'hk',
+    'mo',
+    'mv',
+    'lk',
+    'pm',
+    // Oceania
+    'ws',
+    'to',
+    'vu',
+    'sb',
+    'nc',
+    'pf',
+    'gu',
+    'as',
+    'mp',
+    'pw',
+    'fm',
+  ]),
+
+  // Tiny: Microstates and tiny islands, very hard to find (~33)
+  tiny: new Set([
+    // Europe
+    'va',
+    'mc',
+    'sm',
+    'ad',
+    'li',
+    'gi',
+    // Pacific
+    'nr',
+    'tv',
+    'mh',
+    'ki',
+    'nu',
+    'tk',
+    'ck',
+    'wf',
+    'pn',
+    // Other territories
+    'io',
+    'cx',
+    'cc',
+    'nf',
+    'hm',
+    'bv',
+    'sj',
+    'fk',
+    'gs',
+    'aq',
+    'tf',
+    'go',
+    'ju', // French territories
+    'um-dq',
+    'um-fq',
+    'um-hq',
+    'um-jq',
+    'um-mq',
+    'um-wq', // US Minor Outlying Islands
+  ]),
+}
+
+/**
+ * Get the size category for a region ID
+ */
+export function getRegionSizeCategory(regionId: string): RegionSize | null {
+  for (const [size, ids] of Object.entries(REGION_SIZE_CATEGORIES)) {
+    if (ids.has(regionId)) {
+      return size as RegionSize
+    }
+  }
+  return null // Region not categorized (shouldn't happen for world map)
+}
+
+/**
+ * Check if a region should be included based on difficulty level's size requirements
+ */
+export function shouldIncludeRegion(regionId: string, includeSizes: RegionSize[]): boolean {
+  const category = getRegionSizeCategory(regionId)
+  if (!category) {
+    // If no category found, include by default (for regions not in our list)
+    return true
+  }
+  return includeSizes.includes(category)
 }
 
 /**
@@ -686,7 +1355,6 @@ export function calculateContinentViewBox(
   // Check for custom crop override first
   const customCrop = getCustomCrop(mapId, continentId)
   if (customCrop) {
-    console.log(`[Maps] Using custom crop for ${mapId}/${continentId}: ${customCrop}`)
     return customCrop
   }
 
@@ -837,11 +1505,45 @@ function calculateRegionArea(pathString: string): number {
 }
 
 /**
- * Filter regions based on difficulty level configuration
- * Supports both explicit region exclusions and percentile-based filtering
+ * Filter regions by size categories (primary filtering function)
+ * This is the new clean API that takes sizes directly
  */
-function filterRegionsByDifficulty(regions: MapRegion[], level: DifficultyLevel): MapRegion[] {
-  // Explicit exclusions take priority
+export function filterRegionsBySizes(
+  regions: MapRegion[],
+  includeSizes: RegionSize[],
+  mapId: 'world' | 'usa' = 'world'
+): MapRegion[] {
+  // If all sizes included or empty array, return all regions
+  if (includeSizes.length === 0 || includeSizes.length === ALL_REGION_SIZES.length) {
+    return regions
+  }
+
+  // Use appropriate size checker based on map
+  const shouldInclude =
+    mapId === 'usa'
+      ? (id: string) => shouldIncludeUSAState(id, includeSizes)
+      : (id: string) => shouldIncludeRegion(id, includeSizes)
+
+  const filtered = regions.filter((r) => shouldInclude(r.id))
+  return filtered
+}
+
+/**
+ * Filter regions based on difficulty level configuration
+ * @deprecated Use filterRegionsBySizes instead
+ * Supports: 1) Size-based filtering (new), 2) Explicit exclusions, 3) Percentile-based (legacy)
+ */
+function filterRegionsByDifficulty(
+  regions: MapRegion[],
+  level: DifficultyLevel,
+  mapId: 'world' | 'usa' = 'world'
+): MapRegion[] {
+  // 1. Size-based filtering (new system - highest priority)
+  if (level.includeSizes && level.includeSizes.length > 0) {
+    return filterRegionsBySizes(regions, level.includeSizes, mapId)
+  }
+
+  // 2. Explicit exclusions
   if (level.excludeRegions && level.excludeRegions.length > 0) {
     const filtered = regions.filter((r) => !level.excludeRegions!.includes(r.id))
     console.log(
@@ -850,7 +1552,7 @@ function filterRegionsByDifficulty(regions: MapRegion[], level: DifficultyLevel)
     return filtered
   }
 
-  // Use percentile filtering
+  // 3. Legacy percentile filtering
   const percentile = level.keepPercentile ?? 1.0
   if (percentile >= 1.0) {
     return regions // Include all regions
@@ -933,7 +1635,7 @@ export async function getFilteredMapData(
   }
 
   // Apply difficulty filtering
-  filteredRegions = filterRegionsByDifficulty(filteredRegions, level)
+  filteredRegions = filterRegionsByDifficulty(filteredRegions, level, mapId)
 
   return {
     ...mapData,
@@ -941,6 +1643,84 @@ export async function getFilteredMapData(
     viewBox: adjustedViewBox,
     originalViewBox: mapData.viewBox, // Always the base map's viewBox
     customCrop, // The custom crop region if any (for fit-crop-with-fill)
+  }
+}
+
+/**
+ * Get filtered map data by size categories (async - for server-side)
+ * This is the new clean API that takes sizes directly
+ */
+export async function getFilteredMapDataBySizes(
+  mapId: 'world' | 'usa',
+  continentId: ContinentId | 'all',
+  includeSizes: RegionSize[]
+): Promise<MapData> {
+  const mapData = await getMapData(mapId)
+
+  let filteredRegions = mapData.regions
+  let adjustedViewBox = mapData.viewBox
+  let customCrop: string | null = null
+
+  // Apply continent filtering for world map
+  if (mapId === 'world' && continentId !== 'all') {
+    filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    customCrop = getCustomCrop(mapId, continentId)
+    adjustedViewBox = calculateContinentViewBox(
+      mapData.regions,
+      continentId,
+      mapData.viewBox,
+      mapId
+    )
+  }
+
+  // Apply size filtering
+  filteredRegions = filterRegionsBySizes(filteredRegions, includeSizes, mapId)
+
+  return {
+    ...mapData,
+    regions: filteredRegions,
+    viewBox: adjustedViewBox,
+    originalViewBox: mapData.viewBox,
+    customCrop,
+  }
+}
+
+/**
+ * Get filtered map data by size categories synchronously (for client components)
+ * This is the new clean API that takes sizes directly
+ */
+export function getFilteredMapDataBySizesSync(
+  mapId: 'world' | 'usa',
+  continentId: ContinentId | 'all',
+  includeSizes: RegionSize[]
+): MapData {
+  const mapData = mapId === 'world' ? WORLD_MAP : USA_MAP
+
+  let filteredRegions = mapData.regions
+  let adjustedViewBox = mapData.viewBox
+  let customCrop: string | null = null
+
+  // Apply continent filtering for world map
+  if (mapId === 'world' && continentId !== 'all') {
+    filteredRegions = filterRegionsByContinent(filteredRegions, continentId)
+    customCrop = getCustomCrop(mapId, continentId)
+    adjustedViewBox = calculateContinentViewBox(
+      mapData.regions,
+      continentId,
+      mapData.viewBox,
+      mapId
+    )
+  }
+
+  // Apply size filtering
+  filteredRegions = filterRegionsBySizes(filteredRegions, includeSizes, mapId)
+
+  return {
+    ...mapData,
+    regions: filteredRegions,
+    viewBox: adjustedViewBox,
+    originalViewBox: mapData.viewBox,
+    customCrop,
   }
 }
 
@@ -1060,7 +1840,7 @@ export function getFilteredMapDataSync(
   }
 
   // Apply difficulty filtering
-  filteredRegions = filterRegionsByDifficulty(filteredRegions, level)
+  filteredRegions = filterRegionsByDifficulty(filteredRegions, level, mapId)
 
   return {
     ...mapData,

@@ -183,7 +183,8 @@ export const DEFAULT_YIJS_DEMO_CONFIG: YjsDemoGameConfig = {
 export const DEFAULT_KNOW_YOUR_WORLD_CONFIG: KnowYourWorldConfig = {
   selectedMap: 'world',
   gameMode: 'cooperative',
-  difficulty: 'easy',
+  includeSizes: ['huge', 'large', 'medium'],
+  assistanceLevel: 'helpful',
   studyDuration: 0,
   selectedContinent: 'all',
 }

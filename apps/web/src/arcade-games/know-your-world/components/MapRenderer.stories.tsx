@@ -100,19 +100,23 @@ const Template = (args: StoryArgs) => {
     correct: true,
   }))
 
+  // Map difficulty to assistance level for rendering
+  const assistanceLevel = args.difficulty === 'easy' ? 'helpful' : 'standard'
+
   return (
     <div style={{ padding: '20px', minHeight: '100vh', background: '#111827' }}>
       <MapRenderer
         mapData={mapData}
         regionsFound={regionsFound}
         currentPrompt={mapData.regions[5]?.id || null}
-        difficulty={args.difficulty}
+        assistanceLevel={assistanceLevel}
         selectedMap="world"
         selectedContinent={args.continent}
         onRegionClick={(id, name) => console.log('Clicked:', id, name)}
         guessHistory={guessHistory}
         playerMetadata={mockPlayerMetadata}
         giveUpReveal={null}
+        hintActive={null}
         onGiveUp={() => console.log('Give Up clicked')}
         forceTuning={{
           showArrows: args.showArrows,

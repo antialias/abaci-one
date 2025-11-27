@@ -38,6 +38,11 @@ interface MapSelectorMapProps {
    * Use this to disable hover on non-interactive regions.
    */
   hoverableRegions?: string[]
+  /**
+   * Regions that are excluded by region size filtering.
+   * These will be shown dimmed/grayed out.
+   */
+  excludedRegions?: string[]
 }
 
 export function MapSelectorMap({
@@ -51,6 +56,7 @@ export function MapSelectorMap({
   regionGroups,
   selectedGroup,
   hoverableRegions,
+  excludedRegions = [],
 }: MapSelectorMapProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -92,11 +98,22 @@ export function MapSelectorMap({
     return thisGroup === selectedGroup
   }
 
+  // Check if a region is excluded by size filtering
+  const isRegionExcluded = (regionId: string): boolean => {
+    return excludedRegions.includes(regionId)
+  }
+
   // Get fill color for a region
   const getRegionFill = (regionId: string): string => {
+    const isExcluded = isRegionExcluded(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
+
+    // Excluded regions are dimmed
+    if (isExcluded) {
+      return isDark ? '#1f2937' : '#e5e7eb' // Gray out excluded regions
+    }
 
     // Use the game's color algorithm
     const baseColor = getRegionColor(regionId, false, isHovered, isDark)
@@ -122,9 +139,15 @@ export function MapSelectorMap({
 
   // Get stroke color for a region
   const getRegionStroke = (regionId: string): string => {
+    const isExcluded = isRegionExcluded(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
+
+    // Excluded regions get subtle stroke
+    if (isExcluded) {
+      return isDark ? '#374151' : '#d1d5db'
+    }
 
     if (isHovered) {
       return isDark ? '#60a5fa' : '#1d4ed8'
@@ -191,27 +214,32 @@ export function MapSelectorMap({
         />
 
         {/* Render each region */}
-        {displayRegions.map((region) => (
-          <path
-            key={region.id}
-            data-region={region.id}
-            d={region.path}
-            fill={getRegionFill(region.id)}
-            stroke={getRegionStroke(region.id)}
-            strokeWidth={getRegionStrokeWidth(region.id)}
-            onMouseEnter={() => onRegionHover(region.id)}
-            onMouseLeave={() => onRegionHover(null)}
-            onClick={(e) => {
-              e.stopPropagation()
-              onRegionClick(region.id)
-            }}
-            style={{
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              pointerEvents: 'all',
-            }}
-          />
-        ))}
+        {displayRegions.map((region) => {
+          const isExcluded = excludedRegions.includes(region.id)
+          return (
+            <path
+              key={region.id}
+              data-region={region.id}
+              data-excluded={isExcluded ? 'true' : undefined}
+              d={region.path}
+              fill={getRegionFill(region.id)}
+              stroke={getRegionStroke(region.id)}
+              strokeWidth={getRegionStrokeWidth(region.id)}
+              onMouseEnter={() => onRegionHover(region.id)}
+              onMouseLeave={() => onRegionHover(null)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRegionClick(region.id)
+              }}
+              style={{
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                pointerEvents: 'all',
+                opacity: isExcluded ? 0.5 : 1,
+              }}
+            />
+          )
+        })}
       </svg>
     </div>
   )

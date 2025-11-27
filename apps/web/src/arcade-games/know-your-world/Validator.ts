@@ -4,17 +4,19 @@ import type {
   KnowYourWorldMove,
   KnowYourWorldState,
   GuessRecord,
+  AssistanceLevel,
 } from './types'
+import type { RegionSize } from './maps'
 
 /**
  * Lazy-load map functions to avoid importing ES modules at module init time
  * This is critical for server-side usage where ES modules can't be required
  */
-async function getFilteredMapDataLazy(
-  ...args: Parameters<typeof import('./maps').getFilteredMapData>
+async function getFilteredMapDataBySizesLazy(
+  ...args: Parameters<typeof import('./maps').getFilteredMapDataBySizes>
 ) {
-  const { getFilteredMapData } = await import('./maps')
-  return getFilteredMapData(...args)
+  const { getFilteredMapDataBySizes } = await import('./maps')
+  return getFilteredMapDataBySizes(...args)
 }
 
 export class KnowYourWorldValidator
@@ -41,14 +43,18 @@ export class KnowYourWorldValidator
         return this.validateSetMap(state, move.data.selectedMap)
       case 'SET_MODE':
         return this.validateSetMode(state, move.data.gameMode)
-      case 'SET_DIFFICULTY':
-        return this.validateSetDifficulty(state, move.data.difficulty)
+      case 'SET_REGION_SIZES':
+        return this.validateSetRegionSizes(state, move.data.includeSizes)
+      case 'SET_ASSISTANCE_LEVEL':
+        return this.validateSetAssistanceLevel(state, move.data.assistanceLevel)
       case 'SET_STUDY_DURATION':
         return this.validateSetStudyDuration(state, move.data.studyDuration)
       case 'SET_CONTINENT':
         return this.validateSetContinent(state, move.data.selectedContinent)
       case 'GIVE_UP':
         return await this.validateGiveUp(state, move.playerId, move.userId)
+      case 'REQUEST_HINT':
+        return this.validateRequestHint(state, move.playerId, move.timestamp)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
@@ -63,14 +69,19 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Can only start from setup phase' }
     }
 
-    const { activePlayers, playerMetadata, selectedMap, gameMode, difficulty } = data
+    const { activePlayers, playerMetadata, selectedMap, gameMode, includeSizes, assistanceLevel } =
+      data
 
     if (!activePlayers || activePlayers.length === 0) {
       return { valid: false, error: 'Need at least 1 player' }
     }
 
-    // Get map data and shuffle regions (with continent and difficulty filters)
-    const mapData = await getFilteredMapDataLazy(selectedMap, state.selectedContinent, difficulty)
+    // Get map data and shuffle regions (with continent and size filters)
+    const mapData = await getFilteredMapDataBySizesLazy(
+      selectedMap,
+      state.selectedContinent,
+      includeSizes || state.includeSizes
+    )
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 
@@ -96,7 +107,8 @@ export class KnowYourWorldValidator
       playerMetadata,
       selectedMap,
       gameMode,
-      difficulty,
+      includeSizes: includeSizes || state.includeSizes,
+      assistanceLevel: assistanceLevel || state.assistanceLevel,
       studyTimeRemaining: shouldStudy ? state.studyDuration : 0,
       studyStartTime: shouldStudy ? Date.now() : 0,
       currentPrompt: shouldStudy ? null : shuffledRegions[0],
@@ -110,6 +122,8 @@ export class KnowYourWorldValidator
       startTime: Date.now(),
       giveUpReveal: null,
       giveUpVotes: [],
+      hintsUsed: 0,
+      hintActive: null,
     }
 
     return { valid: true, newState }
@@ -179,6 +193,7 @@ export class KnowYourWorldValidator
           endTime: Date.now(),
           giveUpReveal: null,
           giveUpVotes: [], // Clear votes when game ends
+          hintActive: null,
           activeUserIds,
         }
         return { valid: true, newState }
@@ -206,6 +221,7 @@ export class KnowYourWorldValidator
         guessHistory,
         giveUpReveal: null,
         giveUpVotes: [], // Clear votes when moving to next region
+        hintActive: null, // Clear hint when moving to next region
         activeUserIds,
       }
 
@@ -236,7 +252,9 @@ export class KnowYourWorldValidator
       return {
         valid: true,
         newState,
-        error: `Incorrect! Try again. Looking for: ${state.currentPrompt}`,
+        // Error message includes clicked region name for client to format based on difficulty
+        // Format: "CLICKED:[regionName]" so client can parse and format appropriately
+        error: `CLICKED:${regionName}`,
       }
     }
   }
@@ -255,11 +273,11 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Can only start next round from results' }
     }
 
-    // Get map data and shuffle regions (with continent and difficulty filters)
-    const mapData = await getFilteredMapDataLazy(
+    // Get map data and shuffle regions (with continent and size filters)
+    const mapData = await getFilteredMapDataBySizesLazy(
       state.selectedMap,
       state.selectedContinent,
-      state.difficulty
+      state.includeSizes
     )
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
@@ -292,6 +310,8 @@ export class KnowYourWorldValidator
       endTime: undefined,
       giveUpReveal: null,
       giveUpVotes: [],
+      hintsUsed: 0,
+      hintActive: null,
     }
 
     return { valid: true, newState }
@@ -340,14 +360,33 @@ export class KnowYourWorldValidator
     return { valid: true, newState }
   }
 
-  private validateSetDifficulty(state: KnowYourWorldState, difficulty: string): ValidationResult {
+  private validateSetRegionSizes(
+    state: KnowYourWorldState,
+    includeSizes: RegionSize[]
+  ): ValidationResult {
     if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only change difficulty during setup' }
+      return { valid: false, error: 'Can only change region sizes during setup' }
     }
 
     const newState: KnowYourWorldState = {
       ...state,
-      difficulty,
+      includeSizes,
+    }
+
+    return { valid: true, newState }
+  }
+
+  private validateSetAssistanceLevel(
+    state: KnowYourWorldState,
+    assistanceLevel: AssistanceLevel
+  ): ValidationResult {
+    if (state.gamePhase !== 'setup') {
+      return { valid: false, error: 'Can only change assistance level during setup' }
+    }
+
+    const newState: KnowYourWorldState = {
+      ...state,
+      assistanceLevel,
     }
 
     return { valid: true, newState }
@@ -493,10 +532,10 @@ export class KnowYourWorldValidator
     activeUserIds: string[]
   ): Promise<ValidationResult> {
     // Get region info for the reveal
-    const mapData = await getFilteredMapDataLazy(
+    const mapData = await getFilteredMapDataBySizesLazy(
       state.selectedMap,
       state.selectedContinent,
-      state.difficulty
+      state.includeSizes
     )
     const region = mapData.regions.find((r) => r.id === state.currentPrompt)
 
@@ -511,10 +550,11 @@ export class KnowYourWorldValidator
       ? existingGivenUp
       : [...existingGivenUp, region.id]
 
-    // Determine re-ask position based on difficulty
-    // Easy: re-ask soon (after 2-3 regions)
-    // Hard: re-ask at the end
-    const reaskDelay = state.difficulty === 'easy' ? 3 : state.regionsToFind.length
+    // Determine re-ask position based on assistance level
+    // Guided/Helpful: re-ask soon (after 2-3 regions) to reinforce learning
+    // Standard/None: re-ask at the end
+    const isHighAssistance = state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful'
+    const reaskDelay = isHighAssistance ? 3 : state.regionsToFind.length
 
     // Build new regions queue: take next regions, then insert given-up region at appropriate position
     const remainingRegions = [...state.regionsToFind]
@@ -547,7 +587,39 @@ export class KnowYourWorldValidator
         timestamp: Date.now(),
       },
       giveUpVotes: [], // Clear votes after give up is executed
+      hintActive: null, // Clear hint when moving to next region
       activeUserIds,
+    }
+
+    return { valid: true, newState }
+  }
+
+  private validateRequestHint(
+    state: KnowYourWorldState,
+    playerId: string,
+    timestamp: number
+  ): ValidationResult {
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Can only request hints during playing phase' }
+    }
+
+    if (!state.currentPrompt) {
+      return { valid: false, error: 'No region to hint' }
+    }
+
+    // For turn-based: check if it's this player's turn
+    if (state.gameMode === 'turn-based' && state.currentPlayer !== playerId) {
+      return { valid: false, error: 'Not your turn' }
+    }
+
+    // Set hint active with current region
+    const newState: KnowYourWorldState = {
+      ...state,
+      hintsUsed: (state.hintsUsed ?? 0) + 1,
+      hintActive: {
+        regionId: state.currentPrompt,
+        timestamp,
+      },
     }
 
     return { valid: true, newState }
@@ -560,11 +632,28 @@ export class KnowYourWorldValidator
   getInitialState(config: unknown): KnowYourWorldState {
     const typedConfig = config as KnowYourWorldConfig
 
+    // Validate includeSizes - should be an array of valid size strings
+    const validSizes: RegionSize[] = ['huge', 'large', 'medium', 'small', 'tiny']
+    const rawSizes = typedConfig?.includeSizes
+    const includeSizes: RegionSize[] = Array.isArray(rawSizes)
+      ? rawSizes.filter((s: string) => validSizes.includes(s as RegionSize))
+      : ['huge', 'large', 'medium'] // Default
+
+    // Validate assistanceLevel
+    const validAssistanceLevels: AssistanceLevel[] = ['guided', 'helpful', 'standard', 'none']
+    const rawAssistance = typedConfig?.assistanceLevel
+    const assistanceLevel: AssistanceLevel = validAssistanceLevels.includes(
+      rawAssistance as AssistanceLevel
+    )
+      ? (rawAssistance as AssistanceLevel)
+      : 'helpful' // Default
+
     return {
       gamePhase: 'setup',
       selectedMap: typedConfig?.selectedMap || 'world',
       gameMode: typedConfig?.gameMode || 'cooperative',
-      difficulty: typedConfig?.difficulty || 'easy',
+      includeSizes,
+      assistanceLevel,
       studyDuration: typedConfig?.studyDuration || 0,
       selectedContinent: typedConfig?.selectedContinent || 'all',
       studyTimeRemaining: 0,
@@ -583,6 +672,8 @@ export class KnowYourWorldValidator
       playerMetadata: {},
       giveUpReveal: null,
       giveUpVotes: [],
+      hintsUsed: 0,
+      hintActive: null,
     }
   }
 

@@ -15,6 +15,7 @@ import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum
 import {
   WORLD_MAP,
   USA_MAP,
+  ASSISTANCE_LEVELS,
   filterRegionsByContinent,
   parseViewBox,
   calculateFitCropViewBox,
@@ -200,7 +201,7 @@ interface MapRendererProps {
   mapData: MapData
   regionsFound: string[]
   currentPrompt: string | null
-  difficulty: string // Difficulty level ID
+  assistanceLevel: 'guided' | 'helpful' | 'standard' | 'none' // Controls gameplay features (hints, hot/cold)
   selectedMap: 'world' | 'usa' // Map ID for calculating excluded regions
   selectedContinent: string // Continent ID for calculating excluded regions
   onRegionClick: (regionId: string, regionName: string) => void
@@ -223,6 +224,11 @@ interface MapRendererProps {
   giveUpReveal: {
     regionId: string
     regionName: string
+    timestamp: number
+  } | null
+  // Hint highlight animation
+  hintActive: {
+    regionId: string
     timestamp: number
   } | null
   // Give up callback
@@ -301,13 +307,14 @@ export function MapRenderer({
   mapData,
   regionsFound,
   currentPrompt,
-  difficulty,
+  assistanceLevel,
   selectedMap,
   selectedContinent,
   onRegionClick,
   guessHistory,
   playerMetadata,
   giveUpReveal,
+  hintActive,
   onGiveUp,
   forceTuning = {},
   showDebugBoundingBoxes = SHOW_DEBUG_BOUNDING_BOXES,
@@ -333,7 +340,7 @@ export function MapRenderer({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Calculate excluded regions (regions filtered out by difficulty/continent)
+  // Calculate excluded regions (regions filtered out by size/continent)
   const excludedRegions = useMemo(() => {
     // Get full unfiltered map data
     const fullMapData = selectedMap === 'world' ? WORLD_MAP : USA_MAP
@@ -348,26 +355,16 @@ export function MapRenderer({
     const includedRegionIds = new Set(mapData.regions.map((r) => r.id))
     const excluded = allRegions.filter((r) => !includedRegionIds.has(r.id))
 
-    console.log('[MapRenderer] Excluded regions by difficulty:', {
-      total: allRegions.length,
-      included: includedRegionIds.size,
-      excluded: excluded.length,
-      excludedNames: excluded.map((r) => r.name),
-    })
-
-    // Debug: Check if Gibraltar is included or excluded
-    const gibraltar = allRegions.find((r) => r.id === 'gi')
-    const gibraltarIncluded = includedRegionIds.has('gi')
-    if (gibraltar) {
-      console.log('[Gibraltar Debug]', gibraltarIncluded ? '✅ INCLUDED' : '❌ EXCLUDED', {
-        inFilteredMap: gibraltarIncluded,
-        difficulty,
-        continent: selectedContinent,
-      })
-    }
-
     return excluded
-  }, [mapData, selectedMap, selectedContinent, difficulty])
+  }, [mapData, selectedMap, selectedContinent])
+
+  // Get current assistance level config
+  const currentAssistanceLevel = useMemo(() => {
+    return ASSISTANCE_LEVELS.find((level) => level.id === assistanceLevel) || ASSISTANCE_LEVELS[1] // Default to 'helpful'
+  }, [assistanceLevel])
+
+  // Whether hot/cold is allowed by the assistance level (not user preference)
+  const assistanceAllowsHotCold = currentAssistanceLevel?.hotColdEnabled ?? false
 
   // Create a set of excluded region IDs for quick lookup
   const excludedRegionIds = useMemo(
@@ -464,6 +461,10 @@ export function MapRenderer({
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
   const [isGiveUpAnimating, setIsGiveUpAnimating] = useState(false) // Track if animation in progress
+
+  // Hint animation state
+  const [hintFlashProgress, setHintFlashProgress] = useState(0) // 0-1 pulsing value
+  const [isHintAnimating, setIsHintAnimating] = useState(false) // Track if animation in progress
   // Saved button position to prevent jumping during zoom animation
   const [savedButtonPosition, setSavedButtonPosition] = useState<{
     top: number
@@ -722,11 +723,13 @@ export function MapRenderer({
   const autoHintRef = useRef(autoHint)
   const autoSpeakRef = useRef(autoSpeak)
   const withAccentRef = useRef(withAccent)
-  const hotColdEnabledRef = useRef(hotColdEnabled)
+  // Hot/cold is only active when both: 1) assistance level allows it, 2) user has it enabled
+  const effectiveHotColdEnabled = assistanceAllowsHotCold && hotColdEnabled
+  const hotColdEnabledRef = useRef(effectiveHotColdEnabled)
   autoHintRef.current = autoHint
   autoSpeakRef.current = autoSpeak
   withAccentRef.current = withAccent
-  hotColdEnabledRef.current = hotColdEnabled
+  hotColdEnabledRef.current = effectiveHotColdEnabled
 
   // Handle hint bubble and auto-speak when the prompt changes (new region to find)
   // Only runs when currentPrompt changes, not when settings change
@@ -747,6 +750,7 @@ export function MapRenderer({
   }, [currentPrompt, hasHint, hintText, isSpeechSupported, speakHint])
 
   // Hot/cold audio feedback hook
+  // Only enabled if: 1) assistance level allows it, 2) user toggle is on, 3) not touch device
   // Use continent name for language lookup if available, otherwise use selectedMap
   const hotColdMapName = selectedContinent || selectedMap
   const {
@@ -754,7 +758,7 @@ export function MapRenderer({
     reset: resetHotCold,
     lastFeedbackType: hotColdFeedbackType,
   } = useHotColdFeedback({
-    enabled: hotColdEnabled && !isTouchDevice,
+    enabled: assistanceAllowsHotCold && hotColdEnabled && !isTouchDevice,
     targetRegionId: currentPrompt,
     isSpeaking,
     mapName: hotColdMapName,
@@ -921,12 +925,6 @@ export function MapRenderer({
     const cropRegion = parseViewBox(mapData.customCrop)
 
     const result = calculateFitCropViewBox(originalBounds, cropRegion, containerAspect)
-    console.log('[MapRenderer] Calculated displayViewBox:', {
-      customCrop: mapData.customCrop,
-      originalViewBox: mapData.originalViewBox,
-      containerAspect: containerAspect.toFixed(2),
-      result,
-    })
     return result
   }, [mapData.customCrop, mapData.originalViewBox, mapData.viewBox, svgDimensions])
 
@@ -1163,6 +1161,56 @@ export function MapRenderer({
       console.log('[GiveUp Zoom] Cleanup - cancelling previous animation')
     }
   }, [giveUpReveal?.timestamp]) // Re-run when timestamp changes
+
+  // Hint animation effect - brief pulse to highlight target region
+  useEffect(() => {
+    if (!hintActive) {
+      setHintFlashProgress(0)
+      setIsHintAnimating(false)
+      return
+    }
+
+    // Track if this effect has been cleaned up
+    let isCancelled = false
+    let animationFrameId: number | null = null
+
+    // Start animation
+    setIsHintAnimating(true)
+
+    // Animation: 2 pulses over 1.5 seconds (shorter than give-up)
+    const duration = 1500
+    const pulses = 2
+    const startTime = Date.now()
+
+    const animate = () => {
+      if (isCancelled) return
+
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+
+      // Create pulsing effect: sin wave for smooth on/off
+      const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
+      setHintFlashProgress(pulseProgress)
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate)
+      } else {
+        // Animation complete
+        setHintFlashProgress(0)
+        setIsHintAnimating(false)
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(animate)
+
+    // Cleanup
+    return () => {
+      isCancelled = true
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+    }
+  }, [hintActive?.timestamp]) // Re-run when timestamp changes
 
   // Keyboard shortcuts - Shift for magnifier, H for hint
   useEffect(() => {
@@ -1569,15 +1617,7 @@ export function MapRenderer({
       setLabelPositions(positions)
       setSmallRegionLabelPositions(smallPositions)
 
-      // Debug: Log summary
-      console.log('[MapRenderer] Label positions updated:', {
-        mapId: mapData.id,
-        totalRegions: mapData.regions.length,
-        regularLabels: positions.length,
-        smallRegionLabels: smallPositions.length,
-        viewBox: mapData.viewBox,
-        svgDimensions,
-      })
+      // Debug log removed to reduce spam
     }
 
     // Small delay to ensure ghost elements are rendered
@@ -1604,10 +1644,10 @@ export function MapRenderer({
   const viewBoxHeight = viewBoxParts[3] || 1000
 
   const showOutline = (region: MapRegion): boolean => {
-    // Easy mode: always show outlines
-    if (difficulty === 'easy') return true
+    // Guided/Helpful modes: always show outlines
+    if (assistanceLevel === 'guided' || assistanceLevel === 'helpful') return true
 
-    // Medium/Hard mode: only show outline on hover or if found
+    // Standard/None modes: only show outline on hover or if found
     return hoveredRegion === region.id || regionsFound.includes(region.id)
   }
 
@@ -2055,9 +2095,7 @@ export function MapRenderer({
               svgRect.width
             )
             adaptiveZoom = Math.min(adaptiveZoom, maxZoom)
-            console.log(
-              `[Magnifier] Capping zoom at ${adaptiveZoom.toFixed(1)}× (threshold: ${PRECISION_MODE_THRESHOLD} px/px, would have been ${screenPixelRatio.toFixed(1)} px/px)`
-            )
+            // Zoom cap log removed to reduce spam
           }
         }
       }
@@ -2363,9 +2401,11 @@ export function MapRenderer({
           const isFound = regionsFound.includes(region.id) || isExcluded // Treat excluded as pre-found
           const playerId = !isExcluded && isFound ? getPlayerWhoFoundRegion(region.id) : null
           const isBeingRevealed = giveUpReveal?.regionId === region.id
+          const isBeingHinted = hintActive?.regionId === region.id
 
           // Special styling for excluded regions (grayed out, pre-labeled)
           // Bright gold flash for give up reveal with high contrast
+          // Cyan flash for hint
           const fill = isBeingRevealed
             ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})` // Brighter gold, higher base opacity
             : isExcluded
@@ -2413,6 +2453,18 @@ export function MapRenderer({
                   strokeWidth={8}
                   vectorEffect="non-scaling-stroke"
                   style={{ filter: 'blur(4px)' }}
+                />
+              )}
+              {/* Glow effect for hint - cyan pulsing outline */}
+              {isBeingHinted && (
+                <path
+                  d={region.path}
+                  fill={`rgba(0, 200, 255, ${0.1 + hintFlashProgress * 0.3})`}
+                  stroke={`rgba(0, 200, 255, ${0.4 + hintFlashProgress * 0.6})`}
+                  strokeWidth={6}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ filter: 'blur(3px)' }}
+                  pointerEvents="none"
                 />
               )}
               {/* Network hover border (crisp outline in player color) */}
@@ -4552,9 +4604,10 @@ export function MapRenderer({
           )
         })()}
 
-      {/* Hot/Cold button - only show on desktop with speech support */}
+      {/* Hot/Cold button - only show on desktop with speech support when assistance level allows */}
       {isSpeechSupported &&
         !isTouchDevice &&
+        assistanceAllowsHotCold &&
         (() => {
           if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
 

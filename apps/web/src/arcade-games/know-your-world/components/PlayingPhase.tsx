@@ -55,16 +55,16 @@ export function PlayingPhase() {
   const currentRegionName = currentRegion?.name ?? null
   const currentRegionId = currentRegion?.id ?? null
 
-  // Debug logging
-  console.log('[PlayingPhase] Current prompt lookup:', {
-    currentPrompt: state.currentPrompt,
-    currentRegionName,
-    difficulty: state.difficulty,
-    totalFilteredRegions: mapData.regions.length,
-    filteredRegionIds: mapData.regions.map((r) => r.id).slice(0, 10),
-    regionsToFindCount: state.regionsToFind.length,
-    regionsToFindSample: state.regionsToFind.slice(0, 5),
-  })
+  // Debug warning if prompt not found in filtered regions (indicates server/client filter mismatch)
+  if (state.currentPrompt && !currentRegion) {
+    console.warn('[PlayingPhase] Prompt not in filtered regions - server/client filter mismatch:', {
+      currentPrompt: state.currentPrompt,
+      difficulty: state.difficulty,
+      selectedContinent: state.selectedContinent,
+      clientFilteredCount: mapData.regions.length,
+      serverRegionsToFindCount: state.regionsToFind.length,
+    })
+  }
 
   return (
     <div
@@ -139,13 +139,14 @@ export function PlayingPhase() {
               mapData={mapData}
               regionsFound={state.regionsFound}
               currentPrompt={state.currentPrompt}
-              difficulty={state.difficulty}
+              assistanceLevel={state.assistanceLevel}
               selectedMap={state.selectedMap}
               selectedContinent={state.selectedContinent}
               onRegionClick={clickRegion}
               guessHistory={state.guessHistory}
               playerMetadata={state.playerMetadata}
               giveUpReveal={state.giveUpReveal}
+              hintActive={state.hintActive ?? null}
               onGiveUp={giveUp}
               gameMode={state.gameMode}
               currentPlayer={state.currentPlayer}

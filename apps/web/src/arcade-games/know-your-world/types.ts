@@ -1,12 +1,23 @@
 import type { GameConfig, GameMove, GameState } from '@/lib/arcade/game-sdk'
 import type { ContinentId } from './continents'
-import type { MapDifficultyConfig } from './maps'
+import type { MapDifficultyConfig, RegionSize } from './maps'
+
+/**
+ * Assistance level - controls gameplay features (hints, hot/cold, etc.)
+ * Separate from region filtering
+ */
+export type AssistanceLevel = 'guided' | 'helpful' | 'standard' | 'none'
 
 // Game configuration (persisted to database)
 export interface KnowYourWorldConfig extends GameConfig {
   selectedMap: 'world' | 'usa'
   gameMode: 'cooperative' | 'race' | 'turn-based'
-  difficulty: string // Difficulty level ID (e.g., 'easy', 'medium', 'hard', 'standard')
+  // Region filtering (which regions to include by size)
+  includeSizes: RegionSize[] // e.g., ['huge', 'large'] for major regions only
+  // Assistance level (gameplay features)
+  assistanceLevel: AssistanceLevel
+  // Legacy field - kept for backwards compatibility
+  difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 }
@@ -46,7 +57,12 @@ export interface KnowYourWorldState extends GameState {
   // Setup configuration
   selectedMap: 'world' | 'usa'
   gameMode: 'cooperative' | 'race' | 'turn-based'
-  difficulty: string // Difficulty level ID (e.g., 'easy', 'medium', 'hard', 'standard')
+  // Region filtering (which regions to include by size)
+  includeSizes: RegionSize[] // e.g., ['huge', 'large'] for major regions only
+  // Assistance level (gameplay features)
+  assistanceLevel: AssistanceLevel
+  // Legacy field - kept for backwards compatibility during migration
+  difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
   studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 
@@ -84,6 +100,13 @@ export interface KnowYourWorldState extends GameState {
 
   // Unanimous give-up voting (for cooperative multiplayer)
   giveUpVotes: string[] // Session/viewer IDs (userIds) who have voted to give up on current prompt
+
+  // Hint system
+  hintsUsed: number // Total hints used this game
+  hintActive: {
+    regionId: string
+    timestamp: number // For animation timing
+  } | null
 }
 
 // Move types
@@ -98,7 +121,8 @@ export type KnowYourWorldMove =
         playerMetadata: Record<string, any>
         selectedMap: 'world' | 'usa'
         gameMode: 'cooperative' | 'race' | 'turn-based'
-        difficulty: string // Difficulty level ID
+        includeSizes: RegionSize[] // Which region sizes to include
+        assistanceLevel: AssistanceLevel // Gameplay assistance level
       }
     }
   | {
@@ -144,12 +168,21 @@ export type KnowYourWorldMove =
       }
     }
   | {
-      type: 'SET_DIFFICULTY'
+      type: 'SET_REGION_SIZES'
       playerId: string
       userId: string
       timestamp: number
       data: {
-        difficulty: string // Difficulty level ID
+        includeSizes: RegionSize[] // Which region sizes to include
+      }
+    }
+  | {
+      type: 'SET_ASSISTANCE_LEVEL'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        assistanceLevel: AssistanceLevel
       }
     }
   | {
@@ -186,6 +219,13 @@ export type KnowYourWorldMove =
     }
   | {
       type: 'GIVE_UP'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {}
+    }
+  | {
+      type: 'REQUEST_HINT'
       playerId: string
       userId: string
       timestamp: number

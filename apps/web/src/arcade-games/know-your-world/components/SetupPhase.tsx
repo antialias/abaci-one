@@ -1,13 +1,46 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import * as Select from '@radix-ui/react-select'
+import * as Checkbox from '@radix-ui/react-checkbox'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import { DrillDownMapSelector } from './DrillDownMapSelector'
-import { WORLD_MAP, USA_MAP, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
+import {
+  ALL_REGION_SIZES,
+  ASSISTANCE_LEVELS,
+  getFilteredMapDataBySizesSync,
+  REGION_SIZE_CONFIG,
+} from '../maps'
+import type { RegionSize, AssistanceLevelConfig } from '../maps'
 import type { ContinentId } from '../continents'
+
+// Get term for regions based on map type
+function getRegionTerm(selectedMap: 'world' | 'usa'): string {
+  return selectedMap === 'world' ? 'countries' : 'states'
+}
+
+// Generate feature badges for an assistance level
+function getFeatureBadges(level: AssistanceLevelConfig): Array<{ label: string; icon: string }> {
+  const badges: Array<{ label: string; icon: string }> = []
+
+  if (level.hotColdEnabled) {
+    badges.push({ label: 'Hot/cold', icon: '🔥' })
+  }
+
+  if (level.hintsMode === 'onRequest') {
+    if (level.autoHintDefault) {
+      badges.push({ label: 'Auto-hints', icon: '💡' })
+    } else {
+      badges.push({ label: 'Hints', icon: '💡' })
+    }
+  } else if (level.hintsMode === 'limited' && level.hintLimit) {
+    badges.push({ label: `${level.hintLimit} hints`, icon: '💡' })
+  }
+
+  return badges
+}
 
 // Game mode options with rich descriptions
 const GAME_MODE_OPTIONS = [
@@ -62,12 +95,42 @@ const STUDY_TIME_OPTIONS = [
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, startGame, setMap, setMode, setDifficulty, setStudyDuration, setContinent } =
-    useKnowYourWorld()
+  const {
+    state,
+    startGame,
+    setMap,
+    setMode,
+    setRegionSizes,
+    setAssistanceLevel,
+    setStudyDuration,
+    setContinent,
+  } = useKnowYourWorld()
 
-  // Get difficulty config for current map
-  const mapData = state.selectedMap === 'world' ? WORLD_MAP : USA_MAP
-  const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
+  // Calculate region counts per size category
+  const regionCountsBySize = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const size of ALL_REGION_SIZES) {
+      try {
+        const filteredData = getFilteredMapDataBySizesSync(
+          state.selectedMap,
+          state.selectedContinent,
+          [size]
+        )
+        counts[size] = filteredData.regions.length
+      } catch {
+        counts[size] = 0
+      }
+    }
+    return counts
+  }, [state.selectedMap, state.selectedContinent])
+
+  // Calculate the total region count for current selection
+  const totalRegionCount = useMemo(() => {
+    return state.includeSizes.reduce((sum, size) => sum + (regionCountsBySize[size] || 0), 0)
+  }, [state.includeSizes, regionCountsBySize])
+
+  // Get the term for regions (countries/states)
+  const regionTerm = getRegionTerm(state.selectedMap)
 
   // Handle selection change from drill-down selector
   const handleSelectionChange = useCallback(
@@ -81,7 +144,21 @@ export function SetupPhase() {
   // Get selected options for display
   const selectedMode = GAME_MODE_OPTIONS.find((opt) => opt.value === state.gameMode)
   const selectedStudyTime = STUDY_TIME_OPTIONS.find((opt) => opt.value === state.studyDuration)
-  const selectedDifficulty = difficultyConfig.levels.find((level) => level.id === state.difficulty)
+  const selectedAssistance = ASSISTANCE_LEVELS.find((level) => level.id === state.assistanceLevel)
+
+  // Handle toggling a region size
+  const toggleRegionSize = useCallback(
+    (size: RegionSize) => {
+      if (state.includeSizes.includes(size)) {
+        // Don't allow removing the last size
+        if (state.includeSizes.length === 1) return
+        setRegionSizes(state.includeSizes.filter((s) => s !== size))
+      } else {
+        setRegionSizes([...state.includeSizes, size])
+      }
+    },
+    [state.includeSizes, setRegionSizes]
+  )
 
   // Styles for Radix Select components
   const triggerStyles = css({
@@ -192,6 +269,7 @@ export function SetupPhase() {
           selectedContinent={state.selectedContinent}
           onSelectionChange={handleSelectionChange}
           onStartGame={startGame}
+          includeSizes={state.includeSizes}
         />
       </div>
 
@@ -281,48 +359,78 @@ export function SetupPhase() {
           </Select.Root>
         </div>
 
-        {/* Difficulty (only show if multiple levels) */}
-        {difficultyConfig.levels.length > 1 && (
-          <div
-            data-setting="difficulty"
-            className={css({ display: 'flex', flexDirection: 'column' })}
+        {/* Assistance Level */}
+        <div
+          data-setting="assistance-level"
+          className={css({ display: 'flex', flexDirection: 'column' })}
+        >
+          <label className={labelStyles}>Assistance</label>
+          <Select.Root
+            value={state.assistanceLevel}
+            onValueChange={(value) =>
+              setAssistanceLevel(value as 'guided' | 'helpful' | 'standard' | 'none')
+            }
           >
-            <label className={labelStyles}>Difficulty</label>
-            <Select.Root value={state.difficulty} onValueChange={setDifficulty}>
-              <Select.Trigger className={triggerStyles}>
-                <span className={css({ fontSize: '2xl' })}>
-                  {selectedDifficulty?.emoji || '🎯'}
-                </span>
-                <div className={css({ flex: 1, textAlign: 'left' })}>
-                  <div
-                    className={css({
-                      fontWeight: '600',
-                      color: isDark ? 'gray.100' : 'gray.900',
-                      fontSize: 'sm',
-                    })}
-                  >
-                    {selectedDifficulty?.label}
-                  </div>
-                  <div
-                    className={css({
-                      fontSize: 'xs',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                      lineHeight: 'tight',
-                    })}
-                  >
-                    {selectedDifficulty?.description || 'Select difficulty level'}
-                  </div>
+            <Select.Trigger className={triggerStyles}>
+              <span className={css({ fontSize: '2xl' })}>{selectedAssistance?.emoji || '💡'}</span>
+              <div className={css({ flex: 1, textAlign: 'left' })}>
+                <div
+                  className={css({
+                    fontWeight: '600',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    fontSize: 'sm',
+                  })}
+                >
+                  {selectedAssistance?.label}
                 </div>
-                <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
-                  ▼
-                </Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Content className={contentStyles} position="popper" sideOffset={5}>
-                  <Select.Viewport>
-                    {difficultyConfig.levels.map((level) => (
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    lineHeight: 'tight',
+                  })}
+                >
+                  {selectedAssistance?.description}
+                </div>
+                {/* Feature badges */}
+                {selectedAssistance && (
+                  <div
+                    className={css({
+                      display: 'flex',
+                      gap: '1',
+                      marginTop: '1',
+                      flexWrap: 'wrap',
+                    })}
+                  >
+                    {getFeatureBadges(selectedAssistance).map((badge) => (
+                      <span
+                        key={badge.label}
+                        className={css({
+                          fontSize: '2xs',
+                          padding: '0.5 1',
+                          bg: isDark ? 'gray.700' : 'gray.200',
+                          color: isDark ? 'gray.300' : 'gray.600',
+                          rounded: 'sm',
+                        })}
+                      >
+                        {badge.icon} {badge.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+                ▼
+              </Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                <Select.Viewport>
+                  {ASSISTANCE_LEVELS.map((level) => {
+                    const badges = getFeatureBadges(level)
+                    return (
                       <Select.Item key={level.id} value={level.id} className={itemStyles}>
-                        <span className={css({ fontSize: '2xl' })}>{level.emoji || '🎯'}</span>
+                        <span className={css({ fontSize: '2xl' })}>{level.emoji}</span>
                         <div className={css({ flex: 1 })}>
                           <Select.ItemText>
                             <span
@@ -342,17 +450,41 @@ export function SetupPhase() {
                               lineHeight: 'tight',
                             })}
                           >
-                            {level.description || `${level.label} difficulty`}
+                            {level.description}
+                          </div>
+                          {/* Feature badges */}
+                          <div
+                            className={css({
+                              display: 'flex',
+                              gap: '1',
+                              marginTop: '1',
+                              flexWrap: 'wrap',
+                            })}
+                          >
+                            {badges.map((badge) => (
+                              <span
+                                key={badge.label}
+                                className={css({
+                                  fontSize: '2xs',
+                                  padding: '0.5 1',
+                                  bg: isDark ? 'gray.700' : 'gray.200',
+                                  color: isDark ? 'gray.300' : 'gray.600',
+                                  rounded: 'sm',
+                                })}
+                              >
+                                {badge.icon} {badge.label}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </Select.Item>
-                    ))}
-                  </Select.Viewport>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
-          </div>
-        )}
+                    )
+                  })}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
 
         {/* Study Duration */}
         <div
@@ -431,6 +563,146 @@ export function SetupPhase() {
         </div>
       </div>
 
+      {/* Region Types Selection */}
+      <div
+        data-section="region-sizes"
+        className={css({
+          padding: '5',
+          bg: isDark ? 'gray.800/50' : 'gray.50',
+          rounded: '2xl',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '4',
+          })}
+        >
+          <label className={labelStyles} style={{ marginBottom: 0 }}>
+            Region Types
+          </label>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: '600',
+              color: isDark ? 'blue.300' : 'blue.600',
+            })}
+          >
+            {totalRegionCount} {regionTerm} selected
+          </span>
+        </div>
+        <div
+          className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '2',
+          })}
+        >
+          {ALL_REGION_SIZES.map((size) => {
+            const config = REGION_SIZE_CONFIG[size]
+            const isChecked = state.includeSizes.includes(size)
+            const isOnlyOne = state.includeSizes.length === 1 && isChecked
+            const count = regionCountsBySize[size] || 0
+
+            return (
+              <Checkbox.Root
+                key={size}
+                checked={isChecked}
+                onCheckedChange={() => toggleRegionSize(size)}
+                disabled={isOnlyOne}
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2',
+                  paddingX: '3',
+                  paddingY: '2',
+                  bg: isChecked
+                    ? isDark
+                      ? 'blue.800'
+                      : 'blue.500'
+                    : isDark
+                      ? 'gray.700'
+                      : 'white',
+                  border: '1px solid',
+                  borderColor: isChecked
+                    ? isDark
+                      ? 'blue.600'
+                      : 'blue.600'
+                    : isDark
+                      ? 'gray.600'
+                      : 'gray.300',
+                  rounded: 'full',
+                  cursor: isOnlyOne ? 'not-allowed' : 'pointer',
+                  opacity: isOnlyOne ? 0.5 : 1,
+                  transition: 'all 0.15s',
+                  _hover: isOnlyOne
+                    ? {}
+                    : {
+                        bg: isChecked
+                          ? isDark
+                            ? 'blue.700'
+                            : 'blue.600'
+                          : isDark
+                            ? 'gray.600'
+                            : 'gray.100',
+                      },
+                  _focus: {
+                    outline: 'none',
+                    boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)',
+                  },
+                })}
+              >
+                <span className={css({ fontSize: 'base' })}>{config.emoji}</span>
+                <span
+                  className={css({
+                    fontWeight: '500',
+                    color: isChecked
+                      ? 'white'
+                      : isDark
+                        ? 'gray.200'
+                        : 'gray.700',
+                    fontSize: 'sm',
+                  })}
+                >
+                  {config.label}
+                </span>
+                <span
+                  className={css({
+                    fontWeight: '600',
+                    fontSize: 'xs',
+                    color: isChecked
+                      ? isDark
+                        ? 'blue.200'
+                        : 'blue.100'
+                      : isDark
+                        ? 'gray.400'
+                        : 'gray.500',
+                    bg: isChecked
+                      ? isDark
+                        ? 'blue.700'
+                        : 'blue.600'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.200',
+                    paddingX: '1.5',
+                    paddingY: '0.5',
+                    rounded: 'full',
+                    minWidth: '6',
+                    textAlign: 'center',
+                  })}
+                >
+                  {count}
+                </span>
+              </Checkbox.Root>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Tips Section */}
       <div
         data-element="tips"
@@ -443,10 +715,12 @@ export function SetupPhase() {
           textAlign: 'center',
         })}
       >
-        <strong>Tip:</strong> Press G or click "Give Up" to skip a region you don't know.{' '}
-        {state.difficulty === 'easy'
-          ? 'On Easy, skipped regions are re-asked after a few turns.'
-          : 'On Hard, skipped regions are re-asked at the end.'}
+        <strong>Tip:</strong> Press G to give up on a region.{' '}
+        {(state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful') &&
+          'Skipped regions return after 2-3 turns.'}
+        {state.assistanceLevel === 'standard' && 'Giving up counts against your score.'}
+        {state.assistanceLevel === 'none' && 'No assistance available in this mode.'}
+        {selectedAssistance?.hintsMode === 'onRequest' && ' Press H for hints!'}
       </div>
     </div>
   )

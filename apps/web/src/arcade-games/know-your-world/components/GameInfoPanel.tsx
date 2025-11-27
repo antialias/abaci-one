@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import type { MapData } from '../types'
-import { getCountryFlagEmoji } from '../maps'
+import { getCountryFlagEmoji, WORLD_MAP, USA_MAP, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -34,10 +34,61 @@ export function GameInfoPanel({
     selectedMap === 'world' && currentRegionId ? getCountryFlagEmoji(currentRegionId) : ''
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError, giveUp } = useKnowYourWorld()
+  const { state, lastError, clearError, giveUp, requestHint } = useKnowYourWorld()
+
+  // Get current difficulty level config
+  const currentDifficultyLevel = useMemo(() => {
+    const mapDiffConfig =
+      (selectedMap === 'world' ? WORLD_MAP : USA_MAP).difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
+    return (
+      mapDiffConfig.levels.find((level) => level.id === state.difficulty) || mapDiffConfig.levels[0]
+    )
+  }, [selectedMap, state.difficulty])
+
+  // Parse error message and format based on difficulty config
+  const formattedError = useMemo(() => {
+    if (!lastError) return null
+
+    // Check for "CLICKED:" prefix which indicates a wrong click
+    if (lastError.startsWith('CLICKED:')) {
+      const regionName = lastError.slice('CLICKED:'.length)
+      if (currentDifficultyLevel?.wrongClickShowsName) {
+        return `That was ${regionName}`
+      }
+      return null // Just show "Wrong!" without region name
+    }
+
+    // Other errors pass through as-is
+    return lastError
+  }, [lastError, currentDifficultyLevel])
 
   // Track if animation is in progress (local state based on timestamp)
   const [isAnimating, setIsAnimating] = useState(false)
+
+  // Determine if hints are available based on difficulty config
+  const hintsAvailable = useMemo(() => {
+    const hintsMode = currentDifficultyLevel?.hintsMode
+    if (hintsMode === 'none') return false
+    if (hintsMode === 'limited') {
+      const limit = currentDifficultyLevel?.hintLimit ?? 0
+      return (state.hintsUsed ?? 0) < limit
+    }
+    return hintsMode === 'onRequest'
+  }, [currentDifficultyLevel, state.hintsUsed])
+
+  // Calculate remaining hints for limited mode
+  const remainingHints = useMemo(() => {
+    if (currentDifficultyLevel?.hintsMode !== 'limited') return null
+    const limit = currentDifficultyLevel?.hintLimit ?? 0
+    return Math.max(0, limit - (state.hintsUsed ?? 0))
+  }, [currentDifficultyLevel, state.hintsUsed])
+
+  // Handle hint request
+  const handleHint = useCallback(() => {
+    if (hintsAvailable && state.gamePhase === 'playing' && !isAnimating) {
+      requestHint()
+    }
+  }, [hintsAvailable, state.gamePhase, isAnimating, requestHint])
 
   // Check if animation is in progress based on timestamp
   useEffect(() => {
@@ -188,6 +239,51 @@ export function GameInfoPanel({
             {foundCount}/{totalRegions}
           </div>
         </div>
+
+        {/* Hint button - only show if hints are enabled */}
+        {currentDifficultyLevel?.hintsMode !== 'none' && (
+          <button
+            data-action="request-hint"
+            onClick={handleHint}
+            disabled={!hintsAvailable || isAnimating || state.gamePhase !== 'playing'}
+            className={css({
+              padding: '2',
+              fontSize: 'xs',
+              fontWeight: 'semibold',
+              bg: hintsAvailable
+                ? isDark
+                  ? 'yellow.800'
+                  : 'yellow.100'
+                : isDark
+                  ? 'gray.700'
+                  : 'gray.200',
+              color: hintsAvailable
+                ? isDark
+                  ? 'yellow.200'
+                  : 'yellow.800'
+                : isDark
+                  ? 'gray.500'
+                  : 'gray.500',
+              border: '2px solid',
+              borderColor: hintsAvailable ? 'yellow.500' : isDark ? 'gray.600' : 'gray.300',
+              rounded: 'md',
+              cursor: hintsAvailable ? 'pointer' : 'not-allowed',
+              opacity: hintsAvailable ? 1 : 0.6,
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5',
+              _hover: hintsAvailable ? { bg: isDark ? 'yellow.700' : 'yellow.200' } : {},
+            })}
+            title={remainingHints !== null ? `${remainingHints} hints remaining` : 'Show hint'}
+          >
+            <span>💡</span>
+            {remainingHints !== null && (
+              <span className={css({ fontSize: '2xs' })}>{remainingHints}</span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Error Display - only shows when error exists */}
@@ -208,7 +304,9 @@ export function GameInfoPanel({
           })}
         >
           <span>⚠️</span>
-          <div className={css({ flex: 1, fontWeight: 'bold' })}>Wrong! {lastError}</div>
+          <div className={css({ flex: 1, fontWeight: 'bold' })}>
+            Wrong!{formattedError ? ` ${formattedError}` : ''}
+          </div>
           <button
             onClick={clearError}
             className={css({
@@ -270,7 +368,11 @@ export function GameInfoPanel({
             {state.gameMode === 'turn-based' && '↔️'}
           </span>
           <span>
+            {state.difficulty === 'learning' && '🌱'}
             {state.difficulty === 'easy' && '😊'}
+            {state.difficulty === 'normal' && '🎯'}
+            {state.difficulty === 'expert' && '🏆'}
+            {/* Legacy fallback */}
             {state.difficulty === 'hard' && '🤔'}
           </span>
         </div>
