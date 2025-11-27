@@ -1,10 +1,63 @@
 'use client'
 
+import { useCallback } from 'react'
+import * as Select from '@radix-ui/react-select'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
-import { ContinentSelector } from './ContinentSelector'
+import { DrillDownMapSelector } from './DrillDownMapSelector'
 import { WORLD_MAP, USA_MAP, DEFAULT_DIFFICULTY_CONFIG } from '../maps'
+import type { ContinentId } from '../continents'
+
+// Game mode options with rich descriptions
+const GAME_MODE_OPTIONS = [
+  {
+    value: 'cooperative' as const,
+    emoji: '🤝',
+    label: 'Cooperative',
+    description: 'Work together to find all regions',
+  },
+  {
+    value: 'race' as const,
+    emoji: '🏁',
+    label: 'Race',
+    description: 'First to click the correct region wins',
+  },
+  {
+    value: 'turn-based' as const,
+    emoji: '↔️',
+    label: 'Turn-Based',
+    description: 'Take turns finding regions',
+  },
+]
+
+// Study time options with rich descriptions
+const STUDY_TIME_OPTIONS = [
+  {
+    value: 0 as const,
+    emoji: '⏭️',
+    label: 'Skip',
+    description: 'Jump straight into the game',
+  },
+  {
+    value: 30 as const,
+    emoji: '⏱️',
+    label: '30 seconds',
+    description: 'Quick review before playing',
+  },
+  {
+    value: 60 as const,
+    emoji: '⏲️',
+    label: '1 minute',
+    description: 'Moderate study time',
+  },
+  {
+    value: 120 as const,
+    emoji: '⏰',
+    label: '2 minutes',
+    description: 'Extended study period',
+  },
+]
 
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
@@ -16,14 +69,79 @@ export function SetupPhase() {
   const mapData = state.selectedMap === 'world' ? WORLD_MAP : USA_MAP
   const difficultyConfig = mapData.difficultyConfig || DEFAULT_DIFFICULTY_CONFIG
 
-  // Color themes for difficulty buttons (cycles through these)
-  const difficultyColors = [
-    { border: 'green.500', bg: 'green', hover: 'green.400' },
-    { border: 'orange.500', bg: 'orange', hover: 'orange.400' },
-    { border: 'red.500', bg: 'red', hover: 'red.400' },
-    { border: 'purple.500', bg: 'purple', hover: 'purple.400' },
-    { border: 'blue.500', bg: 'blue', hover: 'blue.400' },
-  ]
+  // Handle selection change from drill-down selector
+  const handleSelectionChange = useCallback(
+    (mapId: 'world' | 'usa', continentId: ContinentId | 'all') => {
+      setMap(mapId)
+      setContinent(continentId)
+    },
+    [setMap, setContinent]
+  )
+
+  // Get selected options for display
+  const selectedMode = GAME_MODE_OPTIONS.find((opt) => opt.value === state.gameMode)
+  const selectedStudyTime = STUDY_TIME_OPTIONS.find((opt) => opt.value === state.studyDuration)
+  const selectedDifficulty = difficultyConfig.levels.find((level) => level.id === state.difficulty)
+
+  // Styles for Radix Select components
+  const triggerStyles = css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3',
+    padding: '3',
+    bg: isDark ? 'gray.800' : 'white',
+    border: '2px solid',
+    borderColor: isDark ? 'gray.600' : 'gray.300',
+    rounded: 'xl',
+    cursor: 'pointer',
+    width: '100%', // Fill grid cell
+    transition: 'all 0.15s',
+    _hover: {
+      borderColor: isDark ? 'blue.500' : 'blue.400',
+      bg: isDark ? 'gray.750' : 'gray.50',
+    },
+    _focus: {
+      outline: 'none',
+      borderColor: 'blue.500',
+      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
+    },
+  })
+
+  const contentStyles = css({
+    bg: isDark ? 'gray.800' : 'white',
+    border: '2px solid',
+    borderColor: isDark ? 'gray.600' : 'gray.200',
+    rounded: 'xl',
+    shadow: 'xl',
+    overflow: 'hidden',
+    zIndex: 1000,
+    minWidth: '220px',
+  })
+
+  const itemStyles = css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3',
+    padding: '3',
+    cursor: 'pointer',
+    outline: 'none',
+    transition: 'all 0.1s',
+    _hover: {
+      bg: isDark ? 'gray.700' : 'blue.50',
+    },
+    '&[data-state="checked"]': {
+      bg: isDark ? 'blue.900/50' : 'blue.100',
+    },
+  })
+
+  const labelStyles = css({
+    fontSize: 'xs',
+    fontWeight: '600',
+    color: isDark ? 'gray.400' : 'gray.500',
+    marginBottom: '2',
+    textTransform: 'uppercase',
+    letterSpacing: 'wide',
+  })
 
   return (
     <div
@@ -31,485 +149,305 @@ export function SetupPhase() {
       className={css({
         display: 'flex',
         flexDirection: 'column',
-        gap: '6',
+        gap: '4',
         maxWidth: '800px',
         margin: '0 auto',
-        paddingTop: '20',
-        paddingX: '6',
+        paddingTop: '16',
+        paddingX: '4',
         paddingBottom: '6',
       })}
     >
-      {/* Map Selection */}
-      <div data-section="map-selection">
-        <h2
-          className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            marginBottom: '4',
-            color: isDark ? 'gray.100' : 'gray.900',
-          })}
-        >
-          Choose a Map 🗺️
-        </h2>
-        <div
-          className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '4',
-          })}
-        >
-          <button
-            data-action="select-world-map"
-            onClick={() => setMap('world')}
-            className={css({
-              padding: '6',
-              rounded: 'xl',
-              border: '3px solid',
-              borderColor: state.selectedMap === 'world' ? 'blue.500' : 'transparent',
-              bg:
-                state.selectedMap === 'world'
-                  ? isDark
-                    ? 'blue.900'
-                    : 'blue.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'blue.400',
-                transform: 'translateY(-2px)',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '4xl', marginBottom: '2' })}>🌍</div>
-            <div className={css({ fontSize: 'xl', fontWeight: 'bold' })}>World</div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
-              256 countries
-            </div>
-          </button>
-
-          <button
-            data-action="select-usa-map"
-            onClick={() => setMap('usa')}
-            className={css({
-              padding: '6',
-              rounded: 'xl',
-              border: '3px solid',
-              borderColor: state.selectedMap === 'usa' ? 'blue.500' : 'transparent',
-              bg:
-                state.selectedMap === 'usa'
-                  ? isDark
-                    ? 'blue.900'
-                    : 'blue.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'blue.400',
-                transform: 'translateY(-2px)',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '4xl', marginBottom: '2' })}>🇺🇸</div>
-            <div className={css({ fontSize: 'xl', fontWeight: 'bold' })}>USA States</div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
-              51 states
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Continent Selection (only for World map) */}
-      {state.selectedMap === 'world' && (
-        <div data-section="continent-selection">
-          <h2
-            className={css({
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              marginBottom: '4',
-              color: isDark ? 'gray.100' : 'gray.900',
-            })}
-          >
-            Focus on Continent 🌐
-          </h2>
-          <ContinentSelector
-            selectedContinent={state.selectedContinent}
-            onSelectContinent={setContinent}
-          />
-        </div>
-      )}
-
-      {/* Mode Selection */}
-      <div data-section="mode-selection">
-        <h2
-          className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            marginBottom: '4',
-            color: isDark ? 'gray.100' : 'gray.900',
-          })}
-        >
-          Game Mode 🎮
-        </h2>
-        <div
-          className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '4',
-          })}
-        >
-          <button
-            data-action="select-cooperative-mode"
-            onClick={() => setMode('cooperative')}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.gameMode === 'cooperative' ? 'green.500' : 'transparent',
-              bg:
-                state.gameMode === 'cooperative'
-                  ? isDark
-                    ? 'green.900'
-                    : 'green.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'green.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '3xl', marginBottom: '2' })}>🤝</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Cooperative</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Work together
-            </div>
-          </button>
-
-          <button
-            data-action="select-race-mode"
-            onClick={() => setMode('race')}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.gameMode === 'race' ? 'orange.500' : 'transparent',
-              bg:
-                state.gameMode === 'race'
-                  ? isDark
-                    ? 'orange.900'
-                    : 'orange.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'orange.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '3xl', marginBottom: '2' })}>🏁</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Race</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              First to click wins
-            </div>
-          </button>
-
-          <button
-            data-action="select-turn-based-mode"
-            onClick={() => setMode('turn-based')}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.gameMode === 'turn-based' ? 'purple.500' : 'transparent',
-              bg:
-                state.gameMode === 'turn-based'
-                  ? isDark
-                    ? 'purple.900'
-                    : 'purple.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'purple.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '3xl', marginBottom: '2' })}>↔️</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Turn-Based</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Take turns
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Difficulty Selection - Hide if only one level */}
-      {difficultyConfig.levels.length > 1 && (
-        <div data-section="difficulty-selection">
-          <h2
-            className={css({
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              marginBottom: '4',
-              color: isDark ? 'gray.100' : 'gray.900',
-            })}
-          >
-            Difficulty ⭐
-          </h2>
-          <div
-            className={css({
-              display: 'grid',
-              gridTemplateColumns: `repeat(${difficultyConfig.levels.length}, 1fr)`,
-              gap: '4',
-            })}
-          >
-            {difficultyConfig.levels.map((level, index) => {
-              const colors = difficultyColors[index % difficultyColors.length]
-              const isSelected = state.difficulty === level.id
-
-              return (
-                <button
-                  key={level.id}
-                  data-action={`select-${level.id}-difficulty`}
-                  onClick={() => setDifficulty(level.id)}
-                  className={css({
-                    padding: '4',
-                    rounded: 'lg',
-                    border: '2px solid',
-                    borderColor: isSelected ? colors.border : 'transparent',
-                    bg: isSelected
-                      ? isDark
-                        ? `${colors.bg}.900`
-                        : `${colors.bg}.50`
-                      : isDark
-                        ? 'gray.800'
-                        : 'gray.100',
-                    color: isDark ? 'gray.100' : 'gray.900',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    _hover: {
-                      borderColor: colors.hover,
-                    },
-                  })}
-                >
-                  {level.emoji && (
-                    <div className={css({ fontSize: '2xl', marginBottom: '2' })}>{level.emoji}</div>
-                  )}
-                  <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>{level.label}</div>
-                  {level.description && (
-                    <div
-                      className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}
-                    >
-                      {level.description}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          {/* Give Up behavior note */}
-          <div
-            data-element="give-up-note"
-            className={css({
-              marginTop: '3',
-              padding: '3',
-              bg: isDark ? 'gray.800' : 'gray.100',
-              rounded: 'md',
-              fontSize: 'sm',
-              color: isDark ? 'gray.400' : 'gray.600',
-            })}
-          >
-            <strong>Tip:</strong> Press G or click "Give Up" to skip a region you don't know.{' '}
-            {state.difficulty === 'easy'
-              ? 'On Easy, skipped regions will be re-asked after a few turns.'
-              : 'On Hard, skipped regions will be re-asked at the end.'}
-          </div>
-        </div>
-      )}
-
-      {/* Study Mode Selection */}
-      <div data-section="study-mode-selection">
-        <h2
-          className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            marginBottom: '4',
-            color: isDark ? 'gray.100' : 'gray.900',
-          })}
-        >
-          Study Mode 📚
-        </h2>
-        <div
-          className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '4',
-          })}
-        >
-          <button
-            data-action="select-no-study"
-            onClick={() => setStudyDuration(0)}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.studyDuration === 0 ? 'gray.500' : 'transparent',
-              bg:
-                state.studyDuration === 0
-                  ? isDark
-                    ? 'gray.700'
-                    : 'gray.200'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'gray.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>⏭️</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>Skip</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              No study time
-            </div>
-          </button>
-
-          <button
-            data-action="select-30s-study"
-            onClick={() => setStudyDuration(30)}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.studyDuration === 30 ? 'blue.500' : 'transparent',
-              bg:
-                state.studyDuration === 30
-                  ? isDark
-                    ? 'blue.900'
-                    : 'blue.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'blue.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>⏱️</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>30s</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Quick review
-            </div>
-          </button>
-
-          <button
-            data-action="select-60s-study"
-            onClick={() => setStudyDuration(60)}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.studyDuration === 60 ? 'blue.500' : 'transparent',
-              bg:
-                state.studyDuration === 60
-                  ? isDark
-                    ? 'blue.900'
-                    : 'blue.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'blue.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>⏲️</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>1m</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Study time
-            </div>
-          </button>
-
-          <button
-            data-action="select-120s-study"
-            onClick={() => setStudyDuration(120)}
-            className={css({
-              padding: '4',
-              rounded: 'lg',
-              border: '2px solid',
-              borderColor: state.studyDuration === 120 ? 'blue.500' : 'transparent',
-              bg:
-                state.studyDuration === 120
-                  ? isDark
-                    ? 'blue.900'
-                    : 'blue.50'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-              color: isDark ? 'gray.100' : 'gray.900',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                borderColor: 'blue.400',
-              },
-            })}
-          >
-            <div className={css({ fontSize: '2xl', marginBottom: '2' })}>⏰</div>
-            <div className={css({ fontSize: 'lg', fontWeight: 'bold' })}>2m</div>
-            <div className={css({ fontSize: 'xs', color: isDark ? 'gray.400' : 'gray.600' })}>
-              Deep study
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Start Button */}
-      <button
-        data-action="start-game"
-        onClick={startGame}
+      {/* Header */}
+      <div
+        data-element="header"
         className={css({
-          marginTop: '4',
-          padding: '4',
-          rounded: 'xl',
-          bg: 'blue.600',
-          color: 'white',
-          fontSize: 'xl',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          _hover: {
-            bg: 'blue.700',
-            transform: 'translateY(-2px)',
-            shadow: 'lg',
+          textAlign: 'center',
+          marginBottom: '2',
+        })}
+      >
+        <h1
+          className={css({
+            fontSize: '2xl',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.100' : 'gray.900',
+          })}
+        >
+          Know Your World 🌍
+        </h1>
+        <p
+          className={css({
+            fontSize: 'sm',
+            color: isDark ? 'gray.400' : 'gray.600',
+            marginTop: '1',
+          })}
+        >
+          Click continents to zoom in, or start playing from any level
+        </p>
+      </div>
+
+      {/* Drill-Down Map Selector */}
+      <div data-section="map-selection">
+        <DrillDownMapSelector
+          selectedMap={state.selectedMap}
+          selectedContinent={state.selectedContinent}
+          onSelectionChange={handleSelectionChange}
+          onStartGame={startGame}
+        />
+      </div>
+
+      {/* Settings Row with Radix Selects */}
+      <div
+        data-section="settings"
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: '1fr', // Stack on mobile
+          gap: '4',
+          padding: '5',
+          bg: isDark ? 'gray.800/50' : 'gray.50',
+          rounded: '2xl',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          md: {
+            gridTemplateColumns: 'repeat(3, 1fr)', // 3 columns on desktop
           },
         })}
       >
-        {state.studyDuration > 0 ? 'Start Study & Play! 📚🚀' : 'Start Game! 🚀'}
-      </button>
+        {/* Game Mode */}
+        <div data-setting="game-mode" className={css({ display: 'flex', flexDirection: 'column' })}>
+          <label className={labelStyles}>Mode</label>
+          <Select.Root
+            value={state.gameMode}
+            onValueChange={(value) => setMode(value as 'cooperative' | 'race' | 'turn-based')}
+          >
+            <Select.Trigger className={triggerStyles}>
+              <span className={css({ fontSize: '2xl' })}>{selectedMode?.emoji}</span>
+              <div className={css({ flex: 1, textAlign: 'left' })}>
+                <div
+                  className={css({
+                    fontWeight: '600',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    fontSize: 'sm',
+                  })}
+                >
+                  {selectedMode?.label}
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    lineHeight: 'tight',
+                  })}
+                >
+                  {selectedMode?.description}
+                </div>
+              </div>
+              <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+                ▼
+              </Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                <Select.Viewport>
+                  {GAME_MODE_OPTIONS.map((option) => (
+                    <Select.Item key={option.value} value={option.value} className={itemStyles}>
+                      <span className={css({ fontSize: '2xl' })}>{option.emoji}</span>
+                      <div className={css({ flex: 1 })}>
+                        <Select.ItemText>
+                          <span
+                            className={css({
+                              fontWeight: '600',
+                              color: isDark ? 'gray.100' : 'gray.900',
+                              fontSize: 'sm',
+                            })}
+                          >
+                            {option.label}
+                          </span>
+                        </Select.ItemText>
+                        <div
+                          className={css({
+                            fontSize: 'xs',
+                            color: isDark ? 'gray.400' : 'gray.500',
+                            lineHeight: 'tight',
+                          })}
+                        >
+                          {option.description}
+                        </div>
+                      </div>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+
+        {/* Difficulty (only show if multiple levels) */}
+        {difficultyConfig.levels.length > 1 && (
+          <div
+            data-setting="difficulty"
+            className={css({ display: 'flex', flexDirection: 'column' })}
+          >
+            <label className={labelStyles}>Difficulty</label>
+            <Select.Root value={state.difficulty} onValueChange={setDifficulty}>
+              <Select.Trigger className={triggerStyles}>
+                <span className={css({ fontSize: '2xl' })}>
+                  {selectedDifficulty?.emoji || '🎯'}
+                </span>
+                <div className={css({ flex: 1, textAlign: 'left' })}>
+                  <div
+                    className={css({
+                      fontWeight: '600',
+                      color: isDark ? 'gray.100' : 'gray.900',
+                      fontSize: 'sm',
+                    })}
+                  >
+                    {selectedDifficulty?.label}
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      lineHeight: 'tight',
+                    })}
+                  >
+                    {selectedDifficulty?.description || 'Select difficulty level'}
+                  </div>
+                </div>
+                <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+                  ▼
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                  <Select.Viewport>
+                    {difficultyConfig.levels.map((level) => (
+                      <Select.Item key={level.id} value={level.id} className={itemStyles}>
+                        <span className={css({ fontSize: '2xl' })}>{level.emoji || '🎯'}</span>
+                        <div className={css({ flex: 1 })}>
+                          <Select.ItemText>
+                            <span
+                              className={css({
+                                fontWeight: '600',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                                fontSize: 'sm',
+                              })}
+                            >
+                              {level.label}
+                            </span>
+                          </Select.ItemText>
+                          <div
+                            className={css({
+                              fontSize: 'xs',
+                              color: isDark ? 'gray.400' : 'gray.500',
+                              lineHeight: 'tight',
+                            })}
+                          >
+                            {level.description || `${level.label} difficulty`}
+                          </div>
+                        </div>
+                      </Select.Item>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
+          </div>
+        )}
+
+        {/* Study Duration */}
+        <div
+          data-setting="study-duration"
+          className={css({ display: 'flex', flexDirection: 'column' })}
+        >
+          <label className={labelStyles}>Study Time</label>
+          <Select.Root
+            value={String(state.studyDuration)}
+            onValueChange={(value) => setStudyDuration(Number(value) as 0 | 30 | 60 | 120)}
+          >
+            <Select.Trigger className={triggerStyles}>
+              <span className={css({ fontSize: '2xl' })}>{selectedStudyTime?.emoji}</span>
+              <div className={css({ flex: 1, textAlign: 'left' })}>
+                <div
+                  className={css({
+                    fontWeight: '600',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    fontSize: 'sm',
+                  })}
+                >
+                  {selectedStudyTime?.label}
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    lineHeight: 'tight',
+                  })}
+                >
+                  {selectedStudyTime?.description}
+                </div>
+              </div>
+              <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+                ▼
+              </Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                <Select.Viewport>
+                  {STUDY_TIME_OPTIONS.map((option) => (
+                    <Select.Item
+                      key={option.value}
+                      value={String(option.value)}
+                      className={itemStyles}
+                    >
+                      <span className={css({ fontSize: '2xl' })}>{option.emoji}</span>
+                      <div className={css({ flex: 1 })}>
+                        <Select.ItemText>
+                          <span
+                            className={css({
+                              fontWeight: '600',
+                              color: isDark ? 'gray.100' : 'gray.900',
+                              fontSize: 'sm',
+                            })}
+                          >
+                            {option.label}
+                          </span>
+                        </Select.ItemText>
+                        <div
+                          className={css({
+                            fontSize: 'xs',
+                            color: isDark ? 'gray.400' : 'gray.500',
+                            lineHeight: 'tight',
+                          })}
+                        >
+                          {option.description}
+                        </div>
+                      </div>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+      </div>
+
+      {/* Tips Section */}
+      <div
+        data-element="tips"
+        className={css({
+          padding: '3',
+          bg: isDark ? 'gray.800/30' : 'gray.100/30',
+          rounded: 'lg',
+          fontSize: 'sm',
+          color: isDark ? 'gray.400' : 'gray.600',
+          textAlign: 'center',
+        })}
+      >
+        <strong>Tip:</strong> Press G or click "Give Up" to skip a region you don't know.{' '}
+        {state.difficulty === 'easy'
+          ? 'On Easy, skipped regions are re-asked after a few turns.'
+          : 'On Hard, skipped regions are re-asked at the end.'}
+      </div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import type { MapData } from '../types'
+import { getCountryFlagEmoji } from '../maps'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -12,6 +13,8 @@ const GIVE_UP_ANIMATION_DURATION = 2000
 interface GameInfoPanelProps {
   mapData: MapData
   currentRegionName: string | null
+  currentRegionId: string | null
+  selectedMap: 'world' | 'usa'
   foundCount: number
   totalRegions: number
   progress: number
@@ -20,10 +23,15 @@ interface GameInfoPanelProps {
 export function GameInfoPanel({
   mapData,
   currentRegionName,
+  currentRegionId,
+  selectedMap,
   foundCount,
   totalRegions,
   progress,
 }: GameInfoPanelProps) {
+  // Get flag emoji for world map countries (not USA states)
+  const flagEmoji =
+    selectedMap === 'world' && currentRegionId ? getCountryFlagEmoji(currentRegionId) : ''
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { state, lastError, clearError, giveUp } = useKnowYourWorld()
@@ -139,9 +147,14 @@ export function GameInfoPanel({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2',
             })}
           >
-            {currentRegionName || '...'}
+            {flagEmoji && <span className={css({ fontSize: 'xl' })}>{flagEmoji}</span>}
+            <span>{currentRegionName || '...'}</span>
           </div>
         </div>
 

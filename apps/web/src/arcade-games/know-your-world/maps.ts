@@ -2,6 +2,32 @@ import type { MapData, MapRegion } from './types'
 import { getCustomCrop } from './customCrops'
 
 /**
+ * Convert a 2-letter country code to a flag emoji
+ * Uses Unicode Regional Indicator Symbols
+ * @param countryCode - ISO 3166-1 alpha-2 country code (e.g., "us", "fr")
+ * @returns Flag emoji string (e.g., "🇺🇸", "🇫🇷") or empty string if invalid
+ */
+export function getCountryFlagEmoji(countryCode: string): string {
+  if (!countryCode || countryCode.length !== 2) return ''
+
+  const code = countryCode.toUpperCase()
+  // Regional Indicator Symbols start at U+1F1E6 (A) and go to U+1F1FF (Z)
+  // Formula: 0x1F1E6 + (letterIndex) where A=0, B=1, etc.
+  const firstChar = code.charCodeAt(0)
+  const secondChar = code.charCodeAt(1)
+
+  // Validate both chars are A-Z
+  if (firstChar < 65 || firstChar > 90 || secondChar < 65 || secondChar > 90) {
+    return ''
+  }
+
+  const firstSymbol = String.fromCodePoint(0x1f1e6 + (firstChar - 65))
+  const secondSymbol = String.fromCodePoint(0x1f1e6 + (secondChar - 65))
+
+  return firstSymbol + secondSymbol
+}
+
+/**
  * Type definition for @svg-maps packages
  */
 interface SvgMapData {
@@ -916,6 +942,72 @@ export async function getFilteredMapData(
     originalViewBox: mapData.viewBox, // Always the base map's viewBox
     customCrop, // The custom crop region if any (for fit-crop-with-fill)
   }
+}
+
+/**
+ * Sub-map registry: maps country/region IDs to their detailed sub-maps
+ * For drill-down navigation in the map selector
+ */
+export interface SubMapEntry {
+  /** Continent this region belongs to */
+  continentId: ContinentId
+  /** ID of the sub-map (e.g., 'usa') */
+  mapId: 'usa' // Expandable to other maps in future
+  /** Display name for breadcrumbs */
+  name: string
+  /** Emoji for UI */
+  emoji: string
+}
+
+export const SUB_MAPS: Record<string, SubMapEntry> = {
+  us: {
+    continentId: 'north-america',
+    mapId: 'usa',
+    name: 'USA',
+    emoji: '🇺🇸',
+  },
+  // Future expansions:
+  // de: { continentId: 'europe', mapId: 'germany', name: 'Germany', emoji: '🇩🇪' },
+  // cn: { continentId: 'asia', mapId: 'china', name: 'China', emoji: '🇨🇳' },
+}
+
+/**
+ * Check if a region has a detailed sub-map available
+ */
+export function hasSubMap(regionId: string): boolean {
+  return regionId in SUB_MAPS
+}
+
+/**
+ * Get sub-map entry for a region, if available
+ */
+export function getSubMapEntry(regionId: string): SubMapEntry | null {
+  return SUB_MAPS[regionId] ?? null
+}
+
+/**
+ * Get sub-map data for a region, if available
+ * Returns the actual MapData for the sub-map
+ */
+export function getSubMapData(regionId: string): MapData | null {
+  const entry = SUB_MAPS[regionId]
+  if (!entry) return null
+
+  // Return the appropriate map data
+  if (entry.mapId === 'usa') {
+    return USA_MAP
+  }
+
+  return null
+}
+
+/**
+ * Get all regions in a continent that have sub-maps
+ */
+export function getSubMapsForContinent(continentId: ContinentId): string[] {
+  return Object.entries(SUB_MAPS)
+    .filter(([_, entry]) => entry.continentId === continentId)
+    .map(([regionId]) => regionId)
 }
 
 /**

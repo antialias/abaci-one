@@ -8,7 +8,7 @@ import { getContinentForCountry, CONTINENTS, type ContinentId } from '../contine
 import { getRegionColor } from '../mapColors'
 
 interface ContinentSelectorProps {
-  selectedContinent: ContinentId | 'all'
+  selectedContinent: ContinentId | 'all' | null
   onSelectContinent: (continent: ContinentId | 'all') => void
 }
 
@@ -82,21 +82,13 @@ export function ContinentSelector({
     <div data-component="continent-selector">
       <div
         className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2',
+          fontSize: 'sm',
+          color: isDark ? 'gray.400' : 'gray.600',
+          textAlign: 'center',
           marginBottom: '2',
         })}
       >
-        <div
-          className={css({
-            fontSize: 'sm',
-            color: isDark ? 'gray.400' : 'gray.600',
-            textAlign: 'center',
-          })}
-        >
-          Click a continent to focus on it, or select &quot;All&quot; for the whole world
-        </div>
+        Click the map to focus on a continent
       </div>
 
       {/* Interactive Map */}
@@ -161,52 +153,67 @@ export function ContinentSelector({
         </svg>
       </div>
 
-      {/* Legend/Buttons below map */}
+      {/* Featured "All" option - full width */}
+      <button
+        data-action="select-all-continents"
+        onClick={() => onSelectContinent('all')}
+        onMouseEnter={() => setHoveredContinent('all')}
+        onMouseLeave={() => setHoveredContinent(null)}
+        className={css({
+          width: '100%',
+          padding: '3',
+          marginTop: '3',
+          rounded: 'lg',
+          border: '2px solid',
+          borderColor:
+            selectedContinent === 'all' || selectedContinent === null ? 'blue.500' : 'transparent',
+          bg:
+            selectedContinent === 'all' || selectedContinent === null
+              ? isDark
+                ? 'blue.900'
+                : 'blue.50'
+              : hoveredContinent === 'all'
+                ? isDark
+                  ? 'gray.700'
+                  : 'gray.200'
+                : isDark
+                  ? 'gray.800'
+                  : 'gray.100',
+          color: isDark ? 'gray.100' : 'gray.900',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '2',
+          _hover: {
+            borderColor: 'blue.400',
+          },
+        })}
+      >
+        <span className={css({ fontSize: 'xl' })}>🌍</span>
+        <span className={css({ fontWeight: 'bold' })}>Explore All 256 Countries</span>
+      </button>
+
+      {/* Continent buttons - smaller, for focusing */}
+      <div
+        className={css({
+          fontSize: 'xs',
+          color: isDark ? 'gray.500' : 'gray.500',
+          marginTop: '3',
+          marginBottom: '2',
+          textAlign: 'center',
+        })}
+      >
+        Or focus on a continent:
+      </div>
       <div
         className={css({
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(6, 1fr)',
           gap: '2',
-          marginTop: '3',
         })}
       >
-        {/* All option */}
-        <button
-          data-action="select-all-continents"
-          onClick={() => onSelectContinent('all')}
-          onMouseEnter={() => setHoveredContinent('all')}
-          onMouseLeave={() => setHoveredContinent(null)}
-          className={css({
-            padding: '2',
-            rounded: 'lg',
-            border: '2px solid',
-            borderColor: selectedContinent === 'all' ? 'blue.500' : 'transparent',
-            bg:
-              selectedContinent === 'all'
-                ? isDark
-                  ? 'blue.900'
-                  : 'blue.50'
-                : hoveredContinent === 'all'
-                  ? isDark
-                    ? 'gray.700'
-                    : 'gray.200'
-                  : isDark
-                    ? 'gray.800'
-                    : 'gray.100',
-            color: isDark ? 'gray.100' : 'gray.900',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            fontSize: 'xs',
-            fontWeight: selectedContinent === 'all' ? 'bold' : 'normal',
-            _hover: {
-              borderColor: 'blue.400',
-            },
-          })}
-        >
-          <div className={css({ fontSize: 'lg' })}>🌍</div>
-          <div>All</div>
-        </button>
-
         {/* Continent buttons */}
         {CONTINENTS.map((continent) => (
           <button

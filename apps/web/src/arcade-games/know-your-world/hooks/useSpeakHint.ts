@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale } from 'next-intl'
-import {
-  getLanguageForRegion,
-  speakText,
-  shouldShowAccentOption,
-} from '../utils/speechSynthesis'
+import { getLanguageForRegion, speakText, shouldShowAccentOption } from '../utils/speechSynthesis'
 
 // Map app locales to BCP 47 language tags for speech synthesis
 const LOCALE_TO_LANG: Record<string, string> = {
@@ -66,8 +62,7 @@ export function useSpeakHint(map: string, regionId: string | null) {
   const locale = useLocale()
 
   // Check if speech synthesis is supported
-  const isSupported =
-    typeof window !== 'undefined' && 'speechSynthesis' in window
+  const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
 
   // Get language codes
   const userLang = LOCALE_TO_LANG[locale] || 'en-US'

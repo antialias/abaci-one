@@ -32,6 +32,7 @@ import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 import { useRegionHint, useHasRegionHint } from '../hooks/useRegionHint'
 import { useSpeakHint } from '../hooks/useSpeakHint'
 import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
+import type { FeedbackType } from '../utils/hotColdPhrases'
 import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 import { DevCropTool } from './DevCropTool'
 import type { HintMap } from '../messages'
@@ -63,6 +64,35 @@ function getMagnifierDimensions(containerWidth: number, containerHeight: number)
   return {
     width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
     height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
+  }
+}
+
+/**
+ * Get emoji for hot/cold feedback type
+ * Returns emoji that matches the temperature/status of the last feedback
+ */
+function getHotColdEmoji(feedbackType: FeedbackType | null): string {
+  switch (feedbackType) {
+    case 'found_it':
+      return '🎯'
+    case 'on_fire':
+      return '🔥'
+    case 'hot':
+      return '🥵'
+    case 'warmer':
+      return '☀️'
+    case 'colder':
+      return '🌧️'
+    case 'cold':
+      return '🥶'
+    case 'freezing':
+      return '❄️'
+    case 'overshot':
+      return '↩️'
+    case 'stuck':
+      return '🤔'
+    default:
+      return '🌡️' // Default thermometer when no feedback yet
   }
 }
 
@@ -464,10 +494,13 @@ export function MapRenderer({
   const hasHint = useHasRegionHint(hintMapKey, currentPrompt)
 
   // Speech synthesis for reading hints aloud
-  const { speak: speakHint, stop: stopSpeaking, isSpeaking, isSupported: isSpeechSupported, hasAccentOption } = useSpeakHint(
-    hintMapKey,
-    currentPrompt
-  )
+  const {
+    speak: speakHint,
+    stop: stopSpeaking,
+    isSpeaking,
+    isSupported: isSpeechSupported,
+    hasAccentOption,
+  } = useSpeakHint(hintMapKey, currentPrompt)
 
   // Auto-speak setting persisted in localStorage
   const [autoSpeak, setAutoSpeak] = useState(() => {
@@ -493,6 +526,10 @@ export function MapRenderer({
     if (typeof window === 'undefined') return false
     return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
   })
+
+  // Detect touch devices (hot/cold feedback is desktop-only)
+  const isTouchDevice =
+    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
   // Persist auto-speak setting
   const handleAutoSpeakChange = useCallback((enabled: boolean) => {
@@ -607,15 +644,15 @@ export function MapRenderer({
     onClick: handleAutoHintToggle,
   })
 
-  // Hot/cold audio checkbox pointer lock support
+  // Hot/cold audio button pointer lock support
   const handleHotColdToggle = useCallback(() => {
     handleHotColdChange(!hotColdEnabled)
   }, [hotColdEnabled, handleHotColdChange])
 
-  const hotColdCheckbox = usePointerLockButton({
-    id: 'hot-cold-checkbox',
+  const hotColdButton = usePointerLockButton({
+    id: 'hot-cold-button',
     disabled: false,
-    active: showHintBubble && isSpeechSupported,
+    active: isSpeechSupported && !isTouchDevice, // Only show on desktop with speech support
     pointerLocked,
     cursorPosition,
     containerRef,
@@ -627,10 +664,18 @@ export function MapRenderer({
     buttonRegistry.register('give-up', giveUpButton.checkClick, onGiveUp)
     buttonRegistry.register('hint', hintButton.checkClick, () => setShowHintBubble((prev) => !prev))
     buttonRegistry.register('speak-hint', speakButton.checkClick, handleSpeakClick)
-    buttonRegistry.register('auto-speak-checkbox', autoSpeakCheckbox.checkClick, handleAutoSpeakToggle)
-    buttonRegistry.register('with-accent-checkbox', withAccentCheckbox.checkClick, handleWithAccentToggle)
+    buttonRegistry.register(
+      'auto-speak-checkbox',
+      autoSpeakCheckbox.checkClick,
+      handleAutoSpeakToggle
+    )
+    buttonRegistry.register(
+      'with-accent-checkbox',
+      withAccentCheckbox.checkClick,
+      handleWithAccentToggle
+    )
     buttonRegistry.register('auto-hint-checkbox', autoHintCheckbox.checkClick, handleAutoHintToggle)
-    buttonRegistry.register('hot-cold-checkbox', hotColdCheckbox.checkClick, handleHotColdToggle)
+    buttonRegistry.register('hot-cold-button', hotColdButton.checkClick, handleHotColdToggle)
     return () => {
       buttonRegistry.unregister('give-up')
       buttonRegistry.unregister('hint')
@@ -638,9 +683,24 @@ export function MapRenderer({
       buttonRegistry.unregister('auto-speak-checkbox')
       buttonRegistry.unregister('with-accent-checkbox')
       buttonRegistry.unregister('auto-hint-checkbox')
-      buttonRegistry.unregister('hot-cold-checkbox')
+      buttonRegistry.unregister('hot-cold-button')
     }
-  }, [buttonRegistry, giveUpButton.checkClick, hintButton.checkClick, speakButton.checkClick, autoSpeakCheckbox.checkClick, withAccentCheckbox.checkClick, autoHintCheckbox.checkClick, hotColdCheckbox.checkClick, onGiveUp, handleSpeakClick, handleAutoSpeakToggle, handleWithAccentToggle, handleAutoHintToggle, handleHotColdToggle])
+  }, [
+    buttonRegistry,
+    giveUpButton.checkClick,
+    hintButton.checkClick,
+    speakButton.checkClick,
+    autoSpeakCheckbox.checkClick,
+    withAccentCheckbox.checkClick,
+    autoHintCheckbox.checkClick,
+    hotColdButton.checkClick,
+    onGiveUp,
+    handleSpeakClick,
+    handleAutoSpeakToggle,
+    handleWithAccentToggle,
+    handleAutoHintToggle,
+    handleHotColdToggle,
+  ])
 
   // Track previous showHintBubble state to detect when it opens
   const prevShowHintBubbleRef = useRef(false)
@@ -686,16 +746,19 @@ export function MapRenderer({
     }
   }, [currentPrompt, hasHint, hintText, isSpeechSupported, speakHint])
 
-  // Detect touch devices (hot/cold feedback is desktop-only)
-  const isTouchDevice =
-    typeof window !== 'undefined' &&
-    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-
   // Hot/cold audio feedback hook
-  const { checkPosition: checkHotCold, reset: resetHotCold } = useHotColdFeedback({
+  // Use continent name for language lookup if available, otherwise use selectedMap
+  const hotColdMapName = selectedContinent || selectedMap
+  const {
+    checkPosition: checkHotCold,
+    reset: resetHotCold,
+    lastFeedbackType: hotColdFeedbackType,
+  } = useHotColdFeedback({
     enabled: hotColdEnabled && !isTouchDevice,
     targetRegionId: currentPrompt,
     isSpeaking,
+    mapName: hotColdMapName,
+    regions: mapData.regions,
   })
 
   // Reset hot/cold feedback when prompt changes
@@ -1841,10 +1904,15 @@ export function MapRenderer({
         const targetPixelX = (targetRegion.center[0] - viewBoxX) * viewport.scale + svgOffsetX
         const targetPixelY = (targetRegion.center[1] - viewBoxY) * viewport.scale + svgOffsetY
 
+        // Calculate cursor position in SVG coordinates for finding closest region (for accent)
+        const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
+        const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
+
         checkHotCold({
           cursorPosition: { x: cursorX, y: cursorY },
           targetCenter: { x: targetPixelX, y: targetPixelY },
           hoveredRegionId: regionUnderCursor,
+          cursorSvgPosition: { x: cursorSvgX, y: cursorSvgY },
         })
       }
     }
@@ -2069,14 +2137,16 @@ export function MapRenderer({
       // Update start position for next move
       magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
 
-      // For touch panning, use 1:1 mapping so the content follows the finger exactly.
+      // Scale touch delta by zoom level for 1:1 panning feel.
       //
-      // The cursor position controls where the magnifier is centered on the main map.
-      // Moving the cursor by 1 screen pixel shifts what's shown in the magnifier.
+      // The magnifier shows a zoomed view of the map. When zoomed 3x:
+      // - Moving cursor by 1 pixel shifts the magnifier view by 3 pixels
+      // - To get 1:1 feel (finger moves N pixels = content moves N pixels in magnifier),
+      //   we divide finger movement by zoom level
       //
-      // For 1:1 feel: when user drags N pixels, move cursor by N pixels.
-      // This makes the content appear to move with the finger at the zoom level.
-      const touchMultiplier = 1.0
+      // This makes dragging feel like moving the map under a fixed magnifying glass.
+      const currentZoom = getCurrentZoom()
+      const touchMultiplier = 1 / currentZoom
 
       // Invert the delta - dragging right on magnifier should show content to the right
       // (which means moving the cursor right in the map coordinate space)
@@ -2133,6 +2203,7 @@ export function MapRenderer({
       currentPlayer,
       localPlayerId,
       displayViewBox,
+      getCurrentZoom,
     ]
   )
 
@@ -2176,10 +2247,8 @@ export function MapRenderer({
           const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
           // Current cursor position in SVG coordinates (center of magnifier view)
-          const cursorSvgX =
-            (cursorPositionRef.current.x - svgOffsetX) / viewport.scale + viewBoxX
-          const cursorSvgY =
-            (cursorPositionRef.current.y - svgOffsetY) / viewport.scale + viewBoxY
+          const cursorSvgX = (cursorPositionRef.current.x - svgOffsetX) / viewport.scale + viewBoxX
+          const cursorSvgY = (cursorPositionRef.current.y - svgOffsetY) / viewport.scale + viewBoxY
 
           // Magnifier viewBox dimensions
           const magnifiedWidth = viewBoxW / currentZoom
@@ -4300,11 +4369,7 @@ export function MapRenderer({
                               : isDark
                                 ? 'gray.700'
                                 : 'gray.100',
-                            color: isSpeaking
-                              ? 'white'
-                              : isDark
-                                ? 'gray.300'
-                                : 'gray.600',
+                            color: isSpeaking ? 'white' : isDark ? 'gray.300' : 'gray.600',
                             border: '1px solid',
                             borderColor: isSpeaking
                               ? isDark
@@ -4479,51 +4544,123 @@ export function MapRenderer({
                           Speak
                         </label>
                       )}
-
-                      {/* Hot/Cold audio feedback checkbox */}
-                      {isSpeechSupported && (
-                        <label
-                          ref={hotColdCheckbox.refCallback}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '1',
-                            cursor: 'pointer',
-                            padding: '0.5',
-                            rounded: 'sm',
-                            transition: 'all 0.15s',
-                            _hover: {
-                              color: isDark ? 'gray.200' : 'gray.700',
-                            },
-                          })}
-                          style={{
-                            ...(hotColdCheckbox.isHovered
-                              ? { color: isDark ? '#e5e7eb' : '#374151' }
-                              : {}),
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={hotColdEnabled}
-                            onChange={(e) => handleHotColdChange(e.target.checked)}
-                            className={css({
-                              width: '12px',
-                              height: '12px',
-                              cursor: 'pointer',
-                              accentColor: isDark ? '#3b82f6' : '#2563eb',
-                            })}
-                          />
-                          Hot/Cold
-                        </label>
-                      )}
                     </div>
                   </div>
                 </div>
               )}
             </>
+          )
+        })()}
+
+      {/* Hot/Cold button - only show on desktop with speech support */}
+      {isSpeechSupported &&
+        !isTouchDevice &&
+        (() => {
+          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
+
+          // During give-up animation, use saved position to prevent jumping
+          let buttonTop: number
+          let buttonRight: number
+
+          if (isGiveUpAnimating && savedButtonPosition) {
+            buttonTop = savedButtonPosition.top
+            // Position hot/cold button to the left of hint button (hint is ~100px left of give up)
+            buttonRight = savedButtonPosition.right + 200 // Give Up + Hint + gap
+          } else {
+            const svgRect = svgRef.current.getBoundingClientRect()
+            const containerRect = containerRef.current.getBoundingClientRect()
+            const svgOffsetX = svgRect.left - containerRect.left
+            const svgOffsetY = svgRect.top - containerRect.top
+            buttonTop = svgOffsetY + 8
+            // Position to the left of hint button
+            // Give up is ~85px + 8 gap = 93px from right edge of SVG
+            // Hint is 100px to the left of that = 193px
+            // Hot/cold is 100px to the left of hint = 293px
+            buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8 + 200
+          }
+
+          return (
+            <button
+              ref={hotColdButton.refCallback}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleHotColdToggle()
+              }}
+              data-action="hot-cold-button"
+              title={
+                hotColdEnabled
+                  ? 'Disable hot/cold audio feedback'
+                  : 'Enable hot/cold audio feedback'
+              }
+              style={{
+                position: 'absolute',
+                top: `${buttonTop}px`,
+                right: `${buttonRight}px`,
+                // Apply hover styles when fake cursor is over button (pointer lock mode)
+                ...(hotColdButton.isHovered
+                  ? {
+                      backgroundColor: isDark
+                        ? hotColdEnabled
+                          ? '#c2410c'
+                          : '#374151'
+                        : hotColdEnabled
+                          ? '#fed7aa'
+                          : '#e5e7eb',
+                      transform: 'scale(1.05)',
+                    }
+                  : {}),
+                ...(isGiveUpAnimating
+                  ? {
+                      opacity: 0.5,
+                      cursor: 'not-allowed',
+                    }
+                  : {}),
+              }}
+              className={css({
+                padding: '2 3',
+                fontSize: 'sm',
+                cursor: 'pointer',
+                bg: hotColdEnabled
+                  ? isDark
+                    ? 'orange.800'
+                    : 'orange.100'
+                  : isDark
+                    ? 'gray.700'
+                    : 'gray.200',
+                color: hotColdEnabled
+                  ? isDark
+                    ? 'orange.200'
+                    : 'orange.800'
+                  : isDark
+                    ? 'gray.400'
+                    : 'gray.600',
+                rounded: 'md',
+                border: '2px solid',
+                borderColor: hotColdEnabled
+                  ? isDark
+                    ? 'orange.600'
+                    : 'orange.400'
+                  : isDark
+                    ? 'gray.600'
+                    : 'gray.400',
+                fontWeight: 'bold',
+                transition: 'all 0.2s',
+                zIndex: 50,
+                boxShadow: 'md',
+                _hover: {
+                  bg: hotColdEnabled
+                    ? isDark
+                      ? 'orange.700'
+                      : 'orange.200'
+                    : isDark
+                      ? 'gray.600'
+                      : 'gray.300',
+                  transform: 'scale(1.05)',
+                },
+              })}
+            >
+              {getHotColdEmoji(hotColdFeedbackType)} Hot/Cold
+            </button>
           )
         })()}
 

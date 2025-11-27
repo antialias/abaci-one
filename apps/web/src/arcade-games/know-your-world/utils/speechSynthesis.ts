@@ -127,9 +127,7 @@ function findVoiceForLanguage(
   matches.sort((a, b) => scoreVoice(b) - scoreVoice(a))
 
   // Among top scorers, prefer exact locale match
-  const exactMatch = matches.find(
-    (v) => v.lang.toLowerCase() === langCode.toLowerCase()
-  )
+  const exactMatch = matches.find((v) => v.lang.toLowerCase() === langCode.toLowerCase())
 
   return exactMatch || matches[0]
 }
@@ -138,10 +136,7 @@ function findVoiceForLanguage(
  * Select the best voice for a target language with fallbacks.
  * Returns the voice and a quality indicator.
  */
-export function selectVoice(
-  voices: SpeechSynthesisVoice[],
-  targetLang: string
-): VoiceMatch | null {
+export function selectVoice(voices: SpeechSynthesisVoice[], targetLang: string): VoiceMatch | null {
   if (voices.length === 0) return null
 
   const baseLang = targetLang.split('-')[0].toLowerCase()
@@ -149,8 +144,7 @@ export function selectVoice(
   // 1. Try exact/base language match
   const directMatch = findVoiceForLanguage(voices, targetLang)
   if (directMatch) {
-    const isExact =
-      directMatch.lang.toLowerCase() === targetLang.toLowerCase()
+    const isExact = directMatch.lang.toLowerCase() === targetLang.toLowerCase()
     return {
       voice: directMatch,
       quality: isExact ? 'exact' : 'language',
@@ -225,16 +219,17 @@ export function getVoiceSelectionInfo(
 /**
  * Check if the accent option should be shown for a region's language.
  * Returns true only if:
- * 1. We have a voice that matches the language (not a fallback)
- * 2. The voice quality is good enough (not espeak/low-quality)
+ * 1. The region's locale differs from the user's locale (e.g., en-GB vs en-US)
+ * 2. We have a voice that matches the language (not a fallback)
+ * 3. The voice quality is good enough (not espeak/low-quality)
  */
 export function shouldShowAccentOption(
   voices: SpeechSynthesisVoice[],
   regionLang: string,
   userLang: string
 ): boolean {
-  // First check: languages must differ
-  if (regionLang.split('-')[0] === userLang.split('-')[0]) {
+  // First check: locales must differ (including same-language variants like en-GB vs en-US)
+  if (regionLang.toLowerCase() === userLang.toLowerCase()) {
     return false
   }
 
@@ -371,12 +366,24 @@ export const REGION_LANGUAGES: Record<string, Record<string, string>> = {
 
 /**
  * Get the language code for a region on a specific map.
+ * Falls back to checking other maps if the region isn't defined in the specified map.
  */
 export function getLanguageForRegion(map: string, regionId: string): string {
+  // First try the specified map
   const mapLangs = REGION_LANGUAGES[map]
-  if (!mapLangs) return 'en-US'
+  if (mapLangs && mapLangs[regionId]) {
+    return mapLangs[regionId]
+  }
 
-  return mapLangs[regionId] || mapLangs._default || 'en-US'
+  // Fall back to checking other maps (useful for world map which doesn't define all countries)
+  for (const otherMap of Object.values(REGION_LANGUAGES)) {
+    if (otherMap[regionId]) {
+      return otherMap[regionId]
+    }
+  }
+
+  // Last resort: use map default or global default
+  return mapLangs?._default || 'en-US'
 }
 
 /**

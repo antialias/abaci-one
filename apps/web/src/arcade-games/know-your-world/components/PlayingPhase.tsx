@@ -48,10 +48,12 @@ export function PlayingPhase() {
   const foundCount = state.regionsFound.length
   const progress = (foundCount / totalRegions) * 100
 
-  // Get the display name for the current prompt
-  const currentRegionName = state.currentPrompt
-    ? (mapData.regions.find((r) => r.id === state.currentPrompt)?.name ?? null)
+  // Get the display name and ID for the current prompt
+  const currentRegion = state.currentPrompt
+    ? mapData.regions.find((r) => r.id === state.currentPrompt)
     : null
+  const currentRegionName = currentRegion?.name ?? null
+  const currentRegionId = currentRegion?.id ?? null
 
   // Debug logging
   console.log('[PlayingPhase] Current prompt lookup:', {
@@ -88,6 +90,8 @@ export function PlayingPhase() {
           <GameInfoPanel
             mapData={mapData}
             currentRegionName={currentRegionName}
+            currentRegionId={currentRegionId}
+            selectedMap={state.selectedMap}
             foundCount={foundCount}
             totalRegions={totalRegions}
             progress={progress}

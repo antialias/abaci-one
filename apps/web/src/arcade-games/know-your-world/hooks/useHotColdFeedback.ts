@@ -11,8 +11,20 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocale } from 'next-intl'
-import { speakText } from '../utils/speechSynthesis'
+import { speakText, getLanguageForRegion, shouldShowAccentOption } from '../utils/speechSynthesis'
 import { getRandomPhrase, type FeedbackType } from '../utils/hotColdPhrases'
+import { useAvailableVoices } from './useSpeakHint'
+
+// Map app locales to BCP 47 language tags for speech synthesis
+const LOCALE_TO_LANG: Record<string, string> = {
+  en: 'en-US',
+  de: 'de-DE',
+  es: 'es-ES',
+  ja: 'ja-JP',
+  hi: 'hi-IN',
+  la: 'it-IT', // Latin fallback to Italian
+  goh: 'de-DE', // Old High German fallback to German
+}
 
 // Configuration constants
 const HISTORY_LENGTH = 25 // Max positions to track
@@ -35,17 +47,6 @@ const WARMING_ENTER = -0.2 // Must be clearly negative to enter warming
 const WARMING_EXIT = 0.08 // Can exit warming with slight positive
 const COOLING_ENTER = 0.2 // Must be clearly positive to enter cooling
 const COOLING_EXIT = -0.08 // Can exit cooling with slight negative
-
-// Map locale to BCP 47 language tag for speech
-const LOCALE_TO_LANG: Record<string, string> = {
-  en: 'en-US',
-  de: 'de-DE',
-  es: 'es-ES',
-  ja: 'ja-JP',
-  hi: 'hi-IN',
-  la: 'it-IT',
-  goh: 'de-DE',
-}
 
 interface PathEntry {
   x: number
@@ -72,16 +73,24 @@ interface HotColdState {
   minDistanceSinceLastFeedback: number
 }
 
+interface RegionWithCenter {
+  id: string
+  center: [number, number] // SVG coordinates
+}
+
 interface UseHotColdFeedbackParams {
   enabled: boolean
   targetRegionId: string | null
   isSpeaking: boolean // From useSpeakHint, to avoid speech conflicts
+  mapName: string // Map name for language lookup (e.g., "europe", "usa")
+  regions: RegionWithCenter[] // All regions with their centers
 }
 
 interface CheckPositionParams {
   cursorPosition: { x: number; y: number }
   targetCenter: { x: number; y: number } | null
   hoveredRegionId: string | null
+  cursorSvgPosition: { x: number; y: number } | null // Cursor position in SVG coordinates for finding closest region
 }
 
 function createInitialState(): HotColdState {
@@ -105,16 +114,12 @@ function createInitialState(): HotColdState {
 /**
  * Get the most recent N entries from the circular buffer
  */
-function getRecentEntries(
-  state: HotColdState,
-  count: number
-): (PathEntry | null)[] {
+function getRecentEntries(state: HotColdState, count: number): (PathEntry | null)[] {
   const entries: (PathEntry | null)[] = []
   const actualCount = Math.min(count, state.filledCount)
 
   for (let i = 0; i < actualCount; i++) {
-    const index =
-      (state.historyIndex - actualCount + i + HISTORY_LENGTH) % HISTORY_LENGTH
+    const index = (state.historyIndex - actualCount + i + HISTORY_LENGTH) % HISTORY_LENGTH
     entries.push(state.history[index])
   }
 
@@ -128,9 +133,7 @@ function getRecentEntries(
 function calculateMovingAverageDirection(state: HotColdState): number {
   if (state.filledCount < WINDOW_SIZE + 1) return 0
 
-  const entries = getRecentEntries(state, WINDOW_SIZE + 1).filter(
-    (e): e is PathEntry => e !== null
-  )
+  const entries = getRecentEntries(state, WINDOW_SIZE + 1).filter((e): e is PathEntry => e !== null)
   if (entries.length < WINDOW_SIZE + 1) return 0
 
   // Calculate weighted distance deltas (more recent = higher weight)
@@ -145,8 +148,7 @@ function calculateMovingAverageDirection(state: HotColdState): number {
   }
 
   // Normalize by average distance to handle scale differences
-  const avgDistance =
-    entries.reduce((s, e) => s + e.distance, 0) / entries.length
+  const avgDistance = entries.reduce((s, e) => s + e.distance, 0) / entries.length
   if (avgDistance < 1) return 0
 
   const normalizedDirection = weightedDeltaSum / weightSum / (avgDistance * 0.1)
@@ -161,9 +163,7 @@ function calculateMovingAverageDirection(state: HotColdState): number {
 function calculateTrendConfidence(state: HotColdState): number {
   if (state.filledCount < 4) return 0
 
-  const entries = getRecentEntries(state, WINDOW_SIZE + 1).filter(
-    (e): e is PathEntry => e !== null
-  )
+  const entries = getRecentEntries(state, WINDOW_SIZE + 1).filter((e): e is PathEntry => e !== null)
   if (entries.length < 4) return 0
 
   // Count direction changes
@@ -250,25 +250,71 @@ function determineFeedbackType(
   return null
 }
 
+/**
+ * Find the closest region to a given SVG position.
+ * Returns the region ID or null if no regions.
+ */
+function findClosestRegion(
+  svgPosition: { x: number; y: number },
+  regions: RegionWithCenter[]
+): string | null {
+  if (regions.length === 0) return null
+
+  let closestId: string | null = null
+  let closestDistance = Infinity
+
+  for (const region of regions) {
+    const dx = svgPosition.x - region.center[0]
+    const dy = svgPosition.y - region.center[1]
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestId = region.id
+    }
+  }
+
+  return closestId
+}
+
 export function useHotColdFeedback({
   enabled,
   targetRegionId,
   isSpeaking: externalSpeaking,
+  mapName,
+  regions,
 }: UseHotColdFeedbackParams) {
-  const locale = useLocale()
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [lastFeedbackType, setLastFeedbackType] = useState<FeedbackType | null>(null)
   const cancelRef = useRef<(() => void) | null>(null)
   const stateRef = useRef<HotColdState>(createInitialState())
+  const voices = useAvailableVoices()
+  const locale = useLocale()
+
+  // User's default language
+  const userLang = LOCALE_TO_LANG[locale] || 'en-US'
 
   // Reset state when target changes
   useEffect(() => {
     stateRef.current = createInitialState()
+    setLastFeedbackType(null)
   }, [targetRegionId])
 
+  // Speak with regional accent based on the region under cursor (or closest region)
+  // Only use regional accent if voice quality is good enough (same threshold as hints)
   const speak = useCallback(
-    (type: FeedbackType) => {
+    (type: FeedbackType, regionForAccent: string | null) => {
       const phrase = getRandomPhrase(type)
-      const targetLang = LOCALE_TO_LANG[locale] || 'en-US'
+
+      // Get regional language if we have a region for accent
+      const regionLang = regionForAccent ? getLanguageForRegion(mapName, regionForAccent) : userLang
+
+      // Use regional accent if locale differs and voice quality is good
+      // This uses the same quality threshold as hints
+      const useRegionalAccent =
+        regionForAccent && shouldShowAccentOption(voices, regionLang, userLang)
+
+      const targetLang = useRegionalAccent ? regionLang : userLang
 
       const { cancel } = speakText(phrase, targetLang, {
         rate: 1.1, // Slightly faster than hints
@@ -285,16 +331,23 @@ export function useHotColdFeedback({
 
       cancelRef.current = cancel
     },
-    [locale]
+    [mapName, voices, userLang]
   )
 
   const checkPosition = useCallback(
-    ({ cursorPosition, targetCenter, hoveredRegionId }: CheckPositionParams) => {
+    ({ cursorPosition, targetCenter, hoveredRegionId, cursorSvgPosition }: CheckPositionParams) => {
       if (!enabled || !targetCenter || !targetRegionId) return
       if (isSpeaking || externalSpeaking) return
 
       const now = performance.now()
       const state = stateRef.current
+
+      // Find region for accent selection:
+      // 1. If hovering over a region, use that region's accent
+      // 2. Otherwise, use the region whose center is closest to cursor
+      const regionForAccent =
+        hoveredRegionId ??
+        (cursorSvgPosition ? findClosestRegion(cursorSvgPosition, regions) : null)
 
       // Calculate distance to target (always needed)
       const dx = cursorPosition.x - targetCenter.x
@@ -305,11 +358,14 @@ export function useHotColdFeedback({
       const isOverTarget = hoveredRegionId === targetRegionId
 
       // PRIORITY 1: Instant "found_it" when hovering over target
-      // Only gate is a short cooldown to prevent spam
       if (isOverTarget) {
+        // Visual: Always update emoji immediately
+        setLastFeedbackType('found_it')
+
+        // Audio: Only play with cooldown to prevent spam
         const timeSinceLastFoundIt = now - state.lastFoundItTime
-        if (timeSinceLastFoundIt >= FOUND_IT_COOLDOWN) {
-          speak('found_it')
+        if (timeSinceLastFoundIt >= FOUND_IT_COOLDOWN && !isSpeaking && !externalSpeaking) {
+          speak('found_it', regionForAccent)
           state.lastFoundItTime = now
           state.lastFeedbackTime = now
           state.lastFeedbackType = 'found_it'
@@ -351,29 +407,44 @@ export function useHotColdFeedback({
       state.historyIndex++
       state.filledCount = Math.min(state.filledCount + 1, HISTORY_LENGTH)
 
-      // Gate 1: Cooldown check
-      const timeSinceLastFeedback = now - state.lastFeedbackTime
-      if (timeSinceLastFeedback < FEEDBACK_COOLDOWN) return
-
-      // Gate 2: Minimum distance-to-target change (not cursor movement)
-      // This allows small regions to trigger feedback based on approach/retreat
-      if (state.totalDistanceChange < MIN_DISTANCE_CHANGE) return
-
-      // Gate 3: Need enough history
+      // Need enough history for direction calculation
       if (state.filledCount < WINDOW_SIZE + 1) return
 
       // Calculate metrics
       const direction = calculateMovingAverageDirection(state)
       const confidence = calculateTrendConfidence(state)
 
-      // Gate 4: Trend confidence (skip during erratic searching)
+      // Update zone with hysteresis (needed for visual feedback)
+      const zone = updateZoneWithHysteresis(state, direction)
+      state.currentZone = zone
+
+      // Determine feedback type for visual display
+      // This runs on every sample for responsive emoji updates
+      const visualFeedbackType = determineFeedbackType(state, zone, currentDistance, false)
+
+      // Visual: Update emoji immediately (no cooldown gates)
+      if (visualFeedbackType && confidence >= CONFIDENCE_THRESHOLD) {
+        setLastFeedbackType(visualFeedbackType)
+      }
+
+      // === Audio gates below - only affect speech, not emoji ===
+
+      // Gate 1: Cooldown check
+      const timeSinceLastFeedback = now - state.lastFeedbackTime
+      if (timeSinceLastFeedback < FEEDBACK_COOLDOWN) return
+
+      // Gate 2: Minimum distance-to-target change (not cursor movement)
+      if (state.totalDistanceChange < MIN_DISTANCE_CHANGE) return
+
+      // Gate 3: Trend confidence (skip during erratic searching)
       if (confidence < CONFIDENCE_THRESHOLD) {
         state.consecutiveNeutralSamples++
 
         // "Stuck" detection after many neutral samples
-        if (state.consecutiveNeutralSamples > 15) {
+        if (state.consecutiveNeutralSamples > 15 && !isSpeaking && !externalSpeaking) {
           state.consecutiveNeutralSamples = 0
-          speak('stuck')
+          setLastFeedbackType('stuck')
+          speak('stuck', regionForAccent)
           state.lastFeedbackTime = now
           state.lastFeedbackType = 'stuck'
           state.totalDistanceChange = 0
@@ -385,39 +456,33 @@ export function useHotColdFeedback({
 
       state.consecutiveNeutralSamples = 0
 
-      // Update zone with hysteresis
-      const zone = updateZoneWithHysteresis(state, direction)
-      state.currentZone = zone
+      // Determine feedback type for audio (same as visual, but gated)
+      const audioFeedbackType = determineFeedbackType(state, zone, currentDistance, false)
 
-      // Determine feedback type (isOverTarget is false here, handled above)
-      const feedbackType = determineFeedbackType(
-        state,
-        zone,
-        currentDistance,
-        false
-      )
+      if (!audioFeedbackType) return
 
-      if (!feedbackType) return
-
-      // Gate 5: Don't repeat same type within extended cooldown
+      // Gate 4: Don't repeat same type within extended cooldown
       if (
-        feedbackType === state.lastFeedbackType &&
+        audioFeedbackType === state.lastFeedbackType &&
         timeSinceLastFeedback < SAME_TYPE_COOLDOWN
       ) {
         return
       }
 
-      // Speak the feedback
-      speak(feedbackType)
+      // Gate 5: Don't speak if already speaking
+      if (isSpeaking || externalSpeaking) return
 
-      // Record feedback
+      // Speak the feedback
+      speak(audioFeedbackType, regionForAccent)
+
+      // Record audio feedback
       state.lastFeedbackTime = now
-      state.lastFeedbackType = feedbackType
+      state.lastFeedbackType = audioFeedbackType
       state.totalDistanceChange = 0
       state.lastDistanceToTarget = null
       state.minDistanceSinceLastFeedback = Infinity
     },
-    [enabled, targetRegionId, isSpeaking, externalSpeaking, speak]
+    [enabled, targetRegionId, isSpeaking, externalSpeaking, speak, regions]
   )
 
   const reset = useCallback(() => {
@@ -426,6 +491,7 @@ export function useHotColdFeedback({
       cancelRef.current = null
     }
     setIsSpeaking(false)
+    setLastFeedbackType(null)
     stateRef.current = createInitialState()
   }, [])
 
@@ -438,5 +504,5 @@ export function useHotColdFeedback({
     }
   }, [])
 
-  return { checkPosition, reset, isSpeaking }
+  return { checkPosition, reset, isSpeaking, lastFeedbackType }
 }

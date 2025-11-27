@@ -24,6 +24,8 @@ const mockMapData: MapData = {
   id: 'world',
   name: 'World Map',
   viewBox: '0 0 1000 500',
+  originalViewBox: '0 0 1000 500',
+  customCrop: null,
   regions: [],
 }
 
@@ -31,6 +33,8 @@ describe('GameInfoPanel', () => {
   const defaultProps = {
     mapData: mockMapData,
     currentRegionName: 'France',
+    currentRegionId: 'fr',
+    selectedMap: 'world' as const,
     foundCount: 5,
     totalRegions: 20,
     progress: 25,
@@ -103,6 +107,8 @@ describe('GameInfoPanel - Error Display', () => {
   const defaultProps = {
     mapData: mockMapData,
     currentRegionName: 'France',
+    currentRegionId: 'fr',
+    selectedMap: 'world' as const,
     foundCount: 5,
     totalRegions: 20,
     progress: 25,
@@ -187,6 +193,8 @@ describe('GameInfoPanel - Different Game Modes', () => {
   const defaultProps = {
     mapData: mockMapData,
     currentRegionName: 'France',
+    currentRegionId: 'fr',
+    selectedMap: 'world' as const,
     foundCount: 5,
     totalRegions: 20,
     progress: 25,
@@ -242,6 +250,8 @@ describe('GameInfoPanel - Dark Mode', () => {
   const defaultProps = {
     mapData: mockMapData,
     currentRegionName: 'France',
+    currentRegionId: 'fr',
+    selectedMap: 'world' as const,
     foundCount: 5,
     totalRegions: 20,
     progress: 25,

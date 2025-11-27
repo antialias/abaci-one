@@ -18,22 +18,10 @@ export type FeedbackType =
 
 const PHRASES: Record<FeedbackType, string[]> = {
   // Actually hovering over the target - encourage clicking
-  found_it: [
-    "That's it!",
-    'Right there!',
-    'Click it!',
-    'You found it!',
-    'Bingo!',
-  ],
+  found_it: ["That's it!", 'Right there!', 'Click it!', 'You found it!', 'Bingo!'],
 
   // Very close but not over target yet
-  on_fire: [
-    "You're on fire!",
-    'So hot!',
-    'Burning up!',
-    'Almost!',
-    'So close!',
-  ],
+  on_fire: ["You're on fire!", 'So hot!', 'Burning up!', 'Almost!', 'So close!'],
 
   // Getting closer
   hot: ['Getting hot!', 'Super warm!', 'Getting close!', 'Toasty!'],
@@ -46,11 +34,7 @@ const PHRASES: Record<FeedbackType, string[]> = {
 
   // Special cases
   overshot: ['You passed it!', 'Go back!', 'Too far!', 'Turn around!'],
-  stuck: [
-    'Try a different direction!',
-    'Explore somewhere new!',
-    'Keep searching!',
-  ],
+  stuck: ['Try a different direction!', 'Explore somewhere new!', 'Keep searching!'],
 }
 
 /**
