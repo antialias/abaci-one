@@ -8,7 +8,7 @@ import { useKnowYourWorld } from '../Provider'
 import { DrillDownMapSelector } from './DrillDownMapSelector'
 import { ALL_REGION_SIZES, ASSISTANCE_LEVELS, getFilteredMapDataBySizesSync } from '../maps'
 import type { AssistanceLevelConfig } from '../maps'
-import type { ContinentId } from '../continents'
+import { CONTINENTS, type ContinentId } from '../continents'
 
 // Generate feature badges for an assistance level
 function getFeatureBadges(level: AssistanceLevelConfig): Array<{ label: string; icon: string }> {
@@ -126,6 +126,20 @@ export function SetupPhase() {
   const selectedMode = GAME_MODE_OPTIONS.find((opt) => opt.value === state.gameMode)
   const selectedStudyTime = STUDY_TIME_OPTIONS.find((opt) => opt.value === state.studyDuration)
   const selectedAssistance = ASSISTANCE_LEVELS.find((level) => level.id === state.assistanceLevel)
+
+  // Calculate total region count for start button
+  const totalRegionCount = useMemo(() => {
+    return state.includeSizes.reduce((sum, size) => sum + (regionCountsBySize[size] || 0), 0)
+  }, [state.includeSizes, regionCountsBySize])
+
+  // Get context label for start button
+  const contextLabel = useMemo(() => {
+    if (state.selectedContinent !== 'all') {
+      const continent = CONTINENTS.find((c) => c.id === state.selectedContinent)
+      return continent?.name ?? 'World'
+    }
+    return state.selectedMap === 'usa' ? 'USA' : 'World'
+  }, [state.selectedContinent, state.selectedMap])
 
   // Styles for Radix Select components
   const triggerStyles = css({
@@ -532,6 +546,33 @@ export function SetupPhase() {
         </div>
       </div>
 
+      {/* Start Game Button */}
+      <button
+        data-action="start-game"
+        onClick={startGame}
+        className={css({
+          width: '100%',
+          padding: '4',
+          fontSize: 'xl',
+          fontWeight: 'bold',
+          bg: 'blue.600',
+          color: 'white',
+          rounded: '2xl',
+          cursor: 'pointer',
+          boxShadow: 'lg',
+          transition: 'all 0.2s',
+          _hover: {
+            bg: 'blue.700',
+            transform: 'scale(1.02)',
+          },
+          _active: {
+            transform: 'scale(0.98)',
+          },
+        })}
+      >
+        ▶ Start Game ({contextLabel} - {totalRegionCount}{' '}
+        {totalRegionCount === 1 ? 'region' : 'regions'})
+      </button>
     </div>
   )
 }

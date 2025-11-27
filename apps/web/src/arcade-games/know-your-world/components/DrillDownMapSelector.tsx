@@ -1106,33 +1106,6 @@ export function DrillDownMapSelector({
         </div>
       )}
 
-      {/* Start Game Button */}
-      <button
-        data-action="start-game"
-        onClick={onStartGame}
-        className={css({
-          width: '100%',
-          padding: '4',
-          marginTop: '5',
-          fontSize: 'xl',
-          fontWeight: 'bold',
-          bg: 'blue.600',
-          color: 'white',
-          rounded: '2xl',
-          cursor: 'pointer',
-          boxShadow: 'lg',
-          transition: 'all 0.2s',
-          _hover: {
-            bg: 'blue.700',
-            transform: 'scale(1.02)',
-          },
-          _active: {
-            transform: 'scale(0.98)',
-          },
-        })}
-      >
-        ▶ Start Game ({contextLabel} - {regionCount} {regionCount === 1 ? 'region' : 'regions'})
-      </button>
     </div>
   )
 }
