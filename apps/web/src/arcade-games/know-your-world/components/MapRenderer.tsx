@@ -494,6 +494,20 @@ export function MapRenderer({
   const hintText = useRegionHint(hintMapKey, currentPrompt)
   const hasHint = useHasRegionHint(hintMapKey, currentPrompt)
 
+  // Get the current region name for audio hints
+  const currentRegionName = useMemo(() => {
+    if (!currentPrompt) return null
+    const region = mapData.regions.find((r) => r.id === currentPrompt)
+    return region?.name ?? null
+  }, [currentPrompt, mapData.regions])
+
+  // Create full hint text with region name prefix for speech
+  const fullHintText = useMemo(() => {
+    if (!hintText) return null
+    if (!currentRegionName) return hintText
+    return `${currentRegionName}. ${hintText}`
+  }, [currentRegionName, hintText])
+
   // Speech synthesis for reading hints aloud
   const {
     speak: speakHint,
@@ -585,10 +599,10 @@ export function MapRenderer({
   const handleSpeakClick = useCallback(() => {
     if (isSpeaking) {
       stopSpeaking()
-    } else if (hintText) {
-      speakHint(hintText, withAccent)
+    } else if (fullHintText) {
+      speakHint(fullHintText, withAccent)
     }
-  }, [isSpeaking, stopSpeaking, hintText, speakHint, withAccent])
+  }, [isSpeaking, stopSpeaking, fullHintText, speakHint, withAccent])
 
   const speakButton = usePointerLockButton({
     id: 'speak-hint',
@@ -712,10 +726,10 @@ export function MapRenderer({
     const justOpened = showHintBubble && !prevShowHintBubbleRef.current
     prevShowHintBubbleRef.current = showHintBubble
 
-    if (justOpened && autoSpeak && hintText && isSpeechSupported) {
-      speakHint(hintText, withAccent)
+    if (justOpened && autoSpeak && fullHintText && isSpeechSupported) {
+      speakHint(fullHintText, withAccent)
     }
-  }, [showHintBubble, autoSpeak, hintText, isSpeechSupported, speakHint, withAccent])
+  }, [showHintBubble, autoSpeak, fullHintText, isSpeechSupported, speakHint, withAccent])
 
   // Track previous prompt to detect region changes
   const prevPromptRef = useRef<string | null>(null)
@@ -741,13 +755,13 @@ export function MapRenderer({
       setShowHintBubble(true)
       // If region changed and both auto-hint and auto-speak are enabled, speak immediately
       // This handles the case where the bubble was already open
-      if (isNewRegion && autoSpeakRef.current && hintText && isSpeechSupported) {
-        speakHint(hintText, withAccentRef.current)
+      if (isNewRegion && autoSpeakRef.current && fullHintText && isSpeechSupported) {
+        speakHint(fullHintText, withAccentRef.current)
       }
     } else {
       setShowHintBubble(false)
     }
-  }, [currentPrompt, hasHint, hintText, isSpeechSupported, speakHint])
+  }, [currentPrompt, hasHint, fullHintText, isSpeechSupported, speakHint])
 
   // Hot/cold audio feedback hook
   // Only enabled if: 1) assistance level allows it, 2) user toggle is on, 3) not touch device

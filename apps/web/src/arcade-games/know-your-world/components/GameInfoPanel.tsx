@@ -170,31 +170,48 @@ export function GameInfoPanel({
           className={css({
             flex: 1,
             textAlign: 'center',
-            padding: '2',
+            padding: '3',
             bg: isDark ? 'blue.900' : 'blue.50',
-            rounded: 'md',
-            border: '2px solid',
+            rounded: 'xl',
+            border: '3px solid',
             borderColor: 'blue.500',
             minWidth: 0, // Allow shrinking
             display: 'flex',
             flexDirection: 'column',
             gap: '1',
           })}
+          style={{
+            animation: 'glowPulse 2s ease-in-out infinite',
+          }}
         >
+          <style>{`
+            @keyframes glowPulse {
+              0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+              50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.3); }
+            }
+            @keyframes popIn {
+              0% { transform: scale(0.8); opacity: 0; }
+              50% { transform: scale(1.1); }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
           <div
             className={css({
-              fontSize: '2xs',
+              fontSize: 'xs',
               color: isDark ? 'blue.300' : 'blue.700',
-              fontWeight: 'semibold',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              letterSpacing: 'wide',
             })}
           >
-            Find:
+            🎯 Find
           </div>
           <div
+            key={currentRegionId || 'empty'} // Re-trigger animation on change
             className={css({
-              fontSize: 'lg',
+              fontSize: '2xl',
               fontWeight: 'bold',
-              color: isDark ? 'blue.100' : 'blue.900',
+              color: isDark ? 'white' : 'blue.900',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -203,8 +220,12 @@ export function GameInfoPanel({
               justifyContent: 'center',
               gap: '2',
             })}
+            style={{
+              animation: 'popIn 0.4s ease-out',
+              textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+            }}
           >
-            {flagEmoji && <span className={css({ fontSize: 'xl' })}>{flagEmoji}</span>}
+            {flagEmoji && <span className={css({ fontSize: '2xl' })}>{flagEmoji}</span>}
             <span>{currentRegionName || '...'}</span>
           </div>
         </div>
