@@ -127,7 +127,10 @@ export class KnowYourWorldValidator
     data: any
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only click regions during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only click regions during playing phase',
+      }
     }
 
     if (!state.currentPrompt) {
@@ -351,7 +354,10 @@ export class KnowYourWorldValidator
     includeSizes: RegionSize[]
   ): ValidationResult {
     if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only change region sizes during setup' }
+      return {
+        valid: false,
+        error: 'Can only change region sizes during setup',
+      }
     }
 
     const newState: KnowYourWorldState = {
@@ -367,7 +373,10 @@ export class KnowYourWorldValidator
     assistanceLevel: AssistanceLevel
   ): ValidationResult {
     if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only change assistance level during setup' }
+      return {
+        valid: false,
+        error: 'Can only change assistance level during setup',
+      }
     }
 
     const newState: KnowYourWorldState = {
@@ -448,7 +457,10 @@ export class KnowYourWorldValidator
       // Check if this session has already voted
       const existingVotes = state.giveUpVotes ?? []
       if (existingVotes.includes(userId)) {
-        return { valid: false, error: 'Your session has already voted to give up' }
+        return {
+          valid: false,
+          error: 'Your session has already voted to give up',
+        }
       }
 
       // Add this session's vote
@@ -498,10 +510,12 @@ export class KnowYourWorldValidator
       : [...existingGivenUp, region.id]
 
     // Determine re-ask position based on assistance level
-    // Guided/Helpful: re-ask soon (after 2-3 regions) to reinforce learning
+    // Learning/Guided/Helpful: re-ask soon (after 2-3 regions) to reinforce learning
     // Standard/None: re-ask at the end
     const isHighAssistance =
-      state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful'
+      state.assistanceLevel === 'learning' ||
+      state.assistanceLevel === 'guided' ||
+      state.assistanceLevel === 'helpful'
     const reaskDelay = isHighAssistance ? 3 : state.regionsToFind.length
 
     // Build new regions queue: take next regions, then insert given-up region at appropriate position
@@ -548,7 +562,10 @@ export class KnowYourWorldValidator
     timestamp: number
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only request hints during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only request hints during playing phase',
+      }
     }
 
     if (!state.currentPrompt) {
@@ -588,7 +605,13 @@ export class KnowYourWorldValidator
       : ['huge', 'large', 'medium'] // Default
 
     // Validate assistanceLevel
-    const validAssistanceLevels: AssistanceLevel[] = ['guided', 'helpful', 'standard', 'none']
+    const validAssistanceLevels: AssistanceLevel[] = [
+      'learning',
+      'guided',
+      'helpful',
+      'standard',
+      'none',
+    ]
     const rawAssistance = typedConfig?.assistanceLevel
     const assistanceLevel: AssistanceLevel = validAssistanceLevels.includes(
       rawAssistance as AssistanceLevel

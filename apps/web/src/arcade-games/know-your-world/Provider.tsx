@@ -38,7 +38,12 @@ interface KnowYourWorldContextValue {
   // Cursor position sharing (for multiplayer)
   otherPlayerCursors: Record<
     string,
-    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+    {
+      x: number
+      y: number
+      userId: string
+      hoveredRegionId: string | null
+    } | null
   >
   sendCursorUpdate: (
     playerId: string,
@@ -98,7 +103,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       : ['huge', 'large', 'medium'] // Default to most regions
 
     // Validate assistanceLevel
-    const validAssistanceLevels = ['guided', 'helpful', 'standard', 'none']
+    const validAssistanceLevels = ['learning', 'guided', 'helpful', 'standard', 'none']
     const rawAssistance = gameConfig?.assistanceLevel
     const assistanceLevel: AssistanceLevel =
       typeof rawAssistance === 'string' && validAssistanceLevels.includes(rawAssistance)

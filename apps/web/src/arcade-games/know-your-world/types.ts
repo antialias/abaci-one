@@ -6,7 +6,7 @@ import type { MapDifficultyConfig, RegionSize } from './maps'
  * Assistance level - controls gameplay features (hints, hot/cold, etc.)
  * Separate from region filtering
  */
-export type AssistanceLevel = 'guided' | 'helpful' | 'standard' | 'none'
+export type AssistanceLevel = 'learning' | 'guided' | 'helpful' | 'standard' | 'none'
 
 // Game configuration (persisted to database)
 export interface KnowYourWorldConfig extends GameConfig {

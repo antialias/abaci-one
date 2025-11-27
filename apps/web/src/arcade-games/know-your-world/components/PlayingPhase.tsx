@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import { css } from '@styled/css'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useKnowYourWorld } from '../Provider'
-import { getFilteredMapDataBySizesSync } from '../maps'
+import { getFilteredMapDataBySizesSync, getAssistanceLevel } from '../maps'
 import { MapRenderer } from './MapRenderer'
 import { GameInfoPanel } from './GameInfoPanel'
 import { useViewerId } from '@/lib/arcade/game-sdk'
@@ -55,6 +55,26 @@ export function PlayingPhase() {
   const currentRegionName = currentRegion?.name ?? null
   const currentRegionId = currentRegion?.id ?? null
 
+  // Check if hints are locked (name confirmation required but not yet done)
+  const assistanceConfig = getAssistanceLevel(state.assistanceLevel)
+  const requiresNameConfirmation = assistanceConfig.nameConfirmationLetters ?? 0
+
+  // Track whether hints have been unlocked for the current region
+  const [hintsUnlocked, setHintsUnlocked] = useState(false)
+
+  // Reset hints locked state when region changes
+  useEffect(() => {
+    setHintsUnlocked(false)
+  }, [state.currentPrompt])
+
+  // Hints are locked if name confirmation is required and not yet unlocked
+  const hintsLocked = requiresNameConfirmation > 0 && !hintsUnlocked
+
+  // Callback for GameInfoPanel to notify when hints are unlocked
+  const handleHintsUnlock = useCallback(() => {
+    setHintsUnlocked(true)
+  }, [])
+
   // Error if prompt not found in filtered regions (indicates server/client filter mismatch)
   if (state.currentPrompt && !currentRegion) {
     const errorInfo = {
@@ -102,6 +122,7 @@ export function PlayingPhase() {
             foundCount={foundCount}
             totalRegions={totalRegions}
             progress={progress}
+            onHintsUnlock={handleHintsUnlock}
           />
         </Panel>
 
@@ -164,6 +185,7 @@ export function PlayingPhase() {
               activeUserIds={state.activeUserIds}
               viewerId={viewerId ?? undefined}
               memberPlayers={memberPlayers}
+              hintsLocked={hintsLocked}
             />
           </div>
         </Panel>

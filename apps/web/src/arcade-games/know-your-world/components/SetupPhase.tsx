@@ -369,7 +369,7 @@ export function SetupPhase() {
         <Select.Root
           value={state.assistanceLevel}
           onValueChange={(value) =>
-            setAssistanceLevel(value as 'guided' | 'helpful' | 'standard' | 'none')
+            setAssistanceLevel(value as 'learning' | 'guided' | 'helpful' | 'standard' | 'none')
           }
         >
           <Select.Trigger className={cardTriggerStyles}>

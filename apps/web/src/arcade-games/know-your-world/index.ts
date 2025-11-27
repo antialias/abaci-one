@@ -48,7 +48,7 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
   ]
 
   const validSizes = ['huge', 'large', 'medium', 'small', 'tiny']
-  const validAssistanceLevels = ['guided', 'helpful', 'standard', 'none']
+  const validAssistanceLevels = ['learning', 'guided', 'helpful', 'standard', 'none']
 
   return (
     typeof config === 'object' &&

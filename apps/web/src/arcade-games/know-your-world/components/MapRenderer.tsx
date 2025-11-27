@@ -202,7 +202,7 @@ interface MapRendererProps {
   mapData: MapData
   regionsFound: string[]
   currentPrompt: string | null
-  assistanceLevel: 'guided' | 'helpful' | 'standard' | 'none' // Controls gameplay features (hints, hot/cold)
+  assistanceLevel: 'learning' | 'guided' | 'helpful' | 'standard' | 'none' // Controls gameplay features (hints, hot/cold)
   selectedMap: 'world' | 'usa' // Map ID for calculating excluded regions
   selectedContinent: string // Continent ID for calculating excluded regions
   onRegionClick: (regionId: string, regionName: string) => void
@@ -251,7 +251,12 @@ interface MapRendererProps {
   localPlayerId?: string // The local player's ID (to filter out our own cursor from others)
   otherPlayerCursors?: Record<
     string,
-    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+    {
+      x: number
+      y: number
+      userId: string
+      hoveredRegionId: string | null
+    } | null
   >
   onCursorUpdate?: (
     cursorPosition: { x: number; y: number } | null,
@@ -263,6 +268,8 @@ interface MapRendererProps {
   viewerId?: string // This viewer's userId (to check if local session has voted)
   // Member players mapping (userId -> players) for cursor emoji display
   memberPlayers?: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
+  /** When true, hints are locked (e.g., user hasn't typed required name confirmation yet) */
+  hintsLocked?: boolean
 }
 
 /**
@@ -328,6 +335,7 @@ export function MapRenderer({
   activeUserIds = [],
   viewerId,
   memberPlayers = {},
+  hintsLocked = false,
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -440,8 +448,14 @@ export function MapRenderer({
       initialZoom: 10,
     })
 
-  const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 500 })
-  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null)
+  const [svgDimensions, setSvgDimensions] = useState({
+    width: 1000,
+    height: 500,
+  })
+  const [cursorPosition, setCursorPosition] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const [showMagnifier, setShowMagnifier] = useState(false)
   const [targetOpacity, setTargetOpacity] = useState(0)
   const [targetTop, setTargetTop] = useState(20)
@@ -754,12 +768,13 @@ export function MapRenderer({
   hotColdEnabledRef.current = effectiveHotColdEnabled
 
   // Handle hint bubble and auto-speak when the prompt changes (new region to find)
-  // Only runs when currentPrompt changes, not when settings change
+  // Also re-runs when hintsLocked changes (e.g., user unlocked hints by typing name)
   useEffect(() => {
     const isNewRegion = prevPromptRef.current !== null && prevPromptRef.current !== currentPrompt
     prevPromptRef.current = currentPrompt
 
-    if (autoHintRef.current && hasHint) {
+    // Don't auto-show hints when locked (e.g., waiting for name confirmation)
+    if (autoHintRef.current && hasHint && !hintsLocked) {
       setShowHintBubble(true)
       // If region changed and both auto-hint and auto-speak are enabled, speak immediately
       // This handles the case where the bubble was already open
@@ -769,7 +784,15 @@ export function MapRenderer({
     } else {
       setShowHintBubble(false)
     }
-  }, [currentPrompt, hasHint, currentRegionName, hintText, isSpeechSupported, speakWithRegionName])
+  }, [
+    currentPrompt,
+    hasHint,
+    currentRegionName,
+    hintText,
+    isSpeechSupported,
+    speakWithRegionName,
+    hintsLocked,
+  ])
 
   // Hot/cold audio feedback hook
   // Only enabled if: 1) assistance level allows it, 2) user toggle is on, 3) not touch device
@@ -865,7 +888,10 @@ export function MapRenderer({
     if (pointerLocked && cursorPositionRef.current && containerRef.current && svgRef.current) {
       const { x: cursorX, y: cursorY } = cursorPositionRef.current
 
-      console.log('[CLICK] Pointer lock click at cursor position:', { cursorX, cursorY })
+      console.log('[CLICK] Pointer lock click at cursor position:', {
+        cursorX,
+        cursorY,
+      })
 
       // Check if clicking on any registered button (Give Up, Hint, etc.)
       if (buttonRegistry.handleClick(cursorX, cursorY)) {
@@ -1127,7 +1153,11 @@ export function MapRenderer({
         })
 
         // Start zoom-in animation using CSS transform
-        console.log('[GiveUp Zoom] Setting zoom target:', { scale, translateX, translateY })
+        console.log('[GiveUp Zoom] Setting zoom target:', {
+          scale,
+          translateX,
+          translateY,
+        })
         setGiveUpZoomTarget({ scale, translateX, translateY })
       }
     }
@@ -1666,8 +1696,13 @@ export function MapRenderer({
   const viewBoxHeight = viewBoxParts[3] || 1000
 
   const showOutline = (region: MapRegion): boolean => {
-    // Guided/Helpful modes: always show outlines
-    if (assistanceLevel === 'guided' || assistanceLevel === 'helpful') return true
+    // Learning/Guided/Helpful modes: always show outlines
+    if (
+      assistanceLevel === 'learning' ||
+      assistanceLevel === 'guided' ||
+      assistanceLevel === 'helpful'
+    )
+      return true
 
     // Standard/None modes: only show outline on hover or if found
     return hoveredRegion === region.id || regionsFound.includes(region.id)
@@ -1763,7 +1798,10 @@ export function MapRenderer({
             width: containerRect.width.toFixed(1),
             height: containerRect.height.toFixed(1),
           },
-          svgSize: { width: svgRect.width.toFixed(1), height: svgRect.height.toFixed(1) },
+          svgSize: {
+            width: svgRect.width.toFixed(1),
+            height: svgRect.height.toFixed(1),
+          },
           svgOffset: { x: svgOffsetX.toFixed(1), y: svgOffsetY.toFixed(1) },
           distances: {
             left: dampenedDistLeft.toFixed(1),
@@ -3722,7 +3760,10 @@ export function MapRenderer({
         const magTL = { x: magLeft, y: magTop }
         const magTR = { x: magLeft + magnifierWidth, y: magTop }
         const magBL = { x: magLeft, y: magTop + magnifierHeight }
-        const magBR = { x: magLeft + magnifierWidth, y: magTop + magnifierHeight }
+        const magBR = {
+          x: magLeft + magnifierWidth,
+          y: magTop + magnifierHeight,
+        }
 
         // Check if a line segment passes through a rectangle (excluding endpoints)
         const linePassesThroughRect = (
@@ -3963,7 +4004,11 @@ export function MapRenderer({
                 {zoomSearchDebugInfo && (
                   <>
                     <div
-                      style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #444' }}
+                      style={{
+                        marginTop: '8px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid #444',
+                      }}
                     >
                       <strong>Zoom Decision:</strong>
                     </div>
@@ -4011,7 +4056,13 @@ export function MapRenderer({
                   </>
                 )}
 
-                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #444' }}>
+                <div
+                  style={{
+                    marginTop: '8px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #444',
+                  }}
+                >
                   <strong>Detected Regions ({detectedRegions.length}):</strong>
                 </div>
                 {detectedRegions.map((region) => (

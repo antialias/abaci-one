@@ -26,6 +26,8 @@ interface GameInfoPanelProps {
   foundCount: number
   totalRegions: number
   progress: number
+  /** Callback when hints are unlocked (after name confirmation) */
+  onHintsUnlock?: () => void
 }
 
 export function GameInfoPanel({
@@ -36,6 +38,7 @@ export function GameInfoPanel({
   foundCount,
   totalRegions,
   progress,
+  onHintsUnlock,
 }: GameInfoPanelProps) {
   // Get flag emoji for world map countries (not USA states)
   const flagEmoji =
@@ -117,11 +120,12 @@ export function GameInfoPanel({
     if (requiresNameConfirmation > 0 && currentRegionName && nameInput.length > 0) {
       const requiredPart = currentRegionName.slice(0, requiresNameConfirmation).toLowerCase()
       const inputPart = nameInput.toLowerCase()
-      if (inputPart === requiredPart) {
+      if (inputPart === requiredPart && !nameConfirmed) {
         setNameConfirmed(true)
+        onHintsUnlock?.()
       }
     }
-  }, [nameInput, currentRegionName, requiresNameConfirmation])
+  }, [nameInput, currentRegionName, requiresNameConfirmation, nameConfirmed, onHintsUnlock])
 
   // Determine if hints are available based on difficulty config
   const hintsAvailable = useMemo(() => {

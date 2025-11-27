@@ -163,11 +163,11 @@ export interface AssistanceLevelConfig {
  */
 export const ASSISTANCE_LEVELS: AssistanceLevelConfig[] = [
   {
-    id: 'guided',
-    label: 'Guided',
-    emoji: '🎓',
+    id: 'learning',
+    label: 'Learning',
+    emoji: '📚',
     description:
-      'Maximum help - type name to unlock hints, hot/cold feedback, shows names on wrong clicks',
+      'Type first 3 letters to unlock hints, maximum feedback, best for memorizing names',
     hotColdEnabled: true,
     hintsMode: 'onRequest',
     autoHintDefault: true,
@@ -175,6 +175,18 @@ export const ASSISTANCE_LEVELS: AssistanceLevelConfig[] = [
     giveUpMode: 'reaskSoon',
     wrongClickShowsName: true,
     nameConfirmationLetters: 3, // Must type first 3 letters to unlock hints
+  },
+  {
+    id: 'guided',
+    label: 'Guided',
+    emoji: '🎓',
+    description: 'Maximum help - auto hints, hot/cold feedback, shows names on wrong clicks',
+    hotColdEnabled: true,
+    hintsMode: 'onRequest',
+    autoHintDefault: true,
+    struggleHintEnabled: true,
+    giveUpMode: 'reaskSoon',
+    wrongClickShowsName: true,
   },
   {
     id: 'helpful',
