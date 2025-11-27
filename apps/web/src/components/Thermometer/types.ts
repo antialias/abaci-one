@@ -61,4 +61,6 @@ export interface RangeThermometerProps<T extends string> extends ThermometerBase
   selectedRegionNames?: string[]
   /** Callback when hovering over a region name in the popover (for map preview) */
   onRegionNameHover?: (regionName: string | null) => void
+  /** Hide the total count on md+ breakpoints (use when inline list is shown on desktop) */
+  hideCountOnMd?: boolean
 }

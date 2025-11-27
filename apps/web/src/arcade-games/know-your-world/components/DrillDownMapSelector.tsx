@@ -1052,106 +1052,102 @@ export function DrillDownMapSelector({
             )
           })()}
 
-        {/* Region Size Range Selector - positioned inside map, right side */}
+        {/* Right-side controls container - region size selector with inline list on desktop */}
         <div
-          data-element="region-size-filters"
+          data-element="right-controls"
           className={css({
             position: 'absolute',
             top: fillContainer ? '164px' : '3',
             right: { base: '8px', sm: '24px' },
-            padding: { base: '2', sm: '3' },
-            bg: isDark ? 'gray.800' : 'gray.100',
-            rounded: 'xl',
-            shadow: 'lg',
             zIndex: 10,
             transform: { base: 'scale(0.75)', sm: 'scale(1)' },
             transformOrigin: 'top right',
           })}
         >
-          <RangeThermometer
-            options={SIZE_OPTIONS}
-            minValue={sizesToRange(includeSizes)[0]}
-            maxValue={sizesToRange(includeSizes)[1]}
-            onChange={(min, max) => onRegionSizesChange(rangeToSizes(min, max))}
-            orientation="vertical"
-            isDark={isDark}
-            counts={regionCountsBySize as Partial<Record<RegionSize, number>>}
-            showTotalCount
-            onHoverPreview={setSizeRangePreview}
-            regionNamesByCategory={regionNamesBySize}
-            selectedRegionNames={selectedRegionNames}
-            onRegionNameHover={setPreviewRegionName}
-          />
-        </div>
-
-        {/* Region List Panel - visible on larger screens only */}
-        {fillContainer && selectedRegionNames.length > 0 && (
+          {/* Region Size Range Selector with inline list expansion on desktop */}
           <div
-            data-element="region-list-panel"
+            data-element="region-size-filters"
             className={css({
-              position: 'absolute',
-              top: '164px',
-              right: { base: '8px', sm: '180px' },
-              display: { base: 'none', md: 'flex' },
+              display: 'flex',
               flexDirection: 'column',
-              width: '180px',
-              maxHeight: '280px',
+              padding: '3',
               bg: isDark ? 'gray.800' : 'gray.100',
               rounded: 'xl',
               shadow: 'lg',
-              zIndex: 10,
+              maxHeight: { base: 'none', md: fillContainer ? '400px' : 'none' },
               overflow: 'hidden',
             })}
           >
-            {/* Header */}
-            <div
-              className={css({
-                px: '3',
-                py: '2',
-                borderBottom: '1px solid',
-                borderColor: isDark ? 'gray.700' : 'gray.200',
-                fontWeight: '600',
-                fontSize: 'sm',
-                color: isDark ? 'gray.100' : 'gray.800',
-                flexShrink: 0,
-              })}
-            >
-              {selectedRegionNames.length} regions
-            </div>
-            {/* Scrollable list */}
-            <div
-              className={css({
-                overflowY: 'auto',
-                flex: 1,
-                py: '1',
-              })}
-            >
-              {selectedRegionNames
-                .slice()
-                .sort((a, b) => a.localeCompare(b))
-                .map((name) => (
-                  <div
-                    key={name}
-                    onMouseEnter={() => setPreviewRegionName(name)}
-                    onMouseLeave={() => setPreviewRegionName(null)}
-                    className={css({
-                      px: '3',
-                      py: '1',
-                      fontSize: 'xs',
-                      color: isDark ? 'gray.300' : 'gray.600',
-                      cursor: 'pointer',
-                      _hover: {
-                        bg: isDark ? 'gray.700' : 'gray.200',
-                        color: isDark ? 'gray.100' : 'gray.900',
-                      },
-                    })}
-                  >
-                    {name}
-                  </div>
-                ))}
-            </div>
+            <RangeThermometer
+              options={SIZE_OPTIONS}
+              minValue={sizesToRange(includeSizes)[0]}
+              maxValue={sizesToRange(includeSizes)[1]}
+              onChange={(min, max) => onRegionSizesChange(rangeToSizes(min, max))}
+              orientation="vertical"
+              isDark={isDark}
+              counts={regionCountsBySize as Partial<Record<RegionSize, number>>}
+              showTotalCount
+              onHoverPreview={setSizeRangePreview}
+              regionNamesByCategory={regionNamesBySize}
+              selectedRegionNames={selectedRegionNames}
+              onRegionNameHover={setPreviewRegionName}
+              hideCountOnMd={fillContainer && selectedRegionNames.length > 0}
+            />
+
+            {/* Inline region list - visible on larger screens only, expands below thermometer */}
+            {fillContainer && selectedRegionNames.length > 0 && (
+              <div
+                data-element="region-list-inline"
+                className={css({
+                  display: { base: 'none', md: 'flex' },
+                  flexDirection: 'column',
+                  borderTop: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.300',
+                  marginTop: '2',
+                  paddingTop: '2',
+                  maxHeight: '200px',
+                  /* Prevent this element from expanding the parent - use 0 width + min 100% trick */
+                  width: 0,
+                  minWidth: '100%',
+                })}
+              >
+                {/* Scrollable list */}
+                <div
+                  className={css({
+                    overflowY: 'auto',
+                    flex: 1,
+                  })}
+                >
+                  {selectedRegionNames
+                    .slice()
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((name) => (
+                      <div
+                        key={name}
+                        onMouseEnter={() => setPreviewRegionName(name)}
+                        onMouseLeave={() => setPreviewRegionName(null)}
+                        className={css({
+                          px: '2',
+                          py: '1',
+                          fontSize: 'xs',
+                          color: isDark ? 'gray.300' : 'gray.600',
+                          cursor: 'pointer',
+                          rounded: 'md',
+                          overflowWrap: 'break-word',
+                          _hover: {
+                            bg: isDark ? 'gray.700' : 'gray.200',
+                            color: isDark ? 'gray.100' : 'gray.900',
+                          },
+                        })}
+                      >
+                        {name}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Peer Navigation - Mini-map thumbnails below main map (or planets at world level) */}

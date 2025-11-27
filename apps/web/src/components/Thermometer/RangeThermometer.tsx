@@ -29,6 +29,7 @@ export function RangeThermometer<T extends string>({
   regionNamesByCategory,
   selectedRegionNames,
   onRegionNameHover,
+  hideCountOnMd = false,
 }: RangeThermometerProps<T>) {
   const isVertical = orientation === 'vertical'
   const [isDragging, setIsDragging] = useState(false)
@@ -354,14 +355,21 @@ export function RangeThermometer<T extends string>({
                         <div className={css({ color: 'gray.300' })}>
                           {tooltipContent.names.join(', ')}
                           {tooltipContent.remaining > 0 && (
-                            <span className={css({ color: 'gray.400', fontStyle: 'italic' })}>
+                            <span
+                              className={css({
+                                color: 'gray.400',
+                                fontStyle: 'italic',
+                              })}
+                            >
                               {' '}
                               ...and {tooltipContent.remaining} more
                             </span>
                           )}
                         </div>
                         <Tooltip.Arrow
-                          className={css({ fill: isDark ? 'gray.800' : 'gray.900' })}
+                          className={css({
+                            fill: isDark ? 'gray.800' : 'gray.900',
+                          })}
                         />
                       </Tooltip.Content>
                     </Tooltip.Portal>
@@ -483,129 +491,136 @@ export function RangeThermometer<T extends string>({
 
         {/* Total count display - clickable to show all selected regions */}
         {totalCount !== null && (
-          <Popover.Root>
-            <Popover.Trigger asChild>
-              <button
-                type="button"
-                data-element="total-count"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '1',
-                  py: '1.5',
-                  px: '2',
-                  bg: isDark ? 'blue.900/30' : 'blue.50',
-                  rounded: 'md',
-                  border: '1px solid',
-                  borderColor: isDark ? 'blue.800' : 'blue.200',
-                  cursor: selectedRegionNames?.length ? 'pointer' : 'default',
-                  transition: 'all 0.15s',
-                  _hover: selectedRegionNames?.length
-                    ? {
-                        bg: isDark ? 'blue.900/50' : 'blue.100',
-                        borderColor: isDark ? 'blue.700' : 'blue.300',
-                      }
-                    : {},
-                })}
-              >
-                <span
+          <div
+            className={css({
+              display: hideCountOnMd ? { base: 'block', md: 'none' } : 'block',
+            })}
+          >
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button
+                  type="button"
+                  data-element="total-count"
                   className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'bold',
-                    color: isDark ? 'blue.300' : 'blue.700',
-                    textDecoration: selectedRegionNames?.length ? 'underline' : 'none',
-                    textDecorationStyle: 'dotted',
-                    textUnderlineOffset: '2px',
-                  })}
-                >
-                  {totalCount}
-                </span>
-                <span
-                  className={css({
-                    fontSize: 'xs',
-                    color: isDark ? 'blue.400' : 'blue.600',
-                  })}
-                >
-                  regions
-                </span>
-              </button>
-            </Popover.Trigger>
-            {selectedRegionNames && selectedRegionNames.length > 0 && (
-              <Popover.Portal>
-                <Popover.Content
-                  side="top"
-                  sideOffset={8}
-                  align="center"
-                  className={css({
-                    bg: isDark ? 'gray.800' : 'white',
-                    border: '1px solid',
-                    borderColor: isDark ? 'gray.700' : 'gray.200',
-                    rounded: 'lg',
-                    boxShadow: 'xl',
-                    zIndex: 50,
-                    width: '200px',
-                    maxHeight: '300px',
-                    overflow: 'hidden',
                     display: 'flex',
-                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1',
+                    py: '1.5',
+                    px: '2',
+                    bg: isDark ? 'blue.900/30' : 'blue.50',
+                    rounded: 'md',
+                    border: '1px solid',
+                    borderColor: isDark ? 'blue.800' : 'blue.200',
+                    cursor: selectedRegionNames?.length ? 'pointer' : 'default',
+                    transition: 'all 0.15s',
+                    width: '100%',
+                    _hover: selectedRegionNames?.length
+                      ? {
+                          bg: isDark ? 'blue.900/50' : 'blue.100',
+                          borderColor: isDark ? 'blue.700' : 'blue.300',
+                        }
+                      : {},
                   })}
                 >
-                  {/* Header */}
-                  <div
+                  <span
                     className={css({
-                      px: '3',
-                      py: '2',
-                      borderBottom: '1px solid',
-                      borderColor: isDark ? 'gray.700' : 'gray.200',
-                      fontWeight: '600',
                       fontSize: 'sm',
-                      color: isDark ? 'gray.100' : 'gray.800',
+                      fontWeight: 'bold',
+                      color: isDark ? 'blue.300' : 'blue.700',
+                      textDecoration: selectedRegionNames?.length ? 'underline' : 'none',
+                      textDecorationStyle: 'dotted',
+                      textUnderlineOffset: '2px',
                     })}
                   >
-                    {selectedRegionNames.length} regions selected
-                  </div>
-                  {/* Scrollable list */}
-                  <div
+                    {totalCount}
+                  </span>
+                  <span
                     className={css({
-                      overflowY: 'auto',
-                      flex: 1,
-                      py: '1',
+                      fontSize: 'xs',
+                      color: isDark ? 'blue.400' : 'blue.600',
                     })}
                   >
-                    {selectedRegionNames
-                      .slice()
-                      .sort((a, b) => a.localeCompare(b))
-                      .map((name) => (
-                        <div
-                          key={name}
-                          onMouseEnter={() => onRegionNameHover?.(name)}
-                          onMouseLeave={() => onRegionNameHover?.(null)}
-                          className={css({
-                            px: '3',
-                            py: '1',
-                            fontSize: 'xs',
-                            color: isDark ? 'gray.300' : 'gray.600',
-                            cursor: onRegionNameHover ? 'pointer' : 'default',
-                            _hover: {
-                              bg: isDark ? 'gray.700' : 'gray.100',
-                              color: isDark ? 'gray.100' : 'gray.900',
-                            },
-                          })}
-                        >
-                          {name}
-                        </div>
-                      ))}
-                  </div>
-                  <Popover.Arrow
+                    regions
+                  </span>
+                </button>
+              </Popover.Trigger>
+              {selectedRegionNames && selectedRegionNames.length > 0 && (
+                <Popover.Portal>
+                  <Popover.Content
+                    side="top"
+                    sideOffset={8}
+                    align="center"
                     className={css({
-                      fill: isDark ? 'gray.800' : 'white',
+                      bg: isDark ? 'gray.800' : 'white',
+                      border: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      rounded: 'lg',
+                      boxShadow: 'xl',
+                      zIndex: 50,
+                      width: '200px',
+                      maxHeight: '300px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
                     })}
-                  />
-                </Popover.Content>
-              </Popover.Portal>
-            )}
-          </Popover.Root>
+                  >
+                    {/* Header */}
+                    <div
+                      className={css({
+                        px: '3',
+                        py: '2',
+                        borderBottom: '1px solid',
+                        borderColor: isDark ? 'gray.700' : 'gray.200',
+                        fontWeight: '600',
+                        fontSize: 'sm',
+                        color: isDark ? 'gray.100' : 'gray.800',
+                      })}
+                    >
+                      {selectedRegionNames.length} regions selected
+                    </div>
+                    {/* Scrollable list */}
+                    <div
+                      className={css({
+                        overflowY: 'auto',
+                        flex: 1,
+                        py: '1',
+                      })}
+                    >
+                      {selectedRegionNames
+                        .slice()
+                        .sort((a, b) => a.localeCompare(b))
+                        .map((name) => (
+                          <div
+                            key={name}
+                            onMouseEnter={() => onRegionNameHover?.(name)}
+                            onMouseLeave={() => onRegionNameHover?.(null)}
+                            className={css({
+                              px: '3',
+                              py: '1',
+                              fontSize: 'xs',
+                              color: isDark ? 'gray.300' : 'gray.600',
+                              cursor: onRegionNameHover ? 'pointer' : 'default',
+                              _hover: {
+                                bg: isDark ? 'gray.700' : 'gray.100',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                              },
+                            })}
+                          >
+                            {name}
+                          </div>
+                        ))}
+                    </div>
+                    <Popover.Arrow
+                      className={css({
+                        fill: isDark ? 'gray.800' : 'white',
+                      })}
+                    />
+                  </Popover.Content>
+                </Popover.Portal>
+              )}
+            </Popover.Root>
+          </div>
         )}
       </div>
     </Tooltip.Provider>
