@@ -154,6 +154,8 @@ export interface AssistanceLevelConfig {
   struggleHintEnabled: boolean
   giveUpMode: GiveUpMode
   wrongClickShowsName: boolean
+  // Name reinforcement
+  nameConfirmationLetters?: number // If set, require typing first N letters before hints unlock
 }
 
 /**
@@ -164,13 +166,15 @@ export const ASSISTANCE_LEVELS: AssistanceLevelConfig[] = [
     id: 'guided',
     label: 'Guided',
     emoji: '🎓',
-    description: 'Maximum help - hot/cold feedback, auto-hints, shows names on wrong clicks',
+    description:
+      'Maximum help - type name to unlock hints, hot/cold feedback, shows names on wrong clicks',
     hotColdEnabled: true,
     hintsMode: 'onRequest',
     autoHintDefault: true,
     struggleHintEnabled: true,
     giveUpMode: 'reaskSoon',
     wrongClickShowsName: true,
+    nameConfirmationLetters: 3, // Must type first 3 letters to unlock hints
   },
   {
     id: 'helpful',

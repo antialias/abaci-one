@@ -19,6 +19,7 @@ import {
   filterRegionsByContinent,
   parseViewBox,
   calculateFitCropViewBox,
+  getCountryFlagEmoji,
 } from '../maps'
 import type { ContinentId } from '../continents'
 import {
@@ -501,16 +502,15 @@ export function MapRenderer({
     return region?.name ?? null
   }, [currentPrompt, mapData.regions])
 
-  // Create full hint text with region name prefix for speech
-  const fullHintText = useMemo(() => {
-    if (!hintText) return null
-    if (!currentRegionName) return hintText
-    return `${currentRegionName}. ${hintText}`
-  }, [currentRegionName, hintText])
+  // Get flag emoji for cursor label (world map only)
+  const currentFlagEmoji = useMemo(() => {
+    if (selectedMap !== 'world' || !currentPrompt) return ''
+    return getCountryFlagEmoji(currentPrompt)
+  }, [selectedMap, currentPrompt])
 
   // Speech synthesis for reading hints aloud
   const {
-    speak: speakHint,
+    speakWithRegionName,
     stop: stopSpeaking,
     isSpeaking,
     isSupported: isSpeechSupported,
@@ -523,11 +523,11 @@ export function MapRenderer({
     return localStorage.getItem('knowYourWorld.autoSpeakHint') === 'true'
   })
 
-  // With accent setting persisted in localStorage (default true)
+  // With accent setting persisted in localStorage (default false - use user's locale for consistent pronunciation)
   const [withAccent, setWithAccent] = useState(() => {
-    if (typeof window === 'undefined') return true
+    if (typeof window === 'undefined') return false
     const stored = localStorage.getItem('knowYourWorld.withAccent')
-    return stored === null ? true : stored === 'true'
+    return stored === null ? false : stored === 'true'
   })
 
   // Auto-hint setting persisted in localStorage (auto-opens hint on region advance)
@@ -599,10 +599,10 @@ export function MapRenderer({
   const handleSpeakClick = useCallback(() => {
     if (isSpeaking) {
       stopSpeaking()
-    } else if (fullHintText) {
-      speakHint(fullHintText, withAccent)
+    } else if (currentRegionName) {
+      speakWithRegionName(currentRegionName, hintText, withAccent)
     }
-  }, [isSpeaking, stopSpeaking, fullHintText, speakHint, withAccent])
+  }, [isSpeaking, stopSpeaking, currentRegionName, hintText, speakWithRegionName, withAccent])
 
   const speakButton = usePointerLockButton({
     id: 'speak-hint',
@@ -726,10 +726,18 @@ export function MapRenderer({
     const justOpened = showHintBubble && !prevShowHintBubbleRef.current
     prevShowHintBubbleRef.current = showHintBubble
 
-    if (justOpened && autoSpeak && fullHintText && isSpeechSupported) {
-      speakHint(fullHintText, withAccent)
+    if (justOpened && autoSpeak && currentRegionName && isSpeechSupported) {
+      speakWithRegionName(currentRegionName, hintText, withAccent)
     }
-  }, [showHintBubble, autoSpeak, fullHintText, isSpeechSupported, speakHint, withAccent])
+  }, [
+    showHintBubble,
+    autoSpeak,
+    currentRegionName,
+    hintText,
+    isSpeechSupported,
+    speakWithRegionName,
+    withAccent,
+  ])
 
   // Track previous prompt to detect region changes
   const prevPromptRef = useRef<string | null>(null)
@@ -755,13 +763,13 @@ export function MapRenderer({
       setShowHintBubble(true)
       // If region changed and both auto-hint and auto-speak are enabled, speak immediately
       // This handles the case where the bubble was already open
-      if (isNewRegion && autoSpeakRef.current && fullHintText && isSpeechSupported) {
-        speakHint(fullHintText, withAccentRef.current)
+      if (isNewRegion && autoSpeakRef.current && currentRegionName && isSpeechSupported) {
+        speakWithRegionName(currentRegionName, hintText, withAccentRef.current)
       }
     } else {
       setShowHintBubble(false)
     }
-  }, [currentPrompt, hasHint, fullHintText, isSpeechSupported, speakHint])
+  }, [currentPrompt, hasHint, currentRegionName, hintText, isSpeechSupported, speakWithRegionName])
 
   // Hot/cold audio feedback hook
   // Only enabled if: 1) assistance level allows it, 2) user toggle is on, 3) not touch device
@@ -2920,49 +2928,96 @@ export function MapRenderer({
       {(() => {
         // Debug logging removed - was flooding console
         return pointerLocked && cursorPosition ? (
-          <div
-            data-element="custom-cursor"
-            style={{
-              position: 'absolute',
-              left: `${cursorPosition.x}px`,
-              top: `${cursorPosition.y}px`,
-              width: '20px',
-              height: '20px',
-              border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
-              borderRadius: '50%',
-              pointerEvents: 'none',
-              zIndex: 200,
-              transform: `translate(-50%, -50%) scale(${cursorSquish.x}, ${cursorSquish.y})`,
-              backgroundColor: 'transparent',
-              boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.1s ease-out', // Smooth squish animation
-            }}
-          >
-            {/* Crosshair - Vertical line */}
+          <>
             <div
+              data-element="custom-cursor"
               style={{
                 position: 'absolute',
-                left: '50%',
-                top: '0',
-                width: '2px',
-                height: '100%',
-                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-                transform: 'translateX(-50%)',
+                left: `${cursorPosition.x}px`,
+                top: `${cursorPosition.y}px`,
+                width: '20px',
+                height: '20px',
+                border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
+                borderRadius: '50%',
+                pointerEvents: 'none',
+                zIndex: 200,
+                transform: `translate(-50%, -50%) scale(${cursorSquish.x}, ${cursorSquish.y})`,
+                backgroundColor: 'transparent',
+                boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
+                transition: 'transform 0.1s ease-out', // Smooth squish animation
               }}
-            />
-            {/* Crosshair - Horizontal line */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '0',
-                top: '50%',
-                width: '100%',
-                height: '2px',
-                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-                transform: 'translateY(-50%)',
-              }}
-            />
-          </div>
+            >
+              {/* Crosshair - Vertical line */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '0',
+                  width: '2px',
+                  height: '100%',
+                  backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+                  transform: 'translateX(-50%)',
+                }}
+              />
+              {/* Crosshair - Horizontal line */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '0',
+                  top: '50%',
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+                  transform: 'translateY(-50%)',
+                }}
+              />
+            </div>
+            {/* Cursor region name label - shows what to find under the cursor */}
+            {currentRegionName && (
+              <div
+                data-element="cursor-region-label"
+                style={{
+                  position: 'absolute',
+                  left: `${cursorPosition.x}px`,
+                  top: `${cursorPosition.y + 18}px`,
+                  transform: 'translateX(-50%)',
+                  pointerEvents: 'none',
+                  zIndex: 201,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  backgroundColor: isDark ? 'rgba(30, 58, 138, 0.95)' : 'rgba(219, 234, 254, 0.95)',
+                  border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    color: isDark ? '#93c5fd' : '#1e40af',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Find
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    color: isDark ? 'white' : '#1e3a8a',
+                  }}
+                >
+                  {currentRegionName}
+                </span>
+                {currentFlagEmoji && <span style={{ fontSize: '14px' }}>{currentFlagEmoji}</span>}
+              </div>
+            )}
+          </>
         ) : null
       })()}
 

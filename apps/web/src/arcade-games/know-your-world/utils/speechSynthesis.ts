@@ -400,6 +400,7 @@ export function speakText(
     onStart?: () => void
     onEnd?: () => void
     onError?: (error: SpeechSynthesisErrorEvent) => void
+    queue?: boolean // If true, don't cancel ongoing speech - add to queue
   }
 ): { cancel: () => void } {
   const voices = speechSynthesis.getVoices()
@@ -430,8 +431,10 @@ export function speakText(
     utterance.onerror = options.onError
   }
 
-  // Cancel any ongoing speech and start new
-  speechSynthesis.cancel()
+  // Cancel any ongoing speech unless queuing
+  if (!options?.queue) {
+    speechSynthesis.cancel()
+  }
   speechSynthesis.speak(utterance)
 
   return {

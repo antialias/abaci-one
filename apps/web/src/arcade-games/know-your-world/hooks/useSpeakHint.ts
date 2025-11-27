@@ -121,6 +121,66 @@ export function useSpeakHint(map: string, regionId: string | null) {
     [hasAccentOption, regionLang, userLang, speakWithLang]
   )
 
+  // Speak region name (always in user's locale) followed by hint text (optionally with accent)
+  // This ensures kids hear the country name in their own accent for better learning
+  const speakWithRegionName = useCallback(
+    (regionName: string, hintText: string | null, withAccent: boolean = false) => {
+      if (!isSupported) return
+
+      // Cancel any ongoing speech
+      if (cancelRef.current) {
+        cancelRef.current()
+      }
+
+      setIsSpeaking(true)
+
+      // Always speak region name in user's locale
+      const { cancel: cancelName } = speakText(regionName, userLang, {
+        rate: 0.85,
+        onError: () => {
+          setIsSpeaking(false)
+          cancelRef.current = null
+        },
+      })
+
+      cancelRef.current = cancelName
+
+      // If there's hint text, queue it after the region name
+      if (hintText) {
+        const hintLang = withAccent && hasAccentOption ? regionLang : userLang
+        speakText(hintText, hintLang, {
+          rate: 0.85,
+          queue: true, // Add to queue, don't cancel
+          onEnd: () => {
+            setIsSpeaking(false)
+            cancelRef.current = null
+          },
+          onError: () => {
+            setIsSpeaking(false)
+            cancelRef.current = null
+          },
+        })
+      } else {
+        // No hint text, just speaking the name - need onEnd handler
+        // Re-speak with onEnd handler (the first utterance will be replaced)
+        speechSynthesis.cancel()
+        speakText(regionName, userLang, {
+          rate: 0.85,
+          onStart: () => setIsSpeaking(true),
+          onEnd: () => {
+            setIsSpeaking(false)
+            cancelRef.current = null
+          },
+          onError: () => {
+            setIsSpeaking(false)
+            cancelRef.current = null
+          },
+        })
+      }
+    },
+    [isSupported, userLang, regionLang, hasAccentOption]
+  )
+
   const stop = useCallback(() => {
     if (cancelRef.current) {
       cancelRef.current()
@@ -131,6 +191,7 @@ export function useSpeakHint(map: string, regionId: string | null) {
 
   return {
     speak,
+    speakWithRegionName,
     stop,
     isSpeaking,
     isSupported,
