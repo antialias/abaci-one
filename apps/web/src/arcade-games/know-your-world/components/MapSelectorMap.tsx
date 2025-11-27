@@ -65,6 +65,7 @@ const AnimatedRegion = memo(function AnimatedRegion({
         cursor: 'pointer',
         pointerEvents: 'all',
         opacity: springProps.opacity,
+        touchAction: 'manipulation',
       }}
     />
   )
@@ -365,6 +366,7 @@ export function MapSelectorMap({
           height: '100%',
           cursor: 'crosshair',
           display: 'block',
+          touchAction: 'manipulation',
         })}
         preserveAspectRatio="xMidYMid meet"
       >

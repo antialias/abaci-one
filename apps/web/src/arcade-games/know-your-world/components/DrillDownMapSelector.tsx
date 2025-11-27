@@ -166,6 +166,18 @@ export function DrillDownMapSelector({
   // Track which region name is being hovered in the popover (for zoom preview)
   const [previewRegionName, setPreviewRegionName] = useState<string | null>(null)
 
+  // Sync local path state when props change from external sources (e.g., other players)
+  useEffect(() => {
+    const expectedPath = getInitialPath()
+    const pathMatches =
+      path.length === expectedPath.length && path.every((p, i) => p === expectedPath[i])
+
+    if (!pathMatches) {
+      setPath(expectedPath)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMap, selectedContinent])
+
   // Measure container dimensions for viewBox calculation
   useEffect(() => {
     const measureContainer = () => {
@@ -1071,6 +1083,75 @@ export function DrillDownMapSelector({
             onRegionNameHover={setPreviewRegionName}
           />
         </div>
+
+        {/* Region List Panel - visible on larger screens only */}
+        {fillContainer && selectedRegionNames.length > 0 && (
+          <div
+            data-element="region-list-panel"
+            className={css({
+              position: 'absolute',
+              top: '164px',
+              right: { base: '8px', sm: '180px' },
+              display: { base: 'none', md: 'flex' },
+              flexDirection: 'column',
+              width: '180px',
+              maxHeight: '280px',
+              bg: isDark ? 'gray.800' : 'gray.100',
+              rounded: 'xl',
+              shadow: 'lg',
+              zIndex: 10,
+              overflow: 'hidden',
+            })}
+          >
+            {/* Header */}
+            <div
+              className={css({
+                px: '3',
+                py: '2',
+                borderBottom: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                fontWeight: '600',
+                fontSize: 'sm',
+                color: isDark ? 'gray.100' : 'gray.800',
+                flexShrink: 0,
+              })}
+            >
+              {selectedRegionNames.length} regions
+            </div>
+            {/* Scrollable list */}
+            <div
+              className={css({
+                overflowY: 'auto',
+                flex: 1,
+                py: '1',
+              })}
+            >
+              {selectedRegionNames
+                .slice()
+                .sort((a, b) => a.localeCompare(b))
+                .map((name) => (
+                  <div
+                    key={name}
+                    onMouseEnter={() => setPreviewRegionName(name)}
+                    onMouseLeave={() => setPreviewRegionName(null)}
+                    className={css({
+                      px: '3',
+                      py: '1',
+                      fontSize: 'xs',
+                      color: isDark ? 'gray.300' : 'gray.600',
+                      cursor: 'pointer',
+                      _hover: {
+                        bg: isDark ? 'gray.700' : 'gray.200',
+                        color: isDark ? 'gray.100' : 'gray.900',
+                      },
+                    })}
+                  >
+                    {name}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Peer Navigation - Mini-map thumbnails below main map (or planets at world level) */}
