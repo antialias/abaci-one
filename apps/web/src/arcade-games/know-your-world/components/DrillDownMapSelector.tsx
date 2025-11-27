@@ -1106,41 +1106,6 @@ export function DrillDownMapSelector({
         </div>
       )}
 
-      {/* Hovered Region Label - always visible with fixed height */}
-      <div
-        data-element="hovered-region-name"
-        className={css({
-          marginTop: '2',
-          textAlign: 'center',
-          fontSize: 'sm',
-          fontWeight: '500',
-          height: '24px', // Fixed height to prevent jiggle
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '2',
-        })}
-      >
-        <span className={css({ color: isDark ? 'gray.200' : 'gray.700' })}>{hoveredLabel}</span>
-        {hoveredHint && (
-          <span
-            className={css({
-              color:
-                hoveredHint === 'click to start game'
-                  ? isDark
-                    ? 'green.400'
-                    : 'green.600'
-                  : isDark
-                    ? 'blue.400'
-                    : 'blue.600',
-              fontSize: 'xs',
-            })}
-          >
-            ({hoveredHint})
-          </span>
-        )}
-      </div>
-
       {/* Start Game Button */}
       <button
         data-action="start-game"
