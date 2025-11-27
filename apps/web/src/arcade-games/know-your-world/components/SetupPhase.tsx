@@ -184,14 +184,14 @@ export function SetupPhase() {
   const cardTriggerStyles = css({
     display: 'flex',
     alignItems: 'center',
-    gap: { base: '2', sm: '3' },
-    padding: { base: '2', sm: '3' },
+    gap: { base: '1.5', sm: '3' },
+    padding: { base: '1.5', sm: '3' },
     bg: isDark ? 'gray.700/80' : 'white/80',
     rounded: 'xl',
     cursor: 'pointer',
     transition: 'all 0.15s',
     width: { base: 'calc(50% - 4px)', sm: '260px' },
-    height: { base: '64px', sm: '88px' },
+    height: { base: '48px', sm: '88px' },
     textAlign: 'left',
     _hover: {
       bg: isDark ? 'gray.600/90' : 'white',
@@ -283,7 +283,12 @@ export function SetupPhase() {
           onValueChange={(value) => setMode(value as 'cooperative' | 'race' | 'turn-based')}
         >
           <Select.Trigger className={cardTriggerStyles}>
-            <span className={css({ fontSize: { base: 'xl', sm: '2xl' }, flexShrink: 0 })}>
+            <span
+              className={css({
+                fontSize: { base: 'lg', sm: '2xl' },
+                flexShrink: 0,
+              })}
+            >
               {selectedMode?.emoji}
             </span>
             <div className={css({ flex: 1, minWidth: 0 })}>
@@ -304,7 +309,10 @@ export function SetupPhase() {
                   {selectedMode?.label}
                 </span>
                 <Select.Icon
-                  className={css({ color: isDark ? 'gray.400' : 'gray.500', fontSize: 'xs' })}
+                  className={css({
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    fontSize: 'xs',
+                  })}
                 >
                   ▼
                 </Select.Icon>
@@ -365,7 +373,12 @@ export function SetupPhase() {
           }
         >
           <Select.Trigger className={cardTriggerStyles}>
-            <span className={css({ fontSize: { base: 'xl', sm: '2xl' }, flexShrink: 0 })}>
+            <span
+              className={css({
+                fontSize: { base: 'lg', sm: '2xl' },
+                flexShrink: 0,
+              })}
+            >
               {selectedAssistance?.emoji || '💡'}
             </span>
             <div className={css({ flex: 1, minWidth: 0 })}>
@@ -386,7 +399,10 @@ export function SetupPhase() {
                   {selectedAssistance?.label}
                 </span>
                 <Select.Icon
-                  className={css({ color: isDark ? 'gray.400' : 'gray.500', fontSize: 'xs' })}
+                  className={css({
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    fontSize: 'xs',
+                  })}
                 >
                   ▼
                 </Select.Icon>
@@ -578,7 +594,12 @@ export function SetupPhase() {
               })}
             >
               <span>{regionTheme.icons[0]}</span>
-              <span className={css({ fontSize: { base: 'xs', sm: 'sm' }, marginTop: '-2px' })}>
+              <span
+                className={css({
+                  fontSize: { base: 'xs', sm: 'sm' },
+                  marginTop: '-2px',
+                })}
+              >
                 {regionTheme.icons[1]}
               </span>
             </div>
