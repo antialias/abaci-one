@@ -77,7 +77,9 @@
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
       "Bash(node --input-type=module -e:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx tsx:*)",
+      "Bash(tsc:*)"
     ],
     "deny": [],
     "ask": []

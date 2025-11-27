@@ -553,7 +553,8 @@ export class KnowYourWorldValidator
     // Determine re-ask position based on assistance level
     // Guided/Helpful: re-ask soon (after 2-3 regions) to reinforce learning
     // Standard/None: re-ask at the end
-    const isHighAssistance = state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful'
+    const isHighAssistance =
+      state.assistanceLevel === 'guided' || state.assistanceLevel === 'helpful'
     const reaskDelay = isHighAssistance ? 3 : state.regionsToFind.length
 
     // Build new regions queue: take next regions, then insert given-up region at appropriate position

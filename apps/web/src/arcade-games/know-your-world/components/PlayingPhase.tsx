@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { css } from '@styled/css'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useKnowYourWorld } from '../Provider'
-import { getFilteredMapDataSync } from '../maps'
+import { getFilteredMapDataBySizesSync } from '../maps'
 import { MapRenderer } from './MapRenderer'
 import { GameInfoPanel } from './GameInfoPanel'
 import { useViewerId } from '@/lib/arcade/game-sdk'
@@ -39,10 +39,10 @@ export function PlayingPhase() {
     [localPlayerId, viewerId, sendCursorUpdate]
   )
 
-  const mapData = getFilteredMapDataSync(
+  const mapData = getFilteredMapDataBySizesSync(
     state.selectedMap,
     state.selectedContinent,
-    state.difficulty
+    state.includeSizes
   )
   const totalRegions = mapData.regions.length
   const foundCount = state.regionsFound.length
@@ -55,15 +55,22 @@ export function PlayingPhase() {
   const currentRegionName = currentRegion?.name ?? null
   const currentRegionId = currentRegion?.id ?? null
 
-  // Debug warning if prompt not found in filtered regions (indicates server/client filter mismatch)
+  // Error if prompt not found in filtered regions (indicates server/client filter mismatch)
   if (state.currentPrompt && !currentRegion) {
-    console.warn('[PlayingPhase] Prompt not in filtered regions - server/client filter mismatch:', {
+    const errorInfo = {
       currentPrompt: state.currentPrompt,
-      difficulty: state.difficulty,
+      includeSizes: state.includeSizes,
+      selectedMap: state.selectedMap,
       selectedContinent: state.selectedContinent,
       clientFilteredCount: mapData.regions.length,
       serverRegionsToFindCount: state.regionsToFind.length,
-    })
+      clientRegionIds: mapData.regions.map((r) => r.id).slice(0, 10), // First 10 for debugging
+    }
+    console.error('[PlayingPhase] CRITICAL: Prompt not in filtered regions!', errorInfo)
+    throw new Error(
+      `Server/client filter mismatch: prompt "${state.currentPrompt}" not found in client's ${mapData.regions.length} filtered regions. ` +
+        `Server has ${state.regionsToFind.length} regions. includeSizes=${JSON.stringify(state.includeSizes)}`
+    )
   }
 
   return (

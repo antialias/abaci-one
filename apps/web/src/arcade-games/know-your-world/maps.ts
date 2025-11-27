@@ -226,7 +226,10 @@ export const ALL_REGION_SIZES: RegionSize[] = ['huge', 'large', 'medium', 'small
 /**
  * Display configuration for each region size
  */
-export const REGION_SIZE_CONFIG: Record<RegionSize, { label: string; emoji: string; description: string }> = {
+export const REGION_SIZE_CONFIG: Record<
+  RegionSize,
+  { label: string; emoji: string; description: string }
+> = {
   huge: {
     label: 'Major',
     emoji: '🌍',

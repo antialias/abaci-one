@@ -853,11 +853,7 @@ export function DrillDownMapSelector({
                   <span
                     className={css({
                       fontWeight: '500',
-                      color: isChecked
-                        ? 'white'
-                        : isDark
-                          ? 'gray.200'
-                          : 'gray.700',
+                      color: isChecked ? 'white' : isDark ? 'gray.200' : 'gray.700',
                     })}
                   >
                     {config.label}
@@ -908,8 +904,7 @@ export function DrillDownMapSelector({
           {peers.map((peer) => {
             // Check if this is a planet (joke at world level)
             const isPlanet = 'isPlanet' in peer && peer.isPlanet
-            const planetData =
-              'planetData' in peer ? (peer.planetData as PlanetData | null) : null
+            const planetData = 'planetData' in peer ? (peer.planetData as PlanetData | null) : null
 
             // Calculate viewBox for this peer's continent (only for non-planets)
             const peerContinentId = peer.path[0]
@@ -1105,7 +1100,6 @@ export function DrillDownMapSelector({
           })}
         </div>
       )}
-
     </div>
   )
 }

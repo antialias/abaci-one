@@ -9,7 +9,8 @@ vi.mock('../Provider', () => ({
     state: {
       selectedMap: 'world' as const,
       selectedContinent: 'all',
-      difficulty: 'easy',
+      includeSizes: ['huge', 'large', 'medium'],
+      assistanceLevel: 'helpful',
       regionsFound: ['france', 'germany'],
       currentPrompt: 'spain',
       gameMode: 'cooperative' as const,
@@ -20,7 +21,7 @@ vi.mock('../Provider', () => ({
 }))
 
 vi.mock('../maps', () => ({
-  getFilteredMapDataSync: () =>
+  getFilteredMapDataBySizesSync: () =>
     ({
       id: 'world',
       name: 'World Map',
@@ -107,7 +108,8 @@ describe('PlayingPhase', () => {
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
-        difficulty: 'easy',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
         regionsFound: ['france', 'germany'],
         currentPrompt: null,
         gameMode: 'cooperative' as const,
@@ -142,7 +144,8 @@ describe('PlayingPhase', () => {
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
-        difficulty: 'easy',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
         regionsFound: [],
         currentPrompt: 'spain',
         gameMode: 'cooperative' as const,
@@ -159,8 +162,8 @@ describe('PlayingPhase', () => {
     expect(mockClickRegion).toHaveBeenCalledWith('spain', 'Spain')
   })
 
-  it('uses correct map data from getFilteredMapDataSync', () => {
-    const mockGetFilteredMapDataSync = vi.fn().mockReturnValue({
+  it('uses correct map data from getFilteredMapDataBySizesSync', () => {
+    const mockGetFilteredMapDataBySizesSync = vi.fn().mockReturnValue({
       id: 'usa',
       name: 'USA Map',
       viewBox: '0 0 2000 1000',
@@ -170,11 +173,16 @@ describe('PlayingPhase', () => {
       ],
     })
 
-    vi.mocked(vi.importActual('../maps')).getFilteredMapDataSync = mockGetFilteredMapDataSync
+    vi.mocked(vi.importActual('../maps')).getFilteredMapDataBySizesSync =
+      mockGetFilteredMapDataBySizesSync
 
     render(<PlayingPhase />)
 
-    expect(mockGetFilteredMapDataSync).toHaveBeenCalledWith('world', 'all', 'easy')
+    expect(mockGetFilteredMapDataBySizesSync).toHaveBeenCalledWith('world', 'all', [
+      'huge',
+      'large',
+      'medium',
+    ])
   })
 })
 
@@ -184,7 +192,8 @@ describe('PlayingPhase - Different Scenarios', () => {
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
-        difficulty: 'easy',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
         regionsFound: [],
         currentPrompt: 'spain',
         gameMode: 'cooperative' as const,
@@ -203,7 +212,8 @@ describe('PlayingPhase - Different Scenarios', () => {
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
-        difficulty: 'easy',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
         regionsFound: ['spain', 'italy', 'portugal'],
         currentPrompt: null,
         gameMode: 'cooperative' as const,
@@ -217,12 +227,13 @@ describe('PlayingPhase - Different Scenarios', () => {
     expect(screen.getByText('Progress: 3/3')).toBeInTheDocument()
   })
 
-  it('renders with hard difficulty', () => {
+  it('renders with no assistance mode', () => {
     vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
-        difficulty: 'hard',
+        includeSizes: ['huge', 'large', 'medium', 'small', 'tiny'],
+        assistanceLevel: 'none',
         regionsFound: [],
         currentPrompt: 'luxembourg',
         gameMode: 'race' as const,
