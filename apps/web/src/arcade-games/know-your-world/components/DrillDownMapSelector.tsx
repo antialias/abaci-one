@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import * as Checkbox from '@radix-ui/react-checkbox'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { MapSelectorMap } from './MapSelectorMap'
@@ -15,6 +16,8 @@ import {
   parseViewBox,
   calculateFitCropViewBox,
   getFilteredMapDataBySizesSync,
+  REGION_SIZE_CONFIG,
+  ALL_REGION_SIZES,
 } from '../maps'
 import type { RegionSize } from '../maps'
 import {
@@ -67,6 +70,10 @@ interface DrillDownMapSelectorProps {
   selectedContinent: ContinentId | 'all'
   /** Region sizes to include (for showing excluded regions dimmed) */
   includeSizes: RegionSize[]
+  /** Callback when region sizes change */
+  onRegionSizesChange: (sizes: RegionSize[]) => void
+  /** Region counts per size category */
+  regionCountsBySize: Record<string, number>
 }
 
 interface BreadcrumbItem {
@@ -82,6 +89,8 @@ export function DrillDownMapSelector({
   selectedMap,
   selectedContinent,
   includeSizes,
+  onRegionSizesChange,
+  regionCountsBySize,
 }: DrillDownMapSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -715,6 +724,138 @@ export function DrillDownMapSelector({
               </button>
             )
           })()}
+
+        {/* Region Size Filters - positioned inside map, bottom right */}
+        <div
+          data-element="region-size-filters"
+          className={css({
+            position: 'absolute',
+            bottom: '3',
+            right: '3',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1',
+            padding: '2',
+            bg: isDark ? 'gray.800/90' : 'white/90',
+            backdropFilter: 'blur(4px)',
+            rounded: 'lg',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.300',
+            boxShadow: 'md',
+            zIndex: 10,
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '1',
+              maxWidth: '280px',
+            })}
+          >
+            {ALL_REGION_SIZES.map((size) => {
+              const config = REGION_SIZE_CONFIG[size]
+              const isChecked = includeSizes.includes(size)
+              const isOnlyOne = includeSizes.length === 1 && isChecked
+              const count = regionCountsBySize[size] || 0
+
+              const handleToggle = () => {
+                if (isOnlyOne) return
+                if (isChecked) {
+                  onRegionSizesChange(includeSizes.filter((s) => s !== size))
+                } else {
+                  onRegionSizesChange([...includeSizes, size])
+                }
+              }
+
+              return (
+                <Checkbox.Root
+                  key={size}
+                  checked={isChecked}
+                  onCheckedChange={handleToggle}
+                  disabled={isOnlyOne}
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '1',
+                    paddingX: '2',
+                    paddingY: '1',
+                    bg: isChecked
+                      ? isDark
+                        ? 'blue.800'
+                        : 'blue.500'
+                      : isDark
+                        ? 'gray.700'
+                        : 'gray.100',
+                    border: '1px solid',
+                    borderColor: isChecked
+                      ? isDark
+                        ? 'blue.600'
+                        : 'blue.600'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.300',
+                    rounded: 'full',
+                    cursor: isOnlyOne ? 'not-allowed' : 'pointer',
+                    opacity: isOnlyOne ? 0.5 : 1,
+                    transition: 'all 0.15s',
+                    fontSize: 'xs',
+                    _hover: isOnlyOne
+                      ? {}
+                      : {
+                          bg: isChecked
+                            ? isDark
+                              ? 'blue.700'
+                              : 'blue.600'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.200',
+                        },
+                  })}
+                >
+                  <span>{config.emoji}</span>
+                  <span
+                    className={css({
+                      fontWeight: '500',
+                      color: isChecked
+                        ? 'white'
+                        : isDark
+                          ? 'gray.200'
+                          : 'gray.700',
+                    })}
+                  >
+                    {config.label}
+                  </span>
+                  <span
+                    className={css({
+                      fontWeight: '600',
+                      color: isChecked
+                        ? isDark
+                          ? 'blue.200'
+                          : 'blue.100'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.500',
+                      bg: isChecked
+                        ? isDark
+                          ? 'blue.700'
+                          : 'blue.600'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.200',
+                      paddingX: '1',
+                      rounded: 'full',
+                      minWidth: '4',
+                      textAlign: 'center',
+                    })}
+                  >
+                    {count}
+                  </span>
+                </Checkbox.Root>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Peer Navigation - Mini-map thumbnails below main map (or planets at world level) */}

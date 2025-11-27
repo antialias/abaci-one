@@ -2,24 +2,13 @@
 
 import { useCallback, useMemo } from 'react'
 import * as Select from '@radix-ui/react-select'
-import * as Checkbox from '@radix-ui/react-checkbox'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useKnowYourWorld } from '../Provider'
 import { DrillDownMapSelector } from './DrillDownMapSelector'
-import {
-  ALL_REGION_SIZES,
-  ASSISTANCE_LEVELS,
-  getFilteredMapDataBySizesSync,
-  REGION_SIZE_CONFIG,
-} from '../maps'
-import type { RegionSize, AssistanceLevelConfig } from '../maps'
+import { ALL_REGION_SIZES, ASSISTANCE_LEVELS, getFilteredMapDataBySizesSync } from '../maps'
+import type { AssistanceLevelConfig } from '../maps'
 import type { ContinentId } from '../continents'
-
-// Get term for regions based on map type
-function getRegionTerm(selectedMap: 'world' | 'usa'): string {
-  return selectedMap === 'world' ? 'countries' : 'states'
-}
 
 // Generate feature badges for an assistance level
 function getFeatureBadges(level: AssistanceLevelConfig): Array<{ label: string; icon: string }> {
@@ -124,14 +113,6 @@ export function SetupPhase() {
     return counts
   }, [state.selectedMap, state.selectedContinent])
 
-  // Calculate the total region count for current selection
-  const totalRegionCount = useMemo(() => {
-    return state.includeSizes.reduce((sum, size) => sum + (regionCountsBySize[size] || 0), 0)
-  }, [state.includeSizes, regionCountsBySize])
-
-  // Get the term for regions (countries/states)
-  const regionTerm = getRegionTerm(state.selectedMap)
-
   // Handle selection change from drill-down selector
   const handleSelectionChange = useCallback(
     (mapId: 'world' | 'usa', continentId: ContinentId | 'all') => {
@@ -145,20 +126,6 @@ export function SetupPhase() {
   const selectedMode = GAME_MODE_OPTIONS.find((opt) => opt.value === state.gameMode)
   const selectedStudyTime = STUDY_TIME_OPTIONS.find((opt) => opt.value === state.studyDuration)
   const selectedAssistance = ASSISTANCE_LEVELS.find((level) => level.id === state.assistanceLevel)
-
-  // Handle toggling a region size
-  const toggleRegionSize = useCallback(
-    (size: RegionSize) => {
-      if (state.includeSizes.includes(size)) {
-        // Don't allow removing the last size
-        if (state.includeSizes.length === 1) return
-        setRegionSizes(state.includeSizes.filter((s) => s !== size))
-      } else {
-        setRegionSizes([...state.includeSizes, size])
-      }
-    },
-    [state.includeSizes, setRegionSizes]
-  )
 
   // Styles for Radix Select components
   const triggerStyles = css({
@@ -270,6 +237,8 @@ export function SetupPhase() {
           onSelectionChange={handleSelectionChange}
           onStartGame={startGame}
           includeSizes={state.includeSizes}
+          onRegionSizesChange={setRegionSizes}
+          regionCountsBySize={regionCountsBySize}
         />
       </div>
 
@@ -560,146 +529,6 @@ export function SetupPhase() {
               </Select.Content>
             </Select.Portal>
           </Select.Root>
-        </div>
-      </div>
-
-      {/* Region Types Selection */}
-      <div
-        data-section="region-sizes"
-        className={css({
-          padding: '5',
-          bg: isDark ? 'gray.800/50' : 'gray.50',
-          rounded: '2xl',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-        })}
-      >
-        <div
-          className={css({
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '4',
-          })}
-        >
-          <label className={labelStyles} style={{ marginBottom: 0 }}>
-            Region Types
-          </label>
-          <span
-            className={css({
-              fontSize: 'sm',
-              fontWeight: '600',
-              color: isDark ? 'blue.300' : 'blue.600',
-            })}
-          >
-            {totalRegionCount} {regionTerm} selected
-          </span>
-        </div>
-        <div
-          className={css({
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '2',
-          })}
-        >
-          {ALL_REGION_SIZES.map((size) => {
-            const config = REGION_SIZE_CONFIG[size]
-            const isChecked = state.includeSizes.includes(size)
-            const isOnlyOne = state.includeSizes.length === 1 && isChecked
-            const count = regionCountsBySize[size] || 0
-
-            return (
-              <Checkbox.Root
-                key={size}
-                checked={isChecked}
-                onCheckedChange={() => toggleRegionSize(size)}
-                disabled={isOnlyOne}
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  paddingX: '3',
-                  paddingY: '2',
-                  bg: isChecked
-                    ? isDark
-                      ? 'blue.800'
-                      : 'blue.500'
-                    : isDark
-                      ? 'gray.700'
-                      : 'white',
-                  border: '1px solid',
-                  borderColor: isChecked
-                    ? isDark
-                      ? 'blue.600'
-                      : 'blue.600'
-                    : isDark
-                      ? 'gray.600'
-                      : 'gray.300',
-                  rounded: 'full',
-                  cursor: isOnlyOne ? 'not-allowed' : 'pointer',
-                  opacity: isOnlyOne ? 0.5 : 1,
-                  transition: 'all 0.15s',
-                  _hover: isOnlyOne
-                    ? {}
-                    : {
-                        bg: isChecked
-                          ? isDark
-                            ? 'blue.700'
-                            : 'blue.600'
-                          : isDark
-                            ? 'gray.600'
-                            : 'gray.100',
-                      },
-                  _focus: {
-                    outline: 'none',
-                    boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)',
-                  },
-                })}
-              >
-                <span className={css({ fontSize: 'base' })}>{config.emoji}</span>
-                <span
-                  className={css({
-                    fontWeight: '500',
-                    color: isChecked
-                      ? 'white'
-                      : isDark
-                        ? 'gray.200'
-                        : 'gray.700',
-                    fontSize: 'sm',
-                  })}
-                >
-                  {config.label}
-                </span>
-                <span
-                  className={css({
-                    fontWeight: '600',
-                    fontSize: 'xs',
-                    color: isChecked
-                      ? isDark
-                        ? 'blue.200'
-                        : 'blue.100'
-                      : isDark
-                        ? 'gray.400'
-                        : 'gray.500',
-                    bg: isChecked
-                      ? isDark
-                        ? 'blue.700'
-                        : 'blue.600'
-                      : isDark
-                        ? 'gray.600'
-                        : 'gray.200',
-                    paddingX: '1.5',
-                    paddingY: '0.5',
-                    rounded: 'full',
-                    minWidth: '6',
-                    textAlign: 'center',
-                  })}
-                >
-                  {count}
-                </span>
-              </Checkbox.Root>
-            )
-          })}
         </div>
       </div>
 
