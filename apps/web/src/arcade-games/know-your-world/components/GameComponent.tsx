@@ -18,14 +18,9 @@ export function GameComponent() {
       ? state.currentPlayer
       : undefined
 
-  // Use StandardGameLayout only for playing phase
-  const content = (
-    <>
-      {state.gamePhase === 'setup' && <SetupPhase />}
-      {state.gamePhase === 'playing' && <PlayingPhase />}
-      {state.gamePhase === 'results' && <ResultsPhase />}
-    </>
-  )
+  // Setup phase renders its own full-screen layout (map behind nav)
+  // Playing phase uses StandardGameLayout (respects nav height)
+  // Results phase uses normal flow
 
   return (
     <PageWithNav
@@ -41,7 +36,13 @@ export function GameComponent() {
       onSetup={state.gamePhase !== 'setup' ? returnToSetup : undefined}
       onNewGame={state.gamePhase !== 'setup' && state.gamePhase !== 'results' ? endGame : undefined}
     >
-      {state.gamePhase === 'playing' ? <StandardGameLayout>{content}</StandardGameLayout> : content}
+      {state.gamePhase === 'setup' && <SetupPhase />}
+      {state.gamePhase === 'playing' && (
+        <StandardGameLayout>
+          <PlayingPhase />
+        </StandardGameLayout>
+      )}
+      {state.gamePhase === 'results' && <ResultsPhase />}
     </PageWithNav>
   )
 }

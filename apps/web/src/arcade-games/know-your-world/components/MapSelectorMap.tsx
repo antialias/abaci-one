@@ -126,6 +126,11 @@ interface MapSelectorMapProps {
    * Region ID to visually highlight (e.g., when hovering over region name in popover)
    */
   focusedRegion?: string | null
+  /**
+   * When true, fills the parent container (100% width and height) instead of using fixed aspect ratio.
+   * Used for full-viewport setup screen layout.
+   */
+  fillContainer?: boolean
 }
 
 export function MapSelectorMap({
@@ -144,6 +149,7 @@ export function MapSelectorMap({
   previewRemoveRegions = [],
   animatedViewBox,
   focusedRegion,
+  fillContainer = false,
 }: MapSelectorMapProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -339,10 +345,11 @@ export function MapSelectorMap({
       data-component="map-selector-map"
       className={css({
         width: '100%',
-        aspectRatio: '16 / 9', // Fixed aspect ratio - doesn't change when drilling down
+        // When fillContainer is true, fill the parent; otherwise use fixed 16:9 aspect ratio
+        ...(fillContainer ? { height: '100%' } : { aspectRatio: '16 / 9' }),
         bg: isDark ? 'gray.900' : 'gray.50',
-        rounded: 'xl',
-        border: '2px solid',
+        rounded: fillContainer ? 'none' : 'xl',
+        border: fillContainer ? 'none' : '2px solid',
         borderColor: isDark ? 'gray.700' : 'gray.200',
         overflow: 'hidden',
         position: 'relative',

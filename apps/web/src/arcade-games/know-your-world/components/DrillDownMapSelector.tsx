@@ -109,6 +109,8 @@ interface DrillDownMapSelectorProps {
   onRegionSizesChange: (sizes: RegionSize[]) => void
   /** Region counts per size category */
   regionCountsBySize: Record<string, number>
+  /** When true, fills parent container and uses overlay positioning for UI elements */
+  fillContainer?: boolean
 }
 
 interface BreadcrumbItem {
@@ -126,6 +128,7 @@ export function DrillDownMapSelector({
   includeSizes,
   onRegionSizesChange,
   regionCountsBySize,
+  fillContainer = false,
 }: DrillDownMapSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -749,68 +752,282 @@ export function DrillDownMapSelector({
   }, [currentLevel, path, onSelectionChange])
 
   return (
-    <div data-component="drill-down-map-selector" className={css({ width: '100%' })}>
-      {/* Breadcrumb Navigation */}
-      <div
-        data-element="breadcrumbs"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2',
-          marginBottom: '3',
-          fontSize: 'sm',
-          flexWrap: 'wrap',
-        })}
-      >
-        {breadcrumbs.map((crumb, index) => (
-          <span
-            key={crumb.label}
-            className={css({ display: 'flex', alignItems: 'center', gap: '1' })}
-          >
-            {index > 0 && (
-              <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>›</span>
-            )}
-            {crumb.isClickable ? (
-              <button
-                data-action={`nav-${crumb.label.toLowerCase().replace(/\s/g, '-')}`}
-                onClick={() => handleBreadcrumbClick(crumb.path)}
+    <div
+      data-component="drill-down-map-selector"
+      className={css({
+        width: '100%',
+        ...(fillContainer && { height: '100%', position: 'relative' }),
+      })}
+    >
+      {/* Breadcrumb Navigation - different styles for fillContainer vs normal */}
+      {fillContainer ? (
+        /* Navigation breadcrumb - positioned well below nav bar */
+        <div
+          data-element="navigation-overlay"
+          className={css({
+            position: 'absolute',
+            top: 'calc(var(--app-nav-height, 92px) + 72px)',
+            left: { base: '16px', sm: '24px' },
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3',
+            padding: '10px 16px',
+            bg: isDark
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid',
+            borderColor: isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(203, 213, 225, 0.8)',
+            rounded: 'full',
+            shadow: isDark
+              ? '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+              : '0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+          })}
+        >
+          {currentLevel > 0 ? (
+            <>
+              {/* Back button with mini-map */}
+              {(() => {
+                const backToWorld = currentLevel === 1
+                const backToContinentId = currentLevel === 2 ? path[0] : null
+                const backLabel = backToWorld
+                  ? 'World'
+                  : (CONTINENTS.find((c) => c.id === backToContinentId)?.name ?? 'Continent')
+                const backEmoji = backToWorld
+                  ? '🌍'
+                  : (CONTINENTS.find((c) => c.id === backToContinentId)?.emoji ?? '🗺️')
+
+                // Get viewBox and regions for the mini-map preview
+                const backViewBox = backToWorld
+                  ? WORLD_MAP.viewBox
+                  : backToContinentId
+                    ? calculateContinentViewBox(
+                        WORLD_MAP.regions,
+                        backToContinentId,
+                        WORLD_MAP.viewBox,
+                        'world'
+                      )
+                    : WORLD_MAP.viewBox
+                const backRegions = backToWorld
+                  ? WORLD_MAP.regions
+                  : backToContinentId
+                    ? filterRegionsByContinent(WORLD_MAP.regions, backToContinentId)
+                    : []
+
+                return (
+                  <button
+                    data-action="navigate-back"
+                    onClick={handleZoomOut}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '6px 12px 6px 8px',
+                      bg: isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(241, 245, 249, 0.8)',
+                      border: '1px solid',
+                      borderColor: isDark ? 'rgba(71, 85, 105, 0.4)' : 'rgba(203, 213, 225, 0.6)',
+                      rounded: 'full',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      _hover: {
+                        bg: isDark ? 'rgba(71, 85, 105, 0.7)' : 'rgba(226, 232, 240, 0.9)',
+                        transform: 'translateX(-2px)',
+                      },
+                    })}
+                  >
+                    {/* Mini-map preview */}
+                    <div
+                      className={css({
+                        width: '32px',
+                        height: '32px',
+                        rounded: 'full',
+                        overflow: 'hidden',
+                        border: '2px solid',
+                        borderColor: isDark ? 'rgba(100, 116, 139, 0.5)' : 'rgba(203, 213, 225, 0.8)',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
+                      })}
+                    >
+                      <svg
+                        viewBox={backViewBox}
+                        className={css({
+                          width: '100%',
+                          height: '100%',
+                          display: 'block',
+                        })}
+                        preserveAspectRatio="xMidYMid slice"
+                      >
+                        <rect
+                          x="-10000"
+                          y="-10000"
+                          width="30000"
+                          height="30000"
+                          fill={isDark ? '#1e3a5f' : '#bae6fd'}
+                        />
+                        {backRegions.map((region) => (
+                          <path
+                            key={region.id}
+                            d={region.path}
+                            fill={isDark ? '#64748b' : '#a8d4a8'}
+                            stroke={isDark ? '#475569' : '#86b386'}
+                            strokeWidth={0.3}
+                          />
+                        ))}
+                      </svg>
+                    </div>
+                    <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' })}>
+                      <span
+                        className={css({
+                          fontSize: '10px',
+                          fontWeight: '500',
+                          color: isDark ? 'gray.400' : 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          lineHeight: 1,
+                        })}
+                      >
+                        Back to
+                      </span>
+                      <span
+                        className={css({
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: isDark ? 'gray.200' : 'gray.700',
+                          lineHeight: 1.2,
+                        })}
+                      >
+                        {backEmoji} {backLabel}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })()}
+
+              {/* Current location badge */}
+              <div
                 className={css({
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1',
-                  color: isDark ? 'blue.400' : 'blue.600',
-                  cursor: 'pointer',
-                  _hover: { textDecoration: 'underline' },
+                  gap: '8px',
+                  padding: '6px 14px',
+                  bg: isDark
+                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'
+                    : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                  border: '1px solid',
+                  borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)',
+                  rounded: 'full',
                 })}
               >
-                <span>{crumb.emoji}</span>
-                <span>{crumb.label}</span>
-              </button>
-            ) : (
+                <span className={css({ fontSize: 'md' })}>
+                  {breadcrumbs[breadcrumbs.length - 1]?.emoji}
+                </span>
+                <span
+                  className={css({
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: isDark ? 'white' : 'gray.800',
+                  })}
+                >
+                  {breadcrumbs[breadcrumbs.length - 1]?.label}
+                </span>
+              </div>
+            </>
+          ) : (
+            /* World level - current location badge */
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                bg: isDark
+                  ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'
+                  : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                border: '1px solid',
+                borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)',
+                rounded: 'full',
+              })}
+            >
+              <span className={css({ fontSize: 'md' })}>🌍</span>
               <span
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1',
-                  fontWeight: 'bold',
-                  color: isDark ? 'gray.100' : 'gray.800',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: isDark ? 'white' : 'gray.800',
                 })}
               >
-                <span>{crumb.emoji}</span>
-                <span>{crumb.label}</span>
+                World
               </span>
-            )}
-          </span>
-        ))}
-      </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Normal breadcrumb for non-fillContainer mode */
+        <div
+          data-element="breadcrumbs"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            fontSize: 'sm',
+            flexWrap: 'wrap',
+            marginBottom: '3',
+          })}
+        >
+          {breadcrumbs.map((crumb, index) => (
+            <span
+              key={crumb.label}
+              className={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+            >
+              {index > 0 && (
+                <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>›</span>
+              )}
+              {crumb.isClickable ? (
+                <button
+                  data-action={`nav-${crumb.label.toLowerCase().replace(/\s/g, '-')}`}
+                  onClick={() => handleBreadcrumbClick(crumb.path)}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1',
+                    color: isDark ? 'blue.400' : 'blue.600',
+                    cursor: 'pointer',
+                    _hover: { textDecoration: 'underline' },
+                  })}
+                >
+                  <span>{crumb.emoji}</span>
+                  <span>{crumb.label}</span>
+                </button>
+              ) : (
+                <span
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1',
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                  })}
+                >
+                  <span>{crumb.emoji}</span>
+                  <span>{crumb.label}</span>
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Interactive Map - wrapped in ref'd container for dimension measurement */}
       <div
         ref={containerRef}
         data-element="map-container"
-        className={css({ position: 'relative' })}
+        className={css({
+          position: 'relative',
+          ...(fillContainer && { width: '100%', height: '100%' }),
+        })}
       >
         <MapSelectorMap
+          fillContainer={fillContainer}
           mapData={mapData}
           viewBox={viewBox}
           onRegionClick={handleRegionClick}
@@ -830,8 +1047,9 @@ export function DrillDownMapSelector({
           focusedRegion={focusedRegionId}
         />
 
-        {/* Zoom Out Button - positioned inside map, upper right */}
-        {currentLevel > 0 &&
+        {/* Zoom Out Button - only shown when NOT in fillContainer mode (fillContainer has navigation overlay) */}
+        {!fillContainer &&
+          currentLevel > 0 &&
           (() => {
             // Calculate what we're going back to
             const backToWorld = currentLevel === 1
@@ -935,15 +1153,19 @@ export function DrillDownMapSelector({
           data-element="region-size-filters"
           className={css({
             position: 'absolute',
-            top: '3',
-            right: '3',
-            padding: '2',
-            bg: isDark ? 'gray.800/90' : 'white/90',
-            backdropFilter: 'blur(4px)',
-            rounded: 'lg',
+            top: fillContainer ? 'calc(var(--app-nav-height, 92px) + 72px)' : '3',
+            right: { base: '16px', sm: '24px' },
+            padding: '12px',
+            bg: isDark
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+            backdropFilter: 'blur(12px)',
             border: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.300',
-            boxShadow: 'md',
+            borderColor: isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(203, 213, 225, 0.8)',
+            rounded: 'xl',
+            shadow: isDark
+              ? '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+              : '0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
             zIndex: 10,
           })}
         >
@@ -965,7 +1187,8 @@ export function DrillDownMapSelector({
       </div>
 
       {/* Peer Navigation - Mini-map thumbnails below main map (or planets at world level) */}
-      {peers.length > 0 && (
+      {/* Hidden in fillContainer mode since there's no space below the map */}
+      {!fillContainer && peers.length > 0 && (
         <div
           data-element="peer-navigation"
           className={css({
