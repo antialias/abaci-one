@@ -10,6 +10,7 @@ import {
 } from '@/components/Thermometer'
 import { useTheme } from '@/contexts/ThemeContext'
 import { MapSelectorMap } from './MapSelectorMap'
+import { RegionListPanel } from './RegionListPanel'
 import {
   WORLD_MAP,
   calculateContinentViewBox,
@@ -32,6 +33,8 @@ import {
   COUNTRY_TO_CONTINENT,
   type ContinentId,
 } from '../continents'
+import { sizesToRange, rangeToSizes } from '../utils/regionSizeUtils'
+import { preventFlexExpansion } from '../utils/responsiveStyles'
 
 /**
  * Size options for the range thermometer, ordered from largest to smallest
@@ -42,25 +45,6 @@ const SIZE_OPTIONS: ThermometerOption<RegionSize>[] = ALL_REGION_SIZES.map((size
   shortLabel: REGION_SIZE_CONFIG[size].label,
   emoji: REGION_SIZE_CONFIG[size].emoji,
 }))
-
-/**
- * Convert an array of sizes to min/max values for the range thermometer
- */
-function sizesToRange(sizes: RegionSize[]): [RegionSize, RegionSize] {
-  const sorted = [...sizes].sort(
-    (a, b) => ALL_REGION_SIZES.indexOf(a) - ALL_REGION_SIZES.indexOf(b)
-  )
-  return [sorted[0], sorted[sorted.length - 1]]
-}
-
-/**
- * Convert min/max range values back to an array of sizes
- */
-function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
-  const minIdx = ALL_REGION_SIZES.indexOf(min)
-  const maxIdx = ALL_REGION_SIZES.indexOf(max)
-  return ALL_REGION_SIZES.slice(minIdx, maxIdx + 1)
-}
 
 /**
  * Selection path for drill-down navigation:
@@ -1105,45 +1089,16 @@ export function DrillDownMapSelector({
                   borderColor: isDark ? 'gray.700' : 'gray.300',
                   marginTop: '2',
                   paddingTop: '2',
-                  maxHeight: '200px',
-                  /* Prevent this element from expanding the parent - use 0 width + min 100% trick */
-                  width: 0,
-                  minWidth: '100%',
+                  /* Prevent this element from expanding the parent */
+                  ...preventFlexExpansion,
                 })}
               >
-                {/* Scrollable list */}
-                <div
-                  className={css({
-                    overflowY: 'auto',
-                    flex: 1,
-                  })}
-                >
-                  {selectedRegionNames
-                    .slice()
-                    .sort((a, b) => a.localeCompare(b))
-                    .map((name) => (
-                      <div
-                        key={name}
-                        onMouseEnter={() => setPreviewRegionName(name)}
-                        onMouseLeave={() => setPreviewRegionName(null)}
-                        className={css({
-                          px: '2',
-                          py: '1',
-                          fontSize: 'xs',
-                          color: isDark ? 'gray.300' : 'gray.600',
-                          cursor: 'pointer',
-                          rounded: 'md',
-                          overflowWrap: 'break-word',
-                          _hover: {
-                            bg: isDark ? 'gray.700' : 'gray.200',
-                            color: isDark ? 'gray.100' : 'gray.900',
-                          },
-                        })}
-                      >
-                        {name}
-                      </div>
-                    ))}
-                </div>
+                <RegionListPanel
+                  regions={selectedRegionNames}
+                  onRegionHover={setPreviewRegionName}
+                  maxHeight="200px"
+                  isDark={isDark}
+                />
               </div>
             )}
           </div>

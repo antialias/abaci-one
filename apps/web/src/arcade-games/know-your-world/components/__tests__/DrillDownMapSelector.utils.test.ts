@@ -1,32 +1,11 @@
 import { describe, it, expect } from 'vitest'
-
-/**
- * Utility functions extracted from DrillDownMapSelector for testing.
- * These are copied here since they're defined inline in the component.
- * In a refactor, these should be moved to a separate utils file.
- */
-
-type RegionSize = 'huge' | 'large' | 'medium' | 'small' | 'tiny'
-const ALL_REGION_SIZES: RegionSize[] = ['huge', 'large', 'medium', 'small', 'tiny']
-
-/**
- * Convert an array of sizes to min/max values for the range thermometer
- */
-function sizesToRange(sizes: RegionSize[]): [RegionSize, RegionSize] {
-  const sorted = [...sizes].sort(
-    (a, b) => ALL_REGION_SIZES.indexOf(a) - ALL_REGION_SIZES.indexOf(b)
-  )
-  return [sorted[0], sorted[sorted.length - 1]]
-}
-
-/**
- * Convert min/max range values back to an array of sizes
- */
-function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
-  const minIdx = ALL_REGION_SIZES.indexOf(min)
-  const maxIdx = ALL_REGION_SIZES.indexOf(max)
-  return ALL_REGION_SIZES.slice(minIdx, maxIdx + 1)
-}
+import {
+  sizesToRange,
+  rangeToSizes,
+  calculateExcludedRegions,
+  calculatePreviewChanges,
+} from '../../utils/regionSizeUtils'
+import type { RegionSize } from '../../maps'
 
 describe('DrillDownMapSelector utility functions', () => {
   describe('sizesToRange', () => {
@@ -205,14 +184,6 @@ describe('Region filtering logic', () => {
   describe('excluded regions calculation', () => {
     const allRegionIds = ['region-1', 'region-2', 'region-3', 'region-4', 'region-5']
 
-    function calculateExcludedRegions(
-      allRegions: string[],
-      filteredRegions: string[]
-    ): string[] {
-      const filteredSet = new Set(filteredRegions)
-      return allRegions.filter(id => !filteredSet.has(id))
-    }
-
     it('returns empty when all regions are included', () => {
       const filtered = ['region-1', 'region-2', 'region-3', 'region-4', 'region-5']
       const excluded = calculateExcludedRegions(allRegionIds, filtered)
@@ -240,31 +211,6 @@ describe('Region filtering logic', () => {
 })
 
 describe('Preview add/remove regions calculation', () => {
-  function calculatePreviewChanges(
-    currentIncluded: string[],
-    previewIncluded: string[]
-  ): { addRegions: string[]; removeRegions: string[] } {
-    const currentSet = new Set(currentIncluded)
-    const previewSet = new Set(previewIncluded)
-
-    const addRegions: string[] = []
-    const removeRegions: string[] = []
-
-    for (const id of previewSet) {
-      if (!currentSet.has(id)) {
-        addRegions.push(id)
-      }
-    }
-
-    for (const id of currentSet) {
-      if (!previewSet.has(id)) {
-        removeRegions.push(id)
-      }
-    }
-
-    return { addRegions, removeRegions }
-  }
-
   it('detects regions to be added', () => {
     const current = ['a', 'b']
     const preview = ['a', 'b', 'c', 'd']
