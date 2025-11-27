@@ -26,7 +26,6 @@ interface KnowYourWorldContextValue {
   endGame: () => void
   giveUp: () => void
   requestHint: () => void
-  endStudy: () => void
   returnToSetup: () => void
 
   // Setup actions
@@ -34,7 +33,6 @@ interface KnowYourWorldContextValue {
   setMode: (mode: 'cooperative' | 'race' | 'turn-based') => void
   setRegionSizes: (sizes: RegionSize[]) => void
   setAssistanceLevel: (level: AssistanceLevel) => void
-  setStudyDuration: (duration: 0 | 30 | 60 | 120) => void
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 
   // Cursor position sharing (for multiplayer)
@@ -75,11 +73,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const initialState = useMemo(() => {
     const gameConfig = (roomData?.gameConfig as any)?.['know-your-world']
 
-    // Validate studyDuration to ensure it's one of the allowed values
-    const rawDuration = gameConfig?.studyDuration
-    const studyDuration: 0 | 30 | 60 | 120 =
-      rawDuration === 30 || rawDuration === 60 || rawDuration === 120 ? rawDuration : 0
-
     // Validate selectedContinent
     const rawContinent = gameConfig?.selectedContinent
     const validContinents = [
@@ -118,10 +111,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       gameMode: (gameConfig?.gameMode as 'cooperative' | 'race' | 'turn-based') || 'cooperative',
       includeSizes,
       assistanceLevel,
-      studyDuration,
       selectedContinent,
-      studyTimeRemaining: 0,
-      studyStartTime: 0,
       currentPrompt: null,
       regionsToFind: [],
       regionsFound: [],
@@ -394,46 +384,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
   )
 
-  // Setup Action: Set Study Duration
-  const setStudyDuration = useCallback(
-    (studyDuration: 0 | 30 | 60 | 120) => {
-      sendMove({
-        type: 'SET_STUDY_DURATION',
-        playerId: activePlayers[0] || '', // Use first active player
-        userId: viewerId || '',
-        data: { studyDuration },
-      })
-
-      // Persist to database
-      if (roomData?.id) {
-        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-        const currentConfig = (currentGameConfig['know-your-world'] as Record<string, any>) || {}
-
-        updateGameConfig({
-          roomId: roomData.id,
-          gameConfig: {
-            ...currentGameConfig,
-            'know-your-world': {
-              ...currentConfig,
-              studyDuration,
-            },
-          },
-        })
-      }
-    },
-    [viewerId, sendMove, roomData, updateGameConfig, activePlayers]
-  )
-
-  // Action: End Study
-  const endStudy = useCallback(() => {
-    sendMove({
-      type: 'END_STUDY',
-      playerId: state.currentPlayer || activePlayers[0] || '',
-      userId: viewerId || '',
-      data: {},
-    })
-  }, [viewerId, sendMove, state.currentPlayer, activePlayers])
-
   // Setup Action: Set Continent
   const setContinent = useCallback(
     (selectedContinent: import('./continents').ContinentId | 'all') => {
@@ -495,13 +445,11 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         endGame,
         giveUp,
         requestHint,
-        endStudy,
         returnToSetup,
         setMap,
         setMode,
         setRegionSizes,
         setAssistanceLevel,
-        setStudyDuration,
         setContinent,
         otherPlayerCursors,
         sendCursorUpdate,

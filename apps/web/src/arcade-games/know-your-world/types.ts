@@ -18,7 +18,6 @@ export interface KnowYourWorldConfig extends GameConfig {
   assistanceLevel: AssistanceLevel
   // Legacy field - kept for backwards compatibility
   difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
-  studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
 }
 
@@ -52,7 +51,7 @@ export interface GuessRecord {
 
 // Game state (synchronized across clients)
 export interface KnowYourWorldState extends GameState {
-  gamePhase: 'setup' | 'studying' | 'playing' | 'results'
+  gamePhase: 'setup' | 'playing' | 'results'
 
   // Setup configuration
   selectedMap: 'world' | 'usa'
@@ -63,12 +62,7 @@ export interface KnowYourWorldState extends GameState {
   assistanceLevel: AssistanceLevel
   // Legacy field - kept for backwards compatibility during migration
   difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
-  studyDuration: 0 | 30 | 60 | 120 // seconds (0 = skip study mode)
   selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
-
-  // Study phase
-  studyTimeRemaining: number // seconds remaining in study phase
-  studyStartTime: number // timestamp when study phase started
 
   // Game progression
   currentPrompt: string | null // Region name to find (e.g., "France")
@@ -184,22 +178,6 @@ export type KnowYourWorldMove =
       data: {
         assistanceLevel: AssistanceLevel
       }
-    }
-  | {
-      type: 'SET_STUDY_DURATION'
-      playerId: string
-      userId: string
-      timestamp: number
-      data: {
-        studyDuration: 0 | 30 | 60 | 120
-      }
-    }
-  | {
-      type: 'END_STUDY'
-      playerId: string
-      userId: string
-      timestamp: number
-      data: {}
     }
   | {
       type: 'RETURN_TO_SETUP'

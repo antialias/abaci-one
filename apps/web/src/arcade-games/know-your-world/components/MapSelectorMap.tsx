@@ -2,7 +2,7 @@
 
 import { useMemo, memo } from 'react'
 import { css } from '@styled/css'
-import { animated, useSpring } from '@react-spring/web'
+import { animated, useSpring, type Interpolation } from '@react-spring/web'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { MapData } from '../types'
 import { getRegionColor } from '../mapColors'
@@ -57,6 +57,7 @@ const AnimatedRegion = memo(function AnimatedRegion({
       fill={springProps.fill}
       stroke={springProps.stroke}
       strokeWidth={springProps.strokeWidth}
+      vectorEffect="non-scaling-stroke"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
@@ -116,6 +117,15 @@ interface MapSelectorMapProps {
    * Shown with a distinct "preview remove" style (e.g., red/orange tint).
    */
   previewRemoveRegions?: string[]
+  /**
+   * Animated viewBox for smooth zoom transitions.
+   * When provided, uses animated.svg for smooth interpolation.
+   */
+  animatedViewBox?: Interpolation<number, string>
+  /**
+   * Region ID to visually highlight (e.g., when hovering over region name in popover)
+   */
+  focusedRegion?: string | null
 }
 
 export function MapSelectorMap({
@@ -132,6 +142,8 @@ export function MapSelectorMap({
   excludedRegions = [],
   previewAddRegions = [],
   previewRemoveRegions = [],
+  animatedViewBox,
+  focusedRegion,
 }: MapSelectorMapProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -188,6 +200,11 @@ export function MapSelectorMap({
     return previewRemoveRegions.includes(regionId)
   }
 
+  // Check if a region is the focused region (from popover hover)
+  const isRegionFocused = (regionId: string): boolean => {
+    return focusedRegion === regionId
+  }
+
   // Get fill color for a region
   const getRegionFill = (regionId: string): string => {
     const isExcluded = isRegionExcluded(regionId)
@@ -195,7 +212,13 @@ export function MapSelectorMap({
     const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
+    const isFocused = isRegionFocused(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
+
+    // Focused region (from popover hover) takes highest precedence
+    if (isFocused) {
+      return isDark ? '#7c3aed' : '#a78bfa' // Purple/violet for focus
+    }
 
     // Preview states take precedence - show what would happen on click
     if (isPreviewAdd) {
@@ -241,7 +264,13 @@ export function MapSelectorMap({
     const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
+    const isFocused = isRegionFocused(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
+
+    // Focused region gets prominent border
+    if (isFocused) {
+      return isDark ? '#c4b5fd' : '#7c3aed' // Purple border for focus
+    }
 
     // Preview states take precedence
     if (isPreviewAdd) {
@@ -278,8 +307,10 @@ export function MapSelectorMap({
     const isPreviewRemove = isRegionPreviewRemove(regionId)
     const isHovered = isRegionHighlighted(regionId)
     const isSelected = isRegionSelected(regionId)
+    const isFocused = isRegionFocused(regionId)
     const hasSubMap = highlightedRegions.includes(regionId)
 
+    if (isFocused) return 3 // Prominent stroke for focused region
     if (isPreviewAdd || isPreviewRemove) return 1.5
     if (isHovered) return 2
     if (isSelected) return 1.5
@@ -299,6 +330,10 @@ export function MapSelectorMap({
     return 1
   }
 
+  // Use animated SVG when animatedViewBox is provided for smooth zoom transitions
+  const SvgComponent = animatedViewBox ? animated.svg : 'svg'
+  const svgViewBox = animatedViewBox || viewBox
+
   return (
     <div
       data-component="map-selector-map"
@@ -313,8 +348,8 @@ export function MapSelectorMap({
         position: 'relative',
       })}
     >
-      <svg
-        viewBox={viewBox}
+      <SvgComponent
+        viewBox={svgViewBox as string}
         className={css({
           position: 'absolute',
           top: 0,
@@ -361,7 +396,7 @@ export function MapSelectorMap({
             />
           )
         })}
-      </svg>
+      </SvgComponent>
     </div>
   )
 }

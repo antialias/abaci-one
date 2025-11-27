@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import {
   RangeThermometer,
@@ -19,6 +20,7 @@ import {
   getSubMapsForContinent,
   parseViewBox,
   calculateFitCropViewBox,
+  calculateBoundingBox,
   getFilteredMapDataBySizesSync,
   REGION_SIZE_CONFIG,
   ALL_REGION_SIZES,
@@ -149,6 +151,8 @@ export function DrillDownMapSelector({
   )
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  // Track which region name is being hovered in the popover (for zoom preview)
+  const [previewRegionName, setPreviewRegionName] = useState<string | null>(null)
 
   // Measure container dimensions for viewBox calculation
   useEffect(() => {
@@ -311,6 +315,119 @@ export function DrillDownMapSelector({
     }
     return excluded
   }, [currentLevel, path, selectedContinent, includeSizes])
+
+  // Compute region names by size category (for tooltip display)
+  const regionNamesBySize = useMemo(() => {
+    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
+    const continentId: ContinentId | 'all' =
+      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
+
+    const result: Partial<Record<RegionSize, string[]>> = {}
+    for (const size of ALL_REGION_SIZES) {
+      const filtered = getFilteredMapDataBySizesSync(mapId as 'world' | 'usa', continentId, [size])
+      result[size] = filtered.regions.map((r) => r.name).sort((a, b) => a.localeCompare(b))
+    }
+    return result
+  }, [currentLevel, path, selectedContinent])
+
+  // Compute all selected region names (for popover display)
+  const selectedRegionNames = useMemo(() => {
+    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
+    const continentId: ContinentId | 'all' =
+      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
+
+    const filtered = getFilteredMapDataBySizesSync(
+      mapId as 'world' | 'usa',
+      continentId,
+      includeSizes
+    )
+    return filtered.regions.map((r) => r.name)
+  }, [currentLevel, path, selectedContinent, includeSizes])
+
+  // Create lookup map from region name → region data (for zoom preview)
+  const regionsByName = useMemo(() => {
+    const lookup = new Map<string, { id: string; name: string; path: string }>()
+    for (const region of mapData.regions) {
+      lookup.set(region.name, region)
+    }
+    return lookup
+  }, [mapData.regions])
+
+  // Calculate zoomed viewBox when previewing a region from the popover
+  const previewViewBox = useMemo(() => {
+    if (!previewRegionName) return null
+
+    const region = regionsByName.get(previewRegionName)
+    if (!region) return null
+
+    // Calculate bounding box for the region
+    const bbox = calculateBoundingBox([region.path])
+
+    // Add substantial padding around the region (100% on each side)
+    // This gives good context while still focusing on the region
+    const paddingFactor = 1.0
+    const paddingX = bbox.width * paddingFactor
+    const paddingY = bbox.height * paddingFactor
+
+    let cropWidth = bbox.width + paddingX * 2
+    let cropHeight = bbox.height + paddingY * 2
+
+    // Enforce minimum viewBox size to prevent over-zooming on tiny islands
+    // This ensures we never zoom in more than ~10% of the original map
+    const originalParsed = parseViewBox(mapData.viewBox)
+    const minWidth = originalParsed.width * 0.1
+    const minHeight = originalParsed.height * 0.1
+
+    // If crop is smaller than minimum, expand it while keeping region centered
+    if (cropWidth < minWidth) {
+      cropWidth = minWidth
+    }
+    if (cropHeight < minHeight) {
+      cropHeight = minHeight
+    }
+
+    // Center the crop region on the bbox center
+    const bboxCenterX = bbox.minX + bbox.width / 2
+    const bboxCenterY = bbox.minY + bbox.height / 2
+
+    const cropRegion = {
+      x: bboxCenterX - cropWidth / 2,
+      y: bboxCenterY - cropHeight / 2,
+      width: cropWidth,
+      height: cropHeight,
+    }
+
+    // Use calculateFitCropViewBox to adjust for container aspect ratio
+    if (containerDimensions.width > 0 && containerDimensions.height > 0) {
+      const containerAspect = containerDimensions.width / containerDimensions.height
+      return calculateFitCropViewBox(originalParsed, cropRegion, containerAspect)
+    }
+
+    // Fallback
+    return `${cropRegion.x} ${cropRegion.y} ${cropRegion.width} ${cropRegion.height}`
+  }, [previewRegionName, regionsByName, containerDimensions, mapData.viewBox])
+
+  // Animated viewBox for smooth transitions
+  const targetViewBox = previewViewBox || viewBox
+  const parsedTarget = parseViewBox(targetViewBox)
+  const springProps = useSpring({
+    x: parsedTarget.x,
+    y: parsedTarget.y,
+    width: parsedTarget.width,
+    height: parsedTarget.height,
+    config: { tension: 200, friction: 25 },
+  })
+  const animatedViewBox = springProps.x.to(
+    (x) =>
+      `${x.toFixed(2)} ${springProps.y.get().toFixed(2)} ${springProps.width.get().toFixed(2)} ${springProps.height.get().toFixed(2)}`
+  )
+
+  // Get the region ID for the focused region name (for highlighting on the map)
+  const focusedRegionId = useMemo(() => {
+    if (!previewRegionName) return null
+    const region = regionsByName.get(previewRegionName)
+    return region?.id ?? null
+  }, [previewRegionName, regionsByName])
 
   // Calculate preview regions based on hovering over the size thermometer
   // Shows what regions would be added or removed if the user clicks
@@ -709,6 +826,8 @@ export function DrillDownMapSelector({
           excludedRegions={excludedRegions}
           previewAddRegions={previewAddRegions}
           previewRemoveRegions={previewRemoveRegions}
+          animatedViewBox={animatedViewBox}
+          focusedRegion={focusedRegionId}
         />
 
         {/* Zoom Out Button - positioned inside map, upper right */}
@@ -838,6 +957,9 @@ export function DrillDownMapSelector({
             counts={regionCountsBySize as Partial<Record<RegionSize, number>>}
             showTotalCount
             onHoverPreview={setSizeRangePreview}
+            regionNamesByCategory={regionNamesBySize}
+            selectedRegionNames={selectedRegionNames}
+            onRegionNameHover={setPreviewRegionName}
           />
         </div>
       </div>

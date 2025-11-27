@@ -32,7 +32,6 @@ const defaultConfig: KnowYourWorldConfig = {
   gameMode: 'cooperative',
   includeSizes: ['huge', 'large', 'medium'],
   assistanceLevel: 'helpful',
-  studyDuration: 0,
   selectedContinent: 'all',
 }
 
@@ -58,7 +57,6 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     'gameMode' in config &&
     'includeSizes' in config &&
     'assistanceLevel' in config &&
-    'studyDuration' in config &&
     'selectedContinent' in config &&
     (config.selectedMap === 'world' || config.selectedMap === 'usa') &&
     (config.gameMode === 'cooperative' ||
@@ -68,10 +66,6 @@ function validateKnowYourWorldConfig(config: unknown): config is KnowYourWorldCo
     config.includeSizes.every((s: unknown) => typeof s === 'string' && validSizes.includes(s)) &&
     typeof config.assistanceLevel === 'string' &&
     validAssistanceLevels.includes(config.assistanceLevel) &&
-    (config.studyDuration === 0 ||
-      config.studyDuration === 30 ||
-      config.studyDuration === 60 ||
-      config.studyDuration === 120) &&
     typeof config.selectedContinent === 'string' &&
     validContinents.includes(config.selectedContinent)
   )

@@ -32,11 +32,9 @@ describe('KnowYourWorldValidator', () => {
     gamePhase: 'playing',
     selectedMap: 'world',
     gameMode: 'cooperative',
-    difficulty: 'easy',
-    studyDuration: 0,
+    includeSizes: ['huge', 'large', 'medium'],
+    assistanceLevel: 'helpful',
     selectedContinent: 'all',
-    studyTimeRemaining: 0,
-    studyStartTime: 0,
     currentPrompt: 'region-1',
     regionsToFind: ['region-2', 'region-3', 'region-4', 'region-5'],
     regionsFound: [],
@@ -51,6 +49,8 @@ describe('KnowYourWorldValidator', () => {
     playerMetadata: { 'player-1': { name: 'Player 1' } },
     giveUpReveal: null,
     giveUpVotes: [],
+    hintsUsed: 0,
+    hintActive: null,
     ...overrides,
   })
 

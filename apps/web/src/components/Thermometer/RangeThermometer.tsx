@@ -2,8 +2,13 @@
 
 import { css } from '@styled/css'
 import * as Slider from '@radix-ui/react-slider'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import * as Popover from '@radix-ui/react-popover'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RangeThermometerProps } from './types'
+
+/** Max region names to show in tooltip before truncating */
+const MAX_TOOLTIP_NAMES = 8
 
 /**
  * A range thermometer component that displays discrete options with two handles
@@ -21,6 +26,9 @@ export function RangeThermometer<T extends string>({
   counts,
   showTotalCount = true,
   onHoverPreview,
+  regionNamesByCategory,
+  selectedRegionNames,
+  onRegionNameHover,
 }: RangeThermometerProps<T>) {
   const isVertical = orientation === 'vertical'
   const [isDragging, setIsDragging] = useState(false)
@@ -148,302 +156,458 @@ export function RangeThermometer<T extends string>({
   // Check if an option is within the selected range
   const isInRange = (index: number) => index >= minIndex && index <= maxIndex
 
-  return (
-    <div
-      data-component="range-thermometer"
-      className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2',
-      })}
-    >
-      {/* Label and description */}
-      {(label || description) && (
-        <div>
-          {label && (
-            <div
-              className={css({
-                fontSize: 'xs',
-                fontWeight: 'semibold',
-                color: isDark ? 'gray.300' : 'gray.700',
-                mb: '0.5',
-              })}
-            >
-              {label}
-            </div>
-          )}
-          {description && (
-            <div
-              className={css({
-                fontSize: '2xs',
-                color: isDark ? 'gray.400' : 'gray.500',
-                lineHeight: '1.3',
-              })}
-            >
-              {description}
-            </div>
-          )}
-        </div>
-      )}
+  // Format region names for tooltip display
+  const formatTooltipContent = useCallback(
+    (option: (typeof options)[0]) => {
+      const names = regionNamesByCategory?.[option.value]
+      if (!names || names.length === 0) return null
 
-      {/* Main container with labels and slider */}
+      const count = names.length
+      const displayNames = names.slice(0, MAX_TOOLTIP_NAMES)
+      const remaining = count - displayNames.length
+
+      return {
+        header: `${option.emoji || ''} ${option.label} (${count} region${count !== 1 ? 's' : ''})`,
+        names: displayNames,
+        remaining,
+      }
+    },
+    [regionNamesByCategory]
+  )
+
+  return (
+    <Tooltip.Provider delayDuration={150} skipDelayDuration={100}>
       <div
-        data-element="range-thermometer-track"
+        data-component="range-thermometer"
         className={css({
           display: 'flex',
-          flexDirection: isVertical ? 'row' : 'column',
+          flexDirection: 'column',
           gap: '2',
         })}
       >
-        {/* Labels column */}
-        <div
-          className={css({
-            display: 'flex',
-            flexDirection: isVertical ? 'column' : 'row',
-            justifyContent: 'space-between',
-            flex: isVertical ? 'none' : 1,
-          })}
-        >
-          {options.map((option, index) => {
-            const inRange = isInRange(index)
-            const count = counts?.[option.value]
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                data-option={option.value}
-                data-in-range={inRange}
-                onClick={() => {
-                  // Click moves nearest handle to this position
-                  const distToMin = Math.abs(index - minIndex)
-                  const distToMax = Math.abs(index - maxIndex)
-                  if (distToMin <= distToMax) {
-                    onChange(option.value, options[maxIndex].value)
-                  } else {
-                    onChange(options[minIndex].value, option.value)
-                  }
-                }}
-                onMouseEnter={() => handleOptionHover(index)}
-                onMouseLeave={handleOptionLeave}
+        {/* Label and description */}
+        {(label || description) && (
+          <div>
+            {label && (
+              <div
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1.5',
-                  py: '1',
-                  px: '2',
-                  rounded: 'md',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  bg: inRange ? (isDark ? 'blue.900/40' : 'blue.50') : 'transparent',
-                  opacity: inRange ? 1 : 0.5,
-                  _hover: {
-                    bg: isDark ? 'gray.700' : 'gray.100',
-                    opacity: 1,
-                  },
+                  fontSize: 'xs',
+                  fontWeight: 'semibold',
+                  color: isDark ? 'gray.300' : 'gray.700',
+                  mb: '0.5',
                 })}
               >
-                {/* Emoji */}
-                {option.emoji && <span className={css({ fontSize: 'sm' })}>{option.emoji}</span>}
+                {label}
+              </div>
+            )}
+            {description && (
+              <div
+                className={css({
+                  fontSize: '2xs',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  lineHeight: '1.3',
+                })}
+              >
+                {description}
+              </div>
+            )}
+          </div>
+        )}
 
-                {/* Label */}
-                <span
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: inRange ? '600' : '500',
-                    color: inRange
-                      ? isDark
-                        ? 'blue.300'
-                        : 'blue.700'
-                      : isDark
-                        ? 'gray.400'
-                        : 'gray.600',
-                    flex: 1,
-                    textAlign: 'left',
-                  })}
-                >
-                  {option.shortLabel || option.label}
-                </span>
-
-                {/* Count badge */}
-                {count !== undefined && (
-                  <span
-                    className={css({
-                      fontSize: '2xs',
-                      fontWeight: '600',
-                      color: inRange
-                        ? isDark
-                          ? 'blue.200'
-                          : 'blue.600'
-                        : isDark
-                          ? 'gray.500'
-                          : 'gray.400',
-                      bg: inRange
-                        ? isDark
-                          ? 'blue.800'
-                          : 'blue.100'
-                        : isDark
-                          ? 'gray.700'
-                          : 'gray.200',
-                      px: '1.5',
-                      py: '0.5',
-                      rounded: 'full',
-                      minWidth: '6',
-                      textAlign: 'center',
-                    })}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Slider track */}
+        {/* Main container with labels and slider */}
         <div
+          data-element="range-thermometer-track"
           className={css({
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: isVertical ? '8' : 'auto',
-            height: isVertical ? 'auto' : '8',
-            minHeight: isVertical ? '180px' : 'auto',
+            flexDirection: isVertical ? 'row' : 'column',
+            gap: '2',
           })}
         >
-          <Slider.Root
-            value={[minIndex, maxIndex]}
-            min={0}
-            max={options.length - 1}
-            step={1}
-            orientation={isVertical ? 'vertical' : 'horizontal'}
-            inverted={isVertical} // Vertical sliders need inversion so top = index 0
-            onValueChange={handleValueChange}
-            onPointerDown={handlePointerDown}
+          {/* Labels column */}
+          <div
             className={css({
-              position: 'relative',
               display: 'flex',
-              alignItems: 'center',
-              userSelect: 'none',
-              touchAction: 'none',
-              width: isVertical ? '3' : '100%',
-              height: isVertical ? '100%' : '3',
+              flexDirection: isVertical ? 'column' : 'row',
+              justifyContent: 'space-between',
+              flex: isVertical ? 'none' : 1,
             })}
           >
-            <Slider.Track
+            {options.map((option, index) => {
+              const inRange = isInRange(index)
+              const count = counts?.[option.value]
+              const tooltipContent = formatTooltipContent(option)
+
+              const buttonElement = (
+                <button
+                  type="button"
+                  data-option={option.value}
+                  data-in-range={inRange}
+                  onClick={() => {
+                    // Click moves nearest handle to this position
+                    const distToMin = Math.abs(index - minIndex)
+                    const distToMax = Math.abs(index - maxIndex)
+                    if (distToMin <= distToMax) {
+                      onChange(option.value, options[maxIndex].value)
+                    } else {
+                      onChange(options[minIndex].value, option.value)
+                    }
+                  }}
+                  onMouseEnter={() => handleOptionHover(index)}
+                  onMouseLeave={handleOptionLeave}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1.5',
+                    py: '1',
+                    px: '2',
+                    rounded: 'md',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    bg: inRange ? (isDark ? 'blue.900/40' : 'blue.50') : 'transparent',
+                    opacity: inRange ? 1 : 0.5,
+                    _hover: {
+                      bg: isDark ? 'gray.700' : 'gray.100',
+                      opacity: 1,
+                    },
+                  })}
+                >
+                  {/* Emoji */}
+                  {option.emoji && <span className={css({ fontSize: 'sm' })}>{option.emoji}</span>}
+
+                  {/* Label */}
+                  <span
+                    className={css({
+                      fontSize: 'xs',
+                      fontWeight: inRange ? '600' : '500',
+                      color: inRange
+                        ? isDark
+                          ? 'blue.300'
+                          : 'blue.700'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.600',
+                      flex: 1,
+                      textAlign: 'left',
+                    })}
+                  >
+                    {option.shortLabel || option.label}
+                  </span>
+
+                  {/* Count badge */}
+                  {count !== undefined && (
+                    <span
+                      className={css({
+                        fontSize: '2xs',
+                        fontWeight: '600',
+                        color: inRange
+                          ? isDark
+                            ? 'blue.200'
+                            : 'blue.600'
+                          : isDark
+                            ? 'gray.500'
+                            : 'gray.400',
+                        bg: inRange
+                          ? isDark
+                            ? 'blue.800'
+                            : 'blue.100'
+                          : isDark
+                            ? 'gray.700'
+                            : 'gray.200',
+                        px: '1.5',
+                        py: '0.5',
+                        rounded: 'full',
+                        minWidth: '6',
+                        textAlign: 'center',
+                      })}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+
+              // Wrap with tooltip if we have region names to show
+              if (tooltipContent) {
+                return (
+                  <Tooltip.Root key={option.value}>
+                    <Tooltip.Trigger asChild>{buttonElement}</Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        side="left"
+                        sideOffset={8}
+                        className={css({
+                          bg: isDark ? 'gray.800' : 'gray.900',
+                          color: 'white',
+                          px: '3',
+                          py: '2',
+                          rounded: 'lg',
+                          fontSize: 'xs',
+                          maxWidth: '220px',
+                          boxShadow: 'lg',
+                          zIndex: 50,
+                          lineHeight: '1.4',
+                        })}
+                      >
+                        <div className={css({ fontWeight: '600', mb: '1' })}>
+                          {tooltipContent.header}
+                        </div>
+                        <div className={css({ color: 'gray.300' })}>
+                          {tooltipContent.names.join(', ')}
+                          {tooltipContent.remaining > 0 && (
+                            <span className={css({ color: 'gray.400', fontStyle: 'italic' })}>
+                              {' '}
+                              ...and {tooltipContent.remaining} more
+                            </span>
+                          )}
+                        </div>
+                        <Tooltip.Arrow
+                          className={css({ fill: isDark ? 'gray.800' : 'gray.900' })}
+                        />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                )
+              }
+
+              return <span key={option.value}>{buttonElement}</span>
+            })}
+          </div>
+
+          {/* Slider track */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: isVertical ? '8' : 'auto',
+              height: isVertical ? 'auto' : '8',
+              minHeight: isVertical ? '180px' : 'auto',
+            })}
+          >
+            <Slider.Root
+              value={[minIndex, maxIndex]}
+              min={0}
+              max={options.length - 1}
+              step={1}
+              orientation={isVertical ? 'vertical' : 'horizontal'}
+              inverted={isVertical} // Vertical sliders need inversion so top = index 0
+              onValueChange={handleValueChange}
+              onPointerDown={handlePointerDown}
               className={css({
-                bg: isDark ? 'gray.700' : 'gray.200',
                 position: 'relative',
-                flexGrow: 1,
-                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                userSelect: 'none',
+                touchAction: 'none',
                 width: isVertical ? '3' : '100%',
                 height: isVertical ? '100%' : '3',
               })}
             >
-              <Slider.Range
+              <Slider.Track
                 className={css({
-                  position: 'absolute',
-                  bg: isDark ? 'blue.600' : 'blue.500',
+                  bg: isDark ? 'gray.700' : 'gray.200',
+                  position: 'relative',
+                  flexGrow: 1,
                   rounded: 'full',
-                  width: isVertical ? '100%' : 'auto',
-                  height: isVertical ? 'auto' : '100%',
+                  width: isVertical ? '3' : '100%',
+                  height: isVertical ? '100%' : '3',
+                })}
+              >
+                <Slider.Range
+                  className={css({
+                    position: 'absolute',
+                    bg: isDark ? 'blue.600' : 'blue.500',
+                    rounded: 'full',
+                    width: isVertical ? '100%' : 'auto',
+                    height: isVertical ? 'auto' : '100%',
+                  })}
+                />
+              </Slider.Track>
+
+              {/* Min thumb */}
+              <Slider.Thumb
+                data-handle="min"
+                className={css({
+                  display: 'block',
+                  w: '4',
+                  h: '4',
+                  bg: 'white',
+                  border: '2px solid',
+                  borderColor: isDark ? 'blue.400' : 'blue.500',
+                  rounded: 'full',
+                  cursor: 'grab',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  _hover: {
+                    bg: isDark ? 'blue.100' : 'blue.50',
+                    transform: 'scale(1.1)',
+                  },
+                  _focus: {
+                    outline: 'none',
+                    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
+                  },
+                  _active: {
+                    cursor: 'grabbing',
+                  },
                 })}
               />
-            </Slider.Track>
 
-            {/* Min thumb */}
-            <Slider.Thumb
-              data-handle="min"
-              className={css({
-                display: 'block',
-                w: '4',
-                h: '4',
-                bg: 'white',
-                border: '2px solid',
-                borderColor: isDark ? 'blue.400' : 'blue.500',
-                rounded: 'full',
-                cursor: 'grab',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                _hover: {
-                  bg: isDark ? 'blue.100' : 'blue.50',
-                  transform: 'scale(1.1)',
-                },
-                _focus: {
-                  outline: 'none',
-                  boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
-                },
-                _active: {
-                  cursor: 'grabbing',
-                },
-              })}
-            />
-
-            {/* Max thumb */}
-            <Slider.Thumb
-              data-handle="max"
-              className={css({
-                display: 'block',
-                w: '4',
-                h: '4',
-                bg: 'white',
-                border: '2px solid',
-                borderColor: isDark ? 'blue.400' : 'blue.500',
-                rounded: 'full',
-                cursor: 'grab',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                _hover: {
-                  bg: isDark ? 'blue.100' : 'blue.50',
-                  transform: 'scale(1.1)',
-                },
-                _focus: {
-                  outline: 'none',
-                  boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
-                },
-                _active: {
-                  cursor: 'grabbing',
-                },
-              })}
-            />
-          </Slider.Root>
+              {/* Max thumb */}
+              <Slider.Thumb
+                data-handle="max"
+                className={css({
+                  display: 'block',
+                  w: '4',
+                  h: '4',
+                  bg: 'white',
+                  border: '2px solid',
+                  borderColor: isDark ? 'blue.400' : 'blue.500',
+                  rounded: 'full',
+                  cursor: 'grab',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  _hover: {
+                    bg: isDark ? 'blue.100' : 'blue.50',
+                    transform: 'scale(1.1)',
+                  },
+                  _focus: {
+                    outline: 'none',
+                    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
+                  },
+                  _active: {
+                    cursor: 'grabbing',
+                  },
+                })}
+              />
+            </Slider.Root>
+          </div>
         </div>
+
+        {/* Total count display - clickable to show all selected regions */}
+        {totalCount !== null && (
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                data-element="total-count"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1',
+                  py: '1.5',
+                  px: '2',
+                  bg: isDark ? 'blue.900/30' : 'blue.50',
+                  rounded: 'md',
+                  border: '1px solid',
+                  borderColor: isDark ? 'blue.800' : 'blue.200',
+                  cursor: selectedRegionNames?.length ? 'pointer' : 'default',
+                  transition: 'all 0.15s',
+                  _hover: selectedRegionNames?.length
+                    ? {
+                        bg: isDark ? 'blue.900/50' : 'blue.100',
+                        borderColor: isDark ? 'blue.700' : 'blue.300',
+                      }
+                    : {},
+                })}
+              >
+                <span
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'bold',
+                    color: isDark ? 'blue.300' : 'blue.700',
+                    textDecoration: selectedRegionNames?.length ? 'underline' : 'none',
+                    textDecorationStyle: 'dotted',
+                    textUnderlineOffset: '2px',
+                  })}
+                >
+                  {totalCount}
+                </span>
+                <span
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'blue.400' : 'blue.600',
+                  })}
+                >
+                  regions
+                </span>
+              </button>
+            </Popover.Trigger>
+            {selectedRegionNames && selectedRegionNames.length > 0 && (
+              <Popover.Portal>
+                <Popover.Content
+                  side="top"
+                  sideOffset={8}
+                  align="center"
+                  className={css({
+                    bg: isDark ? 'gray.800' : 'white',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    rounded: 'lg',
+                    boxShadow: 'xl',
+                    zIndex: 50,
+                    width: '200px',
+                    maxHeight: '300px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  })}
+                >
+                  {/* Header */}
+                  <div
+                    className={css({
+                      px: '3',
+                      py: '2',
+                      borderBottom: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      fontWeight: '600',
+                      fontSize: 'sm',
+                      color: isDark ? 'gray.100' : 'gray.800',
+                    })}
+                  >
+                    {selectedRegionNames.length} regions selected
+                  </div>
+                  {/* Scrollable list */}
+                  <div
+                    className={css({
+                      overflowY: 'auto',
+                      flex: 1,
+                      py: '1',
+                    })}
+                  >
+                    {selectedRegionNames
+                      .slice()
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((name) => (
+                        <div
+                          key={name}
+                          onMouseEnter={() => onRegionNameHover?.(name)}
+                          onMouseLeave={() => onRegionNameHover?.(null)}
+                          className={css({
+                            px: '3',
+                            py: '1',
+                            fontSize: 'xs',
+                            color: isDark ? 'gray.300' : 'gray.600',
+                            cursor: onRegionNameHover ? 'pointer' : 'default',
+                            _hover: {
+                              bg: isDark ? 'gray.700' : 'gray.100',
+                              color: isDark ? 'gray.100' : 'gray.900',
+                            },
+                          })}
+                        >
+                          {name}
+                        </div>
+                      ))}
+                  </div>
+                  <Popover.Arrow
+                    className={css({
+                      fill: isDark ? 'gray.800' : 'white',
+                    })}
+                  />
+                </Popover.Content>
+              </Popover.Portal>
+            )}
+          </Popover.Root>
+        )}
       </div>
-
-      {/* Total count display */}
-      {totalCount !== null && (
-        <div
-          data-element="total-count"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1',
-            py: '1.5',
-            px: '2',
-            bg: isDark ? 'blue.900/30' : 'blue.50',
-            rounded: 'md',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.800' : 'blue.200',
-          })}
-        >
-          <span
-            className={css({
-              fontSize: 'sm',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.300' : 'blue.700',
-            })}
-          >
-            {totalCount}
-          </span>
-          <span
-            className={css({
-              fontSize: 'xs',
-              color: isDark ? 'blue.400' : 'blue.600',
-            })}
-          >
-            regions
-          </span>
-        </div>
-      )}
-    </div>
+    </Tooltip.Provider>
   )
 }

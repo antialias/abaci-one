@@ -55,4 +55,10 @@ export interface RangeThermometerProps<T extends string> extends ThermometerBase
   showTotalCount?: boolean
   /** Called when hovering over an option to preview what would be selected */
   onHoverPreview?: (preview: RangePreviewState<T> | null) => void
+  /** Region names per category for tooltip display (power user feature) */
+  regionNamesByCategory?: Partial<Record<T, string[]>>
+  /** All selected region names for the total count popover */
+  selectedRegionNames?: string[]
+  /** Callback when hovering over a region name in the popover (for map preview) */
+  onRegionNameHover?: (regionName: string | null) => void
 }

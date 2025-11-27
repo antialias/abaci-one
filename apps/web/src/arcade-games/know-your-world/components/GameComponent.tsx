@@ -5,7 +5,6 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { useKnowYourWorld } from '../Provider'
 import { SetupPhase } from './SetupPhase'
-import { StudyPhase } from './StudyPhase'
 import { PlayingPhase } from './PlayingPhase'
 import { ResultsPhase } from './ResultsPhase'
 
@@ -23,7 +22,6 @@ export function GameComponent() {
   const content = (
     <>
       {state.gamePhase === 'setup' && <SetupPhase />}
-      {state.gamePhase === 'studying' && <StudyPhase />}
       {state.gamePhase === 'playing' && <PlayingPhase />}
       {state.gamePhase === 'results' && <ResultsPhase />}
     </>

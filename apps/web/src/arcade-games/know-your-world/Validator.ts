@@ -35,8 +35,6 @@ export class KnowYourWorldValidator
         return await this.validateNextRound(state)
       case 'END_GAME':
         return this.validateEndGame(state)
-      case 'END_STUDY':
-        return this.validateEndStudy(state)
       case 'RETURN_TO_SETUP':
         return this.validateReturnToSetup(state)
       case 'SET_MAP':
@@ -47,8 +45,6 @@ export class KnowYourWorldValidator
         return this.validateSetRegionSizes(state, move.data.includeSizes)
       case 'SET_ASSISTANCE_LEVEL':
         return this.validateSetAssistanceLevel(state, move.data.assistanceLevel)
-      case 'SET_STUDY_DURATION':
-        return this.validateSetStudyDuration(state, move.data.studyDuration)
       case 'SET_CONTINENT':
         return this.validateSetContinent(state, move.data.selectedContinent)
       case 'GIVE_UP':
@@ -93,15 +89,12 @@ export class KnowYourWorldValidator
       attempts[playerId] = 0
     }
 
-    // Check if we should go to study phase or directly to playing
-    const shouldStudy = state.studyDuration > 0
-
     // Track the initial userId (session) - other sessions will be added as they make moves
     const activeUserIds = userId ? [userId] : []
 
     const newState: KnowYourWorldState = {
       ...state,
-      gamePhase: shouldStudy ? 'studying' : 'playing',
+      gamePhase: 'playing',
       activePlayers,
       activeUserIds,
       playerMetadata,
@@ -109,10 +102,8 @@ export class KnowYourWorldValidator
       gameMode,
       includeSizes: includeSizes || state.includeSizes,
       assistanceLevel: assistanceLevel || state.assistanceLevel,
-      studyTimeRemaining: shouldStudy ? state.studyDuration : 0,
-      studyStartTime: shouldStudy ? Date.now() : 0,
-      currentPrompt: shouldStudy ? null : shuffledRegions[0],
-      regionsToFind: shuffledRegions.slice(shouldStudy ? 0 : 1),
+      currentPrompt: shuffledRegions[0],
+      regionsToFind: shuffledRegions.slice(1),
       regionsFound: [],
       regionsGivenUp: [],
       currentPlayer: activePlayers[0],
@@ -290,16 +281,11 @@ export class KnowYourWorldValidator
       attempts[playerId] = 0
     }
 
-    // Check if we should go to study phase or directly to playing
-    const shouldStudy = state.studyDuration > 0
-
     const newState: KnowYourWorldState = {
       ...state,
-      gamePhase: shouldStudy ? 'studying' : 'playing',
-      studyTimeRemaining: shouldStudy ? state.studyDuration : 0,
-      studyStartTime: shouldStudy ? Date.now() : 0,
-      currentPrompt: shouldStudy ? null : shuffledRegions[0],
-      regionsToFind: shuffledRegions.slice(shouldStudy ? 0 : 1),
+      gamePhase: 'playing',
+      currentPrompt: shuffledRegions[0],
+      regionsToFind: shuffledRegions.slice(1),
       regionsFound: [],
       regionsGivenUp: [],
       currentPlayer: state.activePlayers[0],
@@ -392,22 +378,6 @@ export class KnowYourWorldValidator
     return { valid: true, newState }
   }
 
-  private validateSetStudyDuration(
-    state: KnowYourWorldState,
-    studyDuration: 0 | 30 | 60 | 120
-  ): ValidationResult {
-    if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only change study duration during setup' }
-    }
-
-    const newState: KnowYourWorldState = {
-      ...state,
-      studyDuration,
-    }
-
-    return { valid: true, newState }
-  }
-
   private validateSetContinent(
     state: KnowYourWorldState,
     selectedContinent: import('./continents').ContinentId | 'all'
@@ -419,27 +389,6 @@ export class KnowYourWorldValidator
     const newState: KnowYourWorldState = {
       ...state,
       selectedContinent,
-    }
-
-    return { valid: true, newState }
-  }
-
-  private validateEndStudy(state: KnowYourWorldState): ValidationResult {
-    if (state.gamePhase !== 'studying') {
-      return { valid: false, error: 'Can only end study during studying phase' }
-    }
-
-    // Transition from studying to playing
-    // Set the first prompt from the regions to find
-    const currentPrompt = state.regionsToFind[0] || null
-    const remainingRegions = state.regionsToFind.slice(1)
-
-    const newState: KnowYourWorldState = {
-      ...state,
-      gamePhase: 'playing',
-      currentPrompt,
-      regionsToFind: remainingRegions,
-      studyTimeRemaining: 0,
     }
 
     return { valid: true, newState }
@@ -464,8 +413,6 @@ export class KnowYourWorldValidator
       guessHistory: [],
       startTime: 0,
       endTime: undefined,
-      studyTimeRemaining: 0,
-      studyStartTime: 0,
       giveUpReveal: null,
     }
 
@@ -655,10 +602,7 @@ export class KnowYourWorldValidator
       gameMode: typedConfig?.gameMode || 'cooperative',
       includeSizes,
       assistanceLevel,
-      studyDuration: typedConfig?.studyDuration || 0,
       selectedContinent: typedConfig?.selectedContinent || 'all',
-      studyTimeRemaining: 0,
-      studyStartTime: 0,
       currentPrompt: null,
       regionsToFind: [],
       regionsFound: [],

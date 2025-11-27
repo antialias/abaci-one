@@ -1138,7 +1138,7 @@ export interface BoundingBox {
   height: number
 }
 
-function calculateBoundingBox(paths: string[]): BoundingBox {
+export function calculateBoundingBox(paths: string[]): BoundingBox {
   let minX = Infinity
   let maxX = -Infinity
   let minY = Infinity
@@ -1149,6 +1149,9 @@ function calculateBoundingBox(paths: string[]): BoundingBox {
     const commandRegex = /([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)/g
     let currentX = 0
     let currentY = 0
+    // Track the start of the current subpath (for z command)
+    let subpathStartX = 0
+    let subpathStartY = 0
     let match
 
     while ((match = commandRegex.exec(pathString)) !== null) {
@@ -1161,9 +1164,15 @@ function calculateBoundingBox(paths: string[]): BoundingBox {
 
       switch (command) {
         case 'M': // Move to (absolute)
-          if (params.length >= 2) {
-            currentX = params[0]
-            currentY = params[1]
+          // First pair is moveto, subsequent pairs are implicit lineto (absolute)
+          for (let i = 0; i < params.length - 1; i += 2) {
+            currentX = params[i]
+            currentY = params[i + 1]
+            // First coordinate pair starts a new subpath
+            if (i === 0) {
+              subpathStartX = currentX
+              subpathStartY = currentY
+            }
             minX = Math.min(minX, currentX)
             maxX = Math.max(maxX, currentX)
             minY = Math.min(minY, currentY)
@@ -1172,9 +1181,16 @@ function calculateBoundingBox(paths: string[]): BoundingBox {
           break
 
         case 'm': // Move to (relative)
-          if (params.length >= 2) {
-            currentX += params[0]
-            currentY += params[1]
+          // First pair is moveto (relative), subsequent pairs are implicit lineto (relative)
+          // Both use relative coordinates, so same logic applies
+          for (let i = 0; i < params.length - 1; i += 2) {
+            currentX += params[i]
+            currentY += params[i + 1]
+            // First coordinate pair starts a new subpath
+            if (i === 0) {
+              subpathStartX = currentX
+              subpathStartY = currentY
+            }
             minX = Math.min(minX, currentX)
             maxX = Math.max(maxX, currentX)
             minY = Math.min(minY, currentY)
@@ -1310,7 +1326,9 @@ function calculateBoundingBox(paths: string[]): BoundingBox {
 
         case 'Z':
         case 'z':
-          // Close path - no new point needed
+          // Close path - return to start of current subpath
+          currentX = subpathStartX
+          currentY = subpathStartY
           break
       }
     }

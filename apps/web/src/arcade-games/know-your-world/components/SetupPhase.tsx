@@ -53,47 +53,11 @@ const GAME_MODE_OPTIONS = [
   },
 ]
 
-// Study time options with rich descriptions
-const STUDY_TIME_OPTIONS = [
-  {
-    value: 0 as const,
-    emoji: '⏭️',
-    label: 'Skip',
-    description: 'Jump straight into the game',
-  },
-  {
-    value: 30 as const,
-    emoji: '⏱️',
-    label: '30 seconds',
-    description: 'Quick review before playing',
-  },
-  {
-    value: 60 as const,
-    emoji: '⏲️',
-    label: '1 minute',
-    description: 'Moderate study time',
-  },
-  {
-    value: 120 as const,
-    emoji: '⏰',
-    label: '2 minutes',
-    description: 'Extended study period',
-  },
-]
-
 export function SetupPhase() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const {
-    state,
-    startGame,
-    setMap,
-    setMode,
-    setRegionSizes,
-    setAssistanceLevel,
-    setStudyDuration,
-    setContinent,
-  } = useKnowYourWorld()
+  const { state, startGame, setMap, setMode, setRegionSizes, setAssistanceLevel, setContinent } =
+    useKnowYourWorld()
 
   // Calculate region counts per size category
   const regionCountsBySize = useMemo(() => {
@@ -124,7 +88,6 @@ export function SetupPhase() {
 
   // Get selected options for display
   const selectedMode = GAME_MODE_OPTIONS.find((opt) => opt.value === state.gameMode)
-  const selectedStudyTime = STUDY_TIME_OPTIONS.find((opt) => opt.value === state.studyDuration)
   const selectedAssistance = ASSISTANCE_LEVELS.find((level) => level.id === state.assistanceLevel)
 
   // Calculate total region count for start button
@@ -269,7 +232,7 @@ export function SetupPhase() {
           border: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
           md: {
-            gridTemplateColumns: 'repeat(3, 1fr)', // 3 columns on desktop
+            gridTemplateColumns: 'repeat(2, 1fr)', // 2 columns on desktop
           },
         })}
       >
@@ -463,82 +426,6 @@ export function SetupPhase() {
                       </Select.Item>
                     )
                   })}
-                </Select.Viewport>
-              </Select.Content>
-            </Select.Portal>
-          </Select.Root>
-        </div>
-
-        {/* Study Duration */}
-        <div
-          data-setting="study-duration"
-          className={css({ display: 'flex', flexDirection: 'column' })}
-        >
-          <label className={labelStyles}>Study Time</label>
-          <Select.Root
-            value={String(state.studyDuration)}
-            onValueChange={(value) => setStudyDuration(Number(value) as 0 | 30 | 60 | 120)}
-          >
-            <Select.Trigger className={triggerStyles}>
-              <span className={css({ fontSize: '2xl' })}>{selectedStudyTime?.emoji}</span>
-              <div className={css({ flex: 1, textAlign: 'left' })}>
-                <div
-                  className={css({
-                    fontWeight: '600',
-                    color: isDark ? 'gray.100' : 'gray.900',
-                    fontSize: 'sm',
-                  })}
-                >
-                  {selectedStudyTime?.label}
-                </div>
-                <div
-                  className={css({
-                    fontSize: 'xs',
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    lineHeight: 'tight',
-                  })}
-                >
-                  {selectedStudyTime?.description}
-                </div>
-              </div>
-              <Select.Icon className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
-                ▼
-              </Select.Icon>
-            </Select.Trigger>
-            <Select.Portal>
-              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
-                <Select.Viewport>
-                  {STUDY_TIME_OPTIONS.map((option) => (
-                    <Select.Item
-                      key={option.value}
-                      value={String(option.value)}
-                      className={itemStyles}
-                    >
-                      <span className={css({ fontSize: '2xl' })}>{option.emoji}</span>
-                      <div className={css({ flex: 1 })}>
-                        <Select.ItemText>
-                          <span
-                            className={css({
-                              fontWeight: '600',
-                              color: isDark ? 'gray.100' : 'gray.900',
-                              fontSize: 'sm',
-                            })}
-                          >
-                            {option.label}
-                          </span>
-                        </Select.ItemText>
-                        <div
-                          className={css({
-                            fontSize: 'xs',
-                            color: isDark ? 'gray.400' : 'gray.500',
-                            lineHeight: 'tight',
-                          })}
-                        >
-                          {option.description}
-                        </div>
-                      </div>
-                    </Select.Item>
-                  ))}
                 </Select.Viewport>
               </Select.Content>
             </Select.Portal>
