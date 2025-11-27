@@ -725,13 +725,14 @@ export function DrillDownMapSelector({
             )
           })()}
 
-        {/* Region Size Filters - positioned inside map, bottom right */}
+        {/* Region Size Filters - positioned inside map, right side as column */}
         <div
           data-element="region-size-filters"
           className={css({
             position: 'absolute',
-            bottom: '3',
+            top: '3',
             right: '3',
+            bottom: '3',
             display: 'flex',
             flexDirection: 'column',
             gap: '1',
@@ -745,12 +746,47 @@ export function DrillDownMapSelector({
             zIndex: 10,
           })}
         >
+          {/* Select All button */}
+          <button
+            data-action="select-all-sizes"
+            onClick={() => onRegionSizesChange([...ALL_REGION_SIZES])}
+            disabled={includeSizes.length === ALL_REGION_SIZES.length}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1',
+              paddingX: '2',
+              paddingY: '1',
+              bg: isDark ? 'green.800' : 'green.500',
+              color: 'white',
+              border: '1px solid',
+              borderColor: isDark ? 'green.600' : 'green.600',
+              rounded: 'md',
+              cursor: includeSizes.length === ALL_REGION_SIZES.length ? 'default' : 'pointer',
+              opacity: includeSizes.length === ALL_REGION_SIZES.length ? 0.5 : 1,
+              transition: 'all 0.15s',
+              fontSize: 'xs',
+              fontWeight: '600',
+              _hover:
+                includeSizes.length === ALL_REGION_SIZES.length
+                  ? {}
+                  : {
+                      bg: isDark ? 'green.700' : 'green.600',
+                    },
+            })}
+          >
+            <span>✓</span>
+            <span>All</span>
+          </button>
+
+          {/* Size checkboxes in a column */}
           <div
             className={css({
               display: 'flex',
-              flexWrap: 'wrap',
+              flexDirection: 'column',
               gap: '1',
-              maxWidth: '280px',
+              flex: 1,
             })}
           >
             {ALL_REGION_SIZES.map((size) => {
@@ -775,7 +811,7 @@ export function DrillDownMapSelector({
                   onCheckedChange={handleToggle}
                   disabled={isOnlyOne}
                   className={css({
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
                     gap: '1',
                     paddingX: '2',
