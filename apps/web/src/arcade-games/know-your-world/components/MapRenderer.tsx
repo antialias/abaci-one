@@ -839,8 +839,9 @@ export function MapRenderer({
 
     mapData.regions.forEach((region) => {
       const pathData = region.path
-      const pieceSeparatorRegex = /(?<=z)\s*m\s*/i
-      const rawPieces = pathData.split(pieceSeparatorRegex)
+      // Split on z followed by m (Safari doesn't support lookbehind, so use replace + split)
+      const withSeparator = pathData.replace(/z\s*m/gi, 'z|||m')
+      const rawPieces = withSeparator.split('|||')
 
       if (rawPieces.length > 1) {
         // Multi-piece region: use the FIRST piece (mainland), not largest
