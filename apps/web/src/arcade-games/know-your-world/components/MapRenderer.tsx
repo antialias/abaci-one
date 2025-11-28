@@ -2575,6 +2575,8 @@ export function MapRenderer({
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
+                  // Ensure entire path interior is clickable, not just visible fill
+                  pointerEvents: isExcluded ? 'none' : 'all',
                 }}
               />
 
