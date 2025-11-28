@@ -1424,9 +1424,10 @@ export function MapRenderer({
         // Exception: Washington DC always gets arrow label (too small on USA map)
         const isDC = region.id === 'dc'
         const isExcluded = excludedRegionIds.has(region.id)
-        // Show label if: region is found, OR region is excluded (pre-found), OR it's small and arrows enabled
+        // Show label if: region is found, OR it's small and arrows enabled
+        // Note: Excluded regions do NOT get labels - they're just grayed out
         const shouldShowLabel =
-          regionsFound.includes(region.id) || isExcluded || (isSmall && (showArrows || isDC))
+          regionsFound.includes(region.id) || (isSmall && (showArrows || isDC))
 
         if (shouldShowLabel) {
           const players = regionsFound.includes(region.id)
