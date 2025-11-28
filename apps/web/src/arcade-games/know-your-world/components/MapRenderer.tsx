@@ -875,11 +875,16 @@ export function MapRenderer({
     largestPieceSizesRef.current = largestPieceSizes
   }, [mapData])
 
+  // Check if pointer lock is supported (not available on touch devices like iPad)
+  const isPointerLockSupported =
+    typeof document !== 'undefined' && 'pointerLockElement' in document
+
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Silently request pointer lock if not already locked
+    // Silently request pointer lock if not already locked (and supported)
     // This makes the first gameplay click also enable precision mode
-    if (!pointerLocked) {
+    // On devices without pointer lock (iPad), skip this and process clicks normally
+    if (!pointerLocked && isPointerLockSupported) {
       requestPointerLock()
       console.log('[Pointer Lock] 🔒 Silently requested (user clicked map)')
       return // Don't process region click on the first click that requests lock
