@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import {
@@ -25,15 +26,30 @@ import {
   getFilteredMapDataBySizesSync,
   REGION_SIZE_CONFIG,
   ALL_REGION_SIZES,
+  IMPORTANCE_LEVEL_CONFIG,
+  ALL_IMPORTANCE_LEVELS,
+  POPULATION_LEVEL_CONFIG,
+  ALL_POPULATION_LEVELS,
+  FILTER_CRITERIA_CONFIG,
+  filterRegionsByImportance,
+  filterRegionsByPopulation,
+  filterRegionsBySizes,
 } from '../maps'
-import type { RegionSize } from '../maps'
+import type { RegionSize, ImportanceLevel, PopulationLevel, FilterCriteria } from '../maps'
 import {
   CONTINENTS,
   getContinentForCountry,
   COUNTRY_TO_CONTINENT,
   type ContinentId,
 } from '../continents'
-import { sizesToRange, rangeToSizes } from '../utils/regionSizeUtils'
+import {
+  sizesToRange,
+  rangeToSizes,
+  importanceToRange,
+  rangeToImportance,
+  populationToRange,
+  rangeToPopulation,
+} from '../utils/regionSizeUtils'
 import { preventFlexExpansion } from '../utils/responsiveStyles'
 
 /**
@@ -45,6 +61,35 @@ const SIZE_OPTIONS: ThermometerOption<RegionSize>[] = ALL_REGION_SIZES.map((size
   shortLabel: REGION_SIZE_CONFIG[size].label,
   emoji: REGION_SIZE_CONFIG[size].emoji,
 }))
+
+/**
+ * Importance options for the range thermometer, ordered from most to least important
+ */
+const IMPORTANCE_OPTIONS: ThermometerOption<ImportanceLevel>[] = ALL_IMPORTANCE_LEVELS.map(
+  (level) => ({
+    value: level,
+    label: IMPORTANCE_LEVEL_CONFIG[level].label,
+    shortLabel: IMPORTANCE_LEVEL_CONFIG[level].label,
+    emoji: IMPORTANCE_LEVEL_CONFIG[level].emoji,
+  })
+)
+
+/**
+ * Population options for the range thermometer, ordered from largest to smallest
+ */
+const POPULATION_OPTIONS: ThermometerOption<PopulationLevel>[] = ALL_POPULATION_LEVELS.map(
+  (level) => ({
+    value: level,
+    label: POPULATION_LEVEL_CONFIG[level].label,
+    shortLabel: POPULATION_LEVEL_CONFIG[level].label,
+    emoji: POPULATION_LEVEL_CONFIG[level].emoji,
+  })
+)
+
+/**
+ * All filter criteria tabs
+ */
+const ALL_FILTER_CRITERIA: FilterCriteria[] = ['size', 'importance', 'population']
 
 /**
  * Selection path for drill-down navigation:
@@ -149,6 +194,27 @@ export function DrillDownMapSelector({
   const containerRef = useRef<HTMLDivElement>(null)
   // Track which region name is being hovered in the popover (for zoom preview)
   const [previewRegionName, setPreviewRegionName] = useState<string | null>(null)
+
+  // Filter criteria tab state
+  const [activeFilterCriteria, setActiveFilterCriteria] = useState<FilterCriteria>('size')
+
+  // Local state for importance and population filters (not persisted, just for display filtering)
+  const [includeImportance, setIncludeImportance] = useState<ImportanceLevel[]>([
+    'superpower',
+    'major',
+    'regional',
+  ])
+  const [includePopulation, setIncludePopulation] = useState<PopulationLevel[]>([
+    'huge',
+    'large',
+    'medium',
+  ])
+
+  // Preview states for importance and population thermometers
+  const [importanceRangePreview, setImportanceRangePreview] =
+    useState<RangePreviewState<ImportanceLevel> | null>(null)
+  const [populationRangePreview, setPopulationRangePreview] =
+    useState<RangePreviewState<PopulationLevel> | null>(null)
 
   // Sync local path state when props change from external sources (e.g., other players)
   useEffect(() => {
@@ -290,29 +356,52 @@ export function DrillDownMapSelector({
     return groups
   }, [currentLevel])
 
-  // Calculate excluded regions based on includeSizes
-  // These are regions that exist but are filtered out by size settings
-  const excludedRegions = useMemo(() => {
-    // Determine which map we're looking at
+  // Get base regions for the current view (continent filtered but no criteria filtering)
+  const baseRegions = useMemo(() => {
     const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
     const continentId: ContinentId | 'all' =
       currentLevel >= 1 && path[0] ? path[0] : selectedContinent
 
-    // Get all regions (unfiltered by size)
     const allRegionsMapData = getFilteredMapDataBySizesSync(
       mapId as 'world' | 'usa',
       continentId,
       ['huge', 'large', 'medium', 'small', 'tiny'] // All sizes
     )
-    const allRegionIds = new Set(allRegionsMapData.regions.map((r) => r.id))
+    return allRegionsMapData.regions
+  }, [currentLevel, path, selectedContinent])
 
-    // Get filtered regions (based on current includeSizes)
-    const filteredMapData = getFilteredMapDataBySizesSync(
-      mapId as 'world' | 'usa',
-      continentId,
-      includeSizes
-    )
-    const filteredRegionIds = new Set(filteredMapData.regions.map((r) => r.id))
+  // Get the active filter levels based on current tab
+  const activeFilterLevels = useMemo(() => {
+    switch (activeFilterCriteria) {
+      case 'size':
+        return includeSizes
+      case 'importance':
+        return includeImportance
+      case 'population':
+        return includePopulation
+      default:
+        return includeSizes
+    }
+  }, [activeFilterCriteria, includeSizes, includeImportance, includePopulation])
+
+  // Calculate excluded regions based on active filter criteria
+  const excludedRegions = useMemo(() => {
+    const allRegionIds = new Set(baseRegions.map((r) => r.id))
+
+    // Filter based on active criteria
+    let filteredRegions = baseRegions
+    switch (activeFilterCriteria) {
+      case 'size':
+        filteredRegions = filterRegionsBySizes(baseRegions, includeSizes, 'world')
+        break
+      case 'importance':
+        filteredRegions = filterRegionsByImportance(baseRegions, includeImportance)
+        break
+      case 'population':
+        filteredRegions = filterRegionsByPopulation(baseRegions, includePopulation)
+        break
+    }
+    const filteredRegionIds = new Set(filteredRegions.map((r) => r.id))
 
     // Excluded = all regions minus filtered regions
     const excluded: string[] = []
@@ -322,35 +411,74 @@ export function DrillDownMapSelector({
       }
     }
     return excluded
-  }, [currentLevel, path, selectedContinent, includeSizes])
+  }, [baseRegions, activeFilterCriteria, includeSizes, includeImportance, includePopulation])
 
   // Compute region names by size category (for tooltip display)
   const regionNamesBySize = useMemo(() => {
-    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
-    const continentId: ContinentId | 'all' =
-      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
-
     const result: Partial<Record<RegionSize, string[]>> = {}
     for (const size of ALL_REGION_SIZES) {
-      const filtered = getFilteredMapDataBySizesSync(mapId as 'world' | 'usa', continentId, [size])
-      result[size] = filtered.regions.map((r) => r.name).sort((a, b) => a.localeCompare(b))
+      const filtered = filterRegionsBySizes(baseRegions, [size], 'world')
+      result[size] = filtered.map((r) => r.name).sort((a, b) => a.localeCompare(b))
     }
     return result
-  }, [currentLevel, path, selectedContinent])
+  }, [baseRegions])
 
-  // Compute all selected region names (for popover display)
+  // Compute region names by importance category
+  const regionNamesByImportance = useMemo(() => {
+    const result: Partial<Record<ImportanceLevel, string[]>> = {}
+    for (const level of ALL_IMPORTANCE_LEVELS) {
+      const filtered = filterRegionsByImportance(baseRegions, [level])
+      result[level] = filtered.map((r) => r.name).sort((a, b) => a.localeCompare(b))
+    }
+    return result
+  }, [baseRegions])
+
+  // Compute region names by population category
+  const regionNamesByPopulation = useMemo(() => {
+    const result: Partial<Record<PopulationLevel, string[]>> = {}
+    for (const level of ALL_POPULATION_LEVELS) {
+      const filtered = filterRegionsByPopulation(baseRegions, [level])
+      result[level] = filtered.map((r) => r.name).sort((a, b) => a.localeCompare(b))
+    }
+    return result
+  }, [baseRegions])
+
+  // Compute region counts by category for the active filter criteria
+  const regionCountsByCriteria = useMemo(() => {
+    switch (activeFilterCriteria) {
+      case 'size':
+        return Object.fromEntries(
+          Object.entries(regionNamesBySize).map(([k, v]) => [k, v?.length ?? 0])
+        )
+      case 'importance':
+        return Object.fromEntries(
+          Object.entries(regionNamesByImportance).map(([k, v]) => [k, v?.length ?? 0])
+        )
+      case 'population':
+        return Object.fromEntries(
+          Object.entries(regionNamesByPopulation).map(([k, v]) => [k, v?.length ?? 0])
+        )
+      default:
+        return {}
+    }
+  }, [activeFilterCriteria, regionNamesBySize, regionNamesByImportance, regionNamesByPopulation])
+
+  // Compute all selected region names (for popover display) based on active filter
   const selectedRegionNames = useMemo(() => {
-    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
-    const continentId: ContinentId | 'all' =
-      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
-
-    const filtered = getFilteredMapDataBySizesSync(
-      mapId as 'world' | 'usa',
-      continentId,
-      includeSizes
-    )
-    return filtered.regions.map((r) => r.name)
-  }, [currentLevel, path, selectedContinent, includeSizes])
+    let filteredRegions = baseRegions
+    switch (activeFilterCriteria) {
+      case 'size':
+        filteredRegions = filterRegionsBySizes(baseRegions, includeSizes, 'world')
+        break
+      case 'importance':
+        filteredRegions = filterRegionsByImportance(baseRegions, includeImportance)
+        break
+      case 'population':
+        filteredRegions = filterRegionsByPopulation(baseRegions, includePopulation)
+        break
+    }
+    return filteredRegions.map((r) => r.name)
+  }, [baseRegions, activeFilterCriteria, includeSizes, includeImportance, includePopulation])
 
   // Create lookup map from region name → region data (for zoom preview)
   const regionsByName = useMemo(() => {
@@ -437,34 +565,68 @@ export function DrillDownMapSelector({
     return region?.id ?? null
   }, [previewRegionName, regionsByName])
 
-  // Calculate preview regions based on hovering over the size thermometer
+  // Calculate preview regions based on hovering over the thermometer
   // Shows what regions would be added or removed if the user clicks
   const { previewAddRegions, previewRemoveRegions } = useMemo(() => {
-    if (!sizeRangePreview) {
+    // Determine which preview state to use based on active filter criteria
+    const activePreview =
+      activeFilterCriteria === 'size'
+        ? sizeRangePreview
+        : activeFilterCriteria === 'importance'
+          ? importanceRangePreview
+          : populationRangePreview
+
+    if (!activePreview) {
       return { previewAddRegions: [], previewRemoveRegions: [] }
     }
 
-    // Determine which map we're looking at
-    const mapId = currentLevel === 2 && path[1] ? 'usa' : 'world'
-    const continentId: ContinentId | 'all' =
-      currentLevel >= 1 && path[0] ? path[0] : selectedContinent
-
-    // Get current included region IDs
-    const currentIncluded = getFilteredMapDataBySizesSync(
-      mapId as 'world' | 'usa',
-      continentId,
-      includeSizes
-    )
-    const currentIncludedIds = new Set(currentIncluded.regions.map((r) => r.id))
+    // Get current included region IDs based on active criteria
+    let currentFiltered = baseRegions
+    switch (activeFilterCriteria) {
+      case 'size':
+        currentFiltered = filterRegionsBySizes(baseRegions, includeSizes, 'world')
+        break
+      case 'importance':
+        currentFiltered = filterRegionsByImportance(baseRegions, includeImportance)
+        break
+      case 'population':
+        currentFiltered = filterRegionsByPopulation(baseRegions, includePopulation)
+        break
+    }
+    const currentIncludedIds = new Set(currentFiltered.map((r) => r.id))
 
     // Get preview included region IDs (if user clicked)
-    const previewSizes = rangeToSizes(sizeRangePreview.previewMin, sizeRangePreview.previewMax)
-    const previewIncluded = getFilteredMapDataBySizesSync(
-      mapId as 'world' | 'usa',
-      continentId,
-      previewSizes
-    )
-    const previewIncludedIds = new Set(previewIncluded.regions.map((r) => r.id))
+    let previewFiltered = baseRegions
+    switch (activeFilterCriteria) {
+      case 'size':
+        if (sizeRangePreview) {
+          const previewSizes = rangeToSizes(
+            sizeRangePreview.previewMin,
+            sizeRangePreview.previewMax
+          )
+          previewFiltered = filterRegionsBySizes(baseRegions, previewSizes, 'world')
+        }
+        break
+      case 'importance':
+        if (importanceRangePreview) {
+          const previewLevels = rangeToImportance(
+            importanceRangePreview.previewMin,
+            importanceRangePreview.previewMax
+          )
+          previewFiltered = filterRegionsByImportance(baseRegions, previewLevels)
+        }
+        break
+      case 'population':
+        if (populationRangePreview) {
+          const previewLevels = rangeToPopulation(
+            populationRangePreview.previewMin,
+            populationRangePreview.previewMax
+          )
+          previewFiltered = filterRegionsByPopulation(baseRegions, previewLevels)
+        }
+        break
+    }
+    const previewIncludedIds = new Set(previewFiltered.map((r) => r.id))
 
     // Regions that would be ADDED (in preview but not currently included)
     const addRegions: string[] = []
@@ -486,7 +648,16 @@ export function DrillDownMapSelector({
       previewAddRegions: addRegions,
       previewRemoveRegions: removeRegions,
     }
-  }, [sizeRangePreview, currentLevel, path, selectedContinent, includeSizes])
+  }, [
+    activeFilterCriteria,
+    sizeRangePreview,
+    importanceRangePreview,
+    populationRangePreview,
+    baseRegions,
+    includeSizes,
+    includeImportance,
+    includePopulation,
+  ])
 
   // Compute the label to display for the hovered region
   // Shows the next drill-down level name, not the individual region name
@@ -1036,7 +1207,7 @@ export function DrillDownMapSelector({
             )
           })()}
 
-        {/* Right-side controls container - region size selector with inline list on desktop */}
+        {/* Right-side controls container - region filter selector with tabs */}
         <div
           data-element="right-controls"
           className={css({
@@ -1048,35 +1219,176 @@ export function DrillDownMapSelector({
             transformOrigin: 'top right',
           })}
         >
-          {/* Region Size Range Selector with inline list expansion on desktop */}
+          {/* Region Filter Selector with tabs */}
           <div
-            data-element="region-size-filters"
+            data-element="region-filters"
             className={css({
               display: 'flex',
               flexDirection: 'column',
+              alignItems: 'stretch',
               padding: '3',
               bg: isDark ? 'gray.800' : 'gray.100',
               rounded: 'xl',
               shadow: 'lg',
-              maxHeight: { base: 'none', md: fillContainer ? '400px' : 'none' },
+              width: '205px',
+              maxHeight: { base: 'none', md: fillContainer ? '450px' : 'none' },
               overflow: 'hidden',
             })}
           >
-            <RangeThermometer
-              options={SIZE_OPTIONS}
-              minValue={sizesToRange(includeSizes)[0]}
-              maxValue={sizesToRange(includeSizes)[1]}
-              onChange={(min, max) => onRegionSizesChange(rangeToSizes(min, max))}
-              orientation="vertical"
-              isDark={isDark}
-              counts={regionCountsBySize as Partial<Record<RegionSize, number>>}
-              showTotalCount
-              onHoverPreview={setSizeRangePreview}
-              regionNamesByCategory={regionNamesBySize}
-              selectedRegionNames={selectedRegionNames}
-              onRegionNameHover={setPreviewRegionName}
-              hideCountOnMd={fillContainer && selectedRegionNames.length > 0}
-            />
+            {/* Filter Criteria Tabs */}
+            <Tooltip.Provider delayDuration={200}>
+              <div
+                data-element="filter-tabs"
+                className={css({
+                  display: 'flex',
+                  gap: '1px',
+                  marginBottom: '2',
+                  padding: '2px',
+                  bg: isDark ? 'gray.700' : 'gray.200',
+                  rounded: 'md',
+                  width: '100%',
+                })}
+              >
+                {ALL_FILTER_CRITERIA.map((criteria) => {
+                  const isActive = activeFilterCriteria === criteria
+                  const buttonContent = (
+                    <button
+                      data-action={`select-filter-${criteria}`}
+                      onClick={() => setActiveFilterCriteria(criteria)}
+                      className={css({
+                        flex: isActive ? 1 : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '1',
+                        padding: '1',
+                        paddingX: isActive ? '2' : '1.5',
+                        fontSize: 'xs',
+                        fontWeight: isActive ? 'bold' : 'normal',
+                        color: isActive
+                          ? isDark
+                            ? 'white'
+                            : 'gray.900'
+                          : isDark
+                            ? 'gray.400'
+                            : 'gray.600',
+                        bg: isActive ? (isDark ? 'gray.600' : 'white') : 'transparent',
+                        rounded: 'sm',
+                        cursor: 'pointer',
+                        border: 'none',
+                        transition: 'all 0.15s',
+                        whiteSpace: 'nowrap',
+                        _hover: {
+                          bg: isActive
+                            ? isDark
+                              ? 'gray.600'
+                              : 'white'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.100',
+                        },
+                      })}
+                    >
+                      <span>{FILTER_CRITERIA_CONFIG[criteria].emoji}</span>
+                      {isActive && <span>{FILTER_CRITERIA_CONFIG[criteria].label}</span>}
+                    </button>
+                  )
+
+                  // Wrap inactive tabs with tooltips
+                  if (!isActive) {
+                    return (
+                      <Tooltip.Root key={criteria}>
+                        <Tooltip.Trigger asChild>{buttonContent}</Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            side="top"
+                            sideOffset={5}
+                            className={css({
+                              bg: isDark ? 'gray.800' : 'gray.900',
+                              color: 'white',
+                              paddingX: '3',
+                              paddingY: '1.5',
+                              rounded: 'md',
+                              fontSize: 'xs',
+                              fontWeight: 'medium',
+                              boxShadow: 'lg',
+                              zIndex: 10001,
+                              animation: 'fadeIn 0.15s ease-out',
+                            })}
+                          >
+                            {FILTER_CRITERIA_CONFIG[criteria].label}
+                            <Tooltip.Arrow
+                              className={css({
+                                fill: isDark ? 'gray.800' : 'gray.900',
+                              })}
+                            />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    )
+                  }
+
+                  return <span key={criteria}>{buttonContent}</span>
+                })}
+              </div>
+            </Tooltip.Provider>
+
+            {/* Size Filter (when size tab is active) */}
+            {activeFilterCriteria === 'size' && (
+              <RangeThermometer
+                options={SIZE_OPTIONS}
+                minValue={sizesToRange(includeSizes)[0]}
+                maxValue={sizesToRange(includeSizes)[1]}
+                onChange={(min, max) => onRegionSizesChange(rangeToSizes(min, max))}
+                orientation="vertical"
+                isDark={isDark}
+                counts={regionCountsByCriteria as Partial<Record<RegionSize, number>>}
+                showTotalCount
+                onHoverPreview={setSizeRangePreview}
+                regionNamesByCategory={regionNamesBySize}
+                selectedRegionNames={selectedRegionNames}
+                onRegionNameHover={setPreviewRegionName}
+                hideCountOnMd={fillContainer && selectedRegionNames.length > 0}
+              />
+            )}
+
+            {/* Importance Filter (when importance tab is active) */}
+            {activeFilterCriteria === 'importance' && (
+              <RangeThermometer
+                options={IMPORTANCE_OPTIONS}
+                minValue={importanceToRange(includeImportance)[0]}
+                maxValue={importanceToRange(includeImportance)[1]}
+                onChange={(min, max) => setIncludeImportance(rangeToImportance(min, max))}
+                orientation="vertical"
+                isDark={isDark}
+                counts={regionCountsByCriteria as Partial<Record<ImportanceLevel, number>>}
+                showTotalCount
+                onHoverPreview={setImportanceRangePreview}
+                regionNamesByCategory={regionNamesByImportance}
+                selectedRegionNames={selectedRegionNames}
+                onRegionNameHover={setPreviewRegionName}
+                hideCountOnMd={fillContainer && selectedRegionNames.length > 0}
+              />
+            )}
+
+            {/* Population Filter (when population tab is active) */}
+            {activeFilterCriteria === 'population' && (
+              <RangeThermometer
+                options={POPULATION_OPTIONS}
+                minValue={populationToRange(includePopulation)[0]}
+                maxValue={populationToRange(includePopulation)[1]}
+                onChange={(min, max) => setIncludePopulation(rangeToPopulation(min, max))}
+                orientation="vertical"
+                isDark={isDark}
+                counts={regionCountsByCriteria as Partial<Record<PopulationLevel, number>>}
+                showTotalCount
+                onHoverPreview={setPopulationRangePreview}
+                regionNamesByCategory={regionNamesByPopulation}
+                selectedRegionNames={selectedRegionNames}
+                onRegionNameHover={setPreviewRegionName}
+                hideCountOnMd={fillContainer && selectedRegionNames.length > 0}
+              />
+            )}
 
             {/* Inline region list - visible on larger screens only, expands below thermometer */}
             {fillContainer && selectedRegionNames.length > 0 && (
@@ -1089,8 +1401,8 @@ export function DrillDownMapSelector({
                   borderColor: isDark ? 'gray.700' : 'gray.300',
                   marginTop: '2',
                   paddingTop: '2',
-                  /* Prevent this element from expanding the parent */
-                  ...preventFlexExpansion,
+                  width: '100%',
+                  alignSelf: 'stretch',
                 })}
               >
                 <RegionListPanel

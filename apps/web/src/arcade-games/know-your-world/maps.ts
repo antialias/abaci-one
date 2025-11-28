@@ -142,7 +142,7 @@ export interface MapDifficultyConfig {
  * Assistance level configuration - controls gameplay features separate from region filtering
  */
 export interface AssistanceLevelConfig {
-  id: 'guided' | 'helpful' | 'standard' | 'none'
+  id: 'learning' | 'guided' | 'helpful' | 'standard' | 'none'
   label: string
   emoji: string
   description: string
@@ -816,6 +816,797 @@ const REGION_SIZE_CATEGORIES: Record<RegionSize, Set<string>> = {
     'um-mq',
     'um-wq', // US Minor Outlying Islands
   ]),
+}
+
+/**
+ * Geopolitical importance category for filtering
+ * Based on international influence (G7/G20/UNSC membership, regional power, etc.)
+ */
+export type ImportanceLevel = 'superpower' | 'major' | 'regional' | 'standard' | 'minor'
+
+/**
+ * Geopolitical importance categories for world map
+ * Curated based on international influence and diplomatic standing
+ * ISO 3166-1 alpha-2 codes (lowercase)
+ */
+const REGION_IMPORTANCE_CATEGORIES: Record<ImportanceLevel, Set<string>> = {
+  // Superpower: UNSC P5 + G7 (~9 countries)
+  superpower: new Set([
+    'us', // United States - superpower
+    'cn', // China - superpower
+    'ru', // Russia - UNSC P5
+    'gb', // United Kingdom - UNSC P5, G7
+    'fr', // France - UNSC P5, G7
+    'de', // Germany - G7
+    'jp', // Japan - G7
+    'it', // Italy - G7
+    'ca', // Canada - G7
+  ]),
+
+  // Major: G20 members and other major economies (~15)
+  major: new Set([
+    'in', // India - G20, rising power
+    'br', // Brazil - G20, regional power
+    'au', // Australia - G20
+    'kr', // South Korea - G20
+    'mx', // Mexico - G20
+    'id', // Indonesia - G20
+    'tr', // Turkey - G20, NATO
+    'sa', // Saudi Arabia - G20, OPEC leader
+    'ar', // Argentina - G20
+    'za', // South Africa - G20, BRICS
+    'es', // Spain - EU major
+    'nl', // Netherlands - EU founding
+    'pl', // Poland - EU major
+    'se', // Sweden - EU
+    'ch', // Switzerland - financial hub
+  ]),
+
+  // Regional: Significant regional powers and influential nations (~45)
+  regional: new Set([
+    // Europe
+    'at',
+    'be',
+    'dk',
+    'fi',
+    'gr',
+    'ie',
+    'no',
+    'pt',
+    'cz',
+    'ro',
+    'hu',
+    // Middle East
+    'ae',
+    'il',
+    'eg',
+    'ir',
+    'iq',
+    'pk',
+    'qa',
+    'kw',
+    // Asia
+    'th',
+    'my',
+    'sg',
+    'vn',
+    'ph',
+    'bd',
+    'tw',
+    'hk',
+    // Africa
+    'ng',
+    'ke',
+    'et',
+    'dz',
+    'ma',
+    'gh',
+    // Americas
+    'cl',
+    'co',
+    'pe',
+    've',
+    'cu',
+    // Oceania
+    'nz',
+  ]),
+
+  // Standard: Most UN member states with moderate influence (~100)
+  standard: new Set([
+    // Europe
+    'ua',
+    'by',
+    'sk',
+    'bg',
+    'hr',
+    'rs',
+    'lt',
+    'lv',
+    'ee',
+    'si',
+    'ba',
+    'mk',
+    'al',
+    'me',
+    'xk',
+    'md',
+    'is',
+    'cy',
+    'mt',
+    'lu',
+    // Asia
+    'af',
+    'kz',
+    'uz',
+    'tm',
+    'kg',
+    'tj',
+    'mn',
+    'np',
+    'lk',
+    'mm',
+    'kh',
+    'la',
+    'kp',
+    'bt',
+    'bn',
+    // Middle East
+    'jo',
+    'lb',
+    'sy',
+    'ye',
+    'om',
+    'bh',
+    'az',
+    'ge',
+    'am',
+    'ps',
+    // Africa
+    'tz',
+    'ug',
+    'zm',
+    'zw',
+    'sd',
+    'ss',
+    'cd',
+    'ao',
+    'mz',
+    'mg',
+    'cm',
+    'ci',
+    'sn',
+    'ml',
+    'bf',
+    'ne',
+    'td',
+    'cf',
+    'cg',
+    'ga',
+    'gq',
+    'bj',
+    'tg',
+    'gn',
+    'sl',
+    'lr',
+    'gm',
+    'gw',
+    'mr',
+    'tn',
+    'ly',
+    'so',
+    'er',
+    'dj',
+    'rw',
+    'bi',
+    'mw',
+    'bw',
+    'na',
+    'sz',
+    'ls',
+    // Americas
+    'ec',
+    'bo',
+    'py',
+    'uy',
+    'gy',
+    'sr',
+    'pa',
+    'cr',
+    'ni',
+    'hn',
+    'gt',
+    'sv',
+    'bz',
+    'do',
+    'ht',
+    'jm',
+    'tt',
+    'bs',
+    // Oceania
+    'pg',
+    'fj',
+  ]),
+
+  // Minor: Small states, territories, and dependencies (~80+)
+  minor: new Set([
+    // Caribbean
+    'bb',
+    'ag',
+    'dm',
+    'lc',
+    'vc',
+    'gd',
+    'kn',
+    'aw',
+    'cw',
+    'bq',
+    'sx',
+    'mf',
+    'bl',
+    'tc',
+    'vg',
+    'vi',
+    'ky',
+    'ai',
+    'ms',
+    'pr',
+    'bm',
+    'gp',
+    'mq',
+    'gf',
+    // Europe
+    'li',
+    'ad',
+    'mc',
+    'sm',
+    'va',
+    'gi',
+    'fo',
+    'ax',
+    'gg',
+    'im',
+    'je',
+    // Pacific
+    'ws',
+    'to',
+    'vu',
+    'sb',
+    'nc',
+    'pf',
+    'gu',
+    'as',
+    'mp',
+    'pw',
+    'fm',
+    'mh',
+    'ki',
+    'nr',
+    'tv',
+    'nu',
+    'tk',
+    'ck',
+    'wf',
+    'pn',
+    // Indian Ocean
+    'mv',
+    'sc',
+    'mu',
+    'km',
+    'yt',
+    're',
+    // African territories
+    'cv',
+    'st',
+    'sh',
+    'eh',
+    // Asian territories
+    'mo',
+    'tl',
+    'io',
+    'cx',
+    'cc',
+    'nf',
+    // Other
+    'gl',
+    'pm',
+    'hm',
+    'bv',
+    'sj',
+    'fk',
+    'gs',
+    'aq',
+    'tf',
+    'go',
+    'ju',
+    'um-dq',
+    'um-fq',
+    'um-hq',
+    'um-jq',
+    'um-mq',
+    'um-wq',
+  ]),
+}
+
+/**
+ * Display configuration for each importance level
+ */
+export const IMPORTANCE_LEVEL_CONFIG: Record<
+  ImportanceLevel,
+  { label: string; emoji: string; description: string }
+> = {
+  superpower: {
+    label: 'Superpower',
+    emoji: '🌟',
+    description: 'G7 and UNSC permanent members',
+  },
+  major: {
+    label: 'Major',
+    emoji: '🏛️',
+    description: 'G20 members and major economies',
+  },
+  regional: {
+    label: 'Regional',
+    emoji: '🌐',
+    description: 'Regional powers and influential nations',
+  },
+  standard: {
+    label: 'Standard',
+    emoji: '🏳️',
+    description: 'Most UN member states',
+  },
+  minor: {
+    label: 'Minor',
+    emoji: '🏝️',
+    description: 'Small states and territories',
+  },
+}
+
+/**
+ * All importance levels in order from most to least important
+ */
+export const ALL_IMPORTANCE_LEVELS: ImportanceLevel[] = [
+  'superpower',
+  'major',
+  'regional',
+  'standard',
+  'minor',
+]
+
+/**
+ * Population category for filtering
+ */
+export type PopulationLevel = 'huge' | 'large' | 'medium' | 'small' | 'tiny'
+
+/**
+ * Population categories for world map
+ * Based on approximate population (2024 estimates)
+ * ISO 3166-1 alpha-2 codes (lowercase)
+ */
+const REGION_POPULATION_CATEGORIES: Record<PopulationLevel, Set<string>> = {
+  // Huge: 100M+ population (~13 countries)
+  huge: new Set([
+    'cn', // China - 1.4B
+    'in', // India - 1.4B
+    'us', // United States - 335M
+    'id', // Indonesia - 277M
+    'pk', // Pakistan - 235M
+    'br', // Brazil - 216M
+    'ng', // Nigeria - 224M
+    'bd', // Bangladesh - 173M
+    'ru', // Russia - 144M
+    'mx', // Mexico - 130M
+    'jp', // Japan - 125M
+    'et', // Ethiopia - 126M
+    'ph', // Philippines - 117M
+  ]),
+
+  // Large: 30-100M population (~30 countries)
+  large: new Set([
+    'eg', // Egypt - 105M
+    'vn', // Vietnam - 99M
+    'cd', // DR Congo - 99M
+    'tr', // Turkey - 85M
+    'ir', // Iran - 87M
+    'de', // Germany - 84M
+    'th', // Thailand - 72M
+    'gb', // United Kingdom - 67M
+    'fr', // France - 68M
+    'it', // Italy - 59M
+    'za', // South Africa - 60M
+    'tz', // Tanzania - 65M
+    'mm', // Myanmar - 54M
+    'kr', // South Korea - 52M
+    'co', // Colombia - 52M
+    'ke', // Kenya - 54M
+    'es', // Spain - 48M
+    'ar', // Argentina - 46M
+    'ug', // Uganda - 48M
+    'dz', // Algeria - 45M
+    'sd', // Sudan - 46M
+    'ua', // Ukraine - 38M
+    'iq', // Iraq - 43M
+    'af', // Afghanistan - 41M
+    'pl', // Poland - 38M
+    'ca', // Canada - 40M
+    'ma', // Morocco - 37M
+    'sa', // Saudi Arabia - 36M
+    'uz', // Uzbekistan - 35M
+    'pe', // Peru - 34M
+    'my', // Malaysia - 34M
+    'ao', // Angola - 35M
+  ]),
+
+  // Medium: 10-30M population (~50 countries)
+  medium: new Set([
+    've',
+    'np',
+    'gh',
+    'mz',
+    'ye',
+    'mg',
+    'kp',
+    'au',
+    'cm',
+    'ci',
+    'tw',
+    'ne',
+    'lk',
+    'bf',
+    'ml',
+    'sy',
+    'mw',
+    'ro',
+    'cl',
+    'kz',
+    'zm',
+    'ec',
+    'sn',
+    'td',
+    'nl',
+    'so',
+    'gt',
+    'zw',
+    'rw',
+    'gn',
+    'bj',
+    'bi',
+    'tn',
+    'be',
+    'bo',
+    'ht',
+    'cu',
+    'cz',
+    'jo',
+    'gr',
+    'do',
+    'se',
+    'pt',
+    'az',
+    'ae',
+    'hn',
+    'hu',
+    'tj',
+    'by',
+    'at',
+    'ch',
+    'pg',
+    'il',
+    'tg',
+    'sl',
+    'ss',
+  ]),
+
+  // Small: 1-10M population (~60 countries)
+  small: new Set([
+    'hk',
+    'la',
+    'ly',
+    'rs',
+    'bg',
+    'pa',
+    'lb',
+    'lr',
+    'cf',
+    'ni',
+    'ie',
+    'cr',
+    'cg',
+    'ps',
+    'nz',
+    'sk',
+    'ge',
+    'hr',
+    'om',
+    'pr',
+    'dk',
+    'no',
+    'sg',
+    'er',
+    'fi',
+    'ky',
+    'mr',
+    'kw',
+    'bi',
+    'md',
+    'ja',
+    'na',
+    'mk',
+    'bw',
+    'lt',
+    'gm',
+    'ga',
+    'si',
+    'qa',
+    'xk',
+    'ba',
+    'lv',
+    'gw',
+    'ee',
+    'mu',
+    'tt',
+    'tl',
+    'cy',
+    'fj',
+    'dj',
+    'km',
+    'bt',
+    'gq',
+    'ls',
+    'sz',
+    'bh',
+    'mn',
+    'me',
+    'al',
+    'arm',
+    'jm',
+    'kg',
+    'tm',
+  ]),
+
+  // Tiny: <1M population (~60+ countries/territories)
+  tiny: new Set([
+    // Caribbean
+    'bb',
+    'ag',
+    'dm',
+    'lc',
+    'vc',
+    'gd',
+    'kn',
+    'aw',
+    'cw',
+    'bq',
+    'sx',
+    'mf',
+    'bl',
+    'tc',
+    'vg',
+    'vi',
+    'ai',
+    'ms',
+    'bm',
+    'gp',
+    'mq',
+    'gf',
+    // Europe
+    'lu',
+    'mt',
+    'is',
+    'li',
+    'ad',
+    'mc',
+    'sm',
+    'va',
+    'gi',
+    'fo',
+    'ax',
+    'gg',
+    'im',
+    'je',
+    // Pacific
+    'ws',
+    'to',
+    'vu',
+    'sb',
+    'nc',
+    'pf',
+    'gu',
+    'as',
+    'mp',
+    'pw',
+    'fm',
+    'mh',
+    'ki',
+    'nr',
+    'tv',
+    'nu',
+    'tk',
+    'ck',
+    'wf',
+    'pn',
+    // Indian Ocean
+    'mv',
+    'sc',
+    're',
+    'yt',
+    // Africa
+    'cv',
+    'st',
+    'sh',
+    'eh',
+    // Asian/Other
+    'mo',
+    'bn',
+    'pm',
+    'io',
+    'cx',
+    'cc',
+    'nf',
+    'gl',
+    'hm',
+    'bv',
+    'sj',
+    'fk',
+    'gs',
+    'aq',
+    'tf',
+    'go',
+    'ju',
+    'um-dq',
+    'um-fq',
+    'um-hq',
+    'um-jq',
+    'um-mq',
+    'um-wq',
+  ]),
+}
+
+/**
+ * Display configuration for each population level
+ */
+export const POPULATION_LEVEL_CONFIG: Record<
+  PopulationLevel,
+  { label: string; emoji: string; description: string }
+> = {
+  huge: {
+    label: 'Huge',
+    emoji: '🏙️',
+    description: 'Countries with 100M+ people',
+  },
+  large: {
+    label: 'Large',
+    emoji: '🌆',
+    description: 'Countries with 30-100M people',
+  },
+  medium: {
+    label: 'Medium',
+    emoji: '🏘️',
+    description: 'Countries with 10-30M people',
+  },
+  small: {
+    label: 'Small',
+    emoji: '🏡',
+    description: 'Countries with 1-10M people',
+  },
+  tiny: {
+    label: 'Tiny',
+    emoji: '🏝️',
+    description: 'Countries with <1M people',
+  },
+}
+
+/**
+ * All population levels in order from largest to smallest
+ */
+export const ALL_POPULATION_LEVELS: PopulationLevel[] = ['huge', 'large', 'medium', 'small', 'tiny']
+
+/**
+ * Filter criteria type - which dimension to filter regions by
+ */
+export type FilterCriteria = 'size' | 'importance' | 'population'
+
+/**
+ * Display configuration for filter criteria tabs
+ */
+export const FILTER_CRITERIA_CONFIG: Record<
+  FilterCriteria,
+  { label: string; emoji: string; description: string }
+> = {
+  size: {
+    label: 'Size',
+    emoji: '📏',
+    description: 'Filter by geographic size',
+  },
+  importance: {
+    label: 'Importance',
+    emoji: '🏛️',
+    description: 'Filter by geopolitical importance',
+  },
+  population: {
+    label: 'Population',
+    emoji: '👥',
+    description: 'Filter by population',
+  },
+}
+
+/**
+ * Get the importance category for a region ID
+ */
+export function getRegionImportanceCategory(regionId: string): ImportanceLevel | null {
+  for (const [level, ids] of Object.entries(REGION_IMPORTANCE_CATEGORIES)) {
+    if (ids.has(regionId)) {
+      return level as ImportanceLevel
+    }
+  }
+  return null
+}
+
+/**
+ * Get the population category for a region ID
+ */
+export function getRegionPopulationCategory(regionId: string): PopulationLevel | null {
+  for (const [level, ids] of Object.entries(REGION_POPULATION_CATEGORIES)) {
+    if (ids.has(regionId)) {
+      return level as PopulationLevel
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a region should be included based on importance requirements
+ */
+export function shouldIncludeRegionByImportance(
+  regionId: string,
+  includeLevels: ImportanceLevel[]
+): boolean {
+  const category = getRegionImportanceCategory(regionId)
+  if (!category) {
+    // If no category found, include by default (for regions not in our list)
+    return true
+  }
+  return includeLevels.includes(category)
+}
+
+/**
+ * Check if a region should be included based on population requirements
+ */
+export function shouldIncludeRegionByPopulation(
+  regionId: string,
+  includeLevels: PopulationLevel[]
+): boolean {
+  const category = getRegionPopulationCategory(regionId)
+  if (!category) {
+    // If no category found, include by default (for regions not in our list)
+    return true
+  }
+  return includeLevels.includes(category)
+}
+
+/**
+ * Filter regions by importance levels
+ */
+export function filterRegionsByImportance(
+  regions: MapRegion[],
+  includeLevels: ImportanceLevel[]
+): MapRegion[] {
+  if (includeLevels.length === 0 || includeLevels.length === ALL_IMPORTANCE_LEVELS.length) {
+    return regions
+  }
+  return regions.filter((r) => shouldIncludeRegionByImportance(r.id, includeLevels))
+}
+
+/**
+ * Filter regions by population levels
+ */
+export function filterRegionsByPopulation(
+  regions: MapRegion[],
+  includeLevels: PopulationLevel[]
+): MapRegion[] {
+  if (includeLevels.length === 0 || includeLevels.length === ALL_POPULATION_LEVELS.length) {
+    return regions
+  }
+  return regions.filter((r) => shouldIncludeRegionByPopulation(r.id, includeLevels))
 }
 
 /**

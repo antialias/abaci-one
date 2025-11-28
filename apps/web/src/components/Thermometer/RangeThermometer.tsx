@@ -221,7 +221,8 @@ export function RangeThermometer<T extends string>({
           className={css({
             display: 'flex',
             flexDirection: isVertical ? 'row' : 'column',
-            gap: '2',
+            justifyContent: 'space-between',
+            gap: '1',
           })}
         >
           {/* Labels column */}
@@ -258,9 +259,9 @@ export function RangeThermometer<T extends string>({
                   className={css({
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '1.5',
+                    gap: '1',
                     py: '1',
-                    px: '2',
+                    px: '1.5',
                     rounded: 'md',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
