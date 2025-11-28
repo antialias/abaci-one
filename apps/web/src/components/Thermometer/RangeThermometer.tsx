@@ -236,24 +236,14 @@ export function RangeThermometer<T extends string>({
           >
             {options.map((option, index) => {
               const inRange = isInRange(index)
+              const isOnly = minIndex === index && maxIndex === index
               const count = counts?.[option.value]
               const tooltipContent = formatTooltipContent(option)
 
               const buttonElement = (
-                <button
-                  type="button"
+                <div
                   data-option={option.value}
                   data-in-range={inRange}
-                  onClick={() => {
-                    // Click moves nearest handle to this position
-                    const distToMin = Math.abs(index - minIndex)
-                    const distToMax = Math.abs(index - maxIndex)
-                    if (distToMin <= distToMax) {
-                      onChange(option.value, options[maxIndex].value)
-                    } else {
-                      onChange(options[minIndex].value, option.value)
-                    }
-                  }}
                   onMouseEnter={() => handleOptionHover(index)}
                   onMouseLeave={handleOptionLeave}
                   className={css({
@@ -263,37 +253,114 @@ export function RangeThermometer<T extends string>({
                     py: '1',
                     px: '1.5',
                     rounded: 'md',
-                    cursor: 'pointer',
                     transition: 'all 0.15s',
                     bg: inRange ? (isDark ? 'blue.900/40' : 'blue.50') : 'transparent',
                     opacity: inRange ? 1 : 0.5,
                     _hover: {
                       bg: isDark ? 'gray.700' : 'gray.100',
                       opacity: 1,
+                      '& [data-only-button]': {
+                        opacity: 1,
+                      },
                     },
                   })}
                 >
-                  {/* Emoji */}
-                  {option.emoji && <span className={css({ fontSize: 'sm' })}>{option.emoji}</span>}
-
-                  {/* Label */}
-                  <span
+                  {/* Main clickable area */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Click moves nearest handle to this position
+                      const distToMin = Math.abs(index - minIndex)
+                      const distToMax = Math.abs(index - maxIndex)
+                      if (distToMin <= distToMax) {
+                        onChange(option.value, options[maxIndex].value)
+                      } else {
+                        onChange(options[minIndex].value, option.value)
+                      }
+                    }}
                     className={css({
-                      fontSize: 'xs',
-                      fontWeight: inRange ? '600' : '500',
-                      color: inRange
-                        ? isDark
-                          ? 'blue.300'
-                          : 'blue.700'
-                        : isDark
-                          ? 'gray.400'
-                          : 'gray.600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1',
                       flex: 1,
-                      textAlign: 'left',
+                      cursor: 'pointer',
+                      bg: 'transparent',
+                      border: 'none',
+                      padding: 0,
                     })}
                   >
-                    {option.shortLabel || option.label}
-                  </span>
+                    {/* Emoji */}
+                    {option.emoji && (
+                      <span className={css({ fontSize: 'sm' })}>{option.emoji}</span>
+                    )}
+
+                    {/* Label */}
+                    <span
+                      className={css({
+                        fontSize: 'xs',
+                        fontWeight: inRange ? '600' : '500',
+                        color: inRange
+                          ? isDark
+                            ? 'blue.300'
+                            : 'blue.700'
+                          : isDark
+                            ? 'gray.400'
+                            : 'gray.600',
+                        flex: 1,
+                        textAlign: 'left',
+                      })}
+                    >
+                      {option.shortLabel || option.label}
+                    </span>
+                  </button>
+
+                  {/* Only button */}
+                  <button
+                    type="button"
+                    data-only-button
+                    title={`Show only ${option.label}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange(option.value, option.value)
+                    }}
+                    className={css({
+                      fontSize: '2xs',
+                      fontWeight: '600',
+                      color: isOnly
+                        ? isDark
+                          ? 'green.300'
+                          : 'green.700'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.500',
+                      bg: isOnly
+                        ? isDark
+                          ? 'green.900/50'
+                          : 'green.100'
+                        : 'transparent',
+                      border: '1px solid',
+                      borderColor: isOnly
+                        ? isDark
+                          ? 'green.700'
+                          : 'green.300'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300',
+                      px: '1',
+                      py: '0',
+                      rounded: 'sm',
+                      cursor: 'pointer',
+                      opacity: isOnly ? 1 : 0,
+                      transition: 'all 0.15s',
+                      _hover: {
+                        bg: isDark ? 'green.900/50' : 'green.100',
+                        borderColor: isDark ? 'green.600' : 'green.400',
+                        color: isDark ? 'green.300' : 'green.700',
+                      },
+                    })}
+                  >
+                    only
+                  </button>
 
                   {/* Count badge */}
                   {count !== undefined && (
@@ -325,7 +392,7 @@ export function RangeThermometer<T extends string>({
                       {count}
                     </span>
                   )}
-                </button>
+                </div>
               )
 
               // Wrap with tooltip if we have region names to show
