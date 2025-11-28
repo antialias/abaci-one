@@ -556,9 +556,10 @@ export function MapRenderer({
     return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
   })
 
-  // Detect touch devices (hot/cold feedback is desktop-only)
-  const isTouchDevice =
-    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  // Detect if device has a fine pointer (mouse) - iPads with mice will return true
+  // This is better than isTouchDevice because iPads with attached mice should show hot/cold
+  const hasFinePointer =
+    typeof window !== 'undefined' && window.matchMedia('(any-pointer: fine)').matches
 
   // Persist auto-speak setting
   const handleAutoSpeakChange = useCallback((enabled: boolean) => {
@@ -681,7 +682,7 @@ export function MapRenderer({
   const hotColdButton = usePointerLockButton({
     id: 'hot-cold-button',
     disabled: false,
-    active: isSpeechSupported && !isTouchDevice, // Only show on desktop with speech support
+    active: isSpeechSupported && hasFinePointer, // Show when speech is supported and device has mouse
     pointerLocked,
     cursorPosition,
     containerRef,
@@ -803,7 +804,7 @@ export function MapRenderer({
     reset: resetHotCold,
     lastFeedbackType: hotColdFeedbackType,
   } = useHotColdFeedback({
-    enabled: assistanceAllowsHotCold && hotColdEnabled && !isTouchDevice,
+    enabled: assistanceAllowsHotCold && hotColdEnabled && hasFinePointer,
     targetRegionId: currentPrompt,
     isSpeaking,
     mapName: hotColdMapName,
@@ -1988,8 +1989,8 @@ export function MapRenderer({
     }
 
     // Hot/cold audio feedback
-    // Only run if enabled and we have a target region
-    if (hotColdEnabledRef.current && currentPrompt && !isTouchDevice) {
+    // Only run if enabled, we have a target region, and device has a fine pointer (mouse)
+    if (hotColdEnabledRef.current && currentPrompt && hasFinePointer) {
       // Find target region's SVG center
       const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
       if (targetRegion) {
@@ -4726,9 +4727,9 @@ export function MapRenderer({
           )
         })()}
 
-      {/* Hot/Cold button - only show on desktop with speech support when assistance level allows */}
+      {/* Hot/Cold button - show when speech is supported, assistance level allows, and device has mouse */}
       {isSpeechSupported &&
-        !isTouchDevice &&
+        hasFinePointer &&
         assistanceAllowsHotCold &&
         (() => {
           if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
