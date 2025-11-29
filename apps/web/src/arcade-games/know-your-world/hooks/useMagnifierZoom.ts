@@ -6,11 +6,12 @@
  * coordinating with pointer lock state.
  */
 
-import { useState, useEffect, useRef, type RefObject } from 'react'
 import { useSpring, useSpringRef } from '@react-spring/web'
+import { type RefObject, useEffect, useRef, useState } from 'react'
+import { getMagnifierDimensions } from '../utils/magnifierDimensions'
 import {
-  calculateScreenPixelRatio,
   calculateMaxZoomAtThreshold,
+  calculateScreenPixelRatio,
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
 
@@ -91,7 +92,10 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
 
       const containerRect = containerElement.getBoundingClientRect()
       const svgRect = svgElement.getBoundingClientRect()
-      const magnifierWidth = containerRect.width * 0.5
+      const { width: magnifierWidth } = getMagnifierDimensions(
+        containerRect.width,
+        containerRect.height
+      )
       const viewBoxParts = viewBox.split(' ').map(Number)
       const viewBoxWidth = viewBoxParts[2]
 
@@ -135,7 +139,10 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
       (() => {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
+        const { width: magnifierWidth } = getMagnifierDimensions(
+          containerRect.width,
+          containerRect.height
+        )
         const viewBoxParts = viewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 
@@ -160,7 +167,10 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
       (() => {
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
-        const magnifierWidth = containerRect.width * 0.5
+        const { width: magnifierWidth } = getMagnifierDimensions(
+          containerRect.width,
+          containerRect.height
+        )
         const viewBoxParts = viewBox.split(' ').map(Number)
         const viewBoxWidth = viewBoxParts[2]
 

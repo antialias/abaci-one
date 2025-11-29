@@ -9,16 +9,16 @@ import { createPortal } from 'react-dom'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
+import { useDeploymentInfo } from '../contexts/DeploymentInfoContext'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { useDeploymentInfo } from '../contexts/DeploymentInfoContext'
+import { useVisualDebug } from '../contexts/VisualDebugContext'
+// Import HomeHeroContext for optional usage
+import type { Subtitle } from '../data/abaciOneSubtitles'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { LanguageSelector } from './LanguageSelector'
 import { ThemeToggle } from './ThemeToggle'
-
-// Import HomeHeroContext for optional usage
-import type { Subtitle } from '../data/abaciOneSubtitles'
 
 type HomeHeroContextValue = {
   subtitle: Subtitle
@@ -73,6 +73,7 @@ function MenuContent({
 }) {
   const isDark = resolvedTheme === 'dark'
   const { open: openDeploymentInfo } = useDeploymentInfo()
+  const { isVisualDebugEnabled, toggleVisualDebug, isDevelopment } = useVisualDebug()
 
   const linkStyle = {
     display: 'flex',
@@ -315,6 +316,38 @@ function MenuContent({
             <div style={{ padding: '0 6px' }}>
               <ThemeToggle />
             </div>
+
+            {/* Developer Section - only in development */}
+            {isDevelopment && (
+              <>
+                <div style={separatorStyle} />
+                <div style={sectionHeaderStyle}>Developer</div>
+                <div
+                  data-setting="visual-debug"
+                  onClick={() => {
+                    toggleVisualDebug()
+                  }}
+                  style={controlButtonStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>{isVisualDebugEnabled ? '🔍' : '🐞'}</span>
+                  <span>Visual Debug {isVisualDebugEnabled ? 'ON' : 'OFF'}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : (
@@ -407,6 +440,36 @@ function MenuContent({
           <DropdownMenu.Item onSelect={(e) => e.preventDefault()} style={{ padding: '0 6px' }}>
             <ThemeToggle />
           </DropdownMenu.Item>
+
+          {/* Developer Section - only in development */}
+          {isDevelopment && (
+            <>
+              <DropdownMenu.Separator style={separatorStyle} />
+              <div style={sectionHeaderStyle}>Developer</div>
+              <DropdownMenu.Item
+                data-setting="visual-debug"
+                onSelect={toggleVisualDebug}
+                style={controlButtonStyle}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(234, 179, 8, 0.2)'
+                    : 'rgba(234, 179, 8, 0.1)'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(253, 224, 71, 1)'
+                    : 'rgba(161, 98, 7, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(209, 213, 219, 1)'
+                    : 'rgba(55, 65, 81, 1)'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>{isVisualDebugEnabled ? '🔍' : '🐞'}</span>
+                <span>Visual Debug {isVisualDebugEnabled ? 'ON' : 'OFF'}</span>
+              </DropdownMenu.Item>
+            </>
+          )}
         </>
       )}
     </div>

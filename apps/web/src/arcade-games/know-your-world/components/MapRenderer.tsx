@@ -5,6 +5,7 @@ import { css } from '@styled/css'
 import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
 import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
@@ -35,6 +36,12 @@ import type { MapData, MapRegion } from '../types'
 import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
 import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
+  getAdjustedMagnifiedDimensions,
+  getMagnifierDimensions,
+  MAGNIFIER_SIZE_LARGE,
+  MAGNIFIER_SIZE_SMALL,
+} from '../utils/magnifierDimensions'
+import {
   calculateMaxZoomAtThreshold,
   calculateScreenPixelRatio,
   isAboveThreshold,
@@ -57,10 +64,6 @@ const PRECISION_MODE_THRESHOLD = 20
 const LABEL_FADE_RADIUS = 150 // pixels - labels within this radius fade
 const LABEL_MIN_OPACITY = 0.08 // minimum opacity for faded labels
 
-// Magnifier size ratios - responsive to container aspect ratio
-const MAGNIFIER_SIZE_SMALL = 1 / 3 // Used for the constrained dimension
-const MAGNIFIER_SIZE_LARGE = 1 / 2 // Used for the unconstrained dimension
-
 // Game nav height offset - buttons should appear below the nav when in full-viewport mode
 const NAV_HEIGHT_OFFSET = 150
 
@@ -72,19 +75,6 @@ const SAFE_ZONE_MARGINS: SafeZoneMargins = {
   right: 0, // Controls now in floating prompt, no right margin needed
   bottom: 0, // Error banner can overlap map
   left: 0, // Progress at top-left is small, doesn't need full-height margin
-}
-
-/**
- * Calculate magnifier dimensions based on container aspect ratio.
- * - Landscape (wider): 1/3 width, 1/2 height (more vertical space available)
- * - Portrait (taller): 1/2 width, 1/3 height (more horizontal space available)
- */
-function getMagnifierDimensions(containerWidth: number, containerHeight: number) {
-  const isLandscape = containerWidth > containerHeight
-  return {
-    width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
-    height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
-  }
 }
 
 /**
@@ -377,6 +367,15 @@ export function MapRenderer({
   } = forceTuning
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Visual debug mode from global context (only enabled in dev AND when user toggles it on)
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
+
+  // Effective debug flags - combine prop with context
+  // Props allow component-level override, context allows global toggle
+  const effectiveShowDebugBoundingBoxes = showDebugBoundingBoxes && isVisualDebugEnabled
+  const effectiveShowMagnifierDebugInfo = SHOW_MAGNIFIER_DEBUG_INFO && isVisualDebugEnabled
+  const effectiveShowSafeZoneDebug = SHOW_SAFE_ZONE_DEBUG && isVisualDebugEnabled
 
   // Calculate excluded regions (regions filtered out by size/continent)
   const excludedRegions = useMemo(() => {
@@ -2442,7 +2441,7 @@ export function MapRenderer({
         })}
 
         {/* Debug: Render bounding boxes (only if enabled) */}
-        {showDebugBoundingBoxes &&
+        {effectiveShowDebugBoundingBoxes &&
           debugBoundingBoxes.map((bbox) => {
             // Color based on acceptance and importance
             // Green = accepted, Orange = high importance, Yellow = medium, Gray = low
@@ -2541,7 +2540,13 @@ export function MapRenderer({
               )
               const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
               const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
-              const magnifiedWidth = viewBoxWidth / zoom
+              const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
+                viewBoxWidth,
+                viewBoxHeight,
+                zoom,
+                containerRect.width,
+                containerRect.height
+              )
               return cursorSvgX - magnifiedWidth / 2
             })}
             y={zoomSpring.to((zoom: number) => {
@@ -2562,18 +2567,42 @@ export function MapRenderer({
               )
               const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
               const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
-              const magnifiedHeight = viewBoxHeight / zoom
+              const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
+                viewBoxWidth,
+                viewBoxHeight,
+                zoom,
+                containerRect.width,
+                containerRect.height
+              )
               return cursorSvgY - magnifiedHeight / 2
             })}
             width={zoomSpring.to((zoom: number) => {
+              const containerRect = containerRef.current!.getBoundingClientRect()
               const viewBoxParts = displayViewBox.split(' ').map(Number)
               const viewBoxWidth = viewBoxParts[2] || 1000
-              return viewBoxWidth / zoom
+              const viewBoxHeight = viewBoxParts[3] || 1000
+              const { width } = getAdjustedMagnifiedDimensions(
+                viewBoxWidth,
+                viewBoxHeight,
+                zoom,
+                containerRect.width,
+                containerRect.height
+              )
+              return width
             })}
             height={zoomSpring.to((zoom: number) => {
+              const containerRect = containerRef.current!.getBoundingClientRect()
               const viewBoxParts = displayViewBox.split(' ').map(Number)
+              const viewBoxWidth = viewBoxParts[2] || 1000
               const viewBoxHeight = viewBoxParts[3] || 1000
-              return viewBoxHeight / zoom
+              const { height } = getAdjustedMagnifiedDimensions(
+                viewBoxWidth,
+                viewBoxHeight,
+                zoom,
+                containerRect.width,
+                containerRect.height
+              )
+              return height
             })}
             fill="none"
             stroke={isDark ? '#60a5fa' : '#3b82f6'}
@@ -2758,7 +2787,7 @@ export function MapRenderer({
       })}
 
       {/* Debug: Bounding box labels as HTML overlays */}
-      {showDebugBoundingBoxes &&
+      {effectiveShowDebugBoundingBoxes &&
         containerRef.current &&
         svgRef.current &&
         debugBoundingBoxes.map((bbox) => {
@@ -3003,9 +3032,16 @@ export function MapRenderer({
                 const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
                 const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
-                // Magnified view: adaptive zoom (using animated value)
-                const magnifiedWidth = viewBoxWidth / zoom
-                const magnifiedHeight = viewBoxHeight / zoom
+                // Magnified view: adjust dimensions to match magnifier container aspect ratio
+                // This eliminates letterboxing and ensures outline matches what's visible
+                const { width: magnifiedWidth, height: magnifiedHeight } =
+                  getAdjustedMagnifiedDimensions(
+                    viewBoxWidth,
+                    viewBoxHeight,
+                    zoom,
+                    containerRect.width,
+                    containerRect.height
+                  )
 
                 // Center the magnified viewBox on the cursor
                 const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
@@ -3301,7 +3337,7 @@ export function MapRenderer({
               })()}
 
               {/* Debug: Bounding boxes for detected regions in magnifier */}
-              {SHOW_DEBUG_BOUNDING_BOXES &&
+              {effectiveShowDebugBoundingBoxes &&
                 debugBoundingBoxes.map((bbox) => {
                   const importance = bbox.importance ?? 0
 
@@ -3333,7 +3369,7 @@ export function MapRenderer({
             </animated.svg>
 
             {/* Debug: Bounding box labels as HTML overlays - positioned using animated values */}
-            {SHOW_DEBUG_BOUNDING_BOXES &&
+            {effectiveShowDebugBoundingBoxes &&
               debugBoundingBoxes.map((bbox) => {
                 const importance = bbox.importance ?? 0
                 let strokeColor = '#888888'
@@ -3511,7 +3547,7 @@ export function MapRenderer({
                 }
 
                 // Below threshold - show debug info in dev, simple zoom in prod
-                if (SHOW_MAGNIFIER_DEBUG_INFO) {
+                if (effectiveShowMagnifierDebugInfo) {
                   return `${z.toFixed(1)}× | ${screenPixelRatio.toFixed(1)} px/px`
                 }
 
@@ -3589,8 +3625,14 @@ export function MapRenderer({
         const viewBoxHeight = viewBoxParts[3] || 1000
 
         const currentZoom = getCurrentZoom()
-        const indicatorWidth = viewBoxWidth / currentZoom
-        const indicatorHeight = viewBoxHeight / currentZoom
+        // Use adjusted dimensions to match magnifier aspect ratio
+        const { width: indicatorWidth, height: indicatorHeight } = getAdjustedMagnifiedDimensions(
+          viewBoxWidth,
+          viewBoxHeight,
+          currentZoom,
+          containerRect.width,
+          containerRect.height
+        )
 
         // Convert cursor to SVG coordinates (accounting for preserveAspectRatio)
         const viewport = getRenderedViewport(
@@ -3813,7 +3855,7 @@ export function MapRenderer({
       })()}
 
       {/* Debug: Auto zoom detection visualization (dev only) */}
-      {SHOW_MAGNIFIER_DEBUG_INFO && cursorPosition && containerRef.current && (
+      {effectiveShowMagnifierDebugInfo && cursorPosition && containerRef.current && (
         <>
           {/* Detection box - 50px box around cursor */}
           <div
@@ -4100,7 +4142,7 @@ export function MapRenderer({
       />
 
       {/* Debug overlay showing safe zone rectangles */}
-      {SHOW_SAFE_ZONE_DEBUG &&
+      {effectiveShowSafeZoneDebug &&
         fillContainer &&
         (() => {
           // Calculate the leftover rectangle (viewport minus margins)

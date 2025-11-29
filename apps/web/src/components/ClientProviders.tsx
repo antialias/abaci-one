@@ -5,19 +5,20 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { NextIntlClientProvider } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import { ToastProvider } from '@/components/common/ToastContext'
+import { DeploymentInfoProvider } from '@/contexts/DeploymentInfoContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
-import { UserProfileProvider } from '@/contexts/UserProfileContext'
+import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 import { LocaleProvider, useLocaleContext } from '@/contexts/LocaleContext'
+import { MyAbacusProvider } from '@/contexts/MyAbacusContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
-import { createQueryClient } from '@/lib/queryClient'
+import { UserProfileProvider } from '@/contexts/UserProfileContext'
+import { VisualDebugProvider } from '@/contexts/VisualDebugContext'
 import type { Locale } from '@/i18n/messages'
+import { createQueryClient } from '@/lib/queryClient'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
-import { DeploymentInfoProvider } from '@/contexts/DeploymentInfoContext'
-import { MyAbacusProvider } from '@/contexts/MyAbacusContext'
 import { MyAbacus } from './MyAbacus'
-import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 
 interface ClientProvidersProps {
   children: ReactNode
@@ -65,9 +66,11 @@ export function ClientProviders({
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
-          <InnerProviders>{children}</InnerProviders>
-        </LocaleProvider>
+        <VisualDebugProvider>
+          <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
+            <InnerProviders>{children}</InnerProviders>
+          </LocaleProvider>
+        </VisualDebugProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )

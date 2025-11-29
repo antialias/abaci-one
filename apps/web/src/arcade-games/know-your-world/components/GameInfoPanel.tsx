@@ -136,10 +136,10 @@ export function GameInfoPanel({
 
   // During give-up animation, show the given-up region's name instead of the next region
   const displayRegionName = isGiveUpAnimating
-    ? state.giveUpReveal?.regionName ?? currentRegionName
+    ? (state.giveUpReveal?.regionName ?? currentRegionName)
     : currentRegionName
   const displayRegionId = isGiveUpAnimating
-    ? state.giveUpReveal?.regionId ?? currentRegionId
+    ? (state.giveUpReveal?.regionId ?? currentRegionId)
     : currentRegionId
 
   // Get flag emoji for the displayed region (not necessarily the current prompt)
