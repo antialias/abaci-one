@@ -442,8 +442,8 @@ export function useHotColdFeedback({
       // This runs on every sample for responsive emoji updates
       const visualFeedbackType = determineFeedbackType(state, zone, currentDistance, false)
 
-      // Visual: Update emoji immediately (no cooldown gates)
-      if (visualFeedbackType && confidence >= CONFIDENCE_THRESHOLD) {
+      // Visual: Update emoji immediately (no gates - confidence only affects audio)
+      if (visualFeedbackType) {
         setLastFeedbackType(visualFeedbackType)
       }
 
