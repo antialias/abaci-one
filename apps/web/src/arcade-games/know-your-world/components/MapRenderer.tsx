@@ -355,7 +355,7 @@ export function MapRenderer({
   mapName,
 }: MapRendererProps) {
   // Get context for sharing state with GameInfoPanel
-  const { setControlsState, sharedContainerRef } = useKnowYourWorld()
+  const { setControlsState, sharedContainerRef, isInTakeover } = useKnowYourWorld()
   // Extract force tuning parameters with defaults
   const {
     showArrows = false,
@@ -1858,8 +1858,15 @@ export function MapRenderer({
     }
 
     // Hot/cold audio feedback
-    // Only run if enabled, we have a target region, and device has a fine pointer (mouse)
-    if (hotColdEnabledRef.current && currentPrompt && hasFinePointer) {
+    // Only run if enabled, we have a target region, device has a fine pointer (mouse),
+    // and user can actually see/interact with the map (not during animations or takeover)
+    if (
+      hotColdEnabledRef.current &&
+      currentPrompt &&
+      hasFinePointer &&
+      !isGiveUpAnimating &&
+      !isInTakeover
+    ) {
       // Find target region's SVG center
       const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
       if (targetRegion) {

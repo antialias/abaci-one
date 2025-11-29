@@ -81,7 +81,8 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError, giveUp, controlsState } = useKnowYourWorld()
+  const { state, lastError, clearError, giveUp, controlsState, setIsInTakeover } =
+    useKnowYourWorld()
 
   // Destructure controls state from context
   const {
@@ -234,8 +235,13 @@ export function GameInfoPanel({
   })
 
   // Memoize whether we're in active takeover mode
-  const isInTakeover = isLearningMode && takeoverProgress < 1
+  const isInTakeoverLocal = isLearningMode && takeoverProgress < 1
   const showPulseAnimation = isLearningMode && takeoverProgress < 0.5
+
+  // Sync takeover state to context (so MapRenderer can suppress hot/cold feedback)
+  useEffect(() => {
+    setIsInTakeover(isInTakeoverLocal)
+  }, [isInTakeoverLocal, setIsInTakeover])
 
   // Reset name confirmation when region changes
   useEffect(() => {
@@ -431,7 +437,7 @@ export function GameInfoPanel({
           transition: 'opacity 0.3s ease-out',
         })}
         style={{
-          opacity: isInTakeover ? 1 : 0,
+          opacity: isInTakeoverLocal ? 1 : 0,
         }}
       >
         {/* Backdrop scrim with blur */}
@@ -589,7 +595,7 @@ export function GameInfoPanel({
         })}
         style={{
           animation: 'glowPulse 2s ease-in-out infinite',
-          overflow: isInTakeover ? 'visible' : 'hidden',
+          overflow: isInTakeoverLocal ? 'visible' : 'hidden',
           // Prompt pane stays behind scrim; only takeover-container elevates above
           background: isDark
             ? `linear-gradient(to right, rgba(22, 78, 99, 0.3) ${progress}%, rgba(30, 58, 138, 0.25) ${progress}%)`
@@ -947,7 +953,7 @@ export function GameInfoPanel({
           })}
           style={{
             // Hide during takeover since it's shown in the overlay
-            visibility: isInTakeover ? 'hidden' : 'visible',
+            visibility: isInTakeoverLocal ? 'hidden' : 'visible',
           }}
         >
           {/* Region name display */}

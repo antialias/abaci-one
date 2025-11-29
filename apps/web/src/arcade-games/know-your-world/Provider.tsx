@@ -120,6 +120,11 @@ interface KnowYourWorldContextValue {
   controlsState: ControlsState
   setControlsState: React.Dispatch<React.SetStateAction<ControlsState>>
 
+  // Learning mode takeover state (set by GameInfoPanel, read by MapRenderer)
+  // When true, a scrim covers the map and user can't interact
+  isInTakeover: boolean
+  setIsInTakeover: React.Dispatch<React.SetStateAction<boolean>>
+
   // Shared container ref for pointer lock button detection
   sharedContainerRef: React.RefObject<HTMLDivElement>
 }
@@ -144,6 +149,9 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
   // Controls state shared between MapRenderer and GameInfoPanel
   const [controlsState, setControlsState] = useState<ControlsState>(defaultControlsState)
+
+  // Learning mode takeover state (set by GameInfoPanel, read by MapRenderer)
+  const [isInTakeover, setIsInTakeover] = useState(false)
 
   // Shared container ref for pointer lock button detection
   const sharedContainerRef = useRef<HTMLDivElement>(null)
@@ -535,6 +543,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         memberPlayers,
         controlsState,
         setControlsState,
+        isInTakeover,
+        setIsInTakeover,
         sharedContainerRef,
       }}
     >
