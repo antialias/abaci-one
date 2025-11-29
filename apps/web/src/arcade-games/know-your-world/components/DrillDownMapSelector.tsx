@@ -1340,8 +1340,8 @@ export function DrillDownMapSelector({
               rounded: 'xl',
               shadow: 'lg',
               width: '205px',
-              maxHeight: { base: 'none', md: fillContainer ? '450px' : 'none' },
-              overflow: 'hidden',
+              maxHeight: { base: 'none', md: fillContainer ? '550px' : 'none' },
+              overflowY: 'auto',
             })}
           >
             {/* Filter Criteria Tabs */}
