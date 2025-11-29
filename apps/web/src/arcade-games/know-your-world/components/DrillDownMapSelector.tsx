@@ -1340,7 +1340,7 @@ export function DrillDownMapSelector({
               rounded: 'xl',
               shadow: 'lg',
               width: '205px',
-              maxHeight: { base: 'none', md: fillContainer ? '550px' : 'none' },
+              maxHeight: { base: 'none', md: fillContainer ? 'calc(100vh - 200px)' : 'none' },
               overflowY: 'auto',
             })}
           >
