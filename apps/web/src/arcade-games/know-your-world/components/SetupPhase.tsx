@@ -514,113 +514,51 @@ export function SetupPhase() {
             </Select.Content>
           </Select.Portal>
         </Select.Root>
-        </div>
-      </div>
 
-      {/* BOTTOM-CENTER: Start Button - positioned prominently */}
-      <div
-        data-element="setup-start-container"
-        className={css({
-          position: 'absolute',
-          bottom: { base: '2', sm: '4' },
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 50,
-        })}
-      >
-        {/* Start Button - Travel-themed, region-specific */}
-        <button
-          data-action="start-game"
-          onClick={startGame}
-          className={css({
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: { base: '2', sm: '3' },
-            padding: { base: '2 4', sm: '3 5' },
-            width: { base: '280px', sm: '320px' },
-            height: { base: '56px', sm: '80px' },
-            fontSize: { base: 'md', sm: 'lg' },
-            fontWeight: 'bold',
-            color: 'white',
-            rounded: 'xl',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease-out',
-            overflow: 'hidden',
-            border: '2px solid rgba(255,255,255,0.2)',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            _hover: {
-              transform: 'scale(1.02)',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
-            },
-            _active: {
-              transform: 'scale(0.98)',
-            },
-          })}
-          style={{
-            background: regionTheme.gradient,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = regionTheme.gradientHover
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = regionTheme.gradient
-          }}
-        >
-          {/* Decorative flag strip at top */}
-          <div
+          {/* Start Button - Travel-themed, compact for panel */}
+          <button
+            data-action="start-game"
+            onClick={startGame}
             className={css({
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              right: '0',
-              height: { base: '16px', sm: '20px' },
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '1',
-              fontSize: { base: '2xs', sm: 'xs' },
-              bg: 'rgba(0,0,0,0.15)',
-              paddingTop: '1px',
-              overflow: 'hidden',
-            })}
-          >
-            {regionTheme.flagEmojis.map((flag, i) => (
-              <span key={i} className={css({ opacity: 0.9 })}>
-                {flag}
-              </span>
-            ))}
-          </div>
-
-          {/* Main content */}
-          <div
-            className={css({
+              position: 'relative',
               display: 'flex',
               alignItems: 'center',
-              gap: { base: '2', sm: '3' },
-              marginTop: { base: '6px', sm: '8px' },
+              justifyContent: 'center',
+              gap: '2',
+              padding: '2 3',
+              width: { base: '160px', sm: '220px' },
+              height: { base: '48px', sm: '72px' },
+              fontSize: { base: 'sm', sm: 'md' },
+              fontWeight: 'bold',
+              color: 'white',
+              rounded: 'xl',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-out',
+              overflow: 'hidden',
+              border: '2px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              _hover: {
+                transform: 'scale(1.02)',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+              },
+              _active: {
+                transform: 'scale(0.98)',
+              },
             })}
+            style={{
+              background: regionTheme.gradient,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = regionTheme.gradientHover
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = regionTheme.gradient
+            }}
           >
-            {/* Travel icons */}
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                fontSize: { base: 'lg', sm: '2xl' },
-                lineHeight: 1,
-              })}
-            >
-              <span>{regionTheme.icons[0]}</span>
-              <span
-                className={css({
-                  fontSize: { base: 'xs', sm: 'sm' },
-                  marginTop: '-2px',
-                })}
-              >
-                {regionTheme.icons[1]}
-              </span>
-            </div>
+            {/* Travel icon */}
+            <span className={css({ fontSize: { base: 'lg', sm: 'xl' } })}>
+              {regionTheme.icons[0]}
+            </span>
 
             {/* Text content */}
             <div
@@ -632,16 +570,16 @@ export function SetupPhase() {
             >
               <span
                 className={css({
-                  fontSize: { base: 'md', sm: 'lg' },
+                  fontSize: { base: 'sm', sm: 'md' },
                   fontWeight: 'bold',
                   textShadow: '0 1px 2px rgba(0,0,0,0.2)',
                 })}
               >
-                Start {contextLabel}
+                Start
               </span>
               <span
                 className={css({
-                  fontSize: { base: 'xs', sm: 'sm' },
+                  fontSize: { base: '2xs', sm: 'xs' },
                   fontWeight: 'normal',
                   opacity: 0.9,
                 })}
@@ -649,8 +587,8 @@ export function SetupPhase() {
                 {totalRegionCount} regions
               </span>
             </div>
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   )
