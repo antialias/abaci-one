@@ -15,7 +15,6 @@ export interface CropOverrides {
 export const customCrops: CropOverrides = {
   world: {
     africa: '394.40 344.29 254.23 229.00',
-    oceania: '785.47 464.88 216.32 133.43',
     'south-america': '204.64 424.60 185.09 230.17',
     'north-america': '-17.45 150.31 444.57 299.97',
     europe: '399.21 102.01 198.44 266.44',

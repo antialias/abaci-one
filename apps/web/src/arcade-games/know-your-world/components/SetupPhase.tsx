@@ -515,7 +515,7 @@ export function SetupPhase() {
           </Select.Portal>
         </Select.Root>
 
-          {/* Start Button - Travel-themed, compact for panel */}
+          {/* Start Button - Travel-themed with character */}
           <button
             data-action="start-game"
             onClick={startGame}
@@ -527,7 +527,7 @@ export function SetupPhase() {
               gap: '2',
               padding: '2 3',
               width: { base: '160px', sm: '220px' },
-              height: { base: '48px', sm: '72px' },
+              height: { base: '64px', sm: '72px' },
               fontSize: { base: 'sm', sm: 'md' },
               fontWeight: 'bold',
               color: 'white',
@@ -555,37 +555,82 @@ export function SetupPhase() {
               e.currentTarget.style.background = regionTheme.gradient
             }}
           >
-            {/* Travel icon */}
-            <span className={css({ fontSize: { base: 'lg', sm: 'xl' } })}>
-              {regionTheme.icons[0]}
-            </span>
+            {/* Decorative flag strip at top */}
+            <div
+              className={css({
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                right: '0',
+                height: '14px',
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '0.5',
+                fontSize: '2xs',
+                bg: 'rgba(0,0,0,0.15)',
+                paddingTop: '1px',
+                overflow: 'hidden',
+              })}
+            >
+              {regionTheme.flagEmojis.slice(0, 4).map((flag, i) => (
+                <span key={i} className={css({ opacity: 0.9 })}>
+                  {flag}
+                </span>
+              ))}
+            </div>
 
-            {/* Text content */}
+            {/* Main content */}
             <div
               className={css({
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
+                alignItems: 'center',
+                gap: '2',
+                marginTop: '6px',
               })}
             >
-              <span
+              {/* Travel icons */}
+              <div
                 className={css({
-                  fontSize: { base: 'sm', sm: 'md' },
-                  fontWeight: 'bold',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  fontSize: { base: 'md', sm: 'lg' },
+                  lineHeight: 1,
                 })}
               >
-                Start
-              </span>
-              <span
+                <span>{regionTheme.icons[0]}</span>
+                <span className={css({ fontSize: 'xs', marginTop: '-2px' })}>
+                  {regionTheme.icons[1]}
+                </span>
+              </div>
+
+              {/* Text content */}
+              <div
                 className={css({
-                  fontSize: { base: '2xs', sm: 'xs' },
-                  fontWeight: 'normal',
-                  opacity: 0.9,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
                 })}
               >
-                {totalRegionCount} regions
-              </span>
+                <span
+                  className={css({
+                    fontSize: { base: 'sm', sm: 'md' },
+                    fontWeight: 'bold',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  })}
+                >
+                  Start {contextLabel}
+                </span>
+                <span
+                  className={css({
+                    fontSize: { base: '2xs', sm: 'xs' },
+                    fontWeight: 'normal',
+                    opacity: 0.9,
+                  })}
+                >
+                  {totalRegionCount} regions
+                </span>
+              </div>
             </div>
           </button>
         </div>
