@@ -4,6 +4,12 @@ interface GameModeIndicatorProps {
   gameMode: GameMode
   shouldEmphasize: boolean
   showFullscreenSelection: boolean
+  /** Custom label to override the default mode label */
+  customModeLabel?: string
+  /** Custom emoji to override the default mode emoji */
+  customModeEmoji?: string
+  /** Custom color to override the default mode color */
+  customModeColor?: string
 }
 
 const gameModeConfig = {
@@ -17,8 +23,17 @@ export function GameModeIndicator({
   gameMode,
   shouldEmphasize,
   showFullscreenSelection,
+  customModeLabel,
+  customModeEmoji,
+  customModeColor,
 }: GameModeIndicatorProps) {
-  const modeInfo = gameModeConfig[gameMode]
+  const defaultModeInfo = gameModeConfig[gameMode]
+  // Use custom overrides if provided, otherwise fall back to defaults
+  const modeInfo = {
+    label: customModeLabel ?? defaultModeInfo.label,
+    emoji: customModeEmoji ?? defaultModeInfo.emoji,
+    color: customModeColor ?? defaultModeInfo.color,
+  }
 
   return (
     <div

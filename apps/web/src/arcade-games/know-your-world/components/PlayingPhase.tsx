@@ -10,8 +10,15 @@ import { GameInfoPanel } from './GameInfoPanel'
 import { MapRenderer } from './MapRenderer'
 
 export function PlayingPhase() {
-  const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate, memberPlayers } =
-    useKnowYourWorld()
+  const {
+    state,
+    clickRegion,
+    giveUp,
+    otherPlayerCursors,
+    sendCursorUpdate,
+    memberPlayers,
+    sharedContainerRef,
+  } = useKnowYourWorld()
   const { data: viewerId } = useViewerId()
   const { activePlayers, players } = useGameMode()
 
@@ -124,6 +131,7 @@ export function PlayingPhase() {
 
   return (
     <div
+      ref={sharedContainerRef}
       data-component="playing-phase"
       className={css({
         position: 'fixed',

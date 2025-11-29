@@ -83,6 +83,10 @@ interface GameContextNavProps {
   onAssignBlackPlayer?: (playerId: string | null) => void
   // Game phase (for showing spectating vs assign)
   gamePhase?: 'setup' | 'playing' | 'results'
+  // Custom mode display (overrides player-count-based mode)
+  customModeLabel?: string
+  customModeEmoji?: string
+  customModeColor?: string
 }
 
 export function GameContextNav({
@@ -116,6 +120,9 @@ export function GameContextNav({
   onAssignWhitePlayer,
   onAssignBlackPlayer,
   gamePhase,
+  customModeLabel,
+  customModeEmoji,
+  customModeColor,
 }: GameContextNavProps) {
   // Get current user info for moderation
   const { data: currentUserId } = useViewerId()
@@ -156,6 +163,9 @@ export function GameContextNav({
           gameMode={gameMode}
           shouldEmphasize={shouldEmphasize}
           showFullscreenSelection={showFullscreenSelection}
+          customModeLabel={customModeLabel}
+          customModeEmoji={customModeEmoji}
+          customModeColor={customModeColor}
         />
 
         <FullscreenPlayerSelection
@@ -320,6 +330,9 @@ export function GameContextNav({
               gameMode={gameMode}
               shouldEmphasize={shouldEmphasize}
               showFullscreenSelection={false}
+              customModeLabel={customModeLabel}
+              customModeEmoji={customModeEmoji}
+              customModeColor={customModeColor}
             />
           </div>
         </div>
@@ -348,31 +361,34 @@ export function GameContextNav({
             shouldEmphasize={shouldEmphasize}
             gameMode={gameMode}
             modeColor={
-              gameMode === 'battle'
+              customModeColor ??
+              (gameMode === 'battle'
                 ? '#8b5cf6'
                 : gameMode === 'single'
                   ? '#3b82f6'
                   : gameMode === 'tournament'
                     ? '#f59e0b'
-                    : '#6b7280'
+                    : '#6b7280')
             }
             modeEmoji={
-              gameMode === 'battle'
+              customModeEmoji ??
+              (gameMode === 'battle'
                 ? '⚔️'
                 : gameMode === 'single'
                   ? '🎯'
                   : gameMode === 'tournament'
                     ? '🏆'
-                    : '👥'
+                    : '👥')
             }
             modeLabel={
-              gameMode === 'battle'
+              customModeLabel ??
+              (gameMode === 'battle'
                 ? 'Battle'
                 : gameMode === 'single'
                   ? 'Solo'
                   : gameMode === 'tournament'
                     ? 'Tournament'
-                    : 'Select Players'
+                    : 'Select Players')
             }
             navTitle={navTitle}
             navEmoji={navEmoji}

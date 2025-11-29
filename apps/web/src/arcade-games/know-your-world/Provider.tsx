@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import {
   buildPlayerMetadata,
   useArcadeSession,
@@ -12,6 +12,67 @@ import {
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
 import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
+import type { FeedbackType } from './utils/hotColdPhrases'
+
+// Controls state for GameInfoPanel (set by MapRenderer, read by GameInfoPanel)
+export interface ControlsState {
+  // Pointer lock state
+  isPointerLocked: boolean
+  fakeCursorPosition: { x: number; y: number } | null
+
+  // Hot/cold state
+  showHotCold: boolean
+  hotColdEnabled: boolean
+  hotColdFeedbackType: FeedbackType | null
+  onHotColdToggle: () => void
+
+  // Hint state
+  hasHint: boolean
+  currentHint: string | null
+
+  // Give up animation state
+  isGiveUpAnimating: boolean
+
+  // Speech/audio state
+  isSpeechSupported: boolean
+  hasAccentOption: boolean
+  isSpeaking: boolean
+  onSpeak: () => void
+  onStopSpeaking: () => void
+
+  // Auto settings
+  autoSpeak: boolean
+  onAutoSpeakToggle: () => void
+  withAccent: boolean
+  onWithAccentToggle: () => void
+  autoHint: boolean
+  onAutoHintToggle: () => void
+}
+
+const defaultControlsState: ControlsState = {
+  isPointerLocked: false,
+  fakeCursorPosition: null,
+  showHotCold: false,
+  hotColdEnabled: false,
+  hotColdFeedbackType: null,
+  onHotColdToggle: () => {},
+  hasHint: false,
+  currentHint: null,
+  isGiveUpAnimating: false,
+  // Speech/audio defaults
+  isSpeechSupported: false,
+  hasAccentOption: false,
+  isSpeaking: false,
+  onSpeak: () => {},
+  onStopSpeaking: () => {},
+  // Auto settings defaults
+  autoSpeak: false,
+  onAutoSpeakToggle: () => {},
+  withAccent: false,
+  onWithAccentToggle: () => {},
+  autoHint: false,
+  onAutoHintToggle: () => {},
+}
 
 interface KnowYourWorldContextValue {
   state: KnowYourWorldState
@@ -54,6 +115,13 @@ interface KnowYourWorldContextValue {
 
   // Member players mapping (userId -> players) for cursor emoji display
   memberPlayers: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
+
+  // Controls state shared between MapRenderer and GameInfoPanel
+  controlsState: ControlsState
+  setControlsState: React.Dispatch<React.SetStateAction<ControlsState>>
+
+  // Shared container ref for pointer lock button detection
+  sharedContainerRef: React.RefObject<HTMLDivElement>
 }
 
 const KnowYourWorldContext = createContext<KnowYourWorldContextValue | null>(null)
@@ -73,6 +141,12 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   const activePlayers = Array.from(activePlayerIds)
+
+  // Controls state shared between MapRenderer and GameInfoPanel
+  const [controlsState, setControlsState] = useState<ControlsState>(defaultControlsState)
+
+  // Shared container ref for pointer lock button detection
+  const sharedContainerRef = useRef<HTMLDivElement>(null)
 
   // Merge saved config from room
   const initialState = useMemo(() => {
@@ -459,6 +533,9 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         otherPlayerCursors,
         sendCursorUpdate,
         memberPlayers,
+        controlsState,
+        setControlsState,
+        sharedContainerRef,
       }}
     >
       {children}

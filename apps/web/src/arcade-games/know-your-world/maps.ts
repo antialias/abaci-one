@@ -2404,61 +2404,6 @@ export function calculateSafeZoneViewBox(
     const fitsRight = cropRightPx <= leftoverRight
     const fitsBottom = cropBottomPx <= leftoverBottom
     const fitsAll = fitsLeft && fitsTop && fitsRight && fitsBottom
-
-    console.log('[SafeZone] ═══════════════════════════════════════')
-    console.log('[SafeZone] Inputs:', {
-      viewport: `${viewportWidth}×${viewportHeight}`,
-      margins: `T:${margins.top} R:${margins.right} B:${margins.bottom} L:${margins.left}`,
-      leftover: `${leftoverWidth}×${leftoverHeight}`,
-    })
-    console.log('[SafeZone] Crop region (SVG):', {
-      x: cropRegion.x.toFixed(1),
-      y: cropRegion.y.toFixed(1),
-      w: cropRegion.width.toFixed(1),
-      h: cropRegion.height.toFixed(1),
-    })
-    console.log('[SafeZone] Map bounds (SVG):', {
-      x: originalViewBox.x.toFixed(1),
-      y: originalViewBox.y.toFixed(1),
-      w: originalViewBox.width.toFixed(1),
-      h: originalViewBox.height.toFixed(1),
-    })
-    console.log('[SafeZone] Scale:', scale.toFixed(4))
-    console.log('[SafeZone] ViewBox result:', {
-      x: viewBoxX.toFixed(1),
-      y: viewBoxY.toFixed(1),
-      w: viewBoxWidth.toFixed(1),
-      h: viewBoxHeight.toFixed(1),
-    })
-    console.log('[SafeZone] Crop on screen (px):', {
-      left: cropLeftPx.toFixed(1),
-      top: cropTopPx.toFixed(1),
-      right: cropRightPx.toFixed(1),
-      bottom: cropBottomPx.toFixed(1),
-      width: cropWidthPx.toFixed(1),
-      height: cropHeightPx.toFixed(1),
-    })
-    console.log('[SafeZone] Leftover bounds (px):', {
-      left: leftoverLeft,
-      top: leftoverTop,
-      right: leftoverRight,
-      bottom: leftoverBottom,
-    })
-    console.log(
-      `[SafeZone] Fits? ${fitsAll ? '✅ YES' : '❌ NO'} - L:${fitsLeft ? '✓' : '✗'} T:${fitsTop ? '✓' : '✗'} R:${fitsRight ? '✓' : '✗'} B:${fitsBottom ? '✓' : '✗'}`
-    )
-    console.log('[SafeZone] Valid X range:', {
-      min: viewBoxX_min.toFixed(1),
-      max: viewBoxX_max.toFixed(1),
-      chosen: viewBoxX.toFixed(1),
-      rangeValid: viewBoxX_min <= viewBoxX_max ? '✓' : '✗ INVALID',
-    })
-    console.log('[SafeZone] Valid Y range:', {
-      min: viewBoxY_min.toFixed(1),
-      max: viewBoxY_max.toFixed(1),
-      chosen: viewBoxY.toFixed(1),
-      rangeValid: viewBoxY_min <= viewBoxY_max ? '✓' : '✗ INVALID',
-    })
   }
 
   return `${viewBoxX.toFixed(2)} ${viewBoxY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}`

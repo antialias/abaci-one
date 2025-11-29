@@ -86,7 +86,6 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
       const svgElement = svgRef.current
 
       if (!containerElement || !svgElement) {
-        console.log('[useMagnifierZoom] Cannot recalculate zoom - missing refs')
         return
       }
 
@@ -97,7 +96,6 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
       const viewBoxWidth = viewBoxParts[2]
 
       if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) {
-        console.log('[useMagnifierZoom] Cannot recalculate zoom - invalid viewBoxWidth')
         return
       }
 
@@ -109,29 +107,16 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
         zoom: uncappedZoom,
       })
 
-      console.log('[useMagnifierZoom] Pointer lock released - checking zoom cap:', {
-        uncappedZoom: uncappedZoom.toFixed(1),
-        screenPixelRatio: screenPixelRatio.toFixed(1),
-        threshold,
-        exceedsThreshold: isAboveThreshold(screenPixelRatio, threshold),
-      })
-
       // Cap zoom if it exceeds threshold
       if (isAboveThreshold(screenPixelRatio, threshold)) {
         const maxZoom = calculateMaxZoomAtThreshold(threshold, magnifierWidth, svgRect.width)
         const cappedZoom = Math.min(uncappedZoom, maxZoom)
-        console.log(
-          `[useMagnifierZoom] ✅ Capping zoom: ${uncappedZoom.toFixed(1)}× → ${cappedZoom.toFixed(1)}× (threshold: ${threshold} px/px)`
-        )
         setTargetZoom(cappedZoom)
       }
     }
 
     // When pointer lock is acquired, update target zoom to uncapped value
     if (pointerLocked && uncappedAdaptiveZoomRef.current !== null) {
-      console.log(
-        `[useMagnifierZoom] Pointer lock acquired - using uncapped zoom: ${uncappedAdaptiveZoomRef.current.toFixed(1)}×`
-      )
       setTargetZoom(uncappedAdaptiveZoomRef.current)
     }
   }, [pointerLocked, containerRef, svgRef, viewBox, threshold])
@@ -197,33 +182,12 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     // - Target is also at threshold
     const shouldPause = currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold
 
-    console.log('[useMagnifierZoom] Effect running:', {
-      currentZoom: currentZoom.toFixed(1),
-      targetZoom: targetZoom.toFixed(1),
-      currentScreenPixelRatio: currentScreenPixelRatio.toFixed(1),
-      targetScreenPixelRatio: targetScreenPixelRatio.toFixed(1),
-      threshold,
-      zoomIsAnimating,
-      currentIsAtThreshold,
-      targetIsAtThreshold,
-      pointerLocked,
-      shouldPause,
-    })
-
     if (shouldPause) {
-      console.log('[useMagnifierZoom] ⏸️  Pausing at threshold - waiting for precision mode')
       magnifierApi.pause()
     } else {
       // Resume/update animation
       // CRITICAL: Always resume first in case spring was paused
       magnifierApi.resume()
-
-      if (currentIsAtThreshold && !targetIsAtThreshold) {
-        console.log('[useMagnifierZoom] ▶️  Resuming - target zoom is below threshold')
-      }
-
-      // Always animate smoothly - react-spring will handle the transition
-      console.log('[useMagnifierZoom] 🎬 Starting/updating animation to:', targetZoom.toFixed(1))
       magnifierApi.start({ zoom: targetZoom })
     }
   }, [

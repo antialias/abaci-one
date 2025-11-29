@@ -35,6 +35,10 @@ interface PageWithNavProps {
   onAssignBlackPlayer?: (playerId: string | null) => void
   // Game phase (for showing spectating vs assign)
   gamePhase?: 'setup' | 'playing' | 'results'
+  // Custom mode display (overrides player-count-based mode)
+  customModeLabel?: string
+  customModeEmoji?: string
+  customModeColor?: string
 }
 
 export function PageWithNav({
@@ -57,6 +61,9 @@ export function PageWithNav({
   onAssignWhitePlayer,
   onAssignBlackPlayer,
   gamePhase,
+  customModeLabel,
+  customModeEmoji,
+  customModeColor,
 }: PageWithNavProps) {
   // In preview mode, render just the children without navigation
   const previewMode = useContext(PreviewModeContext)
@@ -207,6 +214,9 @@ export function PageWithNav({
       onAssignWhitePlayer={onAssignWhitePlayer}
       onAssignBlackPlayer={onAssignBlackPlayer}
       gamePhase={gamePhase}
+      customModeLabel={customModeLabel}
+      customModeEmoji={customModeEmoji}
+      customModeColor={customModeColor}
     />
   ) : null
 

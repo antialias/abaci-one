@@ -19,7 +19,8 @@ export const customCrops: CropOverrides = {
     'north-america': '-17.45 150.31 444.57 299.97',
     europe: '399.21 102.01 198.44 266.44',
     asia: '537.52 271.25 368.29 239.28',
-  }
+    oceania: '777.19 467.60 223.33 152.54',
+  },
 }
 
 /**
@@ -63,7 +64,6 @@ export function setCropModeActive(active: boolean): void {
       detail: { active },
     })
     window.dispatchEvent(event)
-    console.log(`[customCrops] Crop mode ${active ? 'activated' : 'deactivated'}`)
   }
 }
 
@@ -72,13 +72,7 @@ export function setCropModeActive(active: boolean): void {
  * This immediately makes the new crop available via getCustomCrop()
  * and dispatches an event so components can react
  */
-export function setRuntimeCrop(
-  mapId: string,
-  continentId: string,
-  viewBox: string | null
-): void {
-  console.log(`[customCrops] setRuntimeCrop: ${mapId}/${continentId} = ${viewBox}`)
-
+export function setRuntimeCrop(mapId: string, continentId: string, viewBox: string | null): void {
   if (viewBox === null) {
     // Delete the runtime override
     if (runtimeCropOverrides[mapId]) {
@@ -101,7 +95,6 @@ export function setRuntimeCrop(
       detail: { mapId, continentId, viewBox },
     })
     window.dispatchEvent(event)
-    console.log(`[customCrops] Dispatched ${CROP_UPDATE_EVENT} event`)
   }
 }
 
@@ -114,12 +107,10 @@ export function getCustomCrop(mapId: string, continentId: string): string | null
   // Check runtime overrides first (for dev mode live updates)
   const runtimeCrop = runtimeCropOverrides[mapId]?.[continentId]
   if (runtimeCrop !== undefined) {
-    console.log(`[customCrops] getCustomCrop: ${mapId}/${continentId} = ${runtimeCrop} (runtime override)`)
     return runtimeCrop
   }
 
   // Fall back to static crops
   const staticCrop = customCrops[mapId]?.[continentId] ?? null
-  console.log(`[customCrops] getCustomCrop: ${mapId}/${continentId} = ${staticCrop} (static)`)
   return staticCrop
 }

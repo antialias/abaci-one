@@ -60,8 +60,8 @@ import { preventFlexExpansion } from '../utils/responsiveStyles'
  * These define areas reserved for floating UI elements during gameplay
  */
 const SAFE_ZONE_MARGINS: SafeZoneMargins = {
-  top: 290, // Space for nav (~150px) + floating prompt (~140px with name input)
-  right: 200, // Space for controls panel (hint, give up, hot/cold buttons)
+  top: 290, // Space for nav (~150px) + floating prompt (~140px with name input + controls row)
+  right: 0, // Controls now in floating prompt, no right margin needed
   bottom: 0, // Error banner can overlap map
   left: 0,
 }

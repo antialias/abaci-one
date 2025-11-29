@@ -9,6 +9,7 @@ import { DrillDownMapSelector } from './DrillDownMapSelector'
 import { ALL_REGION_SIZES, ASSISTANCE_LEVELS, getFilteredMapDataBySizesSync } from '../maps'
 import type { AssistanceLevelConfig } from '../maps'
 import { CONTINENTS, type ContinentId } from '../continents'
+import { getFeatureBadges } from '../utils/guidanceVisibility'
 
 // Travel-themed content for each region
 interface RegionTheme {
@@ -79,27 +80,6 @@ const REGION_THEMES: Record<string, RegionTheme> = {
 }
 
 const DEFAULT_THEME: RegionTheme = REGION_THEMES.World
-
-// Generate feature badges for an assistance level
-function getFeatureBadges(level: AssistanceLevelConfig): Array<{ label: string; icon: string }> {
-  const badges: Array<{ label: string; icon: string }> = []
-
-  if (level.hotColdEnabled) {
-    badges.push({ label: 'Hot/cold', icon: '🔥' })
-  }
-
-  if (level.hintsMode === 'onRequest') {
-    if (level.autoHintDefault) {
-      badges.push({ label: 'Auto-hints', icon: '💡' })
-    } else {
-      badges.push({ label: 'Hints', icon: '💡' })
-    }
-  } else if (level.hintsMode === 'limited' && level.hintLimit) {
-    badges.push({ label: `${level.hintLimit} hints`, icon: '💡' })
-  }
-
-  return badges
-}
 
 // Game mode options
 const GAME_MODE_OPTIONS = [
@@ -284,182 +264,65 @@ export function SetupPhase() {
             shadow: 'xl',
           })}
         >
-        {/* Game Mode Selector */}
-        <Select.Root
-          value={state.gameMode}
-          onValueChange={(value) => setMode(value as 'cooperative' | 'race' | 'turn-based')}
-        >
-          <Select.Trigger className={cardTriggerStyles}>
-            <span
-              className={css({
-                fontSize: { base: 'lg', sm: '2xl' },
-                flexShrink: 0,
-              })}
-            >
-              {selectedMode?.emoji}
-            </span>
-            <div className={css({ flex: 1, minWidth: 0 })}>
-              <div
+          {/* Game Mode Selector */}
+          <Select.Root
+            value={state.gameMode}
+            onValueChange={(value) => setMode(value as 'cooperative' | 'race' | 'turn-based')}
+          >
+            <Select.Trigger className={cardTriggerStyles}>
+              <span
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: { base: '1', sm: '2' },
+                  fontSize: { base: 'lg', sm: '2xl' },
+                  flexShrink: 0,
                 })}
               >
-                <span
-                  className={css({
-                    fontWeight: '600',
-                    fontSize: { base: 'sm', sm: 'md' },
-                    color: isDark ? 'gray.100' : 'gray.800',
-                  })}
-                >
-                  {selectedMode?.label}
-                </span>
-                <Select.Icon
-                  className={css({
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    fontSize: 'xs',
-                  })}
-                >
-                  ▼
-                </Select.Icon>
-              </div>
-              <div
-                className={css({
-                  fontSize: 'xs',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginTop: '0.5',
-                  lineHeight: 'tight',
-                  display: { base: 'none', sm: 'block' },
-                })}
-              >
-                {selectedMode?.description}
-              </div>
-            </div>
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Content className={contentStyles} position="popper" sideOffset={5}>
-              <Select.Viewport>
-                {GAME_MODE_OPTIONS.map((option) => (
-                  <Select.Item key={option.value} value={option.value} className={itemStyles}>
-                    <span className={css({ fontSize: '2xl' })}>{option.emoji}</span>
-                    <div className={css({ flex: 1 })}>
-                      <Select.ItemText>
-                        <span
-                          className={css({
-                            fontWeight: '600',
-                            fontSize: 'md',
-                            color: isDark ? 'gray.100' : 'gray.900',
-                          })}
-                        >
-                          {option.label}
-                        </span>
-                      </Select.ItemText>
-                      <div
-                        className={css({
-                          fontSize: 'sm',
-                          color: isDark ? 'gray.400' : 'gray.500',
-                          marginTop: '1',
-                        })}
-                      >
-                        {option.description}
-                      </div>
-                    </div>
-                  </Select.Item>
-                ))}
-              </Select.Viewport>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
-
-        {/* Assistance Level Selector */}
-        <Select.Root
-          value={state.assistanceLevel}
-          onValueChange={(value) =>
-            setAssistanceLevel(value as 'learning' | 'guided' | 'helpful' | 'standard' | 'none')
-          }
-        >
-          <Select.Trigger className={cardTriggerStyles}>
-            <span
-              className={css({
-                fontSize: { base: 'lg', sm: '2xl' },
-                flexShrink: 0,
-              })}
-            >
-              {selectedAssistance?.emoji || '💡'}
-            </span>
-            <div className={css({ flex: 1, minWidth: 0 })}>
-              <div
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: { base: '1', sm: '2' },
-                })}
-              >
-                <span
-                  className={css({
-                    fontWeight: '600',
-                    fontSize: { base: 'sm', sm: 'md' },
-                    color: isDark ? 'gray.100' : 'gray.800',
-                  })}
-                >
-                  {selectedAssistance?.label}
-                </span>
-                <Select.Icon
-                  className={css({
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    fontSize: 'xs',
-                  })}
-                >
-                  ▼
-                </Select.Icon>
-              </div>
-              <div
-                className={css({
-                  fontSize: 'xs',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginTop: '0.5',
-                  lineHeight: 'tight',
-                  display: { base: 'none', sm: 'block' },
-                })}
-              >
-                {selectedAssistance?.description}
-              </div>
-              {selectedAssistanceBadges.length > 0 && (
+                {selectedMode?.emoji}
+              </span>
+              <div className={css({ flex: 1, minWidth: 0 })}>
                 <div
                   className={css({
-                    display: { base: 'none', sm: 'flex' },
-                    gap: '1',
-                    mt: '1.5',
-                    flexWrap: 'wrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: { base: '1', sm: '2' },
                   })}
                 >
-                  {selectedAssistanceBadges.map((badge) => (
-                    <span
-                      key={badge.label}
-                      className={css({
-                        fontSize: '2xs',
-                        padding: '0.5 1.5',
-                        bg: isDark ? 'gray.600' : 'gray.300',
-                        color: isDark ? 'gray.300' : 'gray.700',
-                        rounded: 'full',
-                      })}
-                    >
-                      {badge.icon} {badge.label}
-                    </span>
-                  ))}
+                  <span
+                    className={css({
+                      fontWeight: '600',
+                      fontSize: { base: 'sm', sm: 'md' },
+                      color: isDark ? 'gray.100' : 'gray.800',
+                    })}
+                  >
+                    {selectedMode?.label}
+                  </span>
+                  <Select.Icon
+                    className={css({
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      fontSize: 'xs',
+                    })}
+                  >
+                    ▼
+                  </Select.Icon>
                 </div>
-              )}
-            </div>
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Content className={contentStyles} position="popper" sideOffset={5}>
-              <Select.Viewport>
-                {ASSISTANCE_LEVELS.map((level) => {
-                  const badges = getFeatureBadges(level)
-                  return (
-                    <Select.Item key={level.id} value={level.id} className={itemStyles}>
-                      <span className={css({ fontSize: '2xl' })}>{level.emoji}</span>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    marginTop: '0.5',
+                    lineHeight: 'tight',
+                    display: { base: 'none', sm: 'block' },
+                  })}
+                >
+                  {selectedMode?.description}
+                </div>
+              </div>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                <Select.Viewport>
+                  {GAME_MODE_OPTIONS.map((option) => (
+                    <Select.Item key={option.value} value={option.value} className={itemStyles}>
+                      <span className={css({ fontSize: '2xl' })}>{option.emoji}</span>
                       <div className={css({ flex: 1 })}>
                         <Select.ItemText>
                           <span
@@ -469,7 +332,7 @@ export function SetupPhase() {
                               color: isDark ? 'gray.100' : 'gray.900',
                             })}
                           >
-                            {level.label}
+                            {option.label}
                           </span>
                         </Select.ItemText>
                         <div
@@ -479,41 +342,158 @@ export function SetupPhase() {
                             marginTop: '1',
                           })}
                         >
-                          {level.description}
+                          {option.description}
                         </div>
-                        {badges.length > 0 && (
-                          <div
-                            className={css({
-                              display: 'flex',
-                              gap: '1',
-                              mt: '2',
-                              flexWrap: 'wrap',
-                            })}
-                          >
-                            {badges.map((badge) => (
-                              <span
-                                key={badge.label}
-                                className={css({
-                                  fontSize: 'xs',
-                                  padding: '1 2',
-                                  bg: isDark ? 'gray.600' : 'gray.200',
-                                  color: isDark ? 'gray.300' : 'gray.600',
-                                  rounded: 'md',
-                                })}
-                              >
-                                {badge.icon} {badge.label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </Select.Item>
-                  )
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+
+          {/* Assistance Level Selector */}
+          <Select.Root
+            value={state.assistanceLevel}
+            onValueChange={(value) =>
+              setAssistanceLevel(value as 'learning' | 'guided' | 'helpful' | 'standard' | 'none')
+            }
+          >
+            <Select.Trigger className={cardTriggerStyles}>
+              <span
+                className={css({
+                  fontSize: { base: 'lg', sm: '2xl' },
+                  flexShrink: 0,
                 })}
-              </Select.Viewport>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
+              >
+                {selectedAssistance?.emoji || '💡'}
+              </span>
+              <div className={css({ flex: 1, minWidth: 0 })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: { base: '1', sm: '2' },
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontWeight: '600',
+                      fontSize: { base: 'sm', sm: 'md' },
+                      color: isDark ? 'gray.100' : 'gray.800',
+                    })}
+                  >
+                    {selectedAssistance?.label}
+                  </span>
+                  <Select.Icon
+                    className={css({
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      fontSize: 'xs',
+                    })}
+                  >
+                    ▼
+                  </Select.Icon>
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    marginTop: '0.5',
+                    lineHeight: 'tight',
+                    display: { base: 'none', sm: 'block' },
+                  })}
+                >
+                  {selectedAssistance?.description}
+                </div>
+                {selectedAssistanceBadges.length > 0 && (
+                  <div
+                    className={css({
+                      display: { base: 'none', sm: 'flex' },
+                      gap: '1',
+                      mt: '1.5',
+                      flexWrap: 'wrap',
+                    })}
+                  >
+                    {selectedAssistanceBadges.map((badge) => (
+                      <span
+                        key={badge.label}
+                        className={css({
+                          fontSize: '2xs',
+                          padding: '0.5 1.5',
+                          bg: isDark ? 'gray.600' : 'gray.300',
+                          color: isDark ? 'gray.300' : 'gray.700',
+                          rounded: 'full',
+                        })}
+                      >
+                        {badge.icon} {badge.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className={contentStyles} position="popper" sideOffset={5}>
+                <Select.Viewport>
+                  {ASSISTANCE_LEVELS.map((level) => {
+                    const badges = getFeatureBadges(level)
+                    return (
+                      <Select.Item key={level.id} value={level.id} className={itemStyles}>
+                        <span className={css({ fontSize: '2xl' })}>{level.emoji}</span>
+                        <div className={css({ flex: 1 })}>
+                          <Select.ItemText>
+                            <span
+                              className={css({
+                                fontWeight: '600',
+                                fontSize: 'md',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                              })}
+                            >
+                              {level.label}
+                            </span>
+                          </Select.ItemText>
+                          <div
+                            className={css({
+                              fontSize: 'sm',
+                              color: isDark ? 'gray.400' : 'gray.500',
+                              marginTop: '1',
+                            })}
+                          >
+                            {level.description}
+                          </div>
+                          {badges.length > 0 && (
+                            <div
+                              className={css({
+                                display: 'flex',
+                                gap: '1',
+                                mt: '2',
+                                flexWrap: 'wrap',
+                              })}
+                            >
+                              {badges.map((badge) => (
+                                <span
+                                  key={badge.label}
+                                  className={css({
+                                    fontSize: 'xs',
+                                    padding: '1 2',
+                                    bg: isDark ? 'gray.600' : 'gray.200',
+                                    color: isDark ? 'gray.300' : 'gray.600',
+                                    rounded: 'md',
+                                  })}
+                                >
+                                  {badge.icon} {badge.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Select.Item>
+                    )
+                  })}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
 
           {/* Start Button - Travel-themed with character */}
           <button

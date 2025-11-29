@@ -268,14 +268,6 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   const thresholds = calculateAdaptiveThresholds(detectedSmallestSize)
   const { min: minAcceptableRatio, max: maxAcceptableRatio } = thresholds
 
-  if (pointerLocked) {
-    console.log('[Zoom Search] Adaptive thresholds:', {
-      detectedSmallestSize: `${detectedSmallestSize.toFixed(4)}px`,
-      minAcceptableRatio: `${(minAcceptableRatio * 100).toFixed(1)}%`,
-      maxAcceptableRatio: `${(maxAcceptableRatio * 100).toFixed(1)}%`,
-    })
-  }
-
   // Parse viewBox
   const viewBoxParts = mapData.viewBox.split(' ').map(Number)
   const viewBoxX = viewBoxParts[0] || 0
@@ -298,15 +290,6 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   // Therefore: minZoom >= svgRect.height/50
   const calculatedMinZoom = Math.max(svgRect.height / 50, minZoom)
 
-  if (pointerLocked) {
-    console.log('[Zoom Search] Min zoom constraint:', {
-      svgHeight: svgRect.height,
-      detectionBox: 50,
-      calculatedMinZoom,
-      providedMinZoom: minZoom,
-      finalMinZoom: calculatedMinZoom,
-    })
-  }
   const cursorSvgX = (cursorX - (svgRect.left - containerRect.left)) * scaleX + viewBoxX
   const cursorSvgY = (cursorY - (svgRect.top - containerRect.top)) * scaleY + viewBoxY
 
@@ -349,13 +332,6 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
 
   // Sort by importance (highest first)
   const sortedRegions = regionsWithScores.sort((a, b) => b.importance - a.importance)
-
-  if (pointerLocked) {
-    console.log(
-      '[Zoom Search] Region importance scores:',
-      sortedRegions.map((r) => `${r.region.id}: ${r.importance.toFixed(2)}`)
-    )
-  }
 
   // Track bounding boxes for debug visualization - add ALL detected regions upfront
   const boundingBoxes: BoundingBox[] = sortedRegions
@@ -542,11 +518,6 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
   if (!foundGoodZoom) {
     // Didn't find a good zoom - use calculated minimum
     optimalZoom = calculatedMinZoom
-    if (pointerLocked) {
-      console.log(
-        `[Zoom Search] ⚠️ No good zoom found, using calculated minimum: ${calculatedMinZoom}x`
-      )
-    }
   }
 
   return {

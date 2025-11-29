@@ -33,6 +33,31 @@ export function GameComponent() {
       ? state.currentPlayer
       : undefined
 
+  // Map game mode to nav display
+  const baseModeDisplay = {
+    cooperative: { label: 'Co-op', emoji: '🤝', color: '#10b981' },
+    race: { label: 'Race', emoji: '🏁', color: '#ef4444' },
+    'turn-based': { label: 'Turns', emoji: '🔄', color: '#8b5cf6' },
+  }[state.gameMode] ?? { label: 'Co-op', emoji: '🤝', color: '#10b981' }
+
+  // Map assistance level to display info
+  const assistanceDisplay =
+    {
+      learning: { label: 'Learning', emoji: '🌱' },
+      guided: { label: 'Guided', emoji: '🧭' },
+      helpful: { label: 'Helpful', emoji: '💡' },
+      standard: { label: 'Standard', emoji: '🎯' },
+      none: { label: 'Challenge', emoji: '🏆' },
+    }[state.assistanceLevel] ?? null
+
+  // Combine mode and assistance level in the label
+  const modeDisplay = {
+    ...baseModeDisplay,
+    label: assistanceDisplay
+      ? `${baseModeDisplay.label} • ${assistanceDisplay.emoji} ${assistanceDisplay.label}`
+      : baseModeDisplay.label,
+  }
+
   // Setup phase renders its own full-screen layout (map behind nav)
   // Playing phase uses StandardGameLayout (respects nav height)
   // Results phase uses normal flow
@@ -65,6 +90,9 @@ export function GameComponent() {
       }}
       onSetup={state.gamePhase !== 'setup' ? returnToSetup : undefined}
       onNewGame={state.gamePhase !== 'setup' && state.gamePhase !== 'results' ? endGame : undefined}
+      customModeLabel={modeDisplay.label}
+      customModeEmoji={modeDisplay.emoji}
+      customModeColor={modeDisplay.color}
     >
       {state.gamePhase === 'setup' && <SetupPhase />}
       {state.gamePhase === 'playing' && (
