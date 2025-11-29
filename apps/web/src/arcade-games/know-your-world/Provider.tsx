@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildPlayerMetadata,
   useArcadeSession,
@@ -47,6 +47,16 @@ export interface ControlsState {
   onWithAccentToggle: () => void
   autoHint: boolean
   onAutoHintToggle: () => void
+}
+
+// Celebration state for correct region finds
+export type CelebrationType = 'lightning' | 'standard' | 'hard-earned'
+
+export interface CelebrationState {
+  regionId: string
+  regionName: string
+  type: CelebrationType
+  startTime: number
 }
 
 const defaultControlsState: ControlsState = {
@@ -125,6 +135,11 @@ interface KnowYourWorldContextValue {
   isInTakeover: boolean
   setIsInTakeover: React.Dispatch<React.SetStateAction<boolean>>
 
+  // Celebration state for correct region finds
+  celebration: CelebrationState | null
+  setCelebration: React.Dispatch<React.SetStateAction<CelebrationState | null>>
+  promptStartTime: React.MutableRefObject<number>
+
   // Shared container ref for pointer lock button detection
   sharedContainerRef: React.RefObject<HTMLDivElement>
 }
@@ -152,6 +167,10 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
   // Learning mode takeover state (set by GameInfoPanel, read by MapRenderer)
   const [isInTakeover, setIsInTakeover] = useState(false)
+
+  // Celebration state for correct region finds
+  const [celebration, setCelebration] = useState<CelebrationState | null>(null)
+  const promptStartTime = useRef<number>(Date.now())
 
   // Shared container ref for pointer lock button detection
   const sharedContainerRef = useRef<HTMLDivElement>(null)
@@ -232,6 +251,13 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     initialState,
     applyMove: (state) => state, // Server handles all state updates
   })
+
+  // Update promptStartTime when currentPrompt changes (for celebration timing)
+  useEffect(() => {
+    if (state.currentPrompt) {
+      promptStartTime.current = Date.now()
+    }
+  }, [state.currentPrompt])
 
   // Pass through cursor updates with the provided player ID and userId
   const sendCursorUpdate = useCallback(
@@ -545,6 +571,9 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         setControlsState,
         isInTakeover,
         setIsInTakeover,
+        celebration,
+        setCelebration,
+        promptStartTime,
         sharedContainerRef,
       }}
     >

@@ -86,6 +86,26 @@ interface UseHotColdFeedbackParams {
   regions: RegionWithCenter[] // All regions with their centers
 }
 
+// Search metrics for celebration classification
+export interface SearchMetrics {
+  // Time
+  timeToFind: number // ms from prompt start to now
+
+  // Distance traveled
+  totalCursorDistance: number // Total pixels cursor moved
+  straightLineDistance: number // Direct path would have been
+  searchEfficiency: number // straight / total (1.0 = perfect, <0.3 = searched hard)
+
+  // Direction changes
+  directionReversals: number // How many times changed direction toward/away
+
+  // Near misses
+  nearMissCount: number // Times got within CLOSE threshold then moved away
+
+  // Zone transitions
+  zoneTransitions: number // warming→cooling→warming transitions
+}
+
 interface CheckPositionParams {
   cursorPosition: { x: number; y: number }
   targetCenter: { x: number; y: number } | null
@@ -504,5 +524,88 @@ export function useHotColdFeedback({
     }
   }, [])
 
-  return { checkPosition, reset, isSpeaking, lastFeedbackType }
+  // Get search metrics for celebration classification
+  const getSearchMetrics = useCallback((promptStartTime: number): SearchMetrics => {
+    const state = stateRef.current
+    const entries = getRecentEntries(state, HISTORY_LENGTH).filter(
+      (e): e is PathEntry => e !== null
+    )
+
+    const now = performance.now()
+    const timeToFind = Date.now() - promptStartTime
+
+    // If no history, return defaults
+    if (entries.length < 2) {
+      return {
+        timeToFind,
+        totalCursorDistance: 0,
+        straightLineDistance: 0,
+        searchEfficiency: 1, // Assume perfect if no data
+        directionReversals: 0,
+        nearMissCount: 0,
+        zoneTransitions: 0,
+      }
+    }
+
+    // Calculate total cursor distance (sum of distances between consecutive points)
+    let totalCursorDistance = 0
+    for (let i = 1; i < entries.length; i++) {
+      const dx = entries[i].x - entries[i - 1].x
+      const dy = entries[i].y - entries[i - 1].y
+      totalCursorDistance += Math.sqrt(dx * dx + dy * dy)
+    }
+
+    // Straight line distance from first point to last
+    const firstEntry = entries[0]
+    const lastEntry = entries[entries.length - 1]
+    const straightLineDx = lastEntry.x - firstEntry.x
+    const straightLineDy = lastEntry.y - firstEntry.y
+    const straightLineDistance = Math.sqrt(
+      straightLineDx * straightLineDx + straightLineDy * straightLineDy
+    )
+
+    // Search efficiency: straight / total (higher = more direct)
+    const searchEfficiency =
+      totalCursorDistance > 0 ? Math.min(1, straightLineDistance / totalCursorDistance) : 1
+
+    // Count direction reversals (changes in whether getting closer or farther)
+    let directionReversals = 0
+    let lastSign = 0
+    for (let i = 1; i < entries.length; i++) {
+      const delta = entries[i].distance - entries[i - 1].distance
+      const sign = Math.sign(delta)
+      if (lastSign !== 0 && sign !== 0 && sign !== lastSign) {
+        directionReversals++
+      }
+      if (sign !== 0) lastSign = sign
+    }
+
+    // Count near misses (got within CLOSE threshold then moved away)
+    let nearMissCount = 0
+    let wasClose = false
+    for (const entry of entries) {
+      const isClose = entry.distance < CLOSE
+      if (wasClose && !isClose) {
+        nearMissCount++
+      }
+      wasClose = isClose
+    }
+
+    // Count zone transitions (changes between warming/neutral/cooling)
+    // We'd need to track zones in history, but we can estimate from direction reversals
+    // For simplicity, zone transitions ≈ direction reversals / 2
+    const zoneTransitions = Math.floor(directionReversals / 2)
+
+    return {
+      timeToFind,
+      totalCursorDistance,
+      straightLineDistance,
+      searchEfficiency,
+      directionReversals,
+      nearMissCount,
+      zoneTransitions,
+    }
+  }, [])
+
+  return { checkPosition, reset, isSpeaking, lastFeedbackType, getSearchMetrics }
 }

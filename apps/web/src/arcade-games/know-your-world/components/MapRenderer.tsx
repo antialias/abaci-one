@@ -46,6 +46,8 @@ import {
   calculateScreenPixelRatio,
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
+import { classifyCelebration, CELEBRATION_TIMING } from '../utils/celebration'
+import { CelebrationOverlay } from './CelebrationOverlay'
 import { DevCropTool } from './DevCropTool'
 
 // Debug flag: show technical info in magnifier (dev only)
@@ -355,7 +357,14 @@ export function MapRenderer({
   mapName,
 }: MapRendererProps) {
   // Get context for sharing state with GameInfoPanel
-  const { setControlsState, sharedContainerRef, isInTakeover } = useKnowYourWorld()
+  const {
+    setControlsState,
+    sharedContainerRef,
+    isInTakeover,
+    celebration,
+    setCelebration,
+    promptStartTime,
+  } = useKnowYourWorld()
   // Extract force tuning parameters with defaults
   const {
     showArrows = false,
@@ -501,6 +510,10 @@ export function MapRenderer({
   // Hint animation state
   const [hintFlashProgress, setHintFlashProgress] = useState(0) // 0-1 pulsing value
   const [isHintAnimating, setIsHintAnimating] = useState(false) // Track if animation in progress
+
+  // Celebration animation state
+  const [celebrationFlashProgress, setCelebrationFlashProgress] = useState(0) // 0-1 pulsing value
+  const pendingCelebrationClick = useRef<{ regionId: string; regionName: string } | null>(null)
   // Saved button position to prevent jumping during zoom animation
   const [savedButtonPosition, setSavedButtonPosition] = useState<{
     top: number
@@ -709,6 +722,7 @@ export function MapRenderer({
     checkPosition: checkHotCold,
     reset: resetHotCold,
     lastFeedbackType: hotColdFeedbackType,
+    getSearchMetrics,
   } = useHotColdFeedback({
     enabled: assistanceAllowsHotCold && hotColdEnabled && hasFinePointer,
     targetRegionId: currentPrompt,
@@ -847,11 +861,11 @@ export function MapRenderer({
       // Use the same detection logic as hover tracking (50px detection box)
       const { detectedRegions, regionUnderCursor } = detectRegions(cursorX, cursorY)
 
-      if (regionUnderCursor) {
+      if (regionUnderCursor && !celebration) {
         // Find the region data to get the name
         const region = mapData.regions.find((r) => r.id === regionUnderCursor)
         if (region) {
-          onRegionClick(regionUnderCursor, region.name)
+          handleRegionClickWithCelebration(regionUnderCursor, region.name)
         }
       }
     }
@@ -1182,6 +1196,122 @@ export function MapRenderer({
       }
     }
   }, [hintActive?.timestamp]) // Re-run when timestamp changes
+
+  // Celebration animation effect - gold flash and confetti when region found
+  useEffect(() => {
+    if (!celebration) {
+      setCelebrationFlashProgress(0)
+      return
+    }
+
+    // Track if this effect has been cleaned up
+    let isCancelled = false
+    let animationFrameId: number | null = null
+
+    // Animation: pulsing gold flash during celebration
+    const timing = CELEBRATION_TIMING[celebration.type]
+    const duration = timing.totalDuration
+    const pulses = celebration.type === 'lightning' ? 2 : celebration.type === 'standard' ? 3 : 4
+    const startTime = Date.now()
+
+    const animate = () => {
+      if (isCancelled) return
+
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+
+      // Create pulsing effect: sin wave for smooth on/off
+      const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
+      setCelebrationFlashProgress(pulseProgress)
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate)
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(animate)
+
+    // Cleanup
+    return () => {
+      isCancelled = true
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+    }
+  }, [celebration?.startTime]) // Re-run when celebration starts
+
+  // Handle celebration completion - call the actual click after animation
+  const handleCelebrationComplete = useCallback(() => {
+    const pending = pendingCelebrationClick.current
+    if (pending) {
+      // Clear celebration state first
+      setCelebration(null)
+      setCelebrationFlashProgress(0)
+      // Then fire the actual click
+      onRegionClick(pending.regionId, pending.regionName)
+      pendingCelebrationClick.current = null
+    }
+  }, [setCelebration, onRegionClick])
+
+  // Wrapper function to intercept clicks and trigger celebration for correct regions
+  const handleRegionClickWithCelebration = useCallback(
+    (regionId: string, regionName: string) => {
+      // If we're already celebrating, ignore clicks
+      if (celebration) return
+
+      // Check if this is the correct region
+      if (regionId === currentPrompt) {
+        // Correct! Start celebration
+        const metrics = getSearchMetrics(promptStartTime.current)
+        const celebrationType = classifyCelebration(metrics)
+
+        // Store pending click for after celebration
+        pendingCelebrationClick.current = { regionId, regionName }
+
+        // Start celebration
+        setCelebration({
+          regionId,
+          regionName,
+          type: celebrationType,
+          startTime: Date.now(),
+        })
+      } else {
+        // Wrong region - handle immediately
+        onRegionClick(regionId, regionName)
+      }
+    },
+    [celebration, currentPrompt, getSearchMetrics, promptStartTime, setCelebration, onRegionClick]
+  )
+
+  // Get center of celebrating region for confetti origin
+  const getCelebrationRegionCenter = useCallback((): { x: number; y: number } => {
+    if (!celebration || !svgRef.current || !containerRef.current) {
+      return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    }
+
+    const region = mapData.regions.find((r) => r.id === celebration.regionId)
+    if (!region) {
+      return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    }
+
+    // Convert SVG coordinates to screen coordinates
+    const svgRect = svgRef.current.getBoundingClientRect()
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const viewBoxParts = displayViewBox.split(' ').map(Number)
+    const viewBoxX = viewBoxParts[0] || 0
+    const viewBoxY = viewBoxParts[1] || 0
+    const viewBoxW = viewBoxParts[2] || 1000
+    const viewBoxH = viewBoxParts[3] || 500
+    const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+    const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+    const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+
+    // Get absolute screen position
+    const screenX = containerRect.left + (region.center[0] - viewBoxX) * viewport.scale + svgOffsetX
+    const screenY = containerRect.top + (region.center[1] - viewBoxY) * viewport.scale + svgOffsetY
+
+    return { x: screenX, y: screenY }
+  }, [celebration, mapData.regions, displayViewBox])
 
   // Keyboard shortcuts - Shift for magnifier, H for hint
   useEffect(() => {
@@ -2234,16 +2364,23 @@ export function MapRenderer({
           // Run region detection at the tap position
           const { regionUnderCursor } = detectRegions(tapContainerX, tapContainerY)
 
-          if (regionUnderCursor) {
+          if (regionUnderCursor && !celebration) {
             const region = mapData.regions.find((r) => r.id === regionUnderCursor)
             if (region) {
-              onRegionClick(regionUnderCursor, region.name)
+              handleRegionClickWithCelebration(regionUnderCursor, region.name)
             }
           }
         }
       }
     },
-    [detectRegions, mapData.regions, onRegionClick, displayViewBox, zoomSpring]
+    [
+      detectRegions,
+      mapData.regions,
+      handleRegionClickWithCelebration,
+      celebration,
+      displayViewBox,
+      zoomSpring,
+    ]
   )
 
   return (
@@ -2330,29 +2467,33 @@ export function MapRenderer({
           const playerId = !isExcluded && isFound ? getPlayerWhoFoundRegion(region.id) : null
           const isBeingRevealed = giveUpReveal?.regionId === region.id
           const isBeingHinted = hintActive?.regionId === region.id
+          const isCelebrating = celebration?.regionId === region.id
 
           // Special styling for excluded regions (grayed out, pre-labeled)
-          // Bright gold flash for give up reveal with high contrast
-          // Cyan flash for hint
-          const fill = isBeingRevealed
-            ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})` // Brighter gold, higher base opacity
-            : isExcluded
-              ? isDark
-                ? '#374151' // gray-700
-                : '#d1d5db' // gray-300
-              : isFound && playerId
-                ? `url(#player-pattern-${playerId})`
-                : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
+          // Bright gold flash for give up reveal, celebration, and hint
+          const fill = isCelebrating
+            ? `rgba(255, 215, 0, ${0.7 + celebrationFlashProgress * 0.3})` // Bright gold celebration flash
+            : isBeingRevealed
+              ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})` // Brighter gold, higher base opacity
+              : isExcluded
+                ? isDark
+                  ? '#374151' // gray-700
+                  : '#d1d5db' // gray-300
+                : isFound && playerId
+                  ? `url(#player-pattern-${playerId})`
+                  : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
 
           // During give-up animation, dim all non-revealed regions
           const dimmedOpacity = isGiveUpAnimating && !isBeingRevealed ? 0.25 : 1
 
-          // Revealed region gets a prominent stroke
+          // Revealed/celebrating region gets a prominent stroke
           // Unfound regions get thicker borders for better visibility against sea
-          const stroke = isBeingRevealed
-            ? `rgba(255, 140, 0, ${0.8 + giveUpFlashProgress * 0.2})` // Orange stroke for contrast
-            : getRegionStroke(isFound, isDark)
-          const strokeWidth = isBeingRevealed ? 3 : isFound ? 1 : 1.5
+          const stroke = isCelebrating
+            ? `rgba(255, 180, 0, ${0.8 + celebrationFlashProgress * 0.2})` // Gold stroke for celebration
+            : isBeingRevealed
+              ? `rgba(255, 140, 0, ${0.8 + giveUpFlashProgress * 0.2})` // Orange stroke for contrast
+              : getRegionStroke(isFound, isDark)
+          const strokeWidth = isCelebrating ? 4 : isBeingRevealed ? 3 : isFound ? 1 : 1.5
 
           // Check if a network cursor is hovering over this region
           const networkHover = networkHoveredRegions[region.id]
@@ -2395,6 +2536,18 @@ export function MapRenderer({
                   pointerEvents="none"
                 />
               )}
+              {/* Glow effect for celebration - bright gold pulsing */}
+              {isCelebrating && (
+                <path
+                  d={region.path}
+                  fill={`rgba(255, 215, 0, ${0.2 + celebrationFlashProgress * 0.4})`}
+                  stroke={`rgba(255, 215, 0, ${0.4 + celebrationFlashProgress * 0.6})`}
+                  strokeWidth={10}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ filter: 'blur(6px)' }}
+                  pointerEvents="none"
+                />
+              )}
               {/* Network hover border (crisp outline in player color) */}
               {networkHover && !isBeingRevealed && (
                 <path
@@ -2422,10 +2575,10 @@ export function MapRenderer({
                 onMouseEnter={() => !isExcluded && !pointerLocked && setHoveredRegion(region.id)}
                 onMouseLeave={() => !pointerLocked && setHoveredRegion(null)}
                 onClick={() => {
-                  if (!isExcluded) {
-                    onRegionClick(region.id, region.name)
+                  if (!isExcluded && !celebration) {
+                    handleRegionClickWithCelebration(region.id, region.name)
                   }
-                }} // Disable clicks on excluded regions
+                }} // Disable clicks on excluded regions and during celebration
                 style={{
                   cursor: isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
@@ -2758,7 +2911,9 @@ export function MapRenderer({
                 cursor: 'pointer',
                 zIndex: 20,
               }}
-              onClick={() => onRegionClick(label.regionId, label.regionName)}
+              onClick={() =>
+                !celebration && handleRegionClickWithCelebration(label.regionId, label.regionName)
+              }
               onMouseEnter={() => setHoveredRegion(label.regionId)}
               onMouseLeave={() => setHoveredRegion(null)}
             >
@@ -3111,23 +3266,28 @@ export function MapRenderer({
                 const isFound = regionsFound.includes(region.id)
                 const playerId = isFound ? getPlayerWhoFoundRegion(region.id) : null
                 const isBeingRevealed = giveUpReveal?.regionId === region.id
+                const isCelebrating = celebration?.regionId === region.id
 
-                // Bright gold flash for give up reveal in magnifier too
-                const fill = isBeingRevealed
-                  ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})`
-                  : isFound && playerId
-                    ? `url(#player-pattern-${playerId})`
-                    : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
+                // Bright gold flash for celebration and give up reveal in magnifier too
+                const fill = isCelebrating
+                  ? `rgba(255, 215, 0, ${0.7 + celebrationFlashProgress * 0.3})`
+                  : isBeingRevealed
+                    ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})`
+                    : isFound && playerId
+                      ? `url(#player-pattern-${playerId})`
+                      : getRegionColor(region.id, isFound, hoveredRegion === region.id, isDark)
 
                 // During give-up animation, dim all non-revealed regions
                 const dimmedOpacity = isGiveUpAnimating && !isBeingRevealed ? 0.25 : 1
 
-                // Revealed region gets a prominent stroke
+                // Revealed/celebrating region gets a prominent stroke
                 // Unfound regions get thicker borders for better visibility against sea
-                const stroke = isBeingRevealed
-                  ? `rgba(255, 140, 0, ${0.8 + giveUpFlashProgress * 0.2})`
-                  : getRegionStroke(isFound, isDark)
-                const strokeWidth = isBeingRevealed ? 2 : isFound ? 0.5 : 1
+                const stroke = isCelebrating
+                  ? `rgba(255, 180, 0, ${0.8 + celebrationFlashProgress * 0.2})`
+                  : isBeingRevealed
+                    ? `rgba(255, 140, 0, ${0.8 + giveUpFlashProgress * 0.2})`
+                    : getRegionStroke(isFound, isDark)
+                const strokeWidth = isCelebrating ? 3 : isBeingRevealed ? 2 : isFound ? 0.5 : 1
 
                 return (
                   <g key={`mag-${region.id}`} style={{ opacity: dimmedOpacity }}>
@@ -3140,6 +3300,17 @@ export function MapRenderer({
                         strokeWidth={5}
                         vectorEffect="non-scaling-stroke"
                         style={{ filter: 'blur(2px)' }}
+                      />
+                    )}
+                    {/* Glow effect for celebrating region in magnifier */}
+                    {isCelebrating && (
+                      <path
+                        d={region.path}
+                        fill={`rgba(255, 215, 0, ${0.2 + celebrationFlashProgress * 0.4})`}
+                        stroke={`rgba(255, 215, 0, ${0.4 + celebrationFlashProgress * 0.6})`}
+                        strokeWidth={8}
+                        vectorEffect="non-scaling-stroke"
+                        style={{ filter: 'blur(4px)' }}
                       />
                     )}
                     <path
@@ -4301,6 +4472,16 @@ export function MapRenderer({
             </>
           )
         })()}
+
+      {/* Celebration overlay - shows confetti and sound when region is found */}
+      {celebration && (
+        <CelebrationOverlay
+          celebration={celebration}
+          regionCenter={getCelebrationRegionCenter()}
+          onComplete={handleCelebrationComplete}
+          reducedMotion={false}
+        />
+      )}
     </div>
   )
 }
