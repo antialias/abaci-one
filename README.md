@@ -812,12 +812,14 @@ MIT License - see LICENSE file for details.
 Modular, plugin-based architecture for building multiplayer arcade games with real-time synchronization.
 
 **Available Games**:
+
 - **[Know Your World](./apps/web/src/arcade-games/know-your-world/README.md)** - Geography quiz with precision controls for tiny regions ([Precision Controls Docs](./apps/web/src/arcade-games/know-your-world/PRECISION_CONTROLS.md))
 - Number Guesser - Hot/cold guessing game
 - Memory Quiz - Pattern matching challenge
 - Matching Pairs - Memory card game
 
 **Key Documentation**:
+
 - **[Game SDK](./apps/web/src/arcade-games/README.md)** - How to create new arcade games
 - **[Precision Controls](./apps/web/src/arcade-games/know-your-world/PRECISION_CONTROLS.md)** - Advanced cursor dampening and super zoom system
 
@@ -829,6 +831,7 @@ Modular, plugin-based architecture for building multiplayer arcade games with re
 Create customizable math worksheets with progressive difficulty, problem space validation, and Typst-powered PDF generation.
 
 **Key Documentation**:
+
 - **[Problem Generation Architecture](./apps/web/src/app/create/worksheets/PROBLEM_GENERATION_ARCHITECTURE.md)** - Complete technical deep-dive on generation algorithms, strategies, and edge cases
 - **[User Warning Improvements](./apps/web/src/app/create/worksheets/USER_WARNING_IMPROVEMENTS.md)** - UX enhancement plan for problem space warnings
 

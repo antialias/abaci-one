@@ -3,6 +3,7 @@
 ## Overview
 
 Add a "Give Up" button that allows users to skip a region they can't identify. When clicked:
+
 1. **Flash the region** on the map (3 pulses over ~2 seconds)
 2. **Temporarily label** the region with its name
 3. **Show magnifier** if the region is small enough to need it
@@ -12,6 +13,7 @@ Add a "Give Up" button that allows users to skip a region they can't identify. W
 ## Requirements Analysis
 
 ### User Experience
+
 - User clicks "Give Up" in the GameInfoPanel
 - Region flashes with a bright/pulsing color (yellow/gold to indicate "reveal")
 - Region name appears as a label pointing to the region
@@ -20,6 +22,7 @@ Add a "Give Up" button that allows users to skip a region they can't identify. W
 - Player receives no points for given-up regions
 
 ### Edge Cases
+
 - Last region: give up ends the game (go to results)
 - Turn-based mode: rotate to next player after give up
 - Multiplayer: all players see the reveal animation
@@ -31,6 +34,7 @@ Add a "Give Up" button that allows users to skip a region they can't identify. W
 ### Step 1: Add Types (`types.ts`)
 
 Add to `KnowYourWorldState`:
+
 ```typescript
 // Give up reveal state
 giveUpReveal: {
@@ -42,6 +46,7 @@ giveUpReveal: {
 ```
 
 Add new move type:
+
 ```typescript
 | {
     type: 'GIVE_UP'
@@ -55,6 +60,7 @@ Add new move type:
 ### Step 2: Server-Side Logic (`Validator.ts`)
 
 Add `validateGiveUp` method:
+
 ```typescript
 private async validateGiveUp(state: KnowYourWorldState, playerId: string): Promise<ValidationResult> {
   if (state.gamePhase !== 'playing') {
@@ -98,6 +104,7 @@ private async validateGiveUp(state: KnowYourWorldState, playerId: string): Promi
 ```
 
 Add `validateAdvanceAfterGiveUp` method (called after animation completes):
+
 ```typescript
 private validateAdvanceAfterGiveUp(state: KnowYourWorldState): ValidationResult {
   if (!state.giveUpReveal) {
@@ -145,6 +152,7 @@ private validateAdvanceAfterGiveUp(state: KnowYourWorldState): ValidationResult 
 ```
 
 **Alternative Design**: Single `GIVE_UP` move that immediately advances, with animation purely client-side:
+
 - Simpler server logic
 - Animation is fire-and-forget
 - Risk: if user navigates away during animation, they've already lost the region
@@ -154,15 +162,16 @@ private validateAdvanceAfterGiveUp(state: KnowYourWorldState): ValidationResult 
 ### Step 3: Client Provider (`Provider.tsx`)
 
 Add `giveUp` action:
+
 ```typescript
 const giveUp = useCallback(() => {
   sendMove({
-    type: 'GIVE_UP',
-    playerId: state.currentPlayer || activePlayers[0] || '',
-    userId: viewerId || '',
+    type: "GIVE_UP",
+    playerId: state.currentPlayer || activePlayers[0] || "",
+    userId: viewerId || "",
     data: {},
-  })
-}, [viewerId, sendMove, state.currentPlayer, activePlayers])
+  });
+}, [viewerId, sendMove, state.currentPlayer, activePlayers]);
 ```
 
 Add to context value.
@@ -170,28 +179,29 @@ Add to context value.
 ### Step 4: UI Button (`GameInfoPanel.tsx`)
 
 Add "Give Up" button below the current prompt:
+
 ```tsx
 <button
   onClick={giveUp}
   disabled={!!state.giveUpReveal} // Disable during reveal animation
   data-action="give-up"
   className={css({
-    padding: '1 2',
-    fontSize: '2xs',
-    cursor: 'pointer',
-    bg: isDark ? 'yellow.800' : 'yellow.100',
-    color: isDark ? 'yellow.200' : 'yellow.800',
-    rounded: 'sm',
-    border: '1px solid',
-    borderColor: isDark ? 'yellow.600' : 'yellow.400',
-    fontWeight: 'bold',
-    transition: 'all 0.2s',
+    padding: "1 2",
+    fontSize: "2xs",
+    cursor: "pointer",
+    bg: isDark ? "yellow.800" : "yellow.100",
+    color: isDark ? "yellow.200" : "yellow.800",
+    rounded: "sm",
+    border: "1px solid",
+    borderColor: isDark ? "yellow.600" : "yellow.400",
+    fontWeight: "bold",
+    transition: "all 0.2s",
     _hover: {
-      bg: isDark ? 'yellow.700' : 'yellow.200',
+      bg: isDark ? "yellow.700" : "yellow.200",
     },
     _disabled: {
       opacity: 0.5,
-      cursor: 'not-allowed',
+      cursor: "not-allowed",
     },
   })}
 >
@@ -204,51 +214,55 @@ Add "Give Up" button below the current prompt:
 This is the most complex part. Need to:
 
 #### 5a. Accept `giveUpReveal` prop from PlayingPhase
+
 ```typescript
 interface MapRendererProps {
   // ... existing props
-  giveUpReveal: KnowYourWorldState['giveUpReveal']
-  onGiveUpAnimationComplete: () => void
+  giveUpReveal: KnowYourWorldState["giveUpReveal"];
+  onGiveUpAnimationComplete: () => void;
 }
 ```
 
 #### 5b. Add animation state and effect
+
 ```typescript
-const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing
+const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0); // 0-1 pulsing
 
 useEffect(() => {
   if (!giveUpReveal) {
-    setGiveUpFlashProgress(0)
-    return
+    setGiveUpFlashProgress(0);
+    return;
   }
 
-  const duration = 2000 // 2 seconds
-  const pulses = 3 // Number of full pulses
-  const startTime = Date.now()
+  const duration = 2000; // 2 seconds
+  const pulses = 3; // Number of full pulses
+  const startTime = Date.now();
 
   const animate = () => {
-    const elapsed = Date.now() - startTime
-    const progress = Math.min(elapsed / duration, 1)
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
 
     // Create pulsing effect: sin wave for smooth on/off
-    const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
-    setGiveUpFlashProgress(pulseProgress)
+    const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5;
+    setGiveUpFlashProgress(pulseProgress);
 
     if (progress < 1) {
-      requestAnimationFrame(animate)
+      requestAnimationFrame(animate);
     } else {
       // Animation complete
-      setGiveUpFlashProgress(0)
-      onGiveUpAnimationComplete()
+      setGiveUpFlashProgress(0);
+      onGiveUpAnimationComplete();
     }
-  }
+  };
 
-  requestAnimationFrame(animate)
-}, [giveUpReveal?.timestamp]) // Re-run when timestamp changes
+  requestAnimationFrame(animate);
+}, [giveUpReveal?.timestamp]); // Re-run when timestamp changes
 ```
 
 #### 5c. Flash the region path
+
 In the region rendering, check if this region is being revealed:
+
 ```typescript
 const isBeingRevealed = giveUpReveal?.regionId === region.id
 
@@ -258,82 +272,105 @@ const fill = isBeingRevealed
 ```
 
 #### 5d. Show temporary label
+
 When `giveUpReveal` is active:
+
 - Render a label element pointing to the region
 - Use existing label positioning infrastructure or create a dedicated one
 - Label should be prominent (larger font, contrasting background)
 
 ```tsx
-{giveUpReveal && (
-  <RevealLabel
-    regionId={giveUpReveal.regionId}
-    regionName={giveUpReveal.regionName}
-    flashProgress={giveUpFlashProgress}
-    svgRef={svgRef}
-    isDark={isDark}
-  />
-)}
+{
+  giveUpReveal && (
+    <RevealLabel
+      regionId={giveUpReveal.regionId}
+      regionName={giveUpReveal.regionName}
+      flashProgress={giveUpFlashProgress}
+      svgRef={svgRef}
+      isDark={isDark}
+    />
+  );
+}
 ```
 
 #### 5e. Force magnifier display for small regions
+
 When `giveUpReveal` is active and region needs magnification:
+
 ```typescript
 // Override magnifier visibility during give up
 const shouldShowMagnifier = giveUpReveal
   ? giveUpRevealNeedsMagnifier
-  : (targetNeedsMagnification && hasSmallRegion)
+  : targetNeedsMagnification && hasSmallRegion;
 ```
 
 Need to calculate whether the give-up region needs magnification:
+
 ```typescript
-const [giveUpRevealNeedsMagnifier, setGiveUpRevealNeedsMagnifier] = useState(false)
+const [giveUpRevealNeedsMagnifier, setGiveUpRevealNeedsMagnifier] =
+  useState(false);
 
 useEffect(() => {
   if (!giveUpReveal || !svgRef.current) {
-    setGiveUpRevealNeedsMagnifier(false)
-    return
+    setGiveUpRevealNeedsMagnifier(false);
+    return;
   }
 
-  const path = svgRef.current.querySelector(`path[data-region-id="${giveUpReveal.regionId}"]`)
+  const path = svgRef.current.querySelector(
+    `path[data-region-id="${giveUpReveal.regionId}"]`,
+  );
   if (!path || !(path instanceof SVGGeometryElement)) {
-    setGiveUpRevealNeedsMagnifier(false)
-    return
+    setGiveUpRevealNeedsMagnifier(false);
+    return;
   }
 
-  const bbox = path.getBoundingClientRect()
-  const isSmall = bbox.width < 15 || bbox.height < 15 || (bbox.width * bbox.height) < 200
-  setGiveUpRevealNeedsMagnifier(isSmall)
-}, [giveUpReveal?.regionId])
+  const bbox = path.getBoundingClientRect();
+  const isSmall =
+    bbox.width < 15 || bbox.height < 15 || bbox.width * bbox.height < 200;
+  setGiveUpRevealNeedsMagnifier(isSmall);
+}, [giveUpReveal?.regionId]);
 ```
 
 #### 5f. Center magnifier on revealed region
+
 When in give-up reveal mode with magnifier:
+
 - Calculate the region's center in screen coordinates
 - Position magnifier viewport to center on that region
 - Don't track cursor movement during reveal
 
 ```typescript
 // Calculate center of reveal region for magnifier positioning
-const [revealCenterPosition, setRevealCenterPosition] = useState<{x: number, y: number} | null>(null)
+const [revealCenterPosition, setRevealCenterPosition] = useState<{
+  x: number;
+  y: number;
+} | null>(null);
 
 useEffect(() => {
-  if (!giveUpReveal || !giveUpRevealNeedsMagnifier || !svgRef.current || !containerRef.current) {
-    setRevealCenterPosition(null)
-    return
+  if (
+    !giveUpReveal ||
+    !giveUpRevealNeedsMagnifier ||
+    !svgRef.current ||
+    !containerRef.current
+  ) {
+    setRevealCenterPosition(null);
+    return;
   }
 
-  const path = svgRef.current.querySelector(`path[data-region-id="${giveUpReveal.regionId}"]`)
-  if (!path) return
+  const path = svgRef.current.querySelector(
+    `path[data-region-id="${giveUpReveal.regionId}"]`,
+  );
+  if (!path) return;
 
-  const pathBbox = path.getBoundingClientRect()
-  const containerRect = containerRef.current.getBoundingClientRect()
+  const pathBbox = path.getBoundingClientRect();
+  const containerRect = containerRef.current.getBoundingClientRect();
 
   // Center of region in container coordinates
-  const centerX = pathBbox.left + pathBbox.width / 2 - containerRect.left
-  const centerY = pathBbox.top + pathBbox.height / 2 - containerRect.top
+  const centerX = pathBbox.left + pathBbox.width / 2 - containerRect.left;
+  const centerY = pathBbox.top + pathBbox.height / 2 - containerRect.top;
 
-  setRevealCenterPosition({ x: centerX, y: centerY })
-}, [giveUpReveal?.regionId, giveUpRevealNeedsMagnifier])
+  setRevealCenterPosition({ x: centerX, y: centerY });
+}, [giveUpReveal?.regionId, giveUpRevealNeedsMagnifier]);
 ```
 
 Then use `revealCenterPosition` instead of `cursorPosition` for magnifier view calculations during reveal.
@@ -341,6 +378,7 @@ Then use `revealCenterPosition` instead of `cursorPosition` for magnifier view c
 ### Step 6: Update PlayingPhase
 
 Pass new props to MapRenderer:
+
 ```tsx
 <MapRenderer
   // ... existing props
@@ -348,9 +386,9 @@ Pass new props to MapRenderer:
   onGiveUpAnimationComplete={() => {
     // Send move to advance after animation
     sendMove({
-      type: 'ADVANCE_AFTER_GIVE_UP',
+      type: "ADVANCE_AFTER_GIVE_UP",
       // ...
-    })
+    });
   }}
 />
 ```
@@ -368,12 +406,14 @@ Add story for reveal animation state.
 ### Single vs Two-Move Design
 
 **Option A: Single GIVE_UP move (recommended)**
+
 - Server immediately advances game state
 - Client plays animation while already on "next region" conceptually
 - Simpler, no race conditions
 - Animation is purely cosmetic
 
 **Option B: Two moves (GIVE_UP then ADVANCE)**
+
 - More accurate state representation
 - But adds complexity and timing concerns
 - What if client disconnects during animation?
@@ -381,12 +421,14 @@ Add story for reveal animation state.
 **Decision: Use Option A** - Single move, animation is fire-and-forget.
 
 ### Animation Duration
+
 - 2 seconds total
 - 3 pulses (on-off-on-off-on-off)
 - Gold/yellow color for "reveal" semantics
 - Smooth sine wave interpolation
 
 ### Label Styling
+
 - Large, bold text
 - High contrast background (dark bg in light mode, light bg in dark mode)
 - Leader line pointing to region center

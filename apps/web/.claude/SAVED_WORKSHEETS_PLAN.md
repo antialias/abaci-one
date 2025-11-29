@@ -21,6 +21,7 @@
 All behavior is tuneable via `src/config/persistence.ts` - see file for details.
 
 **Key defaults:**
+
 - Auto-save debounce: 5 seconds
 - Add to library: On first PDF generation OR when named
 - Version retention: Keep last 10 auto-saves, prune after 30 days

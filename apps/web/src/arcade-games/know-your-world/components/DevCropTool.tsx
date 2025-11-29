@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { css } from '@styled/css'
+import { setRuntimeCrop, setCropModeActive } from '../customCrops'
 
 /**
  * Dev-only tool for drawing bounding boxes to get crop coordinates
@@ -54,7 +55,9 @@ export function DevCropTool({
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          console.log(`✅ Crop reset! Reload to see changes.`)
+          console.log(`✅ Crop reset!`)
+          // Update runtime crop immediately for live update
+          setRuntimeCrop(mapId, continentId, null)
           setSaveStatus('saved')
           setFinalBox(null)
           setTimeout(() => setSaveStatus('idle'), 2000)
@@ -77,6 +80,7 @@ export function DevCropTool({
   const viewBoxHeight = viewBoxParts[3] || 1000
 
   // Convert screen coordinates to SVG coordinates
+  // IMPORTANT: Must account for SVG letterboxing due to preserveAspectRatio="xMidYMid meet"
   const screenToSvg = useCallback(
     (screenX: number, screenY: number): { x: number; y: number } | null => {
       const svg = svgRef.current
@@ -86,23 +90,33 @@ export function DevCropTool({
       const containerRect = container.getBoundingClientRect()
       const svgRect = svg.getBoundingClientRect()
 
-      // Position relative to SVG
+      // With preserveAspectRatio="xMidYMid meet", the SVG uses uniform scaling
+      // and centers the content, creating letterboxing
+      const scaleX = svgRect.width / viewBoxWidth
+      const scaleY = svgRect.height / viewBoxHeight
+      const actualScale = Math.min(scaleX, scaleY)
+
+      // Calculate letterbox offsets (content is centered)
+      const renderedWidth = viewBoxWidth * actualScale
+      const renderedHeight = viewBoxHeight * actualScale
+      const offsetX = (svgRect.width - renderedWidth) / 2
+      const offsetY = (svgRect.height - renderedHeight) / 2
+
+      // Position relative to SVG element
       const relX = screenX - svgRect.left
       const relY = screenY - svgRect.top
 
-      // Scale to SVG coordinates
-      const scaleX = viewBoxWidth / svgRect.width
-      const scaleY = viewBoxHeight / svgRect.height
-
+      // Convert to SVG coordinates, accounting for letterbox offset
       return {
-        x: viewBoxX + relX * scaleX,
-        y: viewBoxY + relY * scaleY,
+        x: viewBoxX + (relX - offsetX) / actualScale,
+        y: viewBoxY + (relY - offsetY) / actualScale,
       }
     },
     [svgRef, containerRef, viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight]
   )
 
   // Convert SVG coordinates to screen coordinates (for display)
+  // IMPORTANT: Must account for SVG letterboxing due to preserveAspectRatio="xMidYMid meet"
   const svgToScreen = useCallback(
     (svgX: number, svgY: number): { x: number; y: number } | null => {
       const svg = svgRef.current
@@ -112,12 +126,21 @@ export function DevCropTool({
       const containerRect = container.getBoundingClientRect()
       const svgRect = svg.getBoundingClientRect()
 
+      // With preserveAspectRatio="xMidYMid meet", the SVG uses uniform scaling
       const scaleX = svgRect.width / viewBoxWidth
       const scaleY = svgRect.height / viewBoxHeight
+      const actualScale = Math.min(scaleX, scaleY)
 
+      // Calculate letterbox offsets (content is centered)
+      const renderedWidth = viewBoxWidth * actualScale
+      const renderedHeight = viewBoxHeight * actualScale
+      const offsetX = (svgRect.width - renderedWidth) / 2
+      const offsetY = (svgRect.height - renderedHeight) / 2
+
+      // Convert SVG coordinates to screen, accounting for letterbox offset
       return {
-        x: (svgX - viewBoxX) * scaleX + (svgRect.left - containerRect.left),
-        y: (svgY - viewBoxY) * scaleY + (svgRect.top - containerRect.top),
+        x: (svgX - viewBoxX) * actualScale + offsetX + (svgRect.left - containerRect.left),
+        y: (svgY - viewBoxY) * actualScale + offsetY + (svgRect.top - containerRect.top),
       }
     },
     [svgRef, containerRef, viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight]
@@ -129,7 +152,9 @@ export function DevCropTool({
       // Ctrl+Shift+B (or Cmd+Shift+B on Mac)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'b') {
         e.preventDefault()
-        setIsActive((prev) => !prev)
+        const newActive = !isActive
+        setIsActive(newActive)
+        setCropModeActive(newActive)
         if (isActive) {
           setCropBox(null)
           setFinalBox(null)
@@ -146,6 +171,7 @@ export function DevCropTool({
       // Escape to deactivate
       if (e.key === 'Escape' && isActive) {
         setIsActive(false)
+        setCropModeActive(false)
         setCropBox(null)
         setFinalBox(null)
         setIsDrawing(false)
@@ -230,8 +256,10 @@ export function DevCropTool({
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          console.log(`✅ Crop saved! Reload to see changes.`)
+          console.log(`✅ Crop saved!`)
           console.log('Updated crops:', data.crops)
+          // Update runtime crop immediately for live update
+          setRuntimeCrop(mapId, continentId, viewBoxStr)
           setSaveStatus('saved')
           setTimeout(() => setSaveStatus('idle'), 2000)
         } else {
@@ -252,7 +280,12 @@ export function DevCropTool({
 
   // Calculate screen coordinates for display
   const currentBox = cropBox || finalBox
-  let screenBox: { left: number; top: number; width: number; height: number } | null = null
+  let screenBox: {
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null = null
 
   if (currentBox) {
     const minX = Math.min(currentBox.startX, currentBox.endX)
@@ -367,17 +400,35 @@ export function DevCropTool({
             Draw a box • R to reset • ESC to exit
           </div>
           {saveStatus === 'saving' && (
-            <div className={css({ fontSize: 'xs', fontWeight: 'normal', color: 'yellow.200' })}>
+            <div
+              className={css({
+                fontSize: 'xs',
+                fontWeight: 'normal',
+                color: 'yellow.200',
+              })}
+            >
               ⏳ Saving...
             </div>
           )}
           {saveStatus === 'saved' && (
-            <div className={css({ fontSize: 'xs', fontWeight: 'normal', color: 'green.200' })}>
-              ✅ Saved! Reload to see changes.
+            <div
+              className={css({
+                fontSize: 'xs',
+                fontWeight: 'normal',
+                color: 'green.200',
+              })}
+            >
+              ✅ Saved! Map updated live.
             </div>
           )}
           {saveStatus === 'error' && (
-            <div className={css({ fontSize: 'xs', fontWeight: 'normal', color: 'red.200' })}>
+            <div
+              className={css({
+                fontSize: 'xs',
+                fontWeight: 'normal',
+                color: 'red.200',
+              })}
+            >
               ❌ Error saving. Check console.
             </div>
           )}

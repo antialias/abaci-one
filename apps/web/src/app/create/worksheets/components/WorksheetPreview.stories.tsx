@@ -55,7 +55,14 @@ function MockPreviewWithVirtualLoading({
         }
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '48px',
+          alignItems: 'center',
+        }}
+      >
         {Array.from({ length: pages }).map((_, index) => {
           const orientation = formState.orientation || 'portrait'
           const maxWidth = orientation === 'portrait' ? '816px' : '1056px'
@@ -180,7 +187,12 @@ export const ExtremeScale: Story = {
 export const LandscapeOrientation: Story = {
   render: () => (
     <PreviewWrapper
-      formState={{ ...mockFormState, orientation: 'landscape', cols: 5, pages: 5 }}
+      formState={{
+        ...mockFormState,
+        orientation: 'landscape',
+        cols: 5,
+        pages: 5,
+      }}
       pages={5}
     />
   ),
@@ -257,7 +269,14 @@ export const VirtualizationExplained: Story = {
           <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600 }}>
             Virtual Loading System
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              fontSize: '14px',
+            }}
+          >
             <div>
               <strong>📦 Batch Loading:</strong>
               <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>

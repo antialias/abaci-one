@@ -102,7 +102,13 @@ export function DisplayControlsPanel({
 
         <Collapsible.Content>
           <div className={stack({ gap: '3' })}>
-            <div className={css({ display: 'flex', gap: '1.5', justifyContent: 'flex-end' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '1.5',
+                justifyContent: 'flex-end',
+              })}
+            >
               <button
                 onClick={() =>
                   onChange({

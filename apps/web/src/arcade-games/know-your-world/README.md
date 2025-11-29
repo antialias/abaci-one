@@ -26,6 +26,7 @@ Configurable per map with customizable difficulty tiers:
 ### Study Mode
 
 Optional study period before gameplay:
+
 - Skip (no study time)
 - 30 seconds (quick review)
 - 1 minute (study time)
@@ -61,6 +62,7 @@ Regions filtered out by difficulty settings are pre-labeled on the map in gray, 
 ### Adaptive Zoom Magnifier
 
 Shows a magnified view (8-60x) when hovering over crowded or tiny regions:
+
 - Automatically calculates optimal zoom based on region density and size
 - Smooth spring animations for position and opacity
 - Crosshairs show exact cursor position
@@ -69,6 +71,7 @@ Shows a magnified view (8-60x) when hovering over crowded or tiny regions:
 ### Smart Label Positioning
 
 Uses D3 force simulation to position region labels without overlaps:
+
 - Regular regions: Labels at center
 - Small regions: Labels with arrow pointers
 - Washington DC: Special positioning to avoid blocking other states
@@ -102,6 +105,7 @@ know-your-world/
 ### State Management
 
 Uses React Context (`KnowYourWorldProvider`) for client-side state:
+
 - Game phase (setup, study, playing, results)
 - Selected map and continent
 - Game mode and difficulty
@@ -111,6 +115,7 @@ Uses React Context (`KnowYourWorldProvider`) for client-side state:
 ### Server Validation
 
 All game moves are validated server-side in `Validator.ts`:
+
 - Verifies region IDs are valid
 - Checks if region was already found
 - Tracks which player found each region
@@ -120,6 +125,7 @@ All game moves are validated server-side in `Validator.ts`:
 ### Map Data
 
 Maps are sourced from `@svg-maps/world` and `@svg-maps/usa` with enhancements:
+
 - Pre-calculated bounding boxes for each region
 - Center coordinates for labels
 - Continent metadata (world map only)
@@ -131,11 +137,11 @@ Game configuration is persisted in arcade room settings:
 
 ```typescript
 interface KnowYourWorldConfig {
-  selectedMap: 'world' | 'usa'
-  gameMode: 'cooperative' | 'race' | 'turn-based'
-  difficulty: string  // Difficulty level ID (varies per map)
-  studyDuration: 0 | 30 | 60 | 120  // seconds
-  selectedContinent: 'all' | ContinentId  // world map only
+  selectedMap: "world" | "usa";
+  gameMode: "cooperative" | "race" | "turn-based";
+  difficulty: string; // Difficulty level ID (varies per map)
+  studyDuration: 0 | 30 | 60 | 120; // seconds
+  selectedContinent: "all" | ContinentId; // world map only
 }
 ```
 

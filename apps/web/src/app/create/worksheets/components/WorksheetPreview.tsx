@@ -413,7 +413,10 @@ function PreviewContent({
 
   // Jump to page function for floating indicator
   const jumpToPage = (pageIndex: number) => {
-    pageRefs.current[pageIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    pageRefs.current[pageIndex]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
   }
 
   // Notify parent of page data for floating elements

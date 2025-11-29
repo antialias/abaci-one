@@ -55,7 +55,13 @@ export function ResultsPhase() {
         })}
       >
         <div className={css({ fontSize: '6xl', marginBottom: '4' })}>🎉</div>
-        <div className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'white' })}>
+        <div
+          className={css({
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            color: 'white',
+          })}
+        >
           {state.gameMode === 'cooperative' ? 'Great Teamwork!' : 'Winner!'}
         </div>
         {state.gameMode !== 'cooperative' && winner && (
@@ -93,18 +99,40 @@ export function ResultsPhase() {
           })}
         >
           <div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
               Regions Found
             </div>
-            <div className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'green.500' })}>
+            <div
+              className={css({
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'green.500',
+              })}
+            >
               {totalRegions} / {totalRegions}
             </div>
           </div>
           <div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
               Time
             </div>
-            <div className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'blue.500' })}>
+            <div
+              className={css({
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'blue.500',
+              })}
+            >
               {minutes}:{seconds.toString().padStart(2, '0')}
             </div>
           </div>
@@ -131,7 +159,13 @@ export function ResultsPhase() {
         >
           {state.gameMode === 'cooperative' ? 'Team Score' : 'Leaderboard'}
         </h2>
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3',
+          })}
+        >
           {sortedPlayers.map((player, index) => (
             <div
               key={player.playerId}
@@ -165,11 +199,22 @@ export function ResultsPhase() {
                 >
                   {player.name}
                 </div>
-                <div className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
                   {player.attempts} wrong clicks
                 </div>
               </div>
-              <div className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'green.500' })}>
+              <div
+                className={css({
+                  fontSize: '2xl',
+                  fontWeight: 'bold',
+                  color: 'green.500',
+                })}
+              >
                 {player.score} pts
               </div>
             </div>

@@ -47,7 +47,9 @@ test.describe('Know Your World - Magnifier Functionality', () => {
       await page.waitForLoadState('networkidle')
     }
 
-    await page.waitForSelector('[data-component="map-renderer"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="map-renderer"]', {
+      timeout: 5000,
+    })
   })
 
   test('should show magnifier when hovering over map', async ({ page }) => {

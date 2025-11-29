@@ -123,7 +123,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate against schema (this will check all field types and ranges)
-    const schemaValidation = additionConfigSchema.safeParse({ ...config, version: 4 })
+    const schemaValidation = additionConfigSchema.safeParse({
+      ...config,
+      version: 4,
+    })
     if (!schemaValidation.success) {
       const errorMessages = schemaValidation.error.issues
         .map((err) => `${err.path.join('.')}: ${err.message}`)

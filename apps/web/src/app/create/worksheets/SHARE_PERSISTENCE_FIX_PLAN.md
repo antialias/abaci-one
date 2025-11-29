@@ -11,15 +11,17 @@ The worksheet sharing feature does NOT use the same persistence/loading logic as
 **Location:** `src/app/create/worksheets/components/PreviewCenter.tsx:83` and `ActionsSidebar.tsx:42`
 
 **What's Wrong:**
+
 ```typescript
 // WRONG: Sends entire formState (Partial type with possibly invalid/extra fields)
 body: JSON.stringify({
-  worksheetType: 'addition',
-  config: formState,  // ❌ Unfiltered Partial<WorksheetFormState>
-})
+  worksheetType: "addition",
+  config: formState, // ❌ Unfiltered Partial<WorksheetFormState>
+});
 ```
 
 **Why It's Wrong:**
+
 - `formState` is `WorksheetFormState` which is a `Partial` type - may contain undefined/invalid fields
 - May include derived state like `rows`, `total`, `date`, `seed` that shouldn't be persisted
 - May include temporary UI state that doesn't belong in the config
@@ -35,12 +37,14 @@ Use the same field extraction that `useWorksheetAutoSave.ts` uses - extract exac
 **Location:** `src/app/api/worksheets/share/route.ts:87`
 
 **What's Wrong:**
+
 ```typescript
 // WRONG: Blindly serializes whatever config was received
-const configJson = serializeAdditionConfig(config)  // ❌ No validation before serialization
+const configJson = serializeAdditionConfig(config); // ❌ No validation before serialization
 ```
 
 **Why It's Wrong:**
+
 - `serializeAdditionConfig()` just adds `version: 4` and calls `JSON.stringify()`
 - Doesn't validate the incoming config structure
 - Doesn't check if required fields are present
@@ -56,21 +60,24 @@ Validate/normalize the config before serialization, or better yet, only accept t
 **Location:** `src/app/api/worksheets/share/[id]/route.ts:50`
 
 **What's Wrong:**
+
 ```typescript
 // WRONG: Just parses JSON with no validation
-const config = JSON.parse(share.config)  // ❌ No validation, no migration!
+const config = JSON.parse(share.config); // ❌ No validation, no migration!
 ```
 
 **Why It's Wrong:**
+
 - Doesn't use `parseAdditionConfig()` which validates and migrates configs
 - If an old version config is stored, it won't be migrated to the current schema
 - No validation that the config has required fields
 - Could return malformed data that breaks the client
 
 **Compare to User Settings Load:**
+
 ```typescript
 // CORRECT: User settings use parseAdditionConfig()
-const config = parseAdditionConfig(row.config)  // ✅ Validates + migrates!
+const config = parseAdditionConfig(row.config); // ✅ Validates + migrates!
 ```
 
 **Correct Path Forward:**
@@ -87,8 +94,8 @@ Use `parseAdditionConfig()` to ensure all shared configs are validated and migra
 **Purpose:** DRY principle - extract the same fields in auto-save, share save, and settings save
 
 ```typescript
-import type { WorksheetFormState } from '../types'
-import type { AdditionConfigV4 } from '../config-schemas'
+import type { WorksheetFormState } from "../types";
+import type { AdditionConfigV4 } from "../config-schemas";
 
 /**
  * Extract only the persisted config fields from formState
@@ -100,8 +107,8 @@ import type { AdditionConfigV4 } from '../config-schemas'
  * - Settings API
  */
 export function extractConfigFields(
-  formState: WorksheetFormState
-): Omit<AdditionConfigV4, 'version'> {
+  formState: WorksheetFormState,
+): Omit<AdditionConfigV4, "version"> {
   return {
     problemsPerPage: formState.problemsPerPage!,
     cols: formState.cols!,
@@ -127,11 +134,12 @@ export function extractConfigFields(
     difficultyProfile: formState.difficultyProfile,
     displayRules: formState.displayRules,
     manualPreset: formState.manualPreset,
-  }
+  };
 }
 ```
 
 **Why This Approach:**
+
 - Single source of truth for what fields get persisted
 - Type-safe - returns the exact type expected by `serializeAdditionConfig()`
 - Easy to maintain - only one place to update when adding new persisted fields
@@ -144,6 +152,7 @@ export function extractConfigFields(
 **File:** `src/app/create/worksheets/hooks/useWorksheetAutoSave.ts:47-73`
 
 **Before:**
+
 ```typescript
 // Extract only the fields we want to persist (exclude date, seed, derived state)
 const {
@@ -151,18 +160,20 @@ const {
   cols,
   pages,
   // ... 20+ more fields manually listed
-} = formState
+} = formState;
 ```
 
 **After:**
+
 ```typescript
-import { extractConfigFields } from '../utils/extractConfigFields'
+import { extractConfigFields } from "../utils/extractConfigFields";
 
 // Extract persisted config fields
-const config = extractConfigFields(formState)
+const config = extractConfigFields(formState);
 ```
 
 **Why:**
+
 - Reduces code duplication (24 lines → 2 lines)
 - Ensures consistency - if we update the helper, auto-save automatically uses the new logic
 - More maintainable
@@ -172,36 +183,40 @@ const config = extractConfigFields(formState)
 ### Step 3: Update Share Components to Use Helper
 
 **Files:**
+
 - `src/app/create/worksheets/components/PreviewCenter.tsx:72-101`
 - `src/app/create/worksheets/components/ActionsSidebar.tsx:33-63`
 
 **Before:**
+
 ```typescript
-const response = await fetch('/api/worksheets/share', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/worksheets/share", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    worksheetType: 'addition',
-    config: formState,  // ❌ Raw formState
+    worksheetType: "addition",
+    config: formState, // ❌ Raw formState
   }),
-})
+});
 ```
 
 **After:**
-```typescript
-import { extractConfigFields } from '../../utils/extractConfigFields'
 
-const response = await fetch('/api/worksheets/share', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+```typescript
+import { extractConfigFields } from "../../utils/extractConfigFields";
+
+const response = await fetch("/api/worksheets/share", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    worksheetType: 'addition',
-    config: extractConfigFields(formState),  // ✅ Filtered config
+    worksheetType: "addition",
+    config: extractConfigFields(formState), // ✅ Filtered config
   }),
-})
+});
 ```
 
 **Why:**
+
 - Only persists the fields that should be shared
 - Excludes derived state and UI-specific state
 - Consistent with auto-save behavior
@@ -213,20 +228,23 @@ const response = await fetch('/api/worksheets/share', {
 **File:** `src/app/api/worksheets/share/[id]/route.ts:49-50`
 
 **Before:**
+
 ```typescript
 // Parse config JSON
-const config = JSON.parse(share.config)  // ❌ No validation!
+const config = JSON.parse(share.config); // ❌ No validation!
 ```
 
 **After:**
+
 ```typescript
-import { parseAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { parseAdditionConfig } from "@/app/create/worksheets/config-schemas";
 
 // Parse and validate config (auto-migrates to latest version)
-const config = parseAdditionConfig(share.config)  // ✅ Validates + migrates!
+const config = parseAdditionConfig(share.config); // ✅ Validates + migrates!
 ```
 
 **Why:**
+
 - **Validation:** Ensures the config has all required fields and correct types
 - **Migration:** Old shared configs (v1, v2, v3) automatically migrate to v4
 - **Consistency:** Uses the exact same loading logic as user session persistence
@@ -239,32 +257,35 @@ const config = parseAdditionConfig(share.config)  // ✅ Validates + migrates!
 **File:** `src/app/create/worksheets/components/ShareModal.tsx:30-44`
 
 **Before:**
+
 ```typescript
-const response = await fetch('/api/worksheets/share', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/worksheets/share", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     worksheetType,
-    config,  // ❌ Passed directly from props
+    config, // ❌ Passed directly from props
   }),
-})
+});
 ```
 
 **After:**
-```typescript
-import { extractConfigFields } from '../utils/extractConfigFields'
 
-const response = await fetch('/api/worksheets/share', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+```typescript
+import { extractConfigFields } from "../utils/extractConfigFields";
+
+const response = await fetch("/api/worksheets/share", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     worksheetType,
-    config: extractConfigFields(config),  // ✅ Filtered config
+    config: extractConfigFields(config), // ✅ Filtered config
   }),
-})
+});
 ```
 
 **Why:**
+
 - Same benefits as PreviewCenter/ActionsSidebar
 - Ensures all share creation paths use the same logic
 
@@ -281,18 +302,22 @@ const response = await fetch('/api/worksheets/share', {
 ## Benefits of This Approach
 
 ### Consistency
+
 - Share and user session use identical persistence logic
 - Single source of truth for what fields get persisted
 
 ### Validation
+
 - All configs (shared or personal) go through the same validation
 - Old versions automatically migrate to current schema
 
 ### Maintainability
+
 - Adding a new persisted field: update helper once, all paths inherit it
 - Reduces code duplication from ~100 lines to ~30 lines
 
 ### Safety
+
 - Type-safe field extraction
 - Validation catches errors before they reach the client
 - Migration ensures forward/backward compatibility

@@ -3,6 +3,7 @@
 ## Goal
 
 Instead of strictly cropping to the custom viewBox, we want to:
+
 1. **Guarantee** the custom crop region is fully visible and centered
 2. **Fill** any remaining viewport space with more of the map (no letterboxing)
 3. **Stay** within the original map's bounds
@@ -36,6 +37,7 @@ Instead of strictly cropping to the custom viewBox, we want to:
 ## Math Strategy
 
 ### Inputs
+
 - `originalViewBox`: Full map bounds (e.g., `0 0 1000 500` for world map)
 - `cropRegion`: Custom crop that MUST be visible (e.g., `346.40 53.73 247.56 360.70` for Europe)
 - `containerAspect`: Container's width/height ratio
@@ -46,9 +48,8 @@ Instead of strictly cropping to the custom viewBox, we want to:
 function calculateFitCropViewBox(
   originalViewBox: { x: number; y: number; width: number; height: number },
   cropRegion: { x: number; y: number; width: number; height: number },
-  containerAspect: number // width / height
+  containerAspect: number, // width / height
 ): { x: number; y: number; width: number; height: number } {
-
   const cropAspect = cropRegion.width / cropRegion.height;
 
   let viewBoxWidth: number;
@@ -78,14 +79,20 @@ function calculateFitCropViewBox(
   // Clamp X
   if (viewBoxX < originalViewBox.x) {
     viewBoxX = originalViewBox.x;
-  } else if (viewBoxX + viewBoxWidth > originalViewBox.x + originalViewBox.width) {
+  } else if (
+    viewBoxX + viewBoxWidth >
+    originalViewBox.x + originalViewBox.width
+  ) {
     viewBoxX = originalViewBox.x + originalViewBox.width - viewBoxWidth;
   }
 
   // Clamp Y
   if (viewBoxY < originalViewBox.y) {
     viewBoxY = originalViewBox.y;
-  } else if (viewBoxY + viewBoxHeight > originalViewBox.y + originalViewBox.height) {
+  } else if (
+    viewBoxY + viewBoxHeight >
+    originalViewBox.y + originalViewBox.height
+  ) {
     viewBoxY = originalViewBox.y + originalViewBox.height - viewBoxHeight;
   }
 
@@ -100,7 +107,12 @@ function calculateFitCropViewBox(
     viewBoxY = originalViewBox.y;
   }
 
-  return { x: viewBoxX, y: viewBoxY, width: viewBoxWidth, height: viewBoxHeight };
+  return {
+    x: viewBoxX,
+    y: viewBoxY,
+    width: viewBoxWidth,
+    height: viewBoxHeight,
+  };
 }
 ```
 
@@ -157,8 +169,8 @@ Result: Shows full map height, N.America visible but not centered vertically
 ```typescript
 interface MapData {
   // ... existing fields
-  viewBox: string;           // The display viewBox (crop or full)
-  originalViewBox: string;   // Always the full map bounds
+  viewBox: string; // The display viewBox (crop or full)
+  originalViewBox: string; // Always the full map bounds
   customCrop: string | null; // The custom crop if any
 }
 ```
@@ -171,10 +183,10 @@ Return both the custom crop (as `customCrop`) and original bounds (as `originalV
 return {
   ...mapData,
   regions: filteredRegions,
-  viewBox: adjustedViewBox,        // For backward compatibility
+  viewBox: adjustedViewBox, // For backward compatibility
   originalViewBox: mapData.viewBox, // Original full bounds
-  customCrop: customCrop,           // The crop region, or null
-}
+  customCrop: customCrop, // The crop region, or null
+};
 ```
 
 ### 3. Create `calculateFitCropViewBox` utility (`maps.ts`)
@@ -208,6 +220,7 @@ const displayViewBox = useMemo(() => {
 ### 5. Update Dependent Calculations
 
 The following need to use `displayViewBox` instead of `mapData.viewBox`:
+
 - Magnifier viewBox calculations
 - Debug bounding box label positioning
 - Cursor-to-SVG coordinate conversions

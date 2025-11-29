@@ -85,7 +85,12 @@ export interface UseArcadeSessionReturn<TState> {
    */
   otherPlayerCursors: Record<
     string,
-    { x: number; y: number; userId: string; hoveredRegionId: string | null } | null
+    {
+      x: number
+      y: number
+      userId: string
+      hoveredRegionId: string | null
+    } | null
   >
 
   /**
@@ -176,7 +181,15 @@ export function useArcadeSession<TState>(
 
   // Track other players' cursor positions (ephemeral, real-time)
   const [otherPlayerCursors, setOtherPlayerCursors] = useState<
-    Record<string, { x: number; y: number; userId: string; hoveredRegionId: string | null } | null>
+    Record<
+      string,
+      {
+        x: number
+        y: number
+        userId: string
+        hoveredRegionId: string | null
+      } | null
+    >
   >({})
 
   // WebSocket connection
@@ -281,7 +294,11 @@ export function useArcadeSession<TState>(
       setOtherPlayerCursors((prev) => ({
         ...prev,
         [data.playerId]: data.cursorPosition
-          ? { ...data.cursorPosition, userId: data.userId, hoveredRegionId: data.hoveredRegionId }
+          ? {
+              ...data.cursorPosition,
+              userId: data.userId,
+              hoveredRegionId: data.hoveredRegionId,
+            }
           : null,
       }))
     },

@@ -91,7 +91,12 @@ export const VirtualScrollSimulation: Story = {
             Virtual Scroll: Multi-Page Worksheet Loading
           </h3>
           <p
-            style={{ marginBottom: '24px', fontSize: '13px', color: '#6b7280', maxWidth: '600px' }}
+            style={{
+              marginBottom: '24px',
+              fontSize: '13px',
+              color: '#6b7280',
+              maxWidth: '600px',
+            }}
           >
             This demonstrates how placeholder pages appear during virtual scrolling. Pages load
             on-demand as they become visible in the viewport, showing a loading state while the SVG
@@ -101,7 +106,14 @@ export const VirtualScrollSimulation: Story = {
 
         {/* Page 1 - Already loaded */}
         <div>
-          <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 600, color: '#059669' }}>
+          <div
+            style={{
+              marginBottom: '8px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#059669',
+            }}
+          >
             ✓ Loaded
           </div>
           <div
@@ -124,7 +136,14 @@ export const VirtualScrollSimulation: Story = {
 
         {/* Page 2 - Loading */}
         <div>
-          <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 600, color: '#f59e0b' }}>
+          <div
+            style={{
+              marginBottom: '8px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#f59e0b',
+            }}
+          >
             ⏳ Loading...
           </div>
           <div
@@ -147,7 +166,14 @@ export const VirtualScrollSimulation: Story = {
 
         {/* Page 3 - Not yet visible */}
         <div>
-          <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>
+          <div
+            style={{
+              marginBottom: '8px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#6b7280',
+            }}
+          >
             ⏸ Not yet loaded
           </div>
           <div
@@ -195,7 +221,14 @@ export const SparseLayout: Story = {
 export const ComparisonView: Story = {
   render: () => {
     return (
-      <div style={{ display: 'flex', gap: '48px', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '48px',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}
+      >
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>Portrait</h4>
           <p style={{ marginBottom: '16px', fontSize: '12px', color: '#6b7280' }}>8.5" × 11"</p>

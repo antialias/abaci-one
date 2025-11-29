@@ -31,7 +31,10 @@ function SliderWrapper(args: React.ComponentProps<typeof OverallDifficultySlider
             (updates.pAnyStart + updates.pAllStart * 2) / 3 +
             (1 - Object.values(updates.displayRules).filter((v) => v === 'always').length / 10)
           setDifficulty(newDifficulty)
-          setConfig({ pAnyStart: updates.pAnyStart, pAllStart: updates.pAllStart })
+          setConfig({
+            pAnyStart: updates.pAnyStart,
+            pAllStart: updates.pAllStart,
+          })
         }}
       />
       <div
@@ -44,7 +47,13 @@ function SliderWrapper(args: React.ComponentProps<typeof OverallDifficultySlider
         }}
       >
         <strong>Current Configuration:</strong>
-        <div style={{ marginTop: '8px', fontSize: '11px', fontFamily: 'monospace' }}>
+        <div
+          style={{
+            marginTop: '8px',
+            fontSize: '11px',
+            fontFamily: 'monospace',
+          }}
+        >
           pAnyStart: {config.pAnyStart.toFixed(2)}
           <br />
           pAllStart: {config.pAllStart.toFixed(2)}
@@ -164,7 +173,13 @@ export const InteractiveWithPresets: Story = {
           }}
         >
           <strong>Current State:</strong>
-          <div style={{ marginTop: '8px', fontSize: '11px', fontFamily: 'monospace' }}>
+          <div
+            style={{
+              marginTop: '8px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+            }}
+          >
             <div>Difficulty: {difficulty.toFixed(2)} / 10</div>
             <div>pAnyStart: {pAnyStart.toFixed(2)}</div>
             <div>pAllStart: {pAllStart.toFixed(2)}</div>

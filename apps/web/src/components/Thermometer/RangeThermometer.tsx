@@ -333,11 +333,7 @@ export function RangeThermometer<T extends string>({
                         : isDark
                           ? 'gray.400'
                           : 'gray.500',
-                      bg: isOnly
-                        ? isDark
-                          ? 'green.900/50'
-                          : 'green.100'
-                        : 'transparent',
+                      bg: isOnly ? (isDark ? 'green.900/50' : 'green.100') : 'transparent',
                       border: '1px solid',
                       borderColor: isOnly
                         ? isDark

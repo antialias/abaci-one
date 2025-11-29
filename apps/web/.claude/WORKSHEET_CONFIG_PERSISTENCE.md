@@ -78,12 +78,13 @@ These fields are calculated from primary state and should NOT be saved:
 
 ```typescript
 {
-  total: number   // = problemsPerPage × pages
-  rows: number    // = Math.ceil(problemsPerPage / cols)
+  total: number; // = problemsPerPage × pages
+  rows: number; // = Math.ceil(problemsPerPage / cols)
 }
 ```
 
 **Why exclude these?**
+
 - They're redundant (can be recalculated)
 - Including them creates risk of inconsistency (e.g., `total: 20` but `pages: 100`)
 - Primary state is the source of truth
@@ -94,11 +95,12 @@ These fields are generated fresh at runtime and should NOT be saved:
 
 ```typescript
 {
-  date: string    // Current date (e.g., "January 15, 2025")
+  date: string; // Current date (e.g., "January 15, 2025")
 }
 ```
 
 **Why exclude?**
+
 - Date should reflect when the worksheet is actually generated/printed
 - User may generate worksheet days/weeks after creating the config
 
@@ -109,18 +111,19 @@ These fields are generated fresh at runtime and should NOT be saved:
 ```typescript
 export function extractConfigFields(formState: WorksheetFormState) {
   // Blacklist approach: Exclude only derived/ephemeral fields
-  const { rows, total, date, ...persistedFields } = formState
+  const { rows, total, date, ...persistedFields } = formState;
 
   return {
     ...persistedFields,
-    prngAlgorithm: persistedFields.prngAlgorithm ?? 'mulberry32',
-  }
+    prngAlgorithm: persistedFields.prngAlgorithm ?? "mulberry32",
+  };
 }
 ```
 
 ### Why Blacklist Instead of Whitelist?
 
 **Old Approach (FRAGILE):**
+
 ```typescript
 // Manually list every field - easy to forget new fields!
 return {
@@ -129,17 +132,19 @@ return {
   pages: formState.pages,
   // ... 30+ fields ...
   // Oops, forgot to add the new field! Shared worksheets break!
-}
+};
 ```
 
 **New Approach (ROBUST):**
+
 ```typescript
 // Automatically include everything except derived fields
-const { rows, total, date, ...persistedFields } = formState
-return persistedFields
+const { rows, total, date, ...persistedFields } = formState;
+return persistedFields;
 ```
 
 **Benefits:**
+
 - ✅ New config fields automatically work in shared worksheets
 - ✅ Only need to update if adding new DERIVED fields (rare)
 - ✅ Much harder to accidentally break sharing
@@ -152,16 +157,17 @@ return persistedFields
 **Hook:** `src/hooks/useWorksheetAutoSave.ts`
 
 ```typescript
-const config = extractConfigFields(formState)
-localStorage.setItem('worksheet-addition-config', JSON.stringify(config))
+const config = extractConfigFields(formState);
+localStorage.setItem("worksheet-addition-config", JSON.stringify(config));
 ```
 
 **Purpose:** Restore user's work when they return to the page
 
 **Restoration:**
+
 ```typescript
-const saved = localStorage.getItem('worksheet-addition-config')
-const config = saved ? JSON.parse(saved) : defaultConfig
+const saved = localStorage.getItem("worksheet-addition-config");
+const config = saved ? JSON.parse(saved) : defaultConfig;
 ```
 
 ### 2. Database (Share Links)
@@ -169,22 +175,23 @@ const config = saved ? JSON.parse(saved) : defaultConfig
 **API Route:** `POST /api/worksheets/share`
 
 ```typescript
-const config = extractConfigFields(formState)
+const config = extractConfigFields(formState);
 await db.insert(worksheetShares).values({
   id: shareId,
-  worksheetType: 'addition',
+  worksheetType: "addition",
   config: JSON.stringify(config),
-})
+});
 ```
 
 **Purpose:** Allow users to share exact worksheet configurations via URL
 
 **Restoration:**
+
 ```typescript
 const share = await db.query.worksheetShares.findFirst({
-  where: eq(worksheetShares.id, shareId)
-})
-const config = JSON.parse(share.config)
+  where: eq(worksheetShares.id, shareId),
+});
+const config = JSON.parse(share.config);
 ```
 
 ### 3. API Settings (User Preferences)
@@ -192,12 +199,12 @@ const config = JSON.parse(share.config)
 **API Route:** `POST /api/worksheets/settings`
 
 ```typescript
-const config = extractConfigFields(formState)
+const config = extractConfigFields(formState);
 await db.insert(worksheetSettings).values({
   userId: session.userId,
-  type: 'addition',
+  type: "addition",
   config: JSON.stringify(config),
-})
+});
 ```
 
 **Purpose:** Save user's preferred defaults (future feature)
@@ -207,33 +214,36 @@ await db.insert(worksheetSettings).values({
 ### When Loading a Shared Worksheet
 
 1. **Fetch share data:**
+
    ```typescript
-   const response = await fetch(`/api/worksheets/share/${shareId}`)
-   const { config } = await response.json()
+   const response = await fetch(`/api/worksheets/share/${shareId}`);
+   const { config } = await response.json();
    ```
 
 2. **Pass to validation:**
+
    ```typescript
-   const validation = validateWorksheetConfig(config)
+   const validation = validateWorksheetConfig(config);
    ```
 
 3. **Validation calculates derived state:**
+
    ```typescript
    // In validation.ts
-   const problemsPerPage = formState.problemsPerPage ?? 20
-   const pages = formState.pages ?? 1
-   const total = problemsPerPage * pages  // DERIVED!
-   const rows = Math.ceil(total / cols)   // DERIVED!
+   const problemsPerPage = formState.problemsPerPage ?? 20;
+   const pages = formState.pages ?? 1;
+   const total = problemsPerPage * pages; // DERIVED!
+   const rows = Math.ceil(total / cols); // DERIVED!
    ```
 
 4. **Return validated config with derived state:**
    ```typescript
    return {
      ...persistedFields,
-     total,  // Calculated
-     rows,   // Calculated
-     date: getDefaultDate(),  // Fresh!
-   }
+     total, // Calculated
+     rows, // Calculated
+     date: getDefaultDate(), // Fresh!
+   };
    ```
 
 ## Common Bugs and Solutions
@@ -243,14 +253,15 @@ await db.insert(worksheetSettings).values({
 **Cause:** Using `formState.total` as source of truth instead of calculating from `problemsPerPage × pages`
 
 **Fix:**
+
 ```typescript
 // ❌ WRONG - uses fallback when total is missing
-const total = formState.total ?? 20
+const total = formState.total ?? 20;
 
 // ✅ CORRECT - calculate from primary state
-const problemsPerPage = formState.problemsPerPage ?? 20
-const pages = formState.pages ?? 1
-const total = problemsPerPage * pages
+const problemsPerPage = formState.problemsPerPage ?? 20;
+const pages = formState.pages ?? 1;
+const total = problemsPerPage * pages;
 ```
 
 ### Bug: New config field doesn't persist
@@ -264,11 +275,12 @@ const total = problemsPerPage * pages
 **Cause:** Missing `seed` or `prngAlgorithm` in persisted config
 
 **Solution:** `extractConfigFields` always includes these fields:
+
 ```typescript
 const config = {
   ...persistedFields,
-  prngAlgorithm: persistedFields.prngAlgorithm ?? 'mulberry32',
-}
+  prngAlgorithm: persistedFields.prngAlgorithm ?? "mulberry32",
+};
 ```
 
 ## Adding New Config Fields
@@ -283,18 +295,20 @@ When adding a new config field:
    - EPHEMERAL STATE? → Add to blacklist in `extractConfigFields.ts`
 
 2. **Add to type definitions:**
+
    ```typescript
    // In config-schemas.ts
    export const additionConfigV4Schema = z.object({
      // ... existing fields ...
-     myNewField: z.string().optional(),  // Add new field
-   })
+     myNewField: z.string().optional(), // Add new field
+   });
    ```
 
 3. **Update validation defaults (if needed):**
+
    ```typescript
    // In validation.ts
-   const myNewField = formState.myNewField ?? 'defaultValue'
+   const myNewField = formState.myNewField ?? "defaultValue";
    ```
 
 4. **Test the flow:**
@@ -310,14 +324,14 @@ When adding a new config field:
 // 1. Update schema (config-schemas.ts)
 export const additionConfigV4Schema = z.object({
   // ... existing fields ...
-  headerText: z.string().optional(),  // New field!
-})
+  headerText: z.string().optional(), // New field!
+});
 
 // 2. Update validation defaults (validation.ts)
 const sharedFields = {
   // ... existing fields ...
-  headerText: formState.headerText ?? 'Math Practice',
-}
+  headerText: formState.headerText ?? "Math Practice",
+};
 
 // 3. Done! extractConfigFields automatically includes it
 ```
@@ -329,10 +343,11 @@ const sharedFields = {
 // (Derived fields don't go in the persisted schema)
 
 // 2. Calculate in validation (validation.ts)
-const averageProblemsPerRow = Math.ceil(problemsPerPage / rows)
+const averageProblemsPerRow = Math.ceil(problemsPerPage / rows);
 
 // 3. Add to blacklist (extractConfigFields.ts)
-const { rows, total, date, averageProblemsPerRow, ...persistedFields } = formState
+const { rows, total, date, averageProblemsPerRow, ...persistedFields } =
+  formState;
 ```
 
 ## Testing
@@ -359,35 +374,35 @@ const { rows, total, date, averageProblemsPerRow, ...persistedFields } = formSta
 ### Automated Test (TODO)
 
 ```typescript
-describe('extractConfigFields', () => {
-  it('excludes derived state', () => {
+describe("extractConfigFields", () => {
+  it("excludes derived state", () => {
     const formState = {
       problemsPerPage: 20,
       pages: 5,
-      total: 100,  // Should be excluded
-      rows: 5,     // Should be excluded
-    }
+      total: 100, // Should be excluded
+      rows: 5, // Should be excluded
+    };
 
-    const config = extractConfigFields(formState)
+    const config = extractConfigFields(formState);
 
-    expect(config.problemsPerPage).toBe(20)
-    expect(config.pages).toBe(5)
-    expect(config.total).toBeUndefined()
-    expect(config.rows).toBeUndefined()
-  })
+    expect(config.problemsPerPage).toBe(20);
+    expect(config.pages).toBe(5);
+    expect(config.total).toBeUndefined();
+    expect(config.rows).toBeUndefined();
+  });
 
-  it('includes seed and prngAlgorithm', () => {
+  it("includes seed and prngAlgorithm", () => {
     const formState = {
       seed: 12345,
-      prngAlgorithm: 'mulberry32',
-    }
+      prngAlgorithm: "mulberry32",
+    };
 
-    const config = extractConfigFields(formState)
+    const config = extractConfigFields(formState);
 
-    expect(config.seed).toBe(12345)
-    expect(config.prngAlgorithm).toBe('mulberry32')
-  })
-})
+    expect(config.seed).toBe(12345);
+    expect(config.prngAlgorithm).toBe("mulberry32");
+  });
+});
 ```
 
 ## Related Files
@@ -415,12 +430,13 @@ describe('extractConfigFields', () => {
 **Problem:** Shared 100-page worksheets displayed as 4 pages because validation defaulted `total` to 20 instead of calculating from `problemsPerPage × pages`.
 
 **Solution:** Calculate `total` from primary state instead of using fallback:
+
 ```typescript
 // Before (bug)
-const total = formState.total ?? 20
+const total = formState.total ?? 20;
 
 // After (fix)
-const total = problemsPerPage * pages
+const total = problemsPerPage * pages;
 ```
 
 **Root Cause:** `extractConfigFields` didn't save `total` (correctly, as it's derived), but validation incorrectly treated it as primary state.

@@ -21,7 +21,12 @@ export function MobileSettingsButton({ config, onClick }: MobileSettingsButtonPr
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [position, setPosition] = useState({ x: MARGIN, y: 0 })
-  const dragStartRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
+  const dragStartRef = useRef<{
+    x: number
+    y: number
+    startX: number
+    startY: number
+  } | null>(null)
 
   // Load saved position from localStorage
   useEffect(() => {

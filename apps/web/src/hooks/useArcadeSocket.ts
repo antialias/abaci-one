@@ -227,7 +227,13 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       hoveredRegionId: string | null
     ) => {
       if (!socket) return
-      socket.emit('cursor-update', { roomId, playerId, userId, cursorPosition, hoveredRegionId })
+      socket.emit('cursor-update', {
+        roomId,
+        playerId,
+        userId,
+        cursorPosition,
+        hoveredRegionId,
+      })
     },
     [socket]
   )

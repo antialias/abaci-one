@@ -32,7 +32,10 @@ export default function SharedWorksheetPage() {
   const [shareData, setShareData] = useState<ShareData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [previewError, setPreviewError] = useState<{ error: string; details?: string } | null>(null)
+  const [previewError, setPreviewError] = useState<{
+    error: string
+    details?: string
+  } | null>(null)
   const [preview, setPreview] = useState<string[] | undefined>(undefined)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -197,10 +200,22 @@ export default function SharedWorksheetPage() {
         >
           <div className={stack({ gap: '4', alignItems: 'center' })}>
             <div className={css({ fontSize: '4xl' })}>❌</div>
-            <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.900' })}>
+            <h1
+              className={css({
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'gray.900',
+              })}
+            >
               {error || 'Not Found'}
             </h1>
-            <p className={css({ fontSize: 'md', color: 'gray.600', textAlign: 'center' })}>
+            <p
+              className={css({
+                fontSize: 'md',
+                color: 'gray.600',
+                textAlign: 'center',
+              })}
+            >
               This shared worksheet link may have expired or been removed.
             </p>
             <button
@@ -309,7 +324,13 @@ export default function SharedWorksheetPage() {
                     })}
                   >
                     <div className={stack({ gap: '4' })}>
-                      <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+                      <div
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3',
+                        })}
+                      >
                         <span className={css({ fontSize: '3xl' })}>⚠️</span>
                         <h3
                           className={css({
@@ -465,7 +486,11 @@ export default function SharedWorksheetPage() {
                       })}
                     >
                       Opening this worksheet in the editor will{' '}
-                      <strong className={css({ color: isDark ? 'yellow.400' : 'orange.600' })}>
+                      <strong
+                        className={css({
+                          color: isDark ? 'yellow.400' : 'orange.600',
+                        })}
+                      >
                         overwrite your current worksheet settings
                       </strong>
                       . Your current configuration will be replaced with this shared worksheet's
@@ -483,7 +508,10 @@ export default function SharedWorksheetPage() {
                     })}
                   >
                     <div
-                      className={css({ fontSize: 'sm', color: isDark ? 'gray.300' : 'gray.700' })}
+                      className={css({
+                        fontSize: 'sm',
+                        color: isDark ? 'gray.300' : 'gray.700',
+                      })}
                     >
                       <strong>💡 Tip:</strong> If you want to keep your current settings, you can:
                       <ul className={css({ mt: '2', ml: '4', listStyle: 'disc' })}>

@@ -7,6 +7,7 @@ This document describes best practices for intelligently resolving Git merge con
 ## What is diff3?
 
 **diff3** is a 3-way merge conflict style that shows:
+
 1. **OURS** (HEAD/current branch changes)
 2. **BASE** (common ancestor/original code)
 3. **THEIRS** (incoming branch changes)
@@ -28,6 +29,7 @@ their changes - what they did to the base
 ## Why diff3 is Superior
 
 ### Without diff3 (standard merge):
+
 ```
 <<<<<<< HEAD
 function calculate(a, b) {
@@ -41,11 +43,13 @@ function calculate(x, y) {
 ```
 
 **Problem:** Can't tell if:
+
 - We added `+ 10` or they removed it?
 - We renamed params or they renamed them?
 - Both changes are intentional or redundant?
 
 ### With diff3:
+
 ```
 <<<<<<< HEAD
 function calculate(a, b) {
@@ -63,6 +67,7 @@ function calculate(x, y) {
 ```
 
 **Clear insights:**
+
 - **OURS**: Added `+ 10` (kept param names)
 - **BASE**: Original had `a + b`
 - **THEIRS**: Renamed params to `x, y`
@@ -73,23 +78,25 @@ function calculate(x, y) {
 ### Step 1: Compare Each Side to Base
 
 For each conflict:
+
 1. **OURS vs BASE**: What did we change?
 2. **THEIRS vs BASE**: What did they change?
 3. **Classify the conflict type** (see below)
 
 ### Step 2: Classify Conflict Type
 
-| Conflict Type | Description | Resolution Strategy |
-|--------------|-------------|---------------------|
-| **Compatible** | Changes are to different parts/aspects | Keep both changes |
-| **Redundant** | Same intent, different implementation | Choose the better implementation or merge carefully |
-| **Conflicting** | Incompatible changes to same logic | Understand intent, combine if possible, or choose one |
-| **Delete vs Modify** | One side deleted, other modified | Decide if modification is still relevant without deleted code |
-| **Rename vs Reference** | One renamed, other added references | Update references to new name |
+| Conflict Type           | Description                            | Resolution Strategy                                           |
+| ----------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| **Compatible**          | Changes are to different parts/aspects | Keep both changes                                             |
+| **Redundant**           | Same intent, different implementation  | Choose the better implementation or merge carefully           |
+| **Conflicting**         | Incompatible changes to same logic     | Understand intent, combine if possible, or choose one         |
+| **Delete vs Modify**    | One side deleted, other modified       | Decide if modification is still relevant without deleted code |
+| **Rename vs Reference** | One renamed, other added references    | Update references to new name                                 |
 
 ### Step 3: Resolution Patterns
 
 #### Pattern 1: Independent Changes (Compatible)
+
 ```
 <<<<<<< HEAD
 function process(data) {
@@ -108,19 +115,22 @@ function process(data) {
 ```
 
 **Analysis:**
+
 - OURS: Added validation call (new line)
 - THEIRS: Added `.toUpperCase()` to return (modified existing line)
 - Both changes are independent
 
 **Resolution:**
+
 ```javascript
 function process(data) {
-  validate(data);        // Keep our validation
-  return transform(data).toUpperCase();  // Keep their formatting
+  validate(data); // Keep our validation
+  return transform(data).toUpperCase(); // Keep their formatting
 }
 ```
 
 #### Pattern 2: Same Intent, Different Implementation (Redundant)
+
 ```
 <<<<<<< HEAD
 if (!data || data.length === 0) {
@@ -136,19 +146,22 @@ if (data.length === 0) {
 ```
 
 **Analysis:**
+
 - OURS: Added null check + length check
 - THEIRS: Added length check only
 - Same intent (validation), but OURS is more robust
 
 **Resolution:**
+
 ```javascript
 // Choose the more robust implementation (OURS)
 if (!data || data.length === 0) {
-  throw new Error('Data required');
+  throw new Error("Data required");
 }
 ```
 
 #### Pattern 3: Conflicting Logic
+
 ```
 <<<<<<< HEAD
 const result = calculate(a, b, mode === 'strict');
@@ -160,19 +173,22 @@ const result = await calculateAsync(a, b);
 ```
 
 **Analysis:**
+
 - OURS: Added `mode === 'strict'` parameter (sync)
 - THEIRS: Changed to async version
 - Both changes affect the same call but are incompatible
 
 **Resolution:**
+
 ```javascript
 // Combine both: use async version + add mode parameter
-const result = await calculateAsync(a, b, mode === 'strict');
+const result = await calculateAsync(a, b, mode === "strict");
 ```
 
 **Note:** This assumes `calculateAsync` supports the third parameter. If not, may need to update the function signature.
 
 #### Pattern 4: Delete vs Modify
+
 ```
 <<<<<<< HEAD
 function helper(x) {
@@ -188,17 +204,20 @@ function helper(x) {
 ```
 
 **Analysis:**
+
 - OURS: Modified function logic
 - THEIRS: Deleted function entirely
 - Need to determine: Why was it deleted? Is our modification still needed?
 
 **Resolution Strategy:**
+
 1. Check if function is still called anywhere
 2. If not called: Accept deletion (THEIRS)
 3. If still called: Keep modified version (OURS) or refactor to new approach
 4. If they replaced it with different implementation: Migrate our changes to new implementation
 
 #### Pattern 5: Rename + References
+
 ```
 <<<<<<< HEAD
 const userData = getUserData();
@@ -214,15 +233,17 @@ processUserData(userProfile);
 ```
 
 **Analysis:**
+
 - OURS: Added new reference to `userData`
 - THEIRS: Renamed `userData` to `userProfile` throughout
 - Need to apply rename to our new line too
 
 **Resolution:**
+
 ```javascript
 const userProfile = getUserData();
 processUserData(userProfile);
-validateUserData(userProfile);  // Use their new name
+validateUserData(userProfile); // Use their new name
 ```
 
 ## Modern Improvement: zdiff3
@@ -230,6 +251,7 @@ validateUserData(userProfile);  // Use their new name
 **zdiff3** (Zealous diff3) is a newer variant that extracts common lines outside conflict markers:
 
 ### Standard diff3:
+
 ```
 <<<<<<< HEAD
 function foo() {
@@ -252,6 +274,7 @@ function foo() {
 ```
 
 ### zdiff3:
+
 ```
 function foo() {
   console.log('start');
@@ -268,11 +291,13 @@ function foo() {
 **Benefit:** Conflict is more compact and focused on actual differences.
 
 **Enable zdiff3:**
+
 ```bash
 git config --global merge.conflictstyle zdiff3
 ```
 
 **Enable standard diff3:**
+
 ```bash
 git config --global merge.conflictstyle diff3
 ```
@@ -282,11 +307,13 @@ git config --global merge.conflictstyle diff3
 ### Text-Based vs Semantic Conflicts
 
 **Text-based merge** (Git default):
+
 - Treats files as lines of text
 - Conflicts when same lines modified
 - No understanding of code structure
 
 **Semantic merge**:
+
 - Parses code structure (classes, functions, methods)
 - Understands language syntax
 - Can merge changes to different methods even if lines overlap
@@ -295,6 +322,7 @@ git config --global merge.conflictstyle diff3
 ### Example: False Conflict
 
 Text-based tools see this as a conflict:
+
 ```
 class User {
 <<<<<<< HEAD
@@ -310,6 +338,7 @@ class User {
 ```
 
 Semantic tools recognize:
+
 - OURS: Added `getEmail()` method
 - THEIRS: Added `getAge()` method
 - Both are compatible additions to different methods
@@ -318,6 +347,7 @@ Semantic tools recognize:
 ## Resolution Workflow
 
 ### 1. Understand Context First
+
 ```bash
 # See what each branch was trying to accomplish
 git log --oneline HEAD ^origin/main
@@ -330,6 +360,7 @@ git log --all --source -- path/to/conflicted/file.ts
 ### 2. Analyze Each Conflict
 
 For each conflict marker block:
+
 1. **Identify the change types:**
    - Addition (new lines)
    - Deletion (lines removed)
@@ -355,6 +386,7 @@ Choose appropriate pattern from above based on classification.
 ### 4. Verify Resolution
 
 After resolving:
+
 ```bash
 # Ensure code compiles
 npm run type-check
@@ -372,6 +404,7 @@ npm run format
 ### 5. Document Complex Resolutions
 
 For non-obvious resolutions, add a comment:
+
 ```typescript
 // Merge resolution: Combined feature-A's validation (line 10)
 // with feature-B's async handling (line 15)
@@ -379,6 +412,7 @@ const result = await validateAndProcess(data);
 ```
 
 Or add to commit message:
+
 ```
 Merge branch 'feature-B' into feature-A
 
@@ -391,6 +425,7 @@ Resolved conflicts in src/processor.ts:
 ## Best Practices
 
 ### 1. Enable Better Conflict Markers
+
 ```bash
 # Use zdiff3 (recommended)
 git config --global merge.conflictstyle zdiff3
@@ -400,6 +435,7 @@ git config --global merge.conflictstyle diff3
 ```
 
 ### 2. Enable Rerere (Reuse Recorded Resolution)
+
 ```bash
 git config --global rerere.enabled true
 ```
@@ -413,6 +449,7 @@ Teams that merge more frequently report 70% fewer conflicts. Long-lived branches
 ### 4. Use Iterative Resolution
 
 For large conflicts:
+
 1. Resolve one conflict at a time
 2. Test after each resolution
 3. Commit intermediate states if needed (use `git commit --no-verify` to skip hooks)
@@ -421,11 +458,13 @@ For large conflicts:
 ### 5. Use Visual Merge Tools
 
 For complex conflicts, use a merge tool:
+
 ```bash
 git mergetool
 ```
 
 Popular options:
+
 - **VS Code** (built-in, supports diff3 display)
 - **kdiff3** (free, shows all 3 versions side-by-side)
 - **Beyond Compare** (paid, excellent UI)
@@ -434,6 +473,7 @@ Popular options:
 ### 6. Communicate with Team
 
 For complex merges:
+
 1. **Before resolving:** Check with the other developer about their intent
 2. **After resolving:** Have them review the merge commit
 3. **Document:** Explain non-obvious resolutions in commit message
@@ -441,6 +481,7 @@ For complex merges:
 ### 7. Test Thoroughly
 
 Merge conflicts can create **semantic conflicts** that compile but don't work:
+
 ```typescript
 // OURS: Changed parameter name
 function process(userData) { ... }
@@ -454,6 +495,7 @@ Always test merged code, even if it type-checks.
 ## Common Anti-Patterns to Avoid
 
 ### ❌ Anti-Pattern 1: Always Pick OURS or THEIRS
+
 ```bash
 # Bad: Blindly accepting one side
 git checkout --ours path/to/file.ts
@@ -463,11 +505,13 @@ git checkout --theirs path/to/file.ts
 **Problem:** Discards potentially important changes from the other side.
 
 **When it's OK:**
+
 - Generated files (lockfiles, build artifacts)
 - Files you're intentionally reverting
 - Confirmed with the other developer
 
 ### ❌ Anti-Pattern 2: Ignoring the Base
+
 ```
 # Trying to resolve by only looking at HEAD vs incoming
 # without understanding what the original code was
@@ -478,6 +522,7 @@ git checkout --theirs path/to/file.ts
 **Solution:** Always use diff3/zdiff3 to see the base.
 
 ### ❌ Anti-Pattern 3: Fixing Bugs During Merge
+
 ```typescript
 <<<<<<< HEAD
 const result = calculate(a, b);  // We know this has a bug
@@ -492,11 +537,13 @@ const result = calculate(a, b, { strict: true });  // Fixed the bug too!
 **Problem:** Mixes merge resolution with bug fixes, making it hard to review and debug.
 
 **Solution:**
+
 1. First: Resolve the conflict (choose one or combine)
 2. Then: Make bug fix in a separate commit
 3. Or: Fix bug in both branches before merging
 
 ### ❌ Anti-Pattern 4: Resolving Without Testing
+
 ```bash
 # Bad workflow
 git merge feature-branch
@@ -508,6 +555,7 @@ git push
 **Problem:** Merged code might not work even if it compiles.
 
 **Solution:**
+
 ```bash
 git merge feature-branch
 # ... resolve conflicts ...
@@ -518,6 +566,7 @@ git commit
 ```
 
 ### ❌ Anti-Pattern 5: Making Large Changes During Resolution
+
 ```typescript
 <<<<<<< HEAD
 function processData(data) {
@@ -541,6 +590,7 @@ async function processData(data, options = {}) {
 **Problem:** Merge commits should be minimal and reviewable.
 
 **Solution:**
+
 1. Resolve the immediate conflict minimally
 2. Make additional improvements in follow-up commits
 3. Keep merge commits focused on resolution only
@@ -555,6 +605,7 @@ async function processData(data, options = {}) {
    - Return type changed but caller expects old type
 
 2. **Search for partial migrations:**
+
    ```bash
    # Find references to old names
    git grep "oldFunctionName"
@@ -573,6 +624,7 @@ async function processData(data, options = {}) {
 ### Tests fail after merge?
 
 1. **Run tests from each branch separately:**
+
    ```bash
    git checkout origin/main
    npm test  # Should pass
@@ -595,17 +647,20 @@ async function processData(data, options = {}) {
 ## When to Ask for Help
 
 Resolve conflicts yourself when:
+
 - Changes are to different parts of the code
 - Intent is clear from diff3 comparison
 - Resolution is straightforward (add both changes, pick one, etc.)
 
 Ask the other developer when:
+
 - Changes represent different architectural decisions
 - You don't understand the intent of their changes
 - The conflict affects core business logic
 - Multiple files are interconnected in complex ways
 
 Ask a senior developer / architect when:
+
 - Conflict reveals deeper architectural issues
 - Both approaches have significant tradeoffs
 - Resolution requires changing the architecture

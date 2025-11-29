@@ -1,5 +1,5 @@
-import type { MapData, MapRegion } from './types'
 import { getCustomCrop } from './customCrops'
+import type { MapData, MapRegion } from './types'
 
 /**
  * Convert a 2-letter country code to a flag emoji
@@ -2150,7 +2150,7 @@ export function calculateBoundingBox(paths: string[]): BoundingBox {
 /**
  * Filter world map regions by continent
  */
-import { getContinentForCountry, type ContinentId } from './continents'
+import { type ContinentId, getContinentForCountry } from './continents'
 
 export function filterRegionsByContinent(
   regions: MapRegion[],
@@ -2292,6 +2292,173 @@ export function calculateFitCropViewBox(
   if (viewBoxHeight > originalViewBox.height) {
     viewBoxHeight = originalViewBox.height
     viewBoxY = originalViewBox.y
+  }
+
+  return `${viewBoxX.toFixed(2)} ${viewBoxY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}`
+}
+
+/**
+ * Safe zone margins (in pixels) - areas reserved for UI elements
+ */
+export interface SafeZoneMargins {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/**
+ * Calculate a viewBox that fits the crop region into the "safe zone" (viewport minus UI margins)
+ * while filling the entire viewport with map content.
+ *
+ * This creates a layout where:
+ * 1. The crop region (findable regions) fits within the leftover rectangle (viewport minus margins)
+ * 2. Extra map content shows under the UI elements (no wasted space)
+ * 3. The entire viewport is filled with map - no letterboxing except at map bounds
+ *
+ * @param viewportWidth - The viewport width in pixels
+ * @param viewportHeight - The viewport height in pixels
+ * @param margins - Safe zone margins in pixels (areas reserved for UI)
+ * @param cropRegion - The crop region that must fit within the safe zone (in SVG coords)
+ * @param originalViewBox - The full map's bounds (in SVG coords)
+ * @returns The display viewBox string
+ */
+export function calculateSafeZoneViewBox(
+  viewportWidth: number,
+  viewportHeight: number,
+  margins: SafeZoneMargins,
+  cropRegion: { x: number; y: number; width: number; height: number },
+  originalViewBox: { x: number; y: number; width: number; height: number }
+): string {
+  // Step 1: Calculate leftover rectangle (the area where crop must fit)
+  const leftoverWidth = viewportWidth - margins.left - margins.right
+  const leftoverHeight = viewportHeight - margins.top - margins.bottom
+
+  // Guard against invalid margins
+  if (leftoverWidth <= 0 || leftoverHeight <= 0) {
+    // Margins exceed viewport - fallback to standard fit
+    const containerAspect = viewportWidth / viewportHeight
+    return calculateFitCropViewBox(originalViewBox, cropRegion, containerAspect)
+  }
+
+  // Step 2: Calculate scale to fit crop into leftover rectangle
+  // This is pixels per SVG unit
+  const scaleX = leftoverWidth / cropRegion.width
+  const scaleY = leftoverHeight / cropRegion.height
+  const scale = Math.min(scaleX, scaleY) // Use the smaller scale to ensure crop fits
+
+  // Step 3: Calculate viewBox dimensions to fill entire viewport at this scale
+  const viewBoxWidth = viewportWidth / scale
+  const viewBoxHeight = viewportHeight / scale
+
+  // Step 4: Position viewBox so crop CENTER appears at leftover CENTER
+  // This is the key insight: position based on crop, not map bounds
+  const leftoverCenterX = margins.left + leftoverWidth / 2
+  const leftoverCenterY = margins.top + leftoverHeight / 2
+  const cropCenterX = cropRegion.x + cropRegion.width / 2
+  const cropCenterY = cropRegion.y + cropRegion.height / 2
+
+  // To make crop center appear at leftover center:
+  // (cropCenterX - viewBoxX) * scale = leftoverCenterX
+  // viewBoxX = cropCenterX - leftoverCenterX / scale
+  let viewBoxX = cropCenterX - leftoverCenterX / scale
+  let viewBoxY = cropCenterY - leftoverCenterY / scale
+
+  // Step 5: Try to shift viewBox to show more map content (reduce letterboxing)
+  // but ONLY if it doesn't push the crop outside the leftover area
+
+  // Calculate the valid range for viewBoxX that keeps crop in leftover area
+  // cropLeftPx = (crop.x - vbX) * scale >= margins.left  =>  vbX <= crop.x - margins.left/scale
+  // cropRightPx = (crop.x + crop.w - vbX) * scale <= viewport.w - margins.right
+  //            =>  vbX >= crop.x + crop.w - (viewport.w - margins.right)/scale
+  const viewBoxX_max = cropRegion.x - margins.left / scale
+  const viewBoxX_min = cropRegion.x + cropRegion.width - (viewportWidth - margins.right) / scale
+  const viewBoxY_max = cropRegion.y - margins.top / scale
+  const viewBoxY_min = cropRegion.y + cropRegion.height - (viewportHeight - margins.bottom) / scale
+
+  // Clamp viewBox to stay within these bounds (ensures crop stays in leftover area)
+  // Note: We DON'T clamp to map bounds here - we accept letterboxing (empty space outside map)
+  // to ensure the crop is correctly positioned in the leftover area
+  viewBoxX = Math.max(viewBoxX_min, Math.min(viewBoxX_max, viewBoxX))
+  viewBoxY = Math.max(viewBoxY_min, Math.min(viewBoxY_max, viewBoxY))
+
+  // Debug logging for safe zone calculation
+  if (process.env.NODE_ENV === 'development') {
+    // Calculate where crop actually appears on screen
+    const cropLeftPx = (cropRegion.x - viewBoxX) * scale
+    const cropTopPx = (cropRegion.y - viewBoxY) * scale
+    const cropWidthPx = cropRegion.width * scale
+    const cropHeightPx = cropRegion.height * scale
+    const cropRightPx = cropLeftPx + cropWidthPx
+    const cropBottomPx = cropTopPx + cropHeightPx
+
+    // Calculate leftover bounds
+    const leftoverLeft = margins.left
+    const leftoverTop = margins.top
+    const leftoverRight = viewportWidth - margins.right
+    const leftoverBottom = viewportHeight - margins.bottom
+
+    // Check if crop fits in leftover
+    const fitsLeft = cropLeftPx >= leftoverLeft
+    const fitsTop = cropTopPx >= leftoverTop
+    const fitsRight = cropRightPx <= leftoverRight
+    const fitsBottom = cropBottomPx <= leftoverBottom
+    const fitsAll = fitsLeft && fitsTop && fitsRight && fitsBottom
+
+    console.log('[SafeZone] ═══════════════════════════════════════')
+    console.log('[SafeZone] Inputs:', {
+      viewport: `${viewportWidth}×${viewportHeight}`,
+      margins: `T:${margins.top} R:${margins.right} B:${margins.bottom} L:${margins.left}`,
+      leftover: `${leftoverWidth}×${leftoverHeight}`,
+    })
+    console.log('[SafeZone] Crop region (SVG):', {
+      x: cropRegion.x.toFixed(1),
+      y: cropRegion.y.toFixed(1),
+      w: cropRegion.width.toFixed(1),
+      h: cropRegion.height.toFixed(1),
+    })
+    console.log('[SafeZone] Map bounds (SVG):', {
+      x: originalViewBox.x.toFixed(1),
+      y: originalViewBox.y.toFixed(1),
+      w: originalViewBox.width.toFixed(1),
+      h: originalViewBox.height.toFixed(1),
+    })
+    console.log('[SafeZone] Scale:', scale.toFixed(4))
+    console.log('[SafeZone] ViewBox result:', {
+      x: viewBoxX.toFixed(1),
+      y: viewBoxY.toFixed(1),
+      w: viewBoxWidth.toFixed(1),
+      h: viewBoxHeight.toFixed(1),
+    })
+    console.log('[SafeZone] Crop on screen (px):', {
+      left: cropLeftPx.toFixed(1),
+      top: cropTopPx.toFixed(1),
+      right: cropRightPx.toFixed(1),
+      bottom: cropBottomPx.toFixed(1),
+      width: cropWidthPx.toFixed(1),
+      height: cropHeightPx.toFixed(1),
+    })
+    console.log('[SafeZone] Leftover bounds (px):', {
+      left: leftoverLeft,
+      top: leftoverTop,
+      right: leftoverRight,
+      bottom: leftoverBottom,
+    })
+    console.log(
+      `[SafeZone] Fits? ${fitsAll ? '✅ YES' : '❌ NO'} - L:${fitsLeft ? '✓' : '✗'} T:${fitsTop ? '✓' : '✗'} R:${fitsRight ? '✓' : '✗'} B:${fitsBottom ? '✓' : '✗'}`
+    )
+    console.log('[SafeZone] Valid X range:', {
+      min: viewBoxX_min.toFixed(1),
+      max: viewBoxX_max.toFixed(1),
+      chosen: viewBoxX.toFixed(1),
+      rangeValid: viewBoxX_min <= viewBoxX_max ? '✓' : '✗ INVALID',
+    })
+    console.log('[SafeZone] Valid Y range:', {
+      min: viewBoxY_min.toFixed(1),
+      max: viewBoxY_max.toFixed(1),
+      chosen: viewBoxY.toFixed(1),
+      rangeValid: viewBoxY_min <= viewBoxY_max ? '✓' : '✗ INVALID',
+    })
   }
 
   return `${viewBoxX.toFixed(2)} ${viewBoxY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}`

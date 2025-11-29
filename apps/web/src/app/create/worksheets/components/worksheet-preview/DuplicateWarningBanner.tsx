@@ -50,7 +50,14 @@ export function DuplicateWarningBanner() {
       </div>
 
       {/* Content */}
-      <div className={css({ flex: '1', display: 'flex', flexDirection: 'column', gap: '2' })}>
+      <div
+        className={css({
+          flex: '1',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2',
+        })}
+      >
         <div
           className={css({
             fontWeight: 'bold',

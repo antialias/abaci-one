@@ -79,7 +79,11 @@
       "Bash(node --input-type=module -e:*)",
       "Bash(npm test:*)",
       "Bash(npx tsx:*)",
-      "Bash(tsc:*)"
+      "Bash(tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(ssh:*)",
+      "Bash(break)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

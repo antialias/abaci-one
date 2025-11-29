@@ -19,43 +19,45 @@ Use Intersection Observer to detect which page containers are in/near the viewpo
 
 ```tsx
 function WorksheetPreview({ formState, initialData }) {
-  const [visiblePages, setVisiblePages] = useState(new Set([0])) // Start with page 0 visible
-  const pageRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [visiblePages, setVisiblePages] = useState(new Set([0])); // Start with page 0 visible
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Intersection Observer to track visible pages
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         setVisiblePages((prev) => {
-          const next = new Set(prev)
+          const next = new Set(prev);
           entries.forEach((entry) => {
-            const pageIndex = Number(entry.target.getAttribute('data-page-index'))
+            const pageIndex = Number(
+              entry.target.getAttribute("data-page-index"),
+            );
             if (entry.isIntersecting) {
-              next.add(pageIndex)
+              next.add(pageIndex);
               // Preload adjacent pages
-              next.add(pageIndex - 1)
-              next.add(pageIndex + 1)
+              next.add(pageIndex - 1);
+              next.add(pageIndex + 1);
             } else {
               // Keep page rendered for smooth scrolling
               // Only remove if far from viewport
             }
-          })
-          return next
-        })
+          });
+          return next;
+        });
       },
       {
         root: scrollContainerRef.current,
-        rootMargin: '50% 0px', // Start loading when page is 50% away from viewport
+        rootMargin: "50% 0px", // Start loading when page is 50% away from viewport
         threshold: 0.1,
-      }
-    )
+      },
+    );
 
     pageRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref)
-    })
+      if (ref) observer.observe(ref);
+    });
 
-    return () => observer.disconnect()
-  }, [pages.length])
+    return () => observer.disconnect();
+  }, [pages.length]);
 
   return (
     <div className={scrollContainerStyles}>
@@ -75,13 +77,17 @@ function WorksheetPreview({ formState, initialData }) {
       ))}
 
       {/* Floating pagination indicator */}
-      <FloatingPageIndicator currentPage={currentVisiblePage} totalPages={pages.length} />
+      <FloatingPageIndicator
+        currentPage={currentVisiblePage}
+        totalPages={pages.length}
+      />
     </div>
-  )
+  );
 }
 ```
 
 ### Pros
+
 - ✅ Native browser API (Intersection Observer)
 - ✅ Simple implementation
 - ✅ Smooth scrolling experience
@@ -89,6 +95,7 @@ function WorksheetPreview({ formState, initialData }) {
 - ✅ Works with existing SVG generation
 
 ### Cons
+
 - ⚠️ Slight delay when scrolling very fast
 - ⚠️ Keeps rendered pages in memory (but can be mitigated)
 
@@ -101,6 +108,7 @@ function WorksheetPreview({ formState, initialData }) {
 Use `react-virtuoso` library specifically designed for virtualizing scrollable content with dynamic heights.
 
 ### Installation
+
 ```bash
 npm install react-virtuoso
 ```
@@ -108,10 +116,10 @@ npm install react-virtuoso
 ### Implementation
 
 ```tsx
-import { Virtuoso } from 'react-virtuoso'
+import { Virtuoso } from "react-virtuoso";
 
 function WorksheetPreview({ formState, initialData }) {
-  const [currentPage, setCurrentPage] = useState(0)
+  const [currentPage, setCurrentPage] = useState(0);
 
   return (
     <div className={previewContainerStyles}>
@@ -124,20 +132,24 @@ function WorksheetPreview({ formState, initialData }) {
         )}
         rangeChanged={(range) => {
           // Update current page indicator based on visible range
-          setCurrentPage(Math.floor((range.startIndex + range.endIndex) / 2))
+          setCurrentPage(Math.floor((range.startIndex + range.endIndex) / 2));
         }}
-        style={{ height: '100%' }}
+        style={{ height: "100%" }}
         overscan={1} // Render 1 extra page above/below
       />
 
       {/* Pagination controls */}
-      <FloatingPageIndicator currentPage={currentPage} totalPages={pages.length} />
+      <FloatingPageIndicator
+        currentPage={currentPage}
+        totalPages={pages.length}
+      />
     </div>
-  )
+  );
 }
 ```
 
 ### Pros
+
 - ✅ Battle-tested library (90k+ downloads/week)
 - ✅ Handles dynamic heights automatically
 - ✅ Built-in scroll restoration
@@ -145,6 +157,7 @@ function WorksheetPreview({ formState, initialData }) {
 - ✅ Minimal code
 
 ### Cons
+
 - ❌ New dependency (~10KB)
 - ⚠️ Requires learning library API
 
@@ -160,8 +173,8 @@ Combine tab-based pagination (keep current UX) with lazy SVG loading for large w
 
 ```tsx
 function WorksheetPreview({ formState, initialData }) {
-  const [currentPage, setCurrentPage] = useState(0)
-  const [loadedPages, setLoadedPages] = useState(new Set([0]))
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadedPages, setLoadedPages] = useState(new Set([0]));
 
   // Load current page + adjacent pages
   useEffect(() => {
@@ -169,9 +182,9 @@ function WorksheetPreview({ formState, initialData }) {
       Math.max(0, currentPage - 1),
       currentPage,
       Math.min(pages.length - 1, currentPage + 1),
-    ])
-    setLoadedPages((prev) => new Set([...prev, ...toLoad]))
-  }, [currentPage, pages.length])
+    ]);
+    setLoadedPages((prev) => new Set([...prev, ...toLoad]));
+  }, [currentPage, pages.length]);
 
   return (
     <div className={previewContainerStyles}>
@@ -202,17 +215,19 @@ function WorksheetPreview({ formState, initialData }) {
         onChange={setCurrentPage}
       />
     </div>
-  )
+  );
 }
 ```
 
 ### Pros
+
 - ✅ Keeps existing UX (pagination buttons)
 - ✅ Very simple implementation
 - ✅ No new dependencies
 - ✅ Instant page switching (pages stay loaded)
 
 ### Cons
+
 - ❌ Not truly scrollable (tab-based navigation)
 - ⚠️ Loads all pages eventually (if user navigates)
 
@@ -228,57 +243,60 @@ Custom implementation using scroll position tracking with skeleton placeholders 
 
 ```tsx
 function WorksheetPreview({ formState, initialData }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [loadedPages, setLoadedPages] = useState(new Set([0]))
-  const [currentPage, setCurrentPage] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [loadedPages, setLoadedPages] = useState(new Set([0]));
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Estimate page height (worksheets are consistent size)
-  const pageHeight = 800 // Approximate SVG height
-  const gap = 16
+  const pageHeight = 800; // Approximate SVG height
+  const gap = 16;
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!scrollRef.current) return
+      if (!scrollRef.current) return;
 
-      const scrollTop = scrollRef.current.scrollTop
-      const containerHeight = scrollRef.current.clientHeight
+      const scrollTop = scrollRef.current.scrollTop;
+      const containerHeight = scrollRef.current.clientHeight;
 
       // Calculate visible page range
-      const startPage = Math.max(0, Math.floor(scrollTop / (pageHeight + gap)) - 1)
+      const startPage = Math.max(
+        0,
+        Math.floor(scrollTop / (pageHeight + gap)) - 1,
+      );
       const endPage = Math.min(
         pages.length - 1,
-        Math.ceil((scrollTop + containerHeight) / (pageHeight + gap)) + 1
-      )
+        Math.ceil((scrollTop + containerHeight) / (pageHeight + gap)) + 1,
+      );
 
       // Update current page indicator
       const centerPage = Math.floor(
-        (scrollTop + containerHeight / 2) / (pageHeight + gap)
-      )
-      setCurrentPage(Math.min(pages.length - 1, centerPage))
+        (scrollTop + containerHeight / 2) / (pageHeight + gap),
+      );
+      setCurrentPage(Math.min(pages.length - 1, centerPage));
 
       // Load visible pages
-      const toLoad = new Set<number>()
+      const toLoad = new Set<number>();
       for (let i = startPage; i <= endPage; i++) {
-        toLoad.add(i)
+        toLoad.add(i);
       }
-      setLoadedPages((prev) => new Set([...prev, ...toLoad]))
-    }
+      setLoadedPages((prev) => new Set([...prev, ...toLoad]));
+    };
 
-    const scrollEl = scrollRef.current
-    scrollEl?.addEventListener('scroll', handleScroll)
-    handleScroll() // Initial load
+    const scrollEl = scrollRef.current;
+    scrollEl?.addEventListener("scroll", handleScroll);
+    handleScroll(); // Initial load
 
-    return () => scrollEl?.removeEventListener('scroll', handleScroll)
-  }, [pages.length])
+    return () => scrollEl?.removeEventListener("scroll", handleScroll);
+  }, [pages.length]);
 
   // Jump to page function for pagination controls
   const jumpToPage = (pageIndex: number) => {
-    if (!scrollRef.current) return
+    if (!scrollRef.current) return;
     scrollRef.current.scrollTo({
       top: pageIndex * (pageHeight + gap),
-      behavior: 'smooth',
-    })
-  }
+      behavior: "smooth",
+    });
+  };
 
   return (
     <div className={previewContainerStyles}>
@@ -305,17 +323,19 @@ function WorksheetPreview({ formState, initialData }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 ```
 
 ### Pros
+
 - ✅ Full scroll + pagination controls
 - ✅ No dependencies
 - ✅ Skeleton shows page structure while loading
 - ✅ Smooth scrolling with page indicators
 
 ### Cons
+
 - ⚠️ Requires estimating page heights
 - ⚠️ More complex than Intersection Observer
 - ⚠️ Needs careful handling of dynamic heights
@@ -324,23 +344,24 @@ function WorksheetPreview({ formState, initialData }) {
 
 ## Comparison Matrix
 
-| Feature | Proposal 1 (Intersection Observer) | Proposal 2 (Virtuoso) | Proposal 3 (Hybrid Tabs) | Proposal 4 (Custom Virtual) |
-|---------|-------------------------------------|----------------------|--------------------------|----------------------------|
-| Scrollable | ✅ | ✅ | ❌ (tabs only) | ✅ |
-| Pagination Controls | ✅ | ✅ | ✅ | ✅ |
-| Virtual Rendering | ✅ | ✅ | ⚠️ (lazy load) | ✅ |
-| Dependencies | 0 | 1 (~10KB) | 0 | 0 |
-| Implementation Complexity | Low | Very Low | Low | Medium |
-| Dynamic Heights | ✅ | ✅ | N/A | ⚠️ (needs estimates) |
-| Smooth Scrolling | ✅ | ✅✅ | N/A | ✅ |
-| Preloading | ✅ | ✅ | ✅ | ✅ |
-| Browser Support | Modern | All | All | All |
+| Feature                   | Proposal 1 (Intersection Observer) | Proposal 2 (Virtuoso) | Proposal 3 (Hybrid Tabs) | Proposal 4 (Custom Virtual) |
+| ------------------------- | ---------------------------------- | --------------------- | ------------------------ | --------------------------- |
+| Scrollable                | ✅                                 | ✅                    | ❌ (tabs only)           | ✅                          |
+| Pagination Controls       | ✅                                 | ✅                    | ✅                       | ✅                          |
+| Virtual Rendering         | ✅                                 | ✅                    | ⚠️ (lazy load)           | ✅                          |
+| Dependencies              | 0                                  | 1 (~10KB)             | 0                        | 0                           |
+| Implementation Complexity | Low                                | Very Low              | Low                      | Medium                      |
+| Dynamic Heights           | ✅                                 | ✅                    | N/A                      | ⚠️ (needs estimates)        |
+| Smooth Scrolling          | ✅                                 | ✅✅                  | N/A                      | ✅                          |
+| Preloading                | ✅                                 | ✅                    | ✅                       | ✅                          |
+| Browser Support           | Modern                             | All                   | All                      | All                         |
 
 ---
 
 ## Recommendation: Proposal 1 (Intersection Observer)
 
 **Why?**
+
 1. **Native API** - No dependencies, works in all modern browsers
 2. **Simple** - ~50 lines of code
 3. **Flexible** - Easy to customize preloading strategy
@@ -349,6 +370,7 @@ function WorksheetPreview({ formState, initialData }) {
 6. **Performance** - Only renders visible pages + buffer
 
 **When to use Proposal 2 instead:**
+
 - If worksheets have highly variable heights
 - If you want battle-tested virtualization
 - If team is comfortable with adding dependencies
@@ -358,23 +380,27 @@ function WorksheetPreview({ formState, initialData }) {
 ## Implementation Plan (Proposal 1)
 
 ### Step 1: Update WorksheetPreview Component
+
 - [ ] Add Intersection Observer setup
 - [ ] Track visible pages in state
 - [ ] Add page refs array
 - [ ] Implement preloading logic (±1 page)
 
 ### Step 2: Create Supporting Components
+
 - [ ] `PagePlaceholder.tsx` - Skeleton for unloaded pages
 - [ ] `FloatingPageIndicator.tsx` - Shows "Page X of Y" while scrolling
 - [ ] Add jump-to-page functionality
 
 ### Step 3: Styling
+
 - [ ] Scrollable container styles
 - [ ] Page gap/spacing
 - [ ] Floating pagination position
 - [ ] Smooth scroll behavior
 
 ### Step 4: Optimization
+
 - [ ] Debounce visibility checks
 - [ ] Unload pages far from viewport (memory management)
 - [ ] Add loading states

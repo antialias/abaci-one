@@ -52,7 +52,9 @@ test.describe('Know Your World - Full-Screen Layout', () => {
 
   test('should use StandardGameLayout with no scrolling in playing phase', async ({ page }) => {
     // Wait for playing phase to load
-    await page.waitForSelector('[data-component="playing-phase"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="playing-phase"]', {
+      timeout: 5000,
+    })
 
     // Check that StandardGameLayout wrapper exists
     const layout = page.locator('[data-layout="standard-game-layout"]')
@@ -72,7 +74,9 @@ test.describe('Know Your World - Full-Screen Layout', () => {
   })
 
   test('should render game info panel without scrolling', async ({ page }) => {
-    await page.waitForSelector('[data-component="game-info-panel"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="game-info-panel"]', {
+      timeout: 5000,
+    })
 
     const gameInfoPanel = page.locator('[data-component="game-info-panel"]')
     await expect(gameInfoPanel).toBeVisible()
@@ -93,7 +97,9 @@ test.describe('Know Your World - Full-Screen Layout', () => {
   })
 
   test('should display current prompt in game info panel', async ({ page }) => {
-    await page.waitForSelector('[data-section="current-prompt"]', { timeout: 5000 })
+    await page.waitForSelector('[data-section="current-prompt"]', {
+      timeout: 5000,
+    })
 
     const promptSection = page.locator('[data-section="current-prompt"]')
     await expect(promptSection).toBeVisible()
@@ -123,7 +129,9 @@ test.describe('Know Your World - Full-Screen Layout', () => {
   })
 
   test('should render map in bottom panel', async ({ page }) => {
-    await page.waitForSelector('[data-component="map-panel"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="map-panel"]', {
+      timeout: 5000,
+    })
 
     const mapPanel = page.locator('[data-component="map-panel"]')
     await expect(mapPanel).toBeVisible()
@@ -153,7 +161,9 @@ test.describe('Know Your World - Full-Screen Layout', () => {
 
   test('should have correct panel structure with resize handle', async ({ page }) => {
     // Wait for playing phase
-    await page.waitForSelector('[data-component="playing-phase"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="playing-phase"]', {
+      timeout: 5000,
+    })
 
     // Should have exactly 2 panels (game info + map)
     const panels = page.locator('[data-panel-id]')
@@ -198,7 +208,9 @@ test.describe('Know Your World - Viewport Behavior', () => {
       }
     }
 
-    await page.waitForSelector('[data-layout="standard-game-layout"]', { timeout: 5000 })
+    await page.waitForSelector('[data-layout="standard-game-layout"]', {
+      timeout: 5000,
+    })
 
     // Check that page has no scroll
     const hasScroll = await page.evaluate(() => {
@@ -231,7 +243,9 @@ test.describe('Know Your World - Viewport Behavior', () => {
       }
     }
 
-    await page.waitForSelector('[data-component="playing-phase"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="playing-phase"]', {
+      timeout: 5000,
+    })
 
     // Game info panel should not scroll
     const gameInfoPanel = page.locator('[data-component="game-info-panel"]')

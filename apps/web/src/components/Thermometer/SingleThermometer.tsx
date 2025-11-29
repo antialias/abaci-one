@@ -111,7 +111,13 @@ export function SingleThermometer<T extends string>({
               {renderOverlay?.(option, index, isSelected)}
 
               {/* Option content */}
-              <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+              <span
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1',
+                })}
+              >
                 {option.emoji && <span>{option.emoji}</span>}
                 <span>{option.shortLabel || option.label}</span>
               </span>

@@ -155,7 +155,10 @@ export function DifficultyPlot2D({
     // If we found a nearby preset, snap to it
     if (nearestPreset) {
       return {
-        newRegrouping: { pAnyStart: nearestPreset.pAnyStart, pAllStart: nearestPreset.pAllStart },
+        newRegrouping: {
+          pAnyStart: nearestPreset.pAnyStart,
+          pAllStart: nearestPreset.pAllStart,
+        },
         newDisplayRules: nearestPreset.displayRules,
         matchedProfile: nearestPreset.id,
         reg: calculateRegroupingIntensity(nearestPreset.pAnyStart, nearestPreset.pAllStart),

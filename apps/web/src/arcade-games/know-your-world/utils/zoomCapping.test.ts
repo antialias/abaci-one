@@ -39,7 +39,12 @@ describe('zoomCapping', () => {
       const threshold = 20
       const maxZoom = threshold / (magnifierWidth / svgWidth) // 20 / 0.5 = 40
 
-      const context = createContext({ zoom: maxZoom, threshold, magnifierWidth, svgWidth })
+      const context = createContext({
+        zoom: maxZoom,
+        threshold,
+        magnifierWidth,
+        svgWidth,
+      })
       const result = capZoomAtThreshold(context)
 
       expect(result.cappedZoom).toBe(maxZoom)
@@ -53,7 +58,12 @@ describe('zoomCapping', () => {
       const threshold = 20
       const maxZoom = threshold / (magnifierWidth / svgWidth) // 40
 
-      const context = createContext({ zoom: 100, threshold, magnifierWidth, svgWidth })
+      const context = createContext({
+        zoom: 100,
+        threshold,
+        magnifierWidth,
+        svgWidth,
+      })
       const result = capZoomAtThreshold(context)
 
       expect(result.cappedZoom).toBe(maxZoom)

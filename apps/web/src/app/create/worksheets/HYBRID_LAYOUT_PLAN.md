@@ -143,6 +143,7 @@ AdditionWorksheetClient
 ### Key Components
 
 #### 1. `ConfigSidebar.tsx`
+
 ```typescript
 interface ConfigSidebarProps {
   formState: WorksheetFormState
@@ -174,18 +175,21 @@ export function ConfigSidebar({ formState, onChange, mode }: ConfigSidebarProps)
 #### 2. Tab Organization
 
 **Tab 1: Content** (Always most important)
+
 - Student Name
 - Operator Selector (Addition/Subtraction/Mixed)
 - Difficulty Method Selector (Smart/Mastery)
 - Progressive Difficulty Toggle
 
 **Tab 2: Layout** (Moved from right sidebar)
+
 - Orientation (Portrait/Landscape)
 - Problems per Page
 - Pages (1-4)
 - Layout Options (Problem Numbers, Cell Borders)
 
 **Tab 3: Scaffolding** (Pedagogical tools)
+
 - All Always / Minimal buttons
 - Answer Boxes thermometer
 - Place Value Colors thermometer
@@ -195,18 +199,20 @@ export function ConfigSidebar({ formState, onChange, mode }: ConfigSidebarProps)
 - Ten-Frames thermometer
 
 **Tab 4: Difficulty** (Method-specific controls)
+
 - Smart Mode: Difficulty preset dropdown, easier/harder buttons, difficulty slider
 - Mastery Mode: Skill selector
 - Manual Mode: Digit range, regrouping frequency
 
 #### 3. `TabNavigation.tsx`
+
 ```typescript
 const tabs = [
-  { id: 'content', label: 'Content', icon: '✏️', alwaysShow: true },
-  { id: 'layout', label: 'Layout', icon: '📐', alwaysShow: true },
-  { id: 'scaffolding', label: 'Scaffolding', icon: '🎨', alwaysShow: false },
-  { id: 'difficulty', label: 'Difficulty', icon: '📊', alwaysShow: false },
-]
+  { id: "content", label: "Content", icon: "✏️", alwaysShow: true },
+  { id: "layout", label: "Layout", icon: "📐", alwaysShow: true },
+  { id: "scaffolding", label: "Scaffolding", icon: "🎨", alwaysShow: false },
+  { id: "difficulty", label: "Difficulty", icon: "📊", alwaysShow: false },
+];
 
 // Desktop: Vertical tabs on left side
 // Mobile accordion: Tabs become accordion headers
@@ -214,24 +220,29 @@ const tabs = [
 ```
 
 #### 4. Responsive Mode Logic
+
 ```typescript
 function useLayoutMode() {
-  const [mode, setMode] = useState<'sidebar' | 'drawer' | 'accordion'>('sidebar')
+  const [mode, setMode] = useState<"sidebar" | "drawer" | "accordion">(
+    "sidebar",
+  );
 
   useEffect(() => {
     const handleResize = () => {
-      const width = window.innerWidth
-      if (width >= 1024) setMode('sidebar')      // Desktop: sidebar
-      else if (width >= 768) setMode('sidebar')  // Tablet: sidebar (narrower)
-      else setMode('accordion')                  // Mobile Phase 1: accordion
+      const width = window.innerWidth;
+      if (width >= 1024)
+        setMode("sidebar"); // Desktop: sidebar
+      else if (width >= 768)
+        setMode("sidebar"); // Tablet: sidebar (narrower)
+      else setMode("accordion"); // Mobile Phase 1: accordion
       // Future: else setMode('drawer')          // Mobile Phase 2: drawer
-    }
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  return mode
+  return mode;
 }
 ```
 
@@ -242,6 +253,7 @@ function useLayoutMode() {
 ### Phase 1: Desktop + Tablet + Mobile Accordion (This PR)
 
 **Step 1: Create Tab Components**
+
 - [ ] `TabNavigation.tsx` - Tab buttons (vertical for desktop, accordion for mobile)
 - [ ] `ContentTab.tsx` - Student name, operator, difficulty method, progressive toggle
 - [ ] `LayoutTab.tsx` - Orientation, problems per page, pages, layout options
@@ -249,22 +261,26 @@ function useLayoutMode() {
 - [ ] `DifficultyTab.tsx` - Difficulty presets, sliders, controls
 
 **Step 2: Create Sidebar Container**
+
 - [ ] `ConfigSidebar.tsx` - Container with mode switching logic
 - [ ] Sticky positioning for desktop/tablet
 - [ ] Accordion mode for mobile (<768px)
 
 **Step 3: Reorganize Main Layout**
+
 - [ ] Update `AdditionWorksheetClient.tsx` to use 3-column grid
 - [ ] Move OrientationPanel controls into LayoutTab
 - [ ] Move scaffolding controls into ScaffoldingTab
 - [ ] Keep actions (Generate, Upload) in right sidebar (desktop) or bottom (mobile)
 
 **Step 4: Responsive Breakpoints**
+
 - [ ] Desktop (≥1024px): 3-column (config | preview | actions)
 - [ ] Tablet (768-1023px): 2-column (config+actions | preview)
 - [ ] Mobile (<768px): 1-column stack (accordion → preview → actions)
 
 **Step 5: Polish**
+
 - [ ] Smooth transitions between tabs
 - [ ] Active tab indicator
 - [ ] Settings auto-save indicator at bottom of sidebar
@@ -273,22 +289,26 @@ function useLayoutMode() {
 ### Phase 2: Mobile Drawer (Future PR)
 
 **When to implement:**
+
 - After user testing shows mobile accordion feels cramped
 - When we want to maximize mobile preview space
 
 **What changes:**
+
 ```typescript
 // Just change one line in useLayoutMode():
 else setMode('drawer')  // Instead of 'accordion'
 ```
 
 **Additional components needed:**
+
 - [ ] `DrawerContainer.tsx` - Slide-out drawer with overlay
 - [ ] `MobileHeader.tsx` - Header with hamburger menu button
 - [ ] Drawer animations (slide in/out)
 - [ ] Overlay click-to-close
 
 **Drawer reuses existing components:**
+
 - TabNavigation (switches to horizontal layout)
 - All Tab components (unchanged)
 - Actions (moved into drawer footer)

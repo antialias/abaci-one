@@ -63,7 +63,10 @@ describe('screenPixelRatio', () => {
       }
 
       const ratio1 = calculateScreenPixelRatio(baseContext)
-      const ratio2 = calculateScreenPixelRatio({ ...baseContext, magnifierWidth: 800 })
+      const ratio2 = calculateScreenPixelRatio({
+        ...baseContext,
+        magnifierWidth: 800,
+      })
 
       expect(ratio2).toBe(ratio1 * 2)
     })
@@ -77,7 +80,10 @@ describe('screenPixelRatio', () => {
       }
 
       const ratio1 = calculateScreenPixelRatio(baseContext)
-      const ratio2 = calculateScreenPixelRatio({ ...baseContext, svgWidth: 1600 })
+      const ratio2 = calculateScreenPixelRatio({
+        ...baseContext,
+        svgWidth: 1600,
+      })
 
       expect(ratio2).toBe(ratio1 / 2)
     })
@@ -135,9 +141,24 @@ describe('screenPixelRatio', () => {
 
     it('verifies inverse relationship for various dimensions', () => {
       const testCases = [
-        { threshold: 20, magnifierWidth: 400, svgWidth: 800, viewBoxWidth: 1000 },
-        { threshold: 15, magnifierWidth: 300, svgWidth: 600, viewBoxWidth: 2000 },
-        { threshold: 25, magnifierWidth: 500, svgWidth: 1000, viewBoxWidth: 1500 },
+        {
+          threshold: 20,
+          magnifierWidth: 400,
+          svgWidth: 800,
+          viewBoxWidth: 1000,
+        },
+        {
+          threshold: 15,
+          magnifierWidth: 300,
+          svgWidth: 600,
+          viewBoxWidth: 2000,
+        },
+        {
+          threshold: 25,
+          magnifierWidth: 500,
+          svgWidth: 1000,
+          viewBoxWidth: 1500,
+        },
       ]
 
       for (const tc of testCases) {

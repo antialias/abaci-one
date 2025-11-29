@@ -63,9 +63,13 @@ import type { WorksheetFormState } from '../types'
  *   body: JSON.stringify({ worksheetType: 'addition', config })
  * })
  */
-export function extractConfigFields(
-  formState: WorksheetFormState
-): Omit<AdditionConfigV4, 'version'> & { seed?: number; prngAlgorithm?: string } {
+export function extractConfigFields(formState: WorksheetFormState): Omit<
+  AdditionConfigV4,
+  'version'
+> & {
+  seed?: number
+  prngAlgorithm?: string
+} {
   // Blacklist approach: Exclude only derived/ephemeral fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { rows, total, date, ...persistedFields } = formState

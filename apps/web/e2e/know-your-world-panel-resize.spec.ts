@@ -46,7 +46,9 @@ test.describe('Know Your World - Panel Resizing', () => {
       await page.waitForLoadState('networkidle')
     }
 
-    await page.waitForSelector('[data-component="playing-phase"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="playing-phase"]', {
+      timeout: 5000,
+    })
   })
 
   test('should have draggable resize handle between panels', async ({ page }) => {
@@ -287,7 +289,9 @@ test.describe('Know Your World - Resize Performance', () => {
       }
     }
 
-    await page.waitForSelector('[data-component="playing-phase"]', { timeout: 5000 })
+    await page.waitForSelector('[data-component="playing-phase"]', {
+      timeout: 5000,
+    })
 
     // Find resize handle
     const playingPhase = page.locator('[data-component="playing-phase"]')

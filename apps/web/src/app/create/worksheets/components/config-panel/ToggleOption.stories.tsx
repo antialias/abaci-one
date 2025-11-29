@@ -69,7 +69,13 @@ export const CheckedDark: Story = {
 export const WithChildren: Story = {
   render: (args) => (
     <ToggleWrapper {...args}>
-      <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+      <div
+        style={{
+          padding: '12px',
+          borderTop: '1px solid #e5e7eb',
+          background: '#f9fafb',
+        }}
+      >
         <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>
           Additional content can be displayed when this option is toggled on.
         </p>
@@ -105,7 +111,14 @@ export const InteractiveDemo: Story = {
     })
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          maxWidth: '400px',
+        }}
+      >
         <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Worksheet Options</h3>
         <ToggleOption
           checked={options.progressive}

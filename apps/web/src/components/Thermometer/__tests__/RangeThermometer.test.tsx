@@ -13,19 +13,14 @@ vi.mock('@radix-ui/react-slider', () => ({
   Root: ({ children, onValueChange, value }: any) => (
     <div data-testid="slider-root" data-value={JSON.stringify(value)}>
       {children}
-      <button
-        data-testid="slider-change"
-        onClick={() => onValueChange?.([0, 2])}
-      >
+      <button data-testid="slider-change" onClick={() => onValueChange?.([0, 2])}>
         Change
       </button>
     </div>
   ),
   Track: ({ children }: any) => <div data-testid="slider-track">{children}</div>,
   Range: () => <div data-testid="slider-range" />,
-  Thumb: ({ 'data-handle': handle }: any) => (
-    <div data-testid={`slider-thumb-${handle}`} />
-  ),
+  Thumb: ({ 'data-handle': handle }: any) => <div data-testid={`slider-thumb-${handle}`} />,
 }))
 
 vi.mock('@radix-ui/react-tooltip', () => ({
@@ -89,9 +84,7 @@ describe('RangeThermometer', () => {
     })
 
     it('renders description when provided', () => {
-      render(
-        <RangeThermometer {...defaultProps} description="Select a size range" />
-      )
+      render(<RangeThermometer {...defaultProps} description="Select a size range" />)
 
       expect(screen.getByText('Select a size range')).toBeInTheDocument()
     })
@@ -109,13 +102,7 @@ describe('RangeThermometer', () => {
 
     it('calculates total count for selected range', () => {
       const counts = { small: 5, medium: 10, large: 3 }
-      render(
-        <RangeThermometer
-          {...defaultProps}
-          counts={counts}
-          showTotalCount={true}
-        />
-      )
+      render(<RangeThermometer {...defaultProps} counts={counts} showTotalCount={true} />)
 
       // Total should be 5 + 10 + 3 = 18
       expect(screen.getByText('18')).toBeInTheDocument()
@@ -140,13 +127,7 @@ describe('RangeThermometer', () => {
 
     it('hides total count when showTotalCount is false', () => {
       const counts = { small: 5, medium: 10, large: 3 }
-      render(
-        <RangeThermometer
-          {...defaultProps}
-          counts={counts}
-          showTotalCount={false}
-        />
-      )
+      render(<RangeThermometer {...defaultProps} counts={counts} showTotalCount={false} />)
 
       expect(screen.queryByText('regions')).not.toBeInTheDocument()
     })
@@ -245,9 +226,7 @@ describe('RangeThermometer', () => {
 
     it('calls onHoverPreview with null when mouse leaves', () => {
       const onHoverPreview = vi.fn()
-      render(
-        <RangeThermometer {...defaultProps} onHoverPreview={onHoverPreview} />
-      )
+      render(<RangeThermometer {...defaultProps} onHoverPreview={onHoverPreview} />)
 
       const smallButton = screen.getByText('Small').closest('button')
       fireEvent.mouseLeave(smallButton!)
@@ -334,9 +313,7 @@ describe('RangeThermometer', () => {
 
   describe('dark mode', () => {
     it('applies dark mode styles when isDark is true', () => {
-      const { container } = render(
-        <RangeThermometer {...defaultProps} isDark={true} />
-      )
+      const { container } = render(<RangeThermometer {...defaultProps} isDark={true} />)
 
       // Component should render (styles are mocked)
       expect(container.querySelector('[data-component="range-thermometer"]')).toBeInTheDocument()

@@ -9,6 +9,7 @@ Allow users to configure existing mastery skills and create custom skills using 
 ### 1. SkillConfigurationModal Component
 
 A reusable modal that shows:
+
 - **Digit Range Slider** (2-6 digits, matching current UI)
 - **2D Difficulty Plot** (Regrouping Intensity × Scaffolding Level)
 - **Make Easier/Harder buttons** (Challenge/Support/Both modes)
@@ -18,16 +19,19 @@ A reusable modal that shows:
 - **Description input** (optional, for custom skills)
 
 **Two modes:**
+
 - **Edit Mode**: Configure existing skill (default or custom)
 - **Create Mode**: Create new custom skill from scratch
 
 ### 2. MasteryModePanel Updates
 
 Add two buttons:
+
 - **"⚙️ Configure"** - Next to current skill name (edits current skill)
 - **"+ Create Custom Skill"** - Below skill selector (creates new skill)
 
 Show visual indicators:
+
 - **Default skills**: Show as-is
 - **Customized skills**: Show "⚙️ Custom" badge + "Reset to Default" button
 - **User-created skills**: Show "✨ Custom" badge + "Delete" button
@@ -67,6 +71,7 @@ CREATE TABLE skill_customizations (
 ```
 
 **Two tables because:**
+
 - `custom_skills`: Fully user-created skills (new progression items)
 - `skill_customizations`: Overrides for default skills (keeps skill ID, modifies config)
 
@@ -120,32 +125,32 @@ DELETE /api/worksheets/skills/:skillId/customize?operator=addition
 
 ```typescript
 interface SkillWithCustomization extends Skill {
-  isCustomized?: boolean      // Default skill that's been customized
-  isCustomCreated?: boolean   // User-created custom skill
-  originalConfig?: SkillConfig // Original before customization
+  isCustomized?: boolean; // Default skill that's been customized
+  isCustomCreated?: boolean; // User-created custom skill
+  originalConfig?: SkillConfig; // Original before customization
 }
 
 async function loadSkillsWithCustomizations(
-  operator: 'addition' | 'subtraction'
+  operator: "addition" | "subtraction",
 ): Promise<SkillWithCustomization[]> {
   // 1. Load default skills from static definitions
-  const defaultSkills = getSkillsByOperator(operator)
+  const defaultSkills = getSkillsByOperator(operator);
 
   // 2. Load customizations for defaults
   const customizationsResp = await fetch(
-    `/api/worksheets/skills/customizations?operator=${operator}`
-  )
-  const { customizations } = await customizationsResp.json()
+    `/api/worksheets/skills/customizations?operator=${operator}`,
+  );
+  const { customizations } = await customizationsResp.json();
 
   // 3. Load user-created custom skills
   const customSkillsResp = await fetch(
-    `/api/worksheets/skills/custom?operator=${operator}`
-  )
-  const { skills: customSkills } = await customSkillsResp.json()
+    `/api/worksheets/skills/custom?operator=${operator}`,
+  );
+  const { skills: customSkills } = await customSkillsResp.json();
 
   // 4. Merge: apply customizations, append custom skills
-  const mergedDefaults = defaultSkills.map(skill => {
-    const customization = customizations[skill.id]
+  const mergedDefaults = defaultSkills.map((skill) => {
+    const customization = customizations[skill.id];
     if (customization) {
       return {
         ...skill,
@@ -157,19 +162,19 @@ async function loadSkillsWithCustomizations(
           digitRange: skill.digitRange,
           regroupingConfig: skill.regroupingConfig,
           displayRules: skill.displayRules,
-        }
-      }
+        },
+      };
     }
-    return skill
-  })
+    return skill;
+  });
 
   return [
     ...mergedDefaults,
-    ...customSkills.map(skill => ({
+    ...customSkills.map((skill) => ({
       ...skill,
-      isCustomCreated: true
-    }))
-  ]
+      isCustomCreated: true,
+    })),
+  ];
 }
 ```
 
@@ -260,32 +265,32 @@ src/app/create/worksheets/components/
 
 ```typescript
 interface SkillConfig {
-  digitRange: { min: number; max: number }
-  regroupingConfig: { pAnyStart: number; pAllStart: number }
-  displayRules: DisplayRules
+  digitRange: { min: number; max: number };
+  regroupingConfig: { pAnyStart: number; pAllStart: number };
+  displayRules: DisplayRules;
 }
 
 interface CustomSkill extends SkillConfig {
-  id: string
-  userId: string
-  operator: 'addition' | 'subtraction'
-  name: string
-  description?: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  userId: string;
+  operator: "addition" | "subtraction";
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface SkillCustomization extends SkillConfig {
-  userId: string
-  skillId: string
-  operator: 'addition' | 'subtraction'
-  updatedAt: string
+  userId: string;
+  skillId: string;
+  operator: "addition" | "subtraction";
+  updatedAt: string;
 }
 
 interface SkillWithMetadata extends Skill {
-  isCustomized?: boolean
-  isCustomCreated?: boolean
-  originalConfig?: SkillConfig
+  isCustomized?: boolean;
+  isCustomCreated?: boolean;
+  originalConfig?: SkillConfig;
 }
 ```
 

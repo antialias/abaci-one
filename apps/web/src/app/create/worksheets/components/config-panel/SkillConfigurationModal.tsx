@@ -79,7 +79,10 @@ export function SkillConfigurationModal({
     pAllStart: number
     displayRules: DisplayRules
   }) => {
-    setRegroupingConfig({ pAnyStart: config.pAnyStart, pAllStart: config.pAllStart })
+    setRegroupingConfig({
+      pAnyStart: config.pAnyStart,
+      pAllStart: config.pAllStart,
+    })
     setDisplayRules(config.displayRules)
   }
 

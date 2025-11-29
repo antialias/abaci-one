@@ -57,7 +57,14 @@ function MockPreviewWithVirtualLoading({
         }
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '48px',
+          alignItems: 'center',
+        }}
+      >
         {Array.from({ length: pages }).map((_, index) => {
           const orientation = formState.orientation || 'portrait'
           const maxWidth = orientation === 'portrait' ? '816px' : '1056px'
@@ -430,7 +437,13 @@ export const ArchitectureOverview: Story = {
             }}
           >
             <div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>
+              <h3
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                }}
+              >
                 🏗️ Component Hierarchy
               </h3>
               <ul style={{ margin: 0, paddingLeft: '20px', color: '#6b7280' }}>
@@ -446,7 +459,13 @@ export const ArchitectureOverview: Story = {
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>
+              <h3
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                }}
+              >
                 ⚡ Key Technologies
               </h3>
               <ul style={{ margin: 0, paddingLeft: '20px', color: '#6b7280' }}>
@@ -460,7 +479,13 @@ export const ArchitectureOverview: Story = {
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>
+              <h3
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                }}
+              >
                 📦 Virtual Loading System
               </h3>
               <ul style={{ margin: 0, paddingLeft: '20px', color: '#6b7280' }}>
@@ -474,7 +499,13 @@ export const ArchitectureOverview: Story = {
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>
+              <h3
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                }}
+              >
                 💾 State Management
               </h3>
               <ul style={{ margin: 0, paddingLeft: '20px', color: '#6b7280' }}>

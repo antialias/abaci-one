@@ -63,7 +63,14 @@ function SidebarWrapper({
   }
 
   return (
-    <div style={{ height: '100vh', width: '400px', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        height: '100vh',
+        width: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <WorksheetConfigProvider formState={formState} updateFormState={updateFormState}>
         <ConfigSidebar isSaving={isSaving} lastSaved={lastSaved} isReadOnly={isReadOnly} />
       </WorksheetConfigProvider>
@@ -136,7 +143,14 @@ export const LandscapeLayout: Story = {
 export const InteractiveTabs: Story = {
   render: () => {
     return (
-      <div style={{ height: '100vh', display: 'flex', gap: '20px', padding: '20px' }}>
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          gap: '20px',
+          padding: '20px',
+        }}
+      >
         <div style={{ width: '400px' }}>
           <SidebarWrapper />
         </div>
@@ -152,7 +166,14 @@ export const InteractiveTabs: Story = {
           <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
             Tab Navigation
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              fontSize: '14px',
+            }}
+          >
             <div>
               <strong>📝 Content Tab:</strong>
               <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
@@ -189,7 +210,13 @@ export const InteractiveTabs: Story = {
               }}
             >
               <strong>💡 Pro Tip:</strong>
-              <p style={{ margin: '4px 0 0 0', color: '#3b82f6', fontSize: '13px' }}>
+              <p
+                style={{
+                  margin: '4px 0 0 0',
+                  color: '#3b82f6',
+                  fontSize: '13px',
+                }}
+              >
                 Active tab is saved to sessionStorage. When you return, the same tab will be
                 selected.
               </p>
@@ -234,7 +261,13 @@ export const AllTabsShowcase: Story = {
               >
                 {tab} Tab
               </div>
-              <div style={{ flex: 1, border: '2px solid #1f2937', borderTop: 'none' }}>
+              <div
+                style={{
+                  flex: 1,
+                  border: '2px solid #1f2937',
+                  borderTop: 'none',
+                }}
+              >
                 <SidebarWrapper />
               </div>
             </div>
@@ -248,7 +281,14 @@ export const AllTabsShowcase: Story = {
 export const ComparisonReadOnlyVsEditable: Story = {
   render: () => {
     return (
-      <div style={{ height: '100vh', display: 'flex', gap: '20px', padding: '20px' }}>
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          gap: '20px',
+          padding: '20px',
+        }}
+      >
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div
             style={{

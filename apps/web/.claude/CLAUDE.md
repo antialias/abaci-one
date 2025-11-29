@@ -5,24 +5,28 @@
 **MANDATORY: Before using ANY React hook or function, verify it's imported.**
 
 **The Process (EVERY TIME):**
+
 1. Read the imports section at the top of the file (lines 1-20)
 2. Check if the hook/function you need is already imported
 3. If missing, add it to the import statement IN THE SAME EDIT as your code
 4. Do NOT write code that uses a hook without checking imports first
 
 **Common mistakes:**
+
 - ❌ Using `useCallback` without checking if it's imported
 - ❌ Using `useMemo` without checking if it's imported
 - ❌ Using `useRef` without checking if it's imported
 - ✅ Read imports → verify → add if needed → write code
 
 **Why this matters:**
+
 - Missing imports break the app immediately
 - User has to reload and loses state
 - Wastes time debugging trivial import errors
 - Shows lack of attention to detail
 
 **If you forget this, you will:**
+
 - Break the user's development flow
 - Lose reproduction state for bugs being debugged
 - Annoy the user with preventable errors
@@ -32,16 +36,19 @@
 **ALL documentation must be reachable from the main README via a linked path.**
 
 When creating new documentation:
+
 1. ✅ Create the document in the appropriate directory
 2. ✅ Link it from a parent README that eventually links to root README
 3. ✅ Verify the chain: Root README → Area README → Your Document
 
 **Why this matters:**
+
 - Documentation that isn't linked is invisible and will be forgotten
 - New developers start at root README and follow links
 - Ensures documentation stays discoverable and maintained
 
 **Example chain:**
+
 ```
 README.md (root)
   → apps/web/src/app/create/worksheets/README.md
@@ -58,6 +65,7 @@ README.md (root)
 **The @svg-maps packages (world, usa) USE ES module syntax and this WORKS correctly in production.**
 
 **Historical context:**
+
 - We went through multiple attempts to "fix" ES module import issues
 - Tried JSON data files, tried various dynamic import strategies
 - **The current implementation (dynamic imports in maps.ts) WORKS in production**
@@ -65,6 +73,7 @@ README.md (root)
 - DO NOT try to replace with JSON files or other workarounds
 
 **If you see an error related to @svg-maps:**
+
 - Check what else changed, not the import mechanism
 - The imports themselves are NOT the problem
 - Look for validator issues, type errors, or other recent changes
@@ -302,11 +311,13 @@ When encountering Git merge conflicts, refer to:
 **Quick Reference:**
 
 Enable better conflict markers (recommended):
+
 ```bash
 git config --global merge.conflictstyle zdiff3
 ```
 
 **diff3 Format:**
+
 ```
 <<<<<<< HEAD
 our changes
@@ -318,6 +329,7 @@ their changes
 ```
 
 **Resolution Strategy:**
+
 1. Compare OURS vs BASE - what did we change?
 2. Compare THEIRS vs BASE - what did they change?
 3. Classify: Compatible (keep both), Redundant (choose better), or Conflicting (combine carefully)

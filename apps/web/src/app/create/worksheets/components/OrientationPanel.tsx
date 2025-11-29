@@ -827,7 +827,11 @@ export function OrientationPanel({
                             }
                           >
                             <div
-                              className={css({ display: 'flex', gap: '2', alignItems: 'center' })}
+                              className={css({
+                                display: 'flex',
+                                gap: '2',
+                                alignItems: 'center',
+                              })}
                             >
                               {/* Warning indicator dot (same style as page buttons 1-3) */}
                               {risk !== 'none' && (
@@ -844,7 +848,11 @@ export function OrientationPanel({
                               <span>{pageCount} pages</span>
                             </div>
                             <div
-                              className={css({ display: 'flex', gap: '2', alignItems: 'center' })}
+                              className={css({
+                                display: 'flex',
+                                gap: '2',
+                                alignItems: 'center',
+                              })}
                             >
                               {isSelected && <span className={css({ fontSize: 'sm' })}>✓</span>}
                             </div>

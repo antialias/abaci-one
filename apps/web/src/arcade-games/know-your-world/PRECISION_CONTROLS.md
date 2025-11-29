@@ -13,6 +13,7 @@ The Know Your World map includes sophisticated precision controls that automatic
 **Activation**: Automatically detects when hovering over small regions (< 15px)
 
 **Behavior**:
+
 - **Sub-pixel regions (< 1px)**: 3% cursor speed (ultra precision)
   - Example: Gibraltar (0.08px width)
 - **Tiny regions (1-5px)**: 10% cursor speed (high precision)
@@ -27,16 +28,16 @@ The Know Your World map includes sophisticated precision controls that automatic
 ```typescript
 // Adaptive dampening based on smallest region size
 const getDampeningFactor = (size: number): number => {
-  if (size < 1) return 0.03 // Ultra precision
-  if (size < 5) return 0.1   // High precision
-  return 0.25                 // Moderate precision
-}
+  if (size < 1) return 0.03; // Ultra precision
+  if (size < 5) return 0.1; // High precision
+  return 0.25; // Moderate precision
+};
 
 // Apply dampening by interpolating cursor position
-const deltaX = cursorX - lastCursorRef.current.x
-const deltaY = cursorY - lastCursorRef.current.y
-finalCursorX = lastCursorRef.current.x + deltaX * dampeningFactor
-finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor
+const deltaX = cursorX - lastCursorRef.current.x;
+const deltaY = cursorY - lastCursorRef.current.y;
+finalCursorX = lastCursorRef.current.x + deltaX * dampeningFactor;
+finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor;
 ```
 
 ### 2. Auto Super-Zoom on Hover
@@ -44,15 +45,18 @@ finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor
 **Purpose**: Dramatically increase magnification for sub-pixel regions after a brief hover
 
 **Activation**:
+
 - Automatically triggers after **500ms** of hovering over sub-pixel regions (< 1px)
 - Only activates when magnifier is already showing
 
 **Behavior**:
+
 - Normal adaptive zoom: 8-24x
 - Super zoom: up to **60x magnification** (2.5x multiplier)
 - Applies to regions smaller than 1 screen pixel
 
 **Visual feedback**:
+
 - Magnifier border changes from **blue** to **gold**
 - Gold glow shadow around magnifier
 - Zoom level indicator shows current magnification
@@ -60,19 +64,19 @@ finalCursorY = lastCursorRef.current.y + deltaY * dampeningFactor
 **Implementation**: `MapRenderer.tsx` lines 853-873, 1282-1292
 
 ```typescript
-const HOVER_DELAY_MS = 500
-const SUPER_ZOOM_MULTIPLIER = 2.5
+const HOVER_DELAY_MS = 500;
+const SUPER_ZOOM_MULTIPLIER = 2.5;
 
 // Start timer when hovering over sub-pixel regions
 if (detectedSmallestSize < 1 && shouldShow && !superZoomActive) {
   hoverTimerRef.current = setTimeout(() => {
-    setSuperZoomActive(true)
-  }, HOVER_DELAY_MS)
+    setSuperZoomActive(true);
+  }, HOVER_DELAY_MS);
 }
 
 // Apply super zoom multiplier to adaptive zoom
 if (superZoomActive) {
-  adaptiveZoom = Math.min(60, adaptiveZoom * SUPER_ZOOM_MULTIPLIER)
+  adaptiveZoom = Math.min(60, adaptiveZoom * SUPER_ZOOM_MULTIPLIER);
 }
 ```
 
@@ -83,12 +87,14 @@ if (superZoomActive) {
 **Activation**: Moving mouse faster than **50 pixels per frame**
 
 **Behavior**:
+
 - Immediately cancels cursor dampening
 - Immediately cancels super zoom
 - Clears hover timer if active
 - Restores normal cursor speed
 
 **Visual feedback**:
+
 - Cursor returns to normal pointer
 - Magnifier border returns to blue (if still showing)
 - Super zoom deactivates
@@ -96,19 +102,19 @@ if (superZoomActive) {
 **Implementation**: `MapRenderer.tsx` lines 641-665
 
 ```typescript
-const QUICK_MOVE_THRESHOLD = 50 // pixels per frame
+const QUICK_MOVE_THRESHOLD = 50; // pixels per frame
 
 // Calculate velocity
-const deltaX = cursorX - lastCursorRef.current.x
-const deltaY = cursorY - lastCursorRef.current.y
-const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-velocity = distance
+const deltaX = cursorX - lastCursorRef.current.x;
+const deltaY = cursorY - lastCursorRef.current.y;
+const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+velocity = distance;
 
 // Quick escape on fast movement
 if (velocity > QUICK_MOVE_THRESHOLD) {
-  setPrecisionMode(false)
-  setSuperZoomActive(false)
-  clearTimeout(hoverTimerRef.current)
+  setPrecisionMode(false);
+  setSuperZoomActive(false);
+  clearTimeout(hoverTimerRef.current);
 }
 ```
 
@@ -124,30 +130,30 @@ if (velocity > QUICK_MOVE_THRESHOLD) {
 
 ```typescript
 // Convert dampened cursor to client coordinates
-const finalClientX = containerRect.left + finalCursorX
-const finalClientY = containerRect.top + finalCursorY
+const finalClientX = containerRect.left + finalCursorX;
+const finalClientY = containerRect.top + finalCursorY;
 
 // Check which region is under dampened cursor
 const cursorInRegion =
   finalClientX >= regionLeft &&
   finalClientX <= regionRight &&
   finalClientY >= regionTop &&
-  finalClientY <= regionBottom
+  finalClientY <= regionBottom;
 
 // Find closest region by distance to center
 if (cursorInRegion) {
   const distanceToCenter = Math.sqrt(
     Math.pow(finalClientX - regionCenterX, 2) +
-    Math.pow(finalClientY - regionCenterY, 2)
-  )
+      Math.pow(finalClientY - regionCenterY, 2),
+  );
 
   if (distanceToCenter < smallestDistanceToCenter) {
-    regionUnderCursor = region.id
+    regionUnderCursor = region.id;
   }
 }
 
 // Set hover state manually (bypass native events)
-setHoveredRegion(regionUnderCursor)
+setHoveredRegion(regionUnderCursor);
 ```
 
 **Native hover events disabled**: When precision mode is active, native `onMouseEnter`/`onMouseLeave` are bypassed:
@@ -186,26 +192,26 @@ Extensive console logging helps troubleshoot precision controls:
 
 ```javascript
 // Precision mode activation
-console.log('[Precision Mode] ✅ DAMPENING ACTIVE:', {
-  smallestRegionSize: '0.82px',
-  dampeningFactor: '10%',
+console.log("[Precision Mode] ✅ DAMPENING ACTIVE:", {
+  smallestRegionSize: "0.82px",
+  dampeningFactor: "10%",
   actual: { x: 500, y: 300 },
-  dampened: { x: 485, y: 298 }
-})
+  dampened: { x: 485, y: 298 },
+});
 
 // Super zoom activation
-console.log('[Super Zoom] 🔍 ACTIVATING super zoom!')
+console.log("[Super Zoom] 🔍 ACTIVATING super zoom!");
 
 // Quick escape
-console.log('[Quick Escape] 💨 Fast movement detected (75px) - canceling')
+console.log("[Quick Escape] 💨 Fast movement detected (75px) - canceling");
 
 // Hover detection
-console.log('[Hover Detection] Region under dampened cursor:', {
-  region: 'je',
-  regionName: 'Jersey',
+console.log("[Hover Detection] Region under dampened cursor:", {
+  region: "je",
+  regionName: "Jersey",
   dampenedPos: { x: 485, y: 298 },
-  distanceToCenter: '2.5px'
-})
+  distanceToCenter: "2.5px",
+});
 ```
 
 ## Configuration Constants
@@ -214,24 +220,24 @@ All tuning parameters are defined at the top of `MapRenderer.tsx`:
 
 ```typescript
 // Hover delay before super zoom activates
-const HOVER_DELAY_MS = 500
+const HOVER_DELAY_MS = 500;
 
 // Velocity threshold for quick-escape (pixels per frame)
-const QUICK_MOVE_THRESHOLD = 50
+const QUICK_MOVE_THRESHOLD = 50;
 
 // Super zoom multiplier (applied to adaptive zoom)
-const SUPER_ZOOM_MULTIPLIER = 2.5
+const SUPER_ZOOM_MULTIPLIER = 2.5;
 
 // Adaptive dampening factors
 const getDampeningFactor = (size: number): number => {
-  if (size < 1) return 0.03  // Ultra precision: 3% speed
-  if (size < 5) return 0.1   // High precision: 10% speed
-  return 0.25                // Moderate precision: 25% speed
-}
+  if (size < 1) return 0.03; // Ultra precision: 3% speed
+  if (size < 5) return 0.1; // High precision: 10% speed
+  return 0.25; // Moderate precision: 25% speed
+};
 
 // Maximum zoom levels
-const MAX_ZOOM_NORMAL = 24  // Normal adaptive zoom cap
-const MAX_ZOOM_SUPER = 60   // Super zoom cap
+const MAX_ZOOM_NORMAL = 24; // Normal adaptive zoom cap
+const MAX_ZOOM_SUPER = 60; // Super zoom cap
 ```
 
 ## Technical Details
@@ -256,12 +262,14 @@ Cursor dampening happens in container coordinates, then converts to client coord
 ### Browser Compatibility
 
 Works in all modern browsers that support:
+
 - CSS transforms
 - getBoundingClientRect()
 - React 18 hooks
 - @react-spring/web
 
 Tested on:
+
 - Chrome/Edge (Chromium)
 - Firefox
 - Safari

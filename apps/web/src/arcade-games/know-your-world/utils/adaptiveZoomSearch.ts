@@ -339,7 +339,12 @@ export function findOptimalZoom(context: AdaptiveZoomSearchContext): AdaptiveZoo
       containerRect
     )
 
-    return { region: detectedRegion, importance, centerX: regionCenterX, centerY: regionCenterY }
+    return {
+      region: detectedRegion,
+      importance,
+      centerX: regionCenterX,
+      centerY: regionCenterY,
+    }
   })
 
   // Sort by importance (highest first)

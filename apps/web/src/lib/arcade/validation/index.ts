@@ -5,7 +5,11 @@
  */
 
 // Re-export core functions and types from unified registry
-export { getValidator, hasValidator, getRegisteredGameNames } from '../validators'
+export {
+  getValidator,
+  hasValidator,
+  getRegisteredGameNames,
+} from '../validators'
 
 export type { GameName } from '../validators'
 export * from './types'

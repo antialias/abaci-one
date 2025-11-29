@@ -25,6 +25,7 @@ A modular, plugin-based architecture for building multiplayer arcade games with 
 A geography quiz game where players identify countries, states, and territories on unlabeled maps.
 
 **Key Features**:
+
 - **[Precision Controls](./know-your-world/PRECISION_CONTROLS.md)** - Automatic cursor dampening and super zoom for tiny regions (Gibraltar 0.08px)
 - **3 Game Modes**: Cooperative, Race, Turn-Based
 - **Multiple Maps**: World (256 countries), USA States (51 states)

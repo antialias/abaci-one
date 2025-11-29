@@ -26,7 +26,12 @@ function MockSidebar() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div>
           <label
-            style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}
+            style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'block',
+              marginBottom: '4px',
+            }}
           >
             Operator
           </label>
@@ -38,7 +43,12 @@ function MockSidebar() {
         </div>
         <div>
           <label
-            style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}
+            style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'block',
+              marginBottom: '4px',
+            }}
           >
             Digit Range
           </label>
@@ -58,7 +68,12 @@ function MockSidebar() {
         </div>
         <div>
           <label
-            style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}
+            style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'block',
+              marginBottom: '4px',
+            }}
           >
             Problems Per Page
           </label>
@@ -70,7 +85,12 @@ function MockSidebar() {
         </div>
         <div>
           <label
-            style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}
+            style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'block',
+              marginBottom: '4px',
+            }}
           >
             Pages
           </label>
@@ -120,7 +140,14 @@ function MockPreviewWithVirtualLoading({ pages = 5 }: { pages?: number }) {
         }
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '48px',
+          alignItems: 'center',
+        }}
+      >
         {Array.from({ length: pages }).map((_, index) => (
           <div key={index} style={{ width: '100%', maxWidth: '816px' }}>
             <PagePlaceholder
@@ -264,7 +291,12 @@ export const LandscapeOrientation: Story = {
           }}
         >
           <div
-            style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '48px',
+              alignItems: 'center',
+            }}
           >
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={index} style={{ width: '100%', maxWidth: '1056px' }}>

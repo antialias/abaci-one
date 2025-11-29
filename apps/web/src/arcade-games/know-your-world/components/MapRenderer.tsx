@@ -1,49 +1,54 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { useSpring, animated, to } from '@react-spring/web'
+import { animated, to, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
+import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { MapData, MapRegion } from '../types'
+import type { ContinentId } from '../continents'
+import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
+import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
+import { usePointerLock } from '../hooks/usePointerLock'
+import { useRegionDetection } from '../hooks/useRegionDetection'
+import { useHasRegionHint, useRegionHint } from '../hooks/useRegionHint'
+import { useSpeakHint } from '../hooks/useSpeakHint'
 import {
-  getRegionColor,
-  getRegionStroke,
   getLabelTextColor,
   getLabelTextShadow,
+  getRegionColor,
+  getRegionStroke,
 } from '../mapColors'
-import { forceSimulation, forceCollide, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import {
-  WORLD_MAP,
-  USA_MAP,
   ASSISTANCE_LEVELS,
-  filterRegionsByContinent,
-  parseViewBox,
   calculateFitCropViewBox,
+  calculateSafeZoneViewBox,
+  filterRegionsByContinent,
   getCountryFlagEmoji,
+  parseViewBox,
+  type SafeZoneMargins,
+  USA_MAP,
+  WORLD_MAP,
 } from '../maps'
-import type { ContinentId } from '../continents'
+import type { HintMap } from '../messages'
+import type { MapData, MapRegion } from '../types'
+import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
+import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
-  calculateScreenPixelRatio,
   calculateMaxZoomAtThreshold,
+  calculateScreenPixelRatio,
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
-import { findOptimalZoom, type BoundingBox as DebugBoundingBox } from '../utils/adaptiveZoomSearch'
-import { useRegionDetection } from '../hooks/useRegionDetection'
-import { usePointerLock } from '../hooks/usePointerLock'
-import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
-import { useRegionHint, useHasRegionHint } from '../hooks/useRegionHint'
-import { useSpeakHint } from '../hooks/useSpeakHint'
-import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
-import type { FeedbackType } from '../utils/hotColdPhrases'
-import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 import { DevCropTool } from './DevCropTool'
-import type { HintMap } from '../messages'
+import { usePointerLockButton, usePointerLockButtonRegistry } from './usePointerLockButton'
 
 // Debug flag: show technical info in magnifier (dev only)
 const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
 
 // Debug flag: show bounding boxes with importance scores (dev only)
 const SHOW_DEBUG_BOUNDING_BOXES = process.env.NODE_ENV === 'development'
+
+// Debug flag: show safe zone rectangles (leftover area and crop region) - dev only
+const SHOW_SAFE_ZONE_DEBUG = process.env.NODE_ENV === 'development'
 
 // Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
 const PRECISION_MODE_THRESHOLD = 20
@@ -55,6 +60,19 @@ const LABEL_MIN_OPACITY = 0.08 // minimum opacity for faded labels
 // Magnifier size ratios - responsive to container aspect ratio
 const MAGNIFIER_SIZE_SMALL = 1 / 3 // Used for the constrained dimension
 const MAGNIFIER_SIZE_LARGE = 1 / 2 // Used for the unconstrained dimension
+
+// Game nav height offset - buttons should appear below the nav when in full-viewport mode
+const NAV_HEIGHT_OFFSET = 150
+
+// Safe zone margins - areas reserved for floating UI elements (in pixels)
+// These define where the crop region should NOT appear, ensuring findable regions
+// are visible and not obscured by UI controls
+const SAFE_ZONE_MARGINS: SafeZoneMargins = {
+  top: 290, // Space for nav (~150px) + floating prompt (~140px with name input)
+  right: 200, // Space for controls panel (hint, give up, hot/cold buttons)
+  bottom: 0, // Error banner can overlap map
+  left: 0, // Progress at top-left is small, doesn't need full-height margin
+}
 
 /**
  * Calculate magnifier dimensions based on container aspect ratio.
@@ -270,6 +288,12 @@ interface MapRendererProps {
   memberPlayers?: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
   /** When true, hints are locked (e.g., user hasn't typed required name confirmation yet) */
   hintsLocked?: boolean
+  /** When true, fill the parent container with position: absolute */
+  fillContainer?: boolean
+  /** Current difficulty level for display (deprecated - use assistanceLevel) */
+  difficulty?: string
+  /** Map display name */
+  mapName?: string
 }
 
 /**
@@ -336,6 +360,9 @@ export function MapRenderer({
   viewerId,
   memberPlayers = {},
   hintsLocked = false,
+  fillContainer = false,
+  difficulty,
+  mapName,
 }: MapRendererProps) {
   // Extract force tuning parameters with defaults
   const {
@@ -876,8 +903,7 @@ export function MapRenderer({
   }, [mapData])
 
   // Check if pointer lock is supported (not available on touch devices like iPad)
-  const isPointerLockSupported =
-    typeof document !== 'undefined' && 'pointerLockElement' in document
+  const isPointerLockSupported = typeof document !== 'undefined' && 'pointerLockElement' in document
 
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -964,24 +990,59 @@ export function MapRenderer({
 
   // Calculate the display viewBox using fit-crop-with-fill strategy
   // This ensures the custom crop region is visible while filling the container
+  // When fillContainer is true (playing phase), we use safe zone margins to ensure
+  // the crop region doesn't appear under floating UI elements
   const displayViewBox = useMemo(() => {
-    // If no custom crop, use the regular viewBox (which may be a calculated bounding box)
-    if (!mapData.customCrop) {
-      return mapData.viewBox
-    }
+    console.log('[MapRenderer] displayViewBox calculation:', {
+      customCrop: mapData.customCrop,
+      originalViewBox: mapData.originalViewBox,
+      viewBox: mapData.viewBox,
+      svgDimensions,
+      fillContainer,
+    })
 
     // Need container dimensions to calculate aspect ratio
     if (svgDimensions.width <= 0 || svgDimensions.height <= 0) {
+      console.log('[MapRenderer] No container dimensions, using regular viewBox')
       return mapData.viewBox
     }
 
-    const containerAspect = svgDimensions.width / svgDimensions.height
     const originalBounds = parseViewBox(mapData.originalViewBox)
-    const cropRegion = parseViewBox(mapData.customCrop)
 
+    // Use custom crop if defined, otherwise use the full original map bounds
+    // This ensures the map always fits within the leftover area (not under UI elements)
+    const cropRegion = mapData.customCrop
+      ? parseViewBox(mapData.customCrop)
+      : originalBounds
+
+    console.log('[MapRenderer] Crop region:', cropRegion, mapData.customCrop ? '(custom)' : '(full map)')
+
+    // In full-viewport mode (fillContainer), use safe zone calculation to ensure
+    // the crop region fits within the area not covered by floating UI elements
+    if (fillContainer) {
+      const result = calculateSafeZoneViewBox(
+        svgDimensions.width,
+        svgDimensions.height,
+        SAFE_ZONE_MARGINS,
+        cropRegion,
+        originalBounds
+      )
+      console.log('[MapRenderer] Safe zone viewBox result:', result)
+      return result
+    }
+
+    // If not fillContainer and no custom crop, just use regular viewBox
+    if (!mapData.customCrop) {
+      console.log('[MapRenderer] No fillContainer, no custom crop, using regular viewBox:', mapData.viewBox)
+      return mapData.viewBox
+    }
+
+    // Otherwise use standard fit-crop calculation (for setup phase, etc.)
+    const containerAspect = svgDimensions.width / svgDimensions.height
     const result = calculateFitCropViewBox(originalBounds, cropRegion, containerAspect)
+    console.log('[MapRenderer] Fit-crop viewBox result:', result)
     return result
-  }, [mapData.customCrop, mapData.originalViewBox, mapData.viewBox, svgDimensions])
+  }, [mapData.customCrop, mapData.originalViewBox, mapData.viewBox, svgDimensions, fillContainer])
 
   // Parse the display viewBox for animation and calculations
   const defaultViewBoxParts = useMemo(() => {
@@ -1118,7 +1179,8 @@ export function MapRenderer({
       const containerRect = containerRef.current.getBoundingClientRect()
       const svgOffsetX = svgRect.left - containerRect.left
       const svgOffsetY = svgRect.top - containerRect.top
-      const buttonTop = svgOffsetY + 8
+      // Add nav offset when in full-viewport mode
+      const buttonTop = svgOffsetY + 8 + (fillContainer ? NAV_HEIGHT_OFFSET : 0)
       const buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8
       setSavedButtonPosition({ top: buttonTop, right: buttonRight })
     }
@@ -1416,14 +1478,14 @@ export function MapRenderer({
         // Check if this is a small region using ACTUAL screen pixels
         const isSmall = pixelWidth < 10 || pixelHeight < 10 || pixelArea < 100
 
-        // Debug logging ONLY for Gibraltar and ultra-tiny regions (< 1px)
-        if (region.id === 'gi' || pixelWidth < 1 || pixelHeight < 1) {
-          console.log(
-            `[MapRenderer] ${region.id === 'gi' ? '🎯 GIBRALTAR' : '🔍 TINY'}: ${region.name} - ` +
-              `W:${pixelWidth.toFixed(2)}px H:${pixelHeight.toFixed(2)}px ` +
-              `Area:${pixelArea.toFixed(2)}px²`
-          )
-        }
+        // Debug logging ONLY for Gibraltar (commented out - too spammy)
+        // if (region.id === 'gi' || pixelWidth < 1 || pixelHeight < 1) {
+        //   console.log(
+        //     `[MapRenderer] ${region.id === 'gi' ? '🎯 GIBRALTAR' : '🔍 TINY'}: ${region.name} - ` +
+        //       `W:${pixelWidth.toFixed(2)}px H:${pixelHeight.toFixed(2)}px ` +
+        //       `Area:${pixelArea.toFixed(2)}px²`
+        //   )
+        // }
 
         // Collect label nodes for regions that need labels
         // Only show arrow labels for small regions if showArrows flag is enabled
@@ -2398,10 +2460,14 @@ export function MapRenderer({
       onMouseLeave={handleMouseLeave}
       onClick={handleContainerClick}
       className={css({
-        position: 'relative',
+        position: fillContainer ? 'absolute' : 'relative',
+        top: fillContainer ? 0 : undefined,
+        left: fillContainer ? 0 : undefined,
+        right: fillContainer ? 0 : undefined,
+        bottom: fillContainer ? 0 : undefined,
         width: '100%',
         height: '100%',
-        flex: 1, // Fill available space in parent flex container
+        flex: fillContainer ? undefined : 1, // Fill available space in parent flex container
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -4233,19 +4299,19 @@ export function MapRenderer({
           )
         })}
 
-      {/* Give Up button overlay - positioned within SVG bounds for pointer lock accessibility */}
+      {/* Floating controls panel - Give Up, Hint, and Hot/Cold buttons in a unified container */}
       {(() => {
         // Use svgDimensions to trigger re-render on resize, but get actual rect for positioning
         if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
 
         // During give-up animation, use saved position to prevent jumping due to SVG scale transform
-        let buttonTop: number
-        let buttonRight: number
+        let panelTop: number
+        let panelRight: number
 
         if (isGiveUpAnimating && savedButtonPosition) {
           // Use saved position during animation
-          buttonTop = savedButtonPosition.top
-          buttonRight = savedButtonPosition.right
+          panelTop = savedButtonPosition.top
+          panelRight = savedButtonPosition.right
         } else {
           // Calculate position normally
           const svgRect = svgRef.current.getBoundingClientRect()
@@ -4254,187 +4320,251 @@ export function MapRenderer({
           const svgOffsetX = svgRect.left - containerRect.left
           const svgOffsetY = svgRect.top - containerRect.top
           // Position in top-right corner of SVG with some padding
-          buttonTop = svgOffsetY + 8
-          buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8
+          // Add nav offset when in full-viewport mode
+          panelTop = svgOffsetY + 8 + (fillContainer ? NAV_HEIGHT_OFFSET : 0)
+          panelRight = containerRect.width - (svgOffsetX + svgRect.width) + 8
         }
 
+        // Determine if we should show waiting message
+        const showWaitingMessage =
+          gameMode === 'cooperative' &&
+          activeUserIds.length > 1 &&
+          giveUpVotes.length > 0 &&
+          giveUpVotes.length < activeUserIds.length &&
+          viewerId &&
+          giveUpVotes.includes(viewerId)
+        const remainingVoters = activeUserIds.length - giveUpVotes.length
+
+        // Check if Hot/Cold button should be shown
+        const showHotCold = isSpeechSupported && hasFinePointer && assistanceAllowsHotCold
+
         return (
-          <button
-            ref={giveUpButton.refCallback}
-            onClick={(e) => {
-              e.stopPropagation() // Don't trigger map click
-              if (!isGiveUpAnimating) {
-                onGiveUp()
-              }
-            }}
-            disabled={isGiveUpAnimating}
-            data-action="give-up-overlay"
-            title="Press 'G' to give up"
+          <div
+            data-element="floating-controls-panel"
             style={{
               position: 'absolute',
-              top: `${buttonTop}px`,
-              right: `${buttonRight}px`,
-              // Apply hover styles when fake cursor is over button (pointer lock mode)
-              ...(giveUpButton.isHovered
-                ? {
-                    backgroundColor: isDark ? '#a16207' : '#fef08a', // yellow.700 / yellow.200
-                    transform: 'scale(1.05)',
-                  }
-                : {}),
-              // Apply disabled styles
-              ...(isGiveUpAnimating
-                ? {
-                    opacity: 0.5,
-                    cursor: 'not-allowed',
-                    transform: 'none',
-                  }
-                : {}),
+              top: `${panelTop}px`,
+              right: `${panelRight}px`,
             }}
             className={css({
-              padding: '2 3',
-              fontSize: 'sm',
-              cursor: 'pointer',
-              bg: isDark ? 'yellow.800' : 'yellow.100',
-              color: isDark ? 'yellow.200' : 'yellow.800',
-              rounded: 'md',
-              border: '2px solid',
-              borderColor: isDark ? 'yellow.600' : 'yellow.400',
-              fontWeight: 'bold',
-              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '2',
               zIndex: 50,
-              boxShadow: 'md',
-              _hover: {
-                bg: isDark ? 'yellow.700' : 'yellow.200',
-                transform: 'scale(1.05)',
-              },
-              _disabled: {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                transform: 'none',
-              },
             })}
           >
-            {(() => {
-              // Determine button text based on game mode and voting state
-              // Voting is per-session (userId), not per-player
-              const isCooperativeMultiplayer =
-                gameMode === 'cooperative' && activeUserIds.length > 1
-              const hasLocalSessionVoted = viewerId && giveUpVotes.includes(viewerId)
-              const voteCount = giveUpVotes.length
-              const totalSessions = activeUserIds.length
-
-              if (isCooperativeMultiplayer) {
-                if (hasLocalSessionVoted) {
-                  return (
-                    <span>
-                      ✓ Voted ({voteCount}/{totalSessions})
-                    </span>
-                  )
-                }
-                if (voteCount > 0) {
-                  return (
-                    <span>
-                      Give Up ({voteCount}/{totalSessions}) (G)
-                    </span>
-                  )
-                }
-              }
-              return 'Give Up (G)'
-            })()}
-          </button>
-        )
-      })()}
-
-      {/* Show waiting message for give up voting (cooperative multiplayer with multiple sessions) */}
-      {gameMode === 'cooperative' &&
-        activeUserIds.length > 1 &&
-        giveUpVotes.length > 0 &&
-        giveUpVotes.length < activeUserIds.length &&
-        viewerId &&
-        giveUpVotes.includes(viewerId) &&
-        (() => {
-          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
-
-          const svgRect = svgRef.current.getBoundingClientRect()
-          const containerRect = containerRef.current.getBoundingClientRect()
-          const svgOffsetY = svgRect.top - containerRect.top
-          const buttonRight =
-            containerRect.width - (svgRect.left - containerRect.left + svgRect.width) + 8
-
-          const remaining = activeUserIds.length - giveUpVotes.length
-
-          return (
+            {/* Controls row with game info and action buttons */}
             <div
-              data-element="give-up-voters"
+              data-element="controls-button-row"
               className={css({
-                position: 'absolute',
-                fontSize: 'xs',
-                color: isDark ? 'yellow.300' : 'yellow.700',
-                bg: isDark ? 'gray.800/90' : 'white/90',
-                padding: '1 2',
-                rounded: 'md',
-                border: '1px solid',
-                borderColor: isDark ? 'yellow.600' : 'yellow.400',
-                zIndex: 49,
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: '2',
+                bg: isDark ? 'gray.800/95' : 'white/95',
+                backdropFilter: 'blur(12px)',
+                padding: '2',
+                rounded: 'xl',
+                border: '2px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                boxShadow: 'lg',
               })}
-              style={{
-                top: `${svgOffsetY + 44}px`, // Below the Give Up button
-                right: `${buttonRight}px`,
-              }}
             >
-              Waiting for {remaining} other {remaining === 1 ? 'player' : 'players'}...
-            </div>
-          )
-        })()}
+              {/* Game mode and difficulty indicators */}
+              <div
+                data-element="game-info-badge"
+                className={css({
+                  display: 'flex',
+                  gap: '1',
+                  fontSize: 'sm',
+                  padding: '1 2',
+                  rounded: 'md',
+                  bg: isDark ? 'gray.700' : 'gray.100',
+                })}
+                title={mapName || 'Game Info'}
+              >
+                {/* Game mode icon */}
+                <span>
+                  {gameMode === 'cooperative' && '🤝'}
+                  {gameMode === 'race' && '🏁'}
+                  {gameMode === 'turn-based' && '↔️'}
+                  {!gameMode && '🎮'}
+                </span>
+                {/* Difficulty icon */}
+                <span>
+                  {difficulty === 'learning' && '🌱'}
+                  {difficulty === 'easy' && '😊'}
+                  {difficulty === 'normal' && '🎯'}
+                  {difficulty === 'expert' && '🏆'}
+                  {difficulty === 'hard' && '🤔'}
+                  {!difficulty && ''}
+                </span>
+              </div>
 
-      {/* Hint button - only show if hint exists for current region */}
-      {hasHint &&
-        (() => {
-          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
+              {/* Separator */}
+              <div
+                className={css({
+                  width: '1px',
+                  height: '24px',
+                  bg: isDark ? 'gray.600' : 'gray.300',
+                })}
+              />
 
-          // During give-up animation, use saved position to prevent jumping
-          let buttonTop: number
-          let buttonRight: number
+              {/* Hot/Cold button */}
+              {showHotCold && (
+                <button
+                  ref={hotColdButton.refCallback}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleHotColdToggle()
+                  }}
+                  data-action="hot-cold-button"
+                  title={
+                    hotColdEnabled
+                      ? 'Disable hot/cold audio feedback'
+                      : 'Enable hot/cold audio feedback'
+                  }
+                  style={{
+                    // Apply hover styles when fake cursor is over button (pointer lock mode)
+                    ...(hotColdButton.isHovered
+                      ? {
+                          backgroundColor: isDark
+                            ? hotColdEnabled
+                              ? '#c2410c'
+                              : '#374151'
+                            : hotColdEnabled
+                              ? '#fed7aa'
+                              : '#e5e7eb',
+                          transform: 'scale(1.05)',
+                        }
+                      : {}),
+                    ...(isGiveUpAnimating
+                      ? {
+                          opacity: 0.5,
+                          cursor: 'not-allowed',
+                        }
+                      : {}),
+                  }}
+                  className={css({
+                    padding: '2 3',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    bg: hotColdEnabled
+                      ? isDark
+                        ? 'orange.800'
+                        : 'orange.100'
+                      : isDark
+                        ? 'gray.700'
+                        : 'gray.200',
+                    color: hotColdEnabled
+                      ? isDark
+                        ? 'orange.200'
+                        : 'orange.800'
+                      : isDark
+                        ? 'gray.400'
+                        : 'gray.600',
+                    rounded: 'md',
+                    border: '2px solid',
+                    borderColor: hotColdEnabled
+                      ? isDark
+                        ? 'orange.600'
+                        : 'orange.400'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.400',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s',
+                    boxShadow: 'sm',
+                    _hover: {
+                      bg: hotColdEnabled
+                        ? isDark
+                          ? 'orange.700'
+                          : 'orange.200'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300',
+                      transform: 'scale(1.05)',
+                    },
+                  })}
+                >
+                  {getHotColdEmoji(hotColdFeedbackType)} Hot/Cold
+                </button>
+              )}
 
-          if (isGiveUpAnimating && savedButtonPosition) {
-            buttonTop = savedButtonPosition.top
-            // Position hint button to the left of give up button
-            buttonRight = savedButtonPosition.right + 100 // Give Up button width + gap
-          } else {
-            const svgRect = svgRef.current.getBoundingClientRect()
-            const containerRect = containerRef.current.getBoundingClientRect()
-            const svgOffsetX = svgRect.left - containerRect.left
-            const svgOffsetY = svgRect.top - containerRect.top
-            buttonTop = svgOffsetY + 8
-            // Position hint button to the left of give up button (give up is ~85px + 8 gap)
-            buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8 + 100
-          }
+              {/* Hint button */}
+              {hasHint && (
+                <button
+                  ref={hintButton.refCallback}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowHintBubble((prev) => !prev)
+                  }}
+                  data-action="hint-button"
+                  title="Get a hint (H)"
+                  style={{
+                    // Apply hover styles when fake cursor is over button (pointer lock mode)
+                    ...(hintButton.isHovered
+                      ? {
+                          backgroundColor: isDark ? '#1e40af' : '#bfdbfe', // blue.800 darker / blue.200
+                          transform: 'scale(1.05)',
+                        }
+                      : {}),
+                    ...(isGiveUpAnimating
+                      ? {
+                          opacity: 0.5,
+                          cursor: 'not-allowed',
+                        }
+                      : {}),
+                  }}
+                  className={css({
+                    padding: '2 3',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    bg: isDark ? 'blue.800' : 'blue.100',
+                    color: isDark ? 'blue.200' : 'blue.800',
+                    rounded: 'md',
+                    border: '2px solid',
+                    borderColor: isDark ? 'blue.600' : 'blue.400',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s',
+                    boxShadow: 'sm',
+                    _hover: {
+                      bg: isDark ? 'blue.700' : 'blue.200',
+                      transform: 'scale(1.05)',
+                    },
+                  })}
+                >
+                  💡 Hint (H)
+                </button>
+              )}
 
-          return (
-            <>
+              {/* Give Up button */}
               <button
-                ref={hintButton.refCallback}
+                ref={giveUpButton.refCallback}
                 onClick={(e) => {
-                  e.stopPropagation()
-                  setShowHintBubble((prev) => !prev)
+                  e.stopPropagation() // Don't trigger map click
+                  if (!isGiveUpAnimating) {
+                    onGiveUp()
+                  }
                 }}
-                data-action="hint-button"
-                title="Get a hint (H)"
+                disabled={isGiveUpAnimating}
+                data-action="give-up-overlay"
+                title="Press 'G' to give up"
                 style={{
-                  position: 'absolute',
-                  top: `${buttonTop}px`,
-                  right: `${buttonRight}px`,
                   // Apply hover styles when fake cursor is over button (pointer lock mode)
-                  ...(hintButton.isHovered
+                  ...(giveUpButton.isHovered
                     ? {
-                        backgroundColor: isDark ? '#1e40af' : '#bfdbfe', // blue.800 darker / blue.200
+                        backgroundColor: isDark ? '#a16207' : '#fef08a', // yellow.700 / yellow.200
                         transform: 'scale(1.05)',
                       }
                     : {}),
+                  // Apply disabled styles
                   ...(isGiveUpAnimating
                     ? {
                         opacity: 0.5,
                         cursor: 'not-allowed',
+                        transform: 'none',
                       }
                     : {}),
                 }}
@@ -4442,216 +4572,302 @@ export function MapRenderer({
                   padding: '2 3',
                   fontSize: 'sm',
                   cursor: 'pointer',
-                  bg: isDark ? 'blue.800' : 'blue.100',
-                  color: isDark ? 'blue.200' : 'blue.800',
+                  bg: isDark ? 'yellow.800' : 'yellow.100',
+                  color: isDark ? 'yellow.200' : 'yellow.800',
                   rounded: 'md',
                   border: '2px solid',
-                  borderColor: isDark ? 'blue.600' : 'blue.400',
+                  borderColor: isDark ? 'yellow.600' : 'yellow.400',
                   fontWeight: 'bold',
                   transition: 'all 0.2s',
-                  zIndex: 50,
-                  boxShadow: 'md',
+                  boxShadow: 'sm',
                   _hover: {
-                    bg: isDark ? 'blue.700' : 'blue.200',
+                    bg: isDark ? 'yellow.700' : 'yellow.200',
                     transform: 'scale(1.05)',
+                  },
+                  _disabled: {
+                    opacity: 0.5,
+                    cursor: 'not-allowed',
+                    transform: 'none',
                   },
                 })}
               >
-                💡 Hint (H)
-              </button>
+                {(() => {
+                  // Determine button text based on game mode and voting state
+                  // Voting is per-session (userId), not per-player
+                  const isCooperativeMultiplayer =
+                    gameMode === 'cooperative' && activeUserIds.length > 1
+                  const hasLocalSessionVoted = viewerId && giveUpVotes.includes(viewerId)
+                  const voteCount = giveUpVotes.length
+                  const totalSessions = activeUserIds.length
 
-              {/* Speech bubble for hint */}
-              {showHintBubble && hintText && (
-                <div
-                  data-element="hint-bubble"
-                  style={{
+                  if (isCooperativeMultiplayer) {
+                    if (hasLocalSessionVoted) {
+                      return (
+                        <span>
+                          ✓ Voted ({voteCount}/{totalSessions})
+                        </span>
+                      )
+                    }
+                    if (voteCount > 0) {
+                      return (
+                        <span>
+                          Give Up ({voteCount}/{totalSessions}) (G)
+                        </span>
+                      )
+                    }
+                  }
+                  return 'Give Up (G)'
+                })()}
+              </button>
+            </div>
+
+            {/* Waiting message for give up voting */}
+            {showWaitingMessage && (
+              <div
+                data-element="give-up-voters"
+                className={css({
+                  fontSize: 'xs',
+                  color: isDark ? 'yellow.300' : 'yellow.700',
+                  bg: isDark ? 'gray.800/90' : 'white/90',
+                  backdropFilter: 'blur(8px)',
+                  padding: '1 2',
+                  rounded: 'md',
+                  border: '1px solid',
+                  borderColor: isDark ? 'yellow.600' : 'yellow.400',
+                })}
+              >
+                Waiting for {remainingVoters} other {remainingVoters === 1 ? 'player' : 'players'}
+                ...
+              </div>
+            )}
+
+            {/* Speech bubble for hint */}
+            {showHintBubble && hintText && (
+              <div
+                data-element="hint-bubble"
+                style={{
+                  maxWidth: '280px',
+                }}
+                className={css({
+                  bg: isDark ? 'gray.800' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.800',
+                  padding: '3',
+                  rounded: 'lg',
+                  border: '2px solid',
+                  borderColor: isDark ? 'blue.500' : 'blue.400',
+                  boxShadow: 'lg',
+                  fontSize: 'sm',
+                  lineHeight: 'relaxed',
+                  position: 'relative',
+                  // Speech bubble pointer (pointing up to button row)
+                  _before: {
+                    content: '""',
                     position: 'absolute',
-                    top: `${buttonTop + 44}px`, // Below the hint button
-                    right: `${buttonRight - 50}px`, // Centered relative to button
-                    maxWidth: '280px',
-                  }}
+                    top: '-10px',
+                    right: '40px',
+                    borderWidth: '0 10px 10px 10px',
+                    borderStyle: 'solid',
+                    borderColor: isDark
+                      ? 'transparent transparent token(colors.blue.500) transparent'
+                      : 'transparent transparent token(colors.blue.400) transparent',
+                  },
+                  _after: {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-7px',
+                    right: '42px',
+                    borderWidth: '0 8px 8px 8px',
+                    borderStyle: 'solid',
+                    borderColor: isDark
+                      ? 'transparent transparent token(colors.gray.800) transparent'
+                      : 'transparent transparent white transparent',
+                  },
+                })}
+              >
+                {/* Hint text */}
+                <div className={css({ marginBottom: '3', lineHeight: '1.5' })}>{hintText}</div>
+
+                {/* Controls section */}
+                <div
                   className={css({
-                    bg: isDark ? 'gray.800' : 'white',
-                    color: isDark ? 'gray.100' : 'gray.800',
-                    padding: '3',
-                    rounded: 'lg',
-                    border: '2px solid',
-                    borderColor: isDark ? 'blue.500' : 'blue.400',
-                    boxShadow: 'lg',
-                    fontSize: 'sm',
-                    lineHeight: 'relaxed',
-                    zIndex: 51,
-                    position: 'relative',
-                    // Speech bubble pointer (pointing up to button)
-                    _before: {
-                      content: '""',
-                      position: 'absolute',
-                      top: '-10px',
-                      right: '70px',
-                      borderWidth: '0 10px 10px 10px',
-                      borderStyle: 'solid',
-                      borderColor: isDark
-                        ? 'transparent transparent token(colors.blue.500) transparent'
-                        : 'transparent transparent token(colors.blue.400) transparent',
-                    },
-                    _after: {
-                      content: '""',
-                      position: 'absolute',
-                      top: '-7px',
-                      right: '72px',
-                      borderWidth: '0 8px 8px 8px',
-                      borderStyle: 'solid',
-                      borderColor: isDark
-                        ? 'transparent transparent token(colors.gray.800) transparent'
-                        : 'transparent transparent white transparent',
-                    },
+                    borderTop: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    paddingTop: '3',
                   })}
                 >
-                  {/* Hint text */}
-                  <div className={css({ marginBottom: '3', lineHeight: '1.5' })}>{hintText}</div>
-
-                  {/* Controls section */}
-                  <div
-                    className={css({
-                      borderTop: '1px solid',
-                      borderColor: isDark ? 'gray.700' : 'gray.200',
-                      paddingTop: '3',
-                    })}
-                  >
-                    {/* Speech row - speak button with accent option */}
-                    {isSpeechSupported && (
-                      <div
-                        className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '2',
-                          marginBottom: hasAccentOption ? '2' : '3',
-                        })}
-                      >
-                        {/* Speak button */}
-                        <button
-                          ref={speakButton.refCallback}
-                          data-action="speak-hint"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSpeakClick()
-                          }}
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '1.5',
-                            paddingX: '3',
-                            paddingY: '1.5',
-                            rounded: 'md',
-                            bg: isSpeaking
-                              ? isDark
-                                ? 'blue.600'
-                                : 'blue.500'
-                              : isDark
-                                ? 'gray.700'
-                                : 'gray.100',
-                            color: isSpeaking ? 'white' : isDark ? 'gray.300' : 'gray.600',
-                            border: '1px solid',
-                            borderColor: isSpeaking
-                              ? isDark
-                                ? 'blue.500'
-                                : 'blue.400'
-                              : isDark
-                                ? 'gray.600'
-                                : 'gray.300',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                            fontSize: 'xs',
-                            fontWeight: 'medium',
-                            _hover: {
-                              bg: isSpeaking
-                                ? isDark
-                                  ? 'blue.500'
-                                  : 'blue.600'
-                                : isDark
-                                  ? 'gray.600'
-                                  : 'gray.200',
-                            },
-                          })}
-                          style={{
-                            ...(speakButton.isHovered
-                              ? {
-                                  backgroundColor: isSpeaking
-                                    ? isDark
-                                      ? '#3b82f6'
-                                      : '#2563eb'
-                                    : isDark
-                                      ? '#4b5563'
-                                      : '#e5e7eb',
-                                }
-                              : {}),
-                          }}
-                          title={isSpeaking ? 'Stop' : 'Read aloud'}
-                        >
-                          {isSpeaking ? '⏹' : '🔊'}
-                          <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
-                        </button>
-
-                        {/* With accent checkbox - inline with speak button */}
-                        {hasAccentOption && (
-                          <label
-                            ref={withAccentCheckbox.refCallback}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                            }}
-                            className={css({
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '1.5',
-                              cursor: 'pointer',
-                              fontSize: 'xs',
-                              color: isDark ? 'gray.400' : 'gray.500',
-                              padding: '1',
-                              rounded: 'sm',
-                              transition: 'all 0.15s',
-                              _hover: {
-                                color: isDark ? 'gray.200' : 'gray.700',
-                              },
-                            })}
-                            style={{
-                              ...(withAccentCheckbox.isHovered
-                                ? { color: isDark ? '#e5e7eb' : '#374151' }
-                                : {}),
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={withAccent}
-                              onChange={(e) => handleWithAccentChange(e.target.checked)}
-                              className={css({
-                                width: '12px',
-                                height: '12px',
-                                cursor: 'pointer',
-                                accentColor: isDark ? '#3b82f6' : '#2563eb',
-                              })}
-                            />
-                            With accent
-                          </label>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Auto options row - horizontal compact layout */}
+                  {/* Speech row - speak button with accent option */}
+                  {isSpeechSupported && (
                     <div
                       className={css({
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '3',
-                        fontSize: 'xs',
-                        color: isDark ? 'gray.400' : 'gray.500',
+                        gap: '2',
+                        marginBottom: hasAccentOption ? '2' : '3',
                       })}
                     >
-                      <span className={css({ fontWeight: 'medium' })}>Auto:</span>
+                      {/* Speak button */}
+                      <button
+                        ref={speakButton.refCallback}
+                        data-action="speak-hint"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSpeakClick()
+                        }}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '1.5',
+                          paddingX: '3',
+                          paddingY: '1.5',
+                          rounded: 'md',
+                          bg: isSpeaking
+                            ? isDark
+                              ? 'blue.600'
+                              : 'blue.500'
+                            : isDark
+                              ? 'gray.700'
+                              : 'gray.100',
+                          color: isSpeaking ? 'white' : isDark ? 'gray.300' : 'gray.600',
+                          border: '1px solid',
+                          borderColor: isSpeaking
+                            ? isDark
+                              ? 'blue.500'
+                              : 'blue.400'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.300',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          fontSize: 'xs',
+                          fontWeight: 'medium',
+                          _hover: {
+                            bg: isSpeaking
+                              ? isDark
+                                ? 'blue.500'
+                                : 'blue.600'
+                              : isDark
+                                ? 'gray.600'
+                                : 'gray.200',
+                          },
+                        })}
+                        style={{
+                          ...(speakButton.isHovered
+                            ? {
+                                backgroundColor: isSpeaking
+                                  ? isDark
+                                    ? '#3b82f6'
+                                    : '#2563eb'
+                                  : isDark
+                                    ? '#4b5563'
+                                    : '#e5e7eb',
+                              }
+                            : {}),
+                        }}
+                        title={isSpeaking ? 'Stop' : 'Read aloud'}
+                      >
+                        {isSpeaking ? '⏹' : '🔊'}
+                        <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                      </button>
 
-                      {/* Auto-hint checkbox */}
+                      {/* With accent checkbox - inline with speak button */}
+                      {hasAccentOption && (
+                        <label
+                          ref={withAccentCheckbox.refCallback}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5',
+                            cursor: 'pointer',
+                            fontSize: 'xs',
+                            color: isDark ? 'gray.400' : 'gray.500',
+                            padding: '1',
+                            rounded: 'sm',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              color: isDark ? 'gray.200' : 'gray.700',
+                            },
+                          })}
+                          style={{
+                            ...(withAccentCheckbox.isHovered
+                              ? { color: isDark ? '#e5e7eb' : '#374151' }
+                              : {}),
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={withAccent}
+                            onChange={(e) => handleWithAccentChange(e.target.checked)}
+                            className={css({
+                              width: '12px',
+                              height: '12px',
+                              cursor: 'pointer',
+                              accentColor: isDark ? '#3b82f6' : '#2563eb',
+                            })}
+                          />
+                          With accent
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Auto options row - horizontal compact layout */}
+                  <div
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      fontSize: 'xs',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    })}
+                  >
+                    <span className={css({ fontWeight: 'medium' })}>Auto:</span>
+
+                    {/* Auto-hint checkbox */}
+                    <label
+                      ref={autoHintCheckbox.refCallback}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                      }}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1',
+                        cursor: 'pointer',
+                        padding: '0.5',
+                        rounded: 'sm',
+                        transition: 'all 0.15s',
+                        _hover: {
+                          color: isDark ? 'gray.200' : 'gray.700',
+                        },
+                      })}
+                      style={{
+                        ...(autoHintCheckbox.isHovered
+                          ? { color: isDark ? '#e5e7eb' : '#374151' }
+                          : {}),
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={autoHint}
+                        onChange={(e) => handleAutoHintChange(e.target.checked)}
+                        className={css({
+                          width: '12px',
+                          height: '12px',
+                          cursor: 'pointer',
+                          accentColor: isDark ? '#3b82f6' : '#2563eb',
+                        })}
+                      />
+                      Hint
+                    </label>
+
+                    {/* Auto-speak checkbox */}
+                    {isSpeechSupported && (
                       <label
-                        ref={autoHintCheckbox.refCallback}
+                        ref={autoSpeakCheckbox.refCallback}
                         onClick={(e) => {
                           e.stopPropagation()
                         }}
@@ -4668,15 +4884,15 @@ export function MapRenderer({
                           },
                         })}
                         style={{
-                          ...(autoHintCheckbox.isHovered
+                          ...(autoSpeakCheckbox.isHovered
                             ? { color: isDark ? '#e5e7eb' : '#374151' }
                             : {}),
                         }}
                       >
                         <input
                           type="checkbox"
-                          checked={autoHint}
-                          onChange={(e) => handleAutoHintChange(e.target.checked)}
+                          checked={autoSpeak}
+                          onChange={(e) => handleAutoSpeakChange(e.target.checked)}
                           className={css({
                             width: '12px',
                             height: '12px',
@@ -4684,168 +4900,16 @@ export function MapRenderer({
                             accentColor: isDark ? '#3b82f6' : '#2563eb',
                           })}
                         />
-                        Hint
+                        Speak
                       </label>
-
-                      {/* Auto-speak checkbox */}
-                      {isSpeechSupported && (
-                        <label
-                          ref={autoSpeakCheckbox.refCallback}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '1',
-                            cursor: 'pointer',
-                            padding: '0.5',
-                            rounded: 'sm',
-                            transition: 'all 0.15s',
-                            _hover: {
-                              color: isDark ? 'gray.200' : 'gray.700',
-                            },
-                          })}
-                          style={{
-                            ...(autoSpeakCheckbox.isHovered
-                              ? { color: isDark ? '#e5e7eb' : '#374151' }
-                              : {}),
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={autoSpeak}
-                            onChange={(e) => handleAutoSpeakChange(e.target.checked)}
-                            className={css({
-                              width: '12px',
-                              height: '12px',
-                              cursor: 'pointer',
-                              accentColor: isDark ? '#3b82f6' : '#2563eb',
-                            })}
-                          />
-                          Speak
-                        </label>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </>
-          )
-        })()}
-
-      {/* Hot/Cold button - show when speech is supported, assistance level allows, and device has mouse */}
-      {isSpeechSupported &&
-        hasFinePointer &&
-        assistanceAllowsHotCold &&
-        (() => {
-          if (!svgRef.current || !containerRef.current || svgDimensions.width === 0) return null
-
-          // During give-up animation, use saved position to prevent jumping
-          let buttonTop: number
-          let buttonRight: number
-
-          if (isGiveUpAnimating && savedButtonPosition) {
-            buttonTop = savedButtonPosition.top
-            // Position hot/cold button to the left of hint button (hint is ~100px left of give up)
-            buttonRight = savedButtonPosition.right + 200 // Give Up + Hint + gap
-          } else {
-            const svgRect = svgRef.current.getBoundingClientRect()
-            const containerRect = containerRef.current.getBoundingClientRect()
-            const svgOffsetX = svgRect.left - containerRect.left
-            const svgOffsetY = svgRect.top - containerRect.top
-            buttonTop = svgOffsetY + 8
-            // Position to the left of hint button
-            // Give up is ~85px + 8 gap = 93px from right edge of SVG
-            // Hint is 100px to the left of that = 193px
-            // Hot/cold is 100px to the left of hint = 293px
-            buttonRight = containerRect.width - (svgOffsetX + svgRect.width) + 8 + 200
-          }
-
-          return (
-            <button
-              ref={hotColdButton.refCallback}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleHotColdToggle()
-              }}
-              data-action="hot-cold-button"
-              title={
-                hotColdEnabled
-                  ? 'Disable hot/cold audio feedback'
-                  : 'Enable hot/cold audio feedback'
-              }
-              style={{
-                position: 'absolute',
-                top: `${buttonTop}px`,
-                right: `${buttonRight}px`,
-                // Apply hover styles when fake cursor is over button (pointer lock mode)
-                ...(hotColdButton.isHovered
-                  ? {
-                      backgroundColor: isDark
-                        ? hotColdEnabled
-                          ? '#c2410c'
-                          : '#374151'
-                        : hotColdEnabled
-                          ? '#fed7aa'
-                          : '#e5e7eb',
-                      transform: 'scale(1.05)',
-                    }
-                  : {}),
-                ...(isGiveUpAnimating
-                  ? {
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                    }
-                  : {}),
-              }}
-              className={css({
-                padding: '2 3',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                bg: hotColdEnabled
-                  ? isDark
-                    ? 'orange.800'
-                    : 'orange.100'
-                  : isDark
-                    ? 'gray.700'
-                    : 'gray.200',
-                color: hotColdEnabled
-                  ? isDark
-                    ? 'orange.200'
-                    : 'orange.800'
-                  : isDark
-                    ? 'gray.400'
-                    : 'gray.600',
-                rounded: 'md',
-                border: '2px solid',
-                borderColor: hotColdEnabled
-                  ? isDark
-                    ? 'orange.600'
-                    : 'orange.400'
-                  : isDark
-                    ? 'gray.600'
-                    : 'gray.400',
-                fontWeight: 'bold',
-                transition: 'all 0.2s',
-                zIndex: 50,
-                boxShadow: 'md',
-                _hover: {
-                  bg: hotColdEnabled
-                    ? isDark
-                      ? 'orange.700'
-                      : 'orange.200'
-                    : isDark
-                      ? 'gray.600'
-                      : 'gray.300',
-                  transform: 'scale(1.05)',
-                },
-              })}
-            >
-              {getHotColdEmoji(hotColdFeedbackType)} Hot/Cold
-            </button>
-          )
-        })()}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Dev-only crop tool for getting custom viewBox coordinates */}
       <DevCropTool
@@ -4855,6 +4919,160 @@ export function MapRenderer({
         mapId={selectedMap}
         continentId={selectedContinent}
       />
+
+      {/* Debug overlay showing safe zone rectangles */}
+      {SHOW_SAFE_ZONE_DEBUG &&
+        fillContainer &&
+        (() => {
+          // Calculate the leftover rectangle (viewport minus margins)
+          const leftoverRect = {
+            left: SAFE_ZONE_MARGINS.left,
+            top: SAFE_ZONE_MARGINS.top,
+            width: svgDimensions.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right,
+            height: svgDimensions.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom,
+          }
+
+          // Calculate where the crop region appears in viewport pixels
+          // Using the display viewBox to map SVG coords to pixels
+          const viewBox = parseViewBox(displayViewBox)
+
+          // Use custom crop if defined, otherwise use the full original map bounds (same as displayViewBox logic)
+          const originalBounds = parseViewBox(mapData.originalViewBox)
+          const cropRegion = mapData.customCrop
+            ? parseViewBox(mapData.customCrop)
+            : originalBounds
+          const isCustomCrop = !!mapData.customCrop
+
+          // With preserveAspectRatio="xMidYMid meet", the SVG is letterboxed
+          // Calculate the actual scale and offset
+          const scaleX = svgDimensions.width / viewBox.width
+          const scaleY = svgDimensions.height / viewBox.height
+          const actualScale = Math.min(scaleX, scaleY) // "meet" uses the smaller scale
+
+          // Calculate letterbox offsets (the SVG content is centered)
+          const renderedWidth = viewBox.width * actualScale
+          const renderedHeight = viewBox.height * actualScale
+          const offsetX = (svgDimensions.width - renderedWidth) / 2
+          const offsetY = (svgDimensions.height - renderedHeight) / 2
+
+          // SVG point (x, y) -> pixel, accounting for letterboxing
+          const svgToPixelX = (x: number) => offsetX + (x - viewBox.x) * actualScale
+          const svgToPixelY = (y: number) => offsetY + (y - viewBox.y) * actualScale
+
+          const cropPixelRect = {
+            left: svgToPixelX(cropRegion.x),
+            top: svgToPixelY(cropRegion.y),
+            width: cropRegion.width * actualScale,
+            height: cropRegion.height * actualScale,
+          }
+
+          return (
+            <>
+              {/* Leftover rectangle (safe zone where crop should fit) - GREEN */}
+              <div
+                data-element="debug-leftover-rect"
+                style={{
+                  position: 'absolute',
+                  left: leftoverRect.left,
+                  top: leftoverRect.top,
+                  width: leftoverRect.width,
+                  height: leftoverRect.height,
+                  border: '3px dashed rgba(0, 255, 0, 0.8)',
+                  backgroundColor: 'rgba(0, 255, 0, 0.05)',
+                  pointerEvents: 'none',
+                  zIndex: 9999,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    left: 4,
+                    background: 'rgba(0, 255, 0, 0.9)',
+                    color: 'black',
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    borderRadius: '3px',
+                  }}
+                >
+                  LEFTOVER ({Math.round(leftoverRect.width)}×{Math.round(leftoverRect.height)})
+                </span>
+              </div>
+
+              {/* Crop region mapped to pixels - RED for custom, ORANGE for full map */}
+              <div
+                data-element="debug-crop-rect"
+                style={{
+                  position: 'absolute',
+                  left: cropPixelRect.left,
+                  top: cropPixelRect.top,
+                  width: cropPixelRect.width,
+                  height: cropPixelRect.height,
+                  border: `3px ${isCustomCrop ? 'solid' : 'dashed'} ${isCustomCrop ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 165, 0, 0.8)'}`,
+                  backgroundColor: isCustomCrop ? 'rgba(255, 0, 0, 0.05)' : 'rgba(255, 165, 0, 0.05)',
+                  pointerEvents: 'none',
+                  zIndex: 9998,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    right: 4,
+                    background: isCustomCrop ? 'rgba(255, 0, 0, 0.9)' : 'rgba(255, 165, 0, 0.9)',
+                    color: isCustomCrop ? 'white' : 'black',
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    borderRadius: '3px',
+                  }}
+                >
+                  {isCustomCrop ? 'CROP' : 'FULL MAP'} ({Math.round(cropPixelRect.width)}×
+                  {Math.round(cropPixelRect.height)})
+                </span>
+              </div>
+
+              {/* Info panel showing calculations */}
+              <div
+                data-element="debug-safe-zone-info"
+                style={{
+                  position: 'absolute',
+                  bottom: 10,
+                  left: 10,
+                  background: 'rgba(0, 0, 0, 0.85)',
+                  color: 'white',
+                  padding: '8px 12px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  borderRadius: '6px',
+                  pointerEvents: 'none',
+                  zIndex: 9999,
+                  lineHeight: 1.4,
+                }}
+              >
+                <div>
+                  <strong>Safe Zone Debug</strong>
+                </div>
+                <div>
+                  Viewport: {Math.round(svgDimensions.width)}×{Math.round(svgDimensions.height)}
+                </div>
+                <div>
+                  Margins: T={SAFE_ZONE_MARGINS.top} R={SAFE_ZONE_MARGINS.right} B=
+                  {SAFE_ZONE_MARGINS.bottom} L={SAFE_ZONE_MARGINS.left}
+                </div>
+                <div style={{ color: '#0f0' }}>
+                  Leftover: {Math.round(leftoverRect.width)}×{Math.round(leftoverRect.height)}
+                </div>
+                <div style={{ color: isCustomCrop ? '#f00' : '#ffa500' }}>
+                  {isCustomCrop ? 'Crop' : 'Full Map'} (px): {Math.round(cropPixelRect.width)}×
+                  {Math.round(cropPixelRect.height)}
+                </div>
+                <div>ViewBox: {displayViewBox}</div>
+              </div>
+            </>
+          )
+        })()}
     </div>
   )
 }

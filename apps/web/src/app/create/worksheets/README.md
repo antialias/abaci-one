@@ -23,6 +23,7 @@
 ### Core Systems
 
 **Problem Generation** - [`PROBLEM_GENERATION_ARCHITECTURE.md`](./PROBLEM_GENERATION_ARCHITECTURE.md)
+
 - Complete technical documentation of problem generation algorithms
 - Two generation strategies: generate-all + shuffle (small spaces) vs retry-based (large spaces)
 - Problem space estimation and duplicate risk calculation
@@ -30,12 +31,14 @@
 - Performance considerations and testing guide
 
 **Quick Reference** - [`.claude/PROBLEM_GENERATION.md`](../../../.claude/PROBLEM_GENERATION.md)
+
 - Fast lookup for developers and Claude Code
 - Strategy selection logic with code examples
 - Debugging commands and common modifications
 - Q&A troubleshooting section
 
 **UX Improvements** - [`USER_WARNING_IMPROVEMENTS.md`](./USER_WARNING_IMPROVEMENTS.md)
+
 - Recommended UI enhancements for problem space warnings
 - Design mockups for config panel indicators
 - Implementation phases and component structure
@@ -62,12 +65,14 @@ The "problem space" is the set of all unique problems possible given your constr
 ### Generation Strategies
 
 **Generate-All + Shuffle** (Small spaces < 10,000)
+
 - Enumerates all valid problems upfront
 - Shuffles deterministically
 - Zero retries, guaranteed coverage
 - Cycles through full set when requesting more than available
 
 **Retry-Based** (Large spaces ≥ 10,000)
+
 - Randomly generates problems
 - Retries on duplicates (up to 100 times)
 - Allows some duplicates to prevent performance issues
@@ -75,11 +80,13 @@ The "problem space" is the set of all unique problems possible given your constr
 ### Progressive Difficulty
 
 **Smart Mode** - Automatically adjusts difficulty based on:
+
 - Student skill level (tracked via mastery system)
 - Previous performance
 - Target regrouping/borrowing probability
 
 **Manual Mode** - You control:
+
 - Digit range (1-5 digits)
 - Regrouping/borrowing probability (0-100%)
 - Progressive vs constant difficulty
@@ -91,6 +98,7 @@ The "problem space" is the set of all unique problems possible given your constr
 **Problem**: Only 45 unique problems where both operands are 0-9 and result requires carrying.
 
 **Solution**:
+
 - Reduce pages to 1-2 (20-40 problems)
 - Lower regrouping to 50%
 - Increase to 2-digit problems

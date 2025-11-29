@@ -36,7 +36,10 @@ describe('Progressive Difficulty Mode', () => {
   })
 
   it('should maintain overall easy→hard progression', () => {
-    const problems = generateProblems(30, 0.7, 0.5, true, 123, { min: 2, max: 2 })
+    const problems = generateProblems(30, 0.7, 0.5, true, 123, {
+      min: 2,
+      max: 2,
+    })
 
     // Calculate difficulty (carry count) for each problem
     const difficulties = problems.map((p) => countRegroupingOperations(p.a, p.b))
@@ -59,7 +62,10 @@ describe('Progressive Difficulty Mode', () => {
   })
 
   it('should have variety in adjacent problems', () => {
-    const problems = generateProblems(20, 0.7, 0.5, true, 456, { min: 2, max: 2 })
+    const problems = generateProblems(20, 0.7, 0.5, true, 456, {
+      min: 2,
+      max: 2,
+    })
 
     // Count how many times adjacent problems have different top numbers
     let differentCount = 0
@@ -76,9 +82,15 @@ describe('Progressive Difficulty Mode', () => {
   })
 
   it('should produce different sequences with different seeds', () => {
-    const problems1 = generateProblems(20, 0.7, 0.5, true, 100, { min: 2, max: 2 })
+    const problems1 = generateProblems(20, 0.7, 0.5, true, 100, {
+      min: 2,
+      max: 2,
+    })
 
-    const problems2 = generateProblems(20, 0.7, 0.5, true, 200, { min: 2, max: 2 })
+    const problems2 = generateProblems(20, 0.7, 0.5, true, 200, {
+      min: 2,
+      max: 2,
+    })
 
     const sequence1 = problems1.map((p) => `${p.a}+${p.b}`).join(',')
     const sequence2 = problems2.map((p) => `${p.a}+${p.b}`).join(',')
@@ -125,7 +137,10 @@ describe('Progressive Difficulty Mode', () => {
   })
 
   it('should not have long runs of identical top numbers', () => {
-    const problems = generateProblems(30, 0.7, 0.5, true, 333, { min: 2, max: 2 })
+    const problems = generateProblems(30, 0.7, 0.5, true, 333, {
+      min: 2,
+      max: 2,
+    })
 
     // Count maximum run length of same top number
     let maxRunLength = 1

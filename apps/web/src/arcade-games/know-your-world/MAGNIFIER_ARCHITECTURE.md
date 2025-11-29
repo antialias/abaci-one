@@ -11,11 +11,13 @@ The know-your-world game features an adaptive magnifier system that helps users 
 **Definition**: How many screen pixels the magnifier "jumps over" when the mouse moves one pixel on the main map.
 
 **Formula**:
+
 ```
 screenPixelRatio = (viewBoxWidth / svgWidth) × (magnifierWidth / (viewBoxWidth / zoom))
 ```
 
 **Example**:
+
 - At 50× zoom with a magnifier, moving the mouse 1px on the main map moves the magnifier view 50 screen pixels
 - This makes clicking tiny regions extremely difficult without precision mode
 
@@ -32,6 +34,7 @@ screenPixelRatio = (viewBoxWidth / svgWidth) × (magnifierWidth / (viewBoxWidth 
 **Purpose**: Prevent excessive magnifier sensitivity before precision mode is activated.
 
 **Behavior**:
+
 - When NOT in pointer lock mode: Zoom is capped at the precision mode threshold (20 px/px)
 - When IN pointer lock mode: Zoom is uncapped, allowing zoom up to 1000× for sub-pixel regions
 
@@ -42,6 +45,7 @@ screenPixelRatio = (viewBoxWidth / svgWidth) × (magnifierWidth / (viewBoxWidth 
 **Purpose**: Automatically find the optimal zoom level based on detected region sizes.
 
 **Algorithm**:
+
 1. Detect regions within a 50px detection box around the cursor
 2. Sort regions by size (smallest first)
 3. Start from MAX_ZOOM (1000×) and reduce by 10% each iteration
@@ -50,6 +54,7 @@ screenPixelRatio = (viewBoxWidth / svgWidth) × (magnifierWidth / (viewBoxWidth 
 6. Apply zoom capping if not in pointer lock mode
 
 **Adaptive thresholds** based on smallest detected region:
+
 - Sub-pixel regions (< 1px): Accept 2-8% of magnifier (Gibraltar needs this)
 - Tiny regions (1-5px): Accept 5-15% of magnifier
 - Normal small regions: Accept 10-25% of magnifier
@@ -61,12 +66,14 @@ screenPixelRatio = (viewBoxWidth / svgWidth) × (magnifierWidth / (viewBoxWidth 
 **Purpose**: Enable fine-grained cursor control for high zoom levels.
 
 **Behavior**:
+
 - Cursor becomes invisible and locked to the container
 - Mouse movements are captured as relative deltas instead of absolute positions
 - Cursor speed is adaptively reduced based on smallest detected region size
 - When released, zoom is recalculated with capping applied
 
 **Speed multipliers** based on region size:
+
 - Sub-pixel (< 1px): 3% speed (Gibraltar at 0.08px)
 - Tiny (1-5px): 10% speed
 - Small (5-15px): 25% speed
@@ -124,6 +131,7 @@ MapRenderer.tsx
 ### Extracted Modules (Phase 1 & 2)
 
 **Phase 1: Pure Utilities**
+
 ```
 utils/screenPixelRatio.ts (130 lines)
 ├── calculateScreenPixelRatio()
@@ -137,6 +145,7 @@ utils/zoomCapping.ts (122 lines)
 ```
 
 **Phase 2: Custom Hooks**
+
 ```
 hooks/usePointerLock.ts (119 lines)
 ├── State: pointerLocked
@@ -180,6 +189,7 @@ MapRenderer.tsx (~600 lines)
 ```
 
 **Further extraction** (optional):
+
 ```
 utils/adaptiveZoomSearch.ts (~280 lines)
 ├── findOptimalZoom()

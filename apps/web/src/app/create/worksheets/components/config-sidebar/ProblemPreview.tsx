@@ -113,7 +113,10 @@ export function ProblemPreview({
   className,
 }: ProblemPreviewProps) {
   const [svg, setSvg] = useState<string | null>(null)
-  const [dimensions, setDimensions] = useState<SVGDimensions>({ width: 60, height: 50 })
+  const [dimensions, setDimensions] = useState<SVGDimensions>({
+    width: 60,
+    height: 50,
+  })
   const [isLoading, setIsLoading] = useState(false)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'

@@ -21,32 +21,28 @@ We're already using **`react-resizable-panels`** (v3.0.6) in Rithmomachia, so we
 <PanelGroup direction="horizontal" autoSaveId="worksheet-layout">
   {/* Left Sidebar: Configuration */}
   <Panel
-    defaultSize={20}      // 20% of width
-    minSize={15}          // Min 15%
-    maxSize={35}          // Max 35%
-    collapsible={true}    // Can collapse completely
+    defaultSize={20} // 20% of width
+    minSize={15} // Min 15%
+    maxSize={35} // Max 35%
+    collapsible={true} // Can collapse completely
   >
     <ConfigSidebar />
   </Panel>
-
-  <PanelResizeHandle />   {/* Drag handle */}
-
+  <PanelResizeHandle /> {/* Drag handle */}
   {/* Center: Preview */}
   <Panel
-    defaultSize={60}      // 60% of width
-    minSize={40}          // Min 40% (preview needs space)
+    defaultSize={60} // 60% of width
+    minSize={40} // Min 40% (preview needs space)
   >
     <PreviewCenter />
   </Panel>
-
-  <PanelResizeHandle />   {/* Drag handle */}
-
+  <PanelResizeHandle /> {/* Drag handle */}
   {/* Right Sidebar: Actions */}
   <Panel
-    defaultSize={20}      // 20% of width
-    minSize={15}          // Min 15%
-    maxSize={30}          // Max 30%
-    collapsible={true}    // Can collapse completely
+    defaultSize={20} // 20% of width
+    minSize={15} // Min 15%
+    maxSize={30} // Max 30%
+    collapsible={true} // Can collapse completely
   >
     <ActionsSidebar />
   </Panel>
@@ -80,6 +76,7 @@ We're already using **`react-resizable-panels`** (v3.0.6) in Rithmomachia, so we
 ## Responsive Behavior
 
 ### Desktop (≥1024px): 3 Panels
+
 ```tsx
 <PanelGroup direction="horizontal" autoSaveId="worksheet-layout-desktop">
   <Panel defaultSize={20}>Config</Panel>
@@ -91,6 +88,7 @@ We're already using **`react-resizable-panels`** (v3.0.6) in Rithmomachia, so we
 ```
 
 ### Tablet (768-1023px): 2 Panels (Merge Actions into Config)
+
 ```tsx
 <PanelGroup direction="horizontal" autoSaveId="worksheet-layout-tablet">
   <Panel defaultSize={30}>Config + Actions (tabs)</Panel>
@@ -100,13 +98,16 @@ We're already using **`react-resizable-panels`** (v3.0.6) in Rithmomachia, so we
 ```
 
 ### Mobile (<768px): No Panels (Stack Vertically)
+
 ```tsx
-{/* No PanelGroup on mobile - just stack */}
-<div className={stack({ gap: '4' })}>
-  <ConfigAccordion />  {/* Accordions instead of tabs */}
+{
+  /* No PanelGroup on mobile - just stack */
+}
+<div className={stack({ gap: "4" })}>
+  <ConfigAccordion /> {/* Accordions instead of tabs */}
   <PreviewCenter />
   <ActionsBar />
-</div>
+</div>;
 ```
 
 ---
@@ -247,33 +248,33 @@ export function AdditionWorksheetClient({
 ```tsx
 function resizeHandleStyles(isDark: boolean) {
   return css({
-    width: '8px',
-    bg: isDark ? 'gray.700' : 'gray.200',
-    position: 'relative',
-    cursor: 'col-resize',
-    transition: 'background 0.2s',
+    width: "8px",
+    bg: isDark ? "gray.700" : "gray.200",
+    position: "relative",
+    cursor: "col-resize",
+    transition: "background 0.2s",
     _hover: {
-      bg: isDark ? 'brand.600' : 'brand.400',
+      bg: isDark ? "brand.600" : "brand.400",
     },
     _active: {
-      bg: 'brand.500',
+      bg: "brand.500",
     },
     // Visual indicator (3 dots)
     _before: {
       content: '""',
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: '3px',
-      height: '20px',
-      bg: isDark ? 'gray.500' : 'gray.400',
-      borderRadius: 'full',
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      width: "3px",
+      height: "20px",
+      bg: isDark ? "gray.500" : "gray.400",
+      borderRadius: "full",
       boxShadow: isDark
-        ? '0 -8px 0 0 gray.500, 0 8px 0 0 gray.500'
-        : '0 -8px 0 0 gray.400, 0 8px 0 0 gray.400',
+        ? "0 -8px 0 0 gray.500, 0 8px 0 0 gray.500"
+        : "0 -8px 0 0 gray.400, 0 8px 0 0 gray.400",
     },
-  })
+  });
 }
 ```
 
@@ -288,11 +289,13 @@ function resizeHandleStyles(isDark: boolean) {
 <button
   onClick={() => {
     // Collapse/expand the panel
-    panelRef.current?.collapse()
+    panelRef.current?.collapse();
   }}
-  className={css({ /* ... */ })}
+  className={css({
+    /* ... */
+  })}
 >
-  {isCollapsed ? '▶' : '◀'} {!isCollapsed && 'Collapse'}
+  {isCollapsed ? "▶" : "◀"} {!isCollapsed && "Collapse"}
 </button>
 ```
 
@@ -302,32 +305,26 @@ function resizeHandleStyles(isDark: boolean) {
 // In AdditionWorksheetClient
 useEffect(() => {
   const handleKeyPress = (e: KeyboardEvent) => {
-    if (e.ctrlKey && e.key === '[') {
-      leftPanelRef.current?.collapse()
+    if (e.ctrlKey && e.key === "[") {
+      leftPanelRef.current?.collapse();
     }
-    if (e.ctrlKey && e.key === ']') {
-      rightPanelRef.current?.collapse()
+    if (e.ctrlKey && e.key === "]") {
+      rightPanelRef.current?.collapse();
     }
-  }
-  window.addEventListener('keydown', handleKeyPress)
-  return () => window.removeEventListener('keydown', handleKeyPress)
-}, [])
+  };
+  window.addEventListener("keydown", handleKeyPress);
+  return () => window.removeEventListener("keydown", handleKeyPress);
+}, []);
 ```
 
 ### 3. Size Presets
 
 ```tsx
 // Quick layout buttons
-<div className={hstack({ gap: '2' })}>
-  <button onClick={() => setPanelSizes([20, 60, 20])}>
-    Balanced
-  </button>
-  <button onClick={() => setPanelSizes([15, 70, 15])}>
-    Preview Focus
-  </button>
-  <button onClick={() => setPanelSizes([30, 50, 20])}>
-    Config Focus
-  </button>
+<div className={hstack({ gap: "2" })}>
+  <button onClick={() => setPanelSizes([20, 60, 20])}>Balanced</button>
+  <button onClick={() => setPanelSizes([15, 70, 15])}>Preview Focus</button>
+  <button onClick={() => setPanelSizes([30, 50, 20])}>Config Focus</button>
 </div>
 ```
 
@@ -338,6 +335,7 @@ useEffect(() => {
 ### Phase 1: Desktop + Tablet with Resizable Panels
 
 **Step 1: Create Tab Components** (Same as before)
+
 - [ ] `TabNavigation.tsx`
 - [ ] `ContentTab.tsx`
 - [ ] `LayoutTab.tsx`
@@ -345,12 +343,14 @@ useEffect(() => {
 - [ ] `DifficultyTab.tsx`
 
 **Step 2: Create Panel Containers**
+
 - [ ] `ConfigSidebar.tsx` - With tabs, collapsible sections, settings indicator
 - [ ] `PreviewCenter.tsx` - Preview with pagination
 - [ ] `ActionsSidebar.tsx` - Layout controls + action buttons
 - [ ] `resizeHandleStyles.ts` - Shared resize handle styles
 
 **Step 3: Update Main Layout**
+
 - [ ] Update `AdditionWorksheetClient.tsx` to use `PanelGroup`
 - [ ] Add viewport width tracking for responsive behavior
 - [ ] Implement 3-panel layout (desktop)
@@ -358,6 +358,7 @@ useEffect(() => {
 - [ ] Implement vertical stack (mobile)
 
 **Step 4: Polish**
+
 - [ ] Add collapse buttons to panel headers
 - [ ] Smooth transitions between tabs
 - [ ] Active tab indicator
@@ -365,10 +366,12 @@ useEffect(() => {
 - [ ] Size persistence with `autoSaveId`
 
 **Step 5: Mobile Accordion** (If not using panels)
+
 - [ ] `ConfigAccordion.tsx` - Accordion mode for mobile
 - [ ] `ActionsBar.tsx` - Bottom action bar for mobile
 
 ### Phase 2: Mobile Drawer (Future)
+
 - [ ] `DrawerContainer.tsx` - Slide-out drawer
 - [ ] `MobileHeader.tsx` - Header with hamburger menu
 - [ ] Replace accordion with drawer on mobile
@@ -377,16 +380,16 @@ useEffect(() => {
 
 ## Advantages Over Plain CSS Grid
 
-| Feature | CSS Grid | react-resizable-panels |
-|---------|----------|------------------------|
-| Fixed layout | ✅ | ✅ |
-| User-resizable | ❌ | ✅ |
-| Persist sizes | ❌ | ✅ (localStorage) |
-| Collapsible | Manual | ✅ (built-in) |
-| Smooth animations | Manual | ✅ (built-in) |
-| Drag handles | Manual | ✅ (built-in) |
-| Min/max constraints | Manual | ✅ (declarative) |
-| Accessibility | Manual | ✅ (ARIA labels) |
+| Feature             | CSS Grid | react-resizable-panels |
+| ------------------- | -------- | ---------------------- |
+| Fixed layout        | ✅       | ✅                     |
+| User-resizable      | ❌       | ✅                     |
+| Persist sizes       | ❌       | ✅ (localStorage)      |
+| Collapsible         | Manual   | ✅ (built-in)          |
+| Smooth animations   | Manual   | ✅ (built-in)          |
+| Drag handles        | Manual   | ✅ (built-in)          |
+| Min/max constraints | Manual   | ✅ (declarative)       |
+| Accessibility       | Manual   | ✅ (ARIA labels)       |
 
 ---
 
@@ -417,6 +420,7 @@ src/app/create/worksheets/addition/components/
 ## Example from Rithmomachia (Reference)
 
 Your existing usage in Rithmomachia:
+
 ```tsx
 <PanelGroup direction="horizontal">
   <Panel defaultSize={35} minSize={20} maxSize={50}>
@@ -436,6 +440,7 @@ We'll use a similar pattern but with 3 panels instead of 2!
 ## Ready to Implement?
 
 Using `react-resizable-panels` gives us:
+
 - ✅ **Professional resizable UI** out of the box
 - ✅ **Faster implementation** (no custom resize logic)
 - ✅ **Better UX** (users can customize their layout)

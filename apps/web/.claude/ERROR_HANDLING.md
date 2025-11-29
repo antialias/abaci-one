@@ -9,12 +9,14 @@ Comprehensive error handling system for arcade games to ensure users always see 
 ### 1. ErrorToast (`src/components/ErrorToast.tsx`)
 
 User-facing error notification component:
+
 - Prominent red toast in bottom-right corner
 - Auto-dismisses after 10 seconds
 - Collapsible technical details
 - Mobile-responsive
 
 **Usage:**
+
 ```typescript
 <ErrorToast
   message="Game session error"
@@ -26,12 +28,14 @@ User-facing error notification component:
 ### 2. ArcadeErrorBoundary (`src/components/ArcadeErrorBoundary.tsx`)
 
 React error boundary for catching React errors:
+
 - Catches component render errors
 - Shows user-friendly fallback UI
 - Provides "Try Again" and "Return to Lobby" buttons
 - Collapsible stack trace for debugging
 
 **Usage:**
+
 ```typescript
 <ArcadeErrorBoundary>
   <GameComponent />
@@ -41,11 +45,13 @@ React error boundary for catching React errors:
 ### 3. ArcadeErrorContext (`src/contexts/ArcadeErrorContext.tsx`)
 
 Global error management context:
+
 - Manages error state across the app
 - Renders error toasts
 - Auto-cleans up old errors
 
 **Usage:**
+
 ```typescript
 // Wrap your app/page
 <ArcadeErrorProvider>
@@ -60,6 +66,7 @@ addError('Something went wrong', 'Technical details...')
 ### 4. Enhanced useArcadeSocket Hook
 
 Socket hook now automatically shows error toasts for:
+
 - **Connection errors**: Failed to connect to server
 - **Disconnections**: Connection lost
 - **Session errors**: Failed to load/update session
@@ -71,18 +78,22 @@ Can suppress toasts with `suppressErrorToasts: true` option.
 ## Error Categories
 
 ### Network/Connection Errors
+
 - **Connection error**: Failed to connect to game server
 - **Disconnection**: Connection lost, attempting to reconnect
 
 ### Session Errors
+
 - **Session error**: Failed to load or update game session
 - **No active session**: No game session found
 
 ### Game State Errors
+
 - **Move rejected**: Invalid move submitted
 - **Version conflict**: Concurrent update detected (silent, not shown to user)
 
 ### React Errors
+
 - **Component errors**: Caught by ErrorBoundary, shows fallback UI
 
 ## Integration Guide
@@ -90,6 +101,7 @@ Can suppress toasts with `suppressErrorToasts: true` option.
 ### For New Arcade Games
 
 1. **Wrap your game page with error providers:**
+
 ```typescript
 // src/app/arcade/your-game/page.tsx
 import { ArcadeErrorProvider } from '@/contexts/ArcadeErrorContext'
@@ -109,29 +121,28 @@ export default function YourGamePage() {
 ```
 
 2. **Use error context in your components:**
+
 ```typescript
-import { useArcadeError } from '@/contexts/ArcadeErrorContext'
+import { useArcadeError } from "@/contexts/ArcadeErrorContext";
 
 function YourComponent() {
-  const { addError } = useArcadeError()
+  const { addError } = useArcadeError();
 
   try {
     // Your code
   } catch (error) {
-    addError(
-      'User-friendly message',
-      `Technical details: ${error.message}`
-    )
+    addError("User-friendly message", `Technical details: ${error.message}`);
   }
 }
 ```
 
 3. **Socket hook is automatic:**
-The `useArcadeSocket` hook already shows errors by default. No changes needed unless you want to suppress them.
+   The `useArcadeSocket` hook already shows errors by default. No changes needed unless you want to suppress them.
 
 ## Best Practices
 
 ### DO:
+
 - ✅ Use `addError()` for runtime errors
 - ✅ Provide user-friendly primary messages
 - ✅ Include technical details in the `details` parameter
@@ -139,6 +150,7 @@ The `useArcadeSocket` hook already shows errors by default. No changes needed un
 - ✅ Let socket errors show automatically (they're handled)
 
 ### DON'T:
+
 - ❌ Don't just log errors to console
 - ❌ Don't show raw error messages to users
 - ❌ Don't swallow errors silently
@@ -167,11 +179,13 @@ To test error handling:
 The know-your-world game had a "Failed to fetch session" error that was only logged to console. With the new system:
 
 **Before:**
+
 - Error logged to console
 - User sees nothing, buttons don't work
 - No way to know what's wrong
 
 **After:**
+
 - Error toast appears: "Game session error"
 - Technical details available (collapsible)
 - User can refresh or return to lobby

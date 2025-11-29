@@ -87,7 +87,14 @@ export const MultipleDropdowns: Story = {
     })
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          maxWidth: '400px',
+        }}
+      >
         <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Display Rules</h3>
         <RuleDropdown
           label="Ten-Frame Diagrams"
@@ -123,7 +130,13 @@ export const MultipleDropdowns: Story = {
           }}
         >
           <strong>Current Configuration:</strong>
-          <pre style={{ margin: '8px 0 0 0', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
+          <pre
+            style={{
+              margin: '8px 0 0 0',
+              fontSize: '10px',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
             {JSON.stringify(rules, null, 2)}
           </pre>
         </div>
@@ -144,7 +157,12 @@ export const AllOptions: Story = {
 
     return (
       <div
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '800px' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '16px',
+          maxWidth: '800px',
+        }}
       >
         {options.map((option) => (
           <DropdownWrapper

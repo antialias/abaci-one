@@ -3,6 +3,7 @@
 ## TL;DR
 
 **When adding a new config field:**
+
 - ✅ **Do nothing special!** The blacklist approach auto-includes new fields
 - ✅ Only update if adding a **DERIVED** field (exclude it in `extractConfigFields.ts`)
 - ✅ Add defaults in `validation.ts` if needed
@@ -12,17 +13,17 @@
 
 ```typescript
 // PRIMARY STATE (auto-persisted)
-problemsPerPage: 20
-pages: 5
-cols: 4
+problemsPerPage: 20;
+pages: 5;
+cols: 4;
 // ... all other config fields
 
 // DERIVED STATE (excluded from persistence)
-total: 100      // = problemsPerPage × pages
-rows: 5         // = Math.ceil(problemsPerPage / cols)
+total: 100; // = problemsPerPage × pages
+rows: 5; // = Math.ceil(problemsPerPage / cols)
 
 // EPHEMERAL STATE (excluded from persistence)
-date: "Jan 15"  // Generated fresh at render time
+date: "Jan 15"; // Generated fresh at render time
 ```
 
 ## Architecture Files
@@ -42,29 +43,31 @@ src/app/create/worksheets/
 ## Key Functions
 
 ### `extractConfigFields(formState)`
+
 **What it does:** Prepares config for saving to localStorage/database
 **How it works:** Excludes only `rows`, `total`, `date` (blacklist approach)
 **Returns:** Config object with all primary state fields
 
 ```typescript
 // Usage in ShareModal
-const config = extractConfigFields(formState)
-await fetch('/api/worksheets/share', {
-  method: 'POST',
-  body: JSON.stringify({ worksheetType: 'addition', config })
-})
+const config = extractConfigFields(formState);
+await fetch("/api/worksheets/share", {
+  method: "POST",
+  body: JSON.stringify({ worksheetType: "addition", config }),
+});
 ```
 
 ### `validateWorksheetConfig(formState)`
+
 **What it does:** Validates config and calculates derived state
 **How it works:** Calculates `total = problemsPerPage × pages`, `rows = Math.ceil(problemsPerPage / cols)`
 **Returns:** Validated config with both primary AND derived state
 
 ```typescript
 // Usage when loading shared worksheets
-const validation = validateWorksheetConfig(loadedConfig)
+const validation = validateWorksheetConfig(loadedConfig);
 if (!validation.isValid) {
-  console.error('Invalid config:', validation.errors)
+  console.error("Invalid config:", validation.errors);
 }
 ```
 
@@ -77,13 +80,13 @@ if (!validation.isValid) {
 export const additionConfigV4Schema = z.object({
   // ... existing fields
   myNewField: z.string().optional(),
-})
+});
 
 // 2. Update validation defaults (validation.ts)
 const sharedFields = {
   // ... existing fields
-  myNewField: formState.myNewField ?? 'default',
-}
+  myNewField: formState.myNewField ?? "default",
+};
 
 // 3. Done! extractConfigFields auto-includes it
 ```
@@ -92,37 +95,39 @@ const sharedFields = {
 
 ```typescript
 // 1. Calculate in validation.ts
-const myDerivedValue = problemsPerPage / cols
+const myDerivedValue = problemsPerPage / cols;
 
 // 2. Add to blacklist (extractConfigFields.ts)
-const { rows, total, date, myDerivedValue, ...persistedFields } = formState
+const { rows, total, date, myDerivedValue, ...persistedFields } = formState;
 
 // 3. Document in types.ts
-export type WorksheetFormState = /* ... */ & {
+export type WorksheetFormState /* ... */ = {
   /** Derived: myDerivedValue = problemsPerPage / cols */
-  myDerivedValue?: number
-}
+  myDerivedValue?: number;
+};
 ```
 
 ## Common Bugs
 
 ### Bug: "My new field doesn't persist when shared"
+
 **Old Cause:** Forgot to add field to whitelist
 **Current:** Should auto-work with blacklist approach!
 **Check:** Is the field derived/ephemeral? If yes, should it be excluded?
 
 ### Bug: "Shared worksheets show wrong page count"
+
 **Cause:** Using `formState.total` instead of calculating from primary state
 **Fix:** Always calculate: `total = problemsPerPage × pages`
 
 ```typescript
 // ❌ WRONG
-const total = formState.total ?? 20
+const total = formState.total ?? 20;
 
 // ✅ CORRECT
-const problemsPerPage = formState.problemsPerPage ?? 20
-const pages = formState.pages ?? 1
-const total = problemsPerPage * pages
+const problemsPerPage = formState.problemsPerPage ?? 20;
+const pages = formState.pages ?? 1;
+const total = problemsPerPage * pages;
 ```
 
 ## Testing Checklist
@@ -144,20 +149,20 @@ Enable these console logs to debug config persistence:
 
 ```typescript
 // In extractConfigFields.ts
-console.log('[extractConfigFields] Extracted config:', {
+console.log("[extractConfigFields] Extracted config:", {
   fieldCount: Object.keys(config).length,
   seed: config.seed,
   pages: config.pages,
   problemsPerPage: config.problemsPerPage,
-})
+});
 
 // In validation.ts
-console.log('[validateWorksheetConfig] PRIMARY → DERIVED state:', {
+console.log("[validateWorksheetConfig] PRIMARY → DERIVED state:", {
   problemsPerPage,
   pages,
   total,
   hadTotal: formState.total !== undefined,
-})
+});
 ```
 
 ## Related Documentation

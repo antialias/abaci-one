@@ -1,14 +1,13 @@
 'use client'
 
-import { useCallback, useMemo, useState, useEffect } from 'react'
 import { css } from '@styled/css'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useGameMode, useViewerId } from '@/lib/arcade/game-sdk'
+import { getAssistanceLevel, getFilteredMapDataBySizesSync } from '../maps'
+import { CROP_UPDATE_EVENT, CROP_MODE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { useKnowYourWorld } from '../Provider'
-import { getFilteredMapDataBySizesSync, getAssistanceLevel } from '../maps'
-import { MapRenderer } from './MapRenderer'
 import { GameInfoPanel } from './GameInfoPanel'
-import { useViewerId } from '@/lib/arcade/game-sdk'
-import { useGameMode } from '@/lib/arcade/game-sdk'
+import { MapRenderer } from './MapRenderer'
 
 export function PlayingPhase() {
   const { state, clickRegion, giveUp, otherPlayerCursors, sendCursorUpdate, memberPlayers } =
@@ -62,6 +61,36 @@ export function PlayingPhase() {
   // Track whether hints have been unlocked for the current region
   const [hintsUnlocked, setHintsUnlocked] = useState(false)
 
+  // Counter to force re-render when crop is updated via DevCropTool
+  // This ensures getFilteredMapDataBySizesSync is called again with the new runtime crop
+  const [cropUpdateCounter, setCropUpdateCounter] = useState(0)
+
+  // Track whether crop mode is active (dev only) to hide floating UI
+  const [cropModeActive, setCropModeActive] = useState(false)
+
+  // Listen for crop update events from DevCropTool
+  useEffect(() => {
+    const handleCropUpdate = () => {
+      console.log('[PlayingPhase] Received crop update event, forcing re-render')
+      setCropUpdateCounter((c) => c + 1)
+    }
+
+    window.addEventListener(CROP_UPDATE_EVENT, handleCropUpdate)
+    return () => window.removeEventListener(CROP_UPDATE_EVENT, handleCropUpdate)
+  }, [])
+
+  // Listen for crop mode state changes to hide floating UI
+  useEffect(() => {
+    const handleCropModeChange = (e: Event) => {
+      const detail = (e as CustomEvent<CropModeEventDetail>).detail
+      console.log('[PlayingPhase] Crop mode changed:', detail.active)
+      setCropModeActive(detail.active)
+    }
+
+    window.addEventListener(CROP_MODE_EVENT, handleCropModeChange)
+    return () => window.removeEventListener(CROP_MODE_EVENT, handleCropModeChange)
+  }, [])
+
   // Reset hints locked state when region changes
   useEffect(() => {
     setHintsUnlocked(false)
@@ -97,99 +126,57 @@ export function PlayingPhase() {
     <div
       data-component="playing-phase"
       className={css({
-        height: '100%',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden',
+        zIndex: 0,
       })}
     >
-      <PanelGroup direction="vertical">
-        {/* Top Panel: Game Info */}
-        <Panel
-          defaultSize={20}
-          minSize={12}
-          maxSize={35}
-          className={css({
-            // Ensure scrolling on very small screens
-            overflow: 'auto',
-          })}
-        >
-          <GameInfoPanel
-            mapData={mapData}
-            currentRegionName={currentRegionName}
-            currentRegionId={currentRegionId}
-            selectedMap={state.selectedMap}
-            foundCount={foundCount}
-            totalRegions={totalRegions}
-            progress={progress}
-            onHintsUnlock={handleHintsUnlock}
-          />
-        </Panel>
+      {/* Full-viewport Map */}
+      <MapRenderer
+        mapData={mapData}
+        regionsFound={state.regionsFound}
+        currentPrompt={state.currentPrompt}
+        assistanceLevel={state.assistanceLevel}
+        selectedMap={state.selectedMap}
+        selectedContinent={state.selectedContinent}
+        onRegionClick={clickRegion}
+        guessHistory={state.guessHistory}
+        playerMetadata={state.playerMetadata}
+        giveUpReveal={state.giveUpReveal}
+        hintActive={state.hintActive ?? null}
+        onGiveUp={giveUp}
+        gameMode={state.gameMode}
+        currentPlayer={state.currentPlayer}
+        localPlayerId={localPlayerId}
+        otherPlayerCursors={otherPlayerCursors}
+        onCursorUpdate={handleCursorUpdate}
+        giveUpVotes={state.giveUpVotes}
+        activeUserIds={state.activeUserIds}
+        viewerId={viewerId ?? undefined}
+        memberPlayers={memberPlayers}
+        hintsLocked={hintsLocked}
+        fillContainer
+        difficulty={state.difficulty}
+        mapName={mapData.name}
+      />
 
-        {/* Resize Handle */}
-        <PanelResizeHandle
-          className={css({
-            height: '2px',
-            background: '#e5e7eb',
-            cursor: 'row-resize',
-            transition: 'all 0.2s',
-            // Increase hit area for mobile
-            position: 'relative',
-            _before: {
-              content: '""',
-              position: 'absolute',
-              top: '-4px',
-              bottom: '-4px',
-              left: 0,
-              right: 0,
-            },
-            _hover: {
-              background: '#9ca3af',
-              height: '3px',
-            },
-          })}
+      {/* Floating Game Info UI - hidden during crop mode to allow unobstructed dragging */}
+      {!cropModeActive && (
+        <GameInfoPanel
+          mapData={mapData}
+          currentRegionName={currentRegionName}
+          currentRegionId={currentRegionId}
+          selectedMap={state.selectedMap}
+          foundCount={foundCount}
+          totalRegions={totalRegions}
+          progress={progress}
+          onHintsUnlock={handleHintsUnlock}
         />
-
-        {/* Bottom Panel: Map */}
-        <Panel minSize={65}>
-          <div
-            data-component="map-panel"
-            className={css({
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            })}
-          >
-            <MapRenderer
-              mapData={mapData}
-              regionsFound={state.regionsFound}
-              currentPrompt={state.currentPrompt}
-              assistanceLevel={state.assistanceLevel}
-              selectedMap={state.selectedMap}
-              selectedContinent={state.selectedContinent}
-              onRegionClick={clickRegion}
-              guessHistory={state.guessHistory}
-              playerMetadata={state.playerMetadata}
-              giveUpReveal={state.giveUpReveal}
-              hintActive={state.hintActive ?? null}
-              onGiveUp={giveUp}
-              gameMode={state.gameMode}
-              currentPlayer={state.currentPlayer}
-              localPlayerId={localPlayerId}
-              otherPlayerCursors={otherPlayerCursors}
-              onCursorUpdate={handleCursorUpdate}
-              giveUpVotes={state.giveUpVotes}
-              activeUserIds={state.activeUserIds}
-              viewerId={viewerId ?? undefined}
-              memberPlayers={memberPlayers}
-              hintsLocked={hintsLocked}
-            />
-          </div>
-        </Panel>
-      </PanelGroup>
+      )}
     </div>
   )
 }

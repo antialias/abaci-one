@@ -9,10 +9,12 @@
 Mixed mastery mode uses **operator-specific settings** that override global settings. This hidden complexity has caused bugs and will become increasingly problematic as we add more operators.
 
 **Current operators:**
+
 - Addition
 - Subtraction
 
 **Planned operators:**
+
 - Multiplication
 - Division
 - Fractions
@@ -35,6 +37,7 @@ subtractionDisplayRules?: DisplayRules
 ```
 
 **Settings that are operator-specific in mixed mode:**
+
 1. **Display Rules** - Scaffolding (answer boxes, carry boxes, ten frames, etc.)
 2. **Digit Range** - Number of digits per operator
 3. **Regrouping Config** - pAnyStart, pAllStart, interpolate
@@ -69,24 +72,26 @@ subtractionDisplayRules?: DisplayRules
 **Expected:** Both addition AND subtraction problems hide answer boxes
 
 **What Happened:**
+
 1. ScaffoldingTab updated `displayRules` (global)
 2. Typst generator checked for operator-specific rules first:
    ```typescript
-   if (p.operator === 'add' && config.additionDisplayRules) {
-     rulesForProblem = config.additionDisplayRules // ← Still has old value!
+   if (p.operator === "add" && config.additionDisplayRules) {
+     rulesForProblem = config.additionDisplayRules; // ← Still has old value!
    }
    ```
 3. User's change ignored because old operator-specific rules took precedence
 
 **Fix Required:**
+
 ```typescript
 // In ScaffoldingTab - must update ALL three fields
 if (isMasteryMixed) {
   onChange({
-    displayRules: newRules,           // Global
-    additionDisplayRules: newRules,   // Operator-specific
-    subtractionDisplayRules: newRules // Operator-specific
-  })
+    displayRules: newRules, // Global
+    additionDisplayRules: newRules, // Operator-specific
+    subtractionDisplayRules: newRules, // Operator-specific
+  });
 }
 ```
 
@@ -97,7 +102,7 @@ if (isMasteryMixed) {
 ```typescript
 // V4 Mastery Mode Schema
 export const additionConfigV4MasteryModeSchema = z.object({
-  mode: z.literal('mastery'),
+  mode: z.literal("mastery"),
 
   // Global display rules
   displayRules: displayRulesSchema,
@@ -109,7 +114,7 @@ export const additionConfigV4MasteryModeSchema = z.object({
   // Skill tracking (always operator-specific in mastery)
   currentAdditionSkillId: z.string().optional(),
   currentSubtractionSkillId: z.string().optional(),
-})
+});
 ```
 
 ### Components That Need Special Handling
@@ -132,17 +137,21 @@ export const additionConfigV4MasteryModeSchema = z.object({
 ### Code Locations
 
 **Schema Definition:**
+
 - `src/app/create/worksheets/config-schemas.ts` (lines 536-650)
 
 **Typst Generation:**
+
 - `src/app/create/worksheets/typstGenerator.ts` (lines 69-80)
 - Checks for operator-specific display rules
 
 **Problem Generation:**
+
 - `src/app/create/worksheets/generatePreview.ts` (lines 89-150)
 - Uses skill-specific configs for mixed mode
 
 **UI Components:**
+
 - `src/app/create/worksheets/components/config-sidebar/ScaffoldingTab.tsx`
 - `src/app/create/worksheets/components/config-sidebar/ContentTab.tsx`
 - `src/app/create/worksheets/components/config-sidebar/DifficultyTab.tsx`
@@ -152,11 +161,13 @@ export const additionConfigV4MasteryModeSchema = z.object({
 ### Phase 1: Documentation & Audit (Immediate)
 
 **Goals:**
+
 - Document current behavior (this file)
 - Audit all components for operator-specific handling
 - Create test cases for mixed mode settings
 
 **Tasks:**
+
 - [x] Document architecture in this file
 - [ ] Audit ContentTab for operator-specific handling
 - [ ] Audit DifficultyTab for operator-specific handling
@@ -166,6 +177,7 @@ export const additionConfigV4MasteryModeSchema = z.object({
 ### Phase 2: Unified Config Model (Before Adding New Operators)
 
 **Goals:**
+
 - Replace optional operator-specific fields with structured model
 - Make operator-specificity explicit in schema
 - Single source of truth for which settings are operator-specific
@@ -175,50 +187,52 @@ export const additionConfigV4MasteryModeSchema = z.object({
 ```typescript
 // BEFORE (Current - Implicit)
 interface MasteryConfig {
-  displayRules: DisplayRules
-  additionDisplayRules?: DisplayRules  // Hidden override
-  subtractionDisplayRules?: DisplayRules  // Hidden override
+  displayRules: DisplayRules;
+  additionDisplayRules?: DisplayRules; // Hidden override
+  subtractionDisplayRules?: DisplayRules; // Hidden override
 }
 
 // AFTER (Proposed - Explicit)
 interface MasteryConfig {
-  operatorMode: 'single' | 'mixed'
+  operatorMode: "single" | "mixed";
 
   // Single operator mode
   singleOperatorSettings?: {
-    operator: 'addition' | 'subtraction'
-    displayRules: DisplayRules
-    digitRange: DigitRange
-    regroupingConfig: RegroupingConfig
-  }
+    operator: "addition" | "subtraction";
+    displayRules: DisplayRules;
+    digitRange: DigitRange;
+    regroupingConfig: RegroupingConfig;
+  };
 
   // Mixed operator mode
   mixedOperatorSettings?: {
     operators: {
-      addition: OperatorSettings
-      subtraction: OperatorSettings
-      multiplication?: OperatorSettings  // Future
-      division?: OperatorSettings        // Future
-    }
-  }
+      addition: OperatorSettings;
+      subtraction: OperatorSettings;
+      multiplication?: OperatorSettings; // Future
+      division?: OperatorSettings; // Future
+    };
+  };
 }
 
 interface OperatorSettings {
-  enabled: boolean
-  displayRules: DisplayRules
-  digitRange: DigitRange
-  regroupingConfig: RegroupingConfig
-  currentSkillId?: string
+  enabled: boolean;
+  displayRules: DisplayRules;
+  digitRange: DigitRange;
+  regroupingConfig: RegroupingConfig;
+  currentSkillId?: string;
 }
 ```
 
 **Benefits:**
+
 - Clear separation between single and mixed modes
 - Easy to add new operators (just add to `operators` object)
 - No hidden overrides - structure makes it obvious
 - Type-safe access to operator-specific settings
 
 **Migration Strategy:**
+
 1. Add new schema alongside old (dual-write)
 2. Update components to read from new schema
 3. Add migration from V4 → V5
@@ -227,6 +241,7 @@ interface OperatorSettings {
 ### Phase 3: UI Clarity (With Phase 2)
 
 **Goals:**
+
 - Make it visually obvious when settings are operator-specific
 - Show which operator settings apply to
 - Allow easy bulk updates ("Apply to All Operators")
@@ -234,6 +249,7 @@ interface OperatorSettings {
 **Proposed UI Changes:**
 
 1. **Scaffolding Tab - Mixed Mode View:**
+
    ```
    ┌─ Scaffolding ─────────────────┐
    │ Mode: Mixed (Addition + Sub)  │
@@ -267,36 +283,38 @@ interface OperatorSettings {
 **Test Coverage:**
 
 1. **Unit Tests**
-   ```typescript
-   describe('Mixed Mode Settings', () => {
-     it('updates all operator-specific rules when scaffolding changes', () => {
-       // Test that ScaffoldingTab updates addition AND subtraction rules
-     })
 
-     it('preserves operator-specific rules during migrations', () => {
+   ```typescript
+   describe("Mixed Mode Settings", () => {
+     it("updates all operator-specific rules when scaffolding changes", () => {
+       // Test that ScaffoldingTab updates addition AND subtraction rules
+     });
+
+     it("preserves operator-specific rules during migrations", () => {
        // Test V4→V5 migration keeps operator settings
-     })
-   })
+     });
+   });
    ```
 
 2. **Integration Tests**
+
    ```typescript
-   describe('Mixed Mode Preview', () => {
-     it('uses correct display rules per operator in preview', () => {
+   describe("Mixed Mode Preview", () => {
+     it("uses correct display rules per operator in preview", () => {
        // Set different rules for addition vs subtraction
        // Verify preview shows correct scaffolding per problem type
-     })
-   })
+     });
+   });
    ```
 
 3. **E2E Tests**
    ```typescript
-   describe('Mixed Mode User Flow', () => {
-     it('allows independent scaffolding per operator', () => {
+   describe("Mixed Mode User Flow", () => {
+     it("allows independent scaffolding per operator", () => {
        // User sets addition with answer boxes, subtraction without
        // Download PDF and verify both operators rendered correctly
-     })
-   })
+     });
+   });
    ```
 
 ## Adding New Operators
@@ -324,15 +342,17 @@ interface OperatorSettings {
 ✅ **Type-Safe & Explicit**
 
 1. Add operator to `OperatorType` enum:
+
    ```typescript
-   type OperatorType = 'addition' | 'subtraction' | 'multiplication'
+   type OperatorType = "addition" | "subtraction" | "multiplication";
    ```
 
 2. Schema automatically supports it:
+
    ```typescript
    mixedOperatorSettings: {
      operators: {
-       multiplication: OperatorSettings  // Just add this
+       multiplication: OperatorSettings; // Just add this
      }
    }
    ```

@@ -234,6 +234,7 @@ ssh nas.home.network "docker inspect soroban-abacus-flashcards" | grep -A3 "dock
 **Known Issue (2025-11-13)**:
 
 compose-updater sometimes fails to detect updates even when new images are available. Logs show:
+
 ```
 Processing service soroban-abacus-flashcards (requires build: false, watched: true)...
 No need to restart services in /volume1/homes/antialias/projects/abaci.one/docker-compose.yaml

@@ -3,6 +3,7 @@
 ## Executive Summary
 
 **Current State:** SmartModeControls has significant prop drilling, primarily around:
+
 1. `isDark` - Passed to ALL child components (now can use `useTheme()`)
 2. `formState` - Passed to components that only need 1-2 fields
 3. `onChange` - Passed to components that only update 1-2 fields
@@ -64,6 +65,7 @@ SmartModeControls
 ### ✅ Already Using Context Effectively
 
 **DifficultyPresetDropdown, MakeEasierHarderButtons, OverallDifficultySlider:**
+
 - Use `useWorksheetConfig()` for `operator` and `onChange`
 - Use `useTheme()` for `isDark`
 - Props are component-specific computed values (good!)
@@ -71,17 +73,19 @@ SmartModeControls
 ### ❌ Problem #1: DigitRangeSection
 
 **Current Props:**
+
 ```typescript
 interface DigitRangeSectionProps {
-  digitRange: { min: number; max: number } | undefined
-  onChange: (digitRange: { min: number; max: number }) => void
-  isDark?: boolean  // ← Should use useTheme()
+  digitRange: { min: number; max: number } | undefined;
+  onChange: (digitRange: { min: number; max: number }) => void;
+  isDark?: boolean; // ← Should use useTheme()
 }
 ```
 
 **Recommendation:** Remove `isDark` prop, use `useTheme()` inside component
 
 **Impact:**
+
 - ✅ Removes 1 prop
 - ✅ Consistent with other refactored components
 
@@ -90,15 +94,17 @@ interface DigitRangeSectionProps {
 ### ❌ Problem #2: RegroupingFrequencyPanel
 
 **Current Props:**
+
 ```typescript
 interface RegroupingFrequencyPanelProps {
-  formState: WorksheetFormState  // ← ENTIRE OBJECT! Only uses 2 fields
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean  // ← Should use useTheme()
+  formState: WorksheetFormState; // ← ENTIRE OBJECT! Only uses 2 fields
+  onChange: (updates: Partial<WorksheetFormState>) => void;
+  isDark?: boolean; // ← Should use useTheme()
 }
 ```
 
 **What it actually uses from formState:**
+
 - `formState.pAllStart` - for display
 - `formState.pAnyStart` - for display
 - (Updates via onChange when sliders change)
@@ -106,6 +112,7 @@ interface RegroupingFrequencyPanelProps {
 **Recommendation:** Refactor to use context
 
 **Option A: Use context directly**
+
 ```typescript
 export function RegroupingFrequencyPanel() {
   const { formState, onChange } = useWorksheetConfig()
@@ -120,6 +127,7 @@ export function RegroupingFrequencyPanel() {
 ```
 
 **Option B: Extract only needed values (more explicit)**
+
 ```typescript
 interface RegroupingFrequencyPanelProps {
   pAllStart: number
@@ -148,6 +156,7 @@ export function RegroupingFrequencyPanel({
 **Recommendation: Option A** - Since RegroupingFrequencyPanel is tightly coupled to worksheet config, using context makes sense.
 
 **Impact:**
+
 - ✅ Removes ALL 3 props from RegroupingFrequencyPanel
 - ✅ Consistent with WorksheetConfigContext pattern
 - ✅ Simpler call site in SmartModeControls
@@ -157,15 +166,17 @@ export function RegroupingFrequencyPanel({
 ### ❌ Problem #3: SmartModeControls still receives isDark
 
 **Current:**
+
 ```typescript
 export interface SmartModeControlsProps {
-  formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  isDark?: boolean  // ← Only used for inline styling in SmartModeControls itself
+  formState: WorksheetFormState;
+  onChange: (updates: Partial<WorksheetFormState>) => void;
+  isDark?: boolean; // ← Only used for inline styling in SmartModeControls itself
 }
 ```
 
 **Where isDark is used in SmartModeControls:**
+
 - Line 87: Passed to `<DigitRangeSection isDark={isDark} />`
 - Line 96: Inline style: `color: isDark ? 'gray.400' : 'gray.500'`
 - Line 313: Inline style: `bg: isDark ? 'blue.950' : 'blue.50'`
@@ -175,14 +186,18 @@ export interface SmartModeControlsProps {
 **Recommendation:** SmartModeControls should use `useTheme()` directly
 
 ```typescript
-export function SmartModeControls({ formState, onChange }: SmartModeControlsProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+export function SmartModeControls({
+  formState,
+  onChange,
+}: SmartModeControlsProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   // ... rest of component
 }
 ```
 
 **Impact:**
+
 - ✅ Removes `isDark` from SmartModeControls props
 - ✅ No longer passed from ConfigPanel
 - ✅ Consistent with using global theme context
@@ -200,6 +215,7 @@ export function SmartModeControls({ formState, onChange }: SmartModeControlsProp
 ### Before vs After
 
 **Before:**
+
 ```typescript
 // ConfigPanel
 <SmartModeControls formState={formState} onChange={onChange} isDark={isDark} />
@@ -210,6 +226,7 @@ export function SmartModeControls({ formState, onChange }: SmartModeControlsProp
 ```
 
 **After:**
+
 ```typescript
 // ConfigPanel
 <SmartModeControls formState={formState} onChange={onChange} />
@@ -237,18 +254,21 @@ Components like **DifficultyPresetDropdown** and **MakeEasierHarderButtons** rec
 **Answer: NO - Current approach is correct!**
 
 **Reasons:**
+
 1. **Separation of concerns**: Computation logic stays in parent (SmartModeControls)
 2. **Component reusability**: These components could be used with different computation logic
 3. **Testability**: Easy to test by passing mock props
 4. **Clarity**: Props make dependencies explicit
 
 **Rule of thumb:**
+
 - ✅ **Use context for:** Shared state (formState, onChange), theme (isDark), operator
 - ❌ **Don't use context for:** Component-specific computed values, callbacks with logic
 
 ### Why RegroupingFrequencyPanel CAN use context?
 
 RegroupingFrequencyPanel is tightly coupled to worksheet configuration and:
+
 - Only exists within worksheet config UI
 - Directly reads/writes worksheet state
 - Has no reusability requirements
