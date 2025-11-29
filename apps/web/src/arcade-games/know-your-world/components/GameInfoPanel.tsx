@@ -3,10 +3,11 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { css } from '@styled/css'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useSpring, animated, to } from '@react-spring/web'
+import { useSpring, animated } from '@react-spring/web'
 import { useViewerId } from '@/lib/arcade/game-sdk'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
+  calculateBoundingBox,
   DEFAULT_DIFFICULTY_CONFIG,
   getAssistanceLevel,
   getCountryFlagEmoji,
@@ -145,6 +146,23 @@ export function GameInfoPanel({
   const displayFlagEmoji =
     selectedMap === 'world' && displayRegionId ? getCountryFlagEmoji(displayRegionId) : ''
 
+  // Get the region's SVG path for the takeover shape display
+  const displayRegionShape = useMemo(() => {
+    if (!displayRegionId) return null
+    const region = mapData.regions.find((r) => r.id === displayRegionId)
+    if (!region?.path) return null
+
+    // Calculate bounding box with padding for the viewBox
+    const bbox = calculateBoundingBox([region.path])
+    const padding = Math.max(bbox.width, bbox.height) * 0.1 // 10% padding
+    const viewBox = `${bbox.minX - padding} ${bbox.minY - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`
+
+    return {
+      path: region.path,
+      viewBox,
+    }
+  }, [displayRegionId, mapData.regions])
+
   // Track if animation is in progress (local state based on timestamp)
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -167,17 +185,14 @@ export function GameInfoPanel({
   // Ref to measure the takeover container (region name + instructions)
   const takeoverContainerRef = useRef<HTMLDivElement>(null)
 
-  // Calculate the safe scale factor and offsets for perfect centering
+  // Calculate the safe scale factor based on viewport size
   const [safeScale, setSafeScale] = useState(2.5)
-  const [centerXOffset, setCenterXOffset] = useState(0)
-  const [centerYOffset, setCenterYOffset] = useState(0)
 
-  // Measure container and calculate safe scale + centering offsets when region changes
+  // Measure container and calculate safe scale when region changes or window resizes
   useLayoutEffect(() => {
     if (!currentRegionName || !isLearningMode) return
 
-    // Use requestAnimationFrame to ensure text has rendered
-    const rafId = requestAnimationFrame(() => {
+    const measureAndUpdate = () => {
       if (takeoverContainerRef.current) {
         const rect = takeoverContainerRef.current.getBoundingClientRect()
 
@@ -188,20 +203,19 @@ export function GameInfoPanel({
         // Use the smaller of width/height constraints, clamped between 1.5 and 3.5
         const calculatedScale = Math.min(maxWidthScale, maxHeightScale)
         setSafeScale(Math.max(1.5, Math.min(3.5, calculatedScale)))
-
-        // Calculate X offset to center horizontally on screen
-        const elementCenterX = rect.left + rect.width / 2
-        const screenCenterX = window.innerWidth / 2
-        setCenterXOffset(screenCenterX - elementCenterX)
-
-        // Calculate Y offset to center vertically on screen
-        const elementCenterY = rect.top + rect.height / 2
-        const screenCenterY = window.innerHeight / 2
-        setCenterYOffset(screenCenterY - elementCenterY)
       }
-    })
+    }
 
-    return () => cancelAnimationFrame(rafId)
+    // Use requestAnimationFrame to ensure text has rendered
+    const rafId = requestAnimationFrame(measureAndUpdate)
+
+    // Also update on resize
+    window.addEventListener('resize', measureAndUpdate)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', measureAndUpdate)
+    }
   }, [currentRegionName, isLearningMode])
 
   // Calculate takeover progress based on letters typed (0 = full takeover, 1 = complete)
@@ -213,32 +227,11 @@ export function GameInfoPanel({
     return Math.min(1, confirmedLetterCount / requiresNameConfirmation)
   }, [isLearningMode, requiresNameConfirmation, confirmedLetterCount, isGiveUpAnimating])
 
-  // Memoize spring target values to avoid recalculating on every render
-  const springTargets = useMemo(
-    () => ({
-      scale: safeScale - (safeScale - 1) * takeoverProgress,
-      x: centerXOffset * (1 - takeoverProgress),
-      y: centerYOffset * (1 - takeoverProgress),
-    }),
-    [safeScale, centerXOffset, centerYOffset, takeoverProgress]
-  )
-
-  // React-spring animation for takeover transition
+  // Spring animation for scale only - position is handled by CSS centering
   const takeoverSpring = useSpring({
-    ...springTargets,
+    scale: safeScale - (safeScale - 1) * takeoverProgress,
     config: TAKEOVER_ANIMATION_CONFIG,
   })
-
-  // Memoize the transform interpolation to avoid recreating on every render
-  const transformStyle = useMemo(
-    () => ({
-      transform: to(
-        [takeoverSpring.scale, takeoverSpring.x, takeoverSpring.y],
-        (s, x, y) => `translate(${x}px, ${y}px) scale(${s})`
-      ),
-    }),
-    [takeoverSpring.scale, takeoverSpring.x, takeoverSpring.y]
-  )
 
   // Memoize whether we're in active takeover mode
   const isInTakeover = isLearningMode && takeoverProgress < 1
@@ -422,31 +415,159 @@ export function GameInfoPanel({
         }
       `}</style>
 
-      {/* Takeover backdrop scrim - blurs background but leaves nav accessible */}
-      {/* Always rendered but uses CSS transitions for smooth fade in/out */}
+      {/* Takeover overlay - contains scrim backdrop, region shape, and takeover text */}
+      {/* All children share the same stacking context */}
       <div
-        data-element="takeover-scrim"
+        data-element="takeover-overlay"
         className={css({
           position: 'fixed',
-          // Start below the nav bar to keep it accessible
-          top: '60px',
+          top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          // Below takeover content (z-index 200) but above map
           zIndex: 150,
           pointerEvents: 'none',
-          // Smooth transitions for opacity and blur
-          transition: 'opacity 0.3s ease-out, backdrop-filter 0.3s ease-out',
+          // Smooth transition for the whole overlay
+          transition: 'opacity 0.3s ease-out',
         })}
         style={{
-          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-          // Animate between blurred (in takeover) and clear (not in takeover)
-          backdropFilter: isInTakeover ? 'blur(8px)' : 'blur(0px)',
-          WebkitBackdropFilter: isInTakeover ? 'blur(8px)' : 'blur(0px)',
           opacity: isInTakeover ? 1 : 0,
         }}
-      />
+      >
+        {/* Backdrop scrim with blur */}
+        <div
+          data-element="takeover-scrim"
+          className={css({
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          })}
+          style={{
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
+        />
+
+        {/* Region shape silhouette */}
+        {displayRegionShape && (
+          <svg
+            data-element="takeover-region-shape"
+            viewBox={displayRegionShape.viewBox}
+            preserveAspectRatio="xMidYMid meet"
+            className={css({
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+            })}
+          >
+            <path
+              d={displayRegionShape.path}
+              fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
+            />
+          </svg>
+        )}
+
+        {/* Takeover text - CSS centered, only scale is animated */}
+        <animated.div
+          data-element="takeover-content"
+          className={css({
+            position: 'absolute',
+            // CSS centering
+            top: '50%',
+            left: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            transformOrigin: 'center center',
+          })}
+          style={{
+            // Combine centering translation with animated scale
+            transform: takeoverSpring.scale.to((s) => `translate(-50%, -50%) scale(${s})`),
+            animation: showPulseAnimation ? 'takeoverPulse 0.8s ease-in-out infinite' : 'none',
+          }}
+        >
+          {/* Region name display */}
+          <div
+            data-element="takeover-region-name"
+            className={css({
+              fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
+              fontWeight: 'bold',
+              color: isDark ? 'white' : 'blue.900',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: { base: '1', sm: '2' },
+            })}
+            style={{
+              textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+          >
+            {displayFlagEmoji && (
+              <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
+                {displayFlagEmoji}
+              </span>
+            )}
+            <span>
+              {displayRegionName
+                ? displayRegionName.split('').map((char, index) => {
+                    // During takeover, show all letters fully visible (no confirmation styling)
+                    const needsConfirmation =
+                      !isGiveUpAnimating &&
+                      requiresNameConfirmation > 0 &&
+                      !nameConfirmed &&
+                      index < requiresNameConfirmation
+                    const isConfirmed = index < confirmedLetterCount
+                    const isNextToConfirm = index === confirmedLetterCount && needsConfirmation
+
+                    return (
+                      <span
+                        key={index}
+                        className={css({ transition: 'all 0.15s ease-out' })}
+                        style={{
+                          opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
+                          textDecoration: isNextToConfirm ? 'underline' : 'none',
+                          textDecorationColor: isNextToConfirm
+                            ? isDark
+                              ? '#60a5fa'
+                              : '#3b82f6'
+                            : undefined,
+                          textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
+                        }}
+                      >
+                        {char}
+                      </span>
+                    )
+                  })
+                : '...'}
+            </span>
+          </div>
+
+          {/* Type-to-unlock instruction */}
+          {!isGiveUpAnimating && requiresNameConfirmation > 0 && !nameConfirmed && (
+            <div
+              data-element="takeover-type-instruction"
+              className={css({
+                marginTop: '2',
+                fontSize: { base: 'sm', sm: 'md' },
+                color: isDark ? 'amber.300' : 'amber.700',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.5',
+              })}
+            >
+              <span>⌨️</span>
+              <span>Type the underlined letter{requiresNameConfirmation > 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </animated.div>
+      </div>
 
       {/* TOP-CENTER: Prompt Display - positioned below game nav (~150px) */}
       {/* Background fills left-to-right as progress increases */}
@@ -469,8 +590,7 @@ export function GameInfoPanel({
         style={{
           animation: 'glowPulse 2s ease-in-out infinite',
           overflow: isInTakeover ? 'visible' : 'hidden',
-          // Raise z-index above scrim (150) during takeover
-          zIndex: isInTakeover ? 200 : undefined,
+          // Prompt pane stays behind scrim; only takeover-container elevates above
           background: isDark
             ? `linear-gradient(to right, rgba(22, 78, 99, 0.3) ${progress}%, rgba(30, 58, 138, 0.25) ${progress}%)`
             : `linear-gradient(to right, rgba(34, 197, 94, 0.25) ${progress}%, rgba(59, 130, 246, 0.2) ${progress}%)`,
@@ -814,25 +934,20 @@ export function GameInfoPanel({
             )}
           </div>
         </div>
-        {/* Animated container for takeover - includes region name and instructions */}
-        <animated.div
+        {/* Region name container - ref used for measuring position for takeover */}
+        {/* Content hidden during takeover (shown in overlay instead) */}
+        <div
           ref={takeoverContainerRef}
-          key={currentRegionId || 'empty'} // Re-trigger animation on change
-          data-element="takeover-container"
+          data-element="region-name-container"
           className={css({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             position: 'relative',
-            transformOrigin: 'center center',
           })}
           style={{
-            // Dynamic z-index moved to inline style to avoid css() recalculation
-            zIndex: isInTakeover ? 200 : 'auto',
-            // React-spring animated transform
-            ...transformStyle,
-            // Pulse animation during takeover (fades after halfway)
-            animation: showPulseAnimation ? 'takeoverPulse 0.8s ease-in-out infinite' : 'none',
+            // Hide during takeover since it's shown in the overlay
+            visibility: isInTakeover ? 'hidden' : 'visible',
           }}
         >
           {/* Region name display */}
@@ -853,20 +968,13 @@ export function GameInfoPanel({
             }}
           >
             {displayFlagEmoji && (
-              <span
-                className={css({
-                  fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
-                })}
-              >
+              <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
                 {displayFlagEmoji}
               </span>
             )}
-            {/* Inline letter highlighting for name confirmation */}
             <span>
               {displayRegionName
                 ? displayRegionName.split('').map((char, index) => {
-                    // Determine if this letter needs confirmation styling
-                    // Disable during give-up animation (showing the given-up region)
                     const needsConfirmation =
                       !isGiveUpAnimating &&
                       requiresNameConfirmation > 0 &&
@@ -878,13 +986,9 @@ export function GameInfoPanel({
                     return (
                       <span
                         key={index}
-                        className={css({
-                          transition: 'all 0.15s ease-out',
-                        })}
+                        className={css({ transition: 'all 0.15s ease-out' })}
                         style={{
-                          // Dim unconfirmed letters that need confirmation
                           opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
-                          // Highlight the next letter to type
                           textDecoration: isNextToConfirm ? 'underline' : 'none',
                           textDecorationColor: isNextToConfirm
                             ? isDark
@@ -902,8 +1006,7 @@ export function GameInfoPanel({
             </span>
           </div>
 
-          {/* Type-to-unlock instruction - included in takeover container */}
-          {/* Hide during give-up animation since we're showing the given-up region */}
+          {/* Type-to-unlock instruction */}
           {!isGiveUpAnimating && requiresNameConfirmation > 0 && !nameConfirmed && (
             <div
               data-element="type-to-unlock"
@@ -921,7 +1024,7 @@ export function GameInfoPanel({
               <span>Type the underlined letter{requiresNameConfirmation > 1 ? 's' : ''}</span>
             </div>
           )}
-        </animated.div>
+        </div>
 
         {/* Inline hint - shown after name is confirmed (or always in non-learning modes) */}
         {currentHint && (requiresNameConfirmation === 0 || nameConfirmed) && (
