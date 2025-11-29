@@ -34,7 +34,10 @@ import {
   filterRegionsByImportance,
   filterRegionsByPopulation,
   filterRegionsBySizes,
+  calculateSafeZoneViewBox,
+  type SafeZoneMargins,
 } from '../maps'
+import { getCustomCrop } from '../customCrops'
 import type { RegionSize, ImportanceLevel, PopulationLevel, FilterCriteria } from '../maps'
 import {
   CONTINENTS,
@@ -51,6 +54,17 @@ import {
   rangeToPopulation,
 } from '../utils/regionSizeUtils'
 import { preventFlexExpansion } from '../utils/responsiveStyles'
+
+/**
+ * Safe zone margins - must match MapRenderer for consistent positioning
+ * These define areas reserved for floating UI elements during gameplay
+ */
+const SAFE_ZONE_MARGINS: SafeZoneMargins = {
+  top: 290, // Space for nav (~150px) + floating prompt (~140px with name input)
+  right: 200, // Space for controls panel (hint, give up, hot/cold buttons)
+  bottom: 0, // Error banner can overlap map
+  left: 0,
+}
 
 /**
  * Size options for the range thermometer, ordered from largest to smallest
@@ -252,6 +266,29 @@ export function DrillDownMapSelector({
       const subMapId = path[1]
       const subMapData = getSubMapData(subMapId)
       if (subMapData) {
+        // For USA in fillContainer mode, use safe zone calculation to match gameplay
+        if (fillContainer && containerDimensions.width > 0 && containerDimensions.height > 0) {
+          const originalBounds = parseViewBox(subMapData.viewBox)
+          // USA doesn't have custom crops, so use full map bounds
+          const customCrop = getCustomCrop('usa', 'all')
+          const cropRegion = customCrop ? parseViewBox(customCrop) : originalBounds
+
+          const safeZoneViewBox = calculateSafeZoneViewBox(
+            containerDimensions.width,
+            containerDimensions.height,
+            SAFE_ZONE_MARGINS,
+            cropRegion,
+            originalBounds
+          )
+
+          return {
+            mapData: subMapData,
+            viewBox: safeZoneViewBox,
+            visibleRegions: undefined,
+            highlightedRegions: [],
+          }
+        }
+
         return {
           mapData: subMapData,
           viewBox: subMapData.viewBox,
@@ -265,8 +302,55 @@ export function DrillDownMapSelector({
     // path[0] is guaranteed to be ContinentId when currentLevel >= 1
     const continentId: ContinentId | 'all' = currentLevel >= 1 && path[0] ? path[0] : 'all'
 
+    // For fillContainer mode (playing phase), use the same safe zone calculation as MapRenderer
+    // This ensures the map positioning matches exactly between setup and gameplay
+    if (fillContainer && containerDimensions.width > 0 && containerDimensions.height > 0) {
+      const originalBounds = parseViewBox(WORLD_MAP.viewBox)
+
+      // Use custom crop if defined, otherwise use full map bounds (same logic as MapRenderer)
+      const customCrop = continentId !== 'all' ? getCustomCrop('world', continentId) : null
+      const cropRegion = customCrop ? parseViewBox(customCrop) : originalBounds
+
+      const safeZoneViewBox = calculateSafeZoneViewBox(
+        containerDimensions.width,
+        containerDimensions.height,
+        SAFE_ZONE_MARGINS,
+        cropRegion,
+        originalBounds
+      )
+
+      // Filter visible regions if on continent level
+      const visible =
+        continentId !== 'all'
+          ? filterRegionsByContinent(WORLD_MAP.regions, continentId).map((r) => r.id)
+          : undefined
+
+      // Get regions with sub-maps for this continent (or all continents if world level)
+      let highlighted: string[] = []
+      if (continentId !== 'all') {
+        highlighted = getSubMapsForContinent(continentId)
+      } else {
+        const allContinentIds: ContinentId[] = [
+          'africa',
+          'asia',
+          'europe',
+          'north-america',
+          'oceania',
+          'south-america',
+        ]
+        highlighted = allContinentIds.flatMap((cId) => getSubMapsForContinent(cId))
+      }
+
+      return {
+        mapData: WORLD_MAP,
+        viewBox: safeZoneViewBox,
+        visibleRegions: visible,
+        highlightedRegions: highlighted,
+      }
+    }
+
+    // Non-fillContainer mode: use expanded viewBox for better context during setup
     // Calculate viewBox for continent (or full world)
-    // For the selector, we zoom out a bit more than gameplay for better context
     const gameplayViewBox = calculateContinentViewBox(
       WORLD_MAP.regions,
       continentId,
@@ -341,7 +425,7 @@ export function DrillDownMapSelector({
       visibleRegions: visible,
       highlightedRegions: highlighted,
     }
-  }, [currentLevel, path, containerDimensions])
+  }, [currentLevel, path, containerDimensions, fillContainer])
 
   // Region groups for hover highlighting at world level
   // Maps each country to its continent so hovering one country highlights all countries in that continent
