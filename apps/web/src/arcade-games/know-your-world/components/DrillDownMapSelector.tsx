@@ -36,6 +36,7 @@ import {
   filterRegionsBySizes,
   calculateSafeZoneViewBox,
   type SafeZoneMargins,
+  ASSISTANCE_LEVELS,
 } from '../maps'
 import { getCustomCrop } from '../customCrops'
 import type { RegionSize, ImportanceLevel, PopulationLevel, FilterCriteria } from '../maps'
@@ -53,7 +54,6 @@ import {
   populationToRange,
   rangeToPopulation,
 } from '../utils/regionSizeUtils'
-import { preventFlexExpansion } from '../utils/responsiveStyles'
 
 /**
  * Safe zone margins - must match MapRenderer for consistent positioning
@@ -143,6 +143,19 @@ const PLANETS: PlanetData[] = [
   { id: 'saturn', name: 'Saturn', color: '#ead6b8', size: 1.7, hasRings: true },
 ]
 
+/** Game mode options */
+type GameMode = 'cooperative' | 'race' | 'turn-based'
+
+/** Assistance level options */
+type AssistanceLevel = 'learning' | 'guided' | 'helpful' | 'standard' | 'none'
+
+/** Game mode display options */
+const GAME_MODE_OPTIONS: Array<{ value: GameMode; emoji: string; label: string }> = [
+  { value: 'cooperative', emoji: '🤝', label: 'Co-op' },
+  { value: 'race', emoji: '🏁', label: 'Race' },
+  { value: 'turn-based', emoji: '↔️', label: 'Turns' },
+]
+
 interface DrillDownMapSelectorProps {
   /** Callback when selection changes (map/continent for game start) */
   onSelectionChange: (mapId: 'world' | 'usa', continentId: ContinentId | 'all') => void
@@ -160,6 +173,14 @@ interface DrillDownMapSelectorProps {
   regionCountsBySize: Record<string, number>
   /** When true, fills parent container and uses overlay positioning for UI elements */
   fillContainer?: boolean
+  /** Current game mode (for unified controls in fillContainer mode) */
+  gameMode?: GameMode
+  /** Callback when game mode changes */
+  onGameModeChange?: (mode: GameMode) => void
+  /** Current assistance level (for unified controls in fillContainer mode) */
+  assistanceLevel?: AssistanceLevel
+  /** Callback when assistance level changes */
+  onAssistanceLevelChange?: (level: AssistanceLevel) => void
 }
 
 interface BreadcrumbItem {
@@ -178,6 +199,10 @@ export function DrillDownMapSelector({
   onRegionSizesChange,
   regionCountsBySize,
   fillContainer = false,
+  gameMode,
+  onGameModeChange,
+  assistanceLevel,
+  onAssistanceLevelChange,
 }: DrillDownMapSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -1495,6 +1520,157 @@ export function DrillDownMapSelector({
                   maxHeight="200px"
                   isDark={isDark}
                 />
+              </div>
+            )}
+
+            {/* Game Mode & Assistance Level - only in fillContainer mode */}
+            {fillContainer && gameMode && onGameModeChange && (
+              <div
+                data-element="game-settings"
+                className={css({
+                  borderTop: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.300',
+                  marginTop: '2',
+                  paddingTop: '2',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2',
+                })}
+              >
+                {/* Game Mode Selector */}
+                <div data-element="game-mode-selector">
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      marginBottom: '1',
+                    })}
+                  >
+                    Mode
+                  </div>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      gap: '1px',
+                      bg: isDark ? 'gray.700' : 'gray.200',
+                      rounded: 'md',
+                      padding: '2px',
+                    })}
+                  >
+                    {GAME_MODE_OPTIONS.map((option) => {
+                      const isActive = gameMode === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => onGameModeChange(option.value)}
+                          className={css({
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '1',
+                            padding: '1.5',
+                            fontSize: 'xs',
+                            fontWeight: isActive ? 'bold' : 'normal',
+                            color: isActive
+                              ? isDark
+                                ? 'white'
+                                : 'gray.900'
+                              : isDark
+                                ? 'gray.400'
+                                : 'gray.600',
+                            bg: isActive ? (isDark ? 'gray.600' : 'white') : 'transparent',
+                            rounded: 'sm',
+                            cursor: 'pointer',
+                            border: 'none',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              bg: isActive
+                                ? isDark
+                                  ? 'gray.600'
+                                  : 'white'
+                                : isDark
+                                  ? 'gray.600/50'
+                                  : 'gray.100',
+                            },
+                          })}
+                        >
+                          <span>{option.emoji}</span>
+                          <span>{option.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Assistance Level Selector */}
+                {assistanceLevel && onAssistanceLevelChange && (
+                  <div data-element="assistance-selector">
+                    <div
+                      className={css({
+                        fontSize: 'xs',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                        marginBottom: '1',
+                      })}
+                    >
+                      Assistance
+                    </div>
+                    <div
+                      className={css({
+                        display: 'flex',
+                        gap: '1px',
+                        bg: isDark ? 'gray.700' : 'gray.200',
+                        rounded: 'md',
+                        padding: '2px',
+                        flexWrap: 'wrap',
+                      })}
+                    >
+                      {ASSISTANCE_LEVELS.map((level) => {
+                        const isActive = assistanceLevel === level.id
+                        return (
+                          <button
+                            key={level.id}
+                            onClick={() => onAssistanceLevelChange(level.id as AssistanceLevel)}
+                            title={level.description}
+                            className={css({
+                              flex: '1 1 auto',
+                              minWidth: '36px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '1.5',
+                              fontSize: 'sm',
+                              fontWeight: isActive ? 'bold' : 'normal',
+                              color: isActive
+                                ? isDark
+                                  ? 'white'
+                                  : 'gray.900'
+                                : isDark
+                                  ? 'gray.400'
+                                  : 'gray.600',
+                              bg: isActive ? (isDark ? 'gray.600' : 'white') : 'transparent',
+                              rounded: 'sm',
+                              cursor: 'pointer',
+                              border: 'none',
+                              transition: 'all 0.15s',
+                              _hover: {
+                                bg: isActive
+                                  ? isDark
+                                    ? 'gray.600'
+                                    : 'white'
+                                  : isDark
+                                    ? 'gray.600/50'
+                                    : 'gray.100',
+                              },
+                            })}
+                          >
+                            <span>{level.emoji}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
