@@ -256,16 +256,17 @@ export function SetupPhase() {
         fillContainer
       />
 
-      {/* TOP-RIGHT: Settings Panel - positioned like gameplay controls */}
+      {/* TOP-CENTER: Settings Panel - centered for prominence */}
       <div
         data-element="setup-settings-panel"
         className={css({
           position: 'absolute',
-          top: { base: '160px', sm: '166px' }, // Same as gameplay controls
-          right: { base: '2', sm: '4' },
+          top: { base: '160px', sm: '166px' }, // Same as gameplay prompt position
+          left: '50%',
+          transform: 'translateX(-50%)',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           gap: '2',
           zIndex: 50,
         })}
@@ -281,7 +282,6 @@ export function SetupPhase() {
             backdropFilter: 'blur(12px)',
             rounded: '2xl',
             shadow: 'xl',
-            maxWidth: { base: '180px', sm: 'fit-content' },
           })}
         >
         {/* Game Mode Selector */}
