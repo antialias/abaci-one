@@ -27,6 +27,23 @@ export function GameComponent() {
     return () => window.removeEventListener(CROP_MODE_EVENT, handleCropModeChange)
   }, [])
 
+  // Guard against undefined state during session initialization
+  if (!state) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          color: '#888',
+        }}
+      >
+        Loading...
+      </div>
+    )
+  }
+
   // Determine current player for turn indicator (if turn-based mode)
   const currentPlayerId =
     state.gamePhase === 'playing' && state.gameMode === 'turn-based'
