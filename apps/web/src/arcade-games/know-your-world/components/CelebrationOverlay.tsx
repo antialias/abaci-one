@@ -14,7 +14,7 @@ import { css } from '@styled/css'
 import { useEffect, useState, useCallback } from 'react'
 import type { CelebrationState } from '../Provider'
 import { ConfettiBurst } from './Confetti'
-import { useCelebrationSound } from '../hooks/useCelebrationSound'
+import { useMusicOptional } from '../music/MusicContext'
 import { CELEBRATION_TIMING } from '../utils/celebration'
 
 interface CelebrationOverlayProps {
@@ -40,7 +40,7 @@ export function CelebrationOverlay({
   reducedMotion = false,
 }: CelebrationOverlayProps) {
   const [confettiComplete, setConfettiComplete] = useState(false)
-  const { playCelebration } = useCelebrationSound()
+  const music = useMusicOptional()
   const timing = CELEBRATION_TIMING[celebration.type]
 
   // Pick a random message for hard-earned
@@ -48,10 +48,22 @@ export function CelebrationOverlay({
     () => HARD_EARNED_MESSAGES[Math.floor(Math.random() * HARD_EARNED_MESSAGES.length)]
   )
 
-  // Play sound on mount
+  // Play celebration sound via Strudel (if music is available and playing)
   useEffect(() => {
-    playCelebration(celebration.type)
-  }, [playCelebration, celebration.type])
+    console.log('[CelebrationOverlay] Celebration triggered:', {
+      type: celebration.type,
+      musicAvailable: !!music,
+      isPlaying: music?.isPlaying,
+      isInitialized: music?.isInitialized,
+      isMuted: music?.isMuted,
+    })
+    if (music?.isPlaying) {
+      console.log('[CelebrationOverlay] Calling music.playCelebration...')
+      music.playCelebration(celebration.type)
+    } else {
+      console.log('[CelebrationOverlay] Music not playing, skipping celebration sound')
+    }
+  }, [music, celebration.type])
 
   // Handle confetti completion
   const handleConfettiComplete = useCallback(() => {
