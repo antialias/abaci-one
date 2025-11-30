@@ -7,6 +7,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
+import {
+  useCanUsePrecisionMode,
+  useHasAnyFinePointer,
+  useIsTouchDevice,
+} from '../hooks/useDeviceCapabilities'
 import { useHotColdFeedback } from '../hooks/useHotColdFeedback'
 import { useMagnifierZoom } from '../hooks/useMagnifierZoom'
 import { usePointerLock } from '../hooks/usePointerLock'
@@ -442,6 +447,11 @@ export function MapRenderer({
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
   const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
+  // Device capability hooks for adaptive UI
+  const isTouchDevice = useIsTouchDevice() // For touch-specific UI (magnifier expansion)
+  const canUsePrecisionMode = useCanUsePrecisionMode() // For precision mode UI/behavior
+  const hasAnyFinePointer = useHasAnyFinePointer() // For hot/cold feedback visibility
+
   // Memoize pointer lock callbacks to prevent render loop
   const handleLockAcquired = useCallback(() => {
     // Save initial cursor position
@@ -459,13 +469,16 @@ export function MapRenderer({
   }, [])
 
   // Pointer lock hook (needed by zoom hook)
+  // Pass canUsePrecisionMode to prevent pointer lock on unsupported devices
   const { pointerLocked, requestPointerLock, exitPointerLock } = usePointerLock({
     containerRef,
+    canUsePrecisionMode,
     onLockAcquired: handleLockAcquired,
     onLockReleased: handleLockReleased,
   })
 
   // Magnifier zoom hook
+  // Disable threshold capping when precision mode isn't available (touch-only devices)
   const { targetZoom, setTargetZoom, zoomSpring, getCurrentZoom, uncappedAdaptiveZoomRef } =
     useMagnifierZoom({
       containerRef,
@@ -474,6 +487,7 @@ export function MapRenderer({
       threshold: PRECISION_MODE_THRESHOLD,
       pointerLocked,
       initialZoom: 10,
+      disableThresholdCapping: !canUsePrecisionMode,
     })
 
   const [svgDimensions, setSvgDimensions] = useState({
@@ -501,6 +515,12 @@ export function MapRenderer({
   const magnifierDidMoveRef = useRef(false) // Track if user actually dragged (vs just tapped)
   const magnifierRef = useRef<HTMLDivElement>(null) // Ref to magnifier element for tap position calculation
   const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null) // Where user tapped on magnifier
+
+  // Pinch-to-zoom state for magnifier
+  const [isPinching, setIsPinching] = useState(false)
+  const pinchStartDistanceRef = useRef<number | null>(null) // Initial distance between two fingers
+  const pinchStartZoomRef = useRef<number | null>(null) // Zoom level when pinch started
+  const [isMagnifierExpanded, setIsMagnifierExpanded] = useState(false) // Magnifier fills leftover area during pinch
 
   // Mobile map drag state - detect touch drags on the map to show magnifier
   const [isMobileMapDragging, setIsMobileMapDragging] = useState(false)
@@ -594,13 +614,9 @@ export function MapRenderer({
     return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
   })
 
-  // Detect if device has a fine pointer (mouse) - iPads with mice will return true
-  // This is better than isTouchDevice because iPads with attached mice should show hot/cold
-  const hasFinePointer =
-    typeof window !== 'undefined' && window.matchMedia('(any-pointer: fine)').matches
-
   // Whether hot/cold button should be shown at all
-  const showHotCold = isSpeechSupported && hasFinePointer && assistanceAllowsHotCold
+  // Uses hasAnyFinePointer because iPads with attached mice should show hot/cold
+  const showHotCold = isSpeechSupported && hasAnyFinePointer && assistanceAllowsHotCold
 
   // Persist auto-speak setting
   const handleAutoSpeakChange = useCallback((enabled: boolean) => {
@@ -728,7 +744,7 @@ export function MapRenderer({
     lastFeedbackType: hotColdFeedbackType,
     getSearchMetrics,
   } = useHotColdFeedback({
-    enabled: assistanceAllowsHotCold && hotColdEnabled && hasFinePointer,
+    enabled: assistanceAllowsHotCold && hotColdEnabled && hasAnyFinePointer,
     targetRegionId: currentPrompt,
     isSpeaking,
     mapName: hotColdMapName,
@@ -1999,7 +2015,7 @@ export function MapRenderer({
     if (
       hotColdEnabledRef.current &&
       currentPrompt &&
-      hasFinePointer &&
+      hasAnyFinePointer &&
       !isGiveUpAnimating &&
       !isInTakeover
     ) {
@@ -2296,27 +2312,47 @@ export function MapRenderer({
           leftoverHeight
         )
 
-        // Calculate leftover rectangle bounds (where magnifier can safely be positioned)
-        const leftoverTop = SAFE_ZONE_MARGINS.top
-        const leftoverBottom =
-          containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
-        const leftoverLeft = SAFE_ZONE_MARGINS.left + 20
-        const leftoverRight = containerRect.width - SAFE_ZONE_MARGINS.right - magnifierWidth - 20
+        // Lazy positioning like desktop - only move magnifier when cursor would be obscured
+        // Exception: always position on first show (when drag just started)
+        const isFirstShow = !isMobileMapDragging // State hasn't updated yet on first frame
 
-        // Calculate the center of the leftover rectangle for positioning decisions
-        const leftoverCenterX = (leftoverLeft + leftoverRight + magnifierWidth) / 2
-        const leftoverCenterY = (leftoverTop + leftoverBottom + magnifierHeight) / 2
+        // Check if cursor would be obscured by magnifier
+        const padding = 30 // Extra padding around magnifier to trigger movement early
+        const currentMagLeft = targetLeft
+        const currentMagTop = targetTop
+        const currentMagRight = currentMagLeft + magnifierWidth
+        const currentMagBottom = currentMagTop + magnifierHeight
 
-        // Position magnifier away from touch point (relative to leftover rectangle center)
-        const isLeftHalf = cursorX < leftoverCenterX
-        const isTopHalf = cursorY < leftoverCenterY
+        const cursorInMagnifier =
+          cursorX >= currentMagLeft - padding &&
+          cursorX <= currentMagRight + padding &&
+          cursorY >= currentMagTop - padding &&
+          cursorY <= currentMagBottom + padding
 
-        // Place magnifier in opposite corner from where user is touching, within leftover bounds
-        const newTop = isTopHalf ? leftoverBottom : leftoverTop
-        const newLeft = isLeftHalf ? leftoverRight : leftoverLeft
+        // Only calculate new position if first show OR cursor would be obscured
+        if (isFirstShow || cursorInMagnifier) {
+          // Calculate leftover rectangle bounds (where magnifier can safely be positioned)
+          const leftoverTop = SAFE_ZONE_MARGINS.top
+          const leftoverBottom =
+            containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
+          const leftoverLeft = SAFE_ZONE_MARGINS.left + 20
+          const leftoverRight = containerRect.width - SAFE_ZONE_MARGINS.right - magnifierWidth - 20
 
-        setTargetTop(newTop)
-        setTargetLeft(newLeft)
+          // Calculate the center of the leftover rectangle for positioning decisions
+          const leftoverCenterX = (leftoverLeft + leftoverRight + magnifierWidth) / 2
+          const leftoverCenterY = (leftoverTop + leftoverBottom + magnifierHeight) / 2
+
+          // Position magnifier away from touch point (relative to leftover rectangle center)
+          const isLeftHalf = cursorX < leftoverCenterX
+          const isTopHalf = cursorY < leftoverCenterY
+
+          // Place magnifier in opposite corner from where user is touching, within leftover bounds
+          const newTop = isTopHalf ? leftoverBottom : leftoverTop
+          const newLeft = isLeftHalf ? leftoverRight : leftoverLeft
+
+          setTargetTop(newTop)
+          setTargetLeft(newLeft)
+        }
       }
     },
     [
@@ -2327,6 +2363,8 @@ export function MapRenderer({
       getMagnifierDimensions,
       regionsFound,
       mapData,
+      targetLeft,
+      targetTop,
     ]
   )
 
@@ -2336,6 +2374,7 @@ export function MapRenderer({
     setTargetOpacity(0)
     setCursorPosition(null)
     cursorPositionRef.current = null
+    setIsMagnifierExpanded(false) // Reset expanded state on dismiss
   }, [])
 
   const handleMapTouchEnd = useCallback(() => {
@@ -2352,29 +2391,78 @@ export function MapRenderer({
     }
   }, [isMobileMapDragging, showMagnifier, dismissMagnifier])
 
-  // Mobile magnifier touch handlers - allow panning by dragging on the magnifier
-  const handleMagnifierTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length !== 1) return // Only handle single-finger touch
-
-    const touch = e.touches[0]
-    magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
-    magnifierDidMoveRef.current = false // Reset movement tracking
-
-    // Record tap position relative to magnifier for tap-to-select
-    if (magnifierRef.current) {
-      const magnifierRect = magnifierRef.current.getBoundingClientRect()
-      magnifierTapPositionRef.current = {
-        x: touch.clientX - magnifierRect.left,
-        y: touch.clientY - magnifierRect.top,
-      }
-    }
-
-    setIsMagnifierDragging(true)
-    e.preventDefault() // Prevent scrolling
+  // Helper to calculate distance between two touch points
+  const getTouchDistance = useCallback((touches: React.TouchList): number => {
+    if (touches.length < 2) return 0
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
   }, [])
+
+  // Mobile magnifier touch handlers - allow panning by dragging on the magnifier
+  const handleMagnifierTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      // Stop propagation to prevent map container from receiving this touch
+      e.stopPropagation()
+
+      // Handle two-finger touch (pinch start)
+      if (e.touches.length === 2) {
+        const distance = getTouchDistance(e.touches)
+        pinchStartDistanceRef.current = distance
+        pinchStartZoomRef.current = getCurrentZoom()
+        setIsPinching(true)
+        setIsMagnifierExpanded(true) // Expand magnifier to fill leftover area during pinch
+        setIsMagnifierDragging(false) // Cancel any single-finger drag
+        magnifierTouchStartRef.current = null
+        e.preventDefault()
+        return
+      }
+
+      // Handle single-finger touch (pan/tap)
+      if (e.touches.length === 1) {
+        const touch = e.touches[0]
+        magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+        magnifierDidMoveRef.current = false // Reset movement tracking
+
+        // Record tap position relative to magnifier for tap-to-select
+        if (magnifierRef.current) {
+          const magnifierRect = magnifierRef.current.getBoundingClientRect()
+          magnifierTapPositionRef.current = {
+            x: touch.clientX - magnifierRect.left,
+            y: touch.clientY - magnifierRect.top,
+          }
+        }
+
+        setIsMagnifierDragging(true)
+        e.preventDefault() // Prevent scrolling
+      }
+    },
+    [getTouchDistance, getCurrentZoom]
+  )
 
   const handleMagnifierTouchMove = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
+      // Stop propagation to prevent map container from receiving this touch
+      e.stopPropagation()
+
+      // Handle two-finger pinch gesture
+      if (e.touches.length === 2 && isPinching) {
+        const currentDistance = getTouchDistance(e.touches)
+        const startDistance = pinchStartDistanceRef.current
+        const startZoom = pinchStartZoomRef.current
+
+        if (startDistance && startZoom && currentDistance > 0) {
+          // Calculate new zoom based on pinch scale
+          const scale = currentDistance / startDistance
+          const newZoom = Math.max(1, Math.min(MAX_ZOOM, startZoom * scale))
+          setTargetZoom(newZoom)
+        }
+
+        e.preventDefault()
+        return
+      }
+
+      // Handle single-finger panning
       if (!isMagnifierDragging || e.touches.length !== 1) return
       if (!magnifierTouchStartRef.current || !cursorPositionRef.current) return
       if (!svgRef.current || !containerRef.current) return
@@ -2451,6 +2539,10 @@ export function MapRenderer({
     },
     [
       isMagnifierDragging,
+      isPinching,
+      getTouchDistance,
+      MAX_ZOOM,
+      setTargetZoom,
       detectRegions,
       onCursorUpdate,
       gameMode,
@@ -2463,6 +2555,25 @@ export function MapRenderer({
 
   const handleMagnifierTouchEnd = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
+      // Always stop propagation to prevent map container from receiving touch end
+      // (which would trigger dismissMagnifier via handleMapTouchEnd)
+      e.stopPropagation()
+
+      // Reset pinch state
+      if (isPinching) {
+        setIsPinching(false)
+        pinchStartDistanceRef.current = null
+        pinchStartZoomRef.current = null
+        // If still have one finger down, don't reset drag state - they might continue panning
+        if (e.touches.length === 1) {
+          // User lifted one finger but still has one down - start panning
+          const touch = e.touches[0]
+          magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+          setIsMagnifierDragging(true)
+        }
+        return
+      }
+
       // Check if this was a tap (no significant movement) vs a drag
       // If the user just tapped on the magnifier, select the region at the tap position
       const didMove = magnifierDidMoveRef.current
@@ -2535,6 +2646,7 @@ export function MapRenderer({
       }
     },
     [
+      isPinching,
       detectRegions,
       mapData.regions,
       handleRegionClickWithCelebration,
@@ -2563,7 +2675,13 @@ export function MapRenderer({
 
     // Dismiss magnifier after selection attempt
     dismissMagnifier()
-  }, [detectRegions, mapData.regions, handleRegionClickWithCelebration, celebration, dismissMagnifier])
+  }, [
+    detectRegions,
+    mapData.regions,
+    handleRegionClickWithCelebration,
+    celebration,
+    dismissMagnifier,
+  ])
 
   return (
     <div
@@ -3342,10 +3460,15 @@ export function MapRenderer({
         const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
         const leftoverHeight =
           containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-        const { width: magnifierWidthPx, height: magnifierHeightPx } = getMagnifierDimensions(
+
+        // When expanded (during/after pinch-to-zoom), use full leftover area
+        // Otherwise use the normal calculated dimensions
+        const { width: normalWidth, height: normalHeight } = getMagnifierDimensions(
           leftoverWidth,
           leftoverHeight
         )
+        const magnifierWidthPx = isMagnifierExpanded ? leftoverWidth : normalWidth
+        const magnifierHeightPx = isMagnifierExpanded ? leftoverHeight : normalHeight
 
         return (
           <animated.div
@@ -3357,9 +3480,9 @@ export function MapRenderer({
             onTouchCancel={handleMagnifierTouchEnd}
             style={{
               position: 'absolute',
-              // Animated positioning - smoothly moves to opposite corner from cursor
-              top: magnifierSpring.top,
-              left: magnifierSpring.left,
+              // When expanded, position at top-left of leftover area; otherwise use animated positioning
+              top: isMagnifierExpanded ? SAFE_ZONE_MARGINS.top : magnifierSpring.top,
+              left: isMagnifierExpanded ? SAFE_ZONE_MARGINS.left : magnifierSpring.left,
               width: magnifierWidthPx,
               height: magnifierHeightPx,
               // High zoom (>60x) gets gold border, normal zoom gets blue border
@@ -3468,7 +3591,11 @@ export function MapRenderer({
                   })
 
                   // When at or above threshold (but not in precision mode), add disabled effect
-                  if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
+                  // Only show disabled effect when precision mode is available but not active
+                  if (
+                    canUsePrecisionMode &&
+                    isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
+                  ) {
                     return 'brightness(0.6) saturate(0.5)'
                   }
 
@@ -3973,7 +4100,11 @@ export function MapRenderer({
                 })
 
                 // If at or above threshold, show notice about activating precision controls
-                if (isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)) {
+                // Only show precision mode message when precision mode is available
+                if (
+                  canUsePrecisionMode &&
+                  isAboveThreshold(screenPixelRatio, PRECISION_MODE_THRESHOLD)
+                ) {
                   return 'Click to activate precision mode'
                 }
 
@@ -3987,7 +4118,9 @@ export function MapRenderer({
             </animated.div>
 
             {/* Scrim overlay - shows when at threshold to indicate barrier */}
+            {/* Only show scrim when precision mode is available */}
             {!pointerLocked &&
+              canUsePrecisionMode &&
               (() => {
                 const containerRect = containerRef.current?.getBoundingClientRect()
                 const svgRect = svgRef.current?.getBoundingClientRect()
@@ -4051,17 +4184,27 @@ export function MapRenderer({
             top: magnifierSpring.top.to((t) => {
               const containerRect = containerRef.current?.getBoundingClientRect()
               if (!containerRect) return t + 200
-              const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { height: magnifierHeight } = getMagnifierDimensions(leftoverWidth, leftoverHeight)
+              const leftoverWidth =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverHeight =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const { height: magnifierHeight } = getMagnifierDimensions(
+                leftoverWidth,
+                leftoverHeight
+              )
               return t + magnifierHeight + 12 // 12px gap below magnifier
             }),
             left: magnifierSpring.left.to((l) => {
               const containerRect = containerRef.current?.getBoundingClientRect()
               if (!containerRect) return l
-              const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { width: magnifierWidth } = getMagnifierDimensions(leftoverWidth, leftoverHeight)
+              const leftoverWidth =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverHeight =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const { width: magnifierWidth } = getMagnifierDimensions(
+                leftoverWidth,
+                leftoverHeight
+              )
               return l + magnifierWidth / 2 - 60 // Center the 120px button under magnifier
             }),
             width: 120,

@@ -1,9 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import 'react-simple-keyboard/build/css/index.css'
 import { css } from '@styled/css'
+import { useIsTouchDevice } from '../hooks/useDeviceCapabilities'
+
+// Re-export for backwards compatibility
+export { useIsTouchDevice } from '../hooks/useDeviceCapabilities'
 
 interface SimpleLetterKeyboardProps {
   /** Whether to show uppercase or lowercase letters */
@@ -14,44 +18,6 @@ interface SimpleLetterKeyboardProps {
   isDark?: boolean
   /** Force show keyboard even on non-touch devices (for testing/storybook) */
   forceShow?: boolean
-}
-
-/**
- * Hook to detect if the device is primarily touch-based (mobile/tablet)
- * Returns true only for devices where touch is the primary input method
- */
-export function useIsTouchDevice() {
-  const [isTouchDevice, setIsTouchDevice] = useState(false)
-
-  useEffect(() => {
-    // Check if device is primarily touch-based
-    // 1. Has touch capability
-    // 2. Is a mobile/tablet device (no fine pointer like mouse)
-    const checkTouchDevice = () => {
-      const hasTouchCapability =
-        'ontouchstart' in window ||
-        navigator.maxTouchPoints > 0 ||
-        // @ts-expect-error - msMaxTouchPoints is IE/Edge specific
-        navigator.msMaxTouchPoints > 0
-
-      // Check if the device has no fine pointer (mouse)
-      // This helps distinguish touch-only devices from laptops with touchscreens
-      const hasNoFinePointer = !window.matchMedia('(pointer: fine)').matches
-
-      // Also check for coarse pointer (finger/touch)
-      const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches
-
-      setIsTouchDevice(hasTouchCapability && (hasNoFinePointer || hasCoarsePointer))
-    }
-
-    checkTouchDevice()
-
-    // Re-check on resize (in case device mode changes, e.g., responsive testing)
-    window.addEventListener('resize', checkTouchDevice)
-    return () => window.removeEventListener('resize', checkTouchDevice)
-  }, [])
-
-  return isTouchDevice
 }
 
 /**

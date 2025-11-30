@@ -28,6 +28,8 @@ export interface UseMagnifierZoomOptions {
   pointerLocked: boolean
   /** Initial zoom level */
   initialZoom?: number
+  /** Disable threshold-based zoom capping (useful for mobile where there's no pointer lock alternative) */
+  disableThresholdCapping?: boolean
 }
 
 export interface UseMagnifierZoomReturn {
@@ -57,7 +59,15 @@ export interface UseMagnifierZoomReturn {
  * @returns Zoom state and control methods
  */
 export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifierZoomReturn {
-  const { containerRef, svgRef, viewBox, threshold, pointerLocked, initialZoom = 10 } = options
+  const {
+    containerRef,
+    svgRef,
+    viewBox,
+    threshold,
+    pointerLocked,
+    initialZoom = 10,
+    disableThresholdCapping = false,
+  } = options
 
   const [targetZoom, setTargetZoom] = useState(initialZoom)
   const uncappedAdaptiveZoomRef = useRef<number | null>(null)
@@ -81,6 +91,11 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
 
   // Handle pointer lock state changes - recalculate zoom with capping
   useEffect(() => {
+    // Skip capping logic entirely when disabled (e.g., on mobile)
+    if (disableThresholdCapping) {
+      return
+    }
+
     // When pointer lock is released, cap zoom if it exceeds threshold
     if (!pointerLocked && uncappedAdaptiveZoomRef.current !== null) {
       const containerElement = containerRef.current
@@ -123,12 +138,20 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     if (pointerLocked && uncappedAdaptiveZoomRef.current !== null) {
       setTargetZoom(uncappedAdaptiveZoomRef.current)
     }
-  }, [pointerLocked, containerRef, svgRef, viewBox, threshold])
+  }, [pointerLocked, containerRef, svgRef, viewBox, threshold, disableThresholdCapping])
 
   // Handle pause/resume at threshold
   useEffect(() => {
     const currentZoom = magnifierSpring.zoom.get()
     const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
+
+    // Skip threshold checking when capping is disabled (e.g., on mobile)
+    // In this case, just ensure the animation runs without pausing
+    if (disableThresholdCapping) {
+      magnifierApi.resume()
+      magnifierApi.start({ zoom: targetZoom })
+      return
+    }
 
     // Check if CURRENT zoom is at/above threshold (zoom is capped)
     let currentScreenPixelRatio = 0
@@ -208,6 +231,7 @@ export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifier
     containerRef,
     svgRef,
     magnifierApi,
+    disableThresholdCapping,
     // NOTE: Do NOT include magnifierSpring.zoom here!
     // Spring values don't trigger React effects correctly.
     // We read spring.zoom.get() inside the effect, but don't depend on it.

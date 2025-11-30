@@ -11,6 +11,8 @@ import { useState, useEffect, useRef, type RefObject } from 'react'
 export interface UsePointerLockOptions {
   /** The container element to lock the pointer to */
   containerRef: RefObject<HTMLDivElement>
+  /** Whether precision mode is available on this device */
+  canUsePrecisionMode: boolean
   /** Callback when pointer lock is acquired */
   onLockAcquired?: () => void
   /** Callback when pointer lock is released */
@@ -37,11 +39,20 @@ export interface UsePointerLockReturn {
  * @returns Pointer lock state and control methods
  */
 export function usePointerLock(options: UsePointerLockOptions): UsePointerLockReturn {
-  const { containerRef, onLockAcquired, onLockReleased } = options
+  const { containerRef, canUsePrecisionMode, onLockAcquired, onLockReleased } = options
   const [pointerLocked, setPointerLocked] = useState(false)
 
   // Track previous lock state for detecting transitions
   const prevLockedRef = useRef(false)
+
+  // Auto-exit pointer lock when precision mode becomes unavailable
+  // (e.g., when switching to mobile device toolbar in Chrome DevTools)
+  useEffect(() => {
+    if (!canUsePrecisionMode && document.pointerLockElement) {
+      console.log('[usePointerLock] Precision mode unavailable - exiting pointer lock')
+      document.exitPointerLock()
+    }
+  }, [canUsePrecisionMode])
 
   // Set up pointer lock event listeners
   useEffect(() => {
@@ -98,6 +109,11 @@ export function usePointerLock(options: UsePointerLockOptions): UsePointerLockRe
   }, [])
 
   const requestPointerLock = () => {
+    // Don't request pointer lock if precision mode is not available
+    if (!canUsePrecisionMode) {
+      console.log('[usePointerLock] Precision mode not available - skipping pointer lock request')
+      return
+    }
     if (containerRef.current && !pointerLocked) {
       console.log('[usePointerLock] Requesting pointer lock')
       containerRef.current.requestPointerLock()
