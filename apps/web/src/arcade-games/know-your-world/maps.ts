@@ -1634,6 +1634,274 @@ export function shouldIncludeRegion(regionId: string, includeSizes: RegionSize[]
 }
 
 /**
+ * Parse SVG path into subpaths (separated by M commands, closed by Z)
+ * Returns array of point arrays, one per subpath
+ */
+function parsePathToSubpaths(pathString: string): Array<Array<[number, number]>> {
+  const subpaths: Array<Array<[number, number]>> = []
+  let currentSubpath: Array<[number, number]> = []
+  let currentX = 0
+  let currentY = 0
+  let subpathStartX = 0
+  let subpathStartY = 0
+
+  const commandRegex = /([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)/g
+  let match
+
+  while ((match = commandRegex.exec(pathString)) !== null) {
+    const command = match[1]
+    const params =
+      match[2]
+        .trim()
+        .match(/-?\d+\.?\d*/g)
+        ?.map(Number) || []
+
+    switch (command) {
+      case 'M':
+        if (currentSubpath.length > 0) subpaths.push(currentSubpath)
+        currentSubpath = []
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX = params[i]
+          currentY = params[i + 1]
+          if (i === 0) {
+            subpathStartX = currentX
+            subpathStartY = currentY
+          }
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'm':
+        if (currentSubpath.length > 0) subpaths.push(currentSubpath)
+        currentSubpath = []
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX += params[i]
+          currentY += params[i + 1]
+          if (i === 0) {
+            subpathStartX = currentX
+            subpathStartY = currentY
+          }
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'L':
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX = params[i]
+          currentY = params[i + 1]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'l':
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX += params[i]
+          currentY += params[i + 1]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'H':
+        for (const x of params) {
+          currentX = x
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'h':
+        for (const dx of params) {
+          currentX += dx
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'V':
+        for (const y of params) {
+          currentY = y
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'v':
+        for (const dy of params) {
+          currentY += dy
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'C':
+        for (let i = 0; i < params.length - 5; i += 6) {
+          currentX = params[i + 4]
+          currentY = params[i + 5]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'c':
+        for (let i = 0; i < params.length - 5; i += 6) {
+          currentX += params[i + 4]
+          currentY += params[i + 5]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'S':
+        for (let i = 0; i < params.length - 3; i += 4) {
+          currentX = params[i + 2]
+          currentY = params[i + 3]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 's':
+        for (let i = 0; i < params.length - 3; i += 4) {
+          currentX += params[i + 2]
+          currentY += params[i + 3]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'Q':
+        for (let i = 0; i < params.length - 3; i += 4) {
+          currentX = params[i + 2]
+          currentY = params[i + 3]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'q':
+        for (let i = 0; i < params.length - 3; i += 4) {
+          currentX += params[i + 2]
+          currentY += params[i + 3]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'T':
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX = params[i]
+          currentY = params[i + 1]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 't':
+        for (let i = 0; i < params.length - 1; i += 2) {
+          currentX += params[i]
+          currentY += params[i + 1]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'A':
+        for (let i = 0; i < params.length - 6; i += 7) {
+          currentX = params[i + 5]
+          currentY = params[i + 6]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'a':
+        for (let i = 0; i < params.length - 6; i += 7) {
+          currentX += params[i + 5]
+          currentY += params[i + 6]
+          currentSubpath.push([currentX, currentY])
+        }
+        break
+      case 'Z':
+      case 'z':
+        currentX = subpathStartX
+        currentY = subpathStartY
+        if (currentSubpath.length > 0) {
+          subpaths.push(currentSubpath)
+          currentSubpath = []
+        }
+        break
+    }
+  }
+
+  if (currentSubpath.length > 0) subpaths.push(currentSubpath)
+  return subpaths
+}
+
+/**
+ * Calculate polygon area using shoelace formula
+ */
+function calculatePolygonArea(points: Array<[number, number]>): number {
+  if (points.length < 3) return 0
+  let area = 0
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length
+    area += points[i][0] * points[j][1]
+    area -= points[j][0] * points[i][1]
+  }
+  return Math.abs(area) / 2
+}
+
+/**
+ * Calculate centroid of a polygon using shoelace formula
+ */
+function calculatePolygonCentroid(points: Array<[number, number]>): [number, number] {
+  if (points.length === 0) return [0, 0]
+  if (points.length < 3) {
+    const avgX = points.reduce((s, p) => s + p[0], 0) / points.length
+    const avgY = points.reduce((s, p) => s + p[1], 0) / points.length
+    return [avgX, avgY]
+  }
+
+  let signedArea = 0
+  let cx = 0
+  let cy = 0
+
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length
+    const cross = points[i][0] * points[j][1] - points[j][0] * points[i][1]
+    signedArea += cross
+    cx += (points[i][0] + points[j][0]) * cross
+    cy += (points[i][1] + points[j][1]) * cross
+  }
+
+  signedArea /= 2
+  if (Math.abs(signedArea) < 0.0001) {
+    const avgX = points.reduce((s, p) => s + p[0], 0) / points.length
+    const avgY = points.reduce((s, p) => s + p[1], 0) / points.length
+    return [avgX, avgY]
+  }
+
+  return [cx / (6 * signedArea), cy / (6 * signedArea)]
+}
+
+/**
+ * Get the bounding box center of the largest closed subpath in an SVG path.
+ * Uses bounding box center (not geometric centroid) for more visually predictable results
+ * on elongated shapes like Norway or Chile.
+ * Falls back to overall path bounding box center if subpath parsing fails.
+ */
+export function getLargestSubpathCentroid(pathString: string): { x: number; y: number } | null {
+  const subpaths = parsePathToSubpaths(pathString)
+
+  // If no subpaths found, return null to signal fallback should be used
+  if (subpaths.length === 0) {
+    return null
+  }
+
+  // Find largest subpath by area
+  let largestSubpath = subpaths[0]
+  let largestArea = calculatePolygonArea(largestSubpath)
+
+  for (let i = 1; i < subpaths.length; i++) {
+    const area = calculatePolygonArea(subpaths[i])
+    if (area > largestArea) {
+      largestArea = area
+      largestSubpath = subpaths[i]
+    }
+  }
+
+  // If largest subpath is empty or has no area, return null
+  if (largestSubpath.length === 0 || largestArea === 0) {
+    return null
+  }
+
+  // Calculate bounding box center of largest subpath
+  let minX = largestSubpath[0][0]
+  let maxX = largestSubpath[0][0]
+  let minY = largestSubpath[0][1]
+  let maxY = largestSubpath[0][1]
+
+  for (const [x, y] of largestSubpath) {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+}
+
+/**
  * Calculate the centroid (center of mass) of an SVG path
  * Properly parses SVG path commands to extract endpoint coordinates only
  */
