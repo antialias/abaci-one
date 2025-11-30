@@ -38,8 +38,6 @@ import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
   getAdjustedMagnifiedDimensions,
   getMagnifierDimensions,
-  MAGNIFIER_SIZE_LARGE,
-  MAGNIFIER_SIZE_SMALL,
 } from '../utils/magnifierDimensions'
 import {
   calculateMaxZoomAtThreshold,
@@ -2120,7 +2118,8 @@ export function MapRenderer({
       if (cursorInMagnifier) {
         // Calculate leftover rectangle bounds (where magnifier can safely be positioned)
         const leftoverTop = SAFE_ZONE_MARGINS.top
-        const leftoverBottom = containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
+        const leftoverBottom =
+          containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
         const leftoverLeft = SAFE_ZONE_MARGINS.left + 20
         const leftoverRight = containerRect.width - SAFE_ZONE_MARGINS.right - magnifierWidth - 20
 
@@ -2153,8 +2152,10 @@ export function MapRenderer({
         const containerRect = containerRef.current.getBoundingClientRect()
         const svgRect = svgRef.current.getBoundingClientRect()
         // Calculate leftover rectangle dimensions for magnifier sizing
-        const leftoverWidthForCap = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-        const leftoverHeightForCap = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+        const leftoverWidthForCap =
+          containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+        const leftoverHeightForCap =
+          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
         const { width: magnifierWidth } = getMagnifierDimensions(
           leftoverWidthForCap,
           leftoverHeightForCap
@@ -2258,15 +2259,36 @@ export function MapRenderer({
 
         // Use adaptive zoom from region detection if available
         const detectionResult = detectRegions(cursorX, cursorY)
-        const { detectedSmallestSize, hasSmallRegion } = detectionResult
+        const { detectedRegions: detectedRegionObjects, detectedSmallestSize } = detectionResult
 
-        // For mobile, use a moderate fixed zoom or adapt based on regions
-        const mobileZoom = hasSmallRegion ? Math.min(4, MAX_ZOOM) : 2.5
-        setTargetZoom(mobileZoom)
+        // Filter out found regions from zoom calculations (same as desktop)
+        const unfoundRegionObjects = detectedRegionObjects.filter(
+          (r) => !regionsFound.includes(r.id)
+        )
+
+        // Use adaptive zoom search utility to find optimal zoom (same algorithm as desktop)
+        const svgRect = svgRef.current.getBoundingClientRect()
+        const zoomSearchResult = findOptimalZoom({
+          detectedRegions: unfoundRegionObjects,
+          detectedSmallestSize,
+          cursorX,
+          cursorY,
+          containerRect,
+          svgRect,
+          mapData,
+          svgElement: svgRef.current,
+          largestPieceSizesCache: largestPieceSizesRef.current,
+          maxZoom: MAX_ZOOM,
+          minZoom: 1,
+          pointerLocked: false, // Mobile never uses pointer lock
+        })
+
+        setTargetZoom(zoomSearchResult.zoom)
 
         // Calculate leftover rectangle dimensions (area not covered by UI elements)
         const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-        const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+        const leftoverHeight =
+          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
         // Get magnifier dimensions based on leftover rectangle (responsive to its aspect ratio)
         const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
@@ -2276,7 +2298,8 @@ export function MapRenderer({
 
         // Calculate leftover rectangle bounds (where magnifier can safely be positioned)
         const leftoverTop = SAFE_ZONE_MARGINS.top
-        const leftoverBottom = containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
+        const leftoverBottom =
+          containerRect.height - SAFE_ZONE_MARGINS.bottom - magnifierHeight - 20
         const leftoverLeft = SAFE_ZONE_MARGINS.left + 20
         const leftoverRight = containerRect.width - SAFE_ZONE_MARGINS.right - magnifierWidth - 20
 
@@ -2296,20 +2319,38 @@ export function MapRenderer({
         setTargetLeft(newLeft)
       }
     },
-    [isMobileMapDragging, MOBILE_DRAG_THRESHOLD, detectRegions, MAX_ZOOM, getMagnifierDimensions]
+    [
+      isMobileMapDragging,
+      MOBILE_DRAG_THRESHOLD,
+      detectRegions,
+      MAX_ZOOM,
+      getMagnifierDimensions,
+      regionsFound,
+      mapData,
+    ]
   )
 
+  // Helper to dismiss the magnifier (used by tap-to-dismiss and after selection)
+  const dismissMagnifier = useCallback(() => {
+    setShowMagnifier(false)
+    setTargetOpacity(0)
+    setCursorPosition(null)
+    cursorPositionRef.current = null
+  }, [])
+
   const handleMapTouchEnd = useCallback(() => {
+    const wasDragging = isMobileMapDragging
     mapTouchStartRef.current = null
-    if (isMobileMapDragging) {
+
+    if (wasDragging) {
       setIsMobileMapDragging(false)
-      // Hide magnifier and clear cursor when drag ends
-      setShowMagnifier(false)
-      setTargetOpacity(0)
-      setCursorPosition(null)
-      cursorPositionRef.current = null
+      // Keep magnifier visible after drag ends - user can tap "Select" button or tap elsewhere to dismiss
+      // Don't hide magnifier or clear cursor - leave them in place for selection
+    } else if (showMagnifier && cursorPositionRef.current) {
+      // User tapped on map (not a drag) while magnifier is visible - dismiss the magnifier
+      dismissMagnifier()
     }
-  }, [isMobileMapDragging])
+  }, [isMobileMapDragging, showMagnifier, dismissMagnifier])
 
   // Mobile magnifier touch handlers - allow panning by dragging on the magnifier
   const handleMagnifierTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -2503,6 +2544,27 @@ export function MapRenderer({
     ]
   )
 
+  // Helper to select the region at the crosshairs (center of magnifier view)
+  const selectRegionAtCrosshairs = useCallback(() => {
+    if (!cursorPositionRef.current || !svgRef.current || !containerRef.current) return
+
+    // Run region detection at the current cursor position (center of magnifier)
+    const { regionUnderCursor } = detectRegions(
+      cursorPositionRef.current.x,
+      cursorPositionRef.current.y
+    )
+
+    if (regionUnderCursor && !celebration) {
+      const region = mapData.regions.find((r) => r.id === regionUnderCursor)
+      if (region) {
+        handleRegionClickWithCelebration(regionUnderCursor, region.name)
+      }
+    }
+
+    // Dismiss magnifier after selection attempt
+    dismissMagnifier()
+  }, [detectRegions, mapData.regions, handleRegionClickWithCelebration, celebration, dismissMagnifier])
+
   return (
     <div
       ref={containerRef}
@@ -2527,8 +2589,10 @@ export function MapRenderer({
         justifyContent: 'center',
         // Prevent text selection during drag operations
         userSelect: 'none',
-        // Allow panning but prevent zoom gestures
-        touchAction: 'pan-x pan-y',
+        // Disable all default touch gestures - we handle touch events ourselves
+        touchAction: 'none',
+        // Prevent pull-to-refresh on mobile
+        overscrollBehavior: 'none',
       })}
       style={{
         // Vendor-prefixed properties for text selection prevention (not supported in Panda CSS)
@@ -2831,8 +2895,10 @@ export function MapRenderer({
               const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
               const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
               // Calculate leftover dimensions for magnifier sizing
-              const leftoverW = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const leftoverW =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverH =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
               const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
                 viewBoxWidth,
                 viewBoxHeight,
@@ -2861,8 +2927,10 @@ export function MapRenderer({
               const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
               const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
               // Calculate leftover dimensions for magnifier sizing
-              const leftoverW = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const leftoverW =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverH =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
               const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
                 viewBoxWidth,
                 viewBoxHeight,
@@ -2878,8 +2946,10 @@ export function MapRenderer({
               const viewBoxWidth = viewBoxParts[2] || 1000
               const viewBoxHeight = viewBoxParts[3] || 1000
               // Calculate leftover dimensions for magnifier sizing
-              const leftoverW = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const leftoverW =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverH =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
               const { width } = getAdjustedMagnifiedDimensions(
                 viewBoxWidth,
                 viewBoxHeight,
@@ -2895,8 +2965,10 @@ export function MapRenderer({
               const viewBoxWidth = viewBoxParts[2] || 1000
               const viewBoxHeight = viewBoxParts[3] || 1000
               // Calculate leftover dimensions for magnifier sizing
-              const leftoverW = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const leftoverW =
+                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverH =
+                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
               const { height } = getAdjustedMagnifiedDimensions(
                 viewBoxWidth,
                 viewBoxHeight,
@@ -3268,7 +3340,8 @@ export function MapRenderer({
         // Calculate magnifier size based on leftover rectangle (area not covered by UI)
         const containerRect = containerRef.current.getBoundingClientRect()
         const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-        const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+        const leftoverHeight =
+          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
         const { width: magnifierWidthPx, height: magnifierHeightPx } = getMagnifierDimensions(
           leftoverWidth,
           leftoverHeight
@@ -3342,8 +3415,10 @@ export function MapRenderer({
                 // Magnified view: adjust dimensions to match magnifier container aspect ratio
                 // This eliminates letterboxing and ensures outline matches what's visible
                 // Use leftover dimensions for magnifier sizing
-                const leftoverW = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const leftoverW =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverH =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
                 const { width: magnifiedWidth, height: magnifiedHeight } =
                   getAdjustedMagnifiedDimensions(
                     viewBoxWidth,
@@ -3371,8 +3446,10 @@ export function MapRenderer({
                   if (!containerRect || !svgRect) return 'none'
 
                   // Calculate leftover rectangle dimensions
-                  const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                  const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const leftoverWidth =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverHeight =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                   const { width: magnifierWidth } = getMagnifierDimensions(
                     leftoverWidth,
@@ -3541,8 +3618,10 @@ export function MapRenderer({
                 if (!containerRect || !svgRect) return null
 
                 // Calculate leftover rectangle dimensions
-                const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const leftoverWidth =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverHeight =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                 const { width: magnifierWidth } = getMagnifierDimensions(
                   leftoverWidth,
@@ -3741,8 +3820,10 @@ export function MapRenderer({
                         if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
                         // Calculate leftover rectangle dimensions
-                        const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                        const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                        const leftoverWidth =
+                          containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                        const leftoverHeight =
+                          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                         // Magnifier dimensions based on leftover rectangle
                         const { width: magnifierWidth } = getMagnifierDimensions(
@@ -3778,8 +3859,10 @@ export function MapRenderer({
                         if (!containerRect || !svgRect || !cursorPosition) return '-9999px'
 
                         // Calculate leftover rectangle dimensions
-                        const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                        const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                        const leftoverWidth =
+                          containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                        const leftoverHeight =
+                          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                         // Magnifier dimensions based on leftover rectangle
                         const { width: magnifierWidth, height: magnifierHeight } =
@@ -3866,8 +3949,10 @@ export function MapRenderer({
                 }
 
                 // Calculate leftover rectangle dimensions
-                const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const leftoverWidth =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverHeight =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                 const { width: magnifierWidth } = getMagnifierDimensions(
                   leftoverWidth,
@@ -3909,8 +3994,10 @@ export function MapRenderer({
                 if (!containerRect || !svgRect) return null
 
                 // Calculate leftover rectangle dimensions
-                const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const leftoverWidth =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverHeight =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
                 const { width: magnifierWidth } = getMagnifierDimensions(
                   leftoverWidth,
@@ -3948,6 +4035,59 @@ export function MapRenderer({
         )
       })()}
 
+      {/* Mobile Select button - appears when magnifier is visible but not being dragged */}
+      {showMagnifier && !isMobileMapDragging && !isMagnifierDragging && cursorPosition && (
+        <animated.button
+          data-action="mobile-select-region"
+          type="button"
+          onClick={selectRegionAtCrosshairs}
+          onTouchEnd={(e) => {
+            e.stopPropagation() // Prevent triggering map touch end
+            selectRegionAtCrosshairs()
+          }}
+          style={{
+            position: 'absolute',
+            // Position below the magnifier
+            top: magnifierSpring.top.to((t) => {
+              const containerRect = containerRef.current?.getBoundingClientRect()
+              if (!containerRect) return t + 200
+              const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const { height: magnifierHeight } = getMagnifierDimensions(leftoverWidth, leftoverHeight)
+              return t + magnifierHeight + 12 // 12px gap below magnifier
+            }),
+            left: magnifierSpring.left.to((l) => {
+              const containerRect = containerRef.current?.getBoundingClientRect()
+              if (!containerRect) return l
+              const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+              const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+              const { width: magnifierWidth } = getMagnifierDimensions(leftoverWidth, leftoverHeight)
+              return l + magnifierWidth / 2 - 60 // Center the 120px button under magnifier
+            }),
+            width: 120,
+            opacity: magnifierSpring.opacity,
+            zIndex: 101,
+          }}
+          className={css({
+            padding: '12px 24px',
+            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+            border: 'none',
+            borderRadius: '12px',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)',
+            touchAction: 'none',
+            _active: {
+              transform: 'scale(0.95)',
+            },
+          })}
+        >
+          Select ✓
+        </animated.button>
+      )}
+
       {/* Zoom lines connecting indicator to magnifier - creates "pop out" effect */}
       {(() => {
         if (!showMagnifier || !cursorPosition || !svgRef.current || !containerRef.current) {
@@ -3959,7 +4099,8 @@ export function MapRenderer({
 
         // Calculate leftover rectangle dimensions (area not covered by UI elements)
         const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-        const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+        const leftoverHeight =
+          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
         // Get magnifier dimensions based on leftover rectangle (responsive to its aspect ratio)
         const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
