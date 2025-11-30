@@ -2721,8 +2721,8 @@ export function filterRegionsBySizes(
   includeSizes: RegionSize[],
   mapId: 'world' | 'usa' = 'world'
 ): MapRegion[] {
-  // If all sizes included or empty array, return all regions
-  if (includeSizes.length === 0 || includeSizes.length === ALL_REGION_SIZES.length) {
+  // If all sizes included, empty array, or undefined - return all regions
+  if (!includeSizes || includeSizes.length === 0 || includeSizes.length === ALL_REGION_SIZES.length) {
     return regions
   }
 
