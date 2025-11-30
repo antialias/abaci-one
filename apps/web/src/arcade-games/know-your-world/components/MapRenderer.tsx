@@ -503,6 +503,11 @@ export function MapRenderer({
   const magnifierRef = useRef<HTMLDivElement>(null) // Ref to magnifier element for tap position calculation
   const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null) // Where user tapped on magnifier
 
+  // Mobile map drag state - detect touch drags on the map to show magnifier
+  const [isMobileMapDragging, setIsMobileMapDragging] = useState(false)
+  const mapTouchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const MOBILE_DRAG_THRESHOLD = 10 // pixels before we consider it a drag
+
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
   const [isGiveUpAnimating, setIsGiveUpAnimating] = useState(false) // Track if animation in progress
@@ -1960,9 +1965,11 @@ export function MapRenderer({
     } = detectionResult
 
     // Show magnifier when:
-    // 1. Shift key is held down (manual override)
+    // 1. Shift key is held down (manual override on desktop)
     // 2. Current target region needs magnification AND there's a small region nearby
-    const shouldShow = shiftPressed || (targetNeedsMagnification && hasSmallRegion)
+    // 3. User is dragging on the map on mobile (always show magnifier for mobile drag)
+    const shouldShow =
+      shiftPressed || isMobileMapDragging || (targetNeedsMagnification && hasSmallRegion)
 
     // Update smallest region size for adaptive cursor dampening
     // Use hysteresis to prevent rapid flickering at boundaries
@@ -2191,6 +2198,83 @@ export function MapRenderer({
     }
   }
 
+  // Mobile map touch handlers - detect drag gestures to show magnifier
+  const handleMapTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // Only handle single-finger touch
+    if (e.touches.length !== 1) return
+
+    const touch = e.touches[0]
+    mapTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+  }, [])
+
+  const handleMapTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!mapTouchStartRef.current || !svgRef.current || !containerRef.current) return
+      if (e.touches.length !== 1) return
+
+      const touch = e.touches[0]
+      const dx = touch.clientX - mapTouchStartRef.current.x
+      const dy = touch.clientY - mapTouchStartRef.current.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+
+      // Once we detect a drag (moved past threshold), show magnifier and update cursor
+      if (distance >= MOBILE_DRAG_THRESHOLD) {
+        if (!isMobileMapDragging) {
+          setIsMobileMapDragging(true)
+        }
+
+        // Update cursor position based on touch location
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const cursorX = touch.clientX - containerRect.left
+        const cursorY = touch.clientY - containerRect.top
+
+        cursorPositionRef.current = { x: cursorX, y: cursorY }
+        setCursorPosition({ x: cursorX, y: cursorY })
+
+        // Show magnifier and set it up for mobile drag
+        setShowMagnifier(true)
+        setTargetOpacity(1)
+
+        // Use adaptive zoom from region detection if available
+        const detectionResult = detectRegions(cursorX, cursorY)
+        const { detectedSmallestSize, hasSmallRegion } = detectionResult
+
+        // For mobile, use a moderate fixed zoom or adapt based on regions
+        const mobileZoom = hasSmallRegion ? Math.min(4, MAX_ZOOM) : 2.5
+        setTargetZoom(mobileZoom)
+
+        // Position magnifier away from touch point (opposite corner)
+        const isLeftHalf = cursorX < containerRect.width / 2
+        const isTopHalf = cursorY < containerRect.height / 2
+
+        const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
+          containerRect.width,
+          containerRect.height
+        )
+
+        // Place magnifier in opposite corner from where user is touching
+        const newTop = isTopHalf ? containerRect.height - magnifierHeight - 20 : 20
+        const newLeft = isLeftHalf ? containerRect.width - magnifierWidth - 20 : 20
+
+        setTargetTop(newTop)
+        setTargetLeft(newLeft)
+      }
+    },
+    [isMobileMapDragging, MOBILE_DRAG_THRESHOLD, detectRegions, MAX_ZOOM, getMagnifierDimensions]
+  )
+
+  const handleMapTouchEnd = useCallback(() => {
+    mapTouchStartRef.current = null
+    if (isMobileMapDragging) {
+      setIsMobileMapDragging(false)
+      // Hide magnifier and clear cursor when drag ends
+      setShowMagnifier(false)
+      setTargetOpacity(0)
+      setCursorPosition(null)
+      cursorPositionRef.current = null
+    }
+  }, [isMobileMapDragging])
+
   // Mobile magnifier touch handlers - allow panning by dragging on the magnifier
   const handleMagnifierTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length !== 1) return // Only handle single-finger touch
@@ -2390,6 +2474,9 @@ export function MapRenderer({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleContainerClick}
+      onTouchStart={handleMapTouchStart}
+      onTouchMove={handleMapTouchMove}
+      onTouchEnd={handleMapTouchEnd}
       className={css({
         position: fillContainer ? 'absolute' : 'relative',
         top: fillContainer ? 0 : undefined,
