@@ -5,6 +5,7 @@ import { css } from '@styled/css'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useViewerId } from '@/lib/arcade/game-sdk'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
   calculateBoundingBox,
@@ -15,6 +16,7 @@ import {
   WORLD_MAP,
 } from '../maps'
 import { useKnowYourWorld } from '../Provider'
+import { getNthNonSpaceLetter } from '../Validator'
 import type { MapData } from '../types'
 import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
@@ -22,6 +24,7 @@ import {
   shouldShowAutoHintToggle,
   shouldShowAutoSpeakToggle,
 } from '../utils/guidanceVisibility'
+import { SimpleLetterKeyboard, useIsTouchDevice } from './SimpleLetterKeyboard'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -108,6 +111,12 @@ export function GameInfoPanel({
 
   // Get viewer ID for vote checking
   const { data: viewerId } = useViewerId()
+
+  // Touch device detection for virtual keyboard
+  const isTouchDevice = useIsTouchDevice()
+
+  // Get MyAbacus context to hide it when virtual keyboard is shown
+  const { setIsHidden: setAbacusHidden } = useMyAbacus()
 
   // Get current difficulty level config
   const currentDifficultyLevel = useMemo(() => {
@@ -237,7 +246,13 @@ export function GameInfoPanel({
       stateProgress: state.nameConfirmationProgress,
     })
     return progress
-  }, [isLearningMode, requiresNameConfirmation, confirmedLetterCount, isGiveUpAnimating, state.nameConfirmationProgress])
+  }, [
+    isLearningMode,
+    requiresNameConfirmation,
+    confirmedLetterCount,
+    isGiveUpAnimating,
+    state.nameConfirmationProgress,
+  ])
 
   // Spring animation for scale only - position is handled by CSS centering
   const takeoverSpring = useSpring({
@@ -253,6 +268,21 @@ export function GameInfoPanel({
   useEffect(() => {
     setIsInTakeover(isInTakeoverLocal)
   }, [isInTakeoverLocal, setIsInTakeover])
+
+  // Hide the MyAbacus when virtual keyboard is shown (touch devices only)
+  // This prevents the floating abacus button from overlapping with the keyboard
+  const shouldShowVirtualKeyboard =
+    isTouchDevice &&
+    !isGiveUpAnimating &&
+    requiresNameConfirmation > 0 &&
+    !nameConfirmed &&
+    !!currentRegionName
+
+  useEffect(() => {
+    setAbacusHidden(shouldShowVirtualKeyboard)
+    // Cleanup: ensure we unhide when component unmounts
+    return () => setAbacusHidden(false)
+  }, [shouldShowVirtualKeyboard, setAbacusHidden])
 
   // Reset local UI state when region changes
   // Note: nameConfirmationProgress is reset on the server when prompt changes
@@ -312,11 +342,18 @@ export function GameInfoPanel({
         return // Already confirmed all required letters
       }
 
-      const expectedLetter = currentRegionName[nextLetterIndex]?.toLowerCase()
+      // Get the nth non-space letter (skipping spaces in the name)
+      // e.g., "US Virgin Islands" → letter 0='U', 1='S', 2='V' (skips the space)
+      const letterInfo = getNthNonSpaceLetter(currentRegionName, nextLetterIndex)
+      if (!letterInfo) {
+        return // No more letters to confirm
+      }
+
+      const expectedLetter = letterInfo.char.toLowerCase()
       const pressedLetter = e.key.toLowerCase()
 
-      // Only accept single character keys (letters and space)
-      if (pressedLetter.length === 1 && /[a-z ]/i.test(pressedLetter)) {
+      // Only accept single character keys (letters only, no space needed since we skip spaces)
+      if (pressedLetter.length === 1 && /[a-z]/i.test(pressedLetter)) {
         if (pressedLetter === expectedLetter) {
           // Optimistically advance count before server responds
           optimisticLetterCountRef.current = nextLetterIndex + 1
@@ -329,12 +366,7 @@ export function GameInfoPanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    requiresNameConfirmation,
-    nameConfirmed,
-    currentRegionName,
-    confirmLetter,
-  ])
+  }, [requiresNameConfirmation, nameConfirmed, currentRegionName, confirmLetter])
 
   // Check if animation is in progress based on timestamp
   useEffect(() => {
@@ -552,35 +584,57 @@ export function GameInfoPanel({
             )}
             <span>
               {displayRegionName
-                ? displayRegionName.split('').map((char, index) => {
-                    // During takeover, show all letters fully visible (no confirmation styling)
-                    const needsConfirmation =
-                      !isGiveUpAnimating &&
-                      requiresNameConfirmation > 0 &&
-                      !nameConfirmed &&
-                      index < requiresNameConfirmation
-                    const isConfirmed = index < confirmedLetterCount
-                    const isNextToConfirm = index === confirmedLetterCount && needsConfirmation
+                ? (() => {
+                    // Track non-space letter index as we iterate
+                    let nonSpaceIndex = 0
+                    return displayRegionName.split('').map((char, index) => {
+                      const isSpace = char === ' '
+                      const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex
 
-                    return (
-                      <span
-                        key={index}
-                        className={css({ transition: 'all 0.15s ease-out' })}
-                        style={{
-                          opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
-                          textDecoration: isNextToConfirm ? 'underline' : 'none',
-                          textDecorationColor: isNextToConfirm
-                            ? isDark
-                              ? '#60a5fa'
-                              : '#3b82f6'
-                            : undefined,
-                          textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
-                        }}
-                      >
-                        {char}
-                      </span>
-                    )
-                  })
+                      // Increment non-space counter AFTER getting current index
+                      if (!isSpace) {
+                        nonSpaceIndex++
+                      }
+
+                      // Spaces are always shown as confirmed (not underlined, full opacity)
+                      if (isSpace) {
+                        return (
+                          <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
+                            {char}
+                          </span>
+                        )
+                      }
+
+                      // For letters, check confirmation status using non-space index
+                      const needsConfirmation =
+                        !isGiveUpAnimating &&
+                        requiresNameConfirmation > 0 &&
+                        !nameConfirmed &&
+                        currentNonSpaceIndex < requiresNameConfirmation
+                      const isConfirmed = currentNonSpaceIndex < confirmedLetterCount
+                      const isNextToConfirm =
+                        currentNonSpaceIndex === confirmedLetterCount && needsConfirmation
+
+                      return (
+                        <span
+                          key={index}
+                          className={css({ transition: 'all 0.15s ease-out' })}
+                          style={{
+                            opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
+                            textDecoration: isNextToConfirm ? 'underline' : 'none',
+                            textDecorationColor: isNextToConfirm
+                              ? isDark
+                                ? '#60a5fa'
+                                : '#3b82f6'
+                              : undefined,
+                            textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
+                          }}
+                        >
+                          {char}
+                        </span>
+                      )
+                    })
+                  })()
                 : '...'}
             </span>
           </div>
@@ -604,6 +658,56 @@ export function GameInfoPanel({
             </div>
           )}
         </animated.div>
+
+        {/* On-screen keyboard for mobile/touch devices - OUTSIDE animated container so it doesn't scale */}
+        {!isGiveUpAnimating &&
+          requiresNameConfirmation > 0 &&
+          !nameConfirmed &&
+          currentRegionName && (
+            <div
+              data-element="mobile-keyboard-container"
+              className={css({
+                position: 'fixed',
+                bottom: '0',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                pointerEvents: 'auto',
+                zIndex: 160,
+                paddingBottom: '2',
+                width: '100%',
+                maxWidth: '500px',
+                px: '2',
+              })}
+            >
+              <SimpleLetterKeyboard
+                uppercase={(() => {
+                  // Check if the next expected letter is uppercase (skipping spaces)
+                  const letterInfo = getNthNonSpaceLetter(currentRegionName, confirmedLetterCount)
+                  if (!letterInfo) return false
+                  return letterInfo.char.toUpperCase() === letterInfo.char
+                })()}
+                isDark={isDark}
+                onKeyPress={(letter) => {
+                  const nextLetterIndex = optimisticLetterCountRef.current
+                  if (nextLetterIndex >= requiresNameConfirmation) return
+
+                  // Get the nth non-space letter (skipping spaces)
+                  const letterInfo = getNthNonSpaceLetter(currentRegionName, nextLetterIndex)
+                  if (!letterInfo) return
+
+                  const expectedLetter = letterInfo.char.toLowerCase()
+                  const pressedLetter = letter.toLowerCase()
+
+                  if (pressedLetter === expectedLetter) {
+                    // Optimistically advance count before server responds
+                    optimisticLetterCountRef.current = nextLetterIndex + 1
+                    // Dispatch to shared state
+                    confirmLetter(pressedLetter, nextLetterIndex)
+                  }
+                }}
+              />
+            </div>
+          )}
       </div>
 
       {/* TOP-CENTER: Prompt Display - positioned below game nav (~150px) */}
@@ -1011,34 +1115,57 @@ export function GameInfoPanel({
             )}
             <span>
               {displayRegionName
-                ? displayRegionName.split('').map((char, index) => {
-                    const needsConfirmation =
-                      !isGiveUpAnimating &&
-                      requiresNameConfirmation > 0 &&
-                      !nameConfirmed &&
-                      index < requiresNameConfirmation
-                    const isConfirmed = index < confirmedLetterCount
-                    const isNextToConfirm = index === confirmedLetterCount && needsConfirmation
+                ? (() => {
+                    // Track non-space letter index as we iterate
+                    let nonSpaceIndex = 0
+                    return displayRegionName.split('').map((char, index) => {
+                      const isSpace = char === ' '
+                      const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex
 
-                    return (
-                      <span
-                        key={index}
-                        className={css({ transition: 'all 0.15s ease-out' })}
-                        style={{
-                          opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
-                          textDecoration: isNextToConfirm ? 'underline' : 'none',
-                          textDecorationColor: isNextToConfirm
-                            ? isDark
-                              ? '#60a5fa'
-                              : '#3b82f6'
-                            : undefined,
-                          textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
-                        }}
-                      >
-                        {char}
-                      </span>
-                    )
-                  })
+                      // Increment non-space counter AFTER getting current index
+                      if (!isSpace) {
+                        nonSpaceIndex++
+                      }
+
+                      // Spaces are always shown as confirmed (not underlined, full opacity)
+                      if (isSpace) {
+                        return (
+                          <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
+                            {char}
+                          </span>
+                        )
+                      }
+
+                      // For letters, check confirmation status using non-space index
+                      const needsConfirmation =
+                        !isGiveUpAnimating &&
+                        requiresNameConfirmation > 0 &&
+                        !nameConfirmed &&
+                        currentNonSpaceIndex < requiresNameConfirmation
+                      const isConfirmed = currentNonSpaceIndex < confirmedLetterCount
+                      const isNextToConfirm =
+                        currentNonSpaceIndex === confirmedLetterCount && needsConfirmation
+
+                      return (
+                        <span
+                          key={index}
+                          className={css({ transition: 'all 0.15s ease-out' })}
+                          style={{
+                            opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
+                            textDecoration: isNextToConfirm ? 'underline' : 'none',
+                            textDecorationColor: isNextToConfirm
+                              ? isDark
+                                ? '#60a5fa'
+                                : '#3b82f6'
+                              : undefined,
+                            textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
+                          }}
+                        >
+                          {char}
+                        </span>
+                      )
+                    })
+                  })()
                 : '...'}
             </span>
           </div>

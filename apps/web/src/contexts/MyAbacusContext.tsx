@@ -8,19 +8,23 @@ interface MyAbacusContextValue {
   open: () => void
   close: () => void
   toggle: () => void
+  /** Temporarily hide the abacus (e.g., when virtual keyboard is shown) */
+  isHidden: boolean
+  setIsHidden: (hidden: boolean) => void
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
 
 export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
   const toggle = useCallback(() => setIsOpen((prev) => !prev), [])
 
   return (
-    <MyAbacusContext.Provider value={{ isOpen, open, close, toggle }}>
+    <MyAbacusContext.Provider value={{ isOpen, open, close, toggle, isHidden, setIsHidden }}>
       {children}
     </MyAbacusContext.Provider>
   )

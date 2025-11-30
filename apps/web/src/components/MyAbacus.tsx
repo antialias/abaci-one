@@ -9,7 +9,7 @@ import { HomeHeroContext } from '@/contexts/HomeHeroContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export function MyAbacus() {
-  const { isOpen, close, toggle } = useMyAbacus()
+  const { isOpen, close, toggle, isHidden } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
   const { resolvedTheme } = useTheme()
@@ -62,6 +62,13 @@ export function MyAbacus() {
   // Use theme presets from abacus-react instead of manual definitions
   const structuralStyles = ABACUS_THEMES.light
   const trophyStyles = ABACUS_THEMES.trophy
+
+  // Hide completely when isHidden is true (e.g., virtual keyboard is shown)
+  // Still allow open state to work (user explicitly opened it)
+  // NOTE: This must come after all hooks to follow React's rules of hooks
+  if (isHidden && !isOpen) {
+    return null
+  }
 
   return (
     <>

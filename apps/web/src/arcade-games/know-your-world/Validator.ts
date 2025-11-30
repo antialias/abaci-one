@@ -9,6 +9,27 @@ import type {
 import type { RegionSize } from './maps'
 
 /**
+ * Get the nth non-space letter from a string.
+ * For "US Virgin Islands": n=0 → 'U', n=1 → 'S', n=2 → 'V' (skips the space)
+ * Returns the character and its actual index in the string, or null if not found.
+ */
+export function getNthNonSpaceLetter(
+  name: string,
+  n: number
+): { char: string; index: number } | null {
+  let nonSpaceCount = 0
+  for (let i = 0; i < name.length; i++) {
+    if (name[i] !== ' ') {
+      if (nonSpaceCount === n) {
+        return { char: name[i], index: i }
+      }
+      nonSpaceCount++
+    }
+  }
+  return null
+}
+
+/**
  * Lazy-load map functions to avoid importing ES modules at module init time
  * This is critical for server-side usage where ES modules can't be required
  */
@@ -643,9 +664,15 @@ export class KnowYourWorldValidator
     }
     const regionName = region.name
 
+    // Get the nth non-space letter (skipping spaces in the name)
+    // e.g., "US Virgin Islands" → letter 0='U', 1='S', 2='V' (skips the space)
+    const letterInfo = getNthNonSpaceLetter(regionName, letterIndex)
+    if (!letterInfo) {
+      return { valid: false, error: 'Letter index out of range' }
+    }
+
     // Check if the letter matches
-    const expectedLetter = regionName[letterIndex]?.toLowerCase()
-    if (letter.toLowerCase() !== expectedLetter) {
+    if (letter.toLowerCase() !== letterInfo.char.toLowerCase()) {
       // Wrong letter - don't advance progress (but move is still valid, just ignored)
       return { valid: true, newState: state }
     }
