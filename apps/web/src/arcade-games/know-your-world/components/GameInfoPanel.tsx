@@ -292,12 +292,12 @@ export function GameInfoPanel({
       const expectedLetter = currentRegionName[nextLetterIndex]?.toLowerCase()
       const pressedLetter = e.key.toLowerCase()
 
-      // Only accept single character keys (letters)
-      if (pressedLetter.length === 1 && /[a-z]/i.test(pressedLetter)) {
+      // Only accept single character keys (letters and space)
+      if (pressedLetter.length === 1 && /[a-z ]/i.test(pressedLetter)) {
         if (pressedLetter === expectedLetter) {
           setConfirmedLetterCount((prev) => prev + 1)
         }
-        // Ignore wrong letters silently (no feedback, no backspace needed)
+        // Ignore wrong characters silently (no feedback, no backspace needed)
       }
     }
 
