@@ -51,6 +51,8 @@ export class KnowYourWorldValidator
         return await this.validateGiveUp(state, move.playerId, move.userId)
       case 'REQUEST_HINT':
         return this.validateRequestHint(state, move.playerId, move.timestamp)
+      case 'CONFIRM_LETTER':
+        return await this.validateConfirmLetter(state, move.playerId, move.userId, move.data)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
@@ -115,6 +117,7 @@ export class KnowYourWorldValidator
       giveUpVotes: [],
       hintsUsed: 0,
       hintActive: null,
+      nameConfirmationProgress: 0, // Reset for new prompt
     }
 
     return { valid: true, newState }
@@ -217,6 +220,7 @@ export class KnowYourWorldValidator
         giveUpVotes: [], // Clear votes when moving to next region
         hintActive: null, // Clear hint when moving to next region
         activeUserIds,
+        nameConfirmationProgress: 0, // Reset for new prompt
       }
 
       return { valid: true, newState }
@@ -301,6 +305,7 @@ export class KnowYourWorldValidator
       giveUpVotes: [],
       hintsUsed: 0,
       hintActive: null,
+      nameConfirmationProgress: 0, // Reset for new round
     }
 
     return { valid: true, newState }
@@ -423,6 +428,7 @@ export class KnowYourWorldValidator
       startTime: 0,
       endTime: undefined,
       giveUpReveal: null,
+      nameConfirmationProgress: 0,
     }
 
     return { valid: true, newState }
@@ -551,6 +557,7 @@ export class KnowYourWorldValidator
       giveUpVotes: [], // Clear votes after give up is executed
       hintActive: null, // Clear hint when moving to next region
       activeUserIds,
+      nameConfirmationProgress: 0, // Reset for new prompt
     }
 
     return { valid: true, newState }
@@ -585,6 +592,71 @@ export class KnowYourWorldValidator
         regionId: state.currentPrompt,
         timestamp,
       },
+    }
+
+    return { valid: true, newState }
+  }
+
+  private async validateConfirmLetter(
+    state: KnowYourWorldState,
+    playerId: string,
+    userId: string,
+    data: { letter: string; letterIndex: number }
+  ): Promise<ValidationResult> {
+    if (state.gamePhase !== 'playing') {
+      return {
+        valid: false,
+        error: 'Can only confirm letters during playing phase',
+      }
+    }
+
+    if (!state.currentPrompt) {
+      return { valid: false, error: 'No region to confirm' }
+    }
+
+    // For turn-based: check if it's this player's turn
+    if (state.gameMode === 'turn-based' && state.currentPlayer !== playerId) {
+      return { valid: false, error: 'Not your turn' }
+    }
+
+    const { letter, letterIndex } = data
+
+    // Check that letterIndex matches current progress
+    const currentProgress = state.nameConfirmationProgress ?? 0
+    if (letterIndex !== currentProgress) {
+      return {
+        valid: false,
+        error: `Expected letter index ${currentProgress}, got ${letterIndex}`,
+      }
+    }
+
+    // currentPrompt is actually the region ID (e.g., "ru"), not the name
+    // We need to look up the actual region name from the map data
+    const mapData = await getFilteredMapDataBySizesLazy(
+      state.selectedMap,
+      state.selectedContinent,
+      state.includeSizes
+    )
+    const region = mapData.regions.find((r) => r.id === state.currentPrompt)
+    if (!region) {
+      return { valid: false, error: 'Region not found in map data' }
+    }
+    const regionName = region.name
+
+    // Check if the letter matches
+    const expectedLetter = regionName[letterIndex]?.toLowerCase()
+    if (letter.toLowerCase() !== expectedLetter) {
+      // Wrong letter - don't advance progress (but move is still valid, just ignored)
+      return { valid: true, newState: state }
+    }
+
+    // Correct letter - advance progress
+    const activeUserIds = this.addUserIdIfNew(state.activeUserIds, userId)
+
+    const newState: KnowYourWorldState = {
+      ...state,
+      nameConfirmationProgress: currentProgress + 1,
+      activeUserIds,
     }
 
     return { valid: true, newState }
@@ -642,6 +714,7 @@ export class KnowYourWorldValidator
       giveUpVotes: [],
       hintsUsed: 0,
       hintActive: null,
+      nameConfirmationProgress: 0,
     }
   }
 

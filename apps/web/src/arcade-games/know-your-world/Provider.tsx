@@ -13,6 +13,7 @@ import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.
 import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
 import type { FeedbackType } from './utils/hotColdPhrases'
+import { MusicProvider } from './music'
 
 // Controls state for GameInfoPanel (set by MapRenderer, read by GameInfoPanel)
 export interface ControlsState {
@@ -98,6 +99,7 @@ interface KnowYourWorldContextValue {
   giveUp: () => void
   requestHint: () => void
   returnToSetup: () => void
+  confirmLetter: (letter: string, letterIndex: number) => void
 
   // Setup actions
   setMap: (map: 'world' | 'usa') => void
@@ -234,6 +236,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       giveUpVotes: [],
       hintsUsed: 0,
       hintActive: null,
+      nameConfirmationProgress: 0,
     }
   }, [roomData])
 
@@ -376,6 +379,19 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       data: {},
     })
   }, [viewerId, sendMove, state.currentPlayer, activePlayers])
+
+  // Action: Confirm Letter (for learning mode name confirmation)
+  const confirmLetter = useCallback(
+    (letter: string, letterIndex: number) => {
+      sendMove({
+        type: 'CONFIRM_LETTER',
+        playerId: state.currentPlayer || activePlayers[0] || '',
+        userId: viewerId || '',
+        data: { letter, letterIndex },
+      })
+    },
+    [viewerId, sendMove, state.currentPlayer, activePlayers]
+  )
 
   // Setup Action: Set Map
   const setMap = useCallback(
@@ -545,6 +561,12 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     >
   }, [roomData?.memberPlayers])
 
+  // Music is active when game is in playing phase
+  const isMusicActive = state.gamePhase === 'playing'
+
+  // Pass celebration state to music provider (with type only)
+  const musicCelebration = celebration ? { type: celebration.type } : null
+
   return (
     <KnowYourWorldContext.Provider
       value={{
@@ -558,6 +580,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         endGame,
         giveUp,
         requestHint,
+        confirmLetter,
         returnToSetup,
         setMap,
         setMode,
@@ -577,7 +600,15 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         sharedContainerRef,
       }}
     >
-      {children}
+      <MusicProvider
+        isGameActive={isMusicActive}
+        currentRegionId={state.currentPrompt}
+        mapType={state.selectedMap}
+        hotColdFeedback={controlsState.hotColdFeedbackType}
+        celebration={musicCelebration}
+      >
+        {children}
+      </MusicProvider>
     </KnowYourWorldContext.Provider>
   )
 }

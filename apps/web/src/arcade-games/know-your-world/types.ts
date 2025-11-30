@@ -101,6 +101,11 @@ export interface KnowYourWorldState extends GameState {
     regionId: string
     timestamp: number // For animation timing
   } | null
+
+  // Name confirmation progress (learning mode - type first N letters)
+  // Tracks how many letters have been confirmed for the current prompt
+  // Resets to 0 when currentPrompt changes
+  nameConfirmationProgress: number
 }
 
 // Move types
@@ -208,4 +213,14 @@ export type KnowYourWorldMove =
       userId: string
       timestamp: number
       data: {}
+    }
+  | {
+      type: 'CONFIRM_LETTER'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        letter: string // The letter being confirmed (lowercase)
+        letterIndex: number // Which letter position (0-indexed)
+      }
     }

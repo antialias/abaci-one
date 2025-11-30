@@ -81,7 +81,7 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError, giveUp, controlsState, setIsInTakeover } =
+  const { state, lastError, clearError, giveUp, confirmLetter, controlsState, setIsInTakeover } =
     useKnowYourWorld()
 
   // Destructure controls state from context
@@ -170,9 +170,13 @@ export function GameInfoPanel({
   // Track if we're in the "attention grab" phase for the name display
   const [isAttentionPhase, setIsAttentionPhase] = useState(false)
 
-  // Track name confirmation via keypress (count of confirmed letters)
-  const [confirmedLetterCount, setConfirmedLetterCount] = useState(0)
+  // Name confirmation progress from shared state (synced across sessions)
+  const confirmedLetterCount = state.nameConfirmationProgress ?? 0
   const [nameConfirmed, setNameConfirmed] = useState(false)
+
+  // Optimistic letter count ref - prevents race conditions when typing fast
+  // This is updated immediately on keypress, before server responds
+  const optimisticLetterCountRef = useRef(confirmedLetterCount)
 
   // Get assistance level config
   const assistanceConfig = useMemo(() => {
@@ -225,8 +229,15 @@ export function GameInfoPanel({
     // During give up animation, suppress takeover (progress = 1 means no takeover)
     if (isGiveUpAnimating) return 1
     if (!isLearningMode || requiresNameConfirmation === 0) return 1
-    return Math.min(1, confirmedLetterCount / requiresNameConfirmation)
-  }, [isLearningMode, requiresNameConfirmation, confirmedLetterCount, isGiveUpAnimating])
+    const progress = Math.min(1, confirmedLetterCount / requiresNameConfirmation)
+    console.log('[GameInfoPanel] takeoverProgress:', {
+      confirmedLetterCount,
+      requiresNameConfirmation,
+      progress,
+      stateProgress: state.nameConfirmationProgress,
+    })
+    return progress
+  }, [isLearningMode, requiresNameConfirmation, confirmedLetterCount, isGiveUpAnimating, state.nameConfirmationProgress])
 
   // Spring animation for scale only - position is handled by CSS centering
   const takeoverSpring = useSpring({
@@ -243,10 +254,10 @@ export function GameInfoPanel({
     setIsInTakeover(isInTakeoverLocal)
   }, [isInTakeoverLocal, setIsInTakeover])
 
-  // Reset name confirmation when region changes
+  // Reset local UI state when region changes
+  // Note: nameConfirmationProgress is reset on the server when prompt changes
   useEffect(() => {
     if (currentRegionId) {
-      setConfirmedLetterCount(0)
       setNameConfirmed(false)
       setIsAttentionPhase(true)
 
@@ -271,7 +282,19 @@ export function GameInfoPanel({
     }
   }, [confirmedLetterCount, requiresNameConfirmation, nameConfirmed, onHintsUnlock])
 
+  // Sync optimistic ref with server state when it arrives
+  // This ensures we stay in sync if server rejects a move
+  useEffect(() => {
+    optimisticLetterCountRef.current = confirmedLetterCount
+  }, [confirmedLetterCount])
+
+  // Reset optimistic ref when region changes
+  useEffect(() => {
+    optimisticLetterCountRef.current = 0
+  }, [currentRegionName])
+
   // Listen for keypresses to confirm letters (only when name confirmation is required)
+  // Dispatches to shared state so all multiplayer sessions see the same progress
   useEffect(() => {
     if (requiresNameConfirmation === 0 || nameConfirmed || !currentRegionName) {
       return
@@ -283,8 +306,8 @@ export function GameInfoPanel({
         return
       }
 
-      // Get the next expected letter
-      const nextLetterIndex = confirmedLetterCount
+      // Use optimistic count to prevent race conditions when typing fast
+      const nextLetterIndex = optimisticLetterCountRef.current
       if (nextLetterIndex >= requiresNameConfirmation) {
         return // Already confirmed all required letters
       }
@@ -295,7 +318,10 @@ export function GameInfoPanel({
       // Only accept single character keys (letters and space)
       if (pressedLetter.length === 1 && /[a-z ]/i.test(pressedLetter)) {
         if (pressedLetter === expectedLetter) {
-          setConfirmedLetterCount((prev) => prev + 1)
+          // Optimistically advance count before server responds
+          optimisticLetterCountRef.current = nextLetterIndex + 1
+          // Dispatch to shared state - server validates and broadcasts to all sessions
+          confirmLetter(pressedLetter, nextLetterIndex)
         }
         // Ignore wrong characters silently (no feedback, no backspace needed)
       }
@@ -303,7 +329,12 @@ export function GameInfoPanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [requiresNameConfirmation, nameConfirmed, currentRegionName, confirmedLetterCount])
+  }, [
+    requiresNameConfirmation,
+    nameConfirmed,
+    currentRegionName,
+    confirmLetter,
+  ])
 
   // Check if animation is in progress based on timestamp
   useEffect(() => {
