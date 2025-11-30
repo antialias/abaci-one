@@ -5,7 +5,6 @@ import { css } from '@styled/css'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useViewerId } from '@/lib/arcade/game-sdk'
-import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
   calculateBoundingBox,
@@ -25,6 +24,7 @@ import {
   shouldShowAutoSpeakToggle,
 } from '../utils/guidanceVisibility'
 import { SimpleLetterKeyboard, useIsTouchDevice } from './SimpleLetterKeyboard'
+import { MusicControlModal, useMusic } from '../music'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -115,8 +115,9 @@ export function GameInfoPanel({
   // Touch device detection for virtual keyboard
   const isTouchDevice = useIsTouchDevice()
 
-  // Get MyAbacus context to hide it when virtual keyboard is shown
-  const { setIsHidden: setAbacusHidden } = useMyAbacus()
+  // Music context and modal state
+  const music = useMusic()
+  const [isMusicModalOpen, setIsMusicModalOpen] = useState(false)
 
   // Get current difficulty level config
   const currentDifficultyLevel = useMemo(() => {
@@ -268,21 +269,6 @@ export function GameInfoPanel({
   useEffect(() => {
     setIsInTakeover(isInTakeoverLocal)
   }, [isInTakeoverLocal, setIsInTakeover])
-
-  // Hide the MyAbacus when virtual keyboard is shown (touch devices only)
-  // This prevents the floating abacus button from overlapping with the keyboard
-  const shouldShowVirtualKeyboard =
-    isTouchDevice &&
-    !isGiveUpAnimating &&
-    requiresNameConfirmation > 0 &&
-    !nameConfirmed &&
-    !!currentRegionName
-
-  useEffect(() => {
-    setAbacusHidden(shouldShowVirtualKeyboard)
-    // Cleanup: ensure we unhide when component unmounts
-    return () => setAbacusHidden(false)
-  }, [shouldShowVirtualKeyboard, setAbacusHidden])
 
   // Reset local UI state when region changes
   // Note: nameConfirmationProgress is reset on the server when prompt changes
@@ -1069,6 +1055,39 @@ export function GameInfoPanel({
                           </>
                         )
                       })()}
+
+                    {/* Music settings - always available */}
+                    <DropdownMenu.Separator
+                      className={css({
+                        height: '1px',
+                        bg: isDark ? 'gray.700' : 'gray.200',
+                        margin: '1 0',
+                      })}
+                    />
+                    <DropdownMenu.Item
+                      data-action="open-music-settings"
+                      onSelect={() => setIsMusicModalOpen(true)}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2',
+                        padding: '2',
+                        fontSize: 'xs',
+                        cursor: 'pointer',
+                        rounded: 'md',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                        outline: 'none',
+                        _hover: {
+                          bg: isDark ? 'gray.700' : 'gray.100',
+                        },
+                        _focus: {
+                          bg: isDark ? 'gray.700' : 'gray.100',
+                        },
+                      })}
+                    >
+                      <span>{music.isPlaying ? '🎵' : '🔇'}</span>
+                      <span>Music Settings</span>
+                    </DropdownMenu.Item>
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
@@ -1317,6 +1336,9 @@ export function GameInfoPanel({
           </button>
         </div>
       )}
+
+      {/* Music Control Modal */}
+      <MusicControlModal open={isMusicModalOpen} onOpenChange={setIsMusicModalOpen} />
     </>
   )
 }

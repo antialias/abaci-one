@@ -9,7 +9,7 @@ import { HomeHeroContext } from '@/contexts/HomeHeroContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export function MyAbacus() {
-  const { isOpen, close, toggle, isHidden } = useMyAbacus()
+  const { isOpen, close, toggle, isHidden, showInGame } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
   const { resolvedTheme } = useTheme()
@@ -63,10 +63,15 @@ export function MyAbacus() {
   const structuralStyles = ABACUS_THEMES.light
   const trophyStyles = ABACUS_THEMES.trophy
 
-  // Hide completely when isHidden is true (e.g., virtual keyboard is shown)
+  // Detect if we're on a game route (arcade games hide the abacus by default)
+  const isOnGameRoute = pathname?.startsWith('/arcade/')
+
+  // Hide completely when:
+  // 1. isHidden is true (e.g., virtual keyboard is shown on non-game pages)
+  // 2. On a game route and the game hasn't opted in to show it
   // Still allow open state to work (user explicitly opened it)
   // NOTE: This must come after all hooks to follow React's rules of hooks
-  if (isHidden && !isOpen) {
+  if (!isOpen && (isHidden || (isOnGameRoute && !showInGame))) {
     return null
   }
 

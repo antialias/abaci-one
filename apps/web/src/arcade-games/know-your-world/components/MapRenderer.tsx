@@ -506,6 +506,15 @@ export function MapRenderer({
   const [smallestRegionSize, setSmallestRegionSize] = useState<number>(Infinity)
   const [shiftPressed, setShiftPressed] = useState(false)
 
+  // Desktop click-and-drag magnifier state
+  const [isDesktopMapDragging, setIsDesktopMapDragging] = useState(false)
+  const desktopDragStartRef = useRef<{ x: number; y: number } | null>(null)
+  const desktopDragDidMoveRef = useRef(false)
+  // Track last drag position - magnifier stays visible until cursor moves threshold away
+  const lastDragPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const DRAG_START_THRESHOLD = 5 // Pixels to move before counting as drag (not click)
+  const MAGNIFIER_DISMISS_THRESHOLD = 50 // Pixels to move away from last drag pos to dismiss
+
   // Track whether current target region needs magnification
   const [targetNeedsMagnification, setTargetNeedsMagnification] = useState(false)
 
@@ -526,6 +535,20 @@ export function MapRenderer({
   const [isMobileMapDragging, setIsMobileMapDragging] = useState(false)
   const mapTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const MOBILE_DRAG_THRESHOLD = 10 // pixels before we consider it a drag
+  // Track if magnifier was triggered by mobile map drag (for showing Select button)
+  const [mobileMapDragTriggeredMagnifier, setMobileMapDragTriggeredMagnifier] = useState(false)
+  const AUTO_EXIT_ZOOM_THRESHOLD = 1.5 // Exit expanded mode when zoom drops below this
+
+  // Auto-exit expanded magnifier mode when zoom approaches 1x
+  useEffect(() => {
+    if (isMagnifierExpanded && targetZoom < AUTO_EXIT_ZOOM_THRESHOLD) {
+      console.log(
+        '[MapRenderer] Auto-exiting expanded magnifier mode - zoom dropped below threshold:',
+        targetZoom
+      )
+      setIsMagnifierExpanded(false)
+    }
+  }, [isMagnifierExpanded, targetZoom])
 
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
@@ -865,6 +888,12 @@ export function MapRenderer({
 
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If we just finished a drag, suppress this click (user was dragging, not clicking)
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false
+      return
+    }
+
     // Silently request pointer lock if not already locked (and supported)
     // This makes the first gameplay click also enable precision mode
     // On devices without pointer lock (iPad), skip this and process clicks normally
@@ -1784,6 +1813,48 @@ export function MapRenderer({
     return guess?.playerId || null
   }
 
+  // Desktop click-and-drag handlers for magnifier
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only handle left click, and not on touch devices
+    if (e.button !== 0 || isTouchDevice) return
+
+    let cursorX: number
+    let cursorY: number
+
+    if (pointerLocked && cursorPositionRef.current) {
+      // When pointer is locked, use the tracked cursor position
+      cursorX = cursorPositionRef.current.x
+      cursorY = cursorPositionRef.current.y
+    } else {
+      // Normal mode: use click position
+      const containerRect = containerRef.current?.getBoundingClientRect()
+      if (!containerRect) return
+
+      cursorX = e.clientX - containerRect.left
+      cursorY = e.clientY - containerRect.top
+    }
+
+    desktopDragStartRef.current = { x: cursorX, y: cursorY }
+    desktopDragDidMoveRef.current = false
+  }
+
+  // Track if we should suppress the next click (because user was dragging)
+  const suppressNextClickRef = useRef(false)
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If user was dragging, save the last position for threshold-based dismissal
+    // and suppress the click event that will follow
+    if (isDesktopMapDragging && cursorPositionRef.current) {
+      lastDragPositionRef.current = { ...cursorPositionRef.current }
+      suppressNextClickRef.current = true
+    }
+
+    // Reset drag state
+    desktopDragStartRef.current = null
+    setIsDesktopMapDragging(false)
+    desktopDragDidMoveRef.current = false
+  }
+
   // Handle mouse movement to track cursor and show magnifier when needed
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!svgRef.current || !containerRef.current) return
@@ -1938,10 +2009,61 @@ export function MapRenderer({
       // Allow cursor to reach escape threshold at SVG edges
       cursorX = Math.max(svgOffsetX, Math.min(svgOffsetX + svgRect.width, cursorX))
       cursorY = Math.max(svgOffsetY, Math.min(svgOffsetY + svgRect.height, cursorY))
+
+      // Desktop drag detection in pointer lock mode
+      // Check if user has moved enough from drag start point
+      if (desktopDragStartRef.current && !isDesktopMapDragging) {
+        const deltaX = cursorX - desktopDragStartRef.current.x
+        const deltaY = cursorY - desktopDragStartRef.current.y
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (distance >= DRAG_START_THRESHOLD) {
+          desktopDragDidMoveRef.current = true
+          setIsDesktopMapDragging(true)
+          lastDragPositionRef.current = null
+        }
+      }
+
+      // Check if cursor has moved far enough from last drag position to dismiss magnifier
+      if (lastDragPositionRef.current && !isDesktopMapDragging && !shiftPressed) {
+        const deltaX = cursorX - lastDragPositionRef.current.x
+        const deltaY = cursorY - lastDragPositionRef.current.y
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (distance >= MAGNIFIER_DISMISS_THRESHOLD) {
+          lastDragPositionRef.current = null
+        }
+      }
     } else {
       // Normal mode: use absolute position
       cursorX = e.clientX - containerRect.left
       cursorY = e.clientY - containerRect.top
+
+      // Desktop drag detection: check if user has moved enough from drag start point
+      if (desktopDragStartRef.current && !isDesktopMapDragging) {
+        const deltaX = cursorX - desktopDragStartRef.current.x
+        const deltaY = cursorY - desktopDragStartRef.current.y
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (distance >= DRAG_START_THRESHOLD) {
+          desktopDragDidMoveRef.current = true
+          setIsDesktopMapDragging(true)
+          // Clear the last drag position since we're starting a new drag
+          lastDragPositionRef.current = null
+        }
+      }
+
+      // Check if cursor has moved far enough from last drag position to dismiss magnifier
+      // This allows the user to complete a drag and then click without the magnifier disappearing
+      if (lastDragPositionRef.current && !isDesktopMapDragging && !shiftPressed) {
+        const deltaX = cursorX - lastDragPositionRef.current.x
+        const deltaY = cursorY - lastDragPositionRef.current.y
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (distance >= MAGNIFIER_DISMISS_THRESHOLD) {
+          lastDragPositionRef.current = null
+        }
+      }
     }
 
     // Check if cursor is over the SVG
@@ -1983,8 +2105,15 @@ export function MapRenderer({
     // 1. Shift key is held down (manual override on desktop)
     // 2. Current target region needs magnification AND there's a small region nearby
     // 3. User is dragging on the map on mobile (always show magnifier for mobile drag)
+    // 4. User is click-dragging on the map on desktop
+    // 5. User recently finished a drag and cursor is still near the drag end position
+    const isNearLastDragPosition = lastDragPositionRef.current !== null
     const shouldShow =
-      shiftPressed || isMobileMapDragging || (targetNeedsMagnification && hasSmallRegion)
+      shiftPressed ||
+      isMobileMapDragging ||
+      isDesktopMapDragging ||
+      isNearLastDragPosition ||
+      (targetNeedsMagnification && hasSmallRegion)
 
     // Update smallest region size for adaptive cursor dampening
     // Use hysteresis to prevent rapid flickering at boundaries
@@ -2220,6 +2349,12 @@ export function MapRenderer({
       return
     }
 
+    // Reset desktop drag state when mouse leaves
+    desktopDragStartRef.current = null
+    setIsDesktopMapDragging(false)
+    desktopDragDidMoveRef.current = false
+    lastDragPositionRef.current = null
+
     setShowMagnifier(false)
     setTargetOpacity(0)
     setCursorPosition(null)
@@ -2375,6 +2510,7 @@ export function MapRenderer({
     setCursorPosition(null)
     cursorPositionRef.current = null
     setIsMagnifierExpanded(false) // Reset expanded state on dismiss
+    setMobileMapDragTriggeredMagnifier(false) // Reset mobile drag trigger state
   }, [])
 
   const handleMapTouchEnd = useCallback(() => {
@@ -2383,6 +2519,8 @@ export function MapRenderer({
 
     if (wasDragging) {
       setIsMobileMapDragging(false)
+      // Mark that magnifier was triggered by mobile drag (shows Select button)
+      setMobileMapDragTriggeredMagnifier(true)
       // Keep magnifier visible after drag ends - user can tap "Select" button or tap elsewhere to dismiss
       // Don't hide magnifier or clear cursor - leave them in place for selection
     } else if (showMagnifier && cursorPositionRef.current) {
@@ -2479,28 +2617,65 @@ export function MapRenderer({
       // Update start position for next move
       magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
 
-      // Scale touch delta by zoom level for 1:1 panning feel.
-      //
-      // The magnifier shows a zoomed view of the map. When zoomed 3x:
-      // - Moving cursor by 1 pixel shifts the magnifier view by 3 pixels
-      // - To get 1:1 feel (finger moves N pixels = content moves N pixels in magnifier),
-      //   we divide finger movement by zoom level
-      //
-      // This makes dragging feel like moving the map under a fixed magnifying glass.
-      const currentZoom = getCurrentZoom()
-      const touchMultiplier = 1 / currentZoom
+      // Get container and SVG measurements first (needed for 1:1 calculation)
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const svgRect = svgRef.current.getBoundingClientRect()
 
-      // Invert the delta - dragging right on magnifier should show content to the right
-      // (which means moving the cursor right in the map coordinate space)
-      // Actually, dragging the "paper" under the magnifier means:
+      // Calculate viewport scale and magnifier dimensions for true 1:1 panning
+      //
+      // For 1:1 panning, we need to account for:
+      // 1. How the SVG is scaled to fit the container (viewport.scale)
+      // 2. How the magnifier zooms the content (currentZoom)
+      // 3. The actual magnifier dimensions
+      //
+      // The magnifier shows (viewBoxW / currentZoom) SVG units across magnifierWidth pixels.
+      // The SVG in the container renders at viewport.scale (container px per SVG unit).
+      //
+      // For finger moving N screen pixels to move content N pixels in magnifier:
+      // - Content movement in SVG units = N / (magnifierWidth * currentZoom / viewBoxW)
+      // - Cursor movement in container = (N / magnifierScale) * viewport.scale
+      // - touchMultiplier = viewport.scale * viewBoxW / (magnifierWidth * currentZoom)
+      const viewBoxParts = displayViewBox.split(' ').map(Number)
+      const viewBoxW = viewBoxParts[2] || 1000
+      const viewBoxH = viewBoxParts[3] || 500
+
+      // Calculate the viewport scale (how the SVG is scaled to fit the SVG element)
+      // This is the same calculation as getRenderedViewport but we just need the scale
+      const svgAspect = viewBoxW / viewBoxH
+      const containerAspect = svgRect.width / svgRect.height
+      const viewportScale =
+        containerAspect > svgAspect
+          ? svgRect.height / viewBoxH // Height-constrained
+          : svgRect.width / viewBoxW // Width-constrained
+
+      // Get current magnifier dimensions
+      const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+      const leftoverHeight = containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+      const { width: magnifierWidth, height: magnifierHeight } = getMagnifierDimensions(
+        leftoverWidth,
+        leftoverHeight
+      )
+      const actualMagnifierWidth = isMagnifierExpanded ? leftoverWidth : magnifierWidth
+      const actualMagnifierHeight = isMagnifierExpanded ? leftoverHeight : magnifierHeight
+
+      const currentZoom = getCurrentZoom()
+
+      // Calculate the true 1:1 touch multiplier
+      // When finger moves N pixels, content in magnifier should move N pixels visually
+      // Use the smaller dimension to ensure consistency (magnifier may not be square)
+      const magnifierScaleX = (actualMagnifierWidth * currentZoom) / viewBoxW
+      const magnifierScaleY = (actualMagnifierHeight * currentZoom) / viewBoxH
+      // Use the smaller scale factor to ensure 1:1 feel in the constrained direction
+      const magnifierScale = Math.min(magnifierScaleX, magnifierScaleY)
+      const touchMultiplier = viewportScale / magnifierScale
+
+      // Invert the delta - dragging the "paper" under the magnifier means:
       // - Drag finger right = paper moves right = magnifier shows what was to the LEFT
       // - So we SUBTRACT the delta to move the cursor in the opposite direction
       const newCursorX = cursorPositionRef.current.x - deltaX * touchMultiplier
       const newCursorY = cursorPositionRef.current.y - deltaY * touchMultiplier
 
       // Clamp to SVG bounds
-      const containerRect = containerRef.current.getBoundingClientRect()
-      const svgRect = svgRef.current.getBoundingClientRect()
       const svgOffsetX = svgRect.left - containerRect.left
       const svgOffsetY = svgRect.top - containerRect.top
 
@@ -2511,9 +2686,36 @@ export function MapRenderer({
       cursorPositionRef.current = { x: clampedX, y: clampedY }
       setCursorPosition({ x: clampedX, y: clampedY })
 
-      // Run region detection to update hoveredRegionId (so user sees which region is under cursor)
-      // We don't update zoom during drag to avoid disorienting zoom changes while panning
-      const { regionUnderCursor } = detectRegions(clampedX, clampedY)
+      // Run region detection to update hoveredRegionId and get regions for adaptive zoom
+      const {
+        regionUnderCursor,
+        detectedRegions: detectedRegionObjects,
+        detectedSmallestSize,
+      } = detectRegions(clampedX, clampedY)
+
+      // Auto-zoom based on regions at cursor position (same as map drag behavior)
+      // Filter out found regions from zoom calculations
+      const unfoundRegionObjects = detectedRegionObjects.filter(
+        (r) => !regionsFound.includes(r.id)
+      )
+
+      // Calculate optimal zoom for the new cursor position
+      const zoomSearchResult = findOptimalZoom({
+        detectedRegions: unfoundRegionObjects,
+        detectedSmallestSize,
+        cursorX: clampedX,
+        cursorY: clampedY,
+        containerRect,
+        svgRect,
+        mapData,
+        svgElement: svgRef.current,
+        largestPieceSizesCache: largestPieceSizesRef.current,
+        maxZoom: MAX_ZOOM,
+        minZoom: 1,
+        pointerLocked: false, // Mobile never uses pointer lock
+      })
+
+      setTargetZoom(zoomSearchResult.zoom)
 
       // Broadcast cursor update to other players (if in multiplayer)
       if (
@@ -2540,6 +2742,7 @@ export function MapRenderer({
     [
       isMagnifierDragging,
       isPinching,
+      isMagnifierExpanded,
       getTouchDistance,
       MAX_ZOOM,
       setTargetZoom,
@@ -2550,6 +2753,8 @@ export function MapRenderer({
       localPlayerId,
       displayViewBox,
       getCurrentZoom,
+      regionsFound,
+      mapData,
     ]
   )
 
@@ -2687,6 +2892,8 @@ export function MapRenderer({
     <div
       ref={containerRef}
       data-component="map-renderer"
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleContainerClick}
@@ -4164,72 +4371,154 @@ export function MapRenderer({
                   />
                 )
               })()}
+
+            {/* Expand to fullscreen button - top-right corner (mobile only, when not expanded) */}
+            {!pointerLocked && isTouchDevice && !isMagnifierExpanded && (
+              <button
+                type="button"
+                data-action="toggle-magnifier-fullscreen"
+                onTouchStart={(e) => {
+                  // Stop touch events from bubbling to magnifier handlers
+                  e.stopPropagation()
+                }}
+                onTouchEnd={(e) => {
+                  // Stop touch events and handle the action
+                  e.stopPropagation()
+                  e.preventDefault() // Prevent click event from also firing
+                  setIsMagnifierExpanded(true)
+                }}
+                onClick={(e) => {
+                  // Fallback for non-touch interactions
+                  e.stopPropagation()
+                  setIsMagnifierExpanded(true)
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isDark ? 'rgba(31, 41, 55, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: isDark ? '#60a5fa' : '#3b82f6',
+                  fontSize: '14px',
+                  padding: 0,
+                }}
+                title="Expand to fullscreen"
+              >
+                {/* Expand icon (arrows pointing outward) */}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </button>
+            )}
+
+            {/* Mobile Select button - inside magnifier, bottom-right corner (touch devices only) */}
+            {isTouchDevice &&
+              mobileMapDragTriggeredMagnifier &&
+              !isMobileMapDragging &&
+              !isMagnifierDragging &&
+              (() => {
+                // Button is disabled if no region under crosshairs or region already found
+                const isSelectDisabled = !hoveredRegion || regionsFound.includes(hoveredRegion)
+
+                return (
+                  <button
+                    type="button"
+                    data-action="mobile-select-region"
+                    disabled={isSelectDisabled}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      if (!isSelectDisabled) selectRegionAtCrosshairs()
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!isSelectDisabled) selectRegionAtCrosshairs()
+                    }}
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      padding: '10px 20px',
+                      background: isSelectDisabled
+                        ? 'linear-gradient(135deg, #9ca3af, #6b7280)'
+                        : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                      border: 'none',
+                      borderTopLeftRadius: '12px',
+                      borderBottomRightRadius: '10px', // Match magnifier border radius minus border
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: isSelectDisabled ? 'not-allowed' : 'pointer',
+                      touchAction: 'none',
+                      boxShadow: isSelectDisabled
+                        ? 'inset 0 1px 0 rgba(255,255,255,0.2)'
+                        : 'inset 0 1px 0 rgba(255,255,255,0.3)',
+                      opacity: isSelectDisabled ? 0.7 : 1,
+                    }}
+                  >
+                    Select
+                  </button>
+                )
+              })()}
+
+            {/* Full Map button - inside magnifier, bottom-left corner (touch devices only, when expanded) */}
+            {isTouchDevice && isMagnifierExpanded && mobileMapDragTriggeredMagnifier && (
+              <button
+                type="button"
+                data-action="exit-magnifier-fullscreen"
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setIsMagnifierExpanded(false)
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsMagnifierExpanded(false)
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #6b7280, #4b5563)',
+                  border: 'none',
+                  borderTopRightRadius: '12px',
+                  borderBottomLeftRadius: '10px', // Match magnifier border radius minus border
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  touchAction: 'none',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
+                }}
+              >
+                Full Map
+              </button>
+            )}
           </animated.div>
         )
       })()}
-
-      {/* Mobile Select button - appears when magnifier is visible but not being dragged */}
-      {showMagnifier && !isMobileMapDragging && !isMagnifierDragging && cursorPosition && (
-        <animated.button
-          data-action="mobile-select-region"
-          type="button"
-          onClick={selectRegionAtCrosshairs}
-          onTouchEnd={(e) => {
-            e.stopPropagation() // Prevent triggering map touch end
-            selectRegionAtCrosshairs()
-          }}
-          style={{
-            position: 'absolute',
-            // Position below the magnifier
-            top: magnifierSpring.top.to((t) => {
-              const containerRect = containerRef.current?.getBoundingClientRect()
-              if (!containerRect) return t + 200
-              const leftoverWidth =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverHeight =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { height: magnifierHeight } = getMagnifierDimensions(
-                leftoverWidth,
-                leftoverHeight
-              )
-              return t + magnifierHeight + 12 // 12px gap below magnifier
-            }),
-            left: magnifierSpring.left.to((l) => {
-              const containerRect = containerRef.current?.getBoundingClientRect()
-              if (!containerRect) return l
-              const leftoverWidth =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverHeight =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { width: magnifierWidth } = getMagnifierDimensions(
-                leftoverWidth,
-                leftoverHeight
-              )
-              return l + magnifierWidth / 2 - 60 // Center the 120px button under magnifier
-            }),
-            width: 120,
-            opacity: magnifierSpring.opacity,
-            zIndex: 101,
-          }}
-          className={css({
-            padding: '12px 24px',
-            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-            border: 'none',
-            borderRadius: '12px',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)',
-            touchAction: 'none',
-            _active: {
-              transform: 'scale(0.95)',
-            },
-          })}
-        >
-          Select ✓
-        </animated.button>
-      )}
 
       {/* Zoom lines connecting indicator to magnifier - creates "pop out" effect */}
       {(() => {

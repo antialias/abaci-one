@@ -1,36 +1,17 @@
 /**
- * Music Control Panel
+ * Music Control Modal
  *
- * A dedicated panel for music controls positioned in the upper right.
- * Shows start/stop, volume, and a description of the current music.
- * Includes expandable debug view showing the Strudel pattern code.
+ * A modal dialog for music controls accessible from the guidance menu.
+ * Shows play/stop, volume, and optionally debug info.
  */
 
 'use client'
 
 import { useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useMusic } from './MusicContext'
-
-// Map temperature to descriptive text
-function getTemperatureDescription(temp: string | null): string | null {
-  if (!temp) return null
-  switch (temp) {
-    case 'on_fire':
-    case 'hot':
-      return 'intensifying'
-    case 'warmer':
-      return 'warming up'
-    case 'colder':
-      return 'cooling down'
-    case 'cold':
-    case 'freezing':
-      return 'distant'
-    default:
-      return null
-  }
-}
 
 // Map region IDs to country names for display
 const regionNames: Record<string, string> = {
@@ -79,7 +60,31 @@ const regionNames: Record<string, string> = {
   hi: 'Hawaii',
 }
 
-export function MusicControlPanel() {
+// Map temperature to descriptive text
+function getTemperatureDescription(temp: string | null): string | null {
+  if (!temp) return null
+  switch (temp) {
+    case 'on_fire':
+    case 'hot':
+      return 'intensifying'
+    case 'warmer':
+      return 'warming up'
+    case 'colder':
+      return 'cooling down'
+    case 'cold':
+    case 'freezing':
+      return 'distant'
+    default:
+      return null
+  }
+}
+
+interface MusicControlModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function MusicControlModal({ open, onOpenChange }: MusicControlModalProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const music = useMusic()
@@ -111,162 +116,143 @@ export function MusicControlPanel() {
     return parts.join(' ')
   }
 
-  // Show compact button when music is not playing
-  // This keeps the panel minimal when stopped, reducing UI clutter on narrow screens
-  const showCompactButton = !music.isPlaying
-
   return (
-    <div
-      data-component="music-control-panel"
-      className={css({
-        position: 'absolute',
-        // On mobile, position below the prompt box which is ~130px from top + ~150px tall
-        // On larger screens, position alongside the prompt box
-        top: { base: '290px', sm: '150px' },
-        right: { base: '2', sm: '4' },
-        zIndex: 50,
-        padding: showCompactButton ? '2 3' : '3',
-        bg: isDark ? 'gray.800/90' : 'white/90',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.700' : 'gray.300',
-        rounded: 'xl',
-        shadow: 'lg',
-        minWidth: showCompactButton ? '140px' : '200px',
-        maxWidth: '320px',
-      })}
-    >
-      {/* Show compact button when music is not playing */}
-      {showCompactButton ? (
-        <button
-          onClick={() => music.enableMusic()}
-          data-action="enable-music"
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          data-element="music-modal-overlay"
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2',
-            padding: '2 3',
-            bg: isDark ? 'blue.600' : 'blue.500',
-            color: 'white',
-            rounded: 'lg',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            width: '100%',
-            justifyContent: 'center',
-            transition: 'all 0.15s',
-            _hover: {
-              bg: isDark ? 'blue.500' : 'blue.600',
-            },
+            position: 'fixed',
+            inset: '0',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9998,
+            animation: 'fadeIn 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+          })}
+        />
+        <Dialog.Content
+          data-component="music-control-modal"
+          className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            bg: isDark ? 'gray.800' : 'white',
+            borderRadius: 'xl',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            padding: '5',
+            width: '90vw',
+            maxWidth: '360px',
+            maxHeight: '85vh',
+            overflow: 'auto',
+            zIndex: 9999,
+            animation: 'contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
           })}
         >
-          <span>🎵</span>
-          <span>{music.isInitialized ? 'Play Music' : 'Enable Music'}</span>
-        </button>
-      ) : (
-        <>
-          {/* Header with play/stop toggle */}
-          <div
-            data-element="panel-header"
+          <Dialog.Title
             className={css({
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              marginBottom: '4',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '2',
+              gap: '2',
+              color: isDark ? 'gray.100' : 'gray.900',
             })}
           >
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-              <span className={css({ fontSize: 'lg' })}>{music.isPlaying ? '🎵' : '🔇'}</span>
-              <span
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'bold',
-                  color: isDark ? 'gray.200' : 'gray.800',
-                })}
-              >
-                Music
-              </span>
-            </div>
+            <span>🎵</span>
+            Music Controls
+          </Dialog.Title>
 
-            {/* Play/Stop button */}
-            <button
-              onClick={async () => {
-                if (music.isPlaying) {
-                  music.disableMusic()
-                } else {
-                  await music.enableMusic()
-                }
-              }}
-              data-action="toggle-music"
-              className={css({
-                padding: '1.5 3',
-                fontSize: 'xs',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                rounded: 'md',
-                border: '1px solid',
-                transition: 'all 0.15s',
+          {/* Play/Stop button */}
+          <button
+            onClick={async () => {
+              if (music.isPlaying) {
+                music.disableMusic()
+              } else {
+                await music.enableMusic()
+              }
+            }}
+            data-action="toggle-music"
+            className={css({
+              width: '100%',
+              padding: '3',
+              fontSize: 'md',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              rounded: 'lg',
+              border: '2px solid',
+              transition: 'all 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2',
+              bg: music.isPlaying
+                ? isDark
+                  ? 'red.900/50'
+                  : 'red.100'
+                : isDark
+                  ? 'green.900/50'
+                  : 'green.100',
+              color: music.isPlaying
+                ? isDark
+                  ? 'red.300'
+                  : 'red.700'
+                : isDark
+                  ? 'green.300'
+                  : 'green.700',
+              borderColor: music.isPlaying
+                ? isDark
+                  ? 'red.700'
+                  : 'red.300'
+                : isDark
+                  ? 'green.700'
+                  : 'green.300',
+              _hover: {
                 bg: music.isPlaying
                   ? isDark
-                    ? 'red.900/50'
-                    : 'red.100'
+                    ? 'red.800/50'
+                    : 'red.200'
                   : isDark
-                    ? 'green.900/50'
-                    : 'green.100',
-                color: music.isPlaying
-                  ? isDark
-                    ? 'red.300'
-                    : 'red.700'
-                  : isDark
-                    ? 'green.300'
-                    : 'green.700',
-                borderColor: music.isPlaying
-                  ? isDark
-                    ? 'red.700'
-                    : 'red.300'
-                  : isDark
-                    ? 'green.700'
-                    : 'green.300',
-                _hover: {
-                  bg: music.isPlaying
-                    ? isDark
-                      ? 'red.800/50'
-                      : 'red.200'
-                    : isDark
-                      ? 'green.800/50'
-                      : 'green.200',
-                },
-              })}
-            >
-              {music.isPlaying ? 'Stop' : 'Play'}
-            </button>
-          </div>
+                    ? 'green.800/50'
+                    : 'green.200',
+              },
+            })}
+          >
+            <span>{music.isPlaying ? '⏹️' : '▶️'}</span>
+            <span>
+              {music.isPlaying ? 'Stop Music' : music.isInitialized ? 'Play Music' : 'Enable Music'}
+            </span>
+          </button>
 
           {/* Music description */}
           <div
             data-element="music-description"
             className={css({
-              fontSize: 'xs',
+              fontSize: 'sm',
               color: isDark ? 'gray.400' : 'gray.600',
-              marginBottom: '3',
-              lineHeight: '1.4',
+              marginTop: '3',
+              marginBottom: '4',
+              textAlign: 'center',
             })}
           >
             {music.isPlaying ? buildDescription() : 'Music paused'}
           </div>
 
-          {/* Volume control - using native range to avoid Radix Slider re-render issues */}
+          {/* Volume control */}
           <div
             data-element="volume-control"
             className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '2',
-              marginBottom: '2',
+              gap: '3',
+              padding: '3',
+              bg: isDark ? 'gray.900/50' : 'gray.100',
+              rounded: 'lg',
             })}
           >
-            <span className={css({ fontSize: 'sm', opacity: 0.6 })}>🔈</span>
+            <span className={css({ fontSize: 'lg' })}>🔈</span>
             <input
               type="range"
               data-element="volume-slider"
@@ -275,42 +261,41 @@ export function MusicControlPanel() {
               min={0}
               max={1}
               step={0.05}
-              disabled={!music.isPlaying}
               className={css({
                 flex: 1,
-                height: '4px',
+                height: '6px',
                 appearance: 'none',
                 bg: isDark ? 'gray.600' : 'gray.300',
                 borderRadius: '9999px',
-                cursor: music.isPlaying ? 'pointer' : 'not-allowed',
-                opacity: music.isPlaying ? 1 : 0.5,
+                cursor: 'pointer',
                 '&::-webkit-slider-thumb': {
                   appearance: 'none',
-                  width: '14px',
-                  height: '14px',
+                  width: '18px',
+                  height: '18px',
                   bg: isDark ? 'blue.400' : 'blue.500',
                   borderRadius: '50%',
-                  cursor: music.isPlaying ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                 },
                 '&::-moz-range-thumb': {
-                  width: '14px',
-                  height: '14px',
+                  width: '18px',
+                  height: '18px',
                   bg: isDark ? 'blue.400' : 'blue.500',
                   borderRadius: '50%',
                   border: 'none',
-                  cursor: music.isPlaying ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                 },
                 _focus: {
                   outline: 'none',
                 },
               })}
             />
-            <span className={css({ fontSize: 'sm', opacity: 0.6 })}>🔊</span>
+            <span className={css({ fontSize: 'lg' })}>🔊</span>
             <span
               className={css({
-                fontSize: 'xs',
-                color: isDark ? 'gray.500' : 'gray.500',
-                minWidth: '32px',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.300' : 'gray.700',
+                minWidth: '40px',
                 textAlign: 'right',
               })}
             >
@@ -326,7 +311,8 @@ export function MusicControlPanel() {
               display: 'flex',
               alignItems: 'center',
               gap: '1',
-              padding: '1 2',
+              marginTop: '4',
+              padding: '2',
               fontSize: 'xs',
               color: isDark ? 'gray.500' : 'gray.500',
               bg: 'transparent',
@@ -340,7 +326,7 @@ export function MusicControlPanel() {
             })}
           >
             <span>{isDebugExpanded ? '▼' : '▶'}</span>
-            <span>Debug</span>
+            <span>Debug Info</span>
           </button>
 
           {/* Debug panel */}
@@ -349,9 +335,9 @@ export function MusicControlPanel() {
               data-element="debug-panel"
               className={css({
                 marginTop: '2',
-                padding: '2',
+                padding: '3',
                 bg: isDark ? 'gray.900' : 'gray.100',
-                rounded: 'md',
+                rounded: 'lg',
                 fontSize: 'xs',
               })}
             >
@@ -361,7 +347,7 @@ export function MusicControlPanel() {
                   display: 'grid',
                   gridTemplateColumns: 'auto 1fr',
                   gap: '1 2',
-                  marginBottom: '2',
+                  marginBottom: '3',
                   color: isDark ? 'gray.400' : 'gray.600',
                 })}
               >
@@ -383,10 +369,12 @@ export function MusicControlPanel() {
               <div
                 className={css({
                   bg: isDark ? 'gray.950' : 'white',
-                  rounded: 'sm',
+                  rounded: 'md',
                   padding: '2',
-                  maxHeight: '150px',
+                  maxHeight: '120px',
                   overflow: 'auto',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.300',
                 })}
               >
                 <pre
@@ -412,11 +400,11 @@ export function MusicControlPanel() {
                 data-action="copy-pattern"
                 className={css({
                   marginTop: '2',
-                  padding: '1 2',
+                  padding: '1.5 3',
                   fontSize: 'xs',
                   bg: isDark ? 'gray.700' : 'gray.200',
                   color: isDark ? 'gray.300' : 'gray.700',
-                  rounded: 'sm',
+                  rounded: 'md',
                   border: 'none',
                   cursor: 'pointer',
                   _hover: {
@@ -428,8 +416,33 @@ export function MusicControlPanel() {
               </button>
             </div>
           )}
-        </>
-      )}
-    </div>
+
+          {/* Close button */}
+          <Dialog.Close
+            data-action="close-music-modal"
+            className={css({
+              position: 'absolute',
+              top: '3',
+              right: '3',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 'md',
+              padding: '2',
+              color: isDark ? 'gray.400' : 'gray.600',
+              cursor: 'pointer',
+              bg: 'transparent',
+              border: 'none',
+              _hover: {
+                bg: isDark ? 'gray.700' : 'gray.100',
+                color: isDark ? 'gray.200' : 'gray.900',
+              },
+            })}
+          >
+            ✕
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

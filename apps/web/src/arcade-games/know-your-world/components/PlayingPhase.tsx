@@ -6,7 +6,6 @@ import { useGameMode, useViewerId } from '@/lib/arcade/game-sdk'
 import { getAssistanceLevel, getFilteredMapDataBySizesSync } from '../maps'
 import { CROP_UPDATE_EVENT, CROP_MODE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { useKnowYourWorld } from '../Provider'
-import { MusicControlPanel } from '../music'
 import { GameInfoPanel } from './GameInfoPanel'
 import { MapRenderer } from './MapRenderer'
 
@@ -175,19 +174,16 @@ export function PlayingPhase() {
 
       {/* Floating Game Info UI - hidden during crop mode to allow unobstructed dragging */}
       {!cropModeActive && (
-        <>
-          <GameInfoPanel
-            mapData={mapData}
-            currentRegionName={currentRegionName}
-            currentRegionId={currentRegionId}
-            selectedMap={state.selectedMap}
-            foundCount={foundCount}
-            totalRegions={totalRegions}
-            progress={progress}
-            onHintsUnlock={handleHintsUnlock}
-          />
-          <MusicControlPanel />
-        </>
+        <GameInfoPanel
+          mapData={mapData}
+          currentRegionName={currentRegionName}
+          currentRegionId={currentRegionId}
+          selectedMap={state.selectedMap}
+          foundCount={foundCount}
+          totalRegions={totalRegions}
+          progress={progress}
+          onHintsUnlock={handleHintsUnlock}
+        />
       )}
     </div>
   )
