@@ -30,6 +30,36 @@ export function getNthNonSpaceLetter(
 }
 
 /**
+ * Get Unicode code points for a string (for debugging)
+ */
+function getCodePoints(str: string): string {
+  return [...str].map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+}
+
+/**
+ * Normalize accented characters to their base ASCII letters.
+ * e.g., 'é' → 'e', 'ñ' → 'n', 'ü' → 'u', 'ç' → 'c', 'ô' → 'o'
+ * Uses Unicode NFD normalization to decompose characters, then strips diacritical marks.
+ */
+function normalizeToBaseLetter(char: string): string {
+  const nfd = char.normalize('NFD')
+  const stripped = nfd.replace(/[\u0300-\u036f]/g, '')
+  const result = stripped.toLowerCase()
+  // Debug logging for accent normalization
+  if (char !== result) {
+    console.log('[Validator] normalizeToBaseLetter:', {
+      input: char,
+      inputCodePoints: getCodePoints(char),
+      afterNFD: nfd,
+      nfdCodePoints: getCodePoints(nfd),
+      afterStrip: stripped,
+      result,
+    })
+  }
+  return result
+}
+
+/**
  * Lazy-load map functions to avoid importing ES modules at module init time
  * This is critical for server-side usage where ES modules can't be required
  */
@@ -671,9 +701,24 @@ export class KnowYourWorldValidator
       return { valid: false, error: 'Letter index out of range' }
     }
 
-    // Check if the letter matches
-    if (letter.toLowerCase() !== letterInfo.char.toLowerCase()) {
+    // Check if the letter matches (normalize accents so 'o' matches 'ô', etc.)
+    const normalizedInput = normalizeToBaseLetter(letter)
+    const normalizedExpected = normalizeToBaseLetter(letterInfo.char)
+
+    console.log('[Validator] confirmLetter:', {
+      inputLetter: letter,
+      normalizedInput,
+      expectedChar: letterInfo.char,
+      normalizedExpected,
+      match: normalizedInput === normalizedExpected,
+      regionName,
+      letterIndex,
+      currentProgress,
+    })
+
+    if (normalizedInput !== normalizedExpected) {
       // Wrong letter - don't advance progress (but move is still valid, just ignored)
+      console.log('[Validator] Letter mismatch - not advancing progress')
       return { valid: true, newState: state }
     }
 

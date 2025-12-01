@@ -367,6 +367,8 @@ export function MapRenderer({
     celebration,
     setCelebration,
     promptStartTime,
+    puzzlePieceTarget,
+    setPuzzlePieceTarget,
   } = useKnowYourWorld()
   // Extract force tuning parameters with defaults
   const {
@@ -1320,31 +1322,103 @@ export function MapRenderer({
   // Wrapper function to intercept clicks and trigger celebration for correct regions
   const handleRegionClickWithCelebration = useCallback(
     (regionId: string, regionName: string) => {
-      // If we're already celebrating, ignore clicks
-      if (celebration) return
+      // If we're already celebrating or puzzle piece animating, ignore clicks
+      if (celebration || puzzlePieceTarget) return
 
       // Check if this is the correct region
       if (regionId === currentPrompt) {
-        // Correct! Start celebration
+        // Correct! Calculate celebration type
         const metrics = getSearchMetrics(promptStartTime.current)
         const celebrationType = classifyCelebration(metrics)
 
         // Store pending click for after celebration
         pendingCelebrationClick.current = { regionId, regionName }
 
-        // Start celebration
-        setCelebration({
-          regionId,
-          regionName,
-          type: celebrationType,
-          startTime: Date.now(),
-        })
+        // In Learning mode, show puzzle piece animation first
+        if (assistanceLevel === 'learning' && svgRef.current) {
+          // Query the actual DOM element to get its bounding boxes
+          const pathElement = svgRef.current.querySelector(`path[data-region-id="${regionId}"]`)
+          if (pathElement && pathElement instanceof SVGGraphicsElement) {
+            // Get the actual screen bounding rect of the rendered path
+            const pathRect = pathElement.getBoundingClientRect()
+            // Get the SVG coordinate bounding box (for viewBox)
+            const svgBBox = pathElement.getBBox()
+
+            console.log('[PuzzlePiece] Direct DOM measurement:', {
+              regionId,
+              screenRect: {
+                left: pathRect.left,
+                top: pathRect.top,
+                width: pathRect.width,
+                height: pathRect.height,
+              },
+              svgBBox: {
+                x: svgBBox.x,
+                y: svgBBox.y,
+                width: svgBBox.width,
+                height: svgBBox.height,
+              },
+            })
+
+            setPuzzlePieceTarget({
+              regionId,
+              regionName,
+              celebrationType,
+              // Target is the actual screen rect of the region on the map
+              x: pathRect.left,
+              y: pathRect.top,
+              width: pathRect.width,
+              height: pathRect.height,
+              // SVG coordinate bounding box for correct viewBox
+              svgBBox: {
+                x: svgBBox.x,
+                y: svgBBox.y,
+                width: svgBBox.width,
+                height: svgBBox.height,
+              },
+            })
+          } else {
+            // Fallback: start celebration immediately if path not found
+            setCelebration({
+              regionId,
+              regionName,
+              type: celebrationType,
+              startTime: Date.now(),
+            })
+          }
+        } else if (assistanceLevel === 'learning') {
+          // Learning mode but refs not ready - start celebration immediately
+          setCelebration({
+            regionId,
+            regionName,
+            type: celebrationType,
+            startTime: Date.now(),
+          })
+        } else {
+          // Other modes: Start celebration immediately
+          setCelebration({
+            regionId,
+            regionName,
+            type: celebrationType,
+            startTime: Date.now(),
+          })
+        }
       } else {
         // Wrong region - handle immediately
         onRegionClick(regionId, regionName)
       }
     },
-    [celebration, currentPrompt, getSearchMetrics, promptStartTime, setCelebration, onRegionClick]
+    [
+      celebration,
+      puzzlePieceTarget,
+      currentPrompt,
+      getSearchMetrics,
+      promptStartTime,
+      setCelebration,
+      setPuzzlePieceTarget,
+      onRegionClick,
+      assistanceLevel,
+    ]
   )
 
   // Get center of celebrating region for confetti origin

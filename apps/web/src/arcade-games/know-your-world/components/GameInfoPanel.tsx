@@ -34,15 +34,33 @@ const NAME_ATTENTION_DURATION = 3000
 const TAKEOVER_ANIMATION_CONFIG = { tension: 170, friction: 20 }
 
 /**
+ * Get Unicode code points for a string (for debugging)
+ */
+function getCodePoints(str: string): string {
+  return [...str].map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+}
+
+/**
  * Normalize accented characters to their base ASCII letters.
  * e.g., 'é' → 'e', 'ñ' → 'n', 'ü' → 'u', 'ç' → 'c'
  * Uses Unicode NFD normalization to decompose characters, then strips diacritical marks.
  */
 function normalizeToBaseLetter(char: string): string {
-  return char
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
+  const nfd = char.normalize('NFD')
+  const stripped = nfd.replace(/[\u0300-\u036f]/g, '')
+  const result = stripped.toLowerCase()
+  // Debug logging for accent normalization
+  if (char !== result) {
+    console.log('[Client] normalizeToBaseLetter:', {
+      input: char,
+      inputCodePoints: getCodePoints(char),
+      afterNFD: nfd,
+      nfdCodePoints: getCodePoints(nfd),
+      afterStrip: stripped,
+      result,
+    })
+  }
+  return result
 }
 
 // Helper to get hot/cold feedback emoji (matches MapRenderer's getHotColdEmoji)
@@ -96,8 +114,18 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { state, lastError, clearError, giveUp, confirmLetter, controlsState, setIsInTakeover } =
-    useKnowYourWorld()
+  const {
+    state,
+    lastError,
+    clearError,
+    giveUp,
+    confirmLetter,
+    controlsState,
+    setIsInTakeover,
+    puzzlePieceTarget,
+    setPuzzlePieceTarget,
+    setCelebration,
+  } = useKnowYourWorld()
 
   // Destructure controls state from context
   const {
@@ -192,22 +220,39 @@ export function GameInfoPanel({
   const displayFlagEmoji =
     selectedMap === 'world' && displayRegionId ? getCountryFlagEmoji(displayRegionId) : ''
 
-  // Get the region's SVG path for the takeover shape display
+  // Get the region's SVG path for the takeover shape display (no padding to match animation)
   const displayRegionShape = useMemo(() => {
     if (!displayRegionId) return null
     const region = mapData.regions.find((r) => r.id === displayRegionId)
     if (!region?.path) return null
 
-    // Calculate bounding box with padding for the viewBox
+    // Calculate bounding box WITHOUT padding - must match puzzlePieceTarget.svgBBox approach
+    // so part 1 (typing) and part 2 (animation) show the region at the same position
     const bbox = calculateBoundingBox([region.path])
-    const padding = Math.max(bbox.width, bbox.height) * 0.1 // 10% padding
-    const viewBox = `${bbox.minX - padding} ${bbox.minY - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`
+    const viewBox = `${bbox.minX} ${bbox.minY} ${bbox.width} ${bbox.height}`
 
     return {
       path: region.path,
       viewBox,
     }
   }, [displayRegionId, mapData.regions])
+
+  // Get the region's SVG path for puzzle piece animation
+  // Uses the exact SVG bounding box from getBBox() passed in the target
+  const puzzlePieceShape = useMemo(() => {
+    if (!puzzlePieceTarget) return null
+    const region = mapData.regions.find((r) => r.id === puzzlePieceTarget.regionId)
+    if (!region?.path) return null
+
+    // Use the exact SVG bounding box from getBBox() - this is pixel-perfect
+    const { x, y, width, height } = puzzlePieceTarget.svgBBox
+    const viewBox = `${x} ${y} ${width} ${height}`
+
+    return {
+      path: region.path,
+      viewBox,
+    }
+  }, [puzzlePieceTarget, mapData.regions])
 
   // Track if animation is in progress (local state based on timestamp)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -234,6 +279,9 @@ export function GameInfoPanel({
 
   // Ref to measure the takeover container (region name + instructions)
   const takeoverContainerRef = useRef<HTMLDivElement>(null)
+
+  // Ref to the takeover region shape SVG for capturing source position
+  const takeoverRegionShapeRef = useRef<SVGSVGElement>(null)
 
   // Calculate the safe scale factor based on viewport size
   const [safeScale, setSafeScale] = useState(2.5)
@@ -296,14 +344,69 @@ export function GameInfoPanel({
     config: TAKEOVER_ANIMATION_CONFIG,
   })
 
+  // Puzzle piece animation spring - animates from takeover position to map position
+  const puzzlePieceSpring = useSpring({
+    // Only animate when we have both target and source (sourceRect)
+    to: puzzlePieceTarget?.sourceRect
+        ? {
+            // Target: actual screen position of region on map (top-left coords)
+            x: puzzlePieceTarget.x,
+            y: puzzlePieceTarget.y,
+            width: puzzlePieceTarget.width,
+            height: puzzlePieceTarget.height,
+            opacity: 1, // Keep visible during animation
+          }
+        : {
+            // Default: centered on screen (fallback)
+            x: typeof window !== 'undefined' ? (window.innerWidth - 400) / 2 : 200,
+            y: typeof window !== 'undefined' ? (window.innerHeight - 400) / 2 : 100,
+            width: 400,
+            height: 400,
+            opacity: 1,
+          },
+    from: puzzlePieceTarget?.sourceRect
+      ? {
+          // Start: actual position from takeover screen
+          x: puzzlePieceTarget.sourceRect.x,
+          y: puzzlePieceTarget.sourceRect.y,
+          width: puzzlePieceTarget.sourceRect.width,
+          height: puzzlePieceTarget.sourceRect.height,
+          opacity: 1,
+        }
+      : undefined,
+    reset: !!puzzlePieceTarget?.sourceRect,
+    config: { tension: 120, friction: 18 },
+    onRest: () => {
+      if (puzzlePieceTarget) {
+        // Animation complete - start celebration
+        setCelebration({
+          regionId: puzzlePieceTarget.regionId,
+          regionName: puzzlePieceTarget.regionName,
+          type: puzzlePieceTarget.celebrationType,
+          startTime: Date.now(),
+        })
+        setPuzzlePieceTarget(null)
+      }
+    },
+  })
+
+  // Whether we're in puzzle piece animation mode (has sourceRect means animation is active)
+  const isPuzzlePieceAnimating = puzzlePieceTarget !== null && puzzlePieceTarget.sourceRect !== undefined
+
+  // Whether we're in the "fade back in" phase (target set, waiting for sourceRect capture)
+  const isFadingBackIn = puzzlePieceTarget !== null && puzzlePieceTarget.sourceRect === undefined
+
   // Memoize whether we're in active takeover mode
-  const isInTakeoverLocal = isLearningMode && takeoverProgress < 1
+  // Takeover visible: during typing OR when fading back in for animation OR during animation
+  const isInTakeoverLocal =
+    isLearningMode && (takeoverProgress < 1 || isFadingBackIn || isPuzzlePieceAnimating)
   const showPulseAnimation = isLearningMode && takeoverProgress < 0.5
 
   // Sync takeover state to context (so MapRenderer can suppress hot/cold feedback)
+  // Also consider puzzle piece animation as a takeover state
   useEffect(() => {
-    setIsInTakeover(isInTakeoverLocal)
-  }, [isInTakeoverLocal, setIsInTakeover])
+    setIsInTakeover(isInTakeoverLocal || isPuzzlePieceAnimating)
+  }, [isInTakeoverLocal, isPuzzlePieceAnimating, setIsInTakeover])
 
   // Reset local UI state when region changes
   // Note: nameConfirmationProgress is reset on the server when prompt changes
@@ -343,6 +446,37 @@ export function GameInfoPanel({
   useEffect(() => {
     optimisticLetterCountRef.current = 0
   }, [currentRegionName])
+
+  // Capture source rect from takeover region shape when puzzlePieceTarget is set
+  // This provides the starting position for the fly-to-map animation
+  // Add a delay so the takeover is visible before the animation starts
+  useEffect(() => {
+    // Only capture if target is set but doesn't have sourceRect yet
+    if (puzzlePieceTarget && !puzzlePieceTarget.sourceRect) {
+      // Brief delay to let the takeover fade back in and be visible
+      const timeoutId = setTimeout(() => {
+        if (takeoverRegionShapeRef.current) {
+          const sourceRect = takeoverRegionShapeRef.current.getBoundingClientRect()
+          // Update the target with the source rect
+          setPuzzlePieceTarget((prev) =>
+            prev && !prev.sourceRect
+              ? {
+                  ...prev,
+                  sourceRect: {
+                    x: sourceRect.left,
+                    y: sourceRect.top,
+                    width: sourceRect.width,
+                    height: sourceRect.height,
+                  },
+                }
+              : prev
+          )
+        }
+      }, 400) // 400ms delay to show takeover before animation
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [puzzlePieceTarget, setPuzzlePieceTarget])
 
   // Listen for keypresses to confirm letters (only when name confirmation is required)
   // Dispatches to shared state so all multiplayer sessions see the same progress
@@ -387,6 +521,15 @@ export function GameInfoPanel({
       // Normalize accented letters to base ASCII (e.g., 'é' → 'e', 'ñ' → 'n')
       // so users can type region names like "Côte d'Ivoire" or "São Tomé" with a regular keyboard
       const expectedLetter = normalizeToBaseLetter(letterInfo.char)
+
+      console.log('[LetterConfirm] Keyboard input:', {
+        pressedLetter,
+        letterInfo,
+        expectedLetter,
+        match: pressedLetter === expectedLetter,
+        regionName: currentRegionName,
+        letterIndex: nextLetterIndex,
+      })
 
       if (pressedLetter === expectedLetter) {
         // Optimistically advance count before server responds
@@ -525,7 +668,7 @@ export function GameInfoPanel({
       `}</style>
 
       {/* Takeover overlay - contains scrim backdrop, region shape, and takeover text */}
-      {/* All children share the same stacking context */}
+      {/* Also shows during puzzle piece animation (silhouette only) */}
       <div
         data-element="takeover-overlay"
         className={css({
@@ -540,10 +683,10 @@ export function GameInfoPanel({
           transition: 'opacity 0.3s ease-out',
         })}
         style={{
-          opacity: isInTakeoverLocal ? 1 : 0,
+          opacity: isInTakeoverLocal || isPuzzlePieceAnimating ? 1 : 0,
         }}
       >
-        {/* Backdrop scrim with blur */}
+        {/* Backdrop scrim with blur - fade out during puzzle piece animation */}
         <div
           data-element="takeover-scrim"
           className={css({
@@ -552,184 +695,255 @@ export function GameInfoPanel({
             left: 0,
             right: 0,
             bottom: 0,
+            transition: 'opacity 0.3s ease-out',
           })}
           style={{
             backgroundColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
+            // Fade out scrim during puzzle piece animation
+            opacity: isPuzzlePieceAnimating ? 0 : 1,
           }}
         />
 
-        {/* Region shape silhouette */}
-        {displayRegionShape && (
-          <svg
-            data-element="takeover-region-shape"
-            viewBox={displayRegionShape.viewBox}
-            preserveAspectRatio="xMidYMid meet"
-            className={css({
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-            })}
+        {/* Region shape silhouette - shown during takeover, until animation starts */}
+        {/* Must check isInTakeoverLocal to prevent flash when animation ends */}
+        {displayRegionShape && isInTakeoverLocal && !isPuzzlePieceAnimating && (() => {
+          // Parse viewBox to get aspect ratio
+          const viewBox = puzzlePieceTarget?.svgBBox
+            ? `${puzzlePieceTarget.svgBBox.x} ${puzzlePieceTarget.svgBBox.y} ${puzzlePieceTarget.svgBBox.width} ${puzzlePieceTarget.svgBBox.height}`
+            : displayRegionShape.viewBox
+
+          // Extract width/height from viewBox for aspect ratio calculation
+          const viewBoxParts = viewBox.split(' ').map(Number)
+          const viewBoxWidth = viewBoxParts[2] || 1
+          const viewBoxHeight = viewBoxParts[3] || 1
+          const aspectRatio = viewBoxWidth / viewBoxHeight
+
+          // Calculate container size that fits within 60% of viewport while preserving aspect ratio
+          const maxSize = typeof window !== 'undefined'
+            ? Math.min(window.innerWidth, window.innerHeight) * 0.6
+            : 400
+
+          let width: number
+          let height: number
+          if (aspectRatio > 1) {
+            // Wider than tall
+            width = maxSize
+            height = maxSize / aspectRatio
+          } else {
+            // Taller than wide
+            height = maxSize
+            width = maxSize * aspectRatio
+          }
+
+          // Center on screen
+          const x = typeof window !== 'undefined' ? (window.innerWidth - width) / 2 : 200
+          const y = typeof window !== 'undefined' ? (window.innerHeight - height) / 2 : 100
+
+          return (
+            <svg
+              ref={takeoverRegionShapeRef}
+              data-element="takeover-region-shape"
+              viewBox={viewBox}
+              preserveAspectRatio="xMidYMid meet"
+              style={{
+                position: 'fixed',
+                left: `${x}px`,
+                top: `${y}px`,
+                width: `${width}px`,
+                height: `${height}px`,
+                zIndex: 151,
+                pointerEvents: 'none',
+              }}
+            >
+              <path
+                d={displayRegionShape.path}
+                fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
+              />
+            </svg>
+          )
+        })()}
+
+        {/* Animated puzzle piece silhouette - flies from center to map position */}
+        {puzzlePieceShape && isPuzzlePieceAnimating && (
+          <animated.svg
+            data-element="puzzle-piece-silhouette"
+            viewBox={puzzlePieceShape.viewBox}
+            preserveAspectRatio="none"
+            style={{
+              position: 'fixed',
+              left: puzzlePieceSpring.x.to((x) => `${x}px`),
+              top: puzzlePieceSpring.y.to((y) => `${y}px`),
+              width: puzzlePieceSpring.width.to((w) => `${w}px`),
+              height: puzzlePieceSpring.height.to((h) => `${h}px`),
+              opacity: puzzlePieceSpring.opacity,
+              zIndex: 9000,
+              pointerEvents: 'none',
+            }}
           >
             <path
-              d={displayRegionShape.path}
-              fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
+              d={puzzlePieceShape.path}
+              fill={isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)'}
+              stroke={isDark ? '#3b82f6' : '#2563eb'}
+              strokeWidth={2}
             />
-          </svg>
+          </animated.svg>
         )}
 
         {/* Takeover text - CSS centered, only scale is animated */}
-        <animated.div
-          data-element="takeover-content"
-          className={css({
-            position: 'absolute',
-            // CSS centering
-            top: '50%',
-            left: '50%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            transformOrigin: 'center center',
-          })}
-          style={{
-            // Combine centering translation with animated scale
-            transform: takeoverSpring.scale.to((s) => `translate(-50%, -50%) scale(${s})`),
-            animation: showPulseAnimation ? 'takeoverPulse 0.8s ease-in-out infinite' : 'none',
-          }}
-        >
-          {/* Region name display */}
-          <div
-            data-element="takeover-region-name"
+        {/* Hidden during puzzle piece animation */}
+        {!isPuzzlePieceAnimating && (
+          <animated.div
+            data-element="takeover-content"
             className={css({
-              fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
-              fontWeight: 'bold',
-              color: isDark ? 'white' : 'blue.900',
-              whiteSpace: 'nowrap',
+              position: 'absolute',
+              // CSS centering
+              top: '50%',
+              left: '50%',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: { base: '1', sm: '2' },
+              transformOrigin: 'center center',
             })}
             style={{
-              textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.2)',
+              // Combine centering translation with animated scale
+              transform: takeoverSpring.scale.to((s) => `translate(-50%, -50%) scale(${s})`),
+              animation: showPulseAnimation ? 'takeoverPulse 0.8s ease-in-out infinite' : 'none',
             }}
           >
-            {displayFlagEmoji && (
-              <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
-                {displayFlagEmoji}
-              </span>
-            )}
-            <span>
-              {displayRegionName
-                ? (() => {
-                    // Track non-space letter index as we iterate
-                    let nonSpaceIndex = 0
-                    return displayRegionName.split('').map((char, index) => {
-                      const isSpace = char === ' '
-                      const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex
-
-                      // Increment non-space counter AFTER getting current index
-                      if (!isSpace) {
-                        nonSpaceIndex++
-                      }
-
-                      // Spaces are always shown as confirmed (not underlined, full opacity)
-                      if (isSpace) {
-                        return (
-                          <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
-                            {char}
-                          </span>
-                        )
-                      }
-
-                      // For letters, check confirmation status using non-space index
-                      const needsConfirmation =
-                        !isGiveUpAnimating &&
-                        requiresNameConfirmation > 0 &&
-                        !nameConfirmed &&
-                        currentNonSpaceIndex < requiresNameConfirmation
-                      const isConfirmed = currentNonSpaceIndex < confirmedLetterCount
-                      const isNextToConfirm =
-                        currentNonSpaceIndex === confirmedLetterCount && needsConfirmation
-
-                      return (
-                        <span
-                          key={index}
-                          className={css({ transition: 'all 0.15s ease-out' })}
-                          style={{
-                            opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
-                            textDecoration: isNextToConfirm ? 'underline' : 'none',
-                            textDecorationColor: isNextToConfirm
-                              ? isDark
-                                ? '#60a5fa'
-                                : '#3b82f6'
-                              : undefined,
-                            textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
-                          }}
-                        >
-                          {char}
-                        </span>
-                      )
-                    })
-                  })()
-                : '...'}
-            </span>
-          </div>
-
-          {/* Type-to-unlock instruction */}
-          {!isGiveUpAnimating && requiresNameConfirmation > 0 && !nameConfirmed && (
+            {/* Region name display */}
             <div
-              data-element="takeover-type-instruction"
+              data-element="takeover-region-name"
               className={css({
-                marginTop: '2',
-                fontSize: { base: 'sm', sm: 'md' },
-                color: isDark ? 'amber.300' : 'amber.700',
+                fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
+                fontWeight: 'bold',
+                color: isDark ? 'white' : 'blue.900',
+                whiteSpace: 'nowrap',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '1.5',
+                gap: { base: '1', sm: '2' },
               })}
+              style={{
+                textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.2)',
+              }}
             >
-              {/* In turn-based mode, show current player's emoji to indicate whose turn it is */}
-              {gameMode === 'turn-based' && currentPlayerEmoji ? (
-                <span>{currentPlayerEmoji}</span>
-              ) : (
-                <span>⌨️</span>
+              {displayFlagEmoji && (
+                <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
+                  {displayFlagEmoji}
+                </span>
               )}
               <span>
-                {gameMode === 'turn-based' && !isMyTurn
-                  ? `Waiting for ${playerMetadata[currentPlayer]?.name || 'player'} to type...`
-                  : `Type the underlined letter${requiresNameConfirmation > 1 ? 's' : ''}`}
+                {displayRegionName
+                  ? (() => {
+                      // Track non-space letter index as we iterate
+                      let nonSpaceIndex = 0
+                      return displayRegionName.split('').map((char, index) => {
+                        const isSpace = char === ' '
+                        const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex
+
+                        // Increment non-space counter AFTER getting current index
+                        if (!isSpace) {
+                          nonSpaceIndex++
+                        }
+
+                        // Spaces are always shown as confirmed (not underlined, full opacity)
+                        if (isSpace) {
+                          return (
+                            <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
+                              {char}
+                            </span>
+                          )
+                        }
+
+                        // For letters, check confirmation status using non-space index
+                        const needsConfirmation =
+                          !isGiveUpAnimating &&
+                          requiresNameConfirmation > 0 &&
+                          !nameConfirmed &&
+                          currentNonSpaceIndex < requiresNameConfirmation
+                        const isConfirmed = currentNonSpaceIndex < confirmedLetterCount
+                        const isNextToConfirm =
+                          currentNonSpaceIndex === confirmedLetterCount && needsConfirmation
+
+                        return (
+                          <span
+                            key={index}
+                            className={css({ transition: 'all 0.15s ease-out' })}
+                            style={{
+                              opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
+                              textDecoration: isNextToConfirm ? 'underline' : 'none',
+                              textDecorationColor: isNextToConfirm
+                                ? isDark
+                                  ? '#60a5fa'
+                                  : '#3b82f6'
+                                : undefined,
+                              textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
+                            }}
+                          >
+                            {char}
+                          </span>
+                        )
+                      })
+                    })()
+                  : '...'}
               </span>
             </div>
-          )}
 
-          {/* "Not your turn" notice */}
-          {showNotYourTurn && (
-            <div
-              data-element="not-your-turn-notice"
-              className={css({
-                marginTop: '3',
-                padding: '2 4',
-                bg: isDark ? 'red.900/80' : 'red.100',
-                color: isDark ? 'red.200' : 'red.800',
-                rounded: 'lg',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                textAlign: 'center',
-              })}
-            >
-              ⏳ Not your turn! Wait for {playerMetadata[currentPlayer]?.name || 'the other player'}
-              .
-            </div>
-          )}
-        </animated.div>
+            {/* Type-to-unlock instruction */}
+            {!isGiveUpAnimating && requiresNameConfirmation > 0 && !nameConfirmed && (
+              <div
+                data-element="takeover-type-instruction"
+                className={css({
+                  marginTop: '2',
+                  fontSize: { base: 'sm', sm: 'md' },
+                  color: isDark ? 'amber.300' : 'amber.700',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1.5',
+                })}
+              >
+                {/* In turn-based mode, show current player's emoji to indicate whose turn it is */}
+                {gameMode === 'turn-based' && currentPlayerEmoji ? (
+                  <span>{currentPlayerEmoji}</span>
+                ) : (
+                  <span>⌨️</span>
+                )}
+                <span>
+                  {gameMode === 'turn-based' && !isMyTurn
+                    ? `Waiting for ${playerMetadata[currentPlayer]?.name || 'player'} to type...`
+                    : `Type the underlined letter${requiresNameConfirmation > 1 ? 's' : ''}`}
+                </span>
+              </div>
+            )}
+
+            {/* "Not your turn" notice */}
+            {showNotYourTurn && (
+              <div
+                data-element="not-your-turn-notice"
+                className={css({
+                  marginTop: '3',
+                  padding: '2 4',
+                  bg: isDark ? 'red.900/80' : 'red.100',
+                  color: isDark ? 'red.200' : 'red.800',
+                  rounded: 'lg',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  textAlign: 'center',
+                })}
+              >
+                ⏳ Not your turn! Wait for{' '}
+                {playerMetadata[currentPlayer]?.name || 'the other player'}.
+              </div>
+            )}
+          </animated.div>
+        )}
 
         {/* On-screen keyboard for mobile/touch devices - OUTSIDE animated container so it doesn't scale */}
         {!isGiveUpAnimating &&
+          !isPuzzlePieceAnimating &&
           requiresNameConfirmation > 0 &&
           !nameConfirmed &&
           currentRegionName && (
@@ -774,6 +988,15 @@ export function GameInfoPanel({
                   // Normalize accented letters to base ASCII (e.g., 'é' → 'e', 'ñ' → 'n')
                   const expectedLetter = normalizeToBaseLetter(letterInfo.char)
                   const pressedLetter = letter.toLowerCase()
+
+                  console.log('[LetterConfirm] Virtual keyboard:', {
+                    pressedLetter,
+                    letterInfo,
+                    expectedLetter,
+                    match: pressedLetter === expectedLetter,
+                    regionName: currentRegionName,
+                    letterIndex: nextLetterIndex,
+                  })
 
                   if (pressedLetter === expectedLetter) {
                     // Optimistically advance count before server responds

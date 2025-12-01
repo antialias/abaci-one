@@ -60,6 +60,34 @@ export interface CelebrationState {
   startTime: number
 }
 
+// Puzzle piece animation target (Learning mode only)
+// Contains the screen position where the region silhouette should animate to
+export interface PuzzlePieceTarget {
+  regionId: string
+  regionName: string
+  celebrationType: CelebrationType
+  // Target screen position (top-left of where the region appears on the map)
+  x: number
+  y: number
+  // Target screen dimensions
+  width: number
+  height: number
+  // SVG coordinate bounding box (from getBBox()) for correct viewBox
+  svgBBox: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+  // Source screen position (from takeover screen) - populated by GameInfoPanel
+  sourceRect?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}
+
 const defaultControlsState: ControlsState = {
   isPointerLocked: false,
   fakeCursorPosition: null,
@@ -142,6 +170,11 @@ interface KnowYourWorldContextValue {
   setCelebration: React.Dispatch<React.SetStateAction<CelebrationState | null>>
   promptStartTime: React.MutableRefObject<number>
 
+  // Puzzle piece animation state (Learning mode only)
+  // When set, GameInfoPanel animates the region silhouette to the target position
+  puzzlePieceTarget: PuzzlePieceTarget | null
+  setPuzzlePieceTarget: React.Dispatch<React.SetStateAction<PuzzlePieceTarget | null>>
+
   // Shared container ref for pointer lock button detection
   sharedContainerRef: React.RefObject<HTMLDivElement>
 }
@@ -173,6 +206,9 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Celebration state for correct region finds
   const [celebration, setCelebration] = useState<CelebrationState | null>(null)
   const promptStartTime = useRef<number>(Date.now())
+
+  // Puzzle piece animation state (Learning mode only)
+  const [puzzlePieceTarget, setPuzzlePieceTarget] = useState<PuzzlePieceTarget | null>(null)
 
   // Shared container ref for pointer lock button detection
   const sharedContainerRef = useRef<HTMLDivElement>(null)
@@ -597,6 +633,8 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         celebration,
         setCelebration,
         promptStartTime,
+        puzzlePieceTarget,
+        setPuzzlePieceTarget,
         sharedContainerRef,
       }}
     >
