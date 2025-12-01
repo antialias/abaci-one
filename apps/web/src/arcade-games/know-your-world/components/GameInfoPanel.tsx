@@ -119,13 +119,36 @@ export function GameInfoPanel({
   } = controlsState
 
   // Get game state values
-  const { giveUpVotes = [], activeUserIds = [], gameMode } = state
+  const {
+    giveUpVotes = [],
+    activeUserIds = [],
+    gameMode,
+    currentPlayer,
+    playerMetadata = {},
+  } = state
 
   // Get viewer ID for vote checking
   const { data: viewerId } = useViewerId()
 
   // Touch device detection for virtual keyboard
   const isTouchDevice = useIsTouchDevice()
+
+  // Track "not your turn" notification
+  const [showNotYourTurn, setShowNotYourTurn] = useState(false)
+
+  // Check if it's the local viewer's turn (for turn-based mode)
+  const isMyTurn = useMemo(() => {
+    if (gameMode !== 'turn-based') return true // Always "your turn" in non-turn-based modes
+    if (!currentPlayer || !viewerId) return false
+    const currentPlayerMeta = playerMetadata[currentPlayer]
+    return currentPlayerMeta?.userId === viewerId
+  }, [gameMode, currentPlayer, viewerId, playerMetadata])
+
+  // Get current player's emoji for display
+  const currentPlayerEmoji = useMemo(() => {
+    if (!currentPlayer) return null
+    return playerMetadata[currentPlayer]?.emoji || null
+  }, [currentPlayer, playerMetadata])
 
   // Music context and modal state
   const music = useMusic()
@@ -334,6 +357,20 @@ export function GameInfoPanel({
         return
       }
 
+      // Only accept single character keys (letters only)
+      const pressedLetter = e.key.toLowerCase()
+      if (pressedLetter.length !== 1 || !/[a-z]/i.test(pressedLetter)) {
+        return
+      }
+
+      // In turn-based mode, only allow the current player to type
+      if (gameMode === 'turn-based' && !isMyTurn) {
+        setShowNotYourTurn(true)
+        // Auto-hide the notice after 2 seconds
+        setTimeout(() => setShowNotYourTurn(false), 2000)
+        return
+      }
+
       // Use optimistic count to prevent race conditions when typing fast
       const nextLetterIndex = optimisticLetterCountRef.current
       if (nextLetterIndex >= requiresNameConfirmation) {
@@ -350,23 +387,26 @@ export function GameInfoPanel({
       // Normalize accented letters to base ASCII (e.g., 'é' → 'e', 'ñ' → 'n')
       // so users can type region names like "Côte d'Ivoire" or "São Tomé" with a regular keyboard
       const expectedLetter = normalizeToBaseLetter(letterInfo.char)
-      const pressedLetter = e.key.toLowerCase()
 
-      // Only accept single character keys (letters only, no space needed since we skip spaces)
-      if (pressedLetter.length === 1 && /[a-z]/i.test(pressedLetter)) {
-        if (pressedLetter === expectedLetter) {
-          // Optimistically advance count before server responds
-          optimisticLetterCountRef.current = nextLetterIndex + 1
-          // Dispatch to shared state - server validates and broadcasts to all sessions
-          confirmLetter(pressedLetter, nextLetterIndex)
-        }
-        // Ignore wrong characters silently (no feedback, no backspace needed)
+      if (pressedLetter === expectedLetter) {
+        // Optimistically advance count before server responds
+        optimisticLetterCountRef.current = nextLetterIndex + 1
+        // Dispatch to shared state - server validates and broadcasts to all sessions
+        confirmLetter(pressedLetter, nextLetterIndex)
       }
+      // Ignore wrong characters silently (no feedback, no backspace needed)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [requiresNameConfirmation, nameConfirmed, currentRegionName, confirmLetter])
+  }, [
+    requiresNameConfirmation,
+    nameConfirmed,
+    currentRegionName,
+    confirmLetter,
+    gameMode,
+    isMyTurn,
+  ])
 
   // Check if animation is in progress based on timestamp
   useEffect(() => {
@@ -653,8 +693,37 @@ export function GameInfoPanel({
                 gap: '1.5',
               })}
             >
-              <span>⌨️</span>
-              <span>Type the underlined letter{requiresNameConfirmation > 1 ? 's' : ''}</span>
+              {/* In turn-based mode, show current player's emoji to indicate whose turn it is */}
+              {gameMode === 'turn-based' && currentPlayerEmoji ? (
+                <span>{currentPlayerEmoji}</span>
+              ) : (
+                <span>⌨️</span>
+              )}
+              <span>
+                {gameMode === 'turn-based' && !isMyTurn
+                  ? `Waiting for ${playerMetadata[currentPlayer]?.name || 'player'} to type...`
+                  : `Type the underlined letter${requiresNameConfirmation > 1 ? 's' : ''}`}
+              </span>
+            </div>
+          )}
+
+          {/* "Not your turn" notice */}
+          {showNotYourTurn && (
+            <div
+              data-element="not-your-turn-notice"
+              className={css({
+                marginTop: '3',
+                padding: '2 4',
+                bg: isDark ? 'red.900/80' : 'red.100',
+                color: isDark ? 'red.200' : 'red.800',
+                rounded: 'lg',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                textAlign: 'center',
+              })}
+            >
+              ⏳ Not your turn! Wait for {playerMetadata[currentPlayer]?.name || 'the other player'}
+              .
             </div>
           )}
         </animated.div>
@@ -688,6 +757,13 @@ export function GameInfoPanel({
                 })()}
                 isDark={isDark}
                 onKeyPress={(letter) => {
+                  // In turn-based mode, only allow the current player to type
+                  if (gameMode === 'turn-based' && !isMyTurn) {
+                    setShowNotYourTurn(true)
+                    setTimeout(() => setShowNotYourTurn(false), 2000)
+                    return
+                  }
+
                   const nextLetterIndex = optimisticLetterCountRef.current
                   if (nextLetterIndex >= requiresNameConfirmation) return
 
@@ -1218,8 +1294,17 @@ export function GameInfoPanel({
                 gap: '1.5',
               })}
             >
-              <span>⌨️</span>
-              <span>Type the underlined letter{requiresNameConfirmation > 1 ? 's' : ''}</span>
+              {/* In turn-based mode, show current player's emoji to indicate whose turn it is */}
+              {gameMode === 'turn-based' && currentPlayerEmoji ? (
+                <span>{currentPlayerEmoji}</span>
+              ) : (
+                <span>⌨️</span>
+              )}
+              <span>
+                {gameMode === 'turn-based' && !isMyTurn
+                  ? `Waiting for ${playerMetadata[currentPlayer]?.name || 'player'} to type...`
+                  : `Type the underlined letter${requiresNameConfirmation > 1 ? 's' : ''}`}
+              </span>
             </div>
           )}
         </div>
