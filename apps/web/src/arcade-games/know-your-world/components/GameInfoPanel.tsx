@@ -517,7 +517,7 @@ export function GameInfoPanel({
     requiresNameConfirmation > 0 ? confirmedLetterCount / requiresNameConfirmation : 0
 
   // Exponential curve for more dramatic pickup (x^3 gives steep curve at the end)
-  const exponentialIntensity = Math.pow(tracerIntensity, 2.5)
+  const exponentialIntensity = tracerIntensity ** 2.5
 
   // Heating color interpolation: blue → purple → orange → gold
   // Gold at the end matches the celebration styling on the map

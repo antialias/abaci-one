@@ -112,6 +112,79 @@ function getHotColdEmoji(feedbackType: FeedbackType | null): string {
 }
 
 /**
+ * Get heat-based border color for magnifier based on hot/cold feedback
+ * Returns an object with border color and glow color
+ */
+function getHeatBorderColors(
+  feedbackType: FeedbackType | null,
+  isDark: boolean
+): { border: string; glow: string; width: number } {
+  switch (feedbackType) {
+    case 'found_it':
+      return {
+        border: isDark ? '#fbbf24' : '#f59e0b', // gold
+        glow: 'rgba(251, 191, 36, 0.6)',
+        width: 4,
+      }
+    case 'on_fire':
+      return {
+        border: isDark ? '#ef4444' : '#dc2626', // red
+        glow: 'rgba(239, 68, 68, 0.5)',
+        width: 4,
+      }
+    case 'hot':
+      return {
+        border: isDark ? '#f97316' : '#ea580c', // orange
+        glow: 'rgba(249, 115, 22, 0.4)',
+        width: 3,
+      }
+    case 'warmer':
+      return {
+        border: isDark ? '#fb923c' : '#f97316', // light orange
+        glow: 'rgba(251, 146, 60, 0.3)',
+        width: 3,
+      }
+    case 'colder':
+      return {
+        border: isDark ? '#93c5fd' : '#60a5fa', // light blue
+        glow: 'rgba(147, 197, 253, 0.3)',
+        width: 3,
+      }
+    case 'cold':
+      return {
+        border: isDark ? '#60a5fa' : '#3b82f6', // blue
+        glow: 'rgba(96, 165, 250, 0.4)',
+        width: 3,
+      }
+    case 'freezing':
+      return {
+        border: isDark ? '#38bdf8' : '#0ea5e9', // cyan/ice blue
+        glow: 'rgba(56, 189, 248, 0.5)',
+        width: 4,
+      }
+    case 'overshot':
+      return {
+        border: isDark ? '#facc15' : '#eab308', // yellow
+        glow: 'rgba(250, 204, 21, 0.4)',
+        width: 3,
+      }
+    case 'stuck':
+      return {
+        border: isDark ? '#9ca3af' : '#6b7280', // gray
+        glow: 'rgba(156, 163, 175, 0.2)',
+        width: 3,
+      }
+    default:
+      // Default blue when no hot/cold active
+      return {
+        border: isDark ? '#60a5fa' : '#3b82f6',
+        glow: 'rgba(96, 165, 250, 0.3)',
+        width: 3,
+      }
+  }
+}
+
+/**
  * Calculate the actual rendered viewport within an SVG element.
  * SVG uses preserveAspectRatio="xMidYMid meet" by default, which:
  * - Scales uniformly to fit within the element while preserving aspect ratio
@@ -650,8 +723,8 @@ export function MapRenderer({
   }, [assistanceLevel, assistanceAllowsHotCold, hotColdEnabled])
 
   // Whether hot/cold button should be shown at all
-  // Uses hasAnyFinePointer because iPads with attached mice should show hot/cold
-  const showHotCold = isSpeechSupported && hasAnyFinePointer && assistanceAllowsHotCold
+  // Shows on all devices - mobile uses magnifier for hot/cold feedback
+  const showHotCold = isSpeechSupported && assistanceAllowsHotCold
 
   // Persist auto-speak setting
   const handleAutoSpeakChange = useCallback((enabled: boolean) => {
@@ -770,7 +843,8 @@ export function MapRenderer({
   ])
 
   // Hot/cold audio feedback hook
-  // Only enabled if: 1) assistance level allows it, 2) user toggle is on, 3) not touch device
+  // Enabled if: 1) assistance level allows it, 2) user toggle is on
+  // 3) either has fine pointer (desktop) OR magnifier is active (mobile)
   // Use continent name for language lookup if available, otherwise use selectedMap
   const hotColdMapName = selectedContinent || selectedMap
   const {
@@ -780,10 +854,12 @@ export function MapRenderer({
     getSearchMetrics,
   } = useHotColdFeedback({
     // In turn-based mode, only enable hot/cold for the player whose turn it is
+    // Desktop: hasAnyFinePointer enables mouse-based hot/cold
+    // Mobile: showMagnifier enables magnifier-based hot/cold
     enabled:
       assistanceAllowsHotCold &&
       hotColdEnabled &&
-      hasAnyFinePointer &&
+      (hasAnyFinePointer || showMagnifier) &&
       (gameMode !== 'turn-based' || currentPlayer === localPlayerId),
     targetRegionId: currentPrompt,
     isSpeaking,
@@ -2499,7 +2575,38 @@ export function MapRenderer({
 
         // Use adaptive zoom from region detection if available
         const detectionResult = detectRegions(cursorX, cursorY)
-        const { detectedRegions: detectedRegionObjects, detectedSmallestSize } = detectionResult
+        const {
+          detectedRegions: detectedRegionObjects,
+          detectedSmallestSize,
+          regionUnderCursor,
+        } = detectionResult
+
+        // Hot/cold feedback for mobile magnifier
+        if (hotColdEnabledRef.current && currentPrompt && !isGiveUpAnimating && !isInTakeover) {
+          const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
+          if (targetRegion) {
+            const svgRect = svgRef.current.getBoundingClientRect()
+            const viewBoxParts = displayViewBox.split(' ').map(Number)
+            const viewBoxX = viewBoxParts[0] || 0
+            const viewBoxY = viewBoxParts[1] || 0
+            const viewBoxW = viewBoxParts[2] || 1000
+            const viewBoxH = viewBoxParts[3] || 500
+            const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+            const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+            const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+            const targetPixelX = (targetRegion.center[0] - viewBoxX) * viewport.scale + svgOffsetX
+            const targetPixelY = (targetRegion.center[1] - viewBoxY) * viewport.scale + svgOffsetY
+            const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
+            const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
+
+            checkHotCold({
+              cursorPosition: { x: cursorX, y: cursorY },
+              targetCenter: { x: targetPixelX, y: targetPixelY },
+              hoveredRegionId: regionUnderCursor,
+              cursorSvgPosition: { x: cursorSvgX, y: cursorSvgY },
+            })
+          }
+        }
 
         // Filter out found regions from zoom calculations (same as desktop)
         const unfoundRegionObjects = detectedRegionObjects.filter(
@@ -2589,6 +2696,11 @@ export function MapRenderer({
       mapData,
       targetLeft,
       targetTop,
+      currentPrompt,
+      isGiveUpAnimating,
+      isInTakeover,
+      displayViewBox,
+      checkHotCold,
     ]
   )
 
@@ -2782,6 +2894,34 @@ export function MapRenderer({
         detectedSmallestSize,
       } = detectRegions(clampedX, clampedY)
 
+      // Hot/cold feedback for magnifier panning
+      if (hotColdEnabledRef.current && currentPrompt && !isGiveUpAnimating && !isInTakeover) {
+        const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
+        if (targetRegion) {
+          const viewBoxParts = displayViewBox.split(' ').map(Number)
+          const viewBoxX = viewBoxParts[0] || 0
+          const viewBoxY = viewBoxParts[1] || 0
+          const viewBoxW = viewBoxParts[2] || 1000
+          const viewBoxH = viewBoxParts[3] || 500
+          const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+          const svgOffsetXWithLetterbox = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetYWithLetterbox = svgRect.top - containerRect.top + viewport.letterboxY
+          const targetPixelX =
+            (targetRegion.center[0] - viewBoxX) * viewport.scale + svgOffsetXWithLetterbox
+          const targetPixelY =
+            (targetRegion.center[1] - viewBoxY) * viewport.scale + svgOffsetYWithLetterbox
+          const cursorSvgX = (clampedX - svgOffsetXWithLetterbox) / viewport.scale + viewBoxX
+          const cursorSvgY = (clampedY - svgOffsetYWithLetterbox) / viewport.scale + viewBoxY
+
+          checkHotCold({
+            cursorPosition: { x: clampedX, y: clampedY },
+            targetCenter: { x: targetPixelX, y: targetPixelY },
+            hoveredRegionId: regionUnderCursor,
+            cursorSvgPosition: { x: cursorSvgX, y: cursorSvgY },
+          })
+        }
+      }
+
       // Auto-zoom based on regions at cursor position (same as map drag behavior)
       // Filter out found regions from zoom calculations
       const unfoundRegionObjects = detectedRegionObjects.filter((r) => !regionsFound.includes(r.id))
@@ -2842,6 +2982,10 @@ export function MapRenderer({
       getCurrentZoom,
       regionsFound,
       mapData,
+      currentPrompt,
+      isGiveUpAnimating,
+      isInTakeover,
+      checkHotCold,
     ]
   )
 
@@ -3780,13 +3924,21 @@ export function MapRenderer({
               left: isMagnifierExpanded ? SAFE_ZONE_MARGINS.left : magnifierSpring.left,
               width: magnifierWidthPx,
               height: magnifierHeightPx,
-              // High zoom (>60x) gets gold border, normal zoom gets blue border
-              border: zoomSpring.to(
-                (zoom: number) =>
-                  zoom > HIGH_ZOOM_THRESHOLD
-                    ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
-                    : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
-              ),
+              // Border color priority: 1) Hot/cold heat colors (if enabled), 2) High zoom gold, 3) Default blue
+              border: (() => {
+                // When hot/cold is enabled, use heat-based colors
+                if (effectiveHotColdEnabled && hotColdFeedbackType) {
+                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
+                  return `${heatColors.width}px solid ${heatColors.border}`
+                }
+                // Fall back to zoom-based coloring
+                return zoomSpring.to(
+                  (zoom: number) =>
+                    zoom > HIGH_ZOOM_THRESHOLD
+                      ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
+                      : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
+                )
+              })(),
               borderRadius: '12px',
               overflow: 'hidden',
               // Enable touch events on mobile for panning, but keep mouse events disabled
@@ -3794,11 +3946,18 @@ export function MapRenderer({
               pointerEvents: 'auto',
               touchAction: 'none', // Prevent browser handling of touch gestures
               zIndex: 100,
-              boxShadow: zoomSpring.to((zoom: number) =>
-                zoom > HIGH_ZOOM_THRESHOLD
-                  ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
-                  : '0 10px 40px rgba(0, 0, 0, 0.5)'
-              ),
+              // Box shadow with heat glow when hot/cold is enabled
+              boxShadow: (() => {
+                if (effectiveHotColdEnabled && hotColdFeedbackType) {
+                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
+                  return `0 10px 40px rgba(0, 0, 0, 0.3), 0 0 25px ${heatColors.glow}`
+                }
+                return zoomSpring.to((zoom: number) =>
+                  zoom > HIGH_ZOOM_THRESHOLD
+                    ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
+                    : '0 10px 40px rgba(0, 0, 0, 0.5)'
+                )
+              })(),
               background: isDark ? '#111827' : '#f3f4f6',
               opacity: magnifierSpring.opacity,
             }}
@@ -4516,6 +4675,32 @@ export function MapRenderer({
                   <line x1="3" y1="21" x2="10" y2="14" />
                 </svg>
               </button>
+            )}
+
+            {/* Hot/cold emoji badge - top-right corner when hot/cold is enabled */}
+            {effectiveHotColdEnabled && hotColdFeedbackType && (
+              <div
+                data-element="hot-cold-badge"
+                style={{
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  fontSize: '24px',
+                  background: isDark ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px ${getHeatBorderColors(hotColdFeedbackType, isDark).glow}`,
+                  border: `2px solid ${getHeatBorderColors(hotColdFeedbackType, isDark).border}`,
+                  zIndex: 101,
+                  pointerEvents: 'none',
+                }}
+              >
+                {getHotColdEmoji(hotColdFeedbackType)}
+              </div>
             )}
 
             {/* Mobile Select button - inside magnifier, bottom-right corner (touch devices only) */}
