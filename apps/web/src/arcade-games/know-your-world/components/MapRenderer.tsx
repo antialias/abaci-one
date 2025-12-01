@@ -39,6 +39,7 @@ import type { HintMap } from '../messages'
 import { useKnowYourWorld } from '../Provider'
 import type { MapData, MapRegion } from '../types'
 import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
+import { CELEBRATION_TIMING, classifyCelebration } from '../utils/celebration'
 import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
   getAdjustedMagnifiedDimensions,
@@ -49,7 +50,6 @@ import {
   calculateScreenPixelRatio,
   isAboveThreshold,
 } from '../utils/screenPixelRatio'
-import { classifyCelebration, CELEBRATION_TIMING } from '../utils/celebration'
 import { CelebrationOverlay } from './CelebrationOverlay'
 import { DevCropTool } from './DevCropTool'
 
@@ -180,6 +180,180 @@ function getHeatBorderColors(
         border: isDark ? '#60a5fa' : '#3b82f6',
         glow: 'rgba(96, 165, 250, 0.3)',
         width: 3,
+      }
+  }
+}
+
+/**
+ * Convert FeedbackType to a numeric heat level (0-1)
+ * Used for continuous effects like rotation speed
+ */
+function getHeatLevel(feedbackType: FeedbackType | null): number {
+  switch (feedbackType) {
+    case 'found_it':
+      return 1.0
+    case 'on_fire':
+      return 0.9
+    case 'hot':
+      return 0.75
+    case 'warmer':
+      return 0.6
+    case 'colder':
+      return 0.4
+    case 'cold':
+      return 0.25
+    case 'freezing':
+      return 0.1
+    case 'overshot':
+      return 0.3
+    case 'stuck':
+      return 0.35
+    default:
+      return 0.5 // Neutral
+  }
+}
+
+/**
+ * Calculate rotation speed based on heat level using 1/x backoff curve
+ * - No rotation below heat 0.5
+ * - Maximum rotation (1 rotation/sec = 6°/frame at 60fps) at heat 1.0
+ * - Uses squared curve for rapid acceleration near found_it
+ */
+function getRotationSpeed(heatLevel: number): number {
+  const THRESHOLD = 0.5
+  const MAX_SPEED = 6 // 1 rotation/sec at 60fps (360°/sec / 60 = 6°/frame)
+
+  if (heatLevel <= THRESHOLD) {
+    return 0
+  }
+
+  // 1/x style backoff: speed increases rapidly as heat approaches 1.0
+  // Using squared curve: ((heat - 0.5) / 0.5)^2 * maxSpeed
+  const normalized = (heatLevel - THRESHOLD) / (1 - THRESHOLD)
+  return MAX_SPEED * normalized * normalized
+}
+
+/**
+ * Get crosshair styling based on hot/cold feedback
+ * Returns color, opacity, rotation speed, and fire state for heat-reactive crosshairs
+ */
+function getHeatCrosshairStyle(
+  feedbackType: FeedbackType | null,
+  isDark: boolean,
+  hotColdEnabled: boolean
+): {
+  color: string
+  opacity: number
+  showFire: boolean
+  rotationSpeed: number // degrees per frame at 60fps (0 = no rotation)
+  glowColor: string
+  strokeWidth: number
+} {
+  const heatLevel = getHeatLevel(feedbackType)
+  const rotationSpeed = hotColdEnabled ? getRotationSpeed(heatLevel) : 0
+
+  // Default styling when hot/cold not enabled
+  if (!hotColdEnabled || !feedbackType) {
+    return {
+      color: isDark ? '#60a5fa' : '#3b82f6', // Default blue
+      opacity: 1,
+      showFire: false,
+      rotationSpeed: 0,
+      glowColor: 'transparent',
+      strokeWidth: 2,
+    }
+  }
+
+  switch (feedbackType) {
+    case 'found_it':
+      return {
+        color: '#fbbf24', // Gold
+        opacity: 1,
+        showFire: true,
+        rotationSpeed,
+        glowColor: 'rgba(251, 191, 36, 0.8)',
+        strokeWidth: 3,
+      }
+    case 'on_fire':
+      return {
+        color: '#ef4444', // Bright red
+        opacity: 1,
+        showFire: true, // Show fire particles
+        rotationSpeed,
+        glowColor: 'rgba(239, 68, 68, 0.7)',
+        strokeWidth: 3,
+      }
+    case 'hot':
+      return {
+        color: '#f97316', // Orange
+        opacity: 1,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'rgba(249, 115, 22, 0.5)',
+        strokeWidth: 2.5,
+      }
+    case 'warmer':
+      return {
+        color: '#fb923c', // Light orange
+        opacity: 0.9,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'rgba(251, 146, 60, 0.4)',
+        strokeWidth: 2,
+      }
+    case 'colder':
+      return {
+        color: '#93c5fd', // Light blue
+        opacity: 0.6,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'transparent',
+        strokeWidth: 2,
+      }
+    case 'cold':
+      return {
+        color: '#60a5fa', // Blue
+        opacity: 0.4,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'transparent',
+        strokeWidth: 1.5,
+      }
+    case 'freezing':
+      return {
+        color: '#38bdf8', // Ice blue/cyan
+        opacity: 0.25, // Very faded
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'transparent',
+        strokeWidth: 1,
+      }
+    case 'overshot':
+      return {
+        color: '#a855f7', // Purple (went past it)
+        opacity: 0.8,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'rgba(168, 85, 247, 0.4)',
+        strokeWidth: 2,
+      }
+    case 'stuck':
+      return {
+        color: '#9ca3af', // Gray
+        opacity: 0.5,
+        showFire: false,
+        rotationSpeed,
+        glowColor: 'transparent',
+        strokeWidth: 1.5,
+      }
+    default:
+      return {
+        color: isDark ? '#60a5fa' : '#3b82f6',
+        opacity: 1,
+        showFire: false,
+        rotationSpeed: 0,
+        glowColor: 'transparent',
+        strokeWidth: 2,
       }
   }
 }
@@ -1132,6 +1306,53 @@ export function MapRenderer({
     translateY: giveUpZoomTarget.translateY,
     config: { tension: 120, friction: 20 },
   })
+
+  // Get crosshair heat styling from the REAL hot/cold feedback system
+  const crosshairHeatStyle = getHeatCrosshairStyle(
+    hotColdFeedbackType,
+    isDark,
+    effectiveHotColdEnabled
+  )
+
+  // Debounced rotation state to prevent flicker from feedback type flickering
+  // Start rotating immediately when speed > 0, but delay stopping by 150ms
+  const rawShouldRotate = crosshairHeatStyle.rotationSpeed > 0
+  const [debouncedShouldRotate, setDebouncedShouldRotate] = useState(false)
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (rawShouldRotate) {
+      // Start immediately
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current)
+        stopTimeoutRef.current = null
+      }
+      setDebouncedShouldRotate(true)
+    } else {
+      // Delay stopping to prevent flicker
+      if (!stopTimeoutRef.current) {
+        stopTimeoutRef.current = setTimeout(() => {
+          setDebouncedShouldRotate(false)
+          stopTimeoutRef.current = null
+        }, 150)
+      }
+    }
+  }, [rawShouldRotate])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Calculate CSS animation duration from rotation speed
+  // rotationSpeed is degrees per frame at 60fps
+  // duration = 360 degrees / (speed * 60 frames) seconds
+  const rotationDuration =
+    crosshairHeatStyle.rotationSpeed > 0 ? 360 / (crosshairHeatStyle.rotationSpeed * 60) : 1 // fallback, won't be used when paused
 
   // Note: Zoom animation with pause/resume is now handled by useMagnifierZoom hook
   // This effect only updates the remaining spring properties: opacity, position, movement multiplier
@@ -3197,7 +3418,8 @@ export function MapRenderer({
           // Fill the entire container - viewBox controls what portion of map is visible
           width: '100%',
           height: '100%',
-          cursor: pointerLocked ? 'crosshair' : 'pointer',
+          // Hide native cursor on desktop since we show custom crosshair
+          cursor: hasAnyFinePointer ? 'none' : 'pointer',
           transformOrigin: 'center center',
         })}
         style={{
@@ -3330,7 +3552,8 @@ export function MapRenderer({
                   }
                 }} // Disable clicks on excluded regions and during celebration
                 style={{
-                  cursor: isExcluded ? 'default' : 'pointer',
+                  // Hide native cursor on desktop (custom crosshair shown instead)
+                  cursor: hasAnyFinePointer ? 'none' : isExcluded ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
                   // Ensure entire path interior is clickable, not just visible fill
                   pointerEvents: isExcluded ? 'none' : 'all',
@@ -3679,7 +3902,8 @@ export function MapRenderer({
                 top: `${label.labelY}px`,
                 transform: 'translate(-50%, -50%)',
                 pointerEvents: 'all',
-                cursor: 'pointer',
+                // Hide native cursor on desktop (custom crosshair shown instead)
+                cursor: hasAnyFinePointer ? 'none' : 'pointer',
                 zIndex: 20,
               }}
               onClick={() =>
@@ -3782,8 +4006,8 @@ export function MapRenderer({
           )
         })}
 
-      {/* Custom Cursor - Visible when pointer lock is active */}
-      {pointerLocked && cursorPosition && (
+      {/* Custom Cursor - Visible on desktop when cursor is on the map */}
+      {cursorPosition && hasAnyFinePointer && (
         <>
           <div
             data-element="custom-cursor"
@@ -3791,102 +4015,333 @@ export function MapRenderer({
               position: 'absolute',
               left: `${cursorPosition.x}px`,
               top: `${cursorPosition.y}px`,
-              width: '20px',
-              height: '20px',
-              border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
-              borderRadius: '50%',
               pointerEvents: 'none',
               zIndex: 200,
               transform: `translate(-50%, -50%) scale(${cursorSquish.x}, ${cursorSquish.y})`,
-              backgroundColor: 'transparent',
-              boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.1s ease-out', // Smooth squish animation
+              transition: 'transform 0.1s ease-out',
             }}
           >
-            {/* Crosshair - Vertical line */}
-            <div
+            {/* Glow effect behind crosshair when hot - uses instantHeat for instant feedback */}
+            {crosshairHeatStyle.glowColor !== 'transparent' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: `radial-gradient(circle, ${crosshairHeatStyle.glowColor} 0%, transparent 70%)`,
+                  filter: 'blur(4px)',
+                }}
+              />
+            )}
+            {/* Enhanced SVG crosshair with heat effects - uses CSS animation for smooth rotation */}
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 32 32"
               style={{
-                position: 'absolute',
-                left: '50%',
-                top: '0',
-                width: '2px',
-                height: '100%',
-                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-                transform: 'translateX(-50%)',
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5)',
+                animation: `crosshairSpin ${rotationDuration}s linear infinite`,
+                animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
               }}
-            />
-            {/* Crosshair - Horizontal line */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '0',
-                top: '50%',
-                width: '100%',
-                height: '2px',
-                backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-                transform: 'translateY(-50%)',
-              }}
-            />
+            >
+              {/* Outer ring */}
+              <circle
+                cx="16"
+                cy="16"
+                r="10"
+                fill="none"
+                stroke={crosshairHeatStyle.color}
+                strokeWidth={crosshairHeatStyle.strokeWidth}
+                opacity={crosshairHeatStyle.opacity}
+              />
+              {/* Cross lines - top */}
+              <line
+                x1="16"
+                y1="2"
+                x2="16"
+                y2="10"
+                stroke={crosshairHeatStyle.color}
+                strokeWidth={crosshairHeatStyle.strokeWidth}
+                strokeLinecap="round"
+                opacity={crosshairHeatStyle.opacity}
+              />
+              {/* Cross lines - bottom */}
+              <line
+                x1="16"
+                y1="22"
+                x2="16"
+                y2="30"
+                stroke={crosshairHeatStyle.color}
+                strokeWidth={crosshairHeatStyle.strokeWidth}
+                strokeLinecap="round"
+                opacity={crosshairHeatStyle.opacity}
+              />
+              {/* Cross lines - left */}
+              <line
+                x1="2"
+                y1="16"
+                x2="10"
+                y2="16"
+                stroke={crosshairHeatStyle.color}
+                strokeWidth={crosshairHeatStyle.strokeWidth}
+                strokeLinecap="round"
+                opacity={crosshairHeatStyle.opacity}
+              />
+              {/* Cross lines - right */}
+              <line
+                x1="22"
+                y1="16"
+                x2="30"
+                y2="16"
+                stroke={crosshairHeatStyle.color}
+                strokeWidth={crosshairHeatStyle.strokeWidth}
+                strokeLinecap="round"
+                opacity={crosshairHeatStyle.opacity}
+              />
+              {/* Center dot */}
+              <circle
+                cx="16"
+                cy="16"
+                r="2"
+                fill={crosshairHeatStyle.color}
+                opacity={crosshairHeatStyle.opacity}
+              />
+            </svg>
+            {/* Fire particles around crosshair */}
+            {crosshairHeatStyle.showFire && (
+              <div style={{ position: 'absolute', left: 0, top: 0, width: '32px', height: '32px' }}>
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
+                  const rad = (angle * Math.PI) / 180
+                  const dist = 20
+                  const px = 16 + Math.cos(rad) * dist - 4
+                  const py = 16 + Math.sin(rad) * dist - 4
+                  return (
+                    <div
+                      key={`fire-cursor-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: `${px}px`,
+                        top: `${py}px`,
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: i % 2 === 0 ? '#ef4444' : '#f97316',
+                        opacity: 0.9,
+                        animation: `fireParticle${i % 3} 0.4s ease-out infinite`,
+                        animationDelay: `${i * 0.05}s`,
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            )}
           </div>
           {/* Cursor region name label - shows what to find under the cursor */}
-          {currentRegionName && (
+          {currentRegionName &&
+            (() => {
+              const labelHeatStyle = getHeatCrosshairStyle(
+                hotColdFeedbackType,
+                isDark,
+                effectiveHotColdEnabled
+              )
+              return (
+                <div
+                  data-element="cursor-region-label"
+                  style={{
+                    position: 'absolute',
+                    left: `${cursorPosition.x}px`,
+                    top: `${cursorPosition.y + 22}px`,
+                    transform: 'translateX(-50%)',
+                    pointerEvents: 'none',
+                    zIndex: 201,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    backgroundColor: isDark
+                      ? 'rgba(30, 58, 138, 0.95)'
+                      : 'rgba(219, 234, 254, 0.95)',
+                    border: `2px solid ${labelHeatStyle.color}`,
+                    borderRadius: '6px',
+                    boxShadow:
+                      labelHeatStyle.glowColor !== 'transparent'
+                        ? `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px ${labelHeatStyle.glowColor}`
+                        : '0 2px 8px rgba(0, 0, 0, 0.3)',
+                    whiteSpace: 'nowrap',
+                    opacity: Math.max(0.5, labelHeatStyle.opacity), // Keep label visible but dimmed
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      color: isDark ? '#93c5fd' : '#1e40af',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    Find
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      color: isDark ? 'white' : '#1e3a8a',
+                    }}
+                  >
+                    {currentRegionName}
+                  </span>
+                  {currentFlagEmoji && <span style={{ fontSize: '14px' }}>{currentFlagEmoji}</span>}
+                </div>
+              )
+            })()}
+        </>
+      )}
+
+      {/* Heat crosshair overlay on main map - shows when hot/cold enabled (desktop non-pointer-lock) */}
+      {effectiveHotColdEnabled &&
+        cursorPosition &&
+        !pointerLocked &&
+        hasAnyFinePointer &&
+        (() => {
+          const heatStyle = getHeatCrosshairStyle(
+            hotColdFeedbackType,
+            isDark,
+            effectiveHotColdEnabled
+          )
+          return (
             <div
-              data-element="cursor-region-label"
+              data-element="main-map-heat-crosshair"
               style={{
                 position: 'absolute',
                 left: `${cursorPosition.x}px`,
-                top: `${cursorPosition.y + 18}px`,
-                transform: 'translateX(-50%)',
+                top: `${cursorPosition.y}px`,
                 pointerEvents: 'none',
-                zIndex: 201,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                backgroundColor: isDark ? 'rgba(30, 58, 138, 0.95)' : 'rgba(219, 234, 254, 0.95)',
-                border: `2px solid ${isDark ? '#60a5fa' : '#3b82f6'}`,
-                borderRadius: '6px',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                whiteSpace: 'nowrap',
+                zIndex: 150,
+                transform: 'translate(-50%, -50%)',
               }}
             >
-              {/* Hot/cold feedback emoji - shows temperature when enabled */}
-              {effectiveHotColdEnabled && hotColdFeedbackType && (
-                <span
+              {/* Glow effect behind crosshair when hot */}
+              {heatStyle.glowColor !== 'transparent' && (
+                <div
                   style={{
-                    fontSize: '14px',
-                    marginRight: '2px',
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, ${heatStyle.glowColor} 0%, transparent 70%)`,
+                    filter: 'blur(6px)',
                   }}
-                  title={`Hot/cold: ${hotColdFeedbackType}`}
-                >
-                  {getHotColdEmoji(hotColdFeedbackType)}
-                </span>
+                />
               )}
-              <span
+              {/* Enhanced SVG crosshair with heat effects - uses CSS animation */}
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 40 40"
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  color: isDark ? '#93c5fd' : '#1e40af',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
+                  animation: `crosshairSpin ${rotationDuration}s linear infinite`,
+                  animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
                 }}
               >
-                Find
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 'bold',
-                  color: isDark ? 'white' : '#1e3a8a',
-                }}
-              >
-                {currentRegionName}
-              </span>
-              {currentFlagEmoji && <span style={{ fontSize: '14px' }}>{currentFlagEmoji}</span>}
+                {/* Outer ring */}
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="12"
+                  fill="none"
+                  stroke={heatStyle.color}
+                  strokeWidth={heatStyle.strokeWidth}
+                  opacity={heatStyle.opacity}
+                />
+                {/* Cross lines - top */}
+                <line
+                  x1="20"
+                  y1="3"
+                  x2="20"
+                  y2="12"
+                  stroke={heatStyle.color}
+                  strokeWidth={heatStyle.strokeWidth}
+                  strokeLinecap="round"
+                  opacity={heatStyle.opacity}
+                />
+                {/* Cross lines - bottom */}
+                <line
+                  x1="20"
+                  y1="28"
+                  x2="20"
+                  y2="37"
+                  stroke={heatStyle.color}
+                  strokeWidth={heatStyle.strokeWidth}
+                  strokeLinecap="round"
+                  opacity={heatStyle.opacity}
+                />
+                {/* Cross lines - left */}
+                <line
+                  x1="3"
+                  y1="20"
+                  x2="12"
+                  y2="20"
+                  stroke={heatStyle.color}
+                  strokeWidth={heatStyle.strokeWidth}
+                  strokeLinecap="round"
+                  opacity={heatStyle.opacity}
+                />
+                {/* Cross lines - right */}
+                <line
+                  x1="28"
+                  y1="20"
+                  x2="37"
+                  y2="20"
+                  stroke={heatStyle.color}
+                  strokeWidth={heatStyle.strokeWidth}
+                  strokeLinecap="round"
+                  opacity={heatStyle.opacity}
+                />
+                {/* Center dot */}
+                <circle cx="20" cy="20" r="2" fill={heatStyle.color} opacity={heatStyle.opacity} />
+              </svg>
+              {/* Fire particles around crosshair */}
+              {heatStyle.showFire && (
+                <div
+                  style={{ position: 'absolute', left: 0, top: 0, width: '40px', height: '40px' }}
+                >
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
+                    const rad = (angle * Math.PI) / 180
+                    const distance = 24
+                    const px = 20 + Math.cos(rad) * distance - 5
+                    const py = 20 + Math.sin(rad) * distance - 5
+                    return (
+                      <div
+                        key={`fire-main-${i}`}
+                        style={{
+                          position: 'absolute',
+                          left: `${px}px`,
+                          top: `${py}px`,
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          background: i % 2 === 0 ? '#ef4444' : '#f97316',
+                          opacity: 0.9,
+                          animation: `fireParticle${i % 3} 0.4s ease-out infinite`,
+                          animationDelay: `${i * 0.05}s`,
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
+          )
+        })()}
 
       {/* Magnifier overlay - centers on cursor position */}
       {(() => {
@@ -4136,7 +4591,7 @@ export function MapRenderer({
               })}
 
               {/* Crosshair at center position (cursor or reveal center during animation) */}
-              <g>
+              <g data-element="magnifier-crosshair">
                 {(() => {
                   const containerRect = containerRef.current!.getBoundingClientRect()
                   const svgRect = svgRef.current!.getBoundingClientRect()
@@ -4158,35 +4613,102 @@ export function MapRenderer({
                   const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
                   const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
+                  // Get heat-based crosshair styling
+                  const heatStyle = getHeatCrosshairStyle(
+                    hotColdFeedbackType,
+                    isDark,
+                    effectiveHotColdEnabled
+                  )
+                  const crosshairRadius = viewBoxWidth / 100
+                  const crosshairLineLength = viewBoxWidth / 50
+
                   return (
                     <>
-                      <circle
-                        cx={cursorSvgX}
-                        cy={cursorSvgY}
-                        r={viewBoxWidth / 100}
-                        fill="none"
-                        stroke={isDark ? '#60a5fa' : '#3b82f6'}
-                        strokeWidth={viewBoxWidth / 500}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                      <line
-                        x1={cursorSvgX - viewBoxWidth / 50}
-                        y1={cursorSvgY}
-                        x2={cursorSvgX + viewBoxWidth / 50}
-                        y2={cursorSvgY}
-                        stroke={isDark ? '#60a5fa' : '#3b82f6'}
-                        strokeWidth={viewBoxWidth / 1000}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                      <line
-                        x1={cursorSvgX}
-                        y1={cursorSvgY - viewBoxHeight / 50}
-                        x2={cursorSvgX}
-                        y2={cursorSvgY + viewBoxHeight / 50}
-                        stroke={isDark ? '#60a5fa' : '#3b82f6'}
-                        strokeWidth={viewBoxWidth / 1000}
-                        vectorEffect="non-scaling-stroke"
-                      />
+                      {/* Glow effect behind crosshair when hot */}
+                      {heatStyle.glowColor !== 'transparent' && (
+                        <circle
+                          cx={cursorSvgX}
+                          cy={cursorSvgY}
+                          r={crosshairRadius * 1.5}
+                          fill={heatStyle.glowColor}
+                          opacity={0.5}
+                          style={{
+                            filter: 'blur(3px)',
+                          }}
+                        />
+                      )}
+                      {/* Crosshair with separate translation and rotation */}
+                      {/* Outer <g> handles translation (follows cursor) */}
+                      {/* Inner <g> handles rotation via CSS animation */}
+                      <g transform={`translate(${cursorSvgX}, ${cursorSvgY})`}>
+                        <g
+                          style={{
+                            animation: `crosshairSpin ${rotationDuration}s linear infinite`,
+                            animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
+                            transformOrigin: '0 0',
+                          }}
+                        >
+                          {/* Main crosshair circle - drawn at origin */}
+                          <circle
+                            cx={0}
+                            cy={0}
+                            r={crosshairRadius}
+                            fill="none"
+                            stroke={heatStyle.color}
+                            strokeWidth={(viewBoxWidth / 500) * (heatStyle.strokeWidth / 2)}
+                            vectorEffect="non-scaling-stroke"
+                            opacity={heatStyle.opacity}
+                          />
+                          {/* Horizontal crosshair line - drawn at origin */}
+                          <line
+                            x1={-crosshairLineLength}
+                            y1={0}
+                            x2={crosshairLineLength}
+                            y2={0}
+                            stroke={heatStyle.color}
+                            strokeWidth={(viewBoxWidth / 1000) * (heatStyle.strokeWidth / 2)}
+                            vectorEffect="non-scaling-stroke"
+                            opacity={heatStyle.opacity}
+                          />
+                          {/* Vertical crosshair line - drawn at origin */}
+                          <line
+                            x1={0}
+                            y1={-crosshairLineLength}
+                            x2={0}
+                            y2={crosshairLineLength}
+                            stroke={heatStyle.color}
+                            strokeWidth={(viewBoxWidth / 1000) * (heatStyle.strokeWidth / 2)}
+                            vectorEffect="non-scaling-stroke"
+                            opacity={heatStyle.opacity}
+                          />
+                        </g>
+                      </g>
+                      {/* Fire particles around crosshair when on_fire or found_it */}
+                      {heatStyle.showFire && (
+                        <>
+                          {/* Fire particles - 6 small circles radiating outward */}
+                          {[0, 60, 120, 180, 240, 300].map((angle, i) => {
+                            const rad = (angle * Math.PI) / 180
+                            const particleDistance = crosshairRadius * 1.8
+                            const px = cursorSvgX + Math.cos(rad) * particleDistance
+                            const py = cursorSvgY + Math.sin(rad) * particleDistance
+                            return (
+                              <circle
+                                key={`fire-${i}`}
+                                cx={px}
+                                cy={py}
+                                r={crosshairRadius * 0.25}
+                                fill={i % 2 === 0 ? '#ef4444' : '#f97316'}
+                                opacity={0.8}
+                                style={{
+                                  animation: `fireParticle${i % 3} 0.5s ease-out infinite`,
+                                  animationDelay: `${i * 0.08}s`,
+                                }}
+                              />
+                            )
+                          })}
+                        </>
+                      )}
                     </>
                   )
                 })()}
@@ -5047,6 +5569,25 @@ export function MapRenderer({
                 @keyframes zoom-line-flow {
                   from { stroke-dashoffset: 12; }
                   to { stroke-dashoffset: 0; }
+                }
+                @keyframes crosshairSpin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+                @keyframes fireParticle0 {
+                  0% { opacity: 0.9; transform: scale(1) translateY(0); }
+                  50% { opacity: 1; transform: scale(1.3) translateY(-2px); }
+                  100% { opacity: 0.9; transform: scale(1) translateY(0); }
+                }
+                @keyframes fireParticle1 {
+                  0% { opacity: 0.8; transform: scale(1.1) translateY(-1px); }
+                  50% { opacity: 1; transform: scale(1) translateY(1px); }
+                  100% { opacity: 0.8; transform: scale(1.1) translateY(-1px); }
+                }
+                @keyframes fireParticle2 {
+                  0% { opacity: 1; transform: scale(1.2) translateY(-2px); }
+                  50% { opacity: 0.7; transform: scale(0.9) translateY(0); }
+                  100% { opacity: 1; transform: scale(1.2) translateY(-2px); }
                 }
               `}
             </style>
