@@ -767,7 +767,12 @@ export function MapRenderer({
     lastFeedbackType: hotColdFeedbackType,
     getSearchMetrics,
   } = useHotColdFeedback({
-    enabled: assistanceAllowsHotCold && hotColdEnabled && hasAnyFinePointer,
+    // In turn-based mode, only enable hot/cold for the player whose turn it is
+    enabled:
+      assistanceAllowsHotCold &&
+      hotColdEnabled &&
+      hasAnyFinePointer &&
+      (gameMode !== 'turn-based' || currentPlayer === localPlayerId),
     targetRegionId: currentPrompt,
     isSpeaking,
     mapName: hotColdMapName,
@@ -2695,9 +2700,7 @@ export function MapRenderer({
 
       // Auto-zoom based on regions at cursor position (same as map drag behavior)
       // Filter out found regions from zoom calculations
-      const unfoundRegionObjects = detectedRegionObjects.filter(
-        (r) => !regionsFound.includes(r.id)
-      )
+      const unfoundRegionObjects = detectedRegionObjects.filter((r) => !regionsFound.includes(r.id))
 
       // Calculate optimal zoom for the new cursor position
       const zoomSearchResult = findOptimalZoom({
