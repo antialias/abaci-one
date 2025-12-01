@@ -4,6 +4,18 @@ import { SimpleLetterKeyboard } from './SimpleLetterKeyboard'
 import { getNthNonSpaceLetter } from '../Validator'
 
 /**
+ * Normalize accented characters to their base ASCII letters.
+ * e.g., 'é' → 'e', 'ñ' → 'n', 'ü' → 'u', 'ç' → 'c'
+ * This allows users to type accented region names with a regular keyboard.
+ */
+function normalizeToBaseLetter(char: string): string {
+  return char
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+/**
  * Demo component that mimics the actual game's letter confirmation UI.
  * This is a standalone demo that shows exactly what users see when
  * playing Know Your World in Learning mode.
@@ -29,7 +41,8 @@ function LetterConfirmationGameDemo({
     (letter: string) => {
       if (isComplete || !nextLetterInfo) return
 
-      if (letter.toLowerCase() === nextLetterInfo.char.toLowerCase()) {
+      // Use normalizeToBaseLetter so 'e' matches 'é', 'n' matches 'ñ', etc.
+      if (letter.toLowerCase() === normalizeToBaseLetter(nextLetterInfo.char)) {
         setConfirmedCount((c) => c + 1)
       }
     },
@@ -387,6 +400,165 @@ export const LightMode: Story = {
     docs: {
       description: {
         story: 'Light mode variant of the UI',
+      },
+    },
+  },
+}
+
+// ============================================
+// ACCENTED CHARACTER TESTS
+// These test the normalizeToBaseLetter function
+// ============================================
+
+export const CoteDIvoire: Story = {
+  args: {
+    regionName: "Côte d'Ivoire",
+    flagEmoji: '🇨🇮',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (ô → o):**
+- Region: "Côte d'Ivoire"
+- Required letters: C, O (from ô), T
+- Type 'C', 'O', 'T' on a regular keyboard
+- The 'ô' is normalized to 'o' so typing 'o' works
+        `,
+      },
+    },
+  },
+}
+
+export const SaoTome: Story = {
+  args: {
+    regionName: 'São Tomé and Príncipe',
+    flagEmoji: '🇸🇹',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (ã → a):**
+- Region: "São Tomé and Príncipe"
+- Required letters: S, A (from ã), O
+- Type 'S', 'A', 'O' on a regular keyboard
+- The 'ã' is normalized to 'a' so typing 'a' works
+        `,
+      },
+    },
+  },
+}
+
+export const Curacao: Story = {
+  args: {
+    regionName: 'Curaçao',
+    flagEmoji: '🇨🇼',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (ç → c):**
+- Region: "Curaçao"
+- Required letters: C, U, R
+- Type 'C', 'U', 'R' on a regular keyboard
+- (The ç comes later, after the first 3 letters)
+        `,
+      },
+    },
+  },
+}
+
+export const Reunion: Story = {
+  args: {
+    regionName: 'Réunion',
+    flagEmoji: '🇷🇪',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (é → e):**
+- Region: "Réunion"
+- Required letters: R, E (from é), U
+- Type 'R', 'E', 'U' on a regular keyboard
+- The 'é' is normalized to 'e' so typing 'e' works
+        `,
+      },
+    },
+  },
+}
+
+export const Mexico: Story = {
+  args: {
+    regionName: 'México',
+    flagEmoji: '🇲🇽',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (é → e):**
+- Region: "México"
+- Required letters: M, E (from é), X
+- Type 'M', 'E', 'X' on a regular keyboard
+- The 'é' is normalized to 'e' so typing 'e' works
+        `,
+      },
+    },
+  },
+}
+
+export const Peru: Story = {
+  args: {
+    regionName: 'Perú',
+    flagEmoji: '🇵🇪',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests accented character normalization (ú → u):**
+- Region: "Perú"
+- Required letters: P, E, R
+- Type 'P', 'E', 'R' on a regular keyboard
+- (The ú comes at position 4, after the required 3)
+        `,
+      },
+    },
+  },
+}
+
+export const SaintBarthelemy: Story = {
+  args: {
+    regionName: 'Saint Barthélemy',
+    flagEmoji: '🇧🇱',
+    requiredLetters: 3,
+    isDark: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tests space-skipping AND accented characters:**
+- Region: "Saint Barthélemy"
+- Required letters: S, A, I
+- Type 'S', 'A', 'I' on a regular keyboard
+- (The é comes later in Barthélemy)
+        `,
       },
     },
   },
