@@ -33,6 +33,18 @@ const NAME_ATTENTION_DURATION = 3000
 // React-spring config for smooth takeover transitions
 const TAKEOVER_ANIMATION_CONFIG = { tension: 170, friction: 20 }
 
+/**
+ * Normalize accented characters to their base ASCII letters.
+ * e.g., 'é' → 'e', 'ñ' → 'n', 'ü' → 'u', 'ç' → 'c'
+ * Uses Unicode NFD normalization to decompose characters, then strips diacritical marks.
+ */
+function normalizeToBaseLetter(char: string): string {
+  return char
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 // Helper to get hot/cold feedback emoji (matches MapRenderer's getHotColdEmoji)
 function getHotColdEmoji(type: FeedbackType | null | undefined): string {
   if (!type) return '🔥'
@@ -335,7 +347,9 @@ export function GameInfoPanel({
         return // No more letters to confirm
       }
 
-      const expectedLetter = letterInfo.char.toLowerCase()
+      // Normalize accented letters to base ASCII (e.g., 'é' → 'e', 'ñ' → 'n')
+      // so users can type region names like "Côte d'Ivoire" or "São Tomé" with a regular keyboard
+      const expectedLetter = normalizeToBaseLetter(letterInfo.char)
       const pressedLetter = e.key.toLowerCase()
 
       // Only accept single character keys (letters only, no space needed since we skip spaces)
@@ -681,7 +695,8 @@ export function GameInfoPanel({
                   const letterInfo = getNthNonSpaceLetter(currentRegionName, nextLetterIndex)
                   if (!letterInfo) return
 
-                  const expectedLetter = letterInfo.char.toLowerCase()
+                  // Normalize accented letters to base ASCII (e.g., 'é' → 'e', 'ñ' → 'n')
+                  const expectedLetter = normalizeToBaseLetter(letterInfo.char)
                   const pressedLetter = letter.toLowerCase()
 
                   if (pressedLetter === expectedLetter) {
