@@ -1,6 +1,6 @@
 'use client'
 
-import { animated, to, useSpring } from '@react-spring/web'
+import { animated, to, useSpring, useSpringValue } from '@react-spring/web'
 import { css } from '@styled/css'
 import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -1314,45 +1314,56 @@ export function MapRenderer({
     effectiveHotColdEnabled
   )
 
-  // Debounced rotation state to prevent flicker from feedback type flickering
-  // Start rotating immediately when speed > 0, but delay stopping by 150ms
-  const rawShouldRotate = crosshairHeatStyle.rotationSpeed > 0
-  const [debouncedShouldRotate, setDebouncedShouldRotate] = useState(false)
-  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // === Crosshair rotation using spring-for-speed, manual-integration-for-angle pattern ===
+  // This gives smooth speed transitions without the issues of CSS animation or
+  // calling spring.start() 60 times per second.
+  //
+  // Pattern:
+  // 1. Spring animates the SPEED (degrees per second) - smooth transitions
+  // 2. requestAnimationFrame loop integrates angle from speed
+  // 3. Angle is bound to animated element via useSpringValue
 
+  // Convert rotation speed from degrees/frame@60fps to degrees/second
+  const targetSpeedDegPerSec = crosshairHeatStyle.rotationSpeed * 60
+
+  // Spring for rotation speed - this is what makes speed changes smooth
+  const rotationSpeed = useSpringValue(0, {
+    config: { tension: 200, friction: 30 },
+  })
+
+  // Spring value for the angle - we'll directly .set() this from the rAF loop
+  const rotationAngle = useSpringValue(0)
+
+  // Update the speed spring when target changes
   useEffect(() => {
-    if (rawShouldRotate) {
-      // Start immediately
-      if (stopTimeoutRef.current) {
-        clearTimeout(stopTimeoutRef.current)
-        stopTimeoutRef.current = null
-      }
-      setDebouncedShouldRotate(true)
-    } else {
-      // Delay stopping to prevent flicker
-      if (!stopTimeoutRef.current) {
-        stopTimeoutRef.current = setTimeout(() => {
-          setDebouncedShouldRotate(false)
-          stopTimeoutRef.current = null
-        }, 150)
-      }
-    }
-  }, [rawShouldRotate])
+    rotationSpeed.start(targetSpeedDegPerSec)
+  }, [targetSpeedDegPerSec, rotationSpeed])
 
-  // Cleanup timeout on unmount
+  // requestAnimationFrame loop to integrate angle from speed
   useEffect(() => {
-    return () => {
-      if (stopTimeoutRef.current) {
-        clearTimeout(stopTimeoutRef.current)
-      }
-    }
-  }, [])
+    let lastTime = performance.now()
+    let frameId: number
 
-  // Calculate CSS animation duration from rotation speed
-  // rotationSpeed is degrees per frame at 60fps
-  // duration = 360 degrees / (speed * 60 frames) seconds
-  const rotationDuration =
-    crosshairHeatStyle.rotationSpeed > 0 ? 360 / (crosshairHeatStyle.rotationSpeed * 60) : 1 // fallback, won't be used when paused
+    const loop = (now: number) => {
+      const dt = (now - lastTime) / 1000 // seconds
+      lastTime = now
+
+      const speed = rotationSpeed.get() // deg/s from the spring
+      let angle = rotationAngle.get() + speed * dt // integrate
+
+      // Keep angle in reasonable range (prevent overflow after hours of play)
+      if (angle >= 360000) angle -= 360000
+      if (angle < 0) angle += 360
+
+      // Direct set - no extra springing on angle itself
+      rotationAngle.set(angle)
+
+      frameId = requestAnimationFrame(loop)
+    }
+
+    frameId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(frameId)
+  }, [rotationSpeed, rotationAngle])
 
   // Note: Zoom animation with pause/resume is now handled by useMagnifierZoom hook
   // This effect only updates the remaining spring properties: opacity, position, movement multiplier
@@ -4037,15 +4048,14 @@ export function MapRenderer({
                 }}
               />
             )}
-            {/* Enhanced SVG crosshair with heat effects - uses CSS animation for smooth rotation */}
-            <svg
+            {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
+            <animated.svg
               width="32"
               height="32"
               viewBox="0 0 32 32"
               style={{
                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5)',
-                animation: `crosshairSpin ${rotationDuration}s linear infinite`,
-                animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
+                transform: rotationAngle.to((a) => `rotate(${a}deg)`),
               }}
             >
               {/* Outer ring */}
@@ -4110,7 +4120,7 @@ export function MapRenderer({
                 fill={crosshairHeatStyle.color}
                 opacity={crosshairHeatStyle.opacity}
               />
-            </svg>
+            </animated.svg>
             {/* Fire particles around crosshair */}
             {crosshairHeatStyle.showFire && (
               <div style={{ position: 'absolute', left: 0, top: 0, width: '32px', height: '32px' }}>
@@ -4241,15 +4251,14 @@ export function MapRenderer({
                   }}
                 />
               )}
-              {/* Enhanced SVG crosshair with heat effects - uses CSS animation */}
-              <svg
+              {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
+              <animated.svg
                 width="40"
                 height="40"
                 viewBox="0 0 40 40"
                 style={{
                   filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
-                  animation: `crosshairSpin ${rotationDuration}s linear infinite`,
-                  animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
+                  transform: rotationAngle.to((a) => `rotate(${a}deg)`),
                 }}
               >
                 {/* Outer ring */}
@@ -4308,7 +4317,7 @@ export function MapRenderer({
                 />
                 {/* Center dot */}
                 <circle cx="20" cy="20" r="2" fill={heatStyle.color} opacity={heatStyle.opacity} />
-              </svg>
+              </animated.svg>
               {/* Fire particles around crosshair */}
               {heatStyle.showFire && (
                 <div
@@ -4639,12 +4648,11 @@ export function MapRenderer({
                       )}
                       {/* Crosshair with separate translation and rotation */}
                       {/* Outer <g> handles translation (follows cursor) */}
-                      {/* Inner <g> handles rotation via CSS animation */}
+                      {/* Inner animated.g handles rotation via spring-driven animation */}
                       <g transform={`translate(${cursorSvgX}, ${cursorSvgY})`}>
-                        <g
+                        <animated.g
                           style={{
-                            animation: `crosshairSpin ${rotationDuration}s linear infinite`,
-                            animationPlayState: debouncedShouldRotate ? 'running' : 'paused',
+                            transform: rotationAngle.to((a) => `rotate(${a}deg)`),
                             transformOrigin: '0 0',
                           }}
                         >
@@ -4681,7 +4689,7 @@ export function MapRenderer({
                             vectorEffect="non-scaling-stroke"
                             opacity={heatStyle.opacity}
                           />
-                        </g>
+                        </animated.g>
                       </g>
                       {/* Fire particles around crosshair when on_fire or found_it */}
                       {heatStyle.showFire && (

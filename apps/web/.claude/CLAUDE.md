@@ -629,6 +629,40 @@ import { AbacusReact } from '@soroban/abacus-react'
 
 **Status:** Known issue, does not block development or deployment.
 
+## Animation Patterns (React-Spring)
+
+When implementing continuous animations with smoothly-changing speeds (like rotating crosshairs), refer to:
+
+- **`.claude/ANIMATION_PATTERNS.md`** - Spring-for-speed, manual-integration-for-angle pattern
+  - Why CSS animation and naive react-spring approaches fail
+  - How to decouple speed (spring-animated) from angle (manually integrated)
+  - Complete code example with `useSpringValue` and `requestAnimationFrame`
+  - Anti-patterns to avoid
+
+**Quick Reference:**
+
+```typescript
+// Spring the SPEED, integrate the ANGLE
+const rotationSpeed = useSpringValue(0, { config: { tension: 200, friction: 30 } })
+const rotationAngle = useSpringValue(0)
+
+// Update speed spring when target changes
+useEffect(() => { rotationSpeed.start(targetSpeed) }, [targetSpeed])
+
+// rAF loop integrates angle from speed
+useEffect(() => {
+  const loop = (now) => {
+    const dt = (now - lastTime) / 1000
+    rotationAngle.set(rotationAngle.get() + rotationSpeed.get() * dt)
+    requestAnimationFrame(loop)
+  }
+  requestAnimationFrame(loop)
+}, [])
+
+// Bind to animated element
+<animated.svg style={{ transform: rotationAngle.to(a => `rotate(${a}deg)`) }} />
+```
+
 ## Game Settings Persistence
 
 When working on arcade room game settings, refer to:
