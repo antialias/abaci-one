@@ -637,6 +637,16 @@ export function MapRenderer({
     return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
   })
 
+  // Auto-enable hot/cold for learning mode (highest assistance level)
+  // This ensures all players in a learning game get hot/cold feedback enabled
+  useEffect(() => {
+    if (assistanceLevel === 'learning' && assistanceAllowsHotCold && !hotColdEnabled) {
+      setHotColdEnabled(true)
+      // Also persist to localStorage so it stays enabled if they navigate away
+      localStorage.setItem('knowYourWorld.hotColdAudio', 'true')
+    }
+  }, [assistanceLevel, assistanceAllowsHotCold, hotColdEnabled])
+
   // Whether hot/cold button should be shown at all
   // Uses hasAnyFinePointer because iPads with attached mice should show hot/cold
   const showHotCold = isSpeechSupported && hasAnyFinePointer && assistanceAllowsHotCold
