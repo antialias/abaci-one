@@ -95,6 +95,7 @@
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "remark-html": "^16.0.1",
+    "simplify-js": "^1.2.4",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "three": "^0.169.0",

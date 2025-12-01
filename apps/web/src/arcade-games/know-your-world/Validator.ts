@@ -33,7 +33,9 @@ export function getNthNonSpaceLetter(
  * Get Unicode code points for a string (for debugging)
  */
 function getCodePoints(str: string): string {
-  return [...str].map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+  return [...str]
+    .map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`)
+    .join(' ')
 }
 
 /**

@@ -24,6 +24,8 @@ import {
 } from '../utils/guidanceVisibility'
 import { SimpleLetterKeyboard, useIsTouchDevice } from './SimpleLetterKeyboard'
 import { MusicControlModal, useMusic } from '../music'
+import simplify from 'simplify-js'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -36,7 +38,9 @@ const TAKEOVER_ANIMATION_CONFIG = { tension: 170, friction: 20 }
  * Get Unicode code points for a string (for debugging)
  */
 function getCodePoints(str: string): string {
-  return [...str].map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+  return [...str]
+    .map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`)
+    .join(' ')
 }
 
 /**
@@ -60,6 +64,19 @@ function normalizeToBaseLetter(char: string): string {
     })
   }
   return result
+}
+
+/**
+ * Convert {x, y} points array to SVG path string.
+ */
+function pointsToSvgPath(points: Array<{ x: number; y: number }>): string {
+  if (points.length === 0) return ''
+  let path = `M ${points[0].x} ${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    path += ` L ${points[i].x} ${points[i].y}`
+  }
+  path += ' Z'
+  return path
 }
 
 // Helper to get hot/cold feedback emoji (matches MapRenderer's getHotColdEmoji)
@@ -113,6 +130,7 @@ export function GameInfoPanel({
 }: GameInfoPanelProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
   const {
     state,
     lastError,
@@ -237,26 +255,107 @@ export function GameInfoPanel({
     height: number
   } | null>(null)
 
-  // Measure accurate bounding box using hidden SVG + getBBox()
+  // Simplified path for tracer animation - calculated using browser's native path methods
+  const [simplifiedTracerPaths, setSimplifiedTracerPaths] = useState<string[] | null>(null)
+
+  // Measure accurate bounding box AND generate simplified tracer path using hidden SVG
   // This ensures part 1 and part 2 use identical positioning
   useEffect(() => {
     if (hiddenPathRef.current && displayRegionPath) {
       // Use requestAnimationFrame to ensure path is rendered
       requestAnimationFrame(() => {
         if (hiddenPathRef.current) {
-          const bbox = hiddenPathRef.current.getBBox()
+          const pathEl = hiddenPathRef.current
+          const bbox = pathEl.getBBox()
           setAccurateBBox({
             x: bbox.x,
             y: bbox.y,
             width: bbox.width,
             height: bbox.height,
           })
+
+          // Sample points along the path using browser's native getPointAtLength()
+          // This correctly handles all SVG path commands
+          const totalLength = pathEl.getTotalLength()
+          const numSamples = 500 // Sample more points for better detection of jumps
+          const allPoints: Array<{ x: number; y: number }> = []
+
+          for (let i = 0; i <= numSamples; i++) {
+            const distance = (i / numSamples) * totalLength
+            const point = pathEl.getPointAtLength(distance)
+            allPoints.push({ x: point.x, y: point.y })
+          }
+
+          // Detect jumps between sub-paths and split into separate segments
+          // A jump is when consecutive points are much farther apart than average
+          const segments: Array<Array<{ x: number; y: number }>> = []
+          let currentSegment: Array<{ x: number; y: number }> = [allPoints[0]]
+
+          // Calculate average distance between consecutive points
+          let totalDist = 0
+          for (let i = 1; i < allPoints.length; i++) {
+            const dx = allPoints[i].x - allPoints[i - 1].x
+            const dy = allPoints[i].y - allPoints[i - 1].y
+            totalDist += Math.sqrt(dx * dx + dy * dy)
+          }
+          const avgDist = totalDist / (allPoints.length - 1)
+          const jumpThreshold = avgDist * 5 // A jump is 5x the average distance
+
+          for (let i = 1; i < allPoints.length; i++) {
+            const dx = allPoints[i].x - allPoints[i - 1].x
+            const dy = allPoints[i].y - allPoints[i - 1].y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+
+            if (dist > jumpThreshold) {
+              // This is a jump - save current segment and start new one
+              if (currentSegment.length > 2) {
+                segments.push(currentSegment)
+              }
+              currentSegment = [allPoints[i]]
+            } else {
+              currentSegment.push(allPoints[i])
+            }
+          }
+          // Don't forget the last segment
+          if (currentSegment.length > 2) {
+            segments.push(currentSegment)
+          }
+
+          // Simplify each segment - keep separate for simultaneous animations on each island
+          const tolerance = Math.max(bbox.width, bbox.height) * 0.02 // 2% tolerance (less aggressive)
+          const simplifiedSegments = segments.map((seg) => simplify(seg, tolerance, true))
+
+          // Convert each segment to a separate SVG path string
+          const pathStrings: string[] = []
+          let totalSimplifiedPoints = 0
+          for (const simplified of simplifiedSegments) {
+            if (simplified.length > 2) {
+              let pathStr = `M ${simplified[0].x} ${simplified[0].y}`
+              for (let i = 1; i < simplified.length; i++) {
+                pathStr += ` L ${simplified[i].x} ${simplified[i].y}`
+              }
+              pathStr += ' Z'
+              pathStrings.push(pathStr)
+              totalSimplifiedPoints += simplified.length
+            }
+          }
+          setSimplifiedTracerPaths(pathStrings)
+
+          console.log('[PathSimplify]', {
+            regionId: displayRegionId,
+            totalLength,
+            sampledPoints: allPoints.length,
+            segments: segments.length,
+            simplifiedPoints: totalSimplifiedPoints,
+            reduction: `${Math.round((1 - totalSimplifiedPoints / allPoints.length) * 100)}%`,
+          })
         }
       })
     } else {
       setAccurateBBox(null)
+      setSimplifiedTracerPaths(null)
     }
-  }, [displayRegionPath])
+  }, [displayRegionPath, displayRegionId])
 
   // Get the region's SVG path for puzzle piece animation
   // Uses the exact SVG bounding box from getBBox() passed in the target
@@ -369,22 +468,22 @@ export function GameInfoPanel({
   const puzzlePieceSpring = useSpring({
     // Only animate when we have both target and source (sourceRect)
     to: puzzlePieceTarget?.sourceRect
-        ? {
-            // Target: actual screen position of region on map (top-left coords)
-            x: puzzlePieceTarget.x,
-            y: puzzlePieceTarget.y,
-            width: puzzlePieceTarget.width,
-            height: puzzlePieceTarget.height,
-            opacity: 1, // Keep visible during animation
-          }
-        : {
-            // Default: centered on screen (fallback)
-            x: typeof window !== 'undefined' ? (window.innerWidth - 400) / 2 : 200,
-            y: typeof window !== 'undefined' ? (window.innerHeight - 400) / 2 : 100,
-            width: 400,
-            height: 400,
-            opacity: 1,
-          },
+      ? {
+          // Target: actual screen position of region on map (top-left coords)
+          x: puzzlePieceTarget.x,
+          y: puzzlePieceTarget.y,
+          width: puzzlePieceTarget.width,
+          height: puzzlePieceTarget.height,
+          opacity: 1, // Keep visible during animation
+        }
+      : {
+          // Default: centered on screen (fallback)
+          x: typeof window !== 'undefined' ? (window.innerWidth - 400) / 2 : 200,
+          y: typeof window !== 'undefined' ? (window.innerHeight - 400) / 2 : 100,
+          width: 400,
+          height: 400,
+          opacity: 1,
+        },
     from: puzzlePieceTarget?.sourceRect
       ? {
           // Start: actual position from takeover screen
@@ -411,16 +510,57 @@ export function GameInfoPanel({
     },
   })
 
+  // Tracer intensity spring - controls speed, size, opacity, and focus based on letter progress
+  // 0 letters = slow/big/faint, all letters = fast/laser-focused/bright
+  // All values smoothly animated via react-spring
+  const tracerIntensity =
+    requiresNameConfirmation > 0 ? confirmedLetterCount / requiresNameConfirmation : 0
+
+  // Exponential curve for more dramatic pickup (x^3 gives steep curve at the end)
+  const exponentialIntensity = Math.pow(tracerIntensity, 2.5)
+
+  const tracerSpring = useSpring({
+    // Size multiplier: 1.5 (big) → 0.3 (laser-focused)
+    sizeScale: 1.5 - exponentialIntensity * 1.2,
+    // Glow multiplier: 1.5 (soft/large) → 0.4 (concentrated)
+    glowScale: 1.5 - exponentialIntensity * 1.1,
+    // Ember size multiplier
+    emberScale: 1.0 - exponentialIntensity * 0.6,
+    // Overall opacity: 25% at 0 letters → 100% at all letters (smoothly animated)
+    overallOpacity: 0.25 + tracerIntensity * 0.75,
+    // Speed multiplier for duration calculation: 1 (slow) → 200 (blazing fast)
+    // Using exponential curve: 1 → 5 → 40 → 200
+    speedMultiplier: 1 + exponentialIntensity * 199,
+    config: { tension: 180, friction: 18 },
+  })
+
+  // Duration for tracer animation - computed from exponential intensity
+  // Base duration 15s divided by speed: 15s → 3s → 0.375s → 0.075s (200x faster at max!)
+  const tracerDuration = 15 / (1 + exponentialIntensity * 199)
+
+  // Exponential sparkle counts - dramatic growth but capped for performance
+  // Embers: 1 → 3 → 8 → 16 (filtered glow, keep lower)
+  // Flying sparks: 2 → 8 → 24 → 48 (no filter, can have more)
+  const emberCount =
+    requiresNameConfirmation > 0 ? [1, 3, 8, 16][Math.min(confirmedLetterCount, 3)] : 1
+  const sparkCount =
+    requiresNameConfirmation > 0 ? [2, 8, 24, 48][Math.min(confirmedLetterCount, 3)] : 2
+
   // Whether we're in puzzle piece animation mode (has sourceRect means animation is active)
-  const isPuzzlePieceAnimating = puzzlePieceTarget !== null && puzzlePieceTarget.sourceRect !== undefined
+  const isPuzzlePieceAnimating =
+    puzzlePieceTarget !== null && puzzlePieceTarget.sourceRect !== undefined
 
   // Whether we're in the "fade back in" phase (target set, waiting for sourceRect capture)
   const isFadingBackIn = puzzlePieceTarget !== null && puzzlePieceTarget.sourceRect === undefined
 
+  // Track if we're showing the laser effect (brief delay after all letters entered)
+  const [showingLaserEffect, setShowingLaserEffect] = useState(false)
+
   // Memoize whether we're in active takeover mode
-  // Takeover visible: during typing OR when fading back in for animation OR during animation
+  // Takeover visible: during typing OR showing laser effect OR fading back in OR during animation
   const isInTakeoverLocal =
-    isLearningMode && (takeoverProgress < 1 || isFadingBackIn || isPuzzlePieceAnimating)
+    isLearningMode &&
+    (takeoverProgress < 1 || showingLaserEffect || isFadingBackIn || isPuzzlePieceAnimating)
   const showPulseAnimation = isLearningMode && takeoverProgress < 0.5
 
   // Sync takeover state to context (so MapRenderer can suppress hot/cold feedback)
@@ -434,6 +574,7 @@ export function GameInfoPanel({
   useEffect(() => {
     if (currentRegionId) {
       setNameConfirmed(false)
+      setShowingLaserEffect(false)
       setIsAttentionPhase(true)
 
       // End attention phase after duration
@@ -452,8 +593,17 @@ export function GameInfoPanel({
       confirmedLetterCount >= requiresNameConfirmation &&
       !nameConfirmed
     ) {
-      setNameConfirmed(true)
+      // Start showing laser effect
+      setShowingLaserEffect(true)
       onHintsUnlock?.()
+
+      // After 750ms, hide the laser effect and mark as confirmed
+      const timeout = setTimeout(() => {
+        setShowingLaserEffect(false)
+        setNameConfirmed(true)
+      }, 750)
+
+      return () => clearTimeout(timeout)
     }
   }, [confirmedLetterCount, requiresNameConfirmation, nameConfirmed, onHintsUnlock])
 
@@ -747,60 +897,240 @@ export function GameInfoPanel({
 
         {/* Region shape silhouette - shown during takeover, until animation starts */}
         {/* Uses accurateBBox from getBBox() for consistent positioning between parts 1 and 2 */}
-        {displayRegionPath && accurateBBox && isInTakeoverLocal && !isPuzzlePieceAnimating && (() => {
-          // Use puzzlePieceTarget.svgBBox if available (part 2), otherwise use accurateBBox (part 1)
-          // Both come from getBBox() so positioning should be identical
-          const bbox = puzzlePieceTarget?.svgBBox ?? accurateBBox
-          const viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
-          const aspectRatio = bbox.width / bbox.height
+        {displayRegionPath &&
+          accurateBBox &&
+          isInTakeoverLocal &&
+          !isPuzzlePieceAnimating &&
+          (() => {
+            // Use puzzlePieceTarget.svgBBox if available (part 2), otherwise use accurateBBox (part 1)
+            // Both come from getBBox() so positioning should be identical
+            const bbox = puzzlePieceTarget?.svgBBox ?? accurateBBox
+            const viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+            const aspectRatio = bbox.width / bbox.height
 
-          // Calculate container size that fits within 60% of viewport while preserving aspect ratio
-          const maxSize = typeof window !== 'undefined'
-            ? Math.min(window.innerWidth, window.innerHeight) * 0.6
-            : 400
+            // Calculate container size that fits within 60% of viewport while preserving aspect ratio
+            const maxSize =
+              typeof window !== 'undefined'
+                ? Math.min(window.innerWidth, window.innerHeight) * 0.6
+                : 400
 
-          let width: number
-          let height: number
-          if (aspectRatio > 1) {
-            // Wider than tall
-            width = maxSize
-            height = maxSize / aspectRatio
-          } else {
-            // Taller than wide
-            height = maxSize
-            width = maxSize * aspectRatio
-          }
+            let width: number
+            let height: number
+            if (aspectRatio > 1) {
+              // Wider than tall
+              width = maxSize
+              height = maxSize / aspectRatio
+            } else {
+              // Taller than wide
+              height = maxSize
+              width = maxSize * aspectRatio
+            }
 
-          // Center on screen
-          const x = typeof window !== 'undefined' ? (window.innerWidth - width) / 2 : 200
-          const y = typeof window !== 'undefined' ? (window.innerHeight - height) / 2 : 100
+            // Center on screen
+            const x = typeof window !== 'undefined' ? (window.innerWidth - width) / 2 : 200
+            const y = typeof window !== 'undefined' ? (window.innerHeight - height) / 2 : 100
 
-          return (
-            <svg
-              ref={takeoverRegionShapeRef}
-              data-element="takeover-region-shape"
-              viewBox={viewBox}
-              preserveAspectRatio="xMidYMid meet"
-              style={{
-                position: 'fixed',
-                left: `${x}px`,
-                top: `${y}px`,
-                width: `${width}px`,
-                height: `${height}px`,
-                zIndex: 151,
-                pointerEvents: 'none',
-              }}
-            >
-              <path
-                d={displayRegionPath}
-                fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
-                stroke={isDark ? '#3b82f6' : '#2563eb'}
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          )
-        })()}
+            // Calculate a reasonable tracer size based on the viewBox dimensions
+            const tracerSize = Math.max(bbox.width, bbox.height) * 0.03
+
+            // Use pre-calculated simplified paths from state (calculated using browser's getPointAtLength)
+            // Each element is a separate island/segment - we animate all simultaneously
+            // Fall back to original path if simplified not ready yet
+            const tracerPaths =
+              simplifiedTracerPaths && simplifiedTracerPaths.length > 0
+                ? simplifiedTracerPaths
+                : [displayRegionPath]
+
+            return (
+              <svg
+                ref={takeoverRegionShapeRef}
+                data-element="takeover-region-shape"
+                viewBox={viewBox}
+                preserveAspectRatio="xMidYMid meet"
+                style={{
+                  position: 'fixed',
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  width: `${width}px`,
+                  height: `${height}px`,
+                  zIndex: 151,
+                  pointerEvents: 'none',
+                  overflow: 'visible',
+                }}
+              >
+                {/* Definitions for glow effects */}
+                <defs>
+                  {/* Simplified paths for smooth animation - one per island/segment */}
+                  {tracerPaths.map((path, idx) => (
+                    <path key={`motion-path-${idx}`} id={`tracer-motion-path-${idx}`} d={path} />
+                  ))}
+                </defs>
+
+                {/* DEBUG: Render simplified paths visibly (only when visual debug enabled) */}
+                {isVisualDebugEnabled &&
+                  tracerPaths.map((path, idx) => (
+                    <path
+                      key={`debug-path-${idx}`}
+                      d={path}
+                      fill="none"
+                      stroke="red"
+                      strokeWidth={3}
+                      strokeDasharray="10,5"
+                      vectorEffect="non-scaling-stroke"
+                      opacity={0.8}
+                    />
+                  ))}
+
+                <defs>
+                  {/* Glow filter for the main flame */}
+                  <filter id="flame-glow" x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation={tracerSize * 1.2} result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  {/* Smaller glow for sparks */}
+                  <filter id="spark-glow" x="-200%" y="-200%" width="500%" height="500%">
+                    <feGaussianBlur stdDeviation={tracerSize * 0.5} result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  {/* Fire gradient - hot core to cooler edges */}
+                  <radialGradient id="flame-gradient">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+                    <stop offset="20%" stopColor="#fffde7" stopOpacity="1" />
+                    <stop offset="40%" stopColor="#ffd54f" stopOpacity="0.95" />
+                    <stop offset="60%" stopColor="#ff9800" stopOpacity="0.85" />
+                    <stop offset="80%" stopColor="#f44336" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#d32f2f" stopOpacity="0" />
+                  </radialGradient>
+                  {/* Ember gradient for trailing sparks */}
+                  <radialGradient id="ember-gradient">
+                    <stop offset="0%" stopColor="#ffeb3b" stopOpacity="1" />
+                    <stop offset="50%" stopColor="#ff9800" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#ff5722" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+
+                {/* Region fill and stroke */}
+                <path
+                  id="region-outline-path"
+                  d={displayRegionPath}
+                  fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
+                  stroke={isDark ? '#3b82f6' : '#2563eb'}
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+
+                {/* Tracer animation groups - one for each island/segment, all animate simultaneously */}
+                {tracerPaths.map((_, pathIdx) => (
+                  <animated.g
+                    key={`tracer-${confirmedLetterCount}-${pathIdx}`}
+                    opacity={tracerSpring.overallOpacity}
+                  >
+                    {/* Outer fire glow - size scales with intensity */}
+                    <animated.circle
+                      r={tracerSpring.sizeScale.to((s) => tracerSize * 1.5 * s)}
+                      fill="url(#flame-gradient)"
+                      filter="url(#flame-glow)"
+                      opacity={tracerSpring.glowScale.to((g) => 0.5 + g * 0.2)}
+                    >
+                      <animateMotion dur={`${tracerDuration}s`} repeatCount="indefinite">
+                        <mpath href={`#tracer-motion-path-${pathIdx}`} />
+                      </animateMotion>
+                    </animated.circle>
+
+                    {/* Main flame body */}
+                    <animated.circle
+                      r={tracerSpring.sizeScale.to((s) => tracerSize * s)}
+                      fill="url(#flame-gradient)"
+                      filter="url(#flame-glow)"
+                    >
+                      <animateMotion dur={`${tracerDuration}s`} repeatCount="indefinite">
+                        <mpath href={`#tracer-motion-path-${pathIdx}`} />
+                      </animateMotion>
+                    </animated.circle>
+
+                    {/* Hot white core - gets more intense/bright as letters progress */}
+                    <animated.circle
+                      r={tracerSpring.sizeScale.to((s) => tracerSize * 0.35 * (2 - s))}
+                      fill="white"
+                    >
+                      <animateMotion dur={`${tracerDuration}s`} repeatCount="indefinite">
+                        <mpath href={`#tracer-motion-path-${pathIdx}`} />
+                      </animateMotion>
+                      <animate
+                        attributeName="opacity"
+                        values="1;0.85;1;0.9;1"
+                        dur="0.15s"
+                        repeatCount="indefinite"
+                      />
+                    </animated.circle>
+
+                    {/* Trailing embers - exponentially increasing count (no filter for performance) */}
+                    {Array.from({ length: emberCount }, (_, i) => {
+                      const offset = (i + 1) / (emberCount + 1) // Spread evenly behind the main flame
+                      return (
+                        <animated.circle
+                          key={`ember-${pathIdx}-${i}`}
+                          r={tracerSpring.emberScale.to(
+                            (e) => tracerSize * (0.6 - (i / emberCount) * 0.35) * e
+                          )}
+                          fill="url(#ember-gradient)"
+                        >
+                          <animateMotion
+                            dur={`${tracerDuration}s`}
+                            repeatCount="indefinite"
+                            begin={`-${offset * tracerDuration * 0.4}s`}
+                          >
+                            <mpath href={`#tracer-motion-path-${pathIdx}`} />
+                          </animateMotion>
+                          <animate
+                            attributeName="opacity"
+                            values="0.9;0.6;0.3;0.1"
+                            dur="0.4s"
+                            repeatCount="indefinite"
+                          />
+                        </animated.circle>
+                      )
+                    })}
+
+                    {/* Flying sparks - exponentially increasing count (no filter for performance) */}
+                    {Array.from({ length: sparkCount }, (_, i) => {
+                      const startOffset = i / sparkCount // Distribute evenly around the path
+                      return (
+                        <circle
+                          key={`spark-${pathIdx}-${i}`}
+                          r={tracerSize * 0.15}
+                          fill="#ffeb3b"
+                        >
+                          <animateMotion
+                            dur={`${tracerDuration}s`}
+                            repeatCount="indefinite"
+                            begin={`${startOffset * tracerDuration}s`}
+                          >
+                            <mpath href={`#tracer-motion-path-${pathIdx}`} />
+                          </animateMotion>
+                          <animate
+                            attributeName="opacity"
+                            values="1;0.8;0.3;0"
+                            dur="0.5s"
+                            repeatCount="indefinite"
+                            begin={`${startOffset * tracerDuration}s`}
+                          />
+                        </circle>
+                      )
+                    })}
+                  </animated.g>
+                ))}
+              </svg>
+            )
+          })()}
 
         {/* Animated puzzle piece silhouette - flies from center to map position */}
         {puzzlePieceShape && isPuzzlePieceAnimating && (
