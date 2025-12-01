@@ -600,8 +600,10 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Music is active when game is in playing phase
   const isMusicActive = state.gamePhase === 'playing'
 
-  // Pass celebration state to music provider (with type only)
-  const musicCelebration = celebration ? { type: celebration.type } : null
+  // Pass celebration state to music provider (type + startTime for deduplication)
+  const musicCelebration = celebration
+    ? { type: celebration.type, startTime: celebration.startTime }
+    : null
 
   return (
     <KnowYourWorldContext.Provider

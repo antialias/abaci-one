@@ -86,13 +86,12 @@
       "Bash(npm run lint:*)",
       "WebFetch(domain:strudel.cc)",
       "WebFetch(domain:club.tidalcycles.org)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "WebFetch(domain:abaci.one)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }
