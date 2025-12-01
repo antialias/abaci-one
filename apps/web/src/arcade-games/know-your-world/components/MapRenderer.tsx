@@ -83,35 +83,6 @@ const SAFE_ZONE_MARGINS: SafeZoneMargins = {
 }
 
 /**
- * Get emoji for hot/cold feedback type
- * Returns emoji that matches the temperature/status of the last feedback
- */
-function getHotColdEmoji(feedbackType: FeedbackType | null): string {
-  switch (feedbackType) {
-    case 'found_it':
-      return '🎯'
-    case 'on_fire':
-      return '🔥'
-    case 'hot':
-      return '🥵'
-    case 'warmer':
-      return '☀️'
-    case 'colder':
-      return '🌧️'
-    case 'cold':
-      return '🥶'
-    case 'freezing':
-      return '❄️'
-    case 'overshot':
-      return '↩️'
-    case 'stuck':
-      return '🤔'
-    default:
-      return '🌡️' // Default thermometer when no feedback yet
-  }
-}
-
-/**
  * Get heat-based border color for magnifier based on hot/cold feedback
  * Returns an object with border color and glow color
  */
@@ -244,7 +215,6 @@ function getHeatCrosshairStyle(
 ): {
   color: string
   opacity: number
-  showFire: boolean
   rotationSpeed: number // degrees per frame at 60fps (0 = no rotation)
   glowColor: string
   strokeWidth: number
@@ -257,7 +227,6 @@ function getHeatCrosshairStyle(
     return {
       color: isDark ? '#60a5fa' : '#3b82f6', // Default blue
       opacity: 1,
-      showFire: false,
       rotationSpeed: 0,
       glowColor: 'transparent',
       strokeWidth: 2,
@@ -269,7 +238,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#fbbf24', // Gold
         opacity: 1,
-        showFire: true,
         rotationSpeed,
         glowColor: 'rgba(251, 191, 36, 0.8)',
         strokeWidth: 3,
@@ -278,7 +246,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#ef4444', // Bright red
         opacity: 1,
-        showFire: true, // Show fire particles
         rotationSpeed,
         glowColor: 'rgba(239, 68, 68, 0.7)',
         strokeWidth: 3,
@@ -287,7 +254,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#f97316', // Orange
         opacity: 1,
-        showFire: false,
         rotationSpeed,
         glowColor: 'rgba(249, 115, 22, 0.5)',
         strokeWidth: 2.5,
@@ -296,7 +262,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#fb923c', // Light orange
         opacity: 0.9,
-        showFire: false,
         rotationSpeed,
         glowColor: 'rgba(251, 146, 60, 0.4)',
         strokeWidth: 2,
@@ -305,7 +270,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#93c5fd', // Light blue
         opacity: 0.6,
-        showFire: false,
         rotationSpeed,
         glowColor: 'transparent',
         strokeWidth: 2,
@@ -314,7 +278,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#60a5fa', // Blue
         opacity: 0.4,
-        showFire: false,
         rotationSpeed,
         glowColor: 'transparent',
         strokeWidth: 1.5,
@@ -323,7 +286,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#38bdf8', // Ice blue/cyan
         opacity: 0.25, // Very faded
-        showFire: false,
         rotationSpeed,
         glowColor: 'transparent',
         strokeWidth: 1,
@@ -332,7 +294,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#a855f7', // Purple (went past it)
         opacity: 0.8,
-        showFire: false,
         rotationSpeed,
         glowColor: 'rgba(168, 85, 247, 0.4)',
         strokeWidth: 2,
@@ -341,7 +302,6 @@ function getHeatCrosshairStyle(
       return {
         color: '#9ca3af', // Gray
         opacity: 0.5,
-        showFire: false,
         rotationSpeed,
         glowColor: 'transparent',
         strokeWidth: 1.5,
@@ -350,7 +310,6 @@ function getHeatCrosshairStyle(
       return {
         color: isDark ? '#60a5fa' : '#3b82f6',
         opacity: 1,
-        showFire: false,
         rotationSpeed: 0,
         glowColor: 'transparent',
         strokeWidth: 2,
@@ -1322,6 +1281,7 @@ export function MapRenderer({
   // 1. Spring animates the SPEED (degrees per second) - smooth transitions
   // 2. requestAnimationFrame loop integrates angle from speed
   // 3. Angle is bound to animated element via useSpringValue
+  // 4. When speed is ~0, smoothly wind back to 0 degrees (upright)
 
   // Convert rotation speed from degrees/frame@60fps to degrees/second
   const targetSpeedDegPerSec = crosshairHeatStyle.rotationSpeed * 60
@@ -1332,7 +1292,13 @@ export function MapRenderer({
   })
 
   // Spring value for the angle - we'll directly .set() this from the rAF loop
-  const rotationAngle = useSpringValue(0)
+  // when rotating, or use spring animation when winding back to 0
+  const rotationAngle = useSpringValue(0, {
+    config: { tension: 120, friction: 14 }, // Gentle spring for wind-back
+  })
+
+  // Track whether we're winding back (to avoid repeated .start() calls)
+  const isWindingBackRef = useRef(false)
 
   // Update the speed spring when target changes
   useEffect(() => {
@@ -1340,23 +1306,43 @@ export function MapRenderer({
   }, [targetSpeedDegPerSec, rotationSpeed])
 
   // requestAnimationFrame loop to integrate angle from speed
+  // When speed is near 0, wind back to upright (0 degrees)
   useEffect(() => {
     let lastTime = performance.now()
     let frameId: number
+
+    // Speed threshold below which we consider "stopped" and wind back
+    const WIND_BACK_THRESHOLD = 5 // deg/s
 
     const loop = (now: number) => {
       const dt = (now - lastTime) / 1000 // seconds
       lastTime = now
 
       const speed = rotationSpeed.get() // deg/s from the spring
-      let angle = rotationAngle.get() + speed * dt // integrate
+      const currentAngle = rotationAngle.get()
 
-      // Keep angle in reasonable range (prevent overflow after hours of play)
-      if (angle >= 360000) angle -= 360000
-      if (angle < 0) angle += 360
+      if (Math.abs(speed) < WIND_BACK_THRESHOLD) {
+        // Speed is essentially 0 - wind back to upright
+        if (!isWindingBackRef.current) {
+          isWindingBackRef.current = true
+          // Find the nearest 0 (could be 0, 360, 720, etc. or -360, etc.)
+          const nearestZero = Math.round(currentAngle / 360) * 360
+          rotationAngle.start(nearestZero)
+        }
+        // Let the spring handle it - don't set manually
+      } else {
+        // Speed is significant - integrate normally
+        isWindingBackRef.current = false
 
-      // Direct set - no extra springing on angle itself
-      rotationAngle.set(angle)
+        let angle = currentAngle + speed * dt // integrate
+
+        // Keep angle in reasonable range (prevent overflow after hours of play)
+        if (angle >= 360000) angle -= 360000
+        if (angle < 0) angle += 360
+
+        // Direct set - no extra springing on angle itself
+        rotationAngle.set(angle)
+      }
 
       frameId = requestAnimationFrame(loop)
     }
@@ -2813,6 +2799,11 @@ export function MapRenderer({
           regionUnderCursor,
         } = detectionResult
 
+        // Update hovered region state so Select button knows what's under crosshairs
+        if (regionUnderCursor !== hoveredRegion) {
+          setHoveredRegion(regionUnderCursor)
+        }
+
         // Hot/cold feedback for mobile magnifier
         if (hotColdEnabledRef.current && currentPrompt && !isGiveUpAnimating && !isInTakeover) {
           const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
@@ -3125,6 +3116,11 @@ export function MapRenderer({
         detectedRegions: detectedRegionObjects,
         detectedSmallestSize,
       } = detectRegions(clampedX, clampedY)
+
+      // Update hovered region state so Select button knows what's under crosshairs
+      if (regionUnderCursor !== hoveredRegion) {
+        setHoveredRegion(regionUnderCursor)
+      }
 
       // Hot/cold feedback for magnifier panning
       if (hotColdEnabledRef.current && currentPrompt && !isGiveUpAnimating && !isInTakeover) {
@@ -4032,22 +4028,6 @@ export function MapRenderer({
               transition: 'transform 0.1s ease-out',
             }}
           >
-            {/* Glow effect behind crosshair when hot - uses instantHeat for instant feedback */}
-            {crosshairHeatStyle.glowColor !== 'transparent' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: `radial-gradient(circle, ${crosshairHeatStyle.glowColor} 0%, transparent 70%)`,
-                  filter: 'blur(4px)',
-                }}
-              />
-            )}
             {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
             <animated.svg
               width="32"
@@ -4062,7 +4042,7 @@ export function MapRenderer({
               <circle
                 cx="16"
                 cy="16"
-                r="10"
+                r="13"
                 fill="none"
                 stroke={crosshairHeatStyle.color}
                 strokeWidth={crosshairHeatStyle.strokeWidth}
@@ -4121,34 +4101,6 @@ export function MapRenderer({
                 opacity={crosshairHeatStyle.opacity}
               />
             </animated.svg>
-            {/* Fire particles around crosshair */}
-            {crosshairHeatStyle.showFire && (
-              <div style={{ position: 'absolute', left: 0, top: 0, width: '32px', height: '32px' }}>
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
-                  const rad = (angle * Math.PI) / 180
-                  const dist = 20
-                  const px = 16 + Math.cos(rad) * dist - 4
-                  const py = 16 + Math.sin(rad) * dist - 4
-                  return (
-                    <div
-                      key={`fire-cursor-${i}`}
-                      style={{
-                        position: 'absolute',
-                        left: `${px}px`,
-                        top: `${py}px`,
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: i % 2 === 0 ? '#ef4444' : '#f97316',
-                        opacity: 0.9,
-                        animation: `fireParticle${i % 3} 0.4s ease-out infinite`,
-                        animationDelay: `${i * 0.05}s`,
-                      }}
-                    />
-                  )
-                })}
-              </div>
-            )}
           </div>
           {/* Cursor region name label - shows what to find under the cursor */}
           {currentRegionName &&
@@ -4235,22 +4187,6 @@ export function MapRenderer({
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              {/* Glow effect behind crosshair when hot */}
-              {heatStyle.glowColor !== 'transparent' && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '50px',
-                    height: '50px',
-                    borderRadius: '50%',
-                    background: `radial-gradient(circle, ${heatStyle.glowColor} 0%, transparent 70%)`,
-                    filter: 'blur(6px)',
-                  }}
-                />
-              )}
               {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
               <animated.svg
                 width="40"
@@ -4265,7 +4201,7 @@ export function MapRenderer({
                 <circle
                   cx="20"
                   cy="20"
-                  r="12"
+                  r="16"
                   fill="none"
                   stroke={heatStyle.color}
                   strokeWidth={heatStyle.strokeWidth}
@@ -4318,36 +4254,6 @@ export function MapRenderer({
                 {/* Center dot */}
                 <circle cx="20" cy="20" r="2" fill={heatStyle.color} opacity={heatStyle.opacity} />
               </animated.svg>
-              {/* Fire particles around crosshair */}
-              {heatStyle.showFire && (
-                <div
-                  style={{ position: 'absolute', left: 0, top: 0, width: '40px', height: '40px' }}
-                >
-                  {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
-                    const rad = (angle * Math.PI) / 180
-                    const distance = 24
-                    const px = 20 + Math.cos(rad) * distance - 5
-                    const py = 20 + Math.sin(rad) * distance - 5
-                    return (
-                      <div
-                        key={`fire-main-${i}`}
-                        style={{
-                          position: 'absolute',
-                          left: `${px}px`,
-                          top: `${py}px`,
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          background: i % 2 === 0 ? '#ef4444' : '#f97316',
-                          opacity: 0.9,
-                          animation: `fireParticle${i % 3} 0.4s ease-out infinite`,
-                          animationDelay: `${i * 0.05}s`,
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-              )}
             </div>
           )
         })()}
@@ -4628,24 +4534,11 @@ export function MapRenderer({
                     isDark,
                     effectiveHotColdEnabled
                   )
-                  const crosshairRadius = viewBoxWidth / 100
-                  const crosshairLineLength = viewBoxWidth / 50
+                  const crosshairRadius = viewBoxWidth / 60
+                  const crosshairLineLength = viewBoxWidth / 30
 
                   return (
                     <>
-                      {/* Glow effect behind crosshair when hot */}
-                      {heatStyle.glowColor !== 'transparent' && (
-                        <circle
-                          cx={cursorSvgX}
-                          cy={cursorSvgY}
-                          r={crosshairRadius * 1.5}
-                          fill={heatStyle.glowColor}
-                          opacity={0.5}
-                          style={{
-                            filter: 'blur(3px)',
-                          }}
-                        />
-                      )}
                       {/* Crosshair with separate translation and rotation */}
                       {/* Outer <g> handles translation (follows cursor) */}
                       {/* Inner animated.g handles rotation via spring-driven animation */}
@@ -4691,32 +4584,6 @@ export function MapRenderer({
                           />
                         </animated.g>
                       </g>
-                      {/* Fire particles around crosshair when on_fire or found_it */}
-                      {heatStyle.showFire && (
-                        <>
-                          {/* Fire particles - 6 small circles radiating outward */}
-                          {[0, 60, 120, 180, 240, 300].map((angle, i) => {
-                            const rad = (angle * Math.PI) / 180
-                            const particleDistance = crosshairRadius * 1.8
-                            const px = cursorSvgX + Math.cos(rad) * particleDistance
-                            const py = cursorSvgY + Math.sin(rad) * particleDistance
-                            return (
-                              <circle
-                                key={`fire-${i}`}
-                                cx={px}
-                                cy={py}
-                                r={crosshairRadius * 0.25}
-                                fill={i % 2 === 0 ? '#ef4444' : '#f97316'}
-                                opacity={0.8}
-                                style={{
-                                  animation: `fireParticle${i % 3} 0.5s ease-out infinite`,
-                                  animationDelay: `${i * 0.08}s`,
-                                }}
-                              />
-                            )
-                          })}
-                        </>
-                      )}
                     </>
                   )
                 })()}
@@ -5207,32 +5074,6 @@ export function MapRenderer({
               </button>
             )}
 
-            {/* Hot/cold emoji badge - top-right corner when hot/cold is enabled */}
-            {effectiveHotColdEnabled && hotColdFeedbackType && (
-              <div
-                data-element="hot-cold-badge"
-                style={{
-                  position: 'absolute',
-                  top: -8,
-                  right: -8,
-                  fontSize: '24px',
-                  background: isDark ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.95)',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px ${getHeatBorderColors(hotColdFeedbackType, isDark).glow}`,
-                  border: `2px solid ${getHeatBorderColors(hotColdFeedbackType, isDark).border}`,
-                  zIndex: 101,
-                  pointerEvents: 'none',
-                }}
-              >
-                {getHotColdEmoji(hotColdFeedbackType)}
-              </div>
-            )}
-
             {/* Mobile Select button - inside magnifier, bottom-right corner (touch devices only) */}
             {isTouchDevice &&
               mobileMapDragTriggeredMagnifier &&
@@ -5577,25 +5418,6 @@ export function MapRenderer({
                 @keyframes zoom-line-flow {
                   from { stroke-dashoffset: 12; }
                   to { stroke-dashoffset: 0; }
-                }
-                @keyframes crosshairSpin {
-                  from { transform: rotate(0deg); }
-                  to { transform: rotate(360deg); }
-                }
-                @keyframes fireParticle0 {
-                  0% { opacity: 0.9; transform: scale(1) translateY(0); }
-                  50% { opacity: 1; transform: scale(1.3) translateY(-2px); }
-                  100% { opacity: 0.9; transform: scale(1) translateY(0); }
-                }
-                @keyframes fireParticle1 {
-                  0% { opacity: 0.8; transform: scale(1.1) translateY(-1px); }
-                  50% { opacity: 1; transform: scale(1) translateY(1px); }
-                  100% { opacity: 0.8; transform: scale(1.1) translateY(-1px); }
-                }
-                @keyframes fireParticle2 {
-                  0% { opacity: 1; transform: scale(1.2) translateY(-2px); }
-                  50% { opacity: 0.7; transform: scale(0.9) translateY(0); }
-                  100% { opacity: 1; transform: scale(1.2) translateY(-2px); }
                 }
               `}
             </style>
