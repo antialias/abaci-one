@@ -48,22 +48,14 @@ export function CelebrationOverlay({
     () => HARD_EARNED_MESSAGES[Math.floor(Math.random() * HARD_EARNED_MESSAGES.length)]
   )
 
-  // Play celebration sound via Strudel (if music is available and playing)
+  // NOTE: Celebration sound is handled by MusicContext (via the celebration prop)
+  // We don't play it here to avoid duplicate sounds
   useEffect(() => {
-    console.log('[CelebrationOverlay] Celebration triggered:', {
+    console.log('[CelebrationOverlay] Celebration rendered:', {
       type: celebration.type,
-      musicAvailable: !!music,
-      isPlaying: music?.isPlaying,
-      isInitialized: music?.isInitialized,
-      isMuted: music?.isMuted,
+      startTime: celebration.startTime,
     })
-    if (music?.isPlaying) {
-      console.log('[CelebrationOverlay] Calling music.playCelebration...')
-      music.playCelebration(celebration.type)
-    } else {
-      console.log('[CelebrationOverlay] Music not playing, skipping celebration sound')
-    }
-  }, [music, celebration.type])
+  }, [celebration.type, celebration.startTime])
 
   // Handle confetti completion
   const handleConfettiComplete = useCallback(() => {

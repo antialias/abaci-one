@@ -66,7 +66,7 @@ interface MusicProviderProps {
   /** Current hot/cold feedback type */
   hotColdFeedback?: FeedbackType | null
   /** Current celebration state */
-  celebration?: { type: CelebrationType } | null
+  celebration?: { type: CelebrationType; startTime: number } | null
 }
 
 /**
@@ -277,6 +277,7 @@ export function MusicProvider({
 
   // Web Audio context for standalone celebrations (when Strudel music is off)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const lastCelebrationStartTimeRef = useRef<number | null>(null)
 
   // Play a Web Audio celebration (reliable one-shot sounds)
   const playWebAudioCelebration = useCallback((type: CelebrationType) => {
@@ -406,17 +407,26 @@ export function MusicProvider({
     [engine, currentPresetId, clearCelebrationTimer, playWebAudioCelebration]
   )
 
-  // React to celebration prop changes
+  // React to celebration prop changes - use startTime as stable identifier
+  // to prevent duplicate plays from object reference changes
+  const celebrationStartTime = celebration?.startTime
+  const celebrationType = celebration?.type
   useEffect(() => {
-    console.log('[MusicContext] celebration prop effect:', {
-      celebrationType: celebration?.type,
-      celebration,
-    })
-    if (celebration?.type) {
-      console.log('[MusicContext] Triggering celebration from prop change')
-      playCelebration(celebration.type)
+    // Guard: only play if we have a new celebration (different startTime)
+    if (
+      celebrationType &&
+      celebrationStartTime &&
+      celebrationStartTime !== lastCelebrationStartTimeRef.current
+    ) {
+      console.log('[MusicContext] celebration prop effect - NEW celebration:', {
+        celebrationType,
+        celebrationStartTime,
+        lastStartTime: lastCelebrationStartTimeRef.current,
+      })
+      lastCelebrationStartTimeRef.current = celebrationStartTime
+      playCelebration(celebrationType)
     }
-  }, [celebration, playCelebration])
+  }, [celebrationStartTime, celebrationType, playCelebration])
 
   // Cleanup on unmount
   useEffect(() => {

@@ -3,7 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { css } from '@styled/css'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useSpring, animated } from '@react-spring/web'
+import { useSpring, animated, to } from '@react-spring/web'
 import { useViewerId } from '@/lib/arcade/game-sdk'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
@@ -519,6 +519,30 @@ export function GameInfoPanel({
   // Exponential curve for more dramatic pickup (x^3 gives steep curve at the end)
   const exponentialIntensity = Math.pow(tracerIntensity, 2.5)
 
+  // Heating color interpolation: blue → purple → orange → gold
+  // Gold at the end matches the celebration styling on the map
+  const heatStops = [
+    { t: 0, r: 59, g: 130, b: 246 }, // Cool blue
+    { t: 0.33, r: 168, g: 85, b: 247 }, // Purple (warming)
+    { t: 0.66, r: 249, g: 115, b: 22 }, // Orange (hot)
+    { t: 1, r: 255, g: 215, b: 0 }, // Gold (matches celebration)
+  ]
+
+  // Find which segment we're in and interpolate
+  const t = tracerIntensity
+  let heatColors = { r: 59, g: 130, b: 246 }
+  for (let i = 0; i < heatStops.length - 1; i++) {
+    if (t >= heatStops[i].t && t <= heatStops[i + 1].t) {
+      const segmentT = (t - heatStops[i].t) / (heatStops[i + 1].t - heatStops[i].t)
+      heatColors = {
+        r: heatStops[i].r + segmentT * (heatStops[i + 1].r - heatStops[i].r),
+        g: heatStops[i].g + segmentT * (heatStops[i + 1].g - heatStops[i].g),
+        b: heatStops[i].b + segmentT * (heatStops[i + 1].b - heatStops[i].b),
+      }
+      break
+    }
+  }
+
   const tracerSpring = useSpring({
     // Size multiplier: 1.5 (big) → 0.3 (laser-focused)
     sizeScale: 1.5 - exponentialIntensity * 1.2,
@@ -531,6 +555,14 @@ export function GameInfoPanel({
     // Speed multiplier for duration calculation: 1 (slow) → 200 (blazing fast)
     // Using exponential curve: 1 → 5 → 40 → 200
     speedMultiplier: 1 + exponentialIntensity * 199,
+    // Heating border colors (RGB components for smooth interpolation)
+    heatR: heatColors.r,
+    heatG: heatColors.g,
+    heatB: heatColors.b,
+    // Stroke width increases as it heats up: 2 → 4
+    strokeWidth: 2 + tracerIntensity * 2,
+    // Fill opacity increases slightly as it heats up
+    fillOpacity: 0.3 + tracerIntensity * 0.2,
     config: { tension: 180, friction: 18 },
   })
 
@@ -1017,13 +1049,25 @@ export function GameInfoPanel({
                   </radialGradient>
                 </defs>
 
-                {/* Region fill and stroke */}
-                <path
+                {/* Region fill and stroke - heats up as letters are typed */}
+                <animated.path
                   id="region-outline-path"
                   d={displayRegionPath}
-                  fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
-                  stroke={isDark ? '#3b82f6' : '#2563eb'}
-                  strokeWidth={2}
+                  fill={to(
+                    [
+                      tracerSpring.heatR,
+                      tracerSpring.heatG,
+                      tracerSpring.heatB,
+                      tracerSpring.fillOpacity,
+                    ],
+                    (r, g, b, opacity) =>
+                      `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${opacity})`
+                  )}
+                  stroke={to(
+                    [tracerSpring.heatR, tracerSpring.heatG, tracerSpring.heatB],
+                    (r, g, b) => `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+                  )}
+                  strokeWidth={tracerSpring.strokeWidth}
                   vectorEffect="non-scaling-stroke"
                 />
 
@@ -1104,11 +1148,7 @@ export function GameInfoPanel({
                     {Array.from({ length: sparkCount }, (_, i) => {
                       const startOffset = i / sparkCount // Distribute evenly around the path
                       return (
-                        <circle
-                          key={`spark-${pathIdx}-${i}`}
-                          r={tracerSize * 0.15}
-                          fill="#ffeb3b"
-                        >
+                        <circle key={`spark-${pathIdx}-${i}`} r={tracerSize * 0.15} fill="#ffeb3b">
                           <animateMotion
                             dur={`${tracerDuration}s`}
                             repeatCount="indefinite"
@@ -1133,6 +1173,7 @@ export function GameInfoPanel({
           })()}
 
         {/* Animated puzzle piece silhouette - flies from center to map position */}
+        {/* Uses gold styling to match celebration on the map */}
         {puzzlePieceShape && isPuzzlePieceAnimating && (
           <animated.svg
             data-element="puzzle-piece-silhouette"
@@ -1151,9 +1192,9 @@ export function GameInfoPanel({
           >
             <path
               d={puzzlePieceShape.path}
-              fill={isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)'}
-              stroke={isDark ? '#3b82f6' : '#2563eb'}
-              strokeWidth={2}
+              fill="rgba(255, 215, 0, 0.7)"
+              stroke="rgba(255, 180, 0, 1)"
+              strokeWidth={3}
               vectorEffect="non-scaling-stroke"
             />
           </animated.svg>
@@ -1192,9 +1233,23 @@ export function GameInfoPanel({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: { base: '1', sm: '2' },
+                // Frosted glass backdrop for better contrast
+                background: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.5)',
+                backdropFilter: 'blur(8px)',
+                padding: '8px 16px',
+                borderRadius: '8px',
               })}
               style={{
-                textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.2)',
+                // Enhanced multi-layer text shadow for halo effect
+                textShadow: isDark
+                  ? `0 0 8px rgba(0,0,0,0.9),
+                     0 0 16px rgba(0,0,0,0.6),
+                     0 2px 4px rgba(0,0,0,0.9),
+                     -1px -1px 0 rgba(0,0,0,0.6),
+                     1px -1px 0 rgba(0,0,0,0.6),
+                     -1px 1px 0 rgba(0,0,0,0.6),
+                     1px 1px 0 rgba(0,0,0,0.6)`
+                  : '0 2px 4px rgba(0,0,0,0.2)',
               }}
             >
               {displayFlagEmoji && (
