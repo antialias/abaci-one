@@ -31,6 +31,34 @@
 - Lose reproduction state for bugs being debugged
 - Annoy the user with preventable errors
 
+## CRITICAL: When Agreeing on a Technical Approach, Actually Implement It Everywhere
+
+**This is a documented failure pattern. Do not repeat it.**
+
+When you agree with the user on a technical approach (e.g., "use getBBox() for bounding box calculation"):
+
+1. **Identify ALL code paths affected** - not just the obvious one
+2. **Explicitly verify each code path uses the agreed approach** before saying it's done
+3. **When fixes don't work, FIRST verify the agreed approach was actually implemented everywhere** - don't add patches on top of a broken foundation
+
+**The failure pattern:**
+- User and Claude agree: "Part 1 and Part 2 should both use method X"
+- Claude implements method X for Part 2 (the obvious case)
+- Claude leaves Part 1 using the old method Y
+- User reports Part 1 is broken
+- Claude makes superficial fixes (adjust padding, tweak parameters) instead of realizing Part 1 never used method X
+- Cycle repeats until user is frustrated
+
+**What to do instead:**
+- Before implementing: "Part 1 will use [exact method], Part 2 will use [exact method]"
+- After implementing: Verify BOTH actually use the agreed method
+- When debugging: First question should be "did I actually implement what we agreed on everywhere?"
+
+**Why this matters:**
+- Users cannot verify every line of code you write
+- They trust that when you agree to do something, you actually do it
+- Superficial fixes waste everyone's time when the root cause is incomplete implementation
+
 ## CRITICAL: Documentation Graph Requirement
 
 **ALL documentation must be reachable from the main README via a linked path.**

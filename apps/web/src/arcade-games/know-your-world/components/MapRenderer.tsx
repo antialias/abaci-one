@@ -3520,6 +3520,7 @@ export function MapRenderer({
                 y2={label.lineEndY}
                 stroke={label.isFound ? '#16a34a' : isDark ? '#60a5fa' : '#3b82f6'}
                 strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
                 markerEnd={label.isFound ? 'url(#arrowhead-found)' : 'url(#arrowhead)'}
               />
               {/* Debug: Show arrow endpoint (region centroid) */}

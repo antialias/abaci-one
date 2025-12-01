@@ -7,7 +7,6 @@ import { useSpring, animated } from '@react-spring/web'
 import { useViewerId } from '@/lib/arcade/game-sdk'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
-  calculateBoundingBox,
   DEFAULT_DIFFICULTY_CONFIG,
   getAssistanceLevel,
   getCountryFlagEmoji,
@@ -220,22 +219,44 @@ export function GameInfoPanel({
   const displayFlagEmoji =
     selectedMap === 'world' && displayRegionId ? getCountryFlagEmoji(displayRegionId) : ''
 
-  // Get the region's SVG path for the takeover shape display (no padding to match animation)
-  const displayRegionShape = useMemo(() => {
+  // Get the region's SVG path for the takeover shape display
+  const displayRegionPath = useMemo(() => {
     if (!displayRegionId) return null
     const region = mapData.regions.find((r) => r.id === displayRegionId)
-    if (!region?.path) return null
-
-    // Calculate bounding box WITHOUT padding - must match puzzlePieceTarget.svgBBox approach
-    // so part 1 (typing) and part 2 (animation) show the region at the same position
-    const bbox = calculateBoundingBox([region.path])
-    const viewBox = `${bbox.minX} ${bbox.minY} ${bbox.width} ${bbox.height}`
-
-    return {
-      path: region.path,
-      viewBox,
-    }
+    return region?.path ?? null
   }, [displayRegionId, mapData.regions])
+
+  // Ref to hidden path element for accurate getBBox measurement
+  const hiddenPathRef = useRef<SVGPathElement>(null)
+
+  // Accurate bounding box from getBBox() - updated when region changes
+  const [accurateBBox, setAccurateBBox] = useState<{
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null>(null)
+
+  // Measure accurate bounding box using hidden SVG + getBBox()
+  // This ensures part 1 and part 2 use identical positioning
+  useEffect(() => {
+    if (hiddenPathRef.current && displayRegionPath) {
+      // Use requestAnimationFrame to ensure path is rendered
+      requestAnimationFrame(() => {
+        if (hiddenPathRef.current) {
+          const bbox = hiddenPathRef.current.getBBox()
+          setAccurateBBox({
+            x: bbox.x,
+            y: bbox.y,
+            width: bbox.width,
+            height: bbox.height,
+          })
+        }
+      })
+    } else {
+      setAccurateBBox(null)
+    }
+  }, [displayRegionPath])
 
   // Get the region's SVG path for puzzle piece animation
   // Uses the exact SVG bounding box from getBBox() passed in the target
@@ -616,6 +637,24 @@ export function GameInfoPanel({
 
   return (
     <>
+      {/* Hidden SVG for accurate getBBox measurement - ensures consistent positioning */}
+      {displayRegionPath && (
+        <svg
+          data-element="hidden-bbox-measure"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            width: '1px',
+            height: '1px',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+          }}
+        >
+          <path ref={hiddenPathRef} d={displayRegionPath} />
+        </svg>
+      )}
+
       {/* Global keyframes for animations */}
       <style>{`
         @keyframes glowPulse {
@@ -707,18 +746,13 @@ export function GameInfoPanel({
         />
 
         {/* Region shape silhouette - shown during takeover, until animation starts */}
-        {/* Must check isInTakeoverLocal to prevent flash when animation ends */}
-        {displayRegionShape && isInTakeoverLocal && !isPuzzlePieceAnimating && (() => {
-          // Parse viewBox to get aspect ratio
-          const viewBox = puzzlePieceTarget?.svgBBox
-            ? `${puzzlePieceTarget.svgBBox.x} ${puzzlePieceTarget.svgBBox.y} ${puzzlePieceTarget.svgBBox.width} ${puzzlePieceTarget.svgBBox.height}`
-            : displayRegionShape.viewBox
-
-          // Extract width/height from viewBox for aspect ratio calculation
-          const viewBoxParts = viewBox.split(' ').map(Number)
-          const viewBoxWidth = viewBoxParts[2] || 1
-          const viewBoxHeight = viewBoxParts[3] || 1
-          const aspectRatio = viewBoxWidth / viewBoxHeight
+        {/* Uses accurateBBox from getBBox() for consistent positioning between parts 1 and 2 */}
+        {displayRegionPath && accurateBBox && isInTakeoverLocal && !isPuzzlePieceAnimating && (() => {
+          // Use puzzlePieceTarget.svgBBox if available (part 2), otherwise use accurateBBox (part 1)
+          // Both come from getBBox() so positioning should be identical
+          const bbox = puzzlePieceTarget?.svgBBox ?? accurateBBox
+          const viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+          const aspectRatio = bbox.width / bbox.height
 
           // Calculate container size that fits within 60% of viewport while preserving aspect ratio
           const maxSize = typeof window !== 'undefined'
@@ -758,8 +792,11 @@ export function GameInfoPanel({
               }}
             >
               <path
-                d={displayRegionShape.path}
+                d={displayRegionPath}
                 fill={isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.35)'}
+                stroke={isDark ? '#3b82f6' : '#2563eb'}
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
               />
             </svg>
           )
@@ -787,6 +824,7 @@ export function GameInfoPanel({
               fill={isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)'}
               stroke={isDark ? '#3b82f6' : '#2563eb'}
               strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
             />
           </animated.svg>
         )}
