@@ -794,8 +794,14 @@ export function MapRenderer({
       : selectedContinent !== 'all'
         ? (selectedContinent as HintMap)
         : 'world'
-  // Get hint for current region (if available)
-  const hintText = useRegionHint(hintMapKey, currentPrompt)
+  // Get hint for current region (if available) - with cycling support
+  const {
+    currentHint: hintText,
+    hintIndex,
+    totalHints,
+    nextHint,
+    hasMoreHints,
+  } = useRegionHint(hintMapKey, currentPrompt)
   const hasHint = useHasRegionHint(hintMapKey, currentPrompt)
 
   // Get the current region name for audio hints
@@ -1024,14 +1030,14 @@ export function MapRenderer({
     if (delay > 0) {
       // Schedule delayed announcement
       announcementTimeoutRef.current = setTimeout(() => {
-        speakWithRegionName(currentRegionName, null, false)
+        speakWithRegionName(currentRegionName, hintText, false)
         announcementTimeoutRef.current = null
       }, delay)
     } else {
       // No recent "You found", announce immediately
-      speakWithRegionName(currentRegionName, null, false)
+      speakWithRegionName(currentRegionName, hintText, false)
     }
-  }, [currentPrompt, currentRegionName, isSpeechSupported, speakWithRegionName])
+  }, [currentPrompt, currentRegionName, hintText, isSpeechSupported, speakWithRegionName])
 
   // Part 2: Announce "You found {region}" at the START of part 2
   // - In learning mode: Triggered when puzzlePieceTarget is set (takeover fades back in)
@@ -1122,6 +1128,65 @@ export function MapRenderer({
   useEffect(() => {
     resetHotCold()
   }, [currentPrompt, resetHotCold])
+
+  // Struggle detection: Give additional hints when user is having trouble
+  // Thresholds for triggering next hint (must have more hints available)
+  const STRUGGLE_TIME_THRESHOLD = 30000 // 30 seconds per hint level
+  const STRUGGLE_CHECK_INTERVAL = 5000 // Check every 5 seconds
+  const lastHintLevelRef = useRef(0) // Track which hint level triggered last hint
+
+  useEffect(() => {
+    // Only run if hot/cold is enabled (means we're tracking search metrics)
+    if (!effectiveHotColdEnabled || !hasMoreHints || !currentPrompt) return
+
+    const checkStruggle = () => {
+      const metrics = getSearchMetrics(promptStartTime.current)
+
+      // Calculate which hint level we should be at based on time
+      // Level 0 = first 30 seconds, Level 1 = 30-60 seconds, etc.
+      const expectedHintLevel = Math.floor(metrics.timeToFind / STRUGGLE_TIME_THRESHOLD)
+
+      // If we should be at a higher hint level than last triggered, give next hint
+      if (expectedHintLevel > lastHintLevelRef.current && hasMoreHints) {
+        lastHintLevelRef.current = expectedHintLevel
+        nextHint()
+      }
+    }
+
+    const intervalId = setInterval(checkStruggle, STRUGGLE_CHECK_INTERVAL)
+
+    return () => clearInterval(intervalId)
+  }, [
+    effectiveHotColdEnabled,
+    hasMoreHints,
+    currentPrompt,
+    getSearchMetrics,
+    nextHint,
+    promptStartTime,
+  ])
+
+  // Reset hint level tracking when prompt changes
+  useEffect(() => {
+    lastHintLevelRef.current = 0
+  }, [currentPrompt])
+
+  // Speak new hint when it changes (due to cycling)
+  const prevHintIndexRef = useRef(hintIndex)
+  useEffect(() => {
+    // Only speak if hint index actually changed (not initial render)
+    if (
+      hintIndex > prevHintIndexRef.current &&
+      hintText &&
+      isSpeechSupported &&
+      currentRegionName
+    ) {
+      prevHintIndexRef.current = hintIndex
+      // Speak just the hint (user already knows the region name)
+      speak(hintText, false)
+    } else if (hintIndex !== prevHintIndexRef.current) {
+      prevHintIndexRef.current = hintIndex
+    }
+  }, [hintIndex, hintText, isSpeechSupported, currentRegionName, speak])
 
   // Update context with controls state for GameInfoPanel
   useEffect(() => {
@@ -4202,11 +4267,7 @@ export function MapRenderer({
                 }}
               >
                 {/* North indicator - red triangle pointing up */}
-                <polygon
-                  points="16,1 14,5 18,5"
-                  fill="#ef4444"
-                  opacity={0.9}
-                />
+                <polygon points="16,1 14,5 18,5" fill="#ef4444" opacity={0.9} />
               </animated.g>
             </animated.svg>
           </div>
@@ -4336,7 +4397,13 @@ export function MapRenderer({
                   )
                 })}
                 {/* Center dot */}
-                <circle cx="20" cy="20" r="1.5" fill={heatStyle.color} opacity={heatStyle.opacity} />
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="1.5"
+                  fill={heatStyle.color}
+                  opacity={heatStyle.opacity}
+                />
                 {/* Counter-rotating group to keep N fixed pointing up */}
                 <animated.g
                   style={{
@@ -4345,11 +4412,7 @@ export function MapRenderer({
                   }}
                 >
                   {/* North indicator - red triangle pointing up */}
-                  <polygon
-                    points="20,2 17.5,7 22.5,7"
-                    fill="#ef4444"
-                    opacity={0.9}
-                  />
+                  <polygon points="20,2 17.5,7 22.5,7" fill="#ef4444" opacity={0.9} />
                 </animated.g>
               </animated.svg>
             </div>
