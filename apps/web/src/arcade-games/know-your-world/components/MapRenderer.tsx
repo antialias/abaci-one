@@ -813,6 +813,7 @@ export function MapRenderer({
 
   // Speech synthesis for reading hints aloud
   const {
+    speak,
     speakWithRegionName,
     stop: stopSpeaking,
     isSpeaking,
@@ -974,6 +975,123 @@ export function MapRenderer({
     speakWithRegionName,
     hintsLocked,
   ])
+
+  // Part 1: Announce region name when a new prompt appears (takeover)
+  // This speaks just the region name when the prompt changes, before hints unlock
+  // Adds a delay after "You found" to give a breather before the next region
+  const prevPromptForAnnouncementRef = useRef<string | null>(null)
+  const lastFoundAnnouncementTimeRef = useRef<number>(0)
+  const announcementTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (announcementTimeoutRef.current) {
+        clearTimeout(announcementTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    // Clear any pending announcement when prompt changes
+    if (announcementTimeoutRef.current) {
+      clearTimeout(announcementTimeoutRef.current)
+      announcementTimeoutRef.current = null
+    }
+
+    // Only announce if:
+    // 1. We have speech support
+    // 2. We have a new prompt (different from previous)
+    // 3. We have a region name
+    if (!isSpeechSupported || !currentPrompt || !currentRegionName) {
+      prevPromptForAnnouncementRef.current = currentPrompt
+      return
+    }
+
+    // Check if this is a new prompt (not just re-render)
+    if (currentPrompt === prevPromptForAnnouncementRef.current) {
+      return
+    }
+
+    prevPromptForAnnouncementRef.current = currentPrompt
+
+    // Calculate delay: give a breather after "You found" announcement
+    // Wait at least 2 seconds after the last "You found" before announcing next region
+    const MIN_DELAY_AFTER_FOUND = 2000
+    const timeSinceLastFound = Date.now() - lastFoundAnnouncementTimeRef.current
+    const delay = Math.max(0, MIN_DELAY_AFTER_FOUND - timeSinceLastFound)
+
+    if (delay > 0) {
+      // Schedule delayed announcement
+      announcementTimeoutRef.current = setTimeout(() => {
+        speakWithRegionName(currentRegionName, null, false)
+        announcementTimeoutRef.current = null
+      }, delay)
+    } else {
+      // No recent "You found", announce immediately
+      speakWithRegionName(currentRegionName, null, false)
+    }
+  }, [currentPrompt, currentRegionName, isSpeechSupported, speakWithRegionName])
+
+  // Part 2: Announce "You found {region}" at the START of part 2
+  // - In learning mode: Triggered when puzzlePieceTarget is set (takeover fades back in)
+  // - In other modes: Triggered when celebration is set (immediately after finding)
+  // Uses just regionId as key to prevent double announcement (puzzle -> celebration transition)
+  const prevFoundAnnouncementRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isSpeechSupported) return
+
+    // Determine what to announce (prioritize puzzlePieceTarget for learning mode)
+    const regionId = puzzlePieceTarget?.regionId ?? celebration?.regionId
+    const regionName = puzzlePieceTarget?.regionName ?? celebration?.regionName
+
+    if (regionId && regionName) {
+      // Use just regionId as key - prevents double announcement when
+      // puzzlePieceTarget transitions to celebration for the same region
+      if (regionId !== prevFoundAnnouncementRef.current) {
+        prevFoundAnnouncementRef.current = regionId
+        speak(`You found ${regionName}`, false)
+      }
+    } else {
+      // Reset when neither is active
+      prevFoundAnnouncementRef.current = null
+    }
+  }, [puzzlePieceTarget, celebration, isSpeechSupported, speak])
+
+  // Track when BOTH celebration starts AND "You found" speech finishes
+  // The breather should only begin after both are complete
+  const celebrationActiveRef = useRef(false)
+  const waitingForSpeechToFinishRef = useRef(false)
+  const prevIsSpeakingRef = useRef(false)
+
+  // Track celebration state
+  useEffect(() => {
+    if (celebration) {
+      celebrationActiveRef.current = true
+      // If speech is currently happening, wait for it to finish
+      if (isSpeaking) {
+        waitingForSpeechToFinishRef.current = true
+      } else {
+        // Speech already done (or not speaking), record time now
+        lastFoundAnnouncementTimeRef.current = Date.now()
+      }
+    } else {
+      celebrationActiveRef.current = false
+      waitingForSpeechToFinishRef.current = false
+    }
+  }, [celebration, isSpeaking])
+
+  // Track when speech finishes - if we were waiting, record the time
+  useEffect(() => {
+    const speechJustFinished = prevIsSpeakingRef.current && !isSpeaking
+    prevIsSpeakingRef.current = isSpeaking
+
+    if (speechJustFinished && waitingForSpeechToFinishRef.current) {
+      // Speech just finished and we were waiting for it
+      lastFoundAnnouncementTimeRef.current = Date.now()
+      waitingForSpeechToFinishRef.current = false
+    }
+  }, [isSpeaking])
 
   // Hot/cold audio feedback hook
   // Enabled if: 1) assistance level allows it, 2) user toggle is on
@@ -4028,7 +4146,7 @@ export function MapRenderer({
               transition: 'transform 0.1s ease-out',
             }}
           >
-            {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
+            {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
             <animated.svg
               width="32"
               height="32"
@@ -4048,58 +4166,48 @@ export function MapRenderer({
                 strokeWidth={crosshairHeatStyle.strokeWidth}
                 opacity={crosshairHeatStyle.opacity}
               />
-              {/* Cross lines - top */}
-              <line
-                x1="16"
-                y1="2"
-                x2="16"
-                y2="10"
-                stroke={crosshairHeatStyle.color}
-                strokeWidth={crosshairHeatStyle.strokeWidth}
-                strokeLinecap="round"
-                opacity={crosshairHeatStyle.opacity}
-              />
-              {/* Cross lines - bottom */}
-              <line
-                x1="16"
-                y1="22"
-                x2="16"
-                y2="30"
-                stroke={crosshairHeatStyle.color}
-                strokeWidth={crosshairHeatStyle.strokeWidth}
-                strokeLinecap="round"
-                opacity={crosshairHeatStyle.opacity}
-              />
-              {/* Cross lines - left */}
-              <line
-                x1="2"
-                y1="16"
-                x2="10"
-                y2="16"
-                stroke={crosshairHeatStyle.color}
-                strokeWidth={crosshairHeatStyle.strokeWidth}
-                strokeLinecap="round"
-                opacity={crosshairHeatStyle.opacity}
-              />
-              {/* Cross lines - right */}
-              <line
-                x1="22"
-                y1="16"
-                x2="30"
-                y2="16"
-                stroke={crosshairHeatStyle.color}
-                strokeWidth={crosshairHeatStyle.strokeWidth}
-                strokeLinecap="round"
-                opacity={crosshairHeatStyle.opacity}
-              />
+              {/* Compass tick marks - 12 ticks around the ring */}
+              {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
+                const isCardinal = angle % 90 === 0
+                const rad = (angle * Math.PI) / 180
+                const innerR = isCardinal ? 9 : 11
+                const outerR = 13
+                return (
+                  <line
+                    key={angle}
+                    x1={16 + innerR * Math.sin(rad)}
+                    y1={16 - innerR * Math.cos(rad)}
+                    x2={16 + outerR * Math.sin(rad)}
+                    y2={16 - outerR * Math.cos(rad)}
+                    stroke={isCardinal ? 'white' : crosshairHeatStyle.color}
+                    strokeWidth={isCardinal ? 2 : 1}
+                    strokeLinecap="round"
+                    opacity={crosshairHeatStyle.opacity}
+                  />
+                )
+              })}
               {/* Center dot */}
               <circle
                 cx="16"
                 cy="16"
-                r="2"
+                r="1.5"
                 fill={crosshairHeatStyle.color}
                 opacity={crosshairHeatStyle.opacity}
               />
+              {/* Counter-rotating group to keep N fixed pointing up */}
+              <animated.g
+                style={{
+                  transformOrigin: '16px 16px',
+                  transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
+                }}
+              >
+                {/* North indicator - red triangle pointing up */}
+                <polygon
+                  points="16,1 14,5 18,5"
+                  fill="#ef4444"
+                  opacity={0.9}
+                />
+              </animated.g>
             </animated.svg>
           </div>
           {/* Cursor region name label - shows what to find under the cursor */}
@@ -4187,7 +4295,7 @@ export function MapRenderer({
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              {/* Enhanced SVG crosshair with heat effects - uses spring-driven rotation */}
+              {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
               <animated.svg
                 width="40"
                 height="40"
@@ -4207,52 +4315,42 @@ export function MapRenderer({
                   strokeWidth={heatStyle.strokeWidth}
                   opacity={heatStyle.opacity}
                 />
-                {/* Cross lines - top */}
-                <line
-                  x1="20"
-                  y1="3"
-                  x2="20"
-                  y2="12"
-                  stroke={heatStyle.color}
-                  strokeWidth={heatStyle.strokeWidth}
-                  strokeLinecap="round"
-                  opacity={heatStyle.opacity}
-                />
-                {/* Cross lines - bottom */}
-                <line
-                  x1="20"
-                  y1="28"
-                  x2="20"
-                  y2="37"
-                  stroke={heatStyle.color}
-                  strokeWidth={heatStyle.strokeWidth}
-                  strokeLinecap="round"
-                  opacity={heatStyle.opacity}
-                />
-                {/* Cross lines - left */}
-                <line
-                  x1="3"
-                  y1="20"
-                  x2="12"
-                  y2="20"
-                  stroke={heatStyle.color}
-                  strokeWidth={heatStyle.strokeWidth}
-                  strokeLinecap="round"
-                  opacity={heatStyle.opacity}
-                />
-                {/* Cross lines - right */}
-                <line
-                  x1="28"
-                  y1="20"
-                  x2="37"
-                  y2="20"
-                  stroke={heatStyle.color}
-                  strokeWidth={heatStyle.strokeWidth}
-                  strokeLinecap="round"
-                  opacity={heatStyle.opacity}
-                />
+                {/* Compass tick marks - 12 ticks around the ring */}
+                {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
+                  const isCardinal = angle % 90 === 0
+                  const rad = (angle * Math.PI) / 180
+                  const innerR = isCardinal ? 10 : 14
+                  const outerR = 16
+                  return (
+                    <line
+                      key={angle}
+                      x1={20 + innerR * Math.sin(rad)}
+                      y1={20 - innerR * Math.cos(rad)}
+                      x2={20 + outerR * Math.sin(rad)}
+                      y2={20 - outerR * Math.cos(rad)}
+                      stroke={isCardinal ? 'white' : heatStyle.color}
+                      strokeWidth={isCardinal ? 2.5 : 1}
+                      strokeLinecap="round"
+                      opacity={heatStyle.opacity}
+                    />
+                  )
+                })}
                 {/* Center dot */}
-                <circle cx="20" cy="20" r="2" fill={heatStyle.color} opacity={heatStyle.opacity} />
+                <circle cx="20" cy="20" r="1.5" fill={heatStyle.color} opacity={heatStyle.opacity} />
+                {/* Counter-rotating group to keep N fixed pointing up */}
+                <animated.g
+                  style={{
+                    transformOrigin: '20px 20px',
+                    transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
+                  }}
+                >
+                  {/* North indicator - red triangle pointing up */}
+                  <polygon
+                    points="20,2 17.5,7 22.5,7"
+                    fill="#ef4444"
+                    opacity={0.9}
+                  />
+                </animated.g>
               </animated.svg>
             </div>
           )
@@ -4534,12 +4632,16 @@ export function MapRenderer({
                     isDark,
                     effectiveHotColdEnabled
                   )
-                  const crosshairRadius = viewBoxWidth / 60
-                  const crosshairLineLength = viewBoxWidth / 30
+                  const crosshairRadius = viewBoxWidth / 100
+                  const crosshairLineLength = viewBoxWidth / 50
+
+                  const tickInnerR = crosshairRadius * 0.7
+                  const tickOuterR = crosshairRadius
+                  const northIndicatorSize = crosshairRadius * 0.35
 
                   return (
                     <>
-                      {/* Crosshair with separate translation and rotation */}
+                      {/* Compass-style crosshair with separate translation and rotation */}
                       {/* Outer <g> handles translation (follows cursor) */}
                       {/* Inner animated.g handles rotation via spring-driven animation */}
                       <g transform={`translate(${cursorSvgX}, ${cursorSvgY})`}>
@@ -4560,7 +4662,48 @@ export function MapRenderer({
                             vectorEffect="non-scaling-stroke"
                             opacity={heatStyle.opacity}
                           />
-                          {/* Horizontal crosshair line - drawn at origin */}
+                          {/* Compass tick marks - 12 ticks around the ring */}
+                          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
+                            const isCardinal = angle % 90 === 0
+                            const rad = (angle * Math.PI) / 180
+                            // Cardinals extend much further inward for prominence
+                            const innerR = isCardinal ? tickInnerR * 0.5 : tickInnerR
+                            const outerR = isCardinal ? tickOuterR * 1.15 : tickOuterR
+                            return (
+                              <g key={angle}>
+                                {/* Dark shadow for cardinal ticks */}
+                                {isCardinal && (
+                                  <line
+                                    x1={innerR * Math.sin(rad)}
+                                    y1={-innerR * Math.cos(rad)}
+                                    x2={outerR * Math.sin(rad)}
+                                    y2={-outerR * Math.cos(rad)}
+                                    stroke="rgba(0,0,0,0.6)"
+                                    strokeWidth={(viewBoxWidth / 800) * 4}
+                                    vectorEffect="non-scaling-stroke"
+                                    strokeLinecap="round"
+                                  />
+                                )}
+                                {/* Main tick */}
+                                <line
+                                  x1={innerR * Math.sin(rad)}
+                                  y1={-innerR * Math.cos(rad)}
+                                  x2={outerR * Math.sin(rad)}
+                                  y2={-outerR * Math.cos(rad)}
+                                  stroke={isCardinal ? 'white' : heatStyle.color}
+                                  strokeWidth={
+                                    isCardinal
+                                      ? (viewBoxWidth / 800) * 2.5
+                                      : (viewBoxWidth / 1000) * (heatStyle.strokeWidth / 2)
+                                  }
+                                  vectorEffect="non-scaling-stroke"
+                                  strokeLinecap="round"
+                                  opacity={heatStyle.opacity}
+                                />
+                              </g>
+                            )
+                          })}
+                          {/* Horizontal crosshair line - precise targeting */}
                           <line
                             x1={-crosshairLineLength}
                             y1={0}
@@ -4571,7 +4714,7 @@ export function MapRenderer({
                             vectorEffect="non-scaling-stroke"
                             opacity={heatStyle.opacity}
                           />
-                          {/* Vertical crosshair line - drawn at origin */}
+                          {/* Vertical crosshair line - precise targeting */}
                           <line
                             x1={0}
                             y1={-crosshairLineLength}
@@ -4582,6 +4725,20 @@ export function MapRenderer({
                             vectorEffect="non-scaling-stroke"
                             opacity={heatStyle.opacity}
                           />
+                          {/* Counter-rotating group to keep N fixed pointing up */}
+                          <animated.g
+                            style={{
+                              transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
+                              transformOrigin: '0 0',
+                            }}
+                          >
+                            {/* North indicator - red triangle pointing up */}
+                            <polygon
+                              points={`0,${-crosshairRadius - northIndicatorSize * 0.5} ${-northIndicatorSize * 0.5},${-crosshairRadius + northIndicatorSize * 0.5} ${northIndicatorSize * 0.5},${-crosshairRadius + northIndicatorSize * 0.5}`}
+                              fill="#ef4444"
+                              opacity={0.9}
+                            />
+                          </animated.g>
                         </animated.g>
                       </g>
                     </>
