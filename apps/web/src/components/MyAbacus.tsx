@@ -64,7 +64,8 @@ export function MyAbacus() {
   const trophyStyles = ABACUS_THEMES.trophy
 
   // Detect if we're on a game route (arcade games hide the abacus by default)
-  const isOnGameRoute = pathname?.startsWith('/arcade/')
+  // This matches /arcade, /arcade/*, and /arcade-rooms/*
+  const isOnGameRoute = pathname?.startsWith('/arcade')
 
   // Hide completely when:
   // 1. isHidden is true (e.g., virtual keyboard is shown on non-game pages)
