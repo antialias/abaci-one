@@ -137,12 +137,13 @@ interface KnowYourWorldContextValue {
   setContinent: (continent: import('./continents').ContinentId | 'all') => void
 
   // Cursor position sharing (for multiplayer)
+  // Keyed by userId (session ID) to support multiple devices in coop mode
   otherPlayerCursors: Record<
     string,
     {
       x: number
       y: number
-      userId: string
+      playerId: string
       hoveredRegionId: string | null
     } | null
   >

@@ -81,14 +81,15 @@ export interface UseArcadeSessionReturn<TState> {
 
   /**
    * Other players' cursor positions (ephemeral, real-time)
-   * Map of playerId -> { x, y, userId, hoveredRegionId } in SVG coordinates, or null if cursor left
+   * Map of userId -> { x, y, playerId, hoveredRegionId } in SVG coordinates, or null if cursor left
+   * Keyed by userId (session ID) to support multiple devices in coop mode
    */
   otherPlayerCursors: Record<
     string,
     {
       x: number
       y: number
-      userId: string
+      playerId: string
       hoveredRegionId: string | null
     } | null
   >
@@ -180,13 +181,14 @@ export function useArcadeSession<TState>(
   })
 
   // Track other players' cursor positions (ephemeral, real-time)
+  // Keyed by userId (session ID) to support multiple devices in coop mode
   const [otherPlayerCursors, setOtherPlayerCursors] = useState<
     Record<
       string,
       {
         x: number
         y: number
-        userId: string
+        playerId: string
         hoveredRegionId: string | null
       } | null
     >
@@ -291,16 +293,21 @@ export function useArcadeSession<TState>(
     },
 
     onCursorUpdate: (data) => {
-      setOtherPlayerCursors((prev) => ({
-        ...prev,
-        [data.playerId]: data.cursorPosition
-          ? {
-              ...data.cursorPosition,
-              userId: data.userId,
-              hoveredRegionId: data.hoveredRegionId,
-            }
-          : null,
-      }))
+      // Key by userId (session ID) to support multiple devices in coop mode
+      // Each device has a unique userId, even if they're playing as the same player
+      setOtherPlayerCursors((prev) => {
+        const newState = {
+          ...prev,
+          [data.userId]: data.cursorPosition
+            ? {
+                ...data.cursorPosition,
+                playerId: data.playerId,
+                hoveredRegionId: data.hoveredRegionId,
+              }
+            : null,
+        }
+        return newState
+      })
     },
   })
 

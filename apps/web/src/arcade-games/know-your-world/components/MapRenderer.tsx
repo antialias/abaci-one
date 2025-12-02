@@ -468,12 +468,13 @@ interface MapRendererProps {
   gameMode?: 'cooperative' | 'race' | 'turn-based'
   currentPlayer?: string // The player whose turn it is (for turn-based mode)
   localPlayerId?: string // The local player's ID (to filter out our own cursor from others)
+  // Keyed by userId (session ID) to support multiple devices in coop mode
   otherPlayerCursors?: Record<
     string,
     {
       x: number
       y: number
-      userId: string
+      playerId: string
       hoveredRegionId: string | null
     } | null
   >
@@ -1101,7 +1102,7 @@ export function MapRenderer({
 
   // Hot/cold audio feedback hook
   // Enabled if: 1) assistance level allows it, 2) user toggle is on
-  // 3) either has fine pointer (desktop) OR magnifier is active (mobile)
+  // 3) either has fine pointer (desktop) OR magnifier/drag is active (mobile)
   // Use continent name for language lookup if available, otherwise use selectedMap
   const hotColdMapName = selectedContinent || selectedMap
   const {
@@ -1112,11 +1113,11 @@ export function MapRenderer({
   } = useHotColdFeedback({
     // In turn-based mode, only enable hot/cold for the player whose turn it is
     // Desktop: hasAnyFinePointer enables mouse-based hot/cold
-    // Mobile: showMagnifier enables magnifier-based hot/cold
+    // Mobile: showMagnifier OR isMobileMapDragging enables touch-based hot/cold
     enabled:
       assistanceAllowsHotCold &&
       hotColdEnabled &&
-      (hasAnyFinePointer || showMagnifier) &&
+      (hasAnyFinePointer || showMagnifier || isMobileMapDragging) &&
       (gameMode !== 'turn-based' || currentPlayer === localPlayerId),
     targetRegionId: currentPrompt,
     isSpeaking,
@@ -1412,26 +1413,38 @@ export function MapRenderer({
   const networkHoveredRegions = useMemo(() => {
     const result: Record<string, { playerId: string; color: string }> = {}
 
-    Object.entries(otherPlayerCursors).forEach(([playerId, position]) => {
-      // Skip our own cursor and null positions
-      if (playerId === localPlayerId || !position) return
+    // Cursors are keyed by userId (session ID), playerId is in the position data
+    Object.entries(otherPlayerCursors).forEach(([cursorUserId, position]) => {
+      // Skip our own cursor (by viewerId) and null positions
+      if (cursorUserId === viewerId || !position) return
 
       // In turn-based mode, only show hover when it's not our turn
       if (gameMode === 'turn-based' && currentPlayer === localPlayerId) return
 
-      // Get player color
-      const player = playerMetadata[playerId]
+      // Get player color from the playerId in the cursor data
+      // First check playerMetadata, then fall back to memberPlayers (for remote players)
+      let player = playerMetadata[position.playerId]
+      if (!player) {
+        // Player not in local playerMetadata - look through memberPlayers
+        for (const players of Object.values(memberPlayers)) {
+          const found = players.find((p) => p.id === position.playerId)
+          if (found) {
+            player = found
+            break
+          }
+        }
+      }
       if (!player) return
 
       // Use the transmitted hoveredRegionId directly (avoids hit-testing discrepancies
       // due to pixel scaling/rendering differences between clients)
       if (position.hoveredRegionId) {
-        result[position.hoveredRegionId] = { playerId, color: player.color }
+        result[position.hoveredRegionId] = { playerId: position.playerId, color: player.color }
       }
     })
 
     return result
-  }, [otherPlayerCursors, localPlayerId, gameMode, currentPlayer, playerMetadata])
+  }, [otherPlayerCursors, viewerId, gameMode, currentPlayer, localPlayerId, playerMetadata, memberPlayers])
 
   // State for give-up zoom animation target values
   const [giveUpZoomTarget, setGiveUpZoomTarget] = useState({
@@ -2751,6 +2764,16 @@ export function MapRenderer({
       svgRef.current &&
       (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
 
+    // Only log occasionally to avoid spam (every 60 frames ~= 1 second)
+    if (Math.random() < 0.016) {
+      console.log('[CursorShare] 🖱️ Desktop pointer broadcast check:', {
+        hasOnCursorUpdate: !!onCursorUpdate,
+        hasSvgRef: !!svgRef.current,
+        gameMode,
+        shouldBroadcast: shouldBroadcastCursor,
+      })
+    }
+
     if (shouldBroadcastCursor) {
       const viewBoxParts = displayViewBox.split(' ').map(Number)
       const viewBoxX = viewBoxParts[0] || 0
@@ -3021,6 +3044,36 @@ export function MapRenderer({
 
         // Use adaptive zoom search utility to find optimal zoom (same algorithm as desktop)
         const svgRect = svgRef.current.getBoundingClientRect()
+
+        // Broadcast cursor position to other players (in SVG coordinates)
+        // In turn-based mode, only broadcast when it's our turn
+        const shouldBroadcastCursor =
+          onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
+
+        // Only log occasionally to avoid spam
+        if (Math.random() < 0.1) {
+          console.log('[CursorShare] 📱 handleMapTouchMove broadcast check:', {
+            hasOnCursorUpdate: !!onCursorUpdate,
+            gameMode,
+            currentPlayer,
+            localPlayerId,
+            shouldBroadcast: shouldBroadcastCursor,
+          })
+        }
+
+        if (shouldBroadcastCursor) {
+          const viewBoxParts = displayViewBox.split(' ').map(Number)
+          const viewBoxX = viewBoxParts[0] || 0
+          const viewBoxY = viewBoxParts[1] || 0
+          const viewBoxW = viewBoxParts[2] || 1000
+          const viewBoxH = viewBoxParts[3] || 500
+          const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
+          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+          const cursorSvgX = (cursorX - svgOffsetX) / viewport.scale + viewBoxX
+          const cursorSvgY = (cursorY - svgOffsetY) / viewport.scale + viewBoxY
+          onCursorUpdate({ x: cursorSvgX, y: cursorSvgY }, regionUnderCursor)
+        }
         const zoomSearchResult = findOptimalZoom({
           detectedRegions: unfoundRegionObjects,
           detectedSmallestSize,
@@ -3107,6 +3160,10 @@ export function MapRenderer({
       isInTakeover,
       displayViewBox,
       checkHotCold,
+      onCursorUpdate,
+      gameMode,
+      currentPlayer,
+      localPlayerId,
     ]
   )
 
@@ -3118,7 +3175,13 @@ export function MapRenderer({
     cursorPositionRef.current = null
     setIsMagnifierExpanded(false) // Reset expanded state on dismiss
     setMobileMapDragTriggeredMagnifier(false) // Reset mobile drag trigger state
-  }, [])
+
+    // Notify other players that cursor is no longer active
+    // In turn-based mode, only broadcast when it's our turn
+    if (onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)) {
+      onCursorUpdate(null, null)
+    }
+  }, [onCursorUpdate, gameMode, currentPlayer, localPlayerId])
 
   const handleMapTouchEnd = useCallback(() => {
     const wasDragging = isMobileMapDragging
@@ -5784,22 +5847,37 @@ export function MapRenderer({
       )}
 
       {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
+      {/* Cursor rendering debug - only log when cursor count changes */}
       {svgRef.current &&
         containerRef.current &&
-        Object.entries(otherPlayerCursors).map(([playerId, position]) => {
-          // Skip our own cursor and null positions
-          if (playerId === localPlayerId || !position) return null
+        Object.entries(otherPlayerCursors).map(([cursorUserId, position]) => {
+          // Skip our own cursor (by viewerId) and null positions
+          if (cursorUserId === viewerId || !position) return null
 
           // In turn-based mode, only show other cursors when it's not our turn
           if (gameMode === 'turn-based' && currentPlayer === localPlayerId) return null
 
-          // Get player metadata for emoji and color
-          const player = playerMetadata[playerId]
-          if (!player) return null
+          // Get player metadata for emoji and color (playerId is in position data)
+          // First check playerMetadata, then fall back to memberPlayers (for remote players)
+          let player = playerMetadata[position.playerId]
+          if (!player) {
+            // Player not in local playerMetadata - look through memberPlayers
+            // memberPlayers is keyed by userId and contains arrays of players
+            for (const players of Object.values(memberPlayers)) {
+              const found = players.find((p) => p.id === position.playerId)
+              if (found) {
+                player = found
+                break
+              }
+            }
+          }
+          if (!player) {
+            console.log('[CursorShare] ⚠️ No player found in playerMetadata or memberPlayers for playerId:', position.playerId)
+            return null
+          }
 
           // In collaborative mode, find all players from the same session and show all their emojis
           // Use memberPlayers (from roomData) which is the canonical source of player ownership
-          const cursorUserId = position.userId
           const sessionPlayers =
             gameMode === 'cooperative' && cursorUserId && memberPlayers[cursorUserId]
               ? memberPlayers[cursorUserId]
@@ -5831,9 +5909,10 @@ export function MapRenderer({
 
           return (
             <div
-              key={`cursor-${playerId}`}
+              key={`cursor-${cursorUserId}`}
               data-element="other-player-cursor"
-              data-player-id={playerId}
+              data-player-id={position.playerId}
+              data-user-id={cursorUserId}
               style={{
                 position: 'absolute',
                 left: screenX,

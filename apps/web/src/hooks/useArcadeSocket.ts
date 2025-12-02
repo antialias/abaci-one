@@ -161,6 +161,12 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
 
     // Cursor position update from other players (ephemeral, real-time)
     socketInstance.on('cursor-update', (data) => {
+      console.log('[CursorShare] 📥 Received cursor-update:', {
+        fromUserId: data.userId,
+        playerId: data.playerId,
+        hasPosition: !!data.cursorPosition,
+        hoveredRegionId: data.hoveredRegionId,
+      })
       eventsRef.current.onCursorUpdate?.(data)
     })
 
@@ -227,6 +233,13 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       hoveredRegionId: string | null
     ) => {
       if (!socket) return
+      console.log('[CursorShare] 📤 Sending cursor-update:', {
+        roomId,
+        playerId,
+        userId,
+        hasPosition: !!cursorPosition,
+        hoveredRegionId,
+      })
       socket.emit('cursor-update', {
         roomId,
         playerId,
