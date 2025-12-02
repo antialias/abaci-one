@@ -53,14 +53,14 @@ import {
 import { CelebrationOverlay } from './CelebrationOverlay'
 import { DevCropTool } from './DevCropTool'
 
-// Debug flag: show technical info in magnifier (dev only)
-const SHOW_MAGNIFIER_DEBUG_INFO = process.env.NODE_ENV === 'development'
+// Debug flag: show technical info in magnifier (gated by isVisualDebugEnabled at runtime)
+const SHOW_MAGNIFIER_DEBUG_INFO = true
 
-// Debug flag: show bounding boxes with importance scores (dev only)
-const SHOW_DEBUG_BOUNDING_BOXES = process.env.NODE_ENV === 'development'
+// Debug flag: show bounding boxes with importance scores (gated by isVisualDebugEnabled at runtime)
+const SHOW_DEBUG_BOUNDING_BOXES = true
 
-// Debug flag: show safe zone rectangles (leftover area and crop region) - dev only
-const SHOW_SAFE_ZONE_DEBUG = process.env.NODE_ENV === 'development'
+// Debug flag: show safe zone rectangles (gated by isVisualDebugEnabled at runtime)
+const SHOW_SAFE_ZONE_DEBUG = true
 
 // Precision mode threshold: screen pixel ratio that triggers pointer lock recommendation
 const PRECISION_MODE_THRESHOLD = 20
@@ -589,7 +589,7 @@ export function MapRenderer({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Visual debug mode from global context (only enabled in dev AND when user toggles it on)
+  // Visual debug mode from global context (enabled when user toggles it on, in dev or with ?debug=1)
   const { isVisualDebugEnabled } = useVisualDebugSafe()
 
   // Effective debug flags - combine prop with context
@@ -1444,7 +1444,15 @@ export function MapRenderer({
     })
 
     return result
-  }, [otherPlayerCursors, viewerId, gameMode, currentPlayer, localPlayerId, playerMetadata, memberPlayers])
+  }, [
+    otherPlayerCursors,
+    viewerId,
+    gameMode,
+    currentPlayer,
+    localPlayerId,
+    playerMetadata,
+    memberPlayers,
+  ])
 
   // State for give-up zoom animation target values
   const [giveUpZoomTarget, setGiveUpZoomTarget] = useState({
@@ -5846,6 +5854,101 @@ export function MapRenderer({
         </>
       )}
 
+      {/* Hot/Cold Debug Panel - shows enable conditions and current state */}
+      {isVisualDebugEnabled && (
+        <div
+          data-element="hot-cold-debug-panel"
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            padding: '8px 12px',
+            background: 'rgba(0, 0, 0, 0.85)',
+            color: 'white',
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            borderRadius: '6px',
+            zIndex: 1000,
+            maxWidth: '280px',
+            lineHeight: 1.4,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 'bold',
+              marginBottom: '6px',
+              borderBottom: '1px solid #444',
+              paddingBottom: '4px',
+            }}
+          >
+            🔥 Hot/Cold Debug
+          </div>
+
+          {/* Enable conditions */}
+          <div style={{ marginBottom: '6px' }}>
+            <div style={{ color: '#888', fontSize: '10px', marginBottom: '2px' }}>
+              Enable Conditions:
+            </div>
+            <div style={{ color: assistanceAllowsHotCold ? '#4ade80' : '#f87171' }}>
+              {assistanceAllowsHotCold ? '✓' : '✗'} Assistance allows: {assistanceLevel}
+            </div>
+            <div style={{ color: hotColdEnabled ? '#4ade80' : '#f87171' }}>
+              {hotColdEnabled ? '✓' : '✗'} User toggle: {hotColdEnabled ? 'ON' : 'OFF'}
+            </div>
+            <div style={{ color: hasAnyFinePointer ? '#4ade80' : '#f87171' }}>
+              {hasAnyFinePointer ? '✓' : '✗'} Fine pointer (desktop)
+            </div>
+            <div style={{ color: showMagnifier ? '#4ade80' : '#f87171' }}>
+              {showMagnifier ? '✓' : '✗'} Magnifier active
+            </div>
+            <div style={{ color: isMobileMapDragging ? '#4ade80' : '#f87171' }}>
+              {isMobileMapDragging ? '✓' : '✗'} Mobile dragging
+            </div>
+            {gameMode === 'turn-based' && (
+              <div style={{ color: currentPlayer === localPlayerId ? '#4ade80' : '#f87171' }}>
+                {currentPlayer === localPlayerId ? '✓' : '✗'} Is my turn
+              </div>
+            )}
+          </div>
+
+          {/* Overall status */}
+          <div
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background:
+                assistanceAllowsHotCold &&
+                hotColdEnabled &&
+                (hasAnyFinePointer || showMagnifier || isMobileMapDragging) &&
+                (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
+                  ? 'rgba(74, 222, 128, 0.2)'
+                  : 'rgba(248, 113, 113, 0.2)',
+              marginBottom: '6px',
+            }}
+          >
+            <strong>Status: </strong>
+            {assistanceAllowsHotCold &&
+            hotColdEnabled &&
+            (hasAnyFinePointer || showMagnifier || isMobileMapDragging) &&
+            (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
+              ? '🟢 ENABLED'
+              : '🔴 DISABLED'}
+          </div>
+
+          {/* Current feedback */}
+          <div>
+            <span style={{ color: '#888' }}>Current feedback: </span>
+            <span style={{ color: '#fbbf24' }}>{hotColdFeedbackType || 'none'}</span>
+          </div>
+
+          {/* Target info */}
+          <div style={{ marginTop: '4px' }}>
+            <span style={{ color: '#888' }}>Target region: </span>
+            <span>{currentPrompt || 'none'}</span>
+          </div>
+        </div>
+      )}
+
       {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
       {/* Cursor rendering debug - only log when cursor count changes */}
       {svgRef.current &&
@@ -5872,7 +5975,10 @@ export function MapRenderer({
             }
           }
           if (!player) {
-            console.log('[CursorShare] ⚠️ No player found in playerMetadata or memberPlayers for playerId:', position.playerId)
+            console.log(
+              '[CursorShare] ⚠️ No player found in playerMetadata or memberPlayers for playerId:',
+              position.playerId
+            )
             return null
           }
 

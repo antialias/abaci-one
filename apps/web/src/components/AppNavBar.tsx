@@ -73,7 +73,7 @@ function MenuContent({
 }) {
   const isDark = resolvedTheme === 'dark'
   const { open: openDeploymentInfo } = useDeploymentInfo()
-  const { isVisualDebugEnabled, toggleVisualDebug, isDevelopment } = useVisualDebug()
+  const { isVisualDebugEnabled, toggleVisualDebug, isDebugAllowed } = useVisualDebug()
 
   const linkStyle = {
     display: 'flex',
@@ -317,8 +317,8 @@ function MenuContent({
               <ThemeToggle />
             </div>
 
-            {/* Developer Section - only in development */}
-            {isDevelopment && (
+            {/* Developer Section - shown in dev or when ?debug=1 is used */}
+            {isDebugAllowed && (
               <>
                 <div style={separatorStyle} />
                 <div style={sectionHeaderStyle}>Developer</div>
@@ -441,8 +441,8 @@ function MenuContent({
             <ThemeToggle />
           </DropdownMenu.Item>
 
-          {/* Developer Section - only in development */}
-          {isDevelopment && (
+          {/* Developer Section - shown in dev or when ?debug=1 is used */}
+          {isDebugAllowed && (
             <>
               <DropdownMenu.Separator style={separatorStyle} />
               <div style={sectionHeaderStyle}>Developer</div>
