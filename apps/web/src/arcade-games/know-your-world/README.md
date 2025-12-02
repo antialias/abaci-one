@@ -2,224 +2,162 @@
 
 A geography quiz game where players identify countries, states, and territories on unlabeled maps.
 
-## Features
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[Architecture](./docs/ARCHITECTURE.md)** | System overview, data flow, component responsibilities |
+| **[Features](./docs/FEATURES.md)** | Complete feature inventory with file references |
+| **[Patterns](./docs/PATTERNS.md)** | Code conventions, component limits, testing patterns |
+| **[Magnifier Architecture](./docs/MAGNIFIER_ARCHITECTURE.md)** | Deep dive on zoom system |
+| **[Precision Controls](./docs/PRECISION_CONTROLS.md)** | Cursor dampening and pointer lock |
+
+### Implementation Details
+
+| Document | Description |
+|----------|-------------|
+| [Background Music](./docs/implementation/background-music.md) | Music system architecture (Strudel) |
+| [Celebration System](./docs/implementation/celebration.md) | Victory animations and types |
+| [Give Up Flow](./docs/implementation/give-up.md) | Give up mechanics and re-asking |
+| [Map Cropping](./docs/implementation/map-cropping.md) | Viewport fitting algorithm |
+| [Strudel Layering](./docs/implementation/strudel-layering.md) | Music layering implementation |
+
+---
+
+## Quick Start
 
 ### Game Modes
 
-- **Cooperative**: Work together as a team to find all regions
-- **Race**: Compete to click regions first
+- **Cooperative**: Work together to find all regions
+- **Race**: Compete - first click wins the point
 - **Turn-Based**: Take turns finding locations
 
 ### Maps
 
-- **World Map**: 256 countries and territories
-  - Filter by continent: Africa, Asia, Europe, North America, South America, Oceania, Antarctica
-- **USA States**: 51 states (50 states + DC)
+- **World Map**: 256 countries and territories (filterable by continent)
+- **USA States**: 51 states (50 + DC)
 
-### Difficulty Levels
+### Difficulty
 
-Configurable per map with customizable difficulty tiers:
+Filter by region size: Huge → Large → Medium → Small → Tiny
 
-- **World Map**: Easy (capitals only), Medium, Hard (all countries), Expert (including tiny territories)
-- **USA States**: Easy (large states), Hard (all states including small ones)
+### Assistance Levels
 
-### Study Mode
+| Level | Hot/Cold | Hints | Learning Mode |
+|-------|----------|-------|---------------|
+| Learning | ✓ | ✓ Auto | ✓ Type name |
+| Guided | ✓ | ✓ | |
+| Helpful | ✓ | On request | |
+| Standard | | On request | |
+| None | | | |
 
-Optional study period before gameplay:
+---
 
-- Skip (no study time)
-- 30 seconds (quick review)
-- 1 minute (study time)
-- 2 minutes (deep study)
+## Key Features
 
-During study, all regions are labeled so players can memorize locations.
+### Precision Controls
 
-## Precision Controls for Tiny Regions
+Tiny regions (like Gibraltar at 0.08px) are clickable thanks to:
+- **Adaptive magnifier**: 8-60x zoom based on region density
+- **Cursor dampening**: Slows cursor over tiny regions
+- **Pointer lock**: Pixel-precise control mode
 
-One of the most innovative features is the **automatic precision control system** that makes it possible to click on extremely small regions like Gibraltar (0.08px) and Jersey (0.82px).
+### Multiplayer
 
-### Features:
+- Real-time cursor sharing
+- Cooperative give-up voting
+- Turn order enforcement
 
-- **Adaptive cursor dampening**: Automatically slows cursor movement (3-25% speed) when over tiny regions
-- **Auto super-zoom**: Zooms up to 60x after hovering 500ms over sub-pixel regions
-- **Quick-escape**: Fast mouse movement instantly cancels precision features
-- **Crosshair accuracy**: Magnifier crosshairs accurately show which region will be selected
+### Audio
 
-**📖 See [PRECISION_CONTROLS.md](./PRECISION_CONTROLS.md) for complete documentation**
+- Speech synthesis for region names (with optional regional accents)
+- Hot/cold audio feedback
+- Dynamic background music (regional styles)
 
-## Visual Features
+---
 
-### Excluded Region Visualization
-
-Regions filtered out by difficulty settings are pre-labeled on the map in gray, showing which regions are not included in the current game.
-
-### Enhanced Contrast
-
-- Unfound regions: 70% opacity (increased from 30% for better visibility)
-- Found regions: 100% opacity with player avatar pattern
-- Excluded regions: Gray fill with label
-
-### Adaptive Zoom Magnifier
-
-Shows a magnified view (8-60x) when hovering over crowded or tiny regions:
-
-- Automatically calculates optimal zoom based on region density and size
-- Smooth spring animations for position and opacity
-- Crosshairs show exact cursor position
-- Dashed box on main map shows magnified area
-
-### Smart Label Positioning
-
-Uses D3 force simulation to position region labels without overlaps:
-
-- Regular regions: Labels at center
-- Small regions: Labels with arrow pointers
-- Washington DC: Special positioning to avoid blocking other states
-- Collision detection prevents label overlaps
-
-## Technical Architecture
-
-### Component Structure
+## Project Structure
 
 ```
 know-your-world/
-├── components/
-│   ├── GameComponent.tsx         # Main game container
-│   ├── SetupPhase.tsx            # Game configuration screen
-│   ├── StudyPhase.tsx            # Optional study mode
-│   ├── PlayingPhase.tsx          # Active gameplay
-│   ├── ResultsPhase.tsx          # Game completion screen
-│   ├── MapRenderer.tsx           # SVG map rendering + precision controls
-│   ├── ContinentSelector.tsx    # Interactive world map continent filter
-│   └── MapRenderer.stories.tsx  # Storybook stories
-├── Provider.tsx                   # React Context provider
-├── Validator.ts                   # Server-side game logic
-├── index.ts                       # Game definition export
-├── types.ts                       # TypeScript interfaces
-├── maps.ts                        # Map data (World, USA)
-├── continents.ts                  # Continent definitions
-├── mapColors.ts                   # Color utilities
-└── README.md                      # This file
+├── docs/                    # Documentation (START HERE)
+│   ├── ARCHITECTURE.md      # System overview
+│   ├── FEATURES.md          # Feature inventory
+│   ├── PATTERNS.md          # Code conventions
+│   └── implementation/      # Implementation details
+│
+├── components/              # React components
+│   ├── GameComponent.tsx    # Root (phase router)
+│   ├── MapRenderer.tsx      # Main game (6285 lines - needs refactoring)
+│   └── GameInfoPanel.tsx    # Control panel (2090 lines - needs refactoring)
+│
+├── hooks/                   # Custom hooks
+├── utils/                   # Utility functions
+├── music/                   # Music system
+│
+├── Provider.tsx             # React Context
+├── Validator.ts             # Server-side logic
+├── types.ts                 # TypeScript interfaces
+└── maps.ts                  # Map data
 ```
 
-### State Management
-
-Uses React Context (`KnowYourWorldProvider`) for client-side state:
-
-- Game phase (setup, study, playing, results)
-- Selected map and continent
-- Game mode and difficulty
-- Current prompt and regions found
-- Guess history and player metadata
-
-### Server Validation
-
-All game moves are validated server-side in `Validator.ts`:
-
-- Verifies region IDs are valid
-- Checks if region was already found
-- Tracks which player found each region
-- Handles turn order (turn-based mode)
-- Generates random prompts
-
-### Map Data
-
-Maps are sourced from `@svg-maps/world` and `@svg-maps/usa` with enhancements:
-
-- Pre-calculated bounding boxes for each region
-- Center coordinates for labels
-- Continent metadata (world map only)
-- Difficulty tier assignments
-
-## Configuration
-
-Game configuration is persisted in arcade room settings:
-
-```typescript
-interface KnowYourWorldConfig {
-  selectedMap: "world" | "usa";
-  gameMode: "cooperative" | "race" | "turn-based";
-  difficulty: string; // Difficulty level ID (varies per map)
-  studyDuration: 0 | 30 | 60 | 120; // seconds
-  selectedContinent: "all" | ContinentId; // world map only
-}
-```
+---
 
 ## Development
 
-### Adding New Maps
+### Running Locally
 
-1. Install or create SVG map data package
-2. Add map data to `maps.ts`:
-   ```typescript
-   export const MAP_DATA = {
-     'new-map': {
-       name: 'New Map',
-       regions: [...],
-       viewBox: '0 0 1000 1000',
-       // ...
-     }
-   }
-   ```
-3. Add difficulty configuration
-4. Update type definitions
-
-### Customizing Difficulty
-
-Edit `maps.ts` to add custom difficulty tiers:
-
-```typescript
-difficultyConfig: {
-  levels: [
-    { id: 'easy', label: 'Easy', emoji: '😊', description: 'Large regions only' },
-    { id: 'hard', label: 'Hard', emoji: '🤔', description: 'All regions' },
-  ],
-  tiers: {
-    easy: { minWidth: 15, minHeight: 15, minArea: 200 },
-    hard: { minWidth: 0, minHeight: 0, minArea: 0 },
-  }
-}
+```bash
+npm run dev
+# Navigate to /arcade/room/{roomId}
 ```
 
-### Testing
-
-Use Storybook to test map rendering:
+### Storybook
 
 ```bash
 npm run storybook
+# Navigate to "Arcade Games / Know Your World"
 ```
 
-Navigate to "Arcade Games / Know Your World / Map Renderer"
+### Debug Mode
 
-## Troubleshooting
+Add `?debug=1` to any URL to enable debug overlays:
+- Bounding boxes
+- Zoom info
+- Hot/cold enable conditions
 
-### Tiny regions not clickable
+---
 
-- Check browser zoom level (100% recommended)
-- Ensure precision controls are working (look for crosshair cursor)
-- Check console for debug logs
+## Maintenance Notes
 
-### Labels overlapping
+### Large Files Needing Refactoring
 
-- Adjust force simulation parameters in `MapRenderer.tsx`:
-  - `centeringStrength`: How strongly labels pull toward region centers
-  - `collisionPadding`: Minimum space between labels
-  - `simulationIterations`: More iterations = better layout
+| File | Lines | Notes |
+|------|-------|-------|
+| `MapRenderer.tsx` | 6,285 | Extract to feature modules |
+| `GameInfoPanel.tsx` | 2,090 | Extract UI sections |
 
-### Performance issues
+See [PATTERNS.md](./docs/PATTERNS.md) for refactoring guidelines.
 
-- Reduce map size (filter by continent)
-- Lower difficulty (fewer regions)
-- Disable label arrows in force tuning parameters
+### Test Coverage
+
+| Area | Status |
+|------|--------|
+| Validator | ✓ Good |
+| Utils | ✓ Good |
+| Components | Partial |
+| Hooks | Needs coverage |
+
+---
 
 ## Related Documentation
 
-- [Precision Controls](./PRECISION_CONTROLS.md) - Cursor dampening and super zoom
-- [Game SDK](../../lib/arcade/README.md) - How arcade games are structured
-- [Arcade System](../../app/arcade/README.md) - Overall arcade architecture
+- [Game SDK](../../lib/arcade/README.md) - Arcade game framework
+- [Arcade System](../../app/arcade/README.md) - Room/session architecture
 
 ## Credits
 
 - Map data: [@svg-maps/world](https://www.npmjs.com/package/@svg-maps/world), [@svg-maps/usa](https://www.npmjs.com/package/@svg-maps/usa)
 - Label positioning: [D3 Force](https://d3js.org/d3-force)
 - Animations: [React Spring](https://www.react-spring.dev/)
+- Music: [Strudel](https://strudel.cc/)
