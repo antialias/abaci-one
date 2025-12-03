@@ -14,4 +14,8 @@ export type {
   UseInteractionStateMachineReturn,
 } from './useInteractionStateMachine'
 
-export { useInteractionStateMachine } from './useInteractionStateMachine'
+export {
+  initialMachineState,
+  interactionReducer,
+  useInteractionStateMachine,
+} from './useInteractionStateMachine'

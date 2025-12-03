@@ -143,7 +143,8 @@ const initialContext: InteractionContext = {
   dragTriggeredMagnifier: false,
 }
 
-const initialState: MachineState = {
+// Exported for testing
+export const initialMachineState: MachineState = {
   state: 'IDLE',
   context: initialContext,
   previousState: null,
@@ -156,8 +157,9 @@ const initialState: MachineState = {
 /**
  * Pure reducer function that handles state transitions.
  * All state changes go through here, making the logic centralized and testable.
+ * Exported for unit testing.
  */
-function interactionReducer(machine: MachineState, event: InteractionEvent): MachineState {
+export function interactionReducer(machine: MachineState, event: InteractionEvent): MachineState {
   const { state, context } = machine
 
   switch (state) {
@@ -357,6 +359,18 @@ function interactionReducer(machine: MachineState, event: InteractionEvent): Mac
             previousState: state,
           }
 
+        case 'DISMISS_MAGNIFIER':
+          return {
+            ...machine,
+            state: 'IDLE',
+            context: {
+              ...context,
+              targetOpacity: 0,
+              touchStart: null,
+            },
+            previousState: state,
+          }
+
         default:
           return machine
       }
@@ -408,6 +422,19 @@ function interactionReducer(machine: MachineState, event: InteractionEvent): Mac
           return {
             ...machine,
             state: 'MAGNIFIER_EXPANDED',
+            previousState: state,
+          }
+
+        case 'DISMISS_MAGNIFIER':
+          return {
+            ...machine,
+            state: 'IDLE',
+            context: {
+              ...context,
+              targetOpacity: 0,
+              pinchStartDistance: null,
+              pinchStartZoom: null,
+            },
             previousState: state,
           }
 
@@ -628,7 +655,7 @@ export interface UseInteractionStateMachineReturn {
  * Hook that provides the interaction state machine.
  */
 export function useInteractionStateMachine(): UseInteractionStateMachineReturn {
-  const [machine, dispatch] = useReducer(interactionReducer, initialState)
+  const [machine, dispatch] = useReducer(interactionReducer, initialMachineState)
 
   // Create stable send function
   const send = useCallback((event: InteractionEvent) => {
