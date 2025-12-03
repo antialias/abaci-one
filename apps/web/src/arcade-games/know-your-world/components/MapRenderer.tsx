@@ -334,7 +334,7 @@ export function MapRenderer({
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
-  const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
+  const [isReleasingPointerLock, setIsReleasingPointerLockRaw] = useState(false)
 
   // Device capability hooks for adaptive UI
   const isTouchDevice = useIsTouchDevice() // For touch-specific UI (magnifier expansion)
@@ -351,15 +351,19 @@ export function MapRenderer({
     if (cursorPositionRef.current) {
       initialCapturePositionRef.current = { ...cursorPositionRef.current }
     }
+    // Dispatch to state machine directly (eliminates sync effect lag)
+    interactionMachine.send({ type: 'REQUEST_PRECISION' })
     // Note: Zoom update now handled by useMagnifierZoom hook
-  }, [])
+  }, [interactionMachine])
 
   const handleLockReleased = useCallback(() => {
     // Reset cursor squish
     setCursorSquish({ x: 1, y: 1 })
-    setIsReleasingPointerLock(false)
+    setIsReleasingPointerLockRaw(false)
+    // Dispatch to state machine directly (eliminates sync effect lag)
+    interactionMachine.send({ type: 'RELEASE_ANIMATION_DONE' })
     // Note: Zoom recalculation now handled by useMagnifierZoom hook
-  }, [])
+  }, [interactionMachine])
 
   // Pointer lock hook (needed by zoom hook)
   // Pass canUsePrecisionMode to prevent pointer lock on unsupported devices
@@ -441,6 +445,18 @@ export function MapRenderer({
     [setIsMagnifierExpandedRaw, interactionMachine]
   )
 
+  // Wrapper that updates BOTH old state AND state machine during migration
+  const setIsReleasingPointerLock = useCallback(
+    (releasing: boolean) => {
+      setIsReleasingPointerLockRaw(releasing)
+      if (releasing) {
+        interactionMachine.send({ type: 'PRECISION_ESCAPE_BOUNDARY' })
+      }
+      // Note: When releasing becomes false, handleLockReleased dispatches RELEASE_ANIMATION_DONE
+    },
+    [interactionMachine]
+  )
+
   // Pulsing animation hooks (for give-up, hint, and celebration effects)
   const giveUpAnimation = usePulsingAnimation()
   const hintAnimation = usePulsingAnimation()
@@ -489,22 +505,14 @@ export function MapRenderer({
   }, [isMagnifierExpanded, targetZoom])
 
   // ==========================================================================
-  // State Machine Sync Effects (for incremental migration)
-  // These effects drive the state machine from existing boolean state changes.
-  // Once migration is complete, handlers will dispatch directly to the machine.
+  // State Machine Integration Notes
+  // All state changes now dispatch directly to the machine (no sync effects needed):
+  // - setShowMagnifier wrapper dispatches SHOW_MAGNIFIER/DISMISS_MAGNIFIER
+  // - setIsMagnifierExpanded wrapper dispatches EXPAND_MAGNIFIER/COLLAPSE_MAGNIFIER
+  // - setIsReleasingPointerLock wrapper dispatches PRECISION_ESCAPE_BOUNDARY
+  // - handleLockAcquired callback dispatches REQUEST_PRECISION
+  // - handleLockReleased callback dispatches RELEASE_ANIMATION_DONE
   // ==========================================================================
-
-  // Sync precision mode state
-  useEffect(() => {
-    if (pointerLocked) {
-      interactionMachine.send({ type: 'REQUEST_PRECISION' })
-    } else if (isReleasingPointerLock) {
-      interactionMachine.send({ type: 'PRECISION_ESCAPE_BOUNDARY' })
-    }
-  }, [pointerLocked, isReleasingPointerLock, interactionMachine])
-
-  // Note: Magnifier visibility sync effect REMOVED - setShowMagnifier wrapper now dispatches directly
-  // Note: Magnifier expanded sync effect REMOVED - setIsMagnifierExpanded wrapper now dispatches directly
 
   // Debug: Log state machine state changes and verify sync (only in dev)
   useEffect(() => {
@@ -1775,7 +1783,7 @@ export function MapRenderer({
     if (!svgRef.current || !containerRef.current) return
 
     // Don't process mouse movement during pointer lock release animation
-    if (isReleasingPointerLock) return
+    if (interactionMachine.isReleasingPrecision) return
 
     const containerRect = containerRef.current.getBoundingClientRect()
     const svgRect = svgRef.current.getBoundingClientRect()
@@ -1847,7 +1855,7 @@ export function MapRenderer({
       )
 
       // Check if cursor has squished through and should escape (using dampened position!)
-      if (dampenedMinDist < escapeThreshold && !isReleasingPointerLock) {
+      if (dampenedMinDist < escapeThreshold && !interactionMachine.isReleasingPrecision) {
         // Start animation back to initial capture position
         setIsReleasingPointerLock(true)
 
@@ -3458,7 +3466,7 @@ export function MapRenderer({
                   // Apply "disabled" visual effect when at threshold but not in precision mode
                   // Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook
                   filter:
-                    precisionCalcs.isAtThreshold && !pointerLocked
+                    precisionCalcs.isAtThreshold && !interactionMachine.isPrecisionMode
                       ? 'brightness(0.6) saturate(0.5)'
                       : 'none',
                 }}
@@ -3539,7 +3547,7 @@ export function MapRenderer({
               <MagnifierLabel
                 zoomSpring={zoomSpring}
                 movementMultiplierSpring={magnifierSpring.movementMultiplier}
-                pointerLocked={pointerLocked}
+                pointerLocked={interactionMachine.isPrecisionMode}
                 containerRef={containerRef}
                 svgRef={svgRef}
                 parsedViewBox={parsedViewBox}
@@ -3552,7 +3560,7 @@ export function MapRenderer({
 
               {/* Scrim overlay - shows when at threshold to indicate barrier */}
               {/* Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook */}
-              {precisionCalcs.isAtThreshold && !pointerLocked && (
+              {precisionCalcs.isAtThreshold && !interactionMachine.isPrecisionMode && (
                 <div
                   data-element="precision-mode-scrim"
                   style={{
@@ -3574,7 +3582,7 @@ export function MapRenderer({
                 isExpanded={isMagnifierExpanded}
                 isSelectDisabled={!hoveredRegion || regionsFound.includes(hoveredRegion)}
                 isDark={isDark}
-                pointerLocked={pointerLocked}
+                pointerLocked={interactionMachine.isPrecisionMode}
                 onSelect={selectRegionAtCrosshairs}
                 onExitExpanded={() => setIsMagnifierExpanded(false)}
                 onExpand={() => setIsMagnifierExpanded(true)}
