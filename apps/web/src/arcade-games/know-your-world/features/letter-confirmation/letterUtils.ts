@@ -89,10 +89,7 @@ export function getLetterStatus(
  * @param isDark - Whether dark mode is active
  * @returns CSS properties for the letter
  */
-export function getLetterStyles(
-  status: LetterStatus,
-  isDark: boolean
-): React.CSSProperties {
+export function getLetterStyles(status: LetterStatus, isDark: boolean): React.CSSProperties {
   const baseStyles: React.CSSProperties = {
     transition: 'all 0.15s ease-out',
   }
@@ -129,10 +126,7 @@ export function getLetterStyles(
  * @param requiredLetters - Number of letters required
  * @returns Progress value (0 = none, 1 = complete)
  */
-export function calculateProgress(
-  confirmedCount: number,
-  requiredLetters: number
-): number {
+export function calculateProgress(confirmedCount: number, requiredLetters: number): number {
   if (requiredLetters === 0) return 1
   return Math.min(1, confirmedCount / requiredLetters)
 }

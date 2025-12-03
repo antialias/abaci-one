@@ -12,7 +12,12 @@
 
 'use client'
 
-import React, { useCallback, useRef, type RefObject, type TouchEvent as ReactTouchEvent } from 'react'
+import React, {
+  useCallback,
+  useRef,
+  type RefObject,
+  type TouchEvent as ReactTouchEvent,
+} from 'react'
 
 import type { UseMagnifierStateReturn } from './useMagnifierState'
 
@@ -223,8 +228,10 @@ export function useMagnifierTouch(options: UseMagnifierTouchOptions): UseMagnifi
       totalDeltaRef.current.y += deltaY
 
       // Track if user has moved significantly
-      if (Math.abs(totalDeltaRef.current.x) > moveThreshold ||
-          Math.abs(totalDeltaRef.current.y) > moveThreshold) {
+      if (
+        Math.abs(totalDeltaRef.current.x) > moveThreshold ||
+        Math.abs(totalDeltaRef.current.y) > moveThreshold
+      ) {
         magnifierState.didMoveRef.current = true
       }
 

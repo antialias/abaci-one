@@ -91,12 +91,7 @@ export function useLetterConfirmation({
   // Get letter status for display
   const getLetterStatus = useCallback(
     (nonSpaceIndex: number): LetterStatus => {
-      return getLetterStatusUtil(
-        nonSpaceIndex,
-        confirmedCount,
-        requiredLetters,
-        isComplete
-      )
+      return getLetterStatusUtil(nonSpaceIndex, confirmedCount, requiredLetters, isComplete)
     },
     [confirmedCount, requiredLetters, isComplete]
   )
@@ -109,10 +104,7 @@ export function useLetterConfirmation({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input or textarea
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
 

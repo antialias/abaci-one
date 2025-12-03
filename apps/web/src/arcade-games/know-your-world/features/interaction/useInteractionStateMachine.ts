@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useReducer, useCallback, useRef, useMemo } from 'react'
+import { useCallback, useMemo, useReducer, useRef } from 'react'
 
 // ============================================================================
 // State Types
@@ -680,10 +680,7 @@ export function useInteractionStateMachine(): UseInteractionStateMachineReturn {
     ]
   )
 
-  const showCursor = useMemo(
-    () => isHovering || showMagnifier,
-    [isHovering, showMagnifier]
-  )
+  const showCursor = useMemo(() => isHovering || showMagnifier, [isHovering, showMagnifier])
 
   const isAnyPanning = useMemo(
     () => isMagnifierPanning || isMapPanningMobile || isMapPanningDesktop,

@@ -6,11 +6,11 @@
  */
 
 export type {
-  InteractionState,
-  InteractionEvent,
   InteractionContext,
-  TouchPoint,
+  InteractionEvent,
+  InteractionState,
   MachineState,
+  TouchPoint,
   UseInteractionStateMachineReturn,
 } from './useInteractionStateMachine'
 

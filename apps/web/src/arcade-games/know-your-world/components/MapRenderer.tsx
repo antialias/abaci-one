@@ -7,11 +7,9 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
 import { usePulsingAnimation } from '../features/animations'
-import { CompassCrosshair, CursorOverlay } from '../features/cursor'
+import { CursorOverlay } from '../features/cursor'
 import { DebugAutoZoomPanel, HotColdDebugPanel, SafeZoneDebugPanel } from '../features/debug'
-import { MapRendererProvider, type MapRendererContextValue } from '../features/map-renderer'
-import { OtherPlayerCursors } from '../features/multiplayer'
-import { RegionLayer } from '../features/regions'
+import { useInteractionStateMachine } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
   applyPanDelta,
@@ -30,7 +28,10 @@ import {
   useMagnifierState,
   ZoomLines,
 } from '../features/magnifier'
+import { type MapRendererContextValue, MapRendererProvider } from '../features/map-renderer'
+import { OtherPlayerCursors } from '../features/multiplayer'
 import { usePrecisionCalculations } from '../features/precision'
+import { RegionLayer } from '../features/regions'
 import {
   useCanUsePrecisionMode,
   useHasAnyFinePointer,
@@ -60,7 +61,6 @@ import { useKnowYourWorld } from '../Provider'
 import type { MapData, MapRegion } from '../types'
 import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
 import { CELEBRATION_TIMING, classifyCelebration } from '../utils/celebration'
-import type { FeedbackType } from '../utils/hotColdPhrases'
 import { getHeatBorderColors, getHeatCrosshairStyle } from '../utils/hotColdStyles'
 import {
   calculateMaxZoomAtThreshold,
@@ -341,6 +341,10 @@ export function MapRenderer({
   const canUsePrecisionMode = useCanUsePrecisionMode() // For precision mode UI/behavior
   const hasAnyFinePointer = useHasAnyFinePointer() // For hot/cold feedback visibility
 
+  // Interaction state machine - replaces scattered boolean flags with explicit states
+  // Currently running in parallel with existing state for incremental migration
+  const interactionMachine = useInteractionStateMachine()
+
   // Memoize pointer lock callbacks to prevent render loop
   const handleLockAcquired = useCallback(() => {
     // Save initial cursor position
@@ -469,6 +473,67 @@ export function MapRenderer({
       setIsMagnifierExpanded(false)
     }
   }, [isMagnifierExpanded, targetZoom])
+
+  // ==========================================================================
+  // State Machine Sync Effects (for incremental migration)
+  // These effects drive the state machine from existing boolean state changes.
+  // Once migration is complete, handlers will dispatch directly to the machine.
+  // ==========================================================================
+
+  // Sync precision mode state
+  useEffect(() => {
+    if (pointerLocked) {
+      interactionMachine.send({ type: 'REQUEST_PRECISION' })
+    } else if (isReleasingPointerLock) {
+      interactionMachine.send({ type: 'PRECISION_ESCAPE_BOUNDARY' })
+    }
+  }, [pointerLocked, isReleasingPointerLock, interactionMachine])
+
+  // Sync magnifier visibility
+  useEffect(() => {
+    if (showMagnifier) {
+      interactionMachine.send({ type: 'SHOW_MAGNIFIER' })
+    } else {
+      interactionMachine.send({ type: 'DISMISS_MAGNIFIER' })
+    }
+  }, [showMagnifier, interactionMachine])
+
+  // Sync magnifier expanded state
+  useEffect(() => {
+    if (isMagnifierExpanded) {
+      interactionMachine.send({ type: 'EXPAND_MAGNIFIER' })
+    } else {
+      interactionMachine.send({ type: 'COLLAPSE_MAGNIFIER' })
+    }
+  }, [isMagnifierExpanded, interactionMachine])
+
+  // Debug: Log state machine state changes and verify sync (only in dev)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Compare state machine derived values with existing boolean state
+      const machineShowMagnifier = interactionMachine.showMagnifier
+      const machineIsPrecision = interactionMachine.isPrecisionMode
+      const machineIsReleasingPrecision = interactionMachine.isReleasingPrecision
+
+      // Log state transitions with comparison
+      console.log('[StateMachine]', {
+        state: interactionMachine.state,
+        machine: { showMagnifier: machineShowMagnifier, isPrecision: machineIsPrecision },
+        boolean: { showMagnifier, pointerLocked, isReleasingPointerLock },
+      })
+
+      // Warn on sync divergence (helps identify missing sync effects)
+      // Note: Divergence is expected during transitions due to effect timing
+    }
+  }, [
+    interactionMachine.state,
+    interactionMachine.showMagnifier,
+    interactionMachine.isPrecisionMode,
+    interactionMachine.isReleasingPrecision,
+    showMagnifier,
+    pointerLocked,
+    isReleasingPointerLock,
+  ])
 
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value
@@ -2859,41 +2924,41 @@ export function MapRenderer({
       <div
         ref={containerRef}
         data-component="map-renderer"
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleContainerClick}
-      onTouchStart={handleMapTouchStart}
-      onTouchMove={handleMapTouchMove}
-      onTouchEnd={handleMapTouchEnd}
-      className={css({
-        position: fillContainer ? 'absolute' : 'relative',
-        top: fillContainer ? 0 : undefined,
-        left: fillContainer ? 0 : undefined,
-        right: fillContainer ? 0 : undefined,
-        bottom: fillContainer ? 0 : undefined,
-        width: '100%',
-        height: '100%',
-        flex: fillContainer ? undefined : 1, // Fill available space in parent flex container
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        // Prevent text selection during drag operations
-        userSelect: 'none',
-        // Disable all default touch gestures - we handle touch events ourselves
-        touchAction: 'none',
-        // Prevent pull-to-refresh on mobile
-        overscrollBehavior: 'none',
-      })}
-      style={{
-        // Vendor-prefixed properties for text selection prevention (not supported in Panda CSS)
-        WebkitUserSelect: 'none',
-        WebkitTouchCallout: 'none',
-        // Sea/ocean background with wavy CSS pattern at screen pixel scale
-        backgroundColor: isDark ? '#1e3a5f' : '#a8d4f0',
-        backgroundImage: isDark
-          ? `repeating-linear-gradient(
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleContainerClick}
+        onTouchStart={handleMapTouchStart}
+        onTouchMove={handleMapTouchMove}
+        onTouchEnd={handleMapTouchEnd}
+        className={css({
+          position: fillContainer ? 'absolute' : 'relative',
+          top: fillContainer ? 0 : undefined,
+          left: fillContainer ? 0 : undefined,
+          right: fillContainer ? 0 : undefined,
+          bottom: fillContainer ? 0 : undefined,
+          width: '100%',
+          height: '100%',
+          flex: fillContainer ? undefined : 1, // Fill available space in parent flex container
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          // Prevent text selection during drag operations
+          userSelect: 'none',
+          // Disable all default touch gestures - we handle touch events ourselves
+          touchAction: 'none',
+          // Prevent pull-to-refresh on mobile
+          overscrollBehavior: 'none',
+        })}
+        style={{
+          // Vendor-prefixed properties for text selection prevention (not supported in Panda CSS)
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          // Sea/ocean background with wavy CSS pattern at screen pixel scale
+          backgroundColor: isDark ? '#1e3a5f' : '#a8d4f0',
+          backgroundImage: isDark
+            ? `repeating-linear-gradient(
               15deg,
               transparent,
               transparent 18px,
@@ -2908,7 +2973,7 @@ export function MapRenderer({
               rgba(45, 74, 111, 0.3) 78px,
               rgba(45, 74, 111, 0.3) 80px
             )`
-          : `repeating-linear-gradient(
+            : `repeating-linear-gradient(
               15deg,
               transparent,
               transparent 18px,
@@ -2923,266 +2988,351 @@ export function MapRenderer({
               rgba(143, 196, 232, 0.3) 78px,
               rgba(143, 196, 232, 0.3) 80px
             )`,
-        backgroundSize: '100px 100px',
-      }}
-    >
-      <animated.svg
-        ref={svgRef}
-        viewBox={displayViewBox}
-        className={css({
-          // Fill the entire container - viewBox controls what portion of map is visible
-          width: '100%',
-          height: '100%',
-          // Hide native cursor on desktop since we show custom crosshair
-          cursor: hasAnyFinePointer ? 'none' : 'pointer',
-          transformOrigin: 'center center',
-        })}
-        style={{
-          // No aspectRatio - the SVG fills the container and viewBox is calculated
-          // to match the container's aspect ratio via calculateFitCropViewBox
-          // CSS transform for zoom animation during give-up reveal
-          transform: to(
-            [mainMapSpring.scale, mainMapSpring.translateX, mainMapSpring.translateY],
-            (s, tx, ty) => `scale(${s}) translate(${tx / s}px, ${ty / s}px)`
-          ),
+          backgroundSize: '100px 100px',
         }}
       >
-        {/* Render all regions (included + excluded) */}
-        <RegionLayer
-          regions={[...mapData.regions, ...excludedRegions]}
-          excludedRegionIds={excludedRegionIds}
-          regionsFound={regionsFound}
+        <animated.svg
+          ref={svgRef}
+          viewBox={displayViewBox}
+          className={css({
+            // Fill the entire container - viewBox controls what portion of map is visible
+            width: '100%',
+            height: '100%',
+            // Hide native cursor on desktop since we show custom crosshair
+            cursor: hasAnyFinePointer ? 'none' : 'pointer',
+            transformOrigin: 'center center',
+          })}
+          style={{
+            // No aspectRatio - the SVG fills the container and viewBox is calculated
+            // to match the container's aspect ratio via calculateFitCropViewBox
+            // CSS transform for zoom animation during give-up reveal
+            transform: to(
+              [mainMapSpring.scale, mainMapSpring.translateX, mainMapSpring.translateY],
+              (s, tx, ty) => `scale(${s}) translate(${tx / s}px, ${ty / s}px)`
+            ),
+          }}
+        >
+          {/* Render all regions (included + excluded) */}
+          <RegionLayer
+            regions={[...mapData.regions, ...excludedRegions]}
+            excludedRegionIds={excludedRegionIds}
+            regionsFound={regionsFound}
+            hoveredRegion={hoveredRegion}
+            setHoveredRegion={setHoveredRegion}
+            networkHoveredRegions={networkHoveredRegions}
+            giveUpReveal={giveUpReveal}
+            giveUpFlashProgress={giveUpFlashProgress}
+            isGiveUpAnimating={isGiveUpAnimating}
+            hintActive={hintActive}
+            hintFlashProgress={hintFlashProgress}
+            celebration={celebration}
+            celebrationFlashProgress={celebrationFlashProgress}
+            hasAnyFinePointer={hasAnyFinePointer}
+            showOutline={showOutline}
+            getPlayerWhoFoundRegion={getPlayerWhoFoundRegion}
+            onRegionClick={handleRegionClickWithCelebration}
+          />
+
+          {/* Debug: Render bounding boxes (only if enabled) */}
+          {effectiveShowDebugBoundingBoxes &&
+            debugBoundingBoxes.map((bbox) => {
+              // Color based on acceptance and importance
+              // Green = accepted, Orange = high importance, Yellow = medium, Gray = low
+              const importance = bbox.importance ?? 0
+              let strokeColor = '#888888' // Default gray for low importance
+              let fillColor = 'rgba(136, 136, 136, 0.1)'
+
+              if (bbox.wasAccepted) {
+                strokeColor = '#00ff00' // Green for accepted region
+                fillColor = 'rgba(0, 255, 0, 0.15)'
+              } else if (importance > 1.5) {
+                strokeColor = '#ff6600' // Orange for high importance (2.0× boost + close)
+                fillColor = 'rgba(255, 102, 0, 0.1)'
+              } else if (importance > 0.5) {
+                strokeColor = '#ffcc00' // Yellow for medium importance
+                fillColor = 'rgba(255, 204, 0, 0.1)'
+              }
+
+              return (
+                <g key={`bbox-${bbox.regionId}`}>
+                  <rect
+                    x={bbox.x}
+                    y={bbox.y}
+                    width={bbox.width}
+                    height={bbox.height}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    strokeWidth={viewBoxWidth / 500}
+                    vectorEffect="non-scaling-stroke"
+                    strokeDasharray="3,3"
+                    pointerEvents="none"
+                    opacity={0.9}
+                  />
+                </g>
+              )
+            })}
+
+          {/* Arrow marker definition */}
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="10"
+              markerHeight="10"
+              refX="8"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 10 3, 0 6" fill={isDark ? '#60a5fa' : '#3b82f6'} />
+            </marker>
+            <marker
+              id="arrowhead-found"
+              markerWidth="10"
+              markerHeight="10"
+              refX="8"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 10 3, 0 6" fill="#16a34a" />
+            </marker>
+
+            {/* Player emoji patterns for region backgrounds */}
+            {Object.values(playerMetadata).map((player) => (
+              <pattern
+                key={`pattern-${player.id}`}
+                id={`player-pattern-${player.id}`}
+                width="60"
+                height="60"
+                patternUnits="userSpaceOnUse"
+              >
+                <rect width="60" height="60" fill={player.color} opacity="0.2" />
+                <text
+                  x="30"
+                  y="30"
+                  fontSize="50"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  opacity="0.5"
+                >
+                  {player.emoji}
+                </text>
+              </pattern>
+            ))}
+          </defs>
+
+          {/* Magnifier region indicator on main map */}
+          {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
+            <animated.rect
+              x={zoomSpring.to((zoom: number) => {
+                const containerRect = containerRef.current!.getBoundingClientRect()
+                const svgRect = svgRef.current!.getBoundingClientRect()
+                // Account for preserveAspectRatio letterboxing
+                const viewport = getRenderedViewport(
+                  svgRect,
+                  parsedViewBox.x,
+                  parsedViewBox.y,
+                  parsedViewBox.width,
+                  parsedViewBox.height
+                )
+                const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                const cursorSvgX =
+                  (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
+                // Calculate leftover dimensions for magnifier sizing
+                const leftoverW =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverH =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
+                  parsedViewBox.width,
+                  parsedViewBox.height,
+                  zoom,
+                  leftoverW,
+                  leftoverH
+                )
+                return cursorSvgX - magnifiedWidth / 2
+              })}
+              y={zoomSpring.to((zoom: number) => {
+                const containerRect = containerRef.current!.getBoundingClientRect()
+                const svgRect = svgRef.current!.getBoundingClientRect()
+                // Account for preserveAspectRatio letterboxing
+                const viewport = getRenderedViewport(
+                  svgRect,
+                  parsedViewBox.x,
+                  parsedViewBox.y,
+                  parsedViewBox.width,
+                  parsedViewBox.height
+                )
+                const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                const cursorSvgY =
+                  (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
+                // Calculate leftover dimensions for magnifier sizing
+                const leftoverW =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverH =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
+                  parsedViewBox.width,
+                  parsedViewBox.height,
+                  zoom,
+                  leftoverW,
+                  leftoverH
+                )
+                return cursorSvgY - magnifiedHeight / 2
+              })}
+              width={zoomSpring.to((zoom: number) => {
+                const containerRect = containerRef.current!.getBoundingClientRect()
+                // Calculate leftover dimensions for magnifier sizing
+                const leftoverW =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverH =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const { width } = getAdjustedMagnifiedDimensions(
+                  parsedViewBox.width,
+                  parsedViewBox.height,
+                  zoom,
+                  leftoverW,
+                  leftoverH
+                )
+                return width
+              })}
+              height={zoomSpring.to((zoom: number) => {
+                const containerRect = containerRef.current!.getBoundingClientRect()
+                // Calculate leftover dimensions for magnifier sizing
+                const leftoverW =
+                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                const leftoverH =
+                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                const { height } = getAdjustedMagnifiedDimensions(
+                  parsedViewBox.width,
+                  parsedViewBox.height,
+                  zoom,
+                  leftoverW,
+                  leftoverH
+                )
+                return height
+              })}
+              fill="none"
+              stroke={isDark ? '#60a5fa' : '#3b82f6'}
+              strokeWidth={parsedViewBox.width / 500}
+              vectorEffect="non-scaling-stroke"
+              strokeDasharray="5,5"
+              pointerEvents="none"
+              opacity={0.8}
+            />
+          )}
+        </animated.svg>
+
+        {/* Labels for found regions - rendered via LabelLayer component */}
+        <LabelLayer
+          labelPositions={labelPositions}
+          smallRegionLabelPositions={smallRegionLabelPositions}
+          cursorPosition={cursorPosition}
           hoveredRegion={hoveredRegion}
-          setHoveredRegion={setHoveredRegion}
-          networkHoveredRegions={networkHoveredRegions}
-          giveUpReveal={giveUpReveal}
-          giveUpFlashProgress={giveUpFlashProgress}
+          regionsFound={regionsFound}
           isGiveUpAnimating={isGiveUpAnimating}
-          hintActive={hintActive}
-          hintFlashProgress={hintFlashProgress}
-          celebration={celebration}
-          celebrationFlashProgress={celebrationFlashProgress}
+          isDark={isDark}
+          playerMetadata={playerMetadata}
           hasAnyFinePointer={hasAnyFinePointer}
-          showOutline={showOutline}
-          getPlayerWhoFoundRegion={getPlayerWhoFoundRegion}
+          celebration={celebration}
           onRegionClick={handleRegionClickWithCelebration}
+          onHover={setHoveredRegion}
         />
 
-        {/* Debug: Render bounding boxes (only if enabled) */}
+        {/* Debug: Bounding box labels as HTML overlays */}
         {effectiveShowDebugBoundingBoxes &&
+          containerRef.current &&
+          svgRef.current &&
           debugBoundingBoxes.map((bbox) => {
-            // Color based on acceptance and importance
-            // Green = accepted, Orange = high importance, Yellow = medium, Gray = low
             const importance = bbox.importance ?? 0
-            let strokeColor = '#888888' // Default gray for low importance
-            let fillColor = 'rgba(136, 136, 136, 0.1)'
+            let strokeColor = '#888888'
 
             if (bbox.wasAccepted) {
-              strokeColor = '#00ff00' // Green for accepted region
-              fillColor = 'rgba(0, 255, 0, 0.15)'
+              strokeColor = '#00ff00'
             } else if (importance > 1.5) {
-              strokeColor = '#ff6600' // Orange for high importance (2.0× boost + close)
-              fillColor = 'rgba(255, 102, 0, 0.1)'
+              strokeColor = '#ff6600'
             } else if (importance > 0.5) {
-              strokeColor = '#ffcc00' // Yellow for medium importance
-              fillColor = 'rgba(255, 204, 0, 0.1)'
+              strokeColor = '#ffcc00'
             }
 
+            // Convert SVG coordinates to pixel coordinates (accounting for preserveAspectRatio)
+            const containerRect = containerRef.current!.getBoundingClientRect()
+            const svgRect = svgRef.current!.getBoundingClientRect()
+
+            const viewport = getRenderedViewport(
+              svgRect,
+              parsedViewBox.x,
+              parsedViewBox.y,
+              parsedViewBox.width,
+              parsedViewBox.height
+            )
+            const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+            const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+
+            // Convert bbox center from SVG coords to pixels
+            const centerX =
+              (bbox.x + bbox.width / 2 - parsedViewBox.x) * viewport.scale + svgOffsetX
+            const centerY =
+              (bbox.y + bbox.height / 2 - parsedViewBox.y) * viewport.scale + svgOffsetY
+
             return (
-              <g key={`bbox-${bbox.regionId}`}>
-                <rect
-                  x={bbox.x}
-                  y={bbox.y}
-                  width={bbox.width}
-                  height={bbox.height}
-                  fill={fillColor}
-                  stroke={strokeColor}
-                  strokeWidth={viewBoxWidth / 500}
-                  vectorEffect="non-scaling-stroke"
-                  strokeDasharray="3,3"
-                  pointerEvents="none"
-                  opacity={0.9}
-                />
-              </g>
+              <div
+                key={`bbox-label-${bbox.regionId}`}
+                style={{
+                  position: 'absolute',
+                  left: `${centerX}px`,
+                  top: `${centerY}px`,
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 15,
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  color: strokeColor,
+                  textAlign: 'center',
+                  textShadow: '0 0 2px black, 0 0 2px black, 0 0 2px black',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <div>{bbox.regionId}</div>
+                <div style={{ fontSize: '8px', fontWeight: 'normal' }}>{importance.toFixed(2)}</div>
+              </div>
             )
           })}
 
-        {/* Arrow marker definition */}
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-            <polygon points="0 0, 10 3, 0 6" fill={isDark ? '#60a5fa' : '#3b82f6'} />
-          </marker>
-          <marker
-            id="arrowhead-found"
-            markerWidth="10"
-            markerHeight="10"
-            refX="8"
-            refY="3"
-            orient="auto"
-          >
-            <polygon points="0 0, 10 3, 0 6" fill="#16a34a" />
-          </marker>
+        {/* Custom cursor and heat crosshair overlays */}
+        <CursorOverlay
+          hasAnyFinePointer={hasAnyFinePointer}
+          hotColdEnabled={effectiveHotColdEnabled}
+          hotColdFeedbackType={hotColdFeedbackType}
+          cursorSquish={cursorSquish}
+          rotationAngle={rotationAngle}
+          crosshairHeatStyle={crosshairHeatStyle}
+          currentRegionName={currentRegionName}
+          currentFlagEmoji={currentFlagEmoji}
+        />
 
-          {/* Player emoji patterns for region backgrounds */}
-          {Object.values(playerMetadata).map((player) => (
-            <pattern
-              key={`pattern-${player.id}`}
-              id={`player-pattern-${player.id}`}
-              width="60"
-              height="60"
-              patternUnits="userSpaceOnUse"
-            >
-              <rect width="60" height="60" fill={player.color} opacity="0.2" />
-              <text
-                x="30"
-                y="30"
-                fontSize="50"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                opacity="0.5"
-              >
-                {player.emoji}
-              </text>
-            </pattern>
-          ))}
-        </defs>
-
-        {/* Magnifier region indicator on main map */}
-        {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
-          <animated.rect
-            x={zoomSpring.to((zoom: number) => {
-              const containerRect = containerRef.current!.getBoundingClientRect()
-              const svgRect = svgRef.current!.getBoundingClientRect()
-              // Account for preserveAspectRatio letterboxing
-              const viewport = getRenderedViewport(
-                svgRect,
-                parsedViewBox.x,
-                parsedViewBox.y,
-                parsedViewBox.width,
-                parsedViewBox.height
-              )
-              const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-              const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
-              // Calculate leftover dimensions for magnifier sizing
-              const leftoverW =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
-                parsedViewBox.width,
-                parsedViewBox.height,
-                zoom,
-                leftoverW,
-                leftoverH
-              )
-              return cursorSvgX - magnifiedWidth / 2
-            })}
-            y={zoomSpring.to((zoom: number) => {
-              const containerRect = containerRef.current!.getBoundingClientRect()
-              const svgRect = svgRef.current!.getBoundingClientRect()
-              // Account for preserveAspectRatio letterboxing
-              const viewport = getRenderedViewport(
-                svgRect,
-                parsedViewBox.x,
-                parsedViewBox.y,
-                parsedViewBox.width,
-                parsedViewBox.height
-              )
-              const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-              const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
-              // Calculate leftover dimensions for magnifier sizing
-              const leftoverW =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
-                parsedViewBox.width,
-                parsedViewBox.height,
-                zoom,
-                leftoverW,
-                leftoverH
-              )
-              return cursorSvgY - magnifiedHeight / 2
-            })}
-            width={zoomSpring.to((zoom: number) => {
-              const containerRect = containerRef.current!.getBoundingClientRect()
-              // Calculate leftover dimensions for magnifier sizing
-              const leftoverW =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { width } = getAdjustedMagnifiedDimensions(
-                parsedViewBox.width,
-                parsedViewBox.height,
-                zoom,
-                leftoverW,
-                leftoverH
-              )
-              return width
-            })}
-            height={zoomSpring.to((zoom: number) => {
-              const containerRect = containerRef.current!.getBoundingClientRect()
-              // Calculate leftover dimensions for magnifier sizing
-              const leftoverW =
-                containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-              const leftoverH =
-                containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-              const { height } = getAdjustedMagnifiedDimensions(
-                parsedViewBox.width,
-                parsedViewBox.height,
-                zoom,
-                leftoverW,
-                leftoverH
-              )
-              return height
-            })}
-            fill="none"
-            stroke={isDark ? '#60a5fa' : '#3b82f6'}
-            strokeWidth={parsedViewBox.width / 500}
-            vectorEffect="non-scaling-stroke"
-            strokeDasharray="5,5"
-            pointerEvents="none"
-            opacity={0.8}
-          />
-        )}
-      </animated.svg>
-
-      {/* Labels for found regions - rendered via LabelLayer component */}
-      <LabelLayer
-        labelPositions={labelPositions}
-        smallRegionLabelPositions={smallRegionLabelPositions}
-        cursorPosition={cursorPosition}
-        hoveredRegion={hoveredRegion}
-        regionsFound={regionsFound}
-        isGiveUpAnimating={isGiveUpAnimating}
-        isDark={isDark}
-        playerMetadata={playerMetadata}
-        hasAnyFinePointer={hasAnyFinePointer}
-        celebration={celebration}
-        onRegionClick={handleRegionClickWithCelebration}
-        onHover={setHoveredRegion}
-      />
-
-      {/* Debug: Bounding box labels as HTML overlays */}
-      {effectiveShowDebugBoundingBoxes &&
-        containerRef.current &&
-        svgRef.current &&
-        debugBoundingBoxes.map((bbox) => {
-          const importance = bbox.importance ?? 0
-          let strokeColor = '#888888'
-
-          if (bbox.wasAccepted) {
-            strokeColor = '#00ff00'
-          } else if (importance > 1.5) {
-            strokeColor = '#ff6600'
-          } else if (importance > 0.5) {
-            strokeColor = '#ffcc00'
+        {/* Magnifier overlay - centers on cursor position */}
+        {(() => {
+          if (!cursorPosition || !svgRef.current || !containerRef.current) {
+            return null
           }
 
-          // Convert SVG coordinates to pixel coordinates (accounting for preserveAspectRatio)
-          const containerRect = containerRef.current!.getBoundingClientRect()
-          const svgRect = svgRef.current!.getBoundingClientRect()
+          // Calculate magnifier size based on leftover rectangle (area not covered by UI)
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const leftoverWidth =
+            containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+          const leftoverHeight =
+            containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
 
+          // When expanded (during/after pinch-to-zoom), use full leftover area
+          // Otherwise use the normal calculated dimensions
+          const { width: normalWidth, height: normalHeight } = getMagnifierDimensions(
+            leftoverWidth,
+            leftoverHeight
+          )
+          const magnifierWidthPx = isMagnifierExpanded ? leftoverWidth : normalWidth
+          const magnifierHeightPx = isMagnifierExpanded ? leftoverHeight : normalHeight
+
+          // Pre-compute SVG coordinate transformation for crosshair and pixel grid
+          const svgRect = svgRef.current.getBoundingClientRect()
           const viewport = getRenderedViewport(
             svgRect,
             parsedViewBox.x,
@@ -3192,402 +3342,329 @@ export function MapRenderer({
           )
           const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
           const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+          const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
+          const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
 
-          // Convert bbox center from SVG coords to pixels
-          const centerX = (bbox.x + bbox.width / 2 - parsedViewBox.x) * viewport.scale + svgOffsetX
-          const centerY = (bbox.y + bbox.height / 2 - parsedViewBox.y) * viewport.scale + svgOffsetY
+          // Get heat-based crosshair styling
+          const heatStyle = getHeatCrosshairStyle(
+            hotColdFeedbackType,
+            isDark,
+            effectiveHotColdEnabled
+          )
 
           return (
-            <div
-              key={`bbox-label-${bbox.regionId}`}
+            <animated.div
+              ref={magnifierRef}
+              data-element="magnifier"
+              onTouchStart={handleMagnifierTouchStart}
+              onTouchMove={handleMagnifierTouchMove}
+              onTouchEnd={handleMagnifierTouchEnd}
+              onTouchCancel={handleMagnifierTouchEnd}
               style={{
                 position: 'absolute',
-                left: `${centerX}px`,
-                top: `${centerY}px`,
-                transform: 'translate(-50%, -50%)',
-                pointerEvents: 'none',
-                zIndex: 15,
-                fontSize: '10px',
-                fontWeight: 'bold',
-                color: strokeColor,
-                textAlign: 'center',
-                textShadow: '0 0 2px black, 0 0 2px black, 0 0 2px black',
-                whiteSpace: 'nowrap',
+                // When expanded, position at top-left of leftover area; otherwise use animated positioning
+                top: isMagnifierExpanded ? SAFE_ZONE_MARGINS.top : magnifierSpring.top,
+                left: isMagnifierExpanded ? SAFE_ZONE_MARGINS.left : magnifierSpring.left,
+                width: magnifierWidthPx,
+                height: magnifierHeightPx,
+                // Border color priority: 1) Hot/cold heat colors (if enabled), 2) High zoom gold, 3) Default blue
+                border: (() => {
+                  // When hot/cold is enabled, use heat-based colors
+                  if (effectiveHotColdEnabled && hotColdFeedbackType) {
+                    const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
+                    return `${heatColors.width}px solid ${heatColors.border}`
+                  }
+                  // Fall back to zoom-based coloring
+                  return zoomSpring.to(
+                    (zoom: number) =>
+                      zoom > HIGH_ZOOM_THRESHOLD
+                        ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
+                        : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
+                  )
+                })(),
+                borderRadius: '12px',
+                overflow: 'hidden',
+                // Enable touch events on mobile for panning, but keep mouse events disabled
+                // This allows touch-based panning while not interfering with mouse-based interactions
+                pointerEvents: 'auto',
+                touchAction: 'none', // Prevent browser handling of touch gestures
+                zIndex: 100,
+                // Box shadow with heat glow when hot/cold is enabled
+                boxShadow: (() => {
+                  if (effectiveHotColdEnabled && hotColdFeedbackType) {
+                    const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
+                    return `0 10px 40px rgba(0, 0, 0, 0.3), 0 0 25px ${heatColors.glow}`
+                  }
+                  return zoomSpring.to((zoom: number) =>
+                    zoom > HIGH_ZOOM_THRESHOLD
+                      ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
+                      : '0 10px 40px rgba(0, 0, 0, 0.5)'
+                  )
+                })(),
+                background: isDark ? '#111827' : '#f3f4f6',
+                opacity: magnifierSpring.opacity,
               }}
             >
-              <div>{bbox.regionId}</div>
-              <div style={{ fontSize: '8px', fontWeight: 'normal' }}>{importance.toFixed(2)}</div>
-            </div>
-          )
-        })}
+              <animated.svg
+                viewBox={zoomSpring.to((zoom: number) => {
+                  // Calculate magnified viewBox centered on cursor
+                  const containerRect = containerRef.current!.getBoundingClientRect()
+                  const svgRect = svgRef.current!.getBoundingClientRect()
 
-      {/* Custom cursor and heat crosshair overlays */}
-      <CursorOverlay
-        hasAnyFinePointer={hasAnyFinePointer}
-        hotColdEnabled={effectiveHotColdEnabled}
-        hotColdFeedbackType={hotColdFeedbackType}
-        cursorSquish={cursorSquish}
-        rotationAngle={rotationAngle}
-        crosshairHeatStyle={crosshairHeatStyle}
-        currentRegionName={currentRegionName}
-        currentFlagEmoji={currentFlagEmoji}
-      />
-
-      {/* Magnifier overlay - centers on cursor position */}
-      {(() => {
-        if (!cursorPosition || !svgRef.current || !containerRef.current) {
-          return null
-        }
-
-        // Calculate magnifier size based on leftover rectangle (area not covered by UI)
-        const containerRect = containerRef.current.getBoundingClientRect()
-        const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-        const leftoverHeight =
-          containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-
-        // When expanded (during/after pinch-to-zoom), use full leftover area
-        // Otherwise use the normal calculated dimensions
-        const { width: normalWidth, height: normalHeight } = getMagnifierDimensions(
-          leftoverWidth,
-          leftoverHeight
-        )
-        const magnifierWidthPx = isMagnifierExpanded ? leftoverWidth : normalWidth
-        const magnifierHeightPx = isMagnifierExpanded ? leftoverHeight : normalHeight
-
-        // Pre-compute SVG coordinate transformation for crosshair and pixel grid
-        const svgRect = svgRef.current.getBoundingClientRect()
-        const viewport = getRenderedViewport(
-          svgRect,
-          parsedViewBox.x,
-          parsedViewBox.y,
-          parsedViewBox.width,
-          parsedViewBox.height
-        )
-        const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-        const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-        const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
-        const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
-
-        // Get heat-based crosshair styling
-        const heatStyle = getHeatCrosshairStyle(
-          hotColdFeedbackType,
-          isDark,
-          effectiveHotColdEnabled
-        )
-
-        return (
-          <animated.div
-            ref={magnifierRef}
-            data-element="magnifier"
-            onTouchStart={handleMagnifierTouchStart}
-            onTouchMove={handleMagnifierTouchMove}
-            onTouchEnd={handleMagnifierTouchEnd}
-            onTouchCancel={handleMagnifierTouchEnd}
-            style={{
-              position: 'absolute',
-              // When expanded, position at top-left of leftover area; otherwise use animated positioning
-              top: isMagnifierExpanded ? SAFE_ZONE_MARGINS.top : magnifierSpring.top,
-              left: isMagnifierExpanded ? SAFE_ZONE_MARGINS.left : magnifierSpring.left,
-              width: magnifierWidthPx,
-              height: magnifierHeightPx,
-              // Border color priority: 1) Hot/cold heat colors (if enabled), 2) High zoom gold, 3) Default blue
-              border: (() => {
-                // When hot/cold is enabled, use heat-based colors
-                if (effectiveHotColdEnabled && hotColdFeedbackType) {
-                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
-                  return `${heatColors.width}px solid ${heatColors.border}`
-                }
-                // Fall back to zoom-based coloring
-                return zoomSpring.to(
-                  (zoom: number) =>
-                    zoom > HIGH_ZOOM_THRESHOLD
-                      ? `4px solid ${isDark ? '#fbbf24' : '#f59e0b'}` // gold-400/gold-500
-                      : `3px solid ${isDark ? '#60a5fa' : '#3b82f6'}` // blue-400/blue-600
-                )
-              })(),
-              borderRadius: '12px',
-              overflow: 'hidden',
-              // Enable touch events on mobile for panning, but keep mouse events disabled
-              // This allows touch-based panning while not interfering with mouse-based interactions
-              pointerEvents: 'auto',
-              touchAction: 'none', // Prevent browser handling of touch gestures
-              zIndex: 100,
-              // Box shadow with heat glow when hot/cold is enabled
-              boxShadow: (() => {
-                if (effectiveHotColdEnabled && hotColdFeedbackType) {
-                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
-                  return `0 10px 40px rgba(0, 0, 0, 0.3), 0 0 25px ${heatColors.glow}`
-                }
-                return zoomSpring.to((zoom: number) =>
-                  zoom > HIGH_ZOOM_THRESHOLD
-                    ? '0 10px 40px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.2)' // Gold glow
-                    : '0 10px 40px rgba(0, 0, 0, 0.5)'
-                )
-              })(),
-              background: isDark ? '#111827' : '#f3f4f6',
-              opacity: magnifierSpring.opacity,
-            }}
-          >
-            <animated.svg
-              viewBox={zoomSpring.to((zoom: number) => {
-                // Calculate magnified viewBox centered on cursor
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                const svgRect = svgRef.current!.getBoundingClientRect()
-
-                // Use memoized parsedViewBox for coordinate conversion
-                const viewport = getRenderedViewport(
-                  svgRect,
-                  parsedViewBox.x,
-                  parsedViewBox.y,
-                  parsedViewBox.width,
-                  parsedViewBox.height
-                )
-
-                // Center position relative to SVG (uses reveal center during give-up animation)
-                const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-                const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-                const cursorSvgX =
-                  (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
-                const cursorSvgY =
-                  (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
-
-                // Magnified view: adjust dimensions to match magnifier container aspect ratio
-                // This eliminates letterboxing and ensures outline matches what's visible
-                // Use leftover dimensions for magnifier sizing
-                const leftoverW =
-                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH =
-                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-                const { width: magnifiedWidth, height: magnifiedHeight } =
-                  getAdjustedMagnifiedDimensions(
+                  // Use memoized parsedViewBox for coordinate conversion
+                  const viewport = getRenderedViewport(
+                    svgRect,
+                    parsedViewBox.x,
+                    parsedViewBox.y,
                     parsedViewBox.width,
-                    parsedViewBox.height,
-                    zoom,
-                    leftoverW,
-                    leftoverH
+                    parsedViewBox.height
                   )
 
-                // Center the magnified viewBox on the cursor
-                const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
-                const magnifiedViewBoxY = cursorSvgY - magnifiedHeight / 2
+                  // Center position relative to SVG (uses reveal center during give-up animation)
+                  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                  const cursorSvgX =
+                    (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
+                  const cursorSvgY =
+                    (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
 
-                return `${magnifiedViewBoxX} ${magnifiedViewBoxY} ${magnifiedWidth} ${magnifiedHeight}`
-              })}
-              style={{
-                width: '100%',
-                height: '100%',
-                // Apply "disabled" visual effect when at threshold but not in precision mode
-                // Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook
-                filter:
-                  precisionCalcs.isAtThreshold && !pointerLocked
-                    ? 'brightness(0.6) saturate(0.5)'
-                    : 'none',
-              }}
-            >
-              {/* Sea/ocean background for magnifier - solid color to match container */}
-              <rect
-                x={parsedViewBox.x}
-                y={parsedViewBox.y}
-                width={parsedViewBox.width}
-                height={parsedViewBox.height}
-                fill={isDark ? '#1e3a5f' : '#a8d4f0'}
-              />
+                  // Magnified view: adjust dimensions to match magnifier container aspect ratio
+                  // This eliminates letterboxing and ensures outline matches what's visible
+                  // Use leftover dimensions for magnifier sizing
+                  const leftoverW =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverH =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const { width: magnifiedWidth, height: magnifiedHeight } =
+                    getAdjustedMagnifiedDimensions(
+                      parsedViewBox.width,
+                      parsedViewBox.height,
+                      zoom,
+                      leftoverW,
+                      leftoverH
+                    )
 
-              {/* Render all regions in magnified view */}
-              <MagnifierRegions
-                regions={mapData.regions}
-                regionState={{
-                  regionsFound,
-                  hoveredRegion,
-                  celebrationRegionId: celebration?.regionId ?? null,
-                  giveUpRegionId: giveUpReveal?.regionId ?? null,
-                  isGiveUpAnimating,
+                  // Center the magnified viewBox on the cursor
+                  const magnifiedViewBoxX = cursorSvgX - magnifiedWidth / 2
+                  const magnifiedViewBoxY = cursorSvgY - magnifiedHeight / 2
+
+                  return `${magnifiedViewBoxX} ${magnifiedViewBoxY} ${magnifiedWidth} ${magnifiedHeight}`
+                })}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  // Apply "disabled" visual effect when at threshold but not in precision mode
+                  // Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook
+                  filter:
+                    precisionCalcs.isAtThreshold && !pointerLocked
+                      ? 'brightness(0.6) saturate(0.5)'
+                      : 'none',
                 }}
-                flashProgress={{
-                  celebrationFlash: celebrationFlashProgress,
-                  giveUpFlash: giveUpFlashProgress,
-                }}
-                isDark={isDark}
-                getPlayerWhoFoundRegion={getPlayerWhoFoundRegion}
-                getRegionColor={getRegionColor}
-                getRegionStroke={getRegionStroke}
-                showOutline={showOutline}
-              />
+              >
+                {/* Sea/ocean background for magnifier - solid color to match container */}
+                <rect
+                  x={parsedViewBox.x}
+                  y={parsedViewBox.y}
+                  width={parsedViewBox.width}
+                  height={parsedViewBox.height}
+                  fill={isDark ? '#1e3a5f' : '#a8d4f0'}
+                />
 
-              {/* Crosshair at center position (cursor or reveal center during animation) */}
-              <MagnifierCrosshair
-                cursorSvgX={cursorSvgX}
-                cursorSvgY={cursorSvgY}
-                viewBoxWidth={parsedViewBox.width}
-                rotationAngle={rotationAngle}
-                heatStyle={heatStyle}
-              />
+                {/* Render all regions in magnified view */}
+                <MagnifierRegions
+                  regions={mapData.regions}
+                  regionState={{
+                    regionsFound,
+                    hoveredRegion,
+                    celebrationRegionId: celebration?.regionId ?? null,
+                    giveUpRegionId: giveUpReveal?.regionId ?? null,
+                    isGiveUpAnimating,
+                  }}
+                  flashProgress={{
+                    celebrationFlash: celebrationFlashProgress,
+                    giveUpFlash: giveUpFlashProgress,
+                  }}
+                  isDark={isDark}
+                  getPlayerWhoFoundRegion={getPlayerWhoFoundRegion}
+                  getRegionColor={getRegionColor}
+                  getRegionStroke={getRegionStroke}
+                  showOutline={showOutline}
+                />
 
-              {/* Pixel grid overlay - shows when approaching/at/above precision mode threshold */}
-              {/* Uses precisionCalcs.screenPixelRatio from usePrecisionCalculations hook */}
-              <MagnifierPixelGrid
-                currentZoom={getCurrentZoom()}
-                screenPixelRatio={precisionCalcs.screenPixelRatio}
-                precisionModeThreshold={PRECISION_MODE_THRESHOLD}
-                cursorSvgX={cursorSvgX}
-                cursorSvgY={cursorSvgY}
-                viewBoxWidth={parsedViewBox.width}
-                viewBoxHeight={parsedViewBox.height}
-                viewportScale={viewport.scale}
-                isDark={isDark}
-              />
+                {/* Crosshair at center position (cursor or reveal center during animation) */}
+                <MagnifierCrosshair
+                  cursorSvgX={cursorSvgX}
+                  cursorSvgY={cursorSvgY}
+                  viewBoxWidth={parsedViewBox.width}
+                  rotationAngle={rotationAngle}
+                  heatStyle={heatStyle}
+                />
 
-              {/* Debug: Bounding boxes for detected regions in magnifier */}
-              <MagnifierDebugBoxes
+                {/* Pixel grid overlay - shows when approaching/at/above precision mode threshold */}
+                {/* Uses precisionCalcs.screenPixelRatio from usePrecisionCalculations hook */}
+                <MagnifierPixelGrid
+                  currentZoom={getCurrentZoom()}
+                  screenPixelRatio={precisionCalcs.screenPixelRatio}
+                  precisionModeThreshold={PRECISION_MODE_THRESHOLD}
+                  cursorSvgX={cursorSvgX}
+                  cursorSvgY={cursorSvgY}
+                  viewBoxWidth={parsedViewBox.width}
+                  viewBoxHeight={parsedViewBox.height}
+                  viewportScale={viewport.scale}
+                  isDark={isDark}
+                />
+
+                {/* Debug: Bounding boxes for detected regions in magnifier */}
+                <MagnifierDebugBoxes
+                  debugBoundingBoxes={debugBoundingBoxes}
+                  visible={effectiveShowDebugBoundingBoxes}
+                />
+              </animated.svg>
+
+              {/* Debug: Bounding box labels as HTML overlays - positioned using animated values */}
+              <MagnifierDebugLabels
                 debugBoundingBoxes={debugBoundingBoxes}
                 visible={effectiveShowDebugBoundingBoxes}
+                zoomSpring={zoomSpring}
+                containerRef={containerRef}
+                svgRef={svgRef}
+                cursorPosition={cursorPosition}
+                parsedViewBox={parsedViewBox}
+                safeZoneMargins={SAFE_ZONE_MARGINS}
               />
-            </animated.svg>
 
-            {/* Debug: Bounding box labels as HTML overlays - positioned using animated values */}
-            <MagnifierDebugLabels
-              debugBoundingBoxes={debugBoundingBoxes}
-              visible={effectiveShowDebugBoundingBoxes}
-              zoomSpring={zoomSpring}
-              containerRef={containerRef}
-              svgRef={svgRef}
-              cursorPosition={cursorPosition}
-              parsedViewBox={parsedViewBox}
-              safeZoneMargins={SAFE_ZONE_MARGINS}
-            />
-
-            {/* Magnifier label */}
-            <MagnifierLabel
-              zoomSpring={zoomSpring}
-              movementMultiplierSpring={magnifierSpring.movementMultiplier}
-              pointerLocked={pointerLocked}
-              containerRef={containerRef}
-              svgRef={svgRef}
-              parsedViewBox={parsedViewBox}
-              safeZoneMargins={SAFE_ZONE_MARGINS}
-              canUsePrecisionMode={canUsePrecisionMode}
-              showDebugInfo={effectiveShowMagnifierDebugInfo}
-              isDark={isDark}
-              precisionModeThreshold={PRECISION_MODE_THRESHOLD}
-            />
-
-            {/* Scrim overlay - shows when at threshold to indicate barrier */}
-            {/* Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook */}
-            {precisionCalcs.isAtThreshold && !pointerLocked && (
-              <div
-                data-element="precision-mode-scrim"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'rgba(251, 191, 36, 0.15)', // Gold scrim
-                  pointerEvents: 'none',
-                  borderRadius: '12px',
-                }}
+              {/* Magnifier label */}
+              <MagnifierLabel
+                zoomSpring={zoomSpring}
+                movementMultiplierSpring={magnifierSpring.movementMultiplier}
+                pointerLocked={pointerLocked}
+                containerRef={containerRef}
+                svgRef={svgRef}
+                parsedViewBox={parsedViewBox}
+                safeZoneMargins={SAFE_ZONE_MARGINS}
+                canUsePrecisionMode={canUsePrecisionMode}
+                showDebugInfo={effectiveShowMagnifierDebugInfo}
+                isDark={isDark}
+                precisionModeThreshold={PRECISION_MODE_THRESHOLD}
               />
-            )}
 
-            {/* Mobile magnifier controls (Expand, Select, Full Map buttons) */}
-            <MagnifierControls
-              isTouchDevice={isTouchDevice}
-              showSelectButton={
-                mobileMapDragTriggeredMagnifier && !isMobileMapDragging && !isMagnifierDragging
-              }
-              isExpanded={isMagnifierExpanded}
-              isSelectDisabled={!hoveredRegion || regionsFound.includes(hoveredRegion)}
-              isDark={isDark}
-              pointerLocked={pointerLocked}
-              onSelect={selectRegionAtCrosshairs}
-              onExitExpanded={() => setIsMagnifierExpanded(false)}
-              onExpand={() => setIsMagnifierExpanded(true)}
-            />
-          </animated.div>
-        )
-      })()}
+              {/* Scrim overlay - shows when at threshold to indicate barrier */}
+              {/* Uses precisionCalcs.isAtThreshold from usePrecisionCalculations hook */}
+              {precisionCalcs.isAtThreshold && !pointerLocked && (
+                <div
+                  data-element="precision-mode-scrim"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(251, 191, 36, 0.15)', // Gold scrim
+                    pointerEvents: 'none',
+                    borderRadius: '12px',
+                  }}
+                />
+              )}
 
-      {/* Zoom lines connecting indicator to magnifier - creates "pop out" effect */}
-      {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
-        <ZoomLines
-          show={showMagnifier}
-          opacity={targetOpacity}
+              {/* Mobile magnifier controls (Expand, Select, Full Map buttons) */}
+              <MagnifierControls
+                isTouchDevice={isTouchDevice}
+                showSelectButton={
+                  mobileMapDragTriggeredMagnifier && !isMobileMapDragging && !isMagnifierDragging
+                }
+                isExpanded={isMagnifierExpanded}
+                isSelectDisabled={!hoveredRegion || regionsFound.includes(hoveredRegion)}
+                isDark={isDark}
+                pointerLocked={pointerLocked}
+                onSelect={selectRegionAtCrosshairs}
+                onExitExpanded={() => setIsMagnifierExpanded(false)}
+                onExpand={() => setIsMagnifierExpanded(true)}
+              />
+            </animated.div>
+          )
+        })()}
+
+        {/* Zoom lines connecting indicator to magnifier - creates "pop out" effect */}
+        {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
+          <ZoomLines
+            show={showMagnifier}
+            opacity={targetOpacity}
+            cursorPosition={cursorPosition}
+            magnifierPosition={{ top: targetTop, left: targetLeft }}
+            parsedViewBox={parsedViewBox}
+            containerRect={containerRef.current.getBoundingClientRect()}
+            svgRect={svgRef.current.getBoundingClientRect()}
+            safeZoneMargins={SAFE_ZONE_MARGINS}
+            highZoomThreshold={HIGH_ZOOM_THRESHOLD}
+            currentZoom={getCurrentZoom()}
+            isDark={isDark}
+          />
+        )}
+
+        {/* Debug: Auto zoom detection visualization (dev only) */}
+        <DebugAutoZoomPanel
+          visible={effectiveShowMagnifierDebugInfo}
           cursorPosition={cursorPosition}
-          magnifierPosition={{ top: targetTop, left: targetLeft }}
-          parsedViewBox={parsedViewBox}
-          containerRect={containerRef.current.getBoundingClientRect()}
-          svgRect={svgRef.current.getBoundingClientRect()}
-          safeZoneMargins={SAFE_ZONE_MARGINS}
-          highZoomThreshold={HIGH_ZOOM_THRESHOLD}
-          currentZoom={getCurrentZoom()}
-          isDark={isDark}
+          detectRegions={detectRegions}
+          targetLeft={targetLeft}
+          zoomSearchDebugInfo={zoomSearchDebugInfo}
+          getCurrentZoom={getCurrentZoom}
+          targetZoom={targetZoom}
         />
-      )}
 
-      {/* Debug: Auto zoom detection visualization (dev only) */}
-      <DebugAutoZoomPanel
-        visible={effectiveShowMagnifierDebugInfo}
-        cursorPosition={cursorPosition}
-        detectRegions={detectRegions}
-        targetLeft={targetLeft}
-        zoomSearchDebugInfo={zoomSearchDebugInfo}
-        getCurrentZoom={getCurrentZoom}
-        targetZoom={targetZoom}
-      />
-
-      {/* Hot/Cold Debug Panel - shows enable conditions and current state */}
-      <HotColdDebugPanel
-        visible={isVisualDebugEnabled}
-        assistanceLevel={assistanceLevel}
-        assistanceAllowsHotCold={assistanceAllowsHotCold}
-        hotColdEnabled={hotColdEnabled}
-        hasAnyFinePointer={hasAnyFinePointer}
-        showMagnifier={showMagnifier}
-        isMobileMapDragging={isMobileMapDragging}
-        gameMode={gameMode}
-        currentPlayer={currentPlayer}
-        localPlayerId={localPlayerId}
-        hotColdFeedbackType={hotColdFeedbackType}
-        currentPrompt={currentPrompt}
-      />
-
-      {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
-      <OtherPlayerCursors
-        otherPlayerCursors={otherPlayerCursors}
-        viewerId={viewerId}
-        gameMode={gameMode}
-        currentPlayer={currentPlayer}
-        localPlayerId={localPlayerId}
-        playerMetadata={playerMetadata}
-        memberPlayers={memberPlayers}
-      />
-
-      {/* Dev-only crop tool for getting custom viewBox coordinates */}
-      <DevCropTool
-        svgRef={svgRef}
-        containerRef={containerRef}
-        viewBox={displayViewBox}
-        mapId={selectedMap}
-        continentId={selectedContinent}
-      />
-
-      {/* Debug overlay showing safe zone rectangles */}
-      {/* Safe Zone Debug Panel */}
-      <SafeZoneDebugPanel
-        visible={effectiveShowSafeZoneDebug}
-        fillContainer={fillContainer}
-        svgDimensions={svgDimensions}
-        displayViewBox={displayViewBox}
-        originalViewBox={mapData.originalViewBox}
-        customCrop={mapData.customCrop}
-      />
-
-      {/* Celebration overlay - shows confetti and sound when region is found */}
-      {celebration && (
-        <CelebrationOverlay
-          celebration={celebration}
-          regionCenter={getCelebrationRegionCenter()}
-          onComplete={handleCelebrationComplete}
-          reducedMotion={false}
+        {/* Hot/Cold Debug Panel - shows enable conditions and current state */}
+        <HotColdDebugPanel
+          visible={isVisualDebugEnabled}
+          assistanceLevel={assistanceLevel}
+          assistanceAllowsHotCold={assistanceAllowsHotCold}
+          hotColdEnabled={hotColdEnabled}
+          hasAnyFinePointer={hasAnyFinePointer}
+          showMagnifier={showMagnifier}
+          isMobileMapDragging={isMobileMapDragging}
+          gameMode={gameMode}
+          currentPlayer={currentPlayer}
+          localPlayerId={localPlayerId}
+          hotColdFeedbackType={hotColdFeedbackType}
+          currentPrompt={currentPrompt}
         />
-      )}
+
+        {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
+        <OtherPlayerCursors
+          otherPlayerCursors={otherPlayerCursors}
+          viewerId={viewerId}
+          gameMode={gameMode}
+          currentPlayer={currentPlayer}
+          localPlayerId={localPlayerId}
+          playerMetadata={playerMetadata}
+          memberPlayers={memberPlayers}
+        />
+
+        {/* Dev-only crop tool for getting custom viewBox coordinates */}
+        <DevCropTool
+          svgRef={svgRef}
+          containerRef={containerRef}
+          viewBox={displayViewBox}
+          mapId={selectedMap}
+          continentId={selectedContinent}
+        />
+
+        {/* Debug overlay showing safe zone rectangles */}
+        {/* Safe Zone Debug Panel */}
+        <SafeZoneDebugPanel
+          visible={effectiveShowSafeZoneDebug}
+          fillContainer={fillContainer}
+          svgDimensions={svgDimensions}
+          displayViewBox={displayViewBox}
+          originalViewBox={mapData.originalViewBox}
+          customCrop={mapData.customCrop}
+        />
+
+        {/* Celebration overlay - shows confetti and sound when region is found */}
+        {celebration && (
+          <CelebrationOverlay
+            celebration={celebration}
+            regionCenter={getCelebrationRegionCenter()}
+            onComplete={handleCelebrationComplete}
+            reducedMotion={false}
+          />
+        )}
       </div>
     </MapRendererProvider>
   )

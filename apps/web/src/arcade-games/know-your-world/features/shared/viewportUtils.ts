@@ -96,13 +96,7 @@ export function screenToSVG(
   svgRect: DOMRect,
   viewBox: ViewBoxComponents
 ): SVGPosition {
-  const viewport = getRenderedViewport(
-    svgRect,
-    viewBox.x,
-    viewBox.y,
-    viewBox.width,
-    viewBox.height
-  )
+  const viewport = getRenderedViewport(svgRect, viewBox.x, viewBox.y, viewBox.width, viewBox.height)
 
   // Calculate offset from container origin to SVG rendered content
   const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
@@ -130,13 +124,7 @@ export function svgToScreen(
   svgRect: DOMRect,
   viewBox: ViewBoxComponents
 ): CursorPosition {
-  const viewport = getRenderedViewport(
-    svgRect,
-    viewBox.x,
-    viewBox.y,
-    viewBox.width,
-    viewBox.height
-  )
+  const viewport = getRenderedViewport(svgRect, viewBox.x, viewBox.y, viewBox.width, viewBox.height)
 
   // Calculate offset from container origin to SVG rendered content
   const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
