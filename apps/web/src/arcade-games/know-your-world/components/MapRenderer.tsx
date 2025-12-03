@@ -8,8 +8,9 @@ import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
 import { usePulsingAnimation } from '../features/animations'
 import { CompassCrosshair, CursorOverlay } from '../features/cursor'
-import { HotColdDebugPanel, SafeZoneDebugPanel } from '../features/debug'
+import { DebugAutoZoomPanel, HotColdDebugPanel, SafeZoneDebugPanel } from '../features/debug'
 import { MapRendererProvider, type MapRendererContextValue } from '../features/map-renderer'
+import { OtherPlayerCursors } from '../features/multiplayer'
 import { RegionLayer } from '../features/regions'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
@@ -41,6 +42,7 @@ import { usePointerLock } from '../hooks/usePointerLock'
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { useHasRegionHint, useRegionHint } from '../hooks/useRegionHint'
 import { useSpeakHint } from '../hooks/useSpeakHint'
+import { useUserPreferences } from '../hooks/useUserPreferences'
 import { getRegionColor, getRegionStroke } from '../mapColors'
 import {
   ASSISTANCE_LEVELS,
@@ -537,68 +539,24 @@ export function MapRenderer({
     hasAccentOption,
   } = useSpeakHint(hintMapKey, currentPrompt)
 
-  // Auto-speak setting persisted in localStorage
-  const [autoSpeak, setAutoSpeak] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('knowYourWorld.autoSpeakHint') === 'true'
+  // User preferences (persisted in localStorage)
+  const {
+    autoSpeak,
+    withAccent,
+    autoHint,
+    hotColdEnabled,
+    handleAutoSpeakChange,
+    handleWithAccentChange,
+    handleAutoHintChange,
+    handleHotColdChange,
+  } = useUserPreferences({
+    assistanceLevel,
+    assistanceAllowsHotCold,
   })
-
-  // With accent setting persisted in localStorage (default false - use user's locale for consistent pronunciation)
-  const [withAccent, setWithAccent] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const stored = localStorage.getItem('knowYourWorld.withAccent')
-    return stored === null ? false : stored === 'true'
-  })
-
-  // Auto-hint setting persisted in localStorage (auto-opens hint on region advance)
-  const [autoHint, setAutoHint] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('knowYourWorld.autoHint') === 'true'
-  })
-
-  // Hot/cold audio feedback setting persisted in localStorage
-  const [hotColdEnabled, setHotColdEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('knowYourWorld.hotColdAudio') === 'true'
-  })
-
-  // Auto-enable hot/cold for learning mode (highest assistance level)
-  // This ensures all players in a learning game get hot/cold feedback enabled
-  useEffect(() => {
-    if (assistanceLevel === 'learning' && assistanceAllowsHotCold && !hotColdEnabled) {
-      setHotColdEnabled(true)
-      // Also persist to localStorage so it stays enabled if they navigate away
-      localStorage.setItem('knowYourWorld.hotColdAudio', 'true')
-    }
-  }, [assistanceLevel, assistanceAllowsHotCold, hotColdEnabled])
 
   // Whether hot/cold button should be shown at all
   // Shows on all devices - mobile uses magnifier for hot/cold feedback
   const showHotCold = isSpeechSupported && assistanceAllowsHotCold
-
-  // Persist auto-speak setting
-  const handleAutoSpeakChange = useCallback((enabled: boolean) => {
-    setAutoSpeak(enabled)
-    localStorage.setItem('knowYourWorld.autoSpeakHint', String(enabled))
-  }, [])
-
-  // Persist with-accent setting
-  const handleWithAccentChange = useCallback((enabled: boolean) => {
-    setWithAccent(enabled)
-    localStorage.setItem('knowYourWorld.withAccent', String(enabled))
-  }, [])
-
-  // Persist auto-hint setting
-  const handleAutoHintChange = useCallback((enabled: boolean) => {
-    setAutoHint(enabled)
-    localStorage.setItem('knowYourWorld.autoHint', String(enabled))
-  }, [])
-
-  // Persist hot/cold audio setting
-  const handleHotColdChange = useCallback((enabled: boolean) => {
-    setHotColdEnabled(enabled)
-    localStorage.setItem('knowYourWorld.hotColdAudio', String(enabled))
-  }, [])
 
   // Speak hint callback
   const handleSpeakClick = useCallback(() => {
@@ -3564,142 +3522,15 @@ export function MapRenderer({
       )}
 
       {/* Debug: Auto zoom detection visualization (dev only) */}
-      {effectiveShowMagnifierDebugInfo && cursorPosition && containerRef.current && (
-        <>
-          {/* Detection box - 50px box around cursor */}
-          <div
-            style={{
-              position: 'absolute',
-              left: `${cursorPosition.x - 25}px`,
-              top: `${cursorPosition.y - 25}px`,
-              width: '50px',
-              height: '50px',
-              border: '2px dashed yellow',
-              pointerEvents: 'none',
-              zIndex: 150,
-            }}
-          />
-
-          {/* Detection info overlay - opposite side from magnifier */}
-          {(() => {
-            const { detectedRegions, hasSmallRegion, detectedSmallestSize } = detectRegions(
-              cursorPosition.x,
-              cursorPosition.y
-            )
-
-            // Position on opposite side from magnifier
-            const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0
-            const magnifierOnLeft = targetLeft < containerWidth / 2
-
-            return (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '10px',
-                  left: magnifierOnLeft ? undefined : '10px',
-                  right: magnifierOnLeft ? '10px' : undefined,
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  color: 'white',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  pointerEvents: 'none',
-                  zIndex: 150,
-                  maxWidth: '300px',
-                }}
-              >
-                <div>
-                  <strong>Detection Box (50px)</strong>
-                </div>
-                <div>Regions detected: {detectedRegions.length}</div>
-                <div>Has small region: {hasSmallRegion ? 'YES' : 'NO'}</div>
-                <div>
-                  Smallest size:{' '}
-                  {detectedSmallestSize === Infinity ? '∞' : `${detectedSmallestSize.toFixed(1)}px`}
-                </div>
-                {/* Zoom Decision Details */}
-                {zoomSearchDebugInfo && (
-                  <>
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        paddingTop: '8px',
-                        borderTop: '1px solid #444',
-                      }}
-                    >
-                      <strong>Zoom Decision:</strong>
-                    </div>
-                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
-                      Final zoom: <strong>{zoomSearchDebugInfo.zoom.toFixed(1)}×</strong>
-                      {!zoomSearchDebugInfo.foundGoodZoom && ' (fallback to min)'}
-                    </div>
-                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
-                      Accepted: <strong>{zoomSearchDebugInfo.acceptedRegionId || 'none'}</strong>
-                    </div>
-                    <div style={{ fontSize: '10px', marginLeft: '8px' }}>
-                      Thresholds: {(zoomSearchDebugInfo.acceptanceThresholds.min * 100).toFixed(0)}%
-                      - {(zoomSearchDebugInfo.acceptanceThresholds.max * 100).toFixed(0)}% of
-                      magnifier
-                    </div>
-
-                    <div style={{ marginTop: '8px' }}>
-                      <strong>Region Analysis (top 3):</strong>
-                    </div>
-                    {Array.from(
-                      new Map(
-                        zoomSearchDebugInfo.regionDecisions.map((d) => [d.regionId, d])
-                      ).values()
-                    )
-                      .sort((a, b) => b.importance - a.importance)
-                      .slice(0, 3)
-                      .map((decision) => {
-                        const marker = decision.wasAccepted ? '✓' : '✗'
-                        const color = decision.wasAccepted ? '#0f0' : '#888'
-                        return (
-                          <div
-                            key={`decision-${decision.regionId}`}
-                            style={{
-                              fontSize: '9px',
-                              marginLeft: '8px',
-                              color,
-                            }}
-                          >
-                            {marker} {decision.regionId}: {decision.currentSize.width.toFixed(0)}×
-                            {decision.currentSize.height.toFixed(0)}px
-                            {decision.rejectionReason && ` (${decision.rejectionReason})`}
-                          </div>
-                        )
-                      })}
-                  </>
-                )}
-
-                <div
-                  style={{
-                    marginTop: '8px',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #444',
-                  }}
-                >
-                  <strong>Detected Regions ({detectedRegions.length}):</strong>
-                </div>
-                {detectedRegions.map((region) => (
-                  <div key={region.id} style={{ fontSize: '10px', marginLeft: '8px' }}>
-                    • {region.id}: {region.pixelWidth.toFixed(1)}×{region.pixelHeight.toFixed(1)}px
-                    {region.isVerySmall ? ' (SMALL)' : ''}
-                  </div>
-                ))}
-                <div style={{ marginTop: '8px' }}>
-                  <strong>Current Zoom:</strong> {getCurrentZoom().toFixed(1)}×
-                </div>
-                <div>
-                  <strong>Target Zoom:</strong> {targetZoom.toFixed(1)}×
-                </div>
-              </div>
-            )
-          })()}
-        </>
-      )}
+      <DebugAutoZoomPanel
+        visible={effectiveShowMagnifierDebugInfo}
+        cursorPosition={cursorPosition}
+        detectRegions={detectRegions}
+        targetLeft={targetLeft}
+        zoomSearchDebugInfo={zoomSearchDebugInfo}
+        getCurrentZoom={getCurrentZoom}
+        targetZoom={targetZoom}
+      />
 
       {/* Hot/Cold Debug Panel - shows enable conditions and current state */}
       <HotColdDebugPanel
@@ -3718,164 +3549,15 @@ export function MapRenderer({
       />
 
       {/* Other players' cursors - show in multiplayer when not exclusively our turn */}
-      {/* Cursor rendering debug - only log when cursor count changes */}
-      {svgRef.current &&
-        containerRef.current &&
-        Object.entries(otherPlayerCursors).map(([cursorUserId, position]) => {
-          // Skip our own cursor (by viewerId) and null positions
-          if (cursorUserId === viewerId || !position) return null
-
-          // In turn-based mode, only show other cursors when it's not our turn
-          if (gameMode === 'turn-based' && currentPlayer === localPlayerId) return null
-
-          // Get player metadata for emoji and color (playerId is in position data)
-          // First check playerMetadata, then fall back to memberPlayers (for remote players)
-          let player = playerMetadata[position.playerId]
-          if (!player) {
-            // Player not in local playerMetadata - look through memberPlayers
-            // memberPlayers is keyed by userId and contains arrays of players
-            for (const players of Object.values(memberPlayers)) {
-              const found = players.find((p) => p.id === position.playerId)
-              if (found) {
-                player = found
-                break
-              }
-            }
-          }
-          if (!player) {
-            console.log(
-              '[CursorShare] ⚠️ No player found in playerMetadata or memberPlayers for playerId:',
-              position.playerId
-            )
-            return null
-          }
-
-          // In collaborative mode, find all players from the same session and show all their emojis
-          // Use memberPlayers (from roomData) which is the canonical source of player ownership
-          const sessionPlayers =
-            gameMode === 'cooperative' && cursorUserId && memberPlayers[cursorUserId]
-              ? memberPlayers[cursorUserId]
-              : [player]
-
-          // Convert SVG coordinates to screen coordinates (accounting for preserveAspectRatio letterboxing)
-          const svgRect = svgRef.current!.getBoundingClientRect()
-          const containerRect = containerRef.current!.getBoundingClientRect()
-          const viewport = getRenderedViewport(
-            svgRect,
-            parsedViewBox.x,
-            parsedViewBox.y,
-            parsedViewBox.width,
-            parsedViewBox.height
-          )
-          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-          const screenX = (position.x - parsedViewBox.x) * viewport.scale + svgOffsetX
-          const screenY = (position.y - parsedViewBox.y) * viewport.scale + svgOffsetY
-
-          // Check if cursor is within rendered viewport bounds
-          if (
-            screenX < svgOffsetX ||
-            screenX > svgOffsetX + viewport.renderedWidth ||
-            screenY < svgOffsetY ||
-            screenY > svgOffsetY + viewport.renderedHeight
-          ) {
-            return null
-          }
-
-          return (
-            <div
-              key={`cursor-${cursorUserId}`}
-              data-element="other-player-cursor"
-              data-player-id={position.playerId}
-              data-user-id={cursorUserId}
-              style={{
-                position: 'absolute',
-                left: screenX,
-                top: screenY,
-                pointerEvents: 'none',
-                zIndex: 100,
-              }}
-            >
-              {/* Crosshair - centered on the cursor position */}
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                style={{
-                  position: 'absolute',
-                  left: -12, // Half of width to center
-                  top: -12, // Half of height to center
-                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
-                }}
-              >
-                {/* Outer ring */}
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="8"
-                  fill="none"
-                  stroke={player.color}
-                  strokeWidth="2"
-                  opacity="0.8"
-                />
-                {/* Cross lines */}
-                <line
-                  x1="12"
-                  y1="2"
-                  x2="12"
-                  y2="8"
-                  stroke={player.color}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="12"
-                  y1="16"
-                  x2="12"
-                  y2="22"
-                  stroke={player.color}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="2"
-                  y1="12"
-                  x2="8"
-                  y2="12"
-                  stroke={player.color}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="16"
-                  y1="12"
-                  x2="22"
-                  y2="12"
-                  stroke={player.color}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                {/* Center dot */}
-                <circle cx="12" cy="12" r="2" fill={player.color} />
-              </svg>
-              {/* Player emoji label(s) - positioned below crosshair */}
-              {/* In collaborative mode, show all emojis from the same session */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 14, // Below the crosshair (12px half-height + 2px gap)
-                  transform: 'translateX(-50%)',
-                  fontSize: '16px',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {sessionPlayers.map((p) => p.emoji).join('')}
-              </div>
-            </div>
-          )
-        })}
+      <OtherPlayerCursors
+        otherPlayerCursors={otherPlayerCursors}
+        viewerId={viewerId}
+        gameMode={gameMode}
+        currentPlayer={currentPlayer}
+        localPlayerId={localPlayerId}
+        playerMetadata={playerMetadata}
+        memberPlayers={memberPlayers}
+      />
 
       {/* Dev-only crop tool for getting custom viewBox coordinates */}
       <DevCropTool
