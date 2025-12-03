@@ -2,7 +2,7 @@
 
 **Last Updated:** December 2024
 
-## Current State: 3912 lines (was 4679)
+## Current State: 3593 lines (was 4679)
 
 ### Progress So Far
 - ✅ CompassCrosshair extracted (~80 lines)
@@ -12,8 +12,11 @@
 - ✅ CursorOverlay extracted (~104 lines)
 - ✅ hotColdStyles utilities extracted (~234 lines)
 - ✅ RegionLayer extracted (~119 lines)
+- ✅ OtherPlayerCursors extracted (~148 lines) - `features/multiplayer/`
+- ✅ DebugAutoZoomPanel extracted (~128 lines) - `features/debug/`
+- ✅ useUserPreferences hook extracted (~43 lines) - `features/user-preferences/`
 
-**Total reduction: 767 lines (16.4%)**
+**Total reduction: 1086 lines (23.2%)**
 
 ### Hook/State Explosion
 
@@ -345,11 +348,11 @@ Lines 3278-3548. The magnifier is already using extracted components internally 
 
 ### Recommended Priority
 
-1. **OtherPlayerCursors** - 5 min, -145 lines
-2. **DebugAutoZoomPanel** - 10 min, -123 lines
-3. **useUserPreferences** - 15 min, -90 lines
-4. **useCelebration** - 20 min, -130 lines
-5. **useMapInteraction** - 2 hours, -600 lines (biggest impact but most complex)
+1. ~~**OtherPlayerCursors** - 5 min, -145 lines~~ ✅ DONE (-148 lines)
+2. ~~**DebugAutoZoomPanel** - 10 min, -123 lines~~ ✅ DONE (-128 lines)
+3. ~~**useUserPreferences** - 15 min, -90 lines~~ ✅ DONE (-43 lines)
+4. **useCelebration** - SKIPPED (too intertwined with click handling, puzzle piece animation, assistance levels)
+5. **useMapInteraction** - 2 hours, -600 lines (biggest impact but most complex) - FUTURE WORK
 
 ### Target Architecture
 
