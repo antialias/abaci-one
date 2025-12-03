@@ -14,7 +14,7 @@ import {
   WORLD_MAP,
 } from '../maps'
 import { useKnowYourWorld } from '../Provider'
-import { getNthNonSpaceLetter } from '../Validator'
+import { getNthNonSpaceLetter, normalizeToBaseLetter } from '../features/letter-confirmation'
 import type { MapData } from '../types'
 import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
@@ -33,38 +33,6 @@ const GIVE_UP_ANIMATION_DURATION = 2000
 const NAME_ATTENTION_DURATION = 3000
 // React-spring config for smooth takeover transitions
 const TAKEOVER_ANIMATION_CONFIG = { tension: 170, friction: 20 }
-
-/**
- * Get Unicode code points for a string (for debugging)
- */
-function getCodePoints(str: string): string {
-  return [...str]
-    .map((c) => `U+${c.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')}`)
-    .join(' ')
-}
-
-/**
- * Normalize accented characters to their base ASCII letters.
- * e.g., 'é' → 'e', 'ñ' → 'n', 'ü' → 'u', 'ç' → 'c'
- * Uses Unicode NFD normalization to decompose characters, then strips diacritical marks.
- */
-function normalizeToBaseLetter(char: string): string {
-  const nfd = char.normalize('NFD')
-  const stripped = nfd.replace(/[\u0300-\u036f]/g, '')
-  const result = stripped.toLowerCase()
-  // Debug logging for accent normalization
-  if (char !== result) {
-    console.log('[Client] normalizeToBaseLetter:', {
-      input: char,
-      inputCodePoints: getCodePoints(char),
-      afterNFD: nfd,
-      nfdCodePoints: getCodePoints(nfd),
-      afterStrip: stripped,
-      result,
-    })
-  }
-  return result
-}
 
 /**
  * Convert {x, y} points array to SVG path string.

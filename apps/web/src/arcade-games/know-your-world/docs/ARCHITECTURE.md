@@ -25,7 +25,7 @@ This document provides a high-level overview of the Know Your World game archite
 │  │         │            │         ┌────▼────┐ ┌────▼────────┐       │   │   │
 │  │         │            │         │   Map   │ │  GameInfo   │       │   │   │
 │  │         │            │         │Renderer │ │   Panel     │       │   │   │
-│  │         │            │         │(6285 ln)│ │  (2090 ln)  │       │   │   │
+│  │         │            │         │(5496 ln)│ │  (2090 ln)  │       │   │   │
 │  │         │            │         └────┬────┘ └─────────────┘       │   │   │
 │  │         │            └──────────────┼────────────────────────────┘   │   │
 │  │         │                           │                                │   │
@@ -218,7 +218,7 @@ Two orthogonal axes:
 
 ## Component Responsibilities
 
-### MapRenderer (6,285 lines) - Needs Refactoring
+### MapRenderer (5,496 lines) - Refactoring In Progress
 
 Currently handles:
 - SVG map rendering
@@ -285,10 +285,39 @@ know-your-world/
 │   ├── GameInfoPanel.tsx    # Control panel (LARGE - needs refactoring)
 │   └── ...                  # Other UI components
 │
+├── features/                # Feature modules (NEW - refactoring in progress)
+│   ├── shared/              # Shared infrastructure
+│   │   ├── types.ts         # Common types (CursorPosition, ViewportInfo, etc.)
+│   │   ├── constants.ts     # Shared constants (thresholds, margins)
+│   │   ├── viewportUtils.ts # SVG coordinate conversion
+│   │   ├── MapRendererContext.tsx  # Shared state context
+│   │   └── index.ts         # Public exports
+│   │
+│   ├── precision/           # Precision mode feature
+│   │   ├── types.ts         # Precision-specific types
+│   │   ├── usePrecisionMode.ts     # Unified precision hook
+│   │   ├── PrecisionModeIndicator.tsx  # Scrim, filter utilities
+│   │   └── index.ts         # Public exports
+│   │
+│   ├── labels/              # Label positioning feature
+│   │   ├── types.ts         # Label types
+│   │   ├── labelUtils.ts    # Label calculations
+│   │   ├── useD3ForceLabels.ts     # D3 force simulation
+│   │   ├── LabelLayer.tsx   # Label rendering
+│   │   └── index.ts         # Public exports
+│   │
+│   └── magnifier/           # Magnifier feature (partial)
+│       ├── types.ts         # Magnifier types
+│       ├── MagnifierCrosshair.tsx  # Crosshair component
+│       ├── MagnifierPixelGrid.tsx  # Pixel grid component
+│       └── index.ts         # Public exports
+│
 ├── hooks/                   # Custom React hooks
 │   ├── useRegionDetection.ts
 │   ├── useMagnifierZoom.ts
 │   ├── useHotColdFeedback.ts
+│   ├── usePointerLock.ts
+│   ├── useDeviceCapabilities.ts
 │   └── ...
 │
 ├── utils/                   # Pure utility functions
@@ -312,6 +341,7 @@ know-your-world/
     ├── ARCHITECTURE.md      # This file
     ├── FEATURES.md          # Feature inventory
     ├── PATTERNS.md          # Code patterns
+    ├── REFACTORING_PLAN.md  # Multi-phase extraction plan
     └── implementation/      # Implementation details
 ```
 
@@ -329,5 +359,6 @@ know-your-world/
 
 - [FEATURES.md](./FEATURES.md) - Complete feature inventory
 - [PATTERNS.md](./PATTERNS.md) - Code patterns and conventions
+- [REFACTORING_PLAN.md](./REFACTORING_PLAN.md) - Multi-phase extraction plan
 - [MAGNIFIER_ARCHITECTURE.md](./MAGNIFIER_ARCHITECTURE.md) - Zoom system details
 - [PRECISION_CONTROLS.md](./PRECISION_CONTROLS.md) - Cursor dampening details
