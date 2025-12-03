@@ -87,7 +87,9 @@
       "WebFetch(domain:strudel.cc)",
       "WebFetch(domain:club.tidalcycles.org)",
       "Bash(git reset:*)",
-      "WebFetch(domain:abaci.one)"
+      "WebFetch(domain:abaci.one)",
+      "Bash(awk:*)",
+      "Bash(sort:*)"
     ],
     "deny": [],
     "ask": []

@@ -16,7 +16,10 @@
 
 import { memo, useMemo } from 'react'
 import { getRenderedViewport } from '../labels'
-import { getAdjustedMagnifiedDimensions, getMagnifierDimensions } from '../../utils/magnifierDimensions'
+import {
+  getAdjustedMagnifiedDimensions,
+  getMagnifierDimensions,
+} from '../../utils/magnifierDimensions'
 
 // ============================================================================
 // Types
@@ -124,12 +127,7 @@ export const ZoomLines = memo(function ZoomLines({
   isDark,
 }: ZoomLinesProps) {
   // Memoize all the calculated values
-  const {
-    paths,
-    visibleCorners,
-    lineColor,
-    glowColor,
-  } = useMemo(() => {
+  const { paths, visibleCorners, lineColor, glowColor } = useMemo(() => {
     // Calculate leftover rectangle dimensions (area not covered by UI elements)
     const leftoverWidth = containerRect.width - safeZoneMargins.left - safeZoneMargins.right
     const leftoverHeight = containerRect.height - safeZoneMargins.top - safeZoneMargins.bottom
@@ -210,14 +208,7 @@ export const ZoomLines = memo(function ZoomLines({
         magTop + magnifierHeight
       )
       // Check if line passes through indicator
-      const passesThroughInd = linePassesThroughRect(
-        from,
-        to,
-        indTL.x,
-        indTL.y,
-        indBR.x,
-        indBR.y
-      )
+      const passesThroughInd = linePassesThroughRect(from, to, indTL.x, indTL.y, indBR.x, indBR.y)
       return !passesThroughMag && !passesThroughInd
     })
 
@@ -233,9 +224,7 @@ export const ZoomLines = memo(function ZoomLines({
       : isDark
         ? '#60a5fa'
         : '#3b82f6' // blue
-    const calculatedGlowColor = isHighZoom
-      ? 'rgba(251, 191, 36, 0.6)'
-      : 'rgba(96, 165, 250, 0.6)'
+    const calculatedGlowColor = isHighZoom ? 'rgba(251, 191, 36, 0.6)' : 'rgba(96, 165, 250, 0.6)'
 
     return {
       paths: calculatedPaths,
