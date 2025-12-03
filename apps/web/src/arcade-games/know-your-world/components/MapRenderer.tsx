@@ -514,33 +514,7 @@ export function MapRenderer({
   // - handleLockReleased callback dispatches RELEASE_ANIMATION_DONE
   // ==========================================================================
 
-  // Debug: Log state machine state changes and verify sync (only in dev)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // Compare state machine derived values with existing boolean state
-      const machineShowMagnifier = interactionMachine.showMagnifier
-      const machineIsPrecision = interactionMachine.isPrecisionMode
-      const machineIsReleasingPrecision = interactionMachine.isReleasingPrecision
-
-      // Log state transitions with comparison
-      console.log('[StateMachine]', {
-        state: interactionMachine.state,
-        machine: { showMagnifier: machineShowMagnifier, isPrecision: machineIsPrecision },
-        boolean: { showMagnifier, pointerLocked, isReleasingPointerLock },
-      })
-
-      // Warn on sync divergence (helps identify missing sync effects)
-      // Note: Divergence is expected during transitions due to effect timing
-    }
-  }, [
-    interactionMachine.state,
-    interactionMachine.showMagnifier,
-    interactionMachine.isPrecisionMode,
-    interactionMachine.isReleasingPrecision,
-    showMagnifier,
-    pointerLocked,
-    isReleasingPointerLock,
-  ])
+  // Note: Debug logging for state machine sync removed after migration verified working
 
   // Give up reveal animation state
   const [giveUpFlashProgress, setGiveUpFlashProgress] = useState(0) // 0-1 pulsing value

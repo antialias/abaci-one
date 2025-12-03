@@ -719,31 +719,56 @@ export function useInteractionStateMachine(): UseInteractionStateMachineReturn {
     [isMagnifierPanning, isMagnifierPinching, isMapPanningMobile]
   )
 
-  return {
-    state: machine.state,
-    context: machine.context,
-    previousState: machine.previousState,
+  // Memoize return value to prevent unnecessary re-renders in consumers
+  // This is critical because callbacks like handleLockAcquired depend on interactionMachine
+  return useMemo(
+    () => ({
+      state: machine.state,
+      context: machine.context,
+      previousState: machine.previousState,
 
-    // State checks
-    isIdle,
-    isHovering,
-    isMagnifierVisible,
-    isMagnifierPanning,
-    isMagnifierPinching,
-    isMagnifierExpanded,
-    isMapPanningMobile,
-    isMapPanningDesktop,
-    isPrecisionMode,
-    isReleasingPrecision,
+      // State checks
+      isIdle,
+      isHovering,
+      isMagnifierVisible,
+      isMagnifierPanning,
+      isMagnifierPinching,
+      isMagnifierExpanded,
+      isMapPanningMobile,
+      isMapPanningDesktop,
+      isPrecisionMode,
+      isReleasingPrecision,
 
-    // Compound checks
-    showMagnifier,
-    showCursor,
-    isAnyPanning,
-    isMobileInteraction,
+      // Compound checks
+      showMagnifier,
+      showCursor,
+      isAnyPanning,
+      isMobileInteraction,
 
-    // Actions
-    send,
-    updateContext,
-  }
+      // Actions
+      send,
+      updateContext,
+    }),
+    [
+      machine.state,
+      machine.context,
+      machine.previousState,
+      isIdle,
+      isHovering,
+      isMagnifierVisible,
+      isMagnifierPanning,
+      isMagnifierPinching,
+      isMagnifierExpanded,
+      isMapPanningMobile,
+      isMapPanningDesktop,
+      isPrecisionMode,
+      isReleasingPrecision,
+      showMagnifier,
+      showCursor,
+      isAnyPanning,
+      isMobileInteraction,
+      send,
+      updateContext,
+    ]
+  )
 }
