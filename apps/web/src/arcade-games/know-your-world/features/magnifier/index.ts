@@ -67,12 +67,6 @@ export type { MagnifierControlsProps } from './MagnifierControls'
 export { MagnifierControls } from './MagnifierControls'
 export type { MagnifierCrosshairProps } from './MagnifierCrosshair'
 export { MagnifierCrosshair } from './MagnifierCrosshair'
-export type { MagnifierDebugBoxesProps } from './MagnifierDebugBoxes'
-export { MagnifierDebugBoxes } from './MagnifierDebugBoxes'
-export type { MagnifierDebugLabelsProps } from './MagnifierDebugLabels'
-export { MagnifierDebugLabels } from './MagnifierDebugLabels'
-export type { MagnifierLabelProps } from './MagnifierLabel'
-export { MagnifierLabel } from './MagnifierLabel'
 export type { MagnifierPixelGridProps } from './MagnifierPixelGrid'
 export { MagnifierPixelGrid } from './MagnifierPixelGrid'
 export type {
@@ -82,8 +76,6 @@ export type {
   RegionState,
 } from './MagnifierRegions'
 export { MagnifierRegions } from './MagnifierRegions'
-export type { ZoomLinesProps } from './ZoomLines'
-export { ZoomLines } from './ZoomLines'
 
 // ============================================================================
 // Context

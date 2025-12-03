@@ -103,7 +103,9 @@ export function MapRendererProvider({ children, value }: MapRendererProviderProp
     ]
   )
 
-  return <MapRendererContext.Provider value={memoizedValue}>{children}</MapRendererContext.Provider>
+  return (
+    <MapRendererContext.Provider value={memoizedValue}>{children}</MapRendererContext.Provider>
+  )
 }
 
 // ============================================================================

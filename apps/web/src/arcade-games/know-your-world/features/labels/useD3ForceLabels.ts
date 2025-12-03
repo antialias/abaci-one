@@ -9,7 +9,7 @@
  */
 
 import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force'
-import { type RefObject, useEffect, useState } from 'react'
+import { RefObject, useEffect, useState } from 'react'
 
 import type { MapData, MapRegion } from '../../types'
 import { getArrowStartPoint, getRenderedViewport } from './labelUtils'

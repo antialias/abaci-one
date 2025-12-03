@@ -50,12 +50,7 @@ export interface MagnifierRegionsProps {
   /** Get player ID who found a region */
   getPlayerWhoFoundRegion: (regionId: string) => string | null
   /** Get region fill color */
-  getRegionColor: (
-    regionId: string,
-    isFound: boolean,
-    isHovered: boolean,
-    isDark: boolean
-  ) => string
+  getRegionColor: (regionId: string, isFound: boolean, isHovered: boolean, isDark: boolean) => string
   /** Get region stroke color */
   getRegionStroke: (isFound: boolean, isDark: boolean) => string
   /** Whether to show region outline */
@@ -85,8 +80,13 @@ export const MagnifierRegions = memo(function MagnifierRegions({
   getRegionStroke,
   showOutline,
 }: MagnifierRegionsProps) {
-  const { regionsFound, hoveredRegion, celebrationRegionId, giveUpRegionId, isGiveUpAnimating } =
-    regionState
+  const {
+    regionsFound,
+    hoveredRegion,
+    celebrationRegionId,
+    giveUpRegionId,
+    isGiveUpAnimating,
+  } = regionState
   const { celebrationFlash, giveUpFlash } = flashProgress
 
   return (

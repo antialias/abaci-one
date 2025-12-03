@@ -177,7 +177,14 @@ export interface FlashProgress {
 /**
  * Hot/cold feedback type for visual indicators
  */
-export type HotColdFeedbackType = 'freezing' | 'cold' | 'cool' | 'warm' | 'hot' | 'burning' | null
+export type HotColdFeedbackType =
+  | 'freezing'
+  | 'cold'
+  | 'cool'
+  | 'warm'
+  | 'hot'
+  | 'burning'
+  | null
 
 /**
  * Heat-based styling for borders and glows
