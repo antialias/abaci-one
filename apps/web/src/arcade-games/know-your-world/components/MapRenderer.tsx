@@ -848,7 +848,7 @@ export function MapRenderer({
     enabled:
       assistanceAllowsHotCold &&
       hotColdEnabled &&
-      (hasAnyFinePointer || showMagnifier || isMobileMapDragging) &&
+      (hasAnyFinePointer || interactionMachine.showMagnifier || isMobileMapDragging) &&
       (gameMode !== 'turn-based' || currentPlayer === localPlayerId),
     targetRegionId: currentPrompt,
     isSpeaking,
@@ -2532,11 +2532,11 @@ export function MapRenderer({
       setMobileMapDragTriggeredMagnifier(true)
       // Keep magnifier visible after drag ends - user can tap "Select" button or tap elsewhere to dismiss
       // Don't hide magnifier or clear cursor - leave them in place for selection
-    } else if (showMagnifier && cursorPositionRef.current) {
+    } else if (interactionMachine.showMagnifier && cursorPositionRef.current) {
       // User tapped on map (not a drag) while magnifier is visible - dismiss the magnifier
       dismissMagnifier()
     }
-  }, [isMobileMapDragging, showMagnifier, dismissMagnifier])
+  }, [isMobileMapDragging, interactionMachine.showMagnifier, dismissMagnifier])
 
   // Helper to calculate distance between two touch points
   const getTouchDistance = useCallback((touches: React.TouchList): number => {
@@ -3119,105 +3119,108 @@ export function MapRenderer({
           </defs>
 
           {/* Magnifier region indicator on main map */}
-          {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
-            <animated.rect
-              x={zoomSpring.to((zoom: number) => {
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                const svgRect = svgRef.current!.getBoundingClientRect()
-                // Account for preserveAspectRatio letterboxing
-                const viewport = getRenderedViewport(
-                  svgRect,
-                  parsedViewBox.x,
-                  parsedViewBox.y,
-                  parsedViewBox.width,
-                  parsedViewBox.height
-                )
-                const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
-                const cursorSvgX =
-                  (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
-                // Calculate leftover dimensions for magnifier sizing
-                const leftoverW =
-                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH =
-                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-                const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
-                  parsedViewBox.width,
-                  parsedViewBox.height,
-                  zoom,
-                  leftoverW,
-                  leftoverH
-                )
-                return cursorSvgX - magnifiedWidth / 2
-              })}
-              y={zoomSpring.to((zoom: number) => {
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                const svgRect = svgRef.current!.getBoundingClientRect()
-                // Account for preserveAspectRatio letterboxing
-                const viewport = getRenderedViewport(
-                  svgRect,
-                  parsedViewBox.x,
-                  parsedViewBox.y,
-                  parsedViewBox.width,
-                  parsedViewBox.height
-                )
-                const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
-                const cursorSvgY =
-                  (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
-                // Calculate leftover dimensions for magnifier sizing
-                const leftoverW =
-                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH =
-                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-                const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
-                  parsedViewBox.width,
-                  parsedViewBox.height,
-                  zoom,
-                  leftoverW,
-                  leftoverH
-                )
-                return cursorSvgY - magnifiedHeight / 2
-              })}
-              width={zoomSpring.to((zoom: number) => {
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                // Calculate leftover dimensions for magnifier sizing
-                const leftoverW =
-                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH =
-                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-                const { width } = getAdjustedMagnifiedDimensions(
-                  parsedViewBox.width,
-                  parsedViewBox.height,
-                  zoom,
-                  leftoverW,
-                  leftoverH
-                )
-                return width
-              })}
-              height={zoomSpring.to((zoom: number) => {
-                const containerRect = containerRef.current!.getBoundingClientRect()
-                // Calculate leftover dimensions for magnifier sizing
-                const leftoverW =
-                  containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
-                const leftoverH =
-                  containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
-                const { height } = getAdjustedMagnifiedDimensions(
-                  parsedViewBox.width,
-                  parsedViewBox.height,
-                  zoom,
-                  leftoverW,
-                  leftoverH
-                )
-                return height
-              })}
-              fill="none"
-              stroke={isDark ? '#60a5fa' : '#3b82f6'}
-              strokeWidth={parsedViewBox.width / 500}
-              vectorEffect="non-scaling-stroke"
-              strokeDasharray="5,5"
-              pointerEvents="none"
-              opacity={0.8}
-            />
-          )}
+          {interactionMachine.showMagnifier &&
+            cursorPosition &&
+            svgRef.current &&
+            containerRef.current && (
+              <animated.rect
+                x={zoomSpring.to((zoom: number) => {
+                  const containerRect = containerRef.current!.getBoundingClientRect()
+                  const svgRect = svgRef.current!.getBoundingClientRect()
+                  // Account for preserveAspectRatio letterboxing
+                  const viewport = getRenderedViewport(
+                    svgRect,
+                    parsedViewBox.x,
+                    parsedViewBox.y,
+                    parsedViewBox.width,
+                    parsedViewBox.height
+                  )
+                  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+                  const cursorSvgX =
+                    (cursorPosition.x - svgOffsetX) / viewport.scale + parsedViewBox.x
+                  // Calculate leftover dimensions for magnifier sizing
+                  const leftoverW =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverH =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const { width: magnifiedWidth } = getAdjustedMagnifiedDimensions(
+                    parsedViewBox.width,
+                    parsedViewBox.height,
+                    zoom,
+                    leftoverW,
+                    leftoverH
+                  )
+                  return cursorSvgX - magnifiedWidth / 2
+                })}
+                y={zoomSpring.to((zoom: number) => {
+                  const containerRect = containerRef.current!.getBoundingClientRect()
+                  const svgRect = svgRef.current!.getBoundingClientRect()
+                  // Account for preserveAspectRatio letterboxing
+                  const viewport = getRenderedViewport(
+                    svgRect,
+                    parsedViewBox.x,
+                    parsedViewBox.y,
+                    parsedViewBox.width,
+                    parsedViewBox.height
+                  )
+                  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+                  const cursorSvgY =
+                    (cursorPosition.y - svgOffsetY) / viewport.scale + parsedViewBox.y
+                  // Calculate leftover dimensions for magnifier sizing
+                  const leftoverW =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverH =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const { height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
+                    parsedViewBox.width,
+                    parsedViewBox.height,
+                    zoom,
+                    leftoverW,
+                    leftoverH
+                  )
+                  return cursorSvgY - magnifiedHeight / 2
+                })}
+                width={zoomSpring.to((zoom: number) => {
+                  const containerRect = containerRef.current!.getBoundingClientRect()
+                  // Calculate leftover dimensions for magnifier sizing
+                  const leftoverW =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverH =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const { width } = getAdjustedMagnifiedDimensions(
+                    parsedViewBox.width,
+                    parsedViewBox.height,
+                    zoom,
+                    leftoverW,
+                    leftoverH
+                  )
+                  return width
+                })}
+                height={zoomSpring.to((zoom: number) => {
+                  const containerRect = containerRef.current!.getBoundingClientRect()
+                  // Calculate leftover dimensions for magnifier sizing
+                  const leftoverW =
+                    containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+                  const leftoverH =
+                    containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+                  const { height } = getAdjustedMagnifiedDimensions(
+                    parsedViewBox.width,
+                    parsedViewBox.height,
+                    zoom,
+                    leftoverW,
+                    leftoverH
+                  )
+                  return height
+                })}
+                fill="none"
+                stroke={isDark ? '#60a5fa' : '#3b82f6'}
+                strokeWidth={parsedViewBox.width / 500}
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray="5,5"
+                pointerEvents="none"
+                opacity={0.8}
+              />
+            )}
         </animated.svg>
 
         {/* Labels for found regions - rendered via LabelLayer component */}
@@ -3581,21 +3584,24 @@ export function MapRenderer({
         })()}
 
         {/* Zoom lines connecting indicator to magnifier - creates "pop out" effect */}
-        {showMagnifier && cursorPosition && svgRef.current && containerRef.current && (
-          <ZoomLines
-            show={showMagnifier}
-            opacity={targetOpacity}
-            cursorPosition={cursorPosition}
-            magnifierPosition={{ top: targetTop, left: targetLeft }}
-            parsedViewBox={parsedViewBox}
-            containerRect={containerRef.current.getBoundingClientRect()}
-            svgRect={svgRef.current.getBoundingClientRect()}
-            safeZoneMargins={SAFE_ZONE_MARGINS}
-            highZoomThreshold={HIGH_ZOOM_THRESHOLD}
-            currentZoom={getCurrentZoom()}
-            isDark={isDark}
-          />
-        )}
+        {interactionMachine.showMagnifier &&
+          cursorPosition &&
+          svgRef.current &&
+          containerRef.current && (
+            <ZoomLines
+              show={interactionMachine.showMagnifier}
+              opacity={targetOpacity}
+              cursorPosition={cursorPosition}
+              magnifierPosition={{ top: targetTop, left: targetLeft }}
+              parsedViewBox={parsedViewBox}
+              containerRect={containerRef.current.getBoundingClientRect()}
+              svgRect={svgRef.current.getBoundingClientRect()}
+              safeZoneMargins={SAFE_ZONE_MARGINS}
+              highZoomThreshold={HIGH_ZOOM_THRESHOLD}
+              currentZoom={getCurrentZoom()}
+              isDark={isDark}
+            />
+          )}
 
         {/* Debug: Auto zoom detection visualization (dev only) */}
         <DebugAutoZoomPanel
@@ -3615,7 +3621,7 @@ export function MapRenderer({
           assistanceAllowsHotCold={assistanceAllowsHotCold}
           hotColdEnabled={hotColdEnabled}
           hasAnyFinePointer={hasAnyFinePointer}
-          showMagnifier={showMagnifier}
+          showMagnifier={interactionMachine.showMagnifier}
           isMobileMapDragging={isMobileMapDragging}
           gameMode={gameMode}
           currentPlayer={currentPlayer}
