@@ -252,6 +252,126 @@ interface RegionPathProps {
 
 ---
 
+### 2.5 Create useInteractionStateMachine Hook (HIGH PRIORITY)
+
+**Problem:** The 496-line `handleMouseMove` and 25+ boolean state flags create an implicit state
+machine with 2^n possible combinations, but only ~10 are valid states. Transitions are enforced
+via scattered if/else chains.
+
+**Current implicit states via flags:**
+```typescript
+// Scattered across 25+ useState calls
+pointerLocked, isReleasingPointerLock, cursorSquish
+isDesktopMapDragging, isMobileMapDragging, mobileMapDragTriggeredMagnifier
+showMagnifier, isMagnifierExpanded, targetTop, targetLeft
+isGiveUpAnimating, isHintAnimating, celebrationFlashProgress
+```
+
+**Solution: Explicit state machine**
+
+```
+DESKTOP MODE STATE DIAGRAM:
+┌──────┐  mouseEnter  ┌─────────┐  mouseDown  ┌──────────┐
+│ idle │─────────────▶│ hovering│────────────▶│ dragging │
+└──────┘              └─────────┘              └──────────┘
+    ▲                      │                        │
+    │                      │ click                  │ mouseUp
+    │                      ▼                        │
+    │                 ┌─────────┐                   │
+    └─────────────────│selecting│◀──────────────────┘
+                      └─────────┘
+                           │
+                           │ shift+click (if precision capable)
+                           ▼
+                  ┌──────────────┐
+                  │ pointerLocked│◀───────────────┐
+                  └──────────────┘                │
+                           │                      │
+                           │ edge escape          │
+                           ▼                      │
+                  ┌──────────────┐   animation    │
+                  │  releasing   │────complete────┘
+                  └──────────────┘
+
+MOBILE MODE STATE DIAGRAM:
+┌──────┐  touch  ┌─────────┐  pan  ┌─────────────┐
+│ idle │────────▶│ touched │──────▶│ mapPanning  │
+└──────┘         └─────────┘       └─────────────┘
+    ▲                 │                   │
+    │                 │ tap               │ triggers magnifier
+    │                 ▼                   ▼
+    │           ┌──────────┐     ┌───────────────┐
+    └───────────│ selected │     │magnifierActive│
+                └──────────┘     └───────────────┘
+                                        │
+                                        │ pinch
+                                        ▼
+                                 ┌─────────────┐
+                                 │magnifierZoom│
+                                 └─────────────┘
+```
+
+**Implementation (useReducer-based, no new deps):**
+
+```typescript
+// features/interaction/useInteractionStateMachine.ts
+
+type DesktopPhase = 'idle' | 'hovering' | 'dragging' | 'selecting' | 'pointerLocked' | 'releasing'
+type MobilePhase = 'idle' | 'touched' | 'panning' | 'magnifierActive' | 'pinching'
+
+type InteractionState =
+  | { mode: 'desktop'; phase: DesktopPhase; cursor?: Point; hoveredRegion?: string }
+  | { mode: 'mobile'; phase: MobilePhase; touchCount: number }
+
+type InteractionEvent =
+  | { type: 'MOUSE_ENTER' }
+  | { type: 'MOUSE_DOWN'; position: Point }
+  | { type: 'MOUSE_MOVE'; position: Point; delta: Point }
+  | { type: 'MOUSE_UP' }
+  | { type: 'CLICK'; regionId: string | null; shiftKey: boolean }
+  | { type: 'POINTER_LOCK_ACQUIRED' }
+  | { type: 'EDGE_ESCAPE' }
+  | { type: 'RELEASE_COMPLETE' }
+  | { type: 'TOUCH_START'; touches: TouchList }
+  | { type: 'TOUCH_MOVE'; touches: TouchList }
+  | { type: 'TOUCH_END' }
+
+function interactionReducer(state: InteractionState, event: InteractionEvent): InteractionState {
+  // Explicit transition logic - impossible states become impossible
+}
+
+export function useInteractionStateMachine(options: Options) {
+  const [state, dispatch] = useReducer(interactionReducer, initialState)
+
+  // Derived values
+  const isPointerLocked = state.mode === 'desktop' && state.phase === 'pointerLocked'
+  const isDragging = state.phase === 'dragging' || state.phase === 'panning'
+
+  return { state, dispatch, isPointerLocked, isDragging, ... }
+}
+```
+
+**Key insight:** The state machine doesn't manage everything - just the **interaction mode**:
+- Animation progress (0-1 floats) → stays as separate state
+- Magnifier position → derived from cursor + state
+- Region detection → pure function, not state
+
+The machine answers: **"What kind of input am I currently processing?"**
+
+**Impact:**
+- `handleMouseMove` becomes a thin event dispatcher (~50 lines)
+- Impossible states become impossible (can't be dragging AND pointerLocked)
+- Transition logic centralized and testable
+- Clear documentation of valid states
+
+**Migration path:**
+1. Create the state machine hook with desktop states
+2. Add event dispatch calls in existing handlers
+3. Gradually replace boolean checks with state checks
+4. Remove old boolean state variables once fully migrated
+
+---
+
 ## Phase 3: Hook Consolidation (Medium Risk, Medium Impact)
 
 ### 3.1 Create useAnimationController Hook
