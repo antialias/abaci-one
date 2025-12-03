@@ -211,7 +211,11 @@ export const MagnifierControls = memo(function MagnifierControls({
     <>
       {/* Expand button - top-right corner (when not expanded and not pointer locked) */}
       {!isExpanded && !pointerLocked && (
-        <ControlButton position="top-right" style="icon" onClick={onExpand}>
+        <ControlButton
+          position="top-right"
+          style="icon"
+          onClick={onExpand}
+        >
           <ExpandIcon isDark={isDark} />
         </ControlButton>
       )}
@@ -230,7 +234,11 @@ export const MagnifierControls = memo(function MagnifierControls({
 
       {/* Full Map button - bottom-left corner (when expanded) */}
       {isExpanded && showSelectButton && (
-        <ControlButton position="bottom-left" style="secondary" onClick={onExitExpanded}>
+        <ControlButton
+          position="bottom-left"
+          style="secondary"
+          onClick={onExitExpanded}
+        >
           Full Map
         </ControlButton>
       )}

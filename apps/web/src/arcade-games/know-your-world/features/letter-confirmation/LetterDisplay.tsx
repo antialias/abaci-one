@@ -90,7 +90,15 @@ export const LetterDisplay = memo(function LetterDisplay({
       const isSpace = char === ' '
 
       if (isSpace) {
-        return <StyledLetter key={index} char={char} status="space" isDark={isDark} index={index} />
+        return (
+          <StyledLetter
+            key={index}
+            char={char}
+            status="space"
+            isDark={isDark}
+            index={index}
+          />
+        )
       }
 
       // Get current index before incrementing
@@ -105,7 +113,15 @@ export const LetterDisplay = memo(function LetterDisplay({
         isComplete
       )
 
-      return <StyledLetter key={index} char={char} status={status} isDark={isDark} index={index} />
+      return (
+        <StyledLetter
+          key={index}
+          char={char}
+          status={status}
+          isDark={isDark}
+          index={index}
+        />
+      )
     })
   }, [regionName, confirmedCount, requiredLetters, isComplete, isDark])
 
