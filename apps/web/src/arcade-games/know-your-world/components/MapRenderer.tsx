@@ -404,12 +404,17 @@ export function MapRenderer({
   // Magnifier state (consolidated hook)
   const magnifierState = useMagnifierState()
   const showMagnifier = magnifierState.isVisible
+  // Wrapper that updates BOTH old state AND state machine during migration
+  // This eliminates the sync effect lag and keeps both systems in sync
   const setShowMagnifier = useCallback(
     (show: boolean) => {
+      // Update old state
       if (show) magnifierState.show()
       else magnifierState.hide()
+      // Update state machine directly (no sync effect needed)
+      interactionMachine.send({ type: show ? 'SHOW_MAGNIFIER' : 'DISMISS_MAGNIFIER' })
     },
-    [magnifierState]
+    [magnifierState, interactionMachine]
   )
   // Destructure remaining magnifier state from hook
   const {
@@ -420,12 +425,21 @@ export function MapRenderer({
     isPinching,
     setPinching: setIsPinching,
     isExpanded: isMagnifierExpanded,
-    setExpanded: setIsMagnifierExpanded,
+    setExpanded: setIsMagnifierExpandedRaw,
     touchStartRef: magnifierTouchStartRef,
     didMoveRef: magnifierDidMoveRef,
     pinchStartDistanceRef,
     pinchStartZoomRef,
   } = magnifierState
+
+  // Wrapper that updates BOTH old state AND state machine during migration
+  const setIsMagnifierExpanded = useCallback(
+    (expanded: boolean) => {
+      setIsMagnifierExpandedRaw(expanded)
+      interactionMachine.send({ type: expanded ? 'EXPAND_MAGNIFIER' : 'COLLAPSE_MAGNIFIER' })
+    },
+    [setIsMagnifierExpandedRaw, interactionMachine]
+  )
 
   // Pulsing animation hooks (for give-up, hint, and celebration effects)
   const giveUpAnimation = usePulsingAnimation()
@@ -489,23 +503,8 @@ export function MapRenderer({
     }
   }, [pointerLocked, isReleasingPointerLock, interactionMachine])
 
-  // Sync magnifier visibility
-  useEffect(() => {
-    if (showMagnifier) {
-      interactionMachine.send({ type: 'SHOW_MAGNIFIER' })
-    } else {
-      interactionMachine.send({ type: 'DISMISS_MAGNIFIER' })
-    }
-  }, [showMagnifier, interactionMachine])
-
-  // Sync magnifier expanded state
-  useEffect(() => {
-    if (isMagnifierExpanded) {
-      interactionMachine.send({ type: 'EXPAND_MAGNIFIER' })
-    } else {
-      interactionMachine.send({ type: 'COLLAPSE_MAGNIFIER' })
-    }
-  }, [isMagnifierExpanded, interactionMachine])
+  // Note: Magnifier visibility sync effect REMOVED - setShowMagnifier wrapper now dispatches directly
+  // Note: Magnifier expanded sync effect REMOVED - setIsMagnifierExpanded wrapper now dispatches directly
 
   // Debug: Log state machine state changes and verify sync (only in dev)
   useEffect(() => {
