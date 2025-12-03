@@ -10,3 +10,6 @@ export type {
   CustomCursorProps,
 } from './CustomCursor'
 export { CustomCursor } from './CustomCursor'
+
+export type { HeatCrosshairProps } from './HeatCrosshair'
+export { HeatCrosshair } from './HeatCrosshair'

@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
 import { usePulsingAnimation } from '../features/animations'
-import { CustomCursor } from '../features/cursor'
+import { CustomCursor, HeatCrosshair } from '../features/cursor'
 import { useInteractionStateMachine } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
@@ -3391,65 +3391,12 @@ export function MapRenderer({
             transform: 'translate(-50%, -50%)',
           }}
         >
-          {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
-          <animated.svg
-            width="40"
-            height="40"
-            viewBox="0 0 40 40"
-            style={{
-              filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
-              transform: rotationAngle.to((a) => `rotate(${a}deg)`),
-            }}
-          >
-            {/* Outer ring */}
-            <circle
-              cx="20"
-              cy="20"
-              r="16"
-              fill="none"
-              stroke={crosshairHeatStyle.color}
-              strokeWidth={crosshairHeatStyle.strokeWidth}
-              opacity={crosshairHeatStyle.opacity}
-            />
-            {/* Compass tick marks - 12 ticks around the ring */}
-            {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
-              const isCardinal = angle % 90 === 0
-              const rad = (angle * Math.PI) / 180
-              const innerR = isCardinal ? 10 : 14
-              const outerR = 16
-              return (
-                <line
-                  key={angle}
-                  x1={20 + innerR * Math.sin(rad)}
-                  y1={20 - innerR * Math.cos(rad)}
-                  x2={20 + outerR * Math.sin(rad)}
-                  y2={20 - outerR * Math.cos(rad)}
-                  stroke={isCardinal ? 'white' : crosshairHeatStyle.color}
-                  strokeWidth={isCardinal ? 2.5 : 1}
-                  strokeLinecap="round"
-                  opacity={crosshairHeatStyle.opacity}
-                />
-              )
-            })}
-            {/* Center dot */}
-            <circle
-              cx="20"
-              cy="20"
-              r="1.5"
-              fill={crosshairHeatStyle.color}
-              opacity={crosshairHeatStyle.opacity}
-            />
-            {/* Counter-rotating group to keep N fixed pointing up */}
-            <animated.g
-              style={{
-                transformOrigin: '20px 20px',
-                transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
-              }}
-            >
-              {/* North indicator - red triangle pointing up */}
-              <polygon points="20,2 17.5,7 22.5,7" fill="#ef4444" opacity={0.9} />
-            </animated.g>
-          </animated.svg>
+          <HeatCrosshair
+            size={40}
+            rotationAngle={rotationAngle}
+            heatStyle={crosshairHeatStyle}
+            shadowIntensity={0.6}
+          />
         </div>
       )}
 

@@ -7,9 +7,10 @@
 
 'use client'
 
-import { animated, type SpringValue } from '@react-spring/web'
+import type { SpringValue } from '@react-spring/web'
 import { memo } from 'react'
 import type { HeatCrosshairStyle } from '../../utils/heatStyles'
+import { HeatCrosshair } from './HeatCrosshair'
 
 // ============================================================================
 // Types
@@ -41,12 +42,6 @@ export interface CustomCursorProps {
   /** Flag emoji to display with region name (optional) */
   flagEmoji?: string | null
 }
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const COMPASS_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
 
 // ============================================================================
 // Component
@@ -99,59 +94,7 @@ export const CustomCursor = memo(function CustomCursor({
           transition: 'transform 0.1s ease-out',
         }}
       >
-        {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
-        <animated.svg
-          width="32"
-          height="32"
-          viewBox="0 0 32 32"
-          style={{
-            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5)',
-            transform: rotationAngle.to((a) => `rotate(${a}deg)`),
-          }}
-        >
-          {/* Outer ring */}
-          <circle
-            cx="16"
-            cy="16"
-            r="13"
-            fill="none"
-            stroke={heatStyle.color}
-            strokeWidth={heatStyle.strokeWidth}
-            opacity={heatStyle.opacity}
-          />
-          {/* Compass tick marks - 12 ticks around the ring */}
-          {COMPASS_ANGLES.map((angle) => {
-            const isCardinal = angle % 90 === 0
-            const rad = (angle * Math.PI) / 180
-            const innerR = isCardinal ? 9 : 11
-            const outerR = 13
-            return (
-              <line
-                key={angle}
-                x1={16 + innerR * Math.sin(rad)}
-                y1={16 - innerR * Math.cos(rad)}
-                x2={16 + outerR * Math.sin(rad)}
-                y2={16 - outerR * Math.cos(rad)}
-                stroke={isCardinal ? 'white' : heatStyle.color}
-                strokeWidth={isCardinal ? 2 : 1}
-                strokeLinecap="round"
-                opacity={heatStyle.opacity}
-              />
-            )
-          })}
-          {/* Center dot */}
-          <circle cx="16" cy="16" r="1.5" fill={heatStyle.color} opacity={heatStyle.opacity} />
-          {/* Counter-rotating group to keep N fixed pointing up */}
-          <animated.g
-            style={{
-              transformOrigin: '16px 16px',
-              transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
-            }}
-          >
-            {/* North indicator - red triangle pointing up */}
-            <polygon points="16,1 14,5 18,5" fill="#ef4444" opacity={0.9} />
-          </animated.g>
-        </animated.svg>
+        <HeatCrosshair size={32} rotationAngle={rotationAngle} heatStyle={heatStyle} />
       </div>
 
       {/* Cursor region name label - shows what to find under the cursor */}
