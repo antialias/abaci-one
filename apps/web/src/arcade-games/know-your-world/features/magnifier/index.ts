@@ -50,6 +50,11 @@ export type {
 } from './useMagnifierState'
 export { useMagnifierState } from './useMagnifierState'
 export type {
+  MagnifierStyleInputs,
+  MagnifierStyleResult,
+} from './useMagnifierStyle'
+export { useMagnifierStyle } from './useMagnifierStyle'
+export type {
   PanInfo,
   PinchInfo,
   TapInfo,

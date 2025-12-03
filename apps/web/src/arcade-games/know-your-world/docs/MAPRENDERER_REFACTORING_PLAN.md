@@ -28,6 +28,104 @@ performance, maintainability, and debuggability.
 ### Console Spam Cleanup ✅
 - Removed 5 `[CursorShare]` console.log statements from useArcadeSocket.ts and MapRenderer.tsx
 
+### Phase 2.5: Interaction State Machine ✅
+- Created `useInteractionStateMachine` hook in `features/interaction/`
+- Implements explicit state machine for both desktop and mobile modes
+- Desktop phases: idle → hovering → dragging → selecting → pointerLocked → releasing
+- Mobile phases: idle → touched → mapPanning → magnifierActive → magnifierPanning → magnifierPinching
+- Uses `useReducer` pattern with discriminated union types for compile-time safety
+- Returns derived state: `isPointerLocked`, `isDragging`, `isMagnifierActive`, etc.
+- Location: `features/interaction/useInteractionStateMachine.ts`
+
+### Phase 3.2: State Machine Integration ✅
+- Added `interaction` state machine hook to MapRenderer
+- Wired up event dispatches:
+  - `MOUSE_ENTER` - dispatched when cursor first enters map area
+  - `MOUSE_DOWN` - dispatched in handleMouseDown
+  - `MOUSE_UP` - dispatched in handleMouseUp
+  - `MOUSE_LEAVE` - dispatched in handleMouseLeave
+  - `DRAG_THRESHOLD_EXCEEDED` - dispatched when drag distance exceeds threshold
+  - `EDGE_ESCAPE` - dispatched when cursor escapes via edge
+  - `POINTER_LOCK_ACQUIRED` / `POINTER_LOCK_RELEASED` - synced via useEffect
+- **Fully migrated boolean flags:**
+  - `isDesktopMapDragging` → derived from `interaction.isDesktopDragging`
+  - `isReleasingPointerLock` → derived from `interaction.isReleasingPointerLock`
+- Removed useState declarations and setter calls for migrated flags
+
+### Phase 2.1a: Heat Styling Extraction ✅
+- Created `utils/heatStyles.ts` with extracted heat-based styling functions:
+  - `getHeatBorderColors()` - magnifier border/glow colors based on hot/cold feedback
+  - `getHeatCrosshairStyle()` - crosshair color, opacity, rotation speed based on feedback
+  - `getHeatLevel()` - converts FeedbackType to numeric heat level (0-1)
+  - `getRotationSpeed()` - calculates rotation speed using 1/x backoff curve
+- Created `useMagnifierStyle` hook in `features/magnifier/`:
+  - Memoizes heat styling calculations
+  - Returns `{ crosshairStyle, borderStyle, rotationSpeedDegPerSec }`
+  - Replaces 5 inline calls to `getHeatCrosshairStyle`/`getHeatBorderColors`
+- Removed 2 JSX IIFEs by using memoized styles directly
+- Eliminated redundant heat style computations in render path
+
+### Phase 2.2: CustomCursor Extraction ✅
+- Created `features/cursor/CustomCursor.tsx` component:
+  - Compass-style crosshair with rotating ring and fixed north indicator
+  - Region name label with "Find [regionName]" text and flag emoji
+  - Heat-based styling (color, opacity, glow) via `HeatCrosshairStyle` prop
+  - Spring-animated rotation via `SpringValue<number>` prop
+  - Memoized with `memo()` for performance
+- Location: `features/cursor/CustomCursor.tsx` (~190 lines)
+- Replaced ~113 lines of inline JSX in MapRenderer with 10-line component usage
+- Component is reusable for other games requiring similar cursor
+
+---
+
+## 🔴 CRITICAL: State Machine Migration Guidelines
+
+When refactoring MapRenderer, follow these rules for state management:
+
+### 1. Continuously Identify State for Migration
+
+During every component extraction or hook creation, ask:
+- **"Does this involve boolean flags that represent interaction modes?"**
+- **"Are there impossible state combinations being guarded by if/else?"**
+- **"Is this state already partially tracked by the state machine?"**
+
+If yes → add the state to the migration backlog and consider migrating it.
+
+### 2. Fully Commit When Migrating State
+
+**DO NOT run state machine alongside existing boolean flags for testing.**
+
+When migrating state to the state machine:
+1. Remove the `useState` declaration entirely
+2. Replace ALL setter calls with event dispatches
+3. Derive the boolean from `interaction.isXxx`
+4. Test the migrated state immediately
+
+**Why:** Running alongside makes it impossible to verify the state machine is working correctly. The old boolean will mask bugs in the new state transitions.
+
+### 3. State Machine Scope
+
+The state machine manages **interaction modes**, not all state:
+- ✅ Phases: idle, hovering, dragging, pointerLocked, releasing
+- ✅ Mode flags: isDesktopDragging, isReleasingPointerLock, isMagnifierActive
+- ❌ Animation progress (floats 0-1) → stays as separate state
+- ❌ Positions (cursorPosition, targetTop) → derived or separate state
+- ❌ UI visibility (showMagnifier) → can stay separate or migrate later
+
+### 4. Current State Machine Status
+
+**Desktop phases implemented:**
+- `idle` → `hovering` → `dragging` → `selecting` → `pointerLocked` → `releasing`
+
+**Migrated flags:**
+- [x] `isDesktopMapDragging`
+- [x] `isReleasingPointerLock`
+
+**Candidates for future migration:**
+- [ ] `isMobileMapDragging` (when tackling mobile)
+- [ ] `mobileMapDragTriggeredMagnifier`
+- [ ] `shiftPressed` (could be part of desktop phase context)
+
 ---
 
 ## Phase 1: Quick Wins (Low Risk, High Impact)

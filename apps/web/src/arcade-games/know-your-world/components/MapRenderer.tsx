@@ -7,6 +7,8 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
 import { usePulsingAnimation } from '../features/animations'
+import { CustomCursor } from '../features/cursor'
+import { useInteractionStateMachine } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
   applyPanDelta,
@@ -20,6 +22,7 @@ import {
   MagnifierRegions,
   parseViewBoxDimensions,
   useMagnifierState,
+  useMagnifierStyle,
 } from '../features/magnifier'
 import { usePrecisionCalculations } from '../features/precision'
 import {
@@ -50,7 +53,6 @@ import { useKnowYourWorld } from '../Provider'
 import type { MapData, MapRegion } from '../types'
 import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
 import { CELEBRATION_TIMING, classifyCelebration } from '../utils/celebration'
-import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
   calculateMaxZoomAtThreshold,
   calculateScreenPixelRatio,
@@ -82,241 +84,6 @@ const SAFE_ZONE_MARGINS: SafeZoneMargins = {
   right: 0, // Controls now in floating prompt, no right margin needed
   bottom: 0, // Error banner can overlap map
   left: 0, // Progress at top-left is small, doesn't need full-height margin
-}
-
-/**
- * Get heat-based border color for magnifier based on hot/cold feedback
- * Returns an object with border color and glow color
- */
-function getHeatBorderColors(
-  feedbackType: FeedbackType | null,
-  isDark: boolean
-): { border: string; glow: string; width: number } {
-  switch (feedbackType) {
-    case 'found_it':
-      return {
-        border: isDark ? '#fbbf24' : '#f59e0b', // gold
-        glow: 'rgba(251, 191, 36, 0.6)',
-        width: 4,
-      }
-    case 'on_fire':
-      return {
-        border: isDark ? '#ef4444' : '#dc2626', // red
-        glow: 'rgba(239, 68, 68, 0.5)',
-        width: 4,
-      }
-    case 'hot':
-      return {
-        border: isDark ? '#f97316' : '#ea580c', // orange
-        glow: 'rgba(249, 115, 22, 0.4)',
-        width: 3,
-      }
-    case 'warmer':
-      return {
-        border: isDark ? '#fb923c' : '#f97316', // light orange
-        glow: 'rgba(251, 146, 60, 0.3)',
-        width: 3,
-      }
-    case 'colder':
-      return {
-        border: isDark ? '#93c5fd' : '#60a5fa', // light blue
-        glow: 'rgba(147, 197, 253, 0.3)',
-        width: 3,
-      }
-    case 'cold':
-      return {
-        border: isDark ? '#60a5fa' : '#3b82f6', // blue
-        glow: 'rgba(96, 165, 250, 0.4)',
-        width: 3,
-      }
-    case 'freezing':
-      return {
-        border: isDark ? '#38bdf8' : '#0ea5e9', // cyan/ice blue
-        glow: 'rgba(56, 189, 248, 0.5)',
-        width: 4,
-      }
-    case 'overshot':
-      return {
-        border: isDark ? '#facc15' : '#eab308', // yellow
-        glow: 'rgba(250, 204, 21, 0.4)',
-        width: 3,
-      }
-    case 'stuck':
-      return {
-        border: isDark ? '#9ca3af' : '#6b7280', // gray
-        glow: 'rgba(156, 163, 175, 0.2)',
-        width: 3,
-      }
-    default:
-      // Default blue when no hot/cold active
-      return {
-        border: isDark ? '#60a5fa' : '#3b82f6',
-        glow: 'rgba(96, 165, 250, 0.3)',
-        width: 3,
-      }
-  }
-}
-
-/**
- * Convert FeedbackType to a numeric heat level (0-1)
- * Used for continuous effects like rotation speed
- */
-function getHeatLevel(feedbackType: FeedbackType | null): number {
-  switch (feedbackType) {
-    case 'found_it':
-      return 1.0
-    case 'on_fire':
-      return 0.9
-    case 'hot':
-      return 0.75
-    case 'warmer':
-      return 0.6
-    case 'colder':
-      return 0.4
-    case 'cold':
-      return 0.25
-    case 'freezing':
-      return 0.1
-    case 'overshot':
-      return 0.3
-    case 'stuck':
-      return 0.35
-    default:
-      return 0.5 // Neutral
-  }
-}
-
-/**
- * Calculate rotation speed based on heat level using 1/x backoff curve
- * - No rotation below heat 0.5
- * - Maximum rotation (1 rotation/sec = 6°/frame at 60fps) at heat 1.0
- * - Uses squared curve for rapid acceleration near found_it
- */
-function getRotationSpeed(heatLevel: number): number {
-  const THRESHOLD = 0.5
-  const MAX_SPEED = 6 // 1 rotation/sec at 60fps (360°/sec / 60 = 6°/frame)
-
-  if (heatLevel <= THRESHOLD) {
-    return 0
-  }
-
-  // 1/x style backoff: speed increases rapidly as heat approaches 1.0
-  // Using squared curve: ((heat - 0.5) / 0.5)^2 * maxSpeed
-  const normalized = (heatLevel - THRESHOLD) / (1 - THRESHOLD)
-  return MAX_SPEED * normalized * normalized
-}
-
-/**
- * Get crosshair styling based on hot/cold feedback
- * Returns color, opacity, rotation speed, and fire state for heat-reactive crosshairs
- */
-function getHeatCrosshairStyle(
-  feedbackType: FeedbackType | null,
-  isDark: boolean,
-  hotColdEnabled: boolean
-): {
-  color: string
-  opacity: number
-  rotationSpeed: number // degrees per frame at 60fps (0 = no rotation)
-  glowColor: string
-  strokeWidth: number
-} {
-  const heatLevel = getHeatLevel(feedbackType)
-  const rotationSpeed = hotColdEnabled ? getRotationSpeed(heatLevel) : 0
-
-  // Default styling when hot/cold not enabled
-  if (!hotColdEnabled || !feedbackType) {
-    return {
-      color: isDark ? '#60a5fa' : '#3b82f6', // Default blue
-      opacity: 1,
-      rotationSpeed: 0,
-      glowColor: 'transparent',
-      strokeWidth: 2,
-    }
-  }
-
-  switch (feedbackType) {
-    case 'found_it':
-      return {
-        color: '#fbbf24', // Gold
-        opacity: 1,
-        rotationSpeed,
-        glowColor: 'rgba(251, 191, 36, 0.8)',
-        strokeWidth: 3,
-      }
-    case 'on_fire':
-      return {
-        color: '#ef4444', // Bright red
-        opacity: 1,
-        rotationSpeed,
-        glowColor: 'rgba(239, 68, 68, 0.7)',
-        strokeWidth: 3,
-      }
-    case 'hot':
-      return {
-        color: '#f97316', // Orange
-        opacity: 1,
-        rotationSpeed,
-        glowColor: 'rgba(249, 115, 22, 0.5)',
-        strokeWidth: 2.5,
-      }
-    case 'warmer':
-      return {
-        color: '#fb923c', // Light orange
-        opacity: 0.9,
-        rotationSpeed,
-        glowColor: 'rgba(251, 146, 60, 0.4)',
-        strokeWidth: 2,
-      }
-    case 'colder':
-      return {
-        color: '#93c5fd', // Light blue
-        opacity: 0.6,
-        rotationSpeed,
-        glowColor: 'transparent',
-        strokeWidth: 2,
-      }
-    case 'cold':
-      return {
-        color: '#60a5fa', // Blue
-        opacity: 0.4,
-        rotationSpeed,
-        glowColor: 'transparent',
-        strokeWidth: 1.5,
-      }
-    case 'freezing':
-      return {
-        color: '#38bdf8', // Ice blue/cyan
-        opacity: 0.25, // Very faded
-        rotationSpeed,
-        glowColor: 'transparent',
-        strokeWidth: 1,
-      }
-    case 'overshot':
-      return {
-        color: '#a855f7', // Purple (went past it)
-        opacity: 0.8,
-        rotationSpeed,
-        glowColor: 'rgba(168, 85, 247, 0.4)',
-        strokeWidth: 2,
-      }
-    case 'stuck':
-      return {
-        color: '#9ca3af', // Gray
-        opacity: 0.5,
-        rotationSpeed,
-        glowColor: 'transparent',
-        strokeWidth: 1.5,
-      }
-    default:
-      return {
-        color: isDark ? '#60a5fa' : '#3b82f6',
-        opacity: 1,
-        rotationSpeed: 0,
-        glowColor: 'transparent',
-        strokeWidth: 2,
-      }
-  }
 }
 
 interface BoundingBox {
@@ -558,12 +325,20 @@ export function MapRenderer({
   const cursorPositionRef = useRef<{ x: number; y: number } | null>(null)
   const initialCapturePositionRef = useRef<{ x: number; y: number } | null>(null)
   const [cursorSquish, setCursorSquish] = useState({ x: 1, y: 1 })
-  const [isReleasingPointerLock, setIsReleasingPointerLock] = useState(false)
 
   // Device capability hooks for adaptive UI
   const isTouchDevice = useIsTouchDevice() // For touch-specific UI (magnifier expansion)
   const canUsePrecisionMode = useCanUsePrecisionMode() // For precision mode UI/behavior
   const hasAnyFinePointer = useHasAnyFinePointer() // For hot/cold feedback visibility
+
+  // Interaction state machine - replaces scattered boolean flags with explicit states
+  const interaction = useInteractionStateMachine({
+    initialMode: isTouchDevice ? 'mobile' : 'desktop',
+  })
+
+  // Derive boolean flags from state machine for compatibility with existing code
+  const isReleasingPointerLock = interaction.isReleasingPointerLock
+  const isDesktopMapDragging = interaction.isDesktopDragging
 
   // Memoize pointer lock callbacks to prevent render loop
   const handleLockAcquired = useCallback(() => {
@@ -577,7 +352,8 @@ export function MapRenderer({
   const handleLockReleased = useCallback(() => {
     // Reset cursor squish
     setCursorSquish({ x: 1, y: 1 })
-    setIsReleasingPointerLock(false)
+    // Note: isReleasingPointerLock now managed by interaction state machine
+    // The POINTER_LOCK_RELEASED event is dispatched via useEffect sync
     // Note: Zoom recalculation now handled by useMagnifierZoom hook
   }, [])
 
@@ -611,6 +387,21 @@ export function MapRenderer({
     currentZoom: targetZoom,
     pointerLocked,
   })
+
+  // Sync pointer lock state to interaction state machine
+  // This dispatches events when the native pointer lock state changes
+  const prevPointerLockedRef = useRef(pointerLocked)
+  useEffect(() => {
+    if (pointerLocked !== prevPointerLockedRef.current) {
+      if (pointerLocked) {
+        interaction.dispatch({ type: 'POINTER_LOCK_ACQUIRED' })
+      } else if (prevPointerLockedRef.current) {
+        // Only dispatch if we were previously locked (not on initial mount)
+        interaction.dispatch({ type: 'POINTER_LOCK_RELEASED' })
+      }
+      prevPointerLockedRef.current = pointerLocked
+    }
+  }, [pointerLocked, interaction])
 
   const [svgDimensions, setSvgDimensions] = useState({
     width: 1000,
@@ -658,7 +449,7 @@ export function MapRenderer({
   const [shiftPressed, setShiftPressed] = useState(false)
 
   // Desktop click-and-drag magnifier state
-  const [isDesktopMapDragging, setIsDesktopMapDragging] = useState(false)
+  // Note: isDesktopMapDragging is derived from interaction state machine above
   const desktopDragStartRef = useRef<{ x: number; y: number } | null>(null)
   const desktopDragDidMoveRef = useRef(false)
   // Track last drag position - magnifier stays visible until cursor moves threshold away
@@ -1405,12 +1196,16 @@ export function MapRenderer({
     config: { tension: 120, friction: 20 },
   })
 
-  // Get crosshair heat styling from the REAL hot/cold feedback system
-  const crosshairHeatStyle = getHeatCrosshairStyle(
-    hotColdFeedbackType,
+  // Get crosshair heat styling from the REAL hot/cold feedback system (memoized)
+  const {
+    crosshairStyle: crosshairHeatStyle,
+    borderStyle: magnifierBorderStyle,
+    rotationSpeedDegPerSec: targetSpeedDegPerSec,
+  } = useMagnifierStyle({
+    feedbackType: hotColdFeedbackType,
     isDark,
-    effectiveHotColdEnabled
-  )
+    hotColdEnabled: effectiveHotColdEnabled,
+  })
 
   // === Crosshair rotation using spring-for-speed, manual-integration-for-angle pattern ===
   // This gives smooth speed transitions without the issues of CSS animation or
@@ -1421,9 +1216,6 @@ export function MapRenderer({
   // 2. requestAnimationFrame loop integrates angle from speed
   // 3. Angle is bound to animated element via useSpringValue
   // 4. When speed is ~0, smoothly wind back to 0 degrees (upright)
-
-  // Convert rotation speed from degrees/frame@60fps to degrees/second
-  const targetSpeedDegPerSec = crosshairHeatStyle.rotationSpeed * 60
 
   // Spring for rotation speed - this is what makes speed changes smooth
   const rotationSpeed = useSpringValue(0, {
@@ -1942,6 +1734,9 @@ export function MapRenderer({
       cursorY = e.clientY - containerRect.top
     }
 
+    // Dispatch mouse down to state machine
+    interaction.dispatch({ type: 'MOUSE_DOWN', position: { x: cursorX, y: cursorY } })
+
     desktopDragStartRef.current = { x: cursorX, y: cursorY }
     desktopDragDidMoveRef.current = false
   }
@@ -1950,6 +1745,9 @@ export function MapRenderer({
   const suppressNextClickRef = useRef(false)
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Dispatch mouse up to state machine
+    interaction.dispatch({ type: 'MOUSE_UP' })
+
     // If user was dragging, save the last position for threshold-based dismissal
     // and suppress the click event that will follow
     if (isDesktopMapDragging && cursorPositionRef.current) {
@@ -1957,9 +1755,8 @@ export function MapRenderer({
       suppressNextClickRef.current = true
     }
 
-    // Reset drag state
+    // Reset drag state (hasDragged reset handled by state machine via MOUSE_UP)
     desktopDragStartRef.current = null
-    setIsDesktopMapDragging(false)
     desktopDragDidMoveRef.current = false
   }
 
@@ -1969,6 +1766,11 @@ export function MapRenderer({
 
     // Don't process mouse movement during pointer lock release animation
     if (isReleasingPointerLock) return
+
+    // Dispatch MOUSE_ENTER when cursor first enters (was null, now has position)
+    if (!cursorPositionRef.current && interaction.state.mode === 'desktop') {
+      interaction.dispatch({ type: 'MOUSE_ENTER' })
+    }
 
     const containerRect = containerRef.current.getBoundingClientRect()
     const svgRect = svgRef.current.getBoundingClientRect()
@@ -2041,8 +1843,8 @@ export function MapRenderer({
 
       // Check if cursor has squished through and should escape (using dampened position!)
       if (dampenedMinDist < escapeThreshold && !isReleasingPointerLock) {
-        // Start animation back to initial capture position
-        setIsReleasingPointerLock(true)
+        // Start animation back to initial capture position (state machine handles isReleasingPointerLock)
+        interaction.dispatch({ type: 'EDGE_ESCAPE' })
 
         // Animate cursor back to initial position before releasing
         if (initialCapturePositionRef.current) {
@@ -2127,7 +1929,7 @@ export function MapRenderer({
 
         if (distance >= DRAG_START_THRESHOLD) {
           desktopDragDidMoveRef.current = true
-          setIsDesktopMapDragging(true)
+          interaction.dispatch({ type: 'DRAG_THRESHOLD_EXCEEDED' })
           lastDragPositionRef.current = null
         }
       }
@@ -2155,7 +1957,7 @@ export function MapRenderer({
 
         if (distance >= DRAG_START_THRESHOLD) {
           desktopDragDidMoveRef.current = true
-          setIsDesktopMapDragging(true)
+          interaction.dispatch({ type: 'DRAG_THRESHOLD_EXCEEDED' })
           // Clear the last drag position since we're starting a new drag
           lastDragPositionRef.current = null
         }
@@ -2448,9 +2250,11 @@ export function MapRenderer({
       return
     }
 
+    // Dispatch mouse leave to state machine (handles hasDragged reset)
+    interaction.dispatch({ type: 'MOUSE_LEAVE' })
+
     // Reset desktop drag state when mouse leaves
     desktopDragStartRef.current = null
-    setIsDesktopMapDragging(false)
     desktopDragDidMoveRef.current = false
     lastDragPositionRef.current = null
 
@@ -3563,226 +3367,91 @@ export function MapRenderer({
 
       {/* Custom Cursor - Visible on desktop when cursor is on the map */}
       {cursorPosition && hasAnyFinePointer && (
-        <>
-          <div
-            data-element="custom-cursor"
-            style={{
-              position: 'absolute',
-              left: `${cursorPosition.x}px`,
-              top: `${cursorPosition.y}px`,
-              pointerEvents: 'none',
-              zIndex: 200,
-              transform: `translate(-50%, -50%) scale(${cursorSquish.x}, ${cursorSquish.y})`,
-              transition: 'transform 0.1s ease-out',
-            }}
-          >
-            {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
-            <animated.svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              style={{
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5)',
-                transform: rotationAngle.to((a) => `rotate(${a}deg)`),
-              }}
-            >
-              {/* Outer ring */}
-              <circle
-                cx="16"
-                cy="16"
-                r="13"
-                fill="none"
-                stroke={crosshairHeatStyle.color}
-                strokeWidth={crosshairHeatStyle.strokeWidth}
-                opacity={crosshairHeatStyle.opacity}
-              />
-              {/* Compass tick marks - 12 ticks around the ring */}
-              {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
-                const isCardinal = angle % 90 === 0
-                const rad = (angle * Math.PI) / 180
-                const innerR = isCardinal ? 9 : 11
-                const outerR = 13
-                return (
-                  <line
-                    key={angle}
-                    x1={16 + innerR * Math.sin(rad)}
-                    y1={16 - innerR * Math.cos(rad)}
-                    x2={16 + outerR * Math.sin(rad)}
-                    y2={16 - outerR * Math.cos(rad)}
-                    stroke={isCardinal ? 'white' : crosshairHeatStyle.color}
-                    strokeWidth={isCardinal ? 2 : 1}
-                    strokeLinecap="round"
-                    opacity={crosshairHeatStyle.opacity}
-                  />
-                )
-              })}
-              {/* Center dot */}
-              <circle
-                cx="16"
-                cy="16"
-                r="1.5"
-                fill={crosshairHeatStyle.color}
-                opacity={crosshairHeatStyle.opacity}
-              />
-              {/* Counter-rotating group to keep N fixed pointing up */}
-              <animated.g
-                style={{
-                  transformOrigin: '16px 16px',
-                  transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
-                }}
-              >
-                {/* North indicator - red triangle pointing up */}
-                <polygon points="16,1 14,5 18,5" fill="#ef4444" opacity={0.9} />
-              </animated.g>
-            </animated.svg>
-          </div>
-          {/* Cursor region name label - shows what to find under the cursor */}
-          {currentRegionName &&
-            (() => {
-              const labelHeatStyle = getHeatCrosshairStyle(
-                hotColdFeedbackType,
-                isDark,
-                effectiveHotColdEnabled
-              )
-              return (
-                <div
-                  data-element="cursor-region-label"
-                  style={{
-                    position: 'absolute',
-                    left: `${cursorPosition.x}px`,
-                    top: `${cursorPosition.y + 22}px`,
-                    transform: 'translateX(-50%)',
-                    pointerEvents: 'none',
-                    zIndex: 201,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    backgroundColor: isDark
-                      ? 'rgba(30, 58, 138, 0.95)'
-                      : 'rgba(219, 234, 254, 0.95)',
-                    border: `2px solid ${labelHeatStyle.color}`,
-                    borderRadius: '6px',
-                    boxShadow:
-                      labelHeatStyle.glowColor !== 'transparent'
-                        ? `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px ${labelHeatStyle.glowColor}`
-                        : '0 2px 8px rgba(0, 0, 0, 0.3)',
-                    whiteSpace: 'nowrap',
-                    opacity: Math.max(0.5, labelHeatStyle.opacity), // Keep label visible but dimmed
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      color: isDark ? '#93c5fd' : '#1e40af',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Find
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 'bold',
-                      color: isDark ? 'white' : '#1e3a8a',
-                    }}
-                  >
-                    {currentRegionName}
-                  </span>
-                  {currentFlagEmoji && <span style={{ fontSize: '14px' }}>{currentFlagEmoji}</span>}
-                </div>
-              )
-            })()}
-        </>
+        <CustomCursor
+          position={cursorPosition}
+          squish={cursorSquish}
+          rotationAngle={rotationAngle}
+          heatStyle={crosshairHeatStyle}
+          isDark={isDark}
+          regionName={currentRegionName}
+          flagEmoji={currentFlagEmoji}
+        />
       )}
 
       {/* Heat crosshair overlay on main map - shows when hot/cold enabled (desktop non-pointer-lock) */}
-      {effectiveHotColdEnabled &&
-        cursorPosition &&
-        !pointerLocked &&
-        hasAnyFinePointer &&
-        (() => {
-          const heatStyle = getHeatCrosshairStyle(
-            hotColdFeedbackType,
-            isDark,
-            effectiveHotColdEnabled
-          )
-          return (
-            <div
-              data-element="main-map-heat-crosshair"
+      {effectiveHotColdEnabled && cursorPosition && !pointerLocked && hasAnyFinePointer && (
+        <div
+          data-element="main-map-heat-crosshair"
+          style={{
+            position: 'absolute',
+            left: `${cursorPosition.x}px`,
+            top: `${cursorPosition.y}px`,
+            pointerEvents: 'none',
+            zIndex: 150,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
+          <animated.svg
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            style={{
+              filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
+              transform: rotationAngle.to((a) => `rotate(${a}deg)`),
+            }}
+          >
+            {/* Outer ring */}
+            <circle
+              cx="20"
+              cy="20"
+              r="16"
+              fill="none"
+              stroke={crosshairHeatStyle.color}
+              strokeWidth={crosshairHeatStyle.strokeWidth}
+              opacity={crosshairHeatStyle.opacity}
+            />
+            {/* Compass tick marks - 12 ticks around the ring */}
+            {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
+              const isCardinal = angle % 90 === 0
+              const rad = (angle * Math.PI) / 180
+              const innerR = isCardinal ? 10 : 14
+              const outerR = 16
+              return (
+                <line
+                  key={angle}
+                  x1={20 + innerR * Math.sin(rad)}
+                  y1={20 - innerR * Math.cos(rad)}
+                  x2={20 + outerR * Math.sin(rad)}
+                  y2={20 - outerR * Math.cos(rad)}
+                  stroke={isCardinal ? 'white' : crosshairHeatStyle.color}
+                  strokeWidth={isCardinal ? 2.5 : 1}
+                  strokeLinecap="round"
+                  opacity={crosshairHeatStyle.opacity}
+                />
+              )
+            })}
+            {/* Center dot */}
+            <circle
+              cx="20"
+              cy="20"
+              r="1.5"
+              fill={crosshairHeatStyle.color}
+              opacity={crosshairHeatStyle.opacity}
+            />
+            {/* Counter-rotating group to keep N fixed pointing up */}
+            <animated.g
               style={{
-                position: 'absolute',
-                left: `${cursorPosition.x}px`,
-                top: `${cursorPosition.y}px`,
-                pointerEvents: 'none',
-                zIndex: 150,
-                transform: 'translate(-50%, -50%)',
+                transformOrigin: '20px 20px',
+                transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
               }}
             >
-              {/* Compass-style crosshair with heat effects - ring rotates, N stays fixed */}
-              <animated.svg
-                width="40"
-                height="40"
-                viewBox="0 0 40 40"
-                style={{
-                  filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
-                  transform: rotationAngle.to((a) => `rotate(${a}deg)`),
-                }}
-              >
-                {/* Outer ring */}
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="16"
-                  fill="none"
-                  stroke={heatStyle.color}
-                  strokeWidth={heatStyle.strokeWidth}
-                  opacity={heatStyle.opacity}
-                />
-                {/* Compass tick marks - 12 ticks around the ring */}
-                {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
-                  const isCardinal = angle % 90 === 0
-                  const rad = (angle * Math.PI) / 180
-                  const innerR = isCardinal ? 10 : 14
-                  const outerR = 16
-                  return (
-                    <line
-                      key={angle}
-                      x1={20 + innerR * Math.sin(rad)}
-                      y1={20 - innerR * Math.cos(rad)}
-                      x2={20 + outerR * Math.sin(rad)}
-                      y2={20 - outerR * Math.cos(rad)}
-                      stroke={isCardinal ? 'white' : heatStyle.color}
-                      strokeWidth={isCardinal ? 2.5 : 1}
-                      strokeLinecap="round"
-                      opacity={heatStyle.opacity}
-                    />
-                  )
-                })}
-                {/* Center dot */}
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="1.5"
-                  fill={heatStyle.color}
-                  opacity={heatStyle.opacity}
-                />
-                {/* Counter-rotating group to keep N fixed pointing up */}
-                <animated.g
-                  style={{
-                    transformOrigin: '20px 20px',
-                    transform: rotationAngle.to((a) => `rotate(${-a}deg)`),
-                  }}
-                >
-                  {/* North indicator - red triangle pointing up */}
-                  <polygon points="20,2 17.5,7 22.5,7" fill="#ef4444" opacity={0.9} />
-                </animated.g>
-              </animated.svg>
-            </div>
-          )
-        })()}
+              {/* North indicator - red triangle pointing up */}
+              <polygon points="20,2 17.5,7 22.5,7" fill="#ef4444" opacity={0.9} />
+            </animated.g>
+          </animated.svg>
+        </div>
+      )}
 
       {/* Magnifier overlay - centers on cursor position */}
       {(() => {
@@ -3822,10 +3491,9 @@ export function MapRenderer({
               height: magnifierHeightPx,
               // Border color priority: 1) Hot/cold heat colors (if enabled), 2) High zoom gold, 3) Default blue
               border: (() => {
-                // When hot/cold is enabled, use heat-based colors
+                // When hot/cold is enabled, use heat-based colors (from memoized magnifierBorderStyle)
                 if (effectiveHotColdEnabled && hotColdFeedbackType) {
-                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
-                  return `${heatColors.width}px solid ${heatColors.border}`
+                  return `${magnifierBorderStyle.width}px solid ${magnifierBorderStyle.border}`
                 }
                 // Fall back to zoom-based coloring
                 return zoomSpring.to(
@@ -3842,11 +3510,10 @@ export function MapRenderer({
               pointerEvents: 'auto',
               touchAction: 'none', // Prevent browser handling of touch gestures
               zIndex: 100,
-              // Box shadow with heat glow when hot/cold is enabled
+              // Box shadow with heat glow when hot/cold is enabled (from memoized magnifierBorderStyle)
               boxShadow: (() => {
                 if (effectiveHotColdEnabled && hotColdFeedbackType) {
-                  const heatColors = getHeatBorderColors(hotColdFeedbackType, isDark)
-                  return `0 10px 40px rgba(0, 0, 0, 0.3), 0 0 25px ${heatColors.glow}`
+                  return `0 10px 40px rgba(0, 0, 0, 0.3), 0 0 25px ${magnifierBorderStyle.glow}`
                 }
                 return zoomSpring.to((zoom: number) =>
                   zoom > HIGH_ZOOM_THRESHOLD
@@ -3976,20 +3643,13 @@ export function MapRenderer({
                 const cursorSvgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBoxX
                 const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
-                // Get heat-based crosshair styling
-                const heatStyle = getHeatCrosshairStyle(
-                  hotColdFeedbackType,
-                  isDark,
-                  effectiveHotColdEnabled
-                )
-
                 return (
                   <MagnifierCrosshair
                     cursorSvgX={cursorSvgX}
                     cursorSvgY={cursorSvgY}
                     viewBoxWidth={viewBoxWidth}
                     rotationAngle={rotationAngle}
-                    heatStyle={heatStyle}
+                    heatStyle={crosshairHeatStyle}
                   />
                 )
               })()}
