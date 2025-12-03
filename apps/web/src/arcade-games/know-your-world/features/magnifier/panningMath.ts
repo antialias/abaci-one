@@ -178,3 +178,47 @@ export function clampToSvgBounds(
     y: Math.max(svgBounds.top, Math.min(svgBounds.top + svgBounds.height, cursor.y)),
   }
 }
+
+/**
+ * Information about the SVG viewport including letterboxing
+ */
+export interface RenderedViewport {
+  /** Scale factor for converting pixels to SVG units */
+  scale: number
+  /** Horizontal letterbox offset in pixels */
+  letterboxX: number
+  /** Vertical letterbox offset in pixels */
+  letterboxY: number
+}
+
+/**
+ * Convert cursor position (in container coordinates) to SVG coordinates.
+ *
+ * Accounts for:
+ * - Container offset from viewport
+ * - SVG letterboxing due to preserveAspectRatio
+ * - SVG scale factor
+ * - ViewBox origin
+ *
+ * @param cursorPosition - Cursor position relative to container
+ * @param containerRect - Container element bounding rect
+ * @param svgRect - SVG element bounding rect
+ * @param viewport - Viewport info from getRenderedViewport
+ * @param viewBox - Parsed viewBox dimensions
+ * @returns Cursor position in SVG coordinate space
+ */
+export function cursorToSvgCoordinates(
+  cursorPosition: { x: number; y: number },
+  containerRect: DOMRect,
+  svgRect: DOMRect,
+  viewport: RenderedViewport,
+  viewBox: { x: number; y: number; width: number; height: number }
+): { x: number; y: number } {
+  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+
+  return {
+    x: (cursorPosition.x - svgOffsetX) / viewport.scale + viewBox.x,
+    y: (cursorPosition.y - svgOffsetY) / viewport.scale + viewBox.y,
+  }
+}

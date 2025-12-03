@@ -109,6 +109,7 @@ export type {
 
 export type {
   MagnifierInfo,
+  RenderedViewport,
   TouchMultiplierResult,
   ViewportInfo as PanningViewportInfo,
 } from './panningMath'
@@ -118,6 +119,7 @@ export {
   calculateTouchMultiplier,
   calculateViewportScale,
   clampToSvgBounds,
+  cursorToSvgCoordinates,
   parseViewBoxDimensions,
 } from './panningMath'
 

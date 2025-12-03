@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState, useContext } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
-import type { GameMove } from '@/lib/arcade/validation'
 import { ArcadeErrorContext } from '@/contexts/ArcadeErrorContext'
+import type { GameMove } from '@/lib/arcade/validation'
 
 export interface ArcadeSocketEvents {
   onSessionState?: (data: {
@@ -161,12 +161,6 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
 
     // Cursor position update from other players (ephemeral, real-time)
     socketInstance.on('cursor-update', (data) => {
-      console.log('[CursorShare] 📥 Received cursor-update:', {
-        fromUserId: data.userId,
-        playerId: data.playerId,
-        hasPosition: !!data.cursorPosition,
-        hoveredRegionId: data.hoveredRegionId,
-      })
       eventsRef.current.onCursorUpdate?.(data)
     })
 
@@ -233,13 +227,6 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       hoveredRegionId: string | null
     ) => {
       if (!socket) return
-      console.log('[CursorShare] 📤 Sending cursor-update:', {
-        roomId,
-        playerId,
-        userId,
-        hasPosition: !!cursorPosition,
-        hoveredRegionId,
-      })
       socket.emit('cursor-update', {
         roomId,
         playerId,

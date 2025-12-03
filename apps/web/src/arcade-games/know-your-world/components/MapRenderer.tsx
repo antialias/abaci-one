@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
+import { usePulsingAnimation } from '../features/animations'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
   applyPanDelta,
@@ -698,6 +699,11 @@ export function MapRenderer({
   // Celebration animation state
   const [celebrationFlashProgress, setCelebrationFlashProgress] = useState(0) // 0-1 pulsing value
   const pendingCelebrationClick = useRef<{ regionId: string; regionName: string } | null>(null)
+
+  // Pulsing animation hooks
+  const giveUpAnimation = usePulsingAnimation()
+  const hintAnimation = usePulsingAnimation()
+  const celebrationAnimation = usePulsingAnimation()
   // Saved button position to prevent jumping during zoom animation
   const [savedButtonPosition, setSavedButtonPosition] = useState<{
     top: number
@@ -1325,8 +1331,9 @@ export function MapRenderer({
     return result
   }, [mapData.customCrop, mapData.originalViewBox, mapData.viewBox, svgDimensions, fillContainer])
 
-  // Parse the display viewBox for animation and calculations
-  const defaultViewBoxParts = useMemo(() => {
+  // Parse the display viewBox once - used throughout for animation and calculations
+  // This eliminates 24 redundant .split(' ').map(Number) calls per render
+  const parsedViewBox = useMemo(() => {
     const parts = displayViewBox.split(' ').map(Number)
     return {
       x: parts[0] || 0,
@@ -1540,7 +1547,6 @@ export function MapRenderer({
 
     // Track if this effect has been cleaned up (prevents stale animations)
     let isCancelled = false
-    let animationFrameId: number | null = null
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
     // Start animation
@@ -1590,27 +1596,17 @@ export function MapRenderer({
       }
     }
 
-    // Animation: 3 pulses over 2 seconds
-    const duration = 2000
-    const pulses = 3
-    const startTime = Date.now()
-
-    const animate = () => {
-      // Check if this animation has been cancelled (new give-up started)
-      if (isCancelled) {
-        return
-      }
-
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-
-      // Create pulsing effect: sin wave for smooth on/off
-      const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
-      setGiveUpFlashProgress(pulseProgress)
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(animate)
-      } else {
+    // Animation: 3 pulses over 2 seconds using shared pulsing hook
+    giveUpAnimation.start({
+      duration: 2000,
+      pulses: 3,
+      onProgress: (pulseProgress) => {
+        if (!isCancelled) {
+          setGiveUpFlashProgress(pulseProgress)
+        }
+      },
+      onComplete: () => {
+        if (isCancelled) return
         // Animation complete - zoom back out to default
         setGiveUpZoomTarget({ scale: 1, translateX: 0, translateY: 0 })
 
@@ -1622,22 +1618,18 @@ export function MapRenderer({
             setSavedButtonPosition(null)
           }
         }, 100)
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(animate)
+      },
+    })
 
     // Cleanup: cancel animation if giveUpReveal changes before animation completes
     return () => {
       isCancelled = true
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId)
-      }
+      giveUpAnimation.cancel()
       if (timeoutId !== null) {
         clearTimeout(timeoutId)
       }
     }
-  }, [giveUpReveal?.timestamp]) // Re-run when timestamp changes
+  }, [giveUpReveal?.timestamp, giveUpAnimation]) // Re-run when timestamp changes
 
   // Hint animation effect - brief pulse to highlight target region
   useEffect(() => {
@@ -1647,47 +1639,25 @@ export function MapRenderer({
       return
     }
 
-    // Track if this effect has been cleaned up
-    let isCancelled = false
-    let animationFrameId: number | null = null
-
     // Start animation
     setIsHintAnimating(true)
 
     // Animation: 2 pulses over 1.5 seconds (shorter than give-up)
-    const duration = 1500
-    const pulses = 2
-    const startTime = Date.now()
-
-    const animate = () => {
-      if (isCancelled) return
-
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-
-      // Create pulsing effect: sin wave for smooth on/off
-      const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
-      setHintFlashProgress(pulseProgress)
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(animate)
-      } else {
-        // Animation complete
+    hintAnimation.start({
+      duration: 1500,
+      pulses: 2,
+      onProgress: setHintFlashProgress,
+      onComplete: () => {
         setHintFlashProgress(0)
         setIsHintAnimating(false)
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(animate)
+      },
+    })
 
     // Cleanup
     return () => {
-      isCancelled = true
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId)
-      }
+      hintAnimation.cancel()
     }
-  }, [hintActive?.timestamp]) // Re-run when timestamp changes
+  }, [hintActive?.timestamp, hintAnimation]) // Re-run when timestamp changes
 
   // Celebration animation effect - gold flash and confetti when region found
   useEffect(() => {
@@ -1696,41 +1666,22 @@ export function MapRenderer({
       return
     }
 
-    // Track if this effect has been cleaned up
-    let isCancelled = false
-    let animationFrameId: number | null = null
-
     // Animation: pulsing gold flash during celebration
     const timing = CELEBRATION_TIMING[celebration.type]
-    const duration = timing.totalDuration
     const pulses = celebration.type === 'lightning' ? 2 : celebration.type === 'standard' ? 3 : 4
-    const startTime = Date.now()
 
-    const animate = () => {
-      if (isCancelled) return
-
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-
-      // Create pulsing effect: sin wave for smooth on/off
-      const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
-      setCelebrationFlashProgress(pulseProgress)
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(animate)
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(animate)
+    celebrationAnimation.start({
+      duration: timing.totalDuration,
+      pulses,
+      onProgress: setCelebrationFlashProgress,
+      // No onComplete - animation just runs until cleanup
+    })
 
     // Cleanup
     return () => {
-      isCancelled = true
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId)
-      }
+      celebrationAnimation.cancel()
     }
-  }, [celebration?.startTime]) // Re-run when celebration starts
+  }, [celebration?.startTime, celebrationAnimation]) // Re-run when celebration starts
 
   // Handle celebration completion - call the actual click after animation
   const handleCelebrationComplete = useCallback(() => {
@@ -1861,11 +1812,7 @@ export function MapRenderer({
     // Convert SVG coordinates to screen coordinates
     const svgRect = svgRef.current.getBoundingClientRect()
     const containerRect = containerRef.current.getBoundingClientRect()
-    const viewBoxParts = displayViewBox.split(' ').map(Number)
-    const viewBoxX = viewBoxParts[0] || 0
-    const viewBoxY = viewBoxParts[1] || 0
-    const viewBoxW = viewBoxParts[2] || 1000
-    const viewBoxH = viewBoxParts[3] || 500
+    const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
     const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
     const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
     const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
@@ -1875,7 +1822,7 @@ export function MapRenderer({
     const screenY = containerRect.top + (region.center[1] - viewBoxY) * viewport.scale + svgOffsetY
 
     return { x: screenX, y: screenY }
-  }, [celebration, mapData.regions, displayViewBox])
+  }, [celebration, mapData.regions, parsedViewBox])
 
   // Keyboard shortcuts - Shift for magnifier, H for hint
   useEffect(() => {
@@ -1952,12 +1899,8 @@ export function MapRenderer({
     return () => observer.disconnect()
   }, []) // No dependencies - container size doesn't depend on viewBox
 
-  // Calculate viewBox dimensions for label offset calculations and sea background
-  const viewBoxParts = displayViewBox.split(' ').map(Number)
-  const viewBoxX = viewBoxParts[0] || 0
-  const viewBoxY = viewBoxParts[1] || 0
-  const viewBoxWidth = viewBoxParts[2] || 1000
-  const viewBoxHeight = viewBoxParts[3] || 1000
+  // Use memoized viewBox dimensions for label offset calculations and sea background
+  const { x: viewBoxX, y: viewBoxY, width: viewBoxWidth, height: viewBoxHeight } = parsedViewBox
 
   const showOutline = (region: MapRegion): boolean => {
     // Learning/Guided/Helpful modes: always show outlines
@@ -2317,11 +2260,7 @@ export function MapRenderer({
       const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
       if (targetRegion) {
         // Parse viewBox for coordinate conversion
-        const viewBoxParts = displayViewBox.split(' ').map(Number)
-        const viewBoxX = viewBoxParts[0] || 0
-        const viewBoxY = viewBoxParts[1] || 0
-        const viewBoxW = viewBoxParts[2] || 1000
-        const viewBoxH = viewBoxParts[3] || 500
+        const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
         // Convert SVG center to pixel coordinates
         const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
         const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
@@ -2350,22 +2289,8 @@ export function MapRenderer({
       svgRef.current &&
       (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
 
-    // Only log occasionally to avoid spam (every 60 frames ~= 1 second)
-    if (Math.random() < 0.016) {
-      console.log('[CursorShare] 🖱️ Desktop pointer broadcast check:', {
-        hasOnCursorUpdate: !!onCursorUpdate,
-        hasSvgRef: !!svgRef.current,
-        gameMode,
-        shouldBroadcast: shouldBroadcastCursor,
-      })
-    }
-
     if (shouldBroadcastCursor) {
-      const viewBoxParts = displayViewBox.split(' ').map(Number)
-      const viewBoxX = viewBoxParts[0] || 0
-      const viewBoxY = viewBoxParts[1] || 0
-      const viewBoxW = viewBoxParts[2] || 1000
-      const viewBoxH = viewBoxParts[3] || 500
+      const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
       // Account for preserveAspectRatio letterboxing when converting to SVG coords
       const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
       const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
@@ -2480,8 +2405,7 @@ export function MapRenderer({
           leftoverWidthForCap,
           leftoverHeightForCap
         )
-        const viewBoxParts = displayViewBox.split(' ').map(Number)
-        const viewBoxWidth = viewBoxParts[2]
+        const viewBoxWidth = parsedViewBox.width
 
         if (viewBoxWidth && !Number.isNaN(viewBoxWidth)) {
           // Calculate what the screen pixel ratio would be at this zoom
@@ -2601,11 +2525,7 @@ export function MapRenderer({
           const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
           if (targetRegion) {
             const svgRect = svgRef.current.getBoundingClientRect()
-            const viewBoxParts = displayViewBox.split(' ').map(Number)
-            const viewBoxX = viewBoxParts[0] || 0
-            const viewBoxY = viewBoxParts[1] || 0
-            const viewBoxW = viewBoxParts[2] || 1000
-            const viewBoxH = viewBoxParts[3] || 500
+            const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
             const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
             const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
             const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
@@ -2636,23 +2556,8 @@ export function MapRenderer({
         const shouldBroadcastCursor =
           onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)
 
-        // Only log occasionally to avoid spam
-        if (Math.random() < 0.1) {
-          console.log('[CursorShare] 📱 handleMapTouchMove broadcast check:', {
-            hasOnCursorUpdate: !!onCursorUpdate,
-            gameMode,
-            currentPlayer,
-            localPlayerId,
-            shouldBroadcast: shouldBroadcastCursor,
-          })
-        }
-
         if (shouldBroadcastCursor) {
-          const viewBoxParts = displayViewBox.split(' ').map(Number)
-          const viewBoxX = viewBoxParts[0] || 0
-          const viewBoxY = viewBoxParts[1] || 0
-          const viewBoxW = viewBoxParts[2] || 1000
-          const viewBoxH = viewBoxParts[3] || 500
+          const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
           const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
           const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
           const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
@@ -2941,11 +2846,7 @@ export function MapRenderer({
       if (hotColdEnabledRef.current && currentPrompt && !isGiveUpAnimating && !isInTakeover) {
         const targetRegion = mapData.regions.find((r) => r.id === currentPrompt)
         if (targetRegion) {
-          const viewBoxParts = displayViewBox.split(' ').map(Number)
-          const viewBoxX = viewBoxParts[0] || 0
-          const viewBoxY = viewBoxParts[1] || 0
-          const viewBoxW = viewBoxParts[2] || 1000
-          const viewBoxH = viewBoxParts[3] || 500
+          const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
           const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
           const svgOffsetXWithLetterbox = svgRect.left - containerRect.left + viewport.letterboxX
           const svgOffsetYWithLetterbox = svgRect.top - containerRect.top + viewport.letterboxY
@@ -2994,11 +2895,7 @@ export function MapRenderer({
         containerRef.current &&
         svgRef.current
       ) {
-        const viewBoxParts = displayViewBox.split(' ').map(Number)
-        const viewBoxX = viewBoxParts[0] || 0
-        const viewBoxY = viewBoxParts[1] || 0
-        const viewBoxW = viewBoxParts[2] || 1000
-        const viewBoxH = viewBoxParts[3] || 500
+        const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
         const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
         const svgOffsetXWithLetterbox = svgRect.left - containerRect.left + viewport.letterboxX
         const svgOffsetYWithLetterbox = svgRect.top - containerRect.top + viewport.letterboxY
@@ -3079,11 +2976,7 @@ export function MapRenderer({
           const currentZoom = zoomSpring.get()
 
           // Parse the main map viewBox
-          const viewBoxParts = displayViewBox.split(' ').map(Number)
-          const viewBoxX = viewBoxParts[0] || 0
-          const viewBoxY = viewBoxParts[1] || 0
-          const viewBoxW = viewBoxParts[2] || 1000
-          const viewBoxH = viewBoxParts[3] || 1000
+          const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
 
           // Get viewport info for coordinate conversion
           const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
@@ -3480,11 +3373,12 @@ export function MapRenderer({
             x={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
-              const viewBoxParts = displayViewBox.split(' ').map(Number)
-              const viewBoxX = viewBoxParts[0] || 0
-              const viewBoxY = viewBoxParts[1] || 0
-              const viewBoxWidth = viewBoxParts[2] || 1000
-              const viewBoxHeight = viewBoxParts[3] || 1000
+              const {
+                x: viewBoxX,
+                y: viewBoxY,
+                width: viewBoxWidth,
+                height: viewBoxHeight,
+              } = parsedViewBox
               // Account for preserveAspectRatio letterboxing
               const viewport = getRenderedViewport(
                 svgRect,
@@ -3512,11 +3406,12 @@ export function MapRenderer({
             y={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
               const svgRect = svgRef.current!.getBoundingClientRect()
-              const viewBoxParts = displayViewBox.split(' ').map(Number)
-              const viewBoxX = viewBoxParts[0] || 0
-              const viewBoxY = viewBoxParts[1] || 0
-              const viewBoxWidth = viewBoxParts[2] || 1000
-              const viewBoxHeight = viewBoxParts[3] || 1000
+              const {
+                x: viewBoxX,
+                y: viewBoxY,
+                width: viewBoxWidth,
+                height: viewBoxHeight,
+              } = parsedViewBox
               // Account for preserveAspectRatio letterboxing
               const viewport = getRenderedViewport(
                 svgRect,
@@ -3543,9 +3438,7 @@ export function MapRenderer({
             })}
             width={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
-              const viewBoxParts = displayViewBox.split(' ').map(Number)
-              const viewBoxWidth = viewBoxParts[2] || 1000
-              const viewBoxHeight = viewBoxParts[3] || 1000
+              const { width: viewBoxWidth, height: viewBoxHeight } = parsedViewBox
               // Calculate leftover dimensions for magnifier sizing
               const leftoverW =
                 containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
@@ -3562,9 +3455,7 @@ export function MapRenderer({
             })}
             height={zoomSpring.to((zoom: number) => {
               const containerRect = containerRef.current!.getBoundingClientRect()
-              const viewBoxParts = displayViewBox.split(' ').map(Number)
-              const viewBoxWidth = viewBoxParts[2] || 1000
-              const viewBoxHeight = viewBoxParts[3] || 1000
+              const { width: viewBoxWidth, height: viewBoxHeight } = parsedViewBox
               // Calculate leftover dimensions for magnifier sizing
               const leftoverW =
                 containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
@@ -3625,11 +3516,12 @@ export function MapRenderer({
           // Convert SVG coordinates to pixel coordinates (accounting for preserveAspectRatio)
           const containerRect = containerRef.current!.getBoundingClientRect()
           const svgRect = svgRef.current!.getBoundingClientRect()
-          const viewBoxParts = displayViewBox.split(' ').map(Number)
-          const viewBoxX = viewBoxParts[0] || 0
-          const viewBoxY = viewBoxParts[1] || 0
-          const viewBoxWidth = viewBoxParts[2] || 1000
-          const viewBoxHeight = viewBoxParts[3] || 1000
+          const {
+            x: viewBoxX,
+            y: viewBoxY,
+            width: viewBoxWidth,
+            height: viewBoxHeight,
+          } = parsedViewBox
 
           const viewport = getRenderedViewport(
             svgRect,
@@ -3973,11 +3865,12 @@ export function MapRenderer({
                 const svgRect = svgRef.current!.getBoundingClientRect()
 
                 // Convert cursor position to SVG coordinates (accounting for preserveAspectRatio)
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
-                const viewBoxX = viewBoxParts[0] || 0
-                const viewBoxY = viewBoxParts[1] || 0
-                const viewBoxWidth = viewBoxParts[2] || 1000
-                const viewBoxHeight = viewBoxParts[3] || 1000
+                const {
+                  x: viewBoxX,
+                  y: viewBoxY,
+                  width: viewBoxWidth,
+                  height: viewBoxHeight,
+                } = parsedViewBox
 
                 const viewport = getRenderedViewport(
                   svgRect,
@@ -4028,13 +3921,12 @@ export function MapRenderer({
             >
               {/* Sea/ocean background for magnifier - solid color to match container */}
               {(() => {
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
                 return (
                   <rect
-                    x={viewBoxParts[0] || 0}
-                    y={viewBoxParts[1] || 0}
-                    width={viewBoxParts[2] || 1000}
-                    height={viewBoxParts[3] || 1000}
+                    x={parsedViewBox.x}
+                    y={parsedViewBox.y}
+                    width={parsedViewBox.width}
+                    height={parsedViewBox.height}
                     fill={isDark ? '#1e3a5f' : '#a8d4f0'}
                   />
                 )
@@ -4065,11 +3957,12 @@ export function MapRenderer({
               {(() => {
                 const containerRect = containerRef.current!.getBoundingClientRect()
                 const svgRect = svgRef.current!.getBoundingClientRect()
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
-                const viewBoxX = viewBoxParts[0] || 0
-                const viewBoxY = viewBoxParts[1] || 0
-                const viewBoxWidth = viewBoxParts[2] || 1000
-                const viewBoxHeight = viewBoxParts[3] || 1000
+                const {
+                  x: viewBoxX,
+                  y: viewBoxY,
+                  width: viewBoxWidth,
+                  height: viewBoxHeight,
+                } = parsedViewBox
                 // Account for preserveAspectRatio letterboxing
                 const viewport = getRenderedViewport(
                   svgRect,
@@ -4108,11 +4001,12 @@ export function MapRenderer({
                 const svgRect = svgRef.current?.getBoundingClientRect()
                 if (!containerRect || !svgRect) return null
 
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
-                const viewBoxWidth = viewBoxParts[2]
-                const viewBoxHeight = viewBoxParts[3]
-                const viewBoxX = viewBoxParts[0] || 0
-                const viewBoxY = viewBoxParts[1] || 0
+                const {
+                  x: viewBoxX,
+                  y: viewBoxY,
+                  width: viewBoxWidth,
+                  height: viewBoxHeight,
+                } = parsedViewBox
 
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return null
 
@@ -4195,11 +4089,12 @@ export function MapRenderer({
                 }
 
                 // Parse viewBox - these are stable values from mapData
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
-                const viewBoxX = viewBoxParts[0] || 0
-                const viewBoxY = viewBoxParts[1] || 0
-                const viewBoxWidth = viewBoxParts[2] || 1000
-                const viewBoxHeight = viewBoxParts[3] || 1000
+                const {
+                  x: viewBoxX,
+                  y: viewBoxY,
+                  width: viewBoxWidth,
+                  height: viewBoxHeight,
+                } = parsedViewBox
 
                 // Calculate bbox center in SVG coordinates
                 const bboxCenterSvgX = bbox.x + bbox.width / 2
@@ -4357,8 +4252,7 @@ export function MapRenderer({
                   leftoverWidth,
                   leftoverHeight
                 )
-                const viewBoxParts = displayViewBox.split(' ').map(Number)
-                const viewBoxWidth = viewBoxParts[2]
+                const viewBoxWidth = parsedViewBox.width
 
                 if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) {
                   return `${z.toFixed(1)}×`
@@ -4447,11 +4341,12 @@ export function MapRenderer({
         const magLeft = targetLeft
 
         // Calculate indicator box position in screen coordinates
-        const viewBoxParts = displayViewBox.split(' ').map(Number)
-        const viewBoxX = viewBoxParts[0] || 0
-        const viewBoxY = viewBoxParts[1] || 0
-        const viewBoxWidth = viewBoxParts[2] || 1000
-        const viewBoxHeight = viewBoxParts[3] || 1000
+        const {
+          x: viewBoxX,
+          y: viewBoxY,
+          width: viewBoxWidth,
+          height: viewBoxHeight,
+        } = parsedViewBox
 
         const currentZoom = getCurrentZoom()
         // Use adjusted dimensions to match magnifier aspect ratio
@@ -4942,10 +4837,6 @@ export function MapRenderer({
             }
           }
           if (!player) {
-            console.log(
-              '[CursorShare] ⚠️ No player found in playerMetadata or memberPlayers for playerId:',
-              position.playerId
-            )
             return null
           }
 
@@ -4959,11 +4850,7 @@ export function MapRenderer({
           // Convert SVG coordinates to screen coordinates (accounting for preserveAspectRatio letterboxing)
           const svgRect = svgRef.current!.getBoundingClientRect()
           const containerRect = containerRef.current!.getBoundingClientRect()
-          const viewBoxParts = displayViewBox.split(' ').map(Number)
-          const viewBoxX = viewBoxParts[0] || 0
-          const viewBoxY = viewBoxParts[1] || 0
-          const viewBoxW = viewBoxParts[2] || 1000
-          const viewBoxH = viewBoxParts[3] || 500
+          const { x: viewBoxX, y: viewBoxY, width: viewBoxW, height: viewBoxH } = parsedViewBox
           const viewport = getRenderedViewport(svgRect, viewBoxX, viewBoxY, viewBoxW, viewBoxH)
           const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
           const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY

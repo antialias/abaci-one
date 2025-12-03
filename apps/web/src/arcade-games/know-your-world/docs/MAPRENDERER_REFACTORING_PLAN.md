@@ -7,6 +7,29 @@ performance, maintainability, and debuggability.
 
 ---
 
+## ✅ Completed Work (December 2024)
+
+### Phase 1.1: ViewBox Memoization ✅
+- Created `parsedViewBox` useMemo that parses viewBox once
+- Replaced 24 inline `displayViewBox.split(' ').map(Number)` calls
+- Location: MapRenderer.tsx, lines ~760-770
+
+### Phase 1.2: Pulsing Animation Utility ✅
+- Created `usePulsingAnimation` hook in `features/animations/`
+- Replaced 3 identical animation patterns (give-up, hint, celebration)
+- Hook returns stable memoized `{ start, cancel }` object
+- Location: `features/animations/usePulsingAnimation.ts`
+
+### Phase 1.3: Coordinate Conversion Utility ✅
+- Added `cursorToSvgCoordinates()` to `features/magnifier/panningMath.ts`
+- Encapsulates repeated cursor-to-SVG coordinate conversion logic
+- Ready to be used to simplify magnifier IIFEs
+
+### Console Spam Cleanup ✅
+- Removed 5 `[CursorShare]` console.log statements from useArcadeSocket.ts and MapRenderer.tsx
+
+---
+
 ## Phase 1: Quick Wins (Low Risk, High Impact)
 
 ### 1.1 Memoize ViewBox Parsing
@@ -138,6 +161,19 @@ interface MagnifierOverlayProps {
 ```
 
 **Impact:** MapRenderer drops to ~4,000 lines, magnifier becomes independently testable.
+
+**⚠️ Analysis Note (December 2024):**
+After detailed analysis, this extraction is more complex than initially estimated:
+- The IIFE has 20+ dependencies including refs (svgRef, containerRef, magnifierRef)
+- Uses animated springs that compute values on-the-fly (zoomSpring, magnifierSpring)
+- Contains nested IIFEs with duplicate coordinate calculations
+- Touch handlers are defined outside and referenced inside
+
+**Recommended Incremental Approach:**
+1. ✅ Use `cursorToSvgCoordinates()` to deduplicate coordinate conversions (utility added)
+2. Extract magnifier styling calculations into a `useMagnifierStyle` hook
+3. Create a MagnifierContext to share computed values instead of prop drilling
+4. Finally extract the component once dependencies are cleaner
 
 ---
 
