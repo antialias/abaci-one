@@ -9,10 +9,10 @@
  * - Multi-layer anti-spam (cooldowns, confidence gating)
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocale } from 'next-intl'
-import { speakText, getLanguageForRegion, shouldShowAccentOption } from '../utils/speechSynthesis'
-import { getRandomPhrase, type FeedbackType } from '../utils/hotColdPhrases'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type FeedbackType, getRandomPhrase } from '../utils/hotColdPhrases'
+import { getLanguageForRegion, shouldShowAccentOption, speakText } from '../utils/speechSynthesis'
 import { useAvailableVoices } from './useSpeakHint'
 
 // Map app locales to BCP 47 language tags for speech synthesis
@@ -357,7 +357,8 @@ export function useHotColdFeedback({
   const checkPosition = useCallback(
     ({ cursorPosition, targetCenter, hoveredRegionId, cursorSvgPosition }: CheckPositionParams) => {
       if (!enabled || !targetCenter || !targetRegionId) return
-      if (isSpeaking || externalSpeaking) return
+      // Note: We no longer block visual feedback when speaking - only audio gates should prevent speech
+      // The old code had `if (isSpeaking || externalSpeaking) return` here which blocked BOTH visual and audio
 
       const now = performance.now()
       const state = stateRef.current
