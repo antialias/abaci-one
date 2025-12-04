@@ -35,7 +35,6 @@ import { MagnifierControls } from './MagnifierControls'
 import { MagnifierCrosshair } from './MagnifierCrosshair'
 import { MagnifierPixelGrid } from './MagnifierPixelGrid'
 import { MagnifierRegions } from './MagnifierRegions'
-import type { CrosshairStyle as HeatCrosshairStyle } from './types'
 
 // ============================================================================
 // Types
@@ -89,7 +88,12 @@ export function MagnifierOverlay({
     precisionCalcs,
     getCurrentZoom,
     highZoomThreshold,
+    scaleProbe1Ref,
+    scaleProbe2Ref,
   } = useMagnifierContext()
+
+  // Distance between scale probes in SVG units (must match useEmpiricalScale.ts)
+  const SCALE_PROBE_DISTANCE = 100
 
   const {
     mapData,
@@ -261,7 +265,7 @@ export function MagnifierOverlay({
           showOutline={showOutline}
         />
 
-        {/* Crosshair at center position */}
+        {/* Crosshair at center position + Scale probes for empirical measurement */}
         {(() => {
           const viewport = getRenderedViewport(
             svgRect,
@@ -276,13 +280,37 @@ export function MagnifierOverlay({
           const cursorSvgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBoxY
 
           return (
-            <MagnifierCrosshair
-              cursorSvgX={cursorSvgX}
-              cursorSvgY={cursorSvgY}
-              viewBoxWidth={viewBoxWidth}
-              rotationAngle={rotationAngle}
-              heatStyle={crosshairHeatStyle}
-            />
+            <>
+              <MagnifierCrosshair
+                cursorSvgX={cursorSvgX}
+                cursorSvgY={cursorSvgY}
+                viewBoxWidth={viewBoxWidth}
+                rotationAngle={rotationAngle}
+                heatStyle={crosshairHeatStyle}
+              />
+              {/* Scale probe circles for empirical 1:1 tracking measurement */}
+              {/* These are invisible but their screen positions are measured via getBoundingClientRect */}
+              <circle
+                ref={scaleProbe1Ref}
+                cx={cursorSvgX - SCALE_PROBE_DISTANCE / 2}
+                cy={cursorSvgY}
+                r={0.5}
+                fill="transparent"
+                stroke="none"
+                pointerEvents="none"
+                data-scale-probe="1"
+              />
+              <circle
+                ref={scaleProbe2Ref}
+                cx={cursorSvgX + SCALE_PROBE_DISTANCE / 2}
+                cy={cursorSvgY}
+                r={0.5}
+                fill="transparent"
+                stroke="none"
+                pointerEvents="none"
+                data-scale-probe="2"
+              />
+            </>
           )
         })()}
 

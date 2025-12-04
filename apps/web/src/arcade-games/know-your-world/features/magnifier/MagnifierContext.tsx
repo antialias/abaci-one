@@ -15,8 +15,8 @@
 
 'use client'
 
-import { createContext, useContext, useMemo, type ReactNode, type RefObject } from 'react'
 import type { SpringValue } from '@react-spring/web'
+import { createContext, type ReactNode, type RefObject, useContext, useMemo } from 'react'
 
 import type { UseInteractionStateMachineReturn } from '../interaction'
 
@@ -66,6 +66,10 @@ export interface MagnifierContextValue {
   magnifierRef: RefObject<HTMLDivElement>
   /** Cursor position ref (mutable) */
   cursorPositionRef: React.MutableRefObject<{ x: number; y: number } | null>
+  /** Scale probe 1 ref (for empirical scale measurement) */
+  scaleProbe1Ref: RefObject<SVGCircleElement>
+  /** Scale probe 2 ref (for empirical scale measurement) */
+  scaleProbe2Ref: RefObject<SVGCircleElement>
 
   // -------------------------------------------------------------------------
   // Position & Animation
@@ -187,6 +191,8 @@ export function MagnifierProvider({ children, value }: MagnifierProviderProps) {
       value.svgRef,
       value.magnifierRef,
       value.cursorPositionRef,
+      value.scaleProbe1Ref,
+      value.scaleProbe2Ref,
       // Position & Animation
       value.cursorPosition,
       value.zoomSpring,

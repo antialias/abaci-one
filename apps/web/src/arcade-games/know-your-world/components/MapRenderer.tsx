@@ -19,18 +19,11 @@ import {
 } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
-  applyPanDelta,
-  calculateTouchMultiplier,
-  clampToSvgBounds,
   getAdjustedMagnifiedDimensions,
   getMagnifierDimensions,
   type MagnifierContextValue,
-  MagnifierCrosshair,
   MagnifierOverlayWithHandlers,
-  MagnifierPixelGrid,
   MagnifierProvider,
-  MagnifierRegions,
-  parseViewBoxDimensions,
   type UseMagnifierTouchHandlersOptions,
   useMagnifierState,
   useMagnifierStyle,
@@ -51,7 +44,6 @@ import { usePointerLock } from '../hooks/usePointerLock'
 import { useRegionDetection } from '../hooks/useRegionDetection'
 import { useHasRegionHint, useRegionHint } from '../hooks/useRegionHint'
 import { useSpeakHint } from '../hooks/useSpeakHint'
-import { getRegionColor, getRegionStroke } from '../mapColors'
 import {
   ASSISTANCE_LEVELS,
   calculateFitCropViewBox,
@@ -67,7 +59,7 @@ import type { HintMap } from '../messages'
 import { useKnowYourWorld } from '../Provider'
 import type { MapData, MapRegion } from '../types'
 import { type BoundingBox as DebugBoundingBox, findOptimalZoom } from '../utils/adaptiveZoomSearch'
-import { CELEBRATION_TIMING, classifyCelebration } from '../utils/celebration'
+import { classifyCelebration } from '../utils/celebration'
 import {
   calculateMaxZoomAtThreshold,
   calculateScreenPixelRatio,
@@ -512,6 +504,9 @@ export function MapRenderer({
 
   // Ref to magnifier element for tap position calculation
   const magnifierRef = useRef<HTMLDivElement>(null)
+  // Refs for scale probe elements (for empirical 1:1 tracking measurement)
+  const scaleProbe1Ref = useRef<SVGCircleElement>(null)
+  const scaleProbe2Ref = useRef<SVGCircleElement>(null)
   // Where user tapped on magnifier
   const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null)
 
@@ -2359,6 +2354,8 @@ export function MapRenderer({
       svgRef,
       magnifierRef,
       cursorPositionRef,
+      scaleProbe1Ref,
+      scaleProbe2Ref,
       // Position & Animation (cursorPosition comes from state machine)
       cursorPosition,
       zoomSpring,
@@ -2397,6 +2394,8 @@ export function MapRenderer({
       svgRef,
       magnifierRef,
       cursorPositionRef,
+      scaleProbe1Ref,
+      scaleProbe2Ref,
       cursorPosition,
       zoomSpring,
       magnifierSpring,

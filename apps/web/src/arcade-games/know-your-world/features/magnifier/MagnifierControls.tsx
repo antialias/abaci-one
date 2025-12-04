@@ -9,7 +9,7 @@
 
 'use client'
 
-import { memo, type TouchEvent as ReactTouchEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
 
 // ============================================================================
 // Types

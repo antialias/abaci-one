@@ -15,8 +15,8 @@ import type { SpringValue } from '@react-spring/web'
 
 import { MagnifierOverlay } from './MagnifierOverlay'
 import {
-  useMagnifierTouchHandlers,
   type UseMagnifierTouchHandlersOptions,
+  useMagnifierTouchHandlers,
 } from './useMagnifierTouchHandlers'
 
 // ============================================================================

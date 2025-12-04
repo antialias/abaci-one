@@ -39,6 +39,11 @@
 // ============================================================================
 
 export type {
+  EmpiricalScaleResult,
+  UseEmpiricalScaleReturn,
+} from './useEmpiricalScale'
+export { useEmpiricalScale } from './useEmpiricalScale'
+export type {
   UseMagnifierStateOptions,
   UseMagnifierStateReturn,
 } from './useMagnifierState'
