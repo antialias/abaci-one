@@ -218,7 +218,14 @@ export function useGiveUpReveal(options: UseGiveUpRevealOptions): UseGiveUpRevea
         clearTimeout(timeoutId)
       }
     }
-  }, [giveUpReveal?.timestamp, giveUpAnimation, svgRef, containerRef, fillContainer, navHeightOffset])
+  }, [
+    giveUpReveal?.timestamp,
+    giveUpAnimation,
+    svgRef,
+    containerRef,
+    fillContainer,
+    navHeightOffset,
+  ])
 
   return {
     giveUpFlashProgress,

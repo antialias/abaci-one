@@ -435,6 +435,14 @@ export function useMagnifierTouchHandlers(
   // -------------------------------------------------------------------------
   const handleMagnifierTouchEnd = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
+      const currentPhase = interaction.state.mode === 'mobile' ? interaction.state.phase : 'N/A'
+      console.log('[handleMagnifierTouchEnd] Called', {
+        currentPhase,
+        isPinchingFromMachine,
+        touchesLength: e.touches.length,
+        changedTouchesLength: e.changedTouches.length,
+        didMove: magnifierDidMoveRef.current,
+      })
       // Always stop propagation to prevent map container from receiving touch end
       // (which would trigger dismissMagnifier via handleMapTouchEnd)
       e.stopPropagation()
@@ -465,6 +473,8 @@ export function useMagnifierTouchHandlers(
         type: 'TOUCH_END',
         touchCount: e.touches.length, // Number of fingers still touching
       })
+      console.log('[handleMagnifierTouchEnd] After dispatch, new phase:',
+        interaction.state.mode === 'mobile' ? interaction.state.phase : 'N/A')
 
       // State machine is authoritative for dragging state (magnifierPanning phase)
       magnifierTouchStartRef.current = null

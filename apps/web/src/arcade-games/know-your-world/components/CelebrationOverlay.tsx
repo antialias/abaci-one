@@ -11,7 +11,7 @@
 'use client'
 
 import { css } from '@styled/css'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import type { CelebrationState } from '../Provider'
 import { ConfettiBurst } from './Confetti'
 import { useMusicOptional } from '../music/MusicContext'
@@ -48,6 +48,11 @@ export function CelebrationOverlay({
     () => HARD_EARNED_MESSAGES[Math.floor(Math.random() * HARD_EARNED_MESSAGES.length)]
   )
 
+  // Store onComplete in a ref so the timer doesn't restart when the callback changes
+  // This fixes a bug where mouse movement during celebration would restart the timer
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
   // NOTE: Celebration sound is handled by MusicContext (via the celebration prop)
   // We don't play it here to avoid duplicate sounds
   useEffect(() => {
@@ -67,11 +72,11 @@ export function CelebrationOverlay({
   useEffect(() => {
     if (reducedMotion) {
       const timer = setTimeout(() => {
-        onComplete()
+        onCompleteRef.current()
       }, 500) // Brief delay for reduced motion
       return () => clearTimeout(timer)
     }
-  }, [reducedMotion, onComplete])
+  }, [reducedMotion])
 
   // Reduced motion: simple notification only
   if (reducedMotion) {

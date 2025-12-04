@@ -6,9 +6,9 @@
  */
 
 import { css } from '@styled/css'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CelebrationType } from '../Provider'
-import { CONFETTI_CONFIG, CELEBRATION_TIMING } from '../utils/celebration'
+import { CELEBRATION_TIMING, CONFETTI_CONFIG } from '../utils/celebration'
 
 interface ConfettiProps {
   type: CelebrationType
@@ -62,15 +62,19 @@ export function Confetti({ type, origin, onComplete }: ConfettiProps) {
   const particles = useMemo(() => generateParticles(type, origin), [type, origin])
   const timing = CELEBRATION_TIMING[type]
 
+  // Store onComplete in a ref so the timer doesn't restart when the callback changes
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
   // Call onComplete when animation finishes
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsComplete(true)
-      onComplete()
+      onCompleteRef.current()
     }, timing.confettiDuration)
 
     return () => clearTimeout(timer)
-  }, [timing.confettiDuration, onComplete])
+  }, [timing.confettiDuration])
 
   if (isComplete) return null
 
@@ -132,14 +136,19 @@ export function ConfettiBurst({ type, origin, onComplete }: ConfettiProps) {
   const particles = useMemo(() => generateParticles(type, origin), [type, origin])
   const timing = CELEBRATION_TIMING[type]
 
+  // Store onComplete in a ref so the timer doesn't restart when the callback changes
+  // This fixes a bug where mouse movement during celebration would restart the timer
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsComplete(true)
-      onComplete()
+      onCompleteRef.current()
     }, timing.confettiDuration)
 
     return () => clearTimeout(timer)
-  }, [timing.confettiDuration, onComplete])
+  }, [timing.confettiDuration])
 
   if (isComplete) return null
 

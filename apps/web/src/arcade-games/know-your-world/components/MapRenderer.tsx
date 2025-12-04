@@ -10,6 +10,7 @@ import { useCelebrationAnimation } from '../features/celebration'
 import { useCrosshairRotation } from '../features/crosshair'
 import { CustomCursor, HeatCrosshair } from '../features/cursor'
 import { AutoZoomDebugOverlay, HotColdDebugPanel, SafeZoneDebugOverlay } from '../features/debug'
+import { type MapGameContextValue, MapGameProvider } from '../features/game'
 import { useHintAnimation } from '../features/hint'
 import {
   calculatePointerLockMovement,
@@ -17,28 +18,27 @@ import {
   useInteractionStateMachine,
 } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
-import { useGiveUpReveal } from '../features/reveal'
-import { MapGameProvider, type MapGameContextValue } from '../features/game'
 import {
   applyPanDelta,
   calculateTouchMultiplier,
   clampToSvgBounds,
   getAdjustedMagnifiedDimensions,
   getMagnifierDimensions,
+  type MagnifierContextValue,
   MagnifierCrosshair,
   MagnifierOverlayWithHandlers,
   MagnifierPixelGrid,
   MagnifierProvider,
   MagnifierRegions,
   parseViewBoxDimensions,
+  type UseMagnifierTouchHandlersOptions,
   useMagnifierState,
   useMagnifierStyle,
   ZoomLinesOverlay,
-  type MagnifierContextValue,
-  type UseMagnifierTouchHandlersOptions,
 } from '../features/magnifier'
 import { NetworkCursors } from '../features/multiplayer'
 import { usePrecisionCalculations } from '../features/precision'
+import { useGiveUpReveal } from '../features/reveal'
 import { useGameSettings } from '../features/settings'
 import {
   useCanUsePrecisionMode,
@@ -508,9 +508,7 @@ export function MapRenderer({
   // Compute showMagnifier based on device type:
   // - Mobile: state machine is authoritative (isMagnifierActive)
   // - Desktop: use magnifierState.isVisible (set by event handlers based on shouldShow logic)
-  const showMagnifier = isTouchDevice
-    ? interaction.isMagnifierActive
-    : magnifierState.isVisible
+  const showMagnifier = isTouchDevice ? interaction.isMagnifierActive : magnifierState.isVisible
 
   // Ref to magnifier element for tap position calculation
   const magnifierRef = useRef<HTMLDivElement>(null)
@@ -1025,8 +1023,17 @@ export function MapRenderer({
 
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log('[handleContainerClick] Called', {
+      suppressNextClick: suppressNextClickRef.current,
+      pointerLocked,
+      isPointerLockSupported,
+      target: (e.target as Element)?.tagName,
+      currentTarget: (e.currentTarget as Element)?.tagName,
+    })
+
     // If we just finished a drag, suppress this click (user was dragging, not clicking)
     if (suppressNextClickRef.current) {
+      console.log('[handleContainerClick] Suppressed - drag just finished')
       suppressNextClickRef.current = false
       return
     }
@@ -1035,6 +1042,7 @@ export function MapRenderer({
     // This makes the first gameplay click also enable precision mode
     // On devices without pointer lock (iPad), skip this and process clicks normally
     if (!pointerLocked && isPointerLockSupported) {
+      console.log('[handleContainerClick] Requesting pointer lock')
       requestPointerLock()
       return // Don't process region click on the first click that requests lock
     }
@@ -1259,21 +1267,39 @@ export function MapRenderer({
 
   // Handle celebration completion - call the actual click after animation
   const handleCelebrationComplete = useCallback(() => {
+    console.log('[handleCelebrationComplete] Called', {
+      pending: pendingCelebrationClick.current,
+    })
     const pending = pendingCelebrationClick.current
     if (pending) {
+      console.log('[handleCelebrationComplete] Clearing celebration and calling onRegionClick')
       // Clear celebration state (hook will reset flash progress automatically)
       setCelebration(null)
       // Then fire the actual click
       onRegionClick(pending.regionId, pending.regionName)
       pendingCelebrationClick.current = null
+    } else {
+      console.log('[handleCelebrationComplete] No pending click - nothing to do')
     }
   }, [setCelebration, onRegionClick])
 
   // Wrapper function to intercept clicks and trigger celebration for correct regions
   const handleRegionClickWithCelebration = useCallback(
     (regionId: string, regionName: string) => {
+      console.log('[handleRegionClickWithCelebration] Called with:', {
+        regionId,
+        regionName,
+        currentPrompt,
+        celebration: celebration
+          ? { regionId: celebration.regionId, type: celebration.type }
+          : null,
+        puzzlePieceTarget: puzzlePieceTarget ? { regionId: puzzlePieceTarget.regionId } : null,
+      })
       // If we're already celebrating or puzzle piece animating, ignore clicks
-      if (celebration || puzzlePieceTarget) return
+      if (celebration || puzzlePieceTarget) {
+        console.log('[handleRegionClickWithCelebration] Blocked - already celebrating or animating')
+        return
+      }
 
       // Check if this is the correct region
       if (regionId === currentPrompt) {
@@ -2225,19 +2251,36 @@ export function MapRenderer({
   }, [onCursorUpdate, gameMode, currentPlayer, localPlayerId, interaction])
 
   const handleMapTouchEnd = useCallback(() => {
-    const wasDragging = isMobileMapDragging
+    const wasDraggingMap = isMobileMapDragging
+    const wasDraggingMagnifier = interaction.isMagnifierDragging
+    const wasPinching = interaction.isPinching
+    const phaseBefore = interaction.state.mode === 'mobile' ? interaction.state.phase : 'N/A'
+    console.log('[handleMapTouchEnd] Called', {
+      wasDraggingMap,
+      wasDraggingMagnifier,
+      wasPinching,
+      showMagnifier,
+      phaseBefore,
+      hasCursor: !!cursorPositionRef.current,
+    })
     mapTouchStartRef.current = null
 
     // Dispatch state machine event for touch end
     interaction.dispatch({ type: 'TOUCH_END', touchCount: 0 })
 
-    if (wasDragging) {
-      // State machine handles the transition from mapPanning → magnifierActive
-      // and sets magnifierTriggeredByDrag: true (shows Select button)
-      // Keep magnifier visible after drag ends - user can tap "Select" button or tap elsewhere to dismiss
-      // Don't hide magnifier or clear cursor - leave them in place for selection
+    // Check if we were interacting with map or magnifier (drag/pinch)
+    // If interacting with magnifier, the touch end event shouldn't have come here
+    // (magnifier should capture it) but if it does, we should NOT dismiss the magnifier
+    if (wasDraggingMap || wasDraggingMagnifier || wasPinching) {
+      // State machine handles the transition:
+      // - mapPanning → magnifierActive (sets magnifierTriggeredByDrag: true)
+      // - magnifierPanning → magnifierActive
+      // - magnifierPinching → magnifierActive
+      // Keep magnifier visible - user can tap "Select" button or tap elsewhere to dismiss
+      console.log('[handleMapTouchEnd] Was dragging/pinching - keeping magnifier')
     } else if (showMagnifier && cursorPositionRef.current) {
       // User tapped on map (not a drag) while magnifier is visible - dismiss the magnifier
+      console.log('[handleMapTouchEnd] Dismissing magnifier (tap on map while visible)')
       dismissMagnifier()
     }
   }, [isMobileMapDragging, showMagnifier, dismissMagnifier, interaction])
