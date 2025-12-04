@@ -7,13 +7,17 @@
  * - Dimension calculations
  * - Zoom state management
  * - Touch interactions (pan, pinch-to-zoom)
- * - State management (visibility, expansion)
+ *
+ * ## State Management
+ *
+ * Magnifier display state (visibility, opacity, expansion) is now managed by the
+ * interaction state machine in `features/interaction/useInteractionStateMachine.ts`.
+ * Child components can access this state via `MagnifierContext.interaction`.
  *
  * ## Usage
  *
  * ```tsx
  * import {
- *   useMagnifierState,
  *   useMagnifierTouchHandlers,
  *   useMagnifierZoom,
  *   MagnifierCrosshair,
@@ -22,8 +26,12 @@
  * } from '../features/magnifier'
  *
  * function MapRenderer() {
- *   const magnifier = useMagnifierState()
+ *   const interaction = useInteractionStateMachine()
  *   const zoom = useMagnifierZoom({ ... })
+ *
+ *   // Magnifier visibility and state from state machine
+ *   const showMagnifier = interaction.showMagnifier
+ *   const magnifierOpacity = interaction.magnifierOpacity
  *
  *   return (
  *     <MagnifierProvider value={magnifierContextValue}>
@@ -43,11 +51,8 @@ export type {
   UseEmpiricalScaleReturn,
 } from './useEmpiricalScale'
 export { useEmpiricalScale } from './useEmpiricalScale'
-export type {
-  UseMagnifierStateOptions,
-  UseMagnifierStateReturn,
-} from './useMagnifierState'
-export { useMagnifierState } from './useMagnifierState'
+// Note: useMagnifierState has been removed - magnifier state is now managed by
+// the interaction state machine in features/interaction/useInteractionStateMachine.ts
 export type {
   MagnifierStyleInputs,
   MagnifierStyleResult,

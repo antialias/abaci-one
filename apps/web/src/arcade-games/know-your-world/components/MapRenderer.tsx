@@ -11,7 +11,7 @@ import { useCrosshairRotation } from '../features/crosshair'
 import { CustomCursor, HeatCrosshair } from '../features/cursor'
 import { AutoZoomDebugOverlay, HotColdDebugPanel, SafeZoneDebugOverlay } from '../features/debug'
 import { type MapGameContextValue, MapGameProvider } from '../features/game'
-import { useHintAnimation } from '../features/hint'
+import { useHintAnimation, useStruggleDetection } from '../features/hint'
 import {
   calculatePointerLockMovement,
   checkDragThreshold,
@@ -25,7 +25,6 @@ import {
   MagnifierOverlayWithHandlers,
   MagnifierProvider,
   type UseMagnifierTouchHandlersOptions,
-  useMagnifierState,
   useMagnifierStyle,
   ZoomLinesOverlay,
 } from '../features/magnifier'
@@ -33,6 +32,7 @@ import { NetworkCursors } from '../features/multiplayer'
 import { usePrecisionCalculations } from '../features/precision'
 import { useGiveUpReveal } from '../features/reveal'
 import { useGameSettings } from '../features/settings'
+import { useSpeechAnnouncements } from '../features/speech'
 import {
   useCanUsePrecisionMode,
   useHasAnyFinePointer,
@@ -93,16 +93,6 @@ const SAFE_ZONE_MARGINS: SafeZoneMargins = {
   right: 0, // Controls now in floating prompt, no right margin needed
   bottom: 0, // Error banner can overlap map
   left: 0, // Progress at top-left is small, doesn't need full-height margin
-}
-
-interface BoundingBox {
-  minX: number
-  maxX: number
-  minY: number
-  maxY: number
-  width: number
-  height: number
-  area: number
 }
 
 interface MapRendererProps {
@@ -184,37 +174,6 @@ interface MapRendererProps {
   difficulty?: string
   /** Map display name */
   mapName?: string
-}
-
-/**
- * Calculate bounding box from SVG path string
- */
-function calculateBoundingBox(pathString: string): BoundingBox {
-  const numbers = pathString.match(/-?\d+\.?\d*/g)?.map(Number) || []
-
-  if (numbers.length === 0) {
-    return { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0, area: 0 }
-  }
-
-  const xCoords: number[] = []
-  const yCoords: number[] = []
-
-  for (let i = 0; i < numbers.length; i += 2) {
-    xCoords.push(numbers[i])
-    if (i + 1 < numbers.length) {
-      yCoords.push(numbers[i + 1])
-    }
-  }
-
-  const minX = Math.min(...xCoords)
-  const maxX = Math.max(...xCoords)
-  const minY = Math.min(...yCoords)
-  const maxY = Math.max(...yCoords)
-  const width = maxX - minX
-  const height = maxY - minY
-  const area = width * height
-
-  return { minX, maxX, minY, maxY, width, height, area }
 }
 
 export function MapRenderer({
@@ -471,36 +430,54 @@ export function MapRenderer({
   // cursorPosition now comes from state machine (cursorPositionFromMachine defined below)
   // The useState was removed as part of state machine migration
 
-  // Magnifier state (consolidated hook)
-  const magnifierState = useMagnifierState()
-  // showMagnifier is now computed below based on device type:
-  // - Mobile: derived from interaction.isMagnifierActive (state machine is authoritative)
-  // - Desktop: computed from multiple sources (shift, drag, detection)
-  // Legacy setShowMagnifier wrapper for compatibility during migration
+  // ============================================================================
+  // Magnifier State (from Interaction State Machine)
+  // ============================================================================
+  // All magnifier display state now comes from the state machine.
+  // The old useMagnifierState hook is no longer needed.
+
+  // Unified showMagnifier from state machine (works for both mobile and desktop)
+  // For mobile: also check isMagnifierActive phase for backward compatibility
+  const showMagnifier = isTouchDevice
+    ? interaction.isMagnifierActive || interaction.showMagnifier
+    : interaction.showMagnifier
+
+  // Magnifier display state from state machine
+  const targetOpacity = interaction.magnifierOpacity
+  const isMagnifierExpanded = interaction.isMagnifierExpanded
+
+  // Wrapper callbacks that dispatch to the state machine
+  // These maintain the same API for child components via context
   const setShowMagnifier = useCallback(
     (show: boolean) => {
-      if (show) magnifierState.show()
-      else magnifierState.hide()
+      if (show) {
+        interaction.dispatch({ type: 'MAGNIFIER_SHOW' })
+      } else {
+        interaction.dispatch({ type: 'MAGNIFIER_HIDE' })
+      }
     },
-    [magnifierState]
+    [interaction]
   )
-  // Destructure remaining magnifier state from hook
-  // Note: isDragging/setDragging and isPinching/setPinching removed - state machine is authoritative
-  const {
-    targetOpacity,
-    setTargetOpacity,
-    isExpanded: isMagnifierExpanded,
-    setExpanded: setIsMagnifierExpanded,
-    touchStartRef: magnifierTouchStartRef,
-    didMoveRef: magnifierDidMoveRef,
-    pinchStartDistanceRef,
-    pinchStartZoomRef,
-  } = magnifierState
 
-  // Compute showMagnifier based on device type:
-  // - Mobile: state machine is authoritative (isMagnifierActive)
-  // - Desktop: use magnifierState.isVisible (set by event handlers based on shouldShow logic)
-  const showMagnifier = isTouchDevice ? interaction.isMagnifierActive : magnifierState.isVisible
+  const setTargetOpacity = useCallback(
+    (opacity: number) => {
+      interaction.dispatch({ type: 'MAGNIFIER_SET_OPACITY', opacity })
+    },
+    [interaction]
+  )
+
+  const setIsMagnifierExpanded = useCallback(
+    (expanded: boolean) => {
+      interaction.dispatch({ type: 'MAGNIFIER_SET_EXPANDED', expanded })
+    },
+    [interaction]
+  )
+
+  // Touch tracking refs (these remain local, not in state machine)
+  const magnifierTouchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const magnifierDidMoveRef = useRef(false)
+  const pinchStartDistanceRef = useRef<number | null>(null)
+  const pinchStartZoomRef = useRef<number | null>(null)
 
   // Ref to magnifier element for tap position calculation
   const magnifierRef = useRef<HTMLDivElement>(null)
@@ -510,9 +487,6 @@ export function MapRenderer({
   // Refs for closed-loop anchor probe tracking (1:1 touch tracking)
   const anchorProbeRef = useRef<SVGCircleElement>(null)
   const anchorSvgPositionRef = useRef<{ x: number; y: number } | null>(null)
-  const fingerStartRef = useRef<{ x: number; y: number } | null>(null)
-  // Where user tapped on magnifier
-  const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null)
 
   // Initialize magnifier position within the safe zone (below nav/floating UI)
   const [targetTop, setTargetTop] = useState(SAFE_ZONE_MARGINS.top)
@@ -644,185 +618,29 @@ export function MapRenderer({
   // Shows on all devices - mobile uses magnifier for hot/cold feedback
   const showHotCold = isSpeechSupported && assistanceAllowsHotCold
 
-  // Speak hint callback
-  const handleSpeakClick = useCallback(() => {
-    if (isSpeaking) {
-      stopSpeaking()
-    } else if (currentRegionName) {
-      speakWithRegionName(currentRegionName, hintText, withAccent)
-    }
-  }, [isSpeaking, stopSpeaking, currentRegionName, hintText, speakWithRegionName, withAccent])
-
-  // Track previous showHintBubble state to detect when it opens
-  const prevShowHintBubbleRef = useRef(false)
-
-  // Auto-speak hint when bubble opens (if enabled)
-  // Only triggers when bubble transitions from closed to open, not when hintText changes
-  useEffect(() => {
-    const justOpened = showHintBubble && !prevShowHintBubbleRef.current
-    prevShowHintBubbleRef.current = showHintBubble
-
-    if (justOpened && autoSpeak && currentRegionName && isSpeechSupported) {
-      speakWithRegionName(currentRegionName, hintText, withAccent)
-    }
-  }, [
-    showHintBubble,
-    autoSpeak,
-    currentRegionName,
-    hintText,
+  // Speech announcements (auto-speak, "You found", hint cycling, etc.)
+  const { handleSpeakClick } = useSpeechAnnouncements({
     isSpeechSupported,
+    isSpeaking,
+    speak,
     speakWithRegionName,
-    withAccent,
-  ])
-
-  // Track previous prompt to detect region changes
-  const prevPromptRef = useRef<string | null>(null)
-  // Note: autoHintRef, autoSpeakRef, withAccentRef, hotColdEnabledRef are provided by useGameSettings
-  // Note: effectiveHotColdEnabled is also provided by useGameSettings
-
-  // Handle hint bubble and auto-speak when the prompt changes (new region to find)
-  // Also re-runs when hintsLocked changes (e.g., user unlocked hints by typing name)
-  useEffect(() => {
-    const isNewRegion = prevPromptRef.current !== null && prevPromptRef.current !== currentPrompt
-    prevPromptRef.current = currentPrompt
-
-    // Don't auto-show hints when locked (e.g., waiting for name confirmation)
-    if (autoHintRef.current && hasHint && !hintsLocked) {
-      setShowHintBubble(true)
-      // If region changed and both auto-hint and auto-speak are enabled, speak immediately
-      // This handles the case where the bubble was already open
-      if (isNewRegion && autoSpeakRef.current && currentRegionName && isSpeechSupported) {
-        speakWithRegionName(currentRegionName, hintText, withAccentRef.current)
-      }
-    } else {
-      setShowHintBubble(false)
-    }
-  }, [
+    stopSpeaking,
     currentPrompt,
-    hasHint,
     currentRegionName,
     hintText,
-    isSpeechSupported,
-    speakWithRegionName,
+    hintIndex,
+    withAccent,
+    autoSpeak,
+    showHintBubble,
+    setShowHintBubble,
+    hasHint,
     hintsLocked,
-  ])
-
-  // Part 1: Announce region name when a new prompt appears (takeover)
-  // This speaks just the region name when the prompt changes, before hints unlock
-  // Adds a delay after "You found" to give a breather before the next region
-  const prevPromptForAnnouncementRef = useRef<string | null>(null)
-  const lastFoundAnnouncementTimeRef = useRef<number>(0)
-  const announcementTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (announcementTimeoutRef.current) {
-        clearTimeout(announcementTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    // Clear any pending announcement when prompt changes
-    if (announcementTimeoutRef.current) {
-      clearTimeout(announcementTimeoutRef.current)
-      announcementTimeoutRef.current = null
-    }
-
-    // Only announce if:
-    // 1. We have speech support
-    // 2. We have a new prompt (different from previous)
-    // 3. We have a region name
-    if (!isSpeechSupported || !currentPrompt || !currentRegionName) {
-      prevPromptForAnnouncementRef.current = currentPrompt
-      return
-    }
-
-    // Check if this is a new prompt (not just re-render)
-    if (currentPrompt === prevPromptForAnnouncementRef.current) {
-      return
-    }
-
-    prevPromptForAnnouncementRef.current = currentPrompt
-
-    // Calculate delay: give a breather after "You found" announcement
-    // Wait at least 2 seconds after the last "You found" before announcing next region
-    const MIN_DELAY_AFTER_FOUND = 2000
-    const timeSinceLastFound = Date.now() - lastFoundAnnouncementTimeRef.current
-    const delay = Math.max(0, MIN_DELAY_AFTER_FOUND - timeSinceLastFound)
-
-    if (delay > 0) {
-      // Schedule delayed announcement
-      announcementTimeoutRef.current = setTimeout(() => {
-        speakWithRegionName(currentRegionName, hintText, false)
-        announcementTimeoutRef.current = null
-      }, delay)
-    } else {
-      // No recent "You found", announce immediately
-      speakWithRegionName(currentRegionName, hintText, false)
-    }
-  }, [currentPrompt, currentRegionName, hintText, isSpeechSupported, speakWithRegionName])
-
-  // Part 2: Announce "You found {region}" at the START of part 2
-  // - In learning mode: Triggered when puzzlePieceTarget is set (takeover fades back in)
-  // - In other modes: Triggered when celebration is set (immediately after finding)
-  // Uses just regionId as key to prevent double announcement (puzzle -> celebration transition)
-  const prevFoundAnnouncementRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!isSpeechSupported) return
-
-    // Determine what to announce (prioritize puzzlePieceTarget for learning mode)
-    const regionId = puzzlePieceTarget?.regionId ?? celebration?.regionId
-    const regionName = puzzlePieceTarget?.regionName ?? celebration?.regionName
-
-    if (regionId && regionName) {
-      // Use just regionId as key - prevents double announcement when
-      // puzzlePieceTarget transitions to celebration for the same region
-      if (regionId !== prevFoundAnnouncementRef.current) {
-        prevFoundAnnouncementRef.current = regionId
-        speak(`You found ${regionName}`, false)
-      }
-    } else {
-      // Reset when neither is active
-      prevFoundAnnouncementRef.current = null
-    }
-  }, [puzzlePieceTarget, celebration, isSpeechSupported, speak])
-
-  // Track when BOTH celebration starts AND "You found" speech finishes
-  // The breather should only begin after both are complete
-  const celebrationActiveRef = useRef(false)
-  const waitingForSpeechToFinishRef = useRef(false)
-  const prevIsSpeakingRef = useRef(false)
-
-  // Track celebration state
-  useEffect(() => {
-    if (celebration) {
-      celebrationActiveRef.current = true
-      // If speech is currently happening, wait for it to finish
-      if (isSpeaking) {
-        waitingForSpeechToFinishRef.current = true
-      } else {
-        // Speech already done (or not speaking), record time now
-        lastFoundAnnouncementTimeRef.current = Date.now()
-      }
-    } else {
-      celebrationActiveRef.current = false
-      waitingForSpeechToFinishRef.current = false
-    }
-  }, [celebration, isSpeaking])
-
-  // Track when speech finishes - if we were waiting, record the time
-  useEffect(() => {
-    const speechJustFinished = prevIsSpeakingRef.current && !isSpeaking
-    prevIsSpeakingRef.current = isSpeaking
-
-    if (speechJustFinished && waitingForSpeechToFinishRef.current) {
-      // Speech just finished and we were waiting for it
-      lastFoundAnnouncementTimeRef.current = Date.now()
-      waitingForSpeechToFinishRef.current = false
-    }
-  }, [isSpeaking])
+    autoHintRef,
+    autoSpeakRef,
+    withAccentRef,
+    celebration,
+    puzzlePieceTarget,
+  })
 
   // Hot/cold audio feedback hook
   // Enabled if: 1) assistance level allows it, 2) user toggle is on
@@ -855,63 +673,14 @@ export function MapRenderer({
   }, [currentPrompt, resetHotCold])
 
   // Struggle detection: Give additional hints when user is having trouble
-  // Thresholds for triggering next hint (must have more hints available)
-  const STRUGGLE_TIME_THRESHOLD = 30000 // 30 seconds per hint level
-  const STRUGGLE_CHECK_INTERVAL = 5000 // Check every 5 seconds
-  const lastHintLevelRef = useRef(0) // Track which hint level triggered last hint
-
-  useEffect(() => {
-    // Only run if hot/cold is enabled (means we're tracking search metrics)
-    if (!effectiveHotColdEnabled || !hasMoreHints || !currentPrompt) return
-
-    const checkStruggle = () => {
-      const metrics = getSearchMetrics(promptStartTime.current)
-
-      // Calculate which hint level we should be at based on time
-      // Level 0 = first 30 seconds, Level 1 = 30-60 seconds, etc.
-      const expectedHintLevel = Math.floor(metrics.timeToFind / STRUGGLE_TIME_THRESHOLD)
-
-      // If we should be at a higher hint level than last triggered, give next hint
-      if (expectedHintLevel > lastHintLevelRef.current && hasMoreHints) {
-        lastHintLevelRef.current = expectedHintLevel
-        nextHint()
-      }
-    }
-
-    const intervalId = setInterval(checkStruggle, STRUGGLE_CHECK_INTERVAL)
-
-    return () => clearInterval(intervalId)
-  }, [
+  useStruggleDetection({
     effectiveHotColdEnabled,
     hasMoreHints,
     currentPrompt,
     getSearchMetrics,
     nextHint,
     promptStartTime,
-  ])
-
-  // Reset hint level tracking when prompt changes
-  useEffect(() => {
-    lastHintLevelRef.current = 0
-  }, [currentPrompt])
-
-  // Speak new hint when it changes (due to cycling)
-  const prevHintIndexRef = useRef(hintIndex)
-  useEffect(() => {
-    // Only speak if hint index actually changed (not initial render)
-    if (
-      hintIndex > prevHintIndexRef.current &&
-      hintText &&
-      isSpeechSupported &&
-      currentRegionName
-    ) {
-      prevHintIndexRef.current = hintIndex
-      // Speak just the hint (user already knows the region name)
-      speak(hintText, false)
-    } else if (hintIndex !== prevHintIndexRef.current) {
-      prevHintIndexRef.current = hintIndex
-    }
-  }, [hintIndex, hintText, isSpeechSupported, currentRegionName, speak])
+  })
 
   // Update context with controls state for GameInfoPanel
   useEffect(() => {
@@ -2362,7 +2131,6 @@ export function MapRenderer({
       scaleProbe2Ref,
       anchorProbeRef,
       anchorSvgPositionRef,
-      fingerStartRef,
       // Position & Animation (cursorPosition comes from state machine)
       cursorPosition,
       zoomSpring,
@@ -2405,7 +2173,6 @@ export function MapRenderer({
       scaleProbe2Ref,
       anchorProbeRef,
       anchorSvgPositionRef,
-      fingerStartRef,
       cursorPosition,
       zoomSpring,
       magnifierSpring,

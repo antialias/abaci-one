@@ -1,765 +1,343 @@
 # MapRenderer Refactoring Plan
 
-## Current State: 5,252 lines, 82 hooks, 11 JSX IIFEs
-
-This document outlines a phased approach to reduce MapRenderer complexity while improving
-performance, maintainability, and debuggability.
-
----
-
-## ✅ Completed Work (December 2024)
-
-### Phase 1.1: ViewBox Memoization ✅
-- Created `parsedViewBox` useMemo that parses viewBox once
-- Replaced 24 inline `displayViewBox.split(' ').map(Number)` calls
-- Location: MapRenderer.tsx, lines ~760-770
-
-### Phase 1.2: Pulsing Animation Utility ✅
-- Created `usePulsingAnimation` hook in `features/animations/`
-- Replaced 3 identical animation patterns (give-up, hint, celebration)
-- Hook returns stable memoized `{ start, cancel }` object
-- Location: `features/animations/usePulsingAnimation.ts`
-
-### Phase 1.3: Coordinate Conversion Utility ✅
-- Added `cursorToSvgCoordinates()` to `features/magnifier/panningMath.ts`
-- Encapsulates repeated cursor-to-SVG coordinate conversion logic
-- Ready to be used to simplify magnifier IIFEs
-
-### Console Spam Cleanup ✅
-- Removed 5 `[CursorShare]` console.log statements from useArcadeSocket.ts and MapRenderer.tsx
-
-### Phase 2.5: Interaction State Machine ✅
-- Created `useInteractionStateMachine` hook in `features/interaction/`
-- Implements explicit state machine for both desktop and mobile modes
-- Desktop phases: idle → hovering → dragging → selecting → pointerLocked → releasing
-- Mobile phases: idle → touched → mapPanning → magnifierActive → magnifierPanning → magnifierPinching
-- Uses `useReducer` pattern with discriminated union types for compile-time safety
-- Returns derived state: `isPointerLocked`, `isDragging`, `isMagnifierActive`, etc.
-- Location: `features/interaction/useInteractionStateMachine.ts`
-
-### Phase 3.2: State Machine Integration ✅
-- Added `interaction` state machine hook to MapRenderer
-- Wired up event dispatches:
-  - `MOUSE_ENTER` - dispatched when cursor first enters map area
-  - `MOUSE_DOWN` - dispatched in handleMouseDown
-  - `MOUSE_UP` - dispatched in handleMouseUp
-  - `MOUSE_LEAVE` - dispatched in handleMouseLeave
-  - `DRAG_THRESHOLD_EXCEEDED` - dispatched when drag distance exceeds threshold
-  - `EDGE_ESCAPE` - dispatched when cursor escapes via edge
-  - `POINTER_LOCK_ACQUIRED` / `POINTER_LOCK_RELEASED` - synced via useEffect
-- **Fully migrated boolean flags:**
-  - `isDesktopMapDragging` → derived from `interaction.isDesktopDragging`
-  - `isReleasingPointerLock` → derived from `interaction.isReleasingPointerLock`
-- Removed useState declarations and setter calls for migrated flags
-
-### Phase 2.1a: Heat Styling Extraction ✅
-- Created `utils/heatStyles.ts` with extracted heat-based styling functions:
-  - `getHeatBorderColors()` - magnifier border/glow colors based on hot/cold feedback
-  - `getHeatCrosshairStyle()` - crosshair color, opacity, rotation speed based on feedback
-  - `getHeatLevel()` - converts FeedbackType to numeric heat level (0-1)
-  - `getRotationSpeed()` - calculates rotation speed using 1/x backoff curve
-- Created `useMagnifierStyle` hook in `features/magnifier/`:
-  - Memoizes heat styling calculations
-  - Returns `{ crosshairStyle, borderStyle, rotationSpeedDegPerSec }`
-  - Replaces 5 inline calls to `getHeatCrosshairStyle`/`getHeatBorderColors`
-- Removed 2 JSX IIFEs by using memoized styles directly
-- Eliminated redundant heat style computations in render path
-
-### Phase 2.2: CustomCursor Extraction ✅
-- Created `features/cursor/CustomCursor.tsx` component:
-  - Compass-style crosshair with rotating ring and fixed north indicator
-  - Region name label with "Find [regionName]" text and flag emoji
-  - Heat-based styling (color, opacity, glow) via `HeatCrosshairStyle` prop
-  - Spring-animated rotation via `SpringValue<number>` prop
-  - Memoized with `memo()` for performance
-- Location: `features/cursor/CustomCursor.tsx` (~190 lines)
-- Replaced ~113 lines of inline JSX in MapRenderer with 10-line component usage
-- Component is reusable for other games requiring similar cursor
+**Starting state**: 2,997 lines
+**Current state**: 2,810 lines (187 lines removed, 6.2% reduction)
+**State machine**: 762 lines (+110 lines for magnifier state)
+**Target**: ~1,800-2,000 lines
 
 ---
 
-## 🔴 CRITICAL: State Machine Migration Guidelines
+## Completed Work
 
-When refactoring MapRenderer, follow these rules for state management:
+| Extraction | Lines Saved | Status |
+|-----------|-------------|--------|
+| useSpeechAnnouncements | 173 | ✅ Done |
+| useStruggleDetection | 31 | ✅ Done |
+| useControlsSync | 0 | ⏭️ Skipped (low value) |
+| **Magnifier state → State Machine** | ~20 (moved to state machine) | ✅ Done |
+| **useMagnifierState deletion** | 183 | ✅ Done (file deleted) |
+| **MapRendererContext deletion** | 145 | ✅ Done (file deleted) |
 
-### 1. Continuously Identify State for Migration
+### State Machine Consolidation (Phase 1) ✅
 
-During every component extraction or hook creation, ask:
-- **"Does this involve boolean flags that represent interaction modes?"**
-- **"Are there impossible state combinations being guarded by if/else?"**
-- **"Is this state already partially tracked by the state machine?"**
+Added to `useInteractionStateMachine.ts`:
+- `MagnifierDisplayState` interface with visibility, opacity, zoom, position, expansion
+- Magnifier events: `MAGNIFIER_SHOW`, `MAGNIFIER_HIDE`, `MAGNIFIER_SET_ZOOM`, etc.
+- Shared event handler across desktop and mobile reducers
+- Derived state in hook return: `showMagnifier`, `magnifierOpacity`, etc.
 
-If yes → add the state to the migration backlog and consider migrating it.
-
-### 2. Fully Commit When Migrating State
-
-**DO NOT run state machine alongside existing boolean flags for testing.**
-
-When migrating state to the state machine:
-1. Remove the `useState` declaration entirely
-2. Replace ALL setter calls with event dispatches
-3. Derive the boolean from `interaction.isXxx`
-4. Test the migrated state immediately
-
-**Why:** Running alongside makes it impossible to verify the state machine is working correctly. The old boolean will mask bugs in the new state transitions.
-
-### 3. State Machine Scope
-
-The state machine manages **interaction modes**, not all state:
-- ✅ Phases: idle, hovering, dragging, pointerLocked, releasing
-- ✅ Mode flags: isDesktopDragging, isReleasingPointerLock, isMagnifierActive
-- ❌ Animation progress (floats 0-1) → stays as separate state
-- ❌ Positions (cursorPosition, targetTop) → derived or separate state
-- ❌ UI visibility (showMagnifier) → can stay separate or migrate later
-
-### 4. Current State Machine Status
-
-**Desktop phases implemented:**
-- `idle` → `hovering` → `dragging` → `selecting` → `pointerLocked` → `releasing`
-
-**Migrated flags:**
-- [x] `isDesktopMapDragging`
-- [x] `isReleasingPointerLock`
-
-**Candidates for future migration:**
-- [ ] `isMobileMapDragging` (when tackling mobile)
-- [ ] `mobileMapDragTriggeredMagnifier`
-- [ ] `shiftPressed` (could be part of desktop phase context)
+MapRenderer now sources magnifier state from state machine:
+- `showMagnifier` = `interaction.showMagnifier`
+- `targetOpacity` = `interaction.magnifierOpacity`
+- `isMagnifierExpanded` = `interaction.isMagnifierExpanded`
+- Wrapper callbacks dispatch events for child components via context
 
 ---
 
-## Phase 1: Quick Wins (Low Risk, High Impact)
+## Existing Architecture
 
-### 1.1 Memoize ViewBox Parsing
+### Provider Hierarchy
+```
+KnowYourWorldProvider (Provider.tsx) - Game state, actions, multiplayer
+  └─ MusicProvider - Music engine (OWNS its state)
+      └─ MapRenderer (component)
+          ├─ RegionRenderProvider - Theme, animations (value bag)
+          └─ MagnifierProvider + MapGameProvider - Magnifier/game state (value bags)
+```
 
-**Problem:** `displayViewBox.split(' ').map(Number)` appears 12+ times in render path.
+### Existing Contexts
 
-**Solution:** Create memoized parsed viewBox:
+| Context | Where Created | Pattern | Notes |
+|---------|---------------|---------|-------|
+| KnowYourWorldContext | Provider.tsx | Owns state | Game-level state |
+| MusicContext | Provider.tsx | **Owns state** | Good model to follow |
+| RegionRenderContext | MapRenderer | Value bag | Passes animation values |
+| MagnifierContext | MapRenderer | Value bag | Passes values through, `interaction` has dispatch |
+| MapGameContext | MapRenderer | Value bag | **Just passes values through** |
+| ~~MapRendererContext~~ | ~~features/shared/~~ | ~~UNUSED!~~ | ✅ **DELETED** |
+
+**Key Insight**: MagnifierContext and MapGameContext are "value bags" - MapRenderer creates all state, constructs value objects, passes them to providers. However, child components now have access to `interaction.dispatch` via context.
+
+---
+
+## State Management Status
+
+### What the State Machine Tracks ✅
+- `cursorPosition` / `touchCenter`
+- `hoveredRegion` / `touchedRegion`
+- `isPointerLocked`, `isDesktopDragging`, `isMapPanning`
+- `isMagnifierActive` (mobile only - via phase)
+- `magnifierTriggeredByDrag`
+- `isPinching`, `isMagnifierDragging`
+- ✅ `showMagnifier` (unified for mobile and desktop via `magnifier.isVisible`)
+- ✅ `targetOpacity` (via `magnifier.targetOpacity`)
+- ✅ `isMagnifierExpanded` (via `magnifier.isExpanded`)
+- ✅ `magnifierPosition` (via `magnifier.position`)
+- ✅ `magnifierZoom` (via `magnifier.targetZoom`)
+
+### What Remains Local (OK to stay local)
+
+| State | Current Location | Notes |
+|-------|------------------|-------|
+| `targetTop` / `targetLeft` | MapRenderer `useState` | ⚠️ Consider moving to state machine |
+| `targetZoom` | `useMagnifierZoom` hook | Separate hook, may consolidate later |
+| `smallestRegionSize` | MapRenderer `useState` | Derived value, fine as local state |
+
+### Resolved: The Dual-Source Problem ✅
+```typescript
+// BEFORE: Different sources for mobile vs desktop!
+const showMagnifier = isTouchDevice
+  ? interaction.isMagnifierActive  // state machine
+  : magnifierState.isVisible       // separate hook
+
+// AFTER: Unified source from state machine
+const showMagnifier = isTouchDevice
+  ? interaction.isMagnifierActive || interaction.showMagnifier
+  : interaction.showMagnifier
+```
+
+---
+
+## Strategy: Consolidate Into State Machine
+
+### Phase 1: Add Magnifier State to State Machine
+
+Expand `InteractionState` to include magnifier display state:
 
 ```typescript
-// In MapRenderer, after displayViewBox useMemo
-const parsedViewBox = useMemo(() => {
-  const parts = displayViewBox.split(' ').map(Number)
+// Add to BOTH desktop and mobile modes (shared structure):
+magnifier: {
+  isVisible: boolean        // Unified source of truth (replaces useMagnifierState.isVisible)
+  targetZoom: number        // Current target zoom level
+  targetOpacity: number     // For fade animations
+  position: { top: number; left: number }
+  isExpanded: boolean       // Mobile expansion state
+}
+```
+
+Add new events:
+```typescript
+| { type: 'MAGNIFIER_SHOW'; position?: { top: number; left: number }; zoom?: number }
+| { type: 'MAGNIFIER_HIDE' }
+| { type: 'MAGNIFIER_SET_ZOOM'; zoom: number }
+| { type: 'MAGNIFIER_SET_POSITION'; top: number; left: number }
+| { type: 'MAGNIFIER_SET_OPACITY'; opacity: number }
+| { type: 'MAGNIFIER_TOGGLE_EXPANDED' }
+| { type: 'MAGNIFIER_SET_EXPANDED'; expanded: boolean }
+```
+
+### Phase 2: Remove useMagnifierState Hook
+
+After Phase 1:
+- `useMagnifierState` becomes unnecessary
+- All visibility/expansion logic lives in state machine
+- MapRenderer dispatches events instead of calling setters
+- Delete the hook file
+
+### Phase 3: Clean Up Unused Contexts
+
+**MapRendererContext** - currently unused:
+- **Action**: Delete `features/shared/MapRendererContext.tsx`
+- It was defined but never connected to anything
+
+**MagnifierContext** and **MapGameContext**:
+- Keep them for now - they serve logical grouping
+- After state consolidation, their values become simpler
+- Less state to pass through = smaller context values
+
+---
+
+## Implementation Plan
+
+### Step 1: Add `magnifier` to InteractionState
+
+```typescript
+// In useInteractionStateMachine.ts
+
+// Default magnifier state (shared by both modes)
+const defaultMagnifier = {
+  isVisible: false,
+  targetZoom: 10,
+  targetOpacity: 0,
+  position: { top: 290, left: 20 },  // Safe zone defaults
+  isExpanded: false,
+}
+
+// Add to initial states:
+const initialDesktopState: InteractionState = {
+  mode: 'desktop',
+  phase: 'idle',
+  // ... existing fields ...
+  magnifier: { ...defaultMagnifier },
+}
+
+const initialMobileState: InteractionState = {
+  mode: 'mobile',
+  phase: 'idle',
+  // ... existing fields ...
+  magnifier: { ...defaultMagnifier },
+}
+```
+
+### Step 2: Add Reducer Cases
+
+```typescript
+// Handle in BOTH desktopReducer and mobileReducer (or extract common handler)
+
+case 'MAGNIFIER_SHOW':
   return {
-    x: parts[0] || 0,
-    y: parts[1] || 0,
-    width: parts[2] || 1000,
-    height: parts[3] || 500,
+    ...state,
+    magnifier: {
+      ...state.magnifier,
+      isVisible: true,
+      targetOpacity: 1,
+      ...(event.position && { position: event.position }),
+      ...(event.zoom !== undefined && { targetZoom: event.zoom }),
+    },
   }
-}, [displayViewBox])
-```
 
-**Impact:** Eliminates 12+ redundant string parsing operations per render.
-
----
-
-### 1.2 Extract Pulsing Animation Utility
-
-**Problem:** Three nearly identical animation loops (give-up, hint, celebration).
-
-**Current pattern (repeated 3x):**
-```typescript
-const animate = () => {
-  const elapsed = Date.now() - startTime
-  const progress = Math.min(elapsed / duration, 1)
-  const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
-  setFlashProgress(pulseProgress)
-  if (progress < 1) {
-    requestAnimationFrame(animate)
+case 'MAGNIFIER_HIDE':
+  return {
+    ...state,
+    magnifier: {
+      ...state.magnifier,
+      isVisible: false,
+      targetOpacity: 0,
+      isExpanded: false,
+    },
   }
-}
+
+case 'MAGNIFIER_SET_ZOOM':
+  return {
+    ...state,
+    magnifier: { ...state.magnifier, targetZoom: event.zoom },
+  }
+
+case 'MAGNIFIER_SET_POSITION':
+  return {
+    ...state,
+    magnifier: {
+      ...state.magnifier,
+      position: { top: event.top, left: event.left },
+    },
+  }
+
+case 'MAGNIFIER_SET_OPACITY':
+  return {
+    ...state,
+    magnifier: { ...state.magnifier, targetOpacity: event.opacity },
+  }
+
+case 'MAGNIFIER_SET_EXPANDED':
+  return {
+    ...state,
+    magnifier: { ...state.magnifier, isExpanded: event.expanded },
+  }
+
+case 'MAGNIFIER_TOGGLE_EXPANDED':
+  return {
+    ...state,
+    magnifier: { ...state.magnifier, isExpanded: !state.magnifier.isExpanded },
+  }
 ```
 
-**Solution:** Create `features/animations/usePulsingAnimation.ts`:
+### Step 3: Add Derived State to Hook Return
 
 ```typescript
-interface UsePulsingAnimationOptions {
-  duration: number
-  pulses: number
-  onProgress: (progress: number) => void
-  onComplete?: () => void
-}
+// In UseInteractionStateMachineReturn, add:
 
-export function usePulsingAnimation() {
-  const start = useCallback((options: UsePulsingAnimationOptions) => {
-    // Single implementation of animation loop
-  }, [])
+// Magnifier state (unified for mobile and desktop)
+showMagnifier: boolean
+targetZoom: number
+targetOpacity: number
+magnifierPosition: { top: number; left: number }
+isMagnifierExpanded: boolean
 
-  const cancel = useCallback(() => { ... }, [])
-
-  return { start, cancel }
-}
+// In the hook implementation:
+const showMagnifier = state.magnifier.isVisible
+const targetZoom = state.magnifier.targetZoom
+const targetOpacity = state.magnifier.targetOpacity
+const magnifierPosition = state.magnifier.position
+const isMagnifierExpanded = state.magnifier.isExpanded
 ```
 
-**Impact:** Removes ~150 lines of duplicate code, single place to fix animation bugs.
+### Step 4: Update MapRenderer Incrementally
 
----
-
-### 1.3 Wrap Large Event Handlers in useCallback
-
-**Problem:** `handleMouseMove` (496 lines) recreated every render.
-
-**Solution:**
-```typescript
-const handleMouseMove = useCallback((event: MouseEvent) => {
-  // ... existing logic
-}, [/* stable dependencies */])
-```
-
-**Caveat:** Need to audit dependencies carefully. Consider extracting sub-functions first.
-
-**Impact:** Prevents unnecessary event listener reattachment, reduces GC pressure.
-
----
-
-## Phase 2: Component Extraction (Medium Risk, High Impact)
-
-### 2.1 Extract MagnifierOverlay Component
-
-**Current:** Lines 3896-5090 (~1,200 lines) as inline IIFE.
-
-**New structure:**
-```
-features/magnifier/
-├── components/
-│   ├── MagnifierOverlay.tsx      # Main overlay container
-│   ├── MagnifierContent.tsx      # SVG content inside magnifier
-│   ├── MagnifierDebug.tsx        # Debug visualizations
-│   └── index.ts
-```
-
-**Props interface:**
-```typescript
-interface MagnifierOverlayProps {
-  // Position
-  position: { x: number; y: number }
-  targetPosition: { top: number; left: number }
-
-  // Zoom state
-  zoom: number
-  isExpanded: boolean
-
-  // Cursor/region state
-  cursorSvgPosition: { x: number; y: number }
-  hoveredRegion: string | null
-
-  // Map data
-  parsedViewBox: ParsedViewBox
-  mapSvgContent: string
-  regions: Region[]
-
-  // Callbacks
-  onRegionClick: (regionId: string) => void
-  onExpandChange: (expanded: boolean) => void
-
-  // Style
-  isDark: boolean
-  heatStyle?: HeatStyle
-}
-```
-
-**Impact:** MapRenderer drops to ~4,000 lines, magnifier becomes independently testable.
-
-**⚠️ Analysis Note (December 2024):**
-After detailed analysis, this extraction is more complex than initially estimated:
-- The IIFE has 20+ dependencies including refs (svgRef, containerRef, magnifierRef)
-- Uses animated springs that compute values on-the-fly (zoomSpring, magnifierSpring)
-- Contains nested IIFEs with duplicate coordinate calculations
-- Touch handlers are defined outside and referenced inside
-
-**Recommended Incremental Approach:**
-1. ✅ Use `cursorToSvgCoordinates()` to deduplicate coordinate conversions (utility added)
-2. Extract magnifier styling calculations into a `useMagnifierStyle` hook
-3. Create a MagnifierContext to share computed values instead of prop drilling
-4. Finally extract the component once dependencies are cleaner
-
----
-
-### 2.2 Extract CustomCursor Component
-
-**Current:** Lines 3673-3807 embedded in JSX.
-
-**New component:**
-```typescript
-// features/cursor/CustomCursor.tsx
-interface CustomCursorProps {
-  position: { x: number; y: number }
-  rotation: number
-  heatStyle?: HeatStyle
-  regionLabel?: string
-  flagEmoji?: string
-  visible: boolean
-}
-```
-
-**Impact:** ~135 lines extracted, reusable for other games.
-
----
-
-### 2.3 Extract HeatCrosshair Component
-
-**Problem:** Compass tick marks duplicated at lines 3708-3726 and 3853-3871.
-
-**Solution:**
-```typescript
-// features/cursor/HeatCrosshair.tsx
-interface HeatCrosshairProps {
-  size: number
-  heatStyle: HeatStyle
-  showCompass: boolean
-}
-
-// Reusable compass component
-function CompassTicks({ radius, heatStyle }: { radius: number; heatStyle: HeatStyle }) {
-  const angles = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
-  return (
-    <>
-      {angles.map(angle => {
-        const isCardinal = angle % 90 === 0
-        // ... tick rendering
-      })}
-    </>
-  )
-}
-```
-
-**Impact:** Eliminates duplication, single source for compass styling.
-
----
-
-### 2.4 Extract RegionPath Component
-
-**Current:** Lines 3258-3400, complex map with 5+ conditional glows.
-
-**New component:**
-```typescript
-// components/RegionPath.tsx
-interface RegionPathProps {
-  region: MapRegion
-  state: 'normal' | 'hovered' | 'found' | 'revealing' | 'hinting' | 'celebrating'
-  glowProgress?: number
-  onClick: () => void
-  onHover: (hovering: boolean) => void
-}
-```
-
-**Benefits:**
-- Each region becomes a memoizable unit
-- Glow logic consolidated
-- Easier to add new region states
-
----
-
-### 2.5 Create useInteractionStateMachine Hook (HIGH PRIORITY)
-
-**Problem:** The 496-line `handleMouseMove` and 25+ boolean state flags create an implicit state
-machine with 2^n possible combinations, but only ~10 are valid states. Transitions are enforced
-via scattered if/else chains.
-
-**Current implicit states via flags:**
-```typescript
-// Scattered across 25+ useState calls
-pointerLocked, isReleasingPointerLock, cursorSquish
-isDesktopMapDragging, isMobileMapDragging, mobileMapDragTriggeredMagnifier
-showMagnifier, isMagnifierExpanded, targetTop, targetLeft
-isGiveUpAnimating, isHintAnimating, celebrationFlashProgress
-```
-
-**Solution: Explicit state machine**
-
-```
-DESKTOP MODE STATE DIAGRAM:
-┌──────┐  mouseEnter  ┌─────────┐  mouseDown  ┌──────────┐
-│ idle │─────────────▶│ hovering│────────────▶│ dragging │
-└──────┘              └─────────┘              └──────────┘
-    ▲                      │                        │
-    │                      │ click                  │ mouseUp
-    │                      ▼                        │
-    │                 ┌─────────┐                   │
-    └─────────────────│selecting│◀──────────────────┘
-                      └─────────┘
-                           │
-                           │ shift+click (if precision capable)
-                           ▼
-                  ┌──────────────┐
-                  │ pointerLocked│◀───────────────┐
-                  └──────────────┘                │
-                           │                      │
-                           │ edge escape          │
-                           ▼                      │
-                  ┌──────────────┐   animation    │
-                  │  releasing   │────complete────┘
-                  └──────────────┘
-
-MOBILE MODE STATE DIAGRAM:
-┌──────┐  touch  ┌─────────┐  pan  ┌─────────────┐
-│ idle │────────▶│ touched │──────▶│ mapPanning  │
-└──────┘         └─────────┘       └─────────────┘
-    ▲                 │                   │
-    │                 │ tap               │ triggers magnifier
-    │                 ▼                   ▼
-    │           ┌──────────┐     ┌───────────────┐
-    └───────────│ selected │     │magnifierActive│
-                └──────────┘     └───────────────┘
-                                        │
-                                        │ pinch
-                                        ▼
-                                 ┌─────────────┐
-                                 │magnifierZoom│
-                                 └─────────────┘
-```
-
-**Implementation (useReducer-based, no new deps):**
+Replace usages one at a time:
 
 ```typescript
-// features/interaction/useInteractionStateMachine.ts
+// Before
+const magnifierState = useMagnifierState()
+const showMagnifier = isTouchDevice ? interaction.isMagnifierActive : magnifierState.isVisible
+magnifierState.show()
+setTargetZoom(newZoom)
 
-type DesktopPhase = 'idle' | 'hovering' | 'dragging' | 'selecting' | 'pointerLocked' | 'releasing'
-type MobilePhase = 'idle' | 'touched' | 'panning' | 'magnifierActive' | 'pinching'
-
-type InteractionState =
-  | { mode: 'desktop'; phase: DesktopPhase; cursor?: Point; hoveredRegion?: string }
-  | { mode: 'mobile'; phase: MobilePhase; touchCount: number }
-
-type InteractionEvent =
-  | { type: 'MOUSE_ENTER' }
-  | { type: 'MOUSE_DOWN'; position: Point }
-  | { type: 'MOUSE_MOVE'; position: Point; delta: Point }
-  | { type: 'MOUSE_UP' }
-  | { type: 'CLICK'; regionId: string | null; shiftKey: boolean }
-  | { type: 'POINTER_LOCK_ACQUIRED' }
-  | { type: 'EDGE_ESCAPE' }
-  | { type: 'RELEASE_COMPLETE' }
-  | { type: 'TOUCH_START'; touches: TouchList }
-  | { type: 'TOUCH_MOVE'; touches: TouchList }
-  | { type: 'TOUCH_END' }
-
-function interactionReducer(state: InteractionState, event: InteractionEvent): InteractionState {
-  // Explicit transition logic - impossible states become impossible
-}
-
-export function useInteractionStateMachine(options: Options) {
-  const [state, dispatch] = useReducer(interactionReducer, initialState)
-
-  // Derived values
-  const isPointerLocked = state.mode === 'desktop' && state.phase === 'pointerLocked'
-  const isDragging = state.phase === 'dragging' || state.phase === 'panning'
-
-  return { state, dispatch, isPointerLocked, isDragging, ... }
-}
+// After
+const { showMagnifier, targetZoom, targetOpacity, magnifierPosition, isMagnifierExpanded } = interaction
+interaction.dispatch({ type: 'MAGNIFIER_SHOW' })
+interaction.dispatch({ type: 'MAGNIFIER_SET_ZOOM', zoom: newZoom })
 ```
 
-**Key insight:** The state machine doesn't manage everything - just the **interaction mode**:
-- Animation progress (0-1 floats) → stays as separate state
-- Magnifier position → derived from cursor + state
-- Region detection → pure function, not state
+### Step 5: Remove useMagnifierState
 
-The machine answers: **"What kind of input am I currently processing?"**
+Once all usages are migrated:
+- Delete `features/magnifier/useMagnifierState.ts`
+- Update exports in `features/magnifier/index.ts`
+- Remove any refs that were only needed by that hook
 
-**Impact:**
-- `handleMouseMove` becomes a thin event dispatcher (~50 lines)
-- Impossible states become impossible (can't be dragging AND pointerLocked)
-- Transition logic centralized and testable
-- Clear documentation of valid states
+### Step 6: Delete MapRendererContext
 
-**Migration path:**
-1. Create the state machine hook with desktop states
-2. Add event dispatch calls in existing handlers
-3. Gradually replace boolean checks with state checks
-4. Remove old boolean state variables once fully migrated
-
----
-
-## Phase 3: Hook Consolidation (Medium Risk, Medium Impact)
-
-### 3.1 Create useAnimationController Hook
-
-**Consolidates:** Give-up, hint, and celebration animations.
-
-```typescript
-// features/animations/useAnimationController.ts
-interface AnimationController {
-  // Give-up reveal
-  giveUpProgress: number
-  isGiveUpAnimating: boolean
-  startGiveUpReveal: (targetRegion: Region) => void
-
-  // Hint
-  hintProgress: number
-  isHintAnimating: boolean
-  startHint: (targetRegion: Region) => void
-
-  // Celebration
-  celebrationProgress: number
-  isCelebrating: boolean
-  startCelebration: (region: Region) => void
-
-  // Shared
-  cancelAll: () => void
-}
-
-export function useAnimationController(options: AnimationOptions): AnimationController
-```
-
-**Impact:** Consolidates ~300 lines of animation state management.
-
----
-
-### 3.2 Create useMouseInteraction Hook
-
-**Problem:** `handleMouseMove` is 496 lines handling multiple concerns.
-
-**Split into:**
-```typescript
-// hooks/useMouseInteraction.ts
-interface UseMouseInteractionOptions {
-  containerRef: RefObject<HTMLDivElement>
-  svgRef: RefObject<SVGSVGElement>
-  enabled: boolean
-  onCursorMove: (position: Position) => void
-  onDragStart: () => void
-  onDragEnd: () => void
-  onRegionHover: (regionId: string | null) => void
-}
-```
-
-**Sub-hooks:**
-- `usePointerLockCursor` - precision mode cursor interpolation
-- `useDragDetection` - distinguish click vs drag
-- `useBoundaryDampening` - edge behavior for cursor
-
-**Impact:** Breaks 496-line function into focused, testable pieces.
-
----
-
-### 3.3 Consolidate Magnifier State
-
-**Current scattered state:**
-```typescript
-// Lines 649-676, 713-715, 1436-1495
-const [showMagnifier, setShowMagnifier] = useState(false)
-const [targetOpacity, setTargetOpacity] = useState(0)
-const [isMagnifierDragging, setIsMagnifierDragging] = useState(false)
-const [isPinching, setIsPinching] = useState(false)
-const [isMagnifierExpanded, setIsMagnifierExpanded] = useState(false)
-// ... 15+ more magnifier-related states
-```
-
-**Solution:** Expand existing `useMagnifierState` to include ALL magnifier state:
-
-```typescript
-const magnifier = useMagnifierState({
-  initialExpanded: false,
-  initialZoom: MIN_ZOOM,
-})
-
-// Returns everything:
-magnifier.show()
-magnifier.hide()
-magnifier.position // { x, y }
-magnifier.zoom // current zoom
-magnifier.isExpanded
-magnifier.isDragging
-// etc.
+```bash
+rm features/shared/MapRendererContext.tsx
+# Update features/shared/index.ts to remove exports
 ```
 
 ---
 
-## Phase 4: Performance Optimizations
+## Risk Assessment
 
-### 4.1 Cache Region Elements
-
-**Problem:** `querySelector` in hot path (line 2317).
-
-**Solution:**
-```typescript
-// Build region element map once
-const regionElementsRef = useRef<Map<string, SVGPathElement>>(new Map())
-
-useEffect(() => {
-  if (!svgRef.current) return
-  const regions = svgRef.current.querySelectorAll('[data-region-id]')
-  regions.forEach(el => {
-    regionElementsRef.current.set(el.getAttribute('data-region-id')!, el as SVGPathElement)
-  })
-}, [mapData])
-
-// In hot path:
-const regionElement = regionElementsRef.current.get(regionId)
-```
-
-**Impact:** Eliminates DOM queries on every mouse move.
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Breaking mobile magnifier | Medium | High | Test: drag to show, pan, pinch, select button |
+| Breaking desktop magnifier | Medium | High | Test: hover, shift+click, pointer lock |
+| Spring animation timing | Low | Medium | Springs still in MapRenderer, just read from state machine |
+| Stale closures | Low | Medium | State machine is source of truth, handlers dispatch |
+| TypeScript errors | Low | Low | Add magnifier to state type, update all usages |
 
 ---
 
-### 4.2 Debounce/Throttle Hot Path Calculations
+## Testing Checklist
 
-**Problem:** Full region detection on every mouse move.
-
-**Solution:**
-```typescript
-const throttledDetectRegions = useMemo(
-  () => throttle((x: number, y: number) => {
-    const result = detectRegions(x, y)
-    setHoveredRegion(result.regionUnderCursor)
-  }, 16), // ~60fps
-  [detectRegions]
-)
-```
-
-**Impact:** Reduces calculation frequency without visible lag.
+After each step:
+- [ ] `npm run type-check` passes
+- [ ] Desktop: mouse movement, magnifier appear/disappear
+- [ ] Desktop: region clicks with celebration
+- [ ] Desktop: shift+click precision mode, pointer lock, edge escape
+- [ ] Mobile: drag map to show magnifier
+- [ ] Mobile: pan magnifier, pinch zoom
+- [ ] Mobile: select button appears after drag, works correctly
+- [ ] Hot/cold feedback works on both platforms
+- [ ] Celebrations animate correctly
+- [ ] Multiplayer cursor sharing works
 
 ---
 
-### 4.3 Use CSS Containment
+## Estimated Impact
 
-**Add to magnifier container:**
-```css
-.magnifier-overlay {
-  contain: layout style paint;
-  will-change: transform;
-}
-```
+| Phase | Description | Lines Change |
+|-------|-------------|--------------|
+| Step 1-3 | Add magnifier to state machine | +80 to state machine |
+| Step 4 | Update MapRenderer to use it | ~-50 (remove computed showMagnifier, setters) |
+| Step 5 | Remove useMagnifierState | ~-100 |
+| Step 6 | Delete MapRendererContext | ~-150 |
+| Handler simplification | Handlers dispatch instead of manage state | ~-150 |
 
-**Impact:** Browser can optimize repaints, isolate layout calculations.
-
----
-
-### 4.4 Virtualize Debug Overlays
-
-**Problem:** Debug bounding boxes render ALL regions even when off-screen.
-
-**Solution:** Only render debug boxes for regions in current viewport:
-
-```typescript
-const visibleDebugBoxes = useMemo(() => {
-  if (!effectiveShowDebugBoundingBoxes) return []
-  return debugBoundingBoxes.filter(bbox =>
-    isInViewport(bbox, parsedViewBox, zoom)
-  )
-}, [debugBoundingBoxes, parsedViewBox, zoom, effectiveShowDebugBoundingBoxes])
-```
+**Net reduction**: ~370 lines, bringing MapRenderer to ~2,400 lines
 
 ---
 
-## Phase 5: Architecture Improvements
+## Next Action
 
-### 5.1 Introduce Render Sections Pattern
+**Start with Step 1-2**: Add `magnifier` field and reducer cases to `useInteractionStateMachine.ts`.
 
-**Split return JSX into clearly named sections:**
-
-```typescript
-return (
-  <div ref={containerRef} className={containerStyles}>
-    {/* Section 1: Base Map */}
-    <MapSvgLayer
-      mapData={mapData}
-      regions={regions}
-      onRegionClick={handleRegionClick}
-    />
-
-    {/* Section 2: Cursor & Crosshairs */}
-    <CursorLayer
-      position={cursorPosition}
-      heatStyle={heatStyle}
-      visible={showCustomCursor}
-    />
-
-    {/* Section 3: Magnifier */}
-    <MagnifierLayer
-      {...magnifierProps}
-    />
-
-    {/* Section 4: Multiplayer Cursors */}
-    <MultiplayerCursors
-      players={otherPlayerCursors}
-      metadata={playerMetadata}
-    />
-
-    {/* Section 5: Debug (dev only) */}
-    {process.env.NODE_ENV === 'development' && (
-      <DebugLayer {...debugProps} />
-    )}
-
-    {/* Section 6: Celebrations */}
-    <CelebrationOverlay {...celebrationProps} />
-  </div>
-)
-```
-
-**Impact:** Clear mental model, easier to find code, natural extraction boundaries.
-
----
-
-### 5.2 Create MapRendererContext
-
-**For deeply nested components that need shared state:**
-
-```typescript
-const MapRendererContext = createContext<{
-  parsedViewBox: ParsedViewBox
-  zoom: number
-  cursorPosition: Position
-  isDark: boolean
-  // Stable callbacks
-  detectRegions: (x: number, y: number) => DetectionResult
-}>()
-```
-
-**Eliminates prop drilling through 4+ component levels.**
-
----
-
-## Implementation Priority
-
-| Phase | Effort | Risk | Impact | Order |
-|-------|--------|------|--------|-------|
-| 1.1 ViewBox memoization | 30min | Low | Medium | 1 |
-| 1.2 Pulsing animation | 2hr | Low | High | 2 |
-| 1.3 useCallback handlers | 1hr | Medium | Medium | 3 |
-| 2.1 MagnifierOverlay | 4hr | Medium | High | 4 |
-| 2.2 CustomCursor | 1hr | Low | Medium | 5 |
-| 2.3 HeatCrosshair | 1hr | Low | Low | 6 |
-| 2.4 RegionPath | 2hr | Medium | Medium | 7 |
-| 3.1 Animation controller | 3hr | Medium | Medium | 8 |
-| 3.2 Mouse interaction | 4hr | High | High | 9 |
-| 4.1-4.4 Performance | 2hr | Low | Medium | 10 |
-| 5.1-5.2 Architecture | 3hr | Medium | High | 11 |
-
----
-
-## Expected Outcomes
-
-After full implementation:
-
-| Metric | Before | After |
-|--------|--------|-------|
-| MapRenderer lines | 5,252 | ~2,500 |
-| Hook calls in MapRenderer | 82 | ~40 |
-| JSX IIFEs | 11 | 0-2 |
-| Duplicated animation code | 3x | 1x |
-| ViewBox parsing per render | 12+ | 1 |
-| Independently testable units | 1 | 8+ |
-
----
-
-## Testing Strategy
-
-For each extraction:
-
-1. **Before:** Capture current behavior with manual testing
-2. **Extract:** Move code to new location
-3. **Integrate:** Import and use new component/hook
-4. **Verify:** Same behavior, no regressions
-5. **Type-check:** `npm run type-check`
-6. **Document:** Update this plan with completion status
-
----
-
-## Notes
-
-- Start with Phase 1 items - they're low risk and build confidence
-- Phase 2.1 (MagnifierOverlay) is the biggest win - prioritize it
-- Phase 3.2 (mouse interaction) is highest risk - save for last
-- Performance optimizations (Phase 4) can be done incrementally
-- Architecture changes (Phase 5) require the earlier phases first
+This is the foundation for everything else and is **additive** - it doesn't change existing behavior until we start using the new state in MapRenderer.

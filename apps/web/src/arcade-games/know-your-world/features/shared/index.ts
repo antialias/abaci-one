@@ -53,10 +53,6 @@ export {
   svgToScreen,
 } from './viewportUtils'
 
-// Context
-export {
-  MapRendererProvider,
-  useMapRendererContext,
-  useMapRendererContextSafe,
-} from './MapRendererContext'
-export type { MapRendererContextValue, MapRendererProviderProps } from './MapRendererContext'
+// Note: MapRendererContext has been removed - it was defined but never used.
+// Use MagnifierContext from features/magnifier for magnifier-specific state,
+// or MapGameContext from features/game for game-specific state.

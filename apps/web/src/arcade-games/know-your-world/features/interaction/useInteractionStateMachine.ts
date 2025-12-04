@@ -63,6 +63,29 @@ export interface Point {
   y: number
 }
 
+/** Magnifier display state (shared by both desktop and mobile modes) */
+export interface MagnifierDisplayState {
+  /** Whether magnifier is visible (unified source of truth) */
+  isVisible: boolean
+  /** Target zoom level for magnifier */
+  targetZoom: number
+  /** Target opacity for fade animations */
+  targetOpacity: number
+  /** Magnifier position in screen coordinates */
+  position: { top: number; left: number }
+  /** Whether magnifier is expanded (mobile) */
+  isExpanded: boolean
+}
+
+/** Default magnifier state */
+const defaultMagnifierState: MagnifierDisplayState = {
+  isVisible: false,
+  targetZoom: 10,
+  targetOpacity: 0,
+  position: { top: 290, left: 20 }, // Safe zone defaults
+  isExpanded: false,
+}
+
 // Desktop phases
 export type DesktopPhase =
   | 'idle'
@@ -97,6 +120,8 @@ export type InteractionState =
       hasDragged: boolean
       /** Whether shift key is currently pressed (for magnifier manual override) */
       shiftKey: boolean
+      /** Magnifier display state */
+      magnifier: MagnifierDisplayState
     }
   | {
       mode: 'mobile'
@@ -113,6 +138,8 @@ export type InteractionState =
       hasPanned: boolean
       /** True if magnifier was activated by map drag (shows Select button) */
       magnifierTriggeredByDrag: boolean
+      /** Magnifier display state */
+      magnifier: MagnifierDisplayState
     }
 
 // Events that can trigger state transitions
@@ -141,6 +168,14 @@ export type InteractionEvent =
   | { type: 'PINCH_END' }
   | { type: 'MAGNIFIER_ACTIVATED' }
   | { type: 'MAGNIFIER_DEACTIVATED' }
+  // Magnifier display events (shared by both modes)
+  | { type: 'MAGNIFIER_SHOW'; position?: { top: number; left: number }; zoom?: number }
+  | { type: 'MAGNIFIER_HIDE' }
+  | { type: 'MAGNIFIER_SET_ZOOM'; zoom: number }
+  | { type: 'MAGNIFIER_SET_POSITION'; top: number; left: number }
+  | { type: 'MAGNIFIER_SET_OPACITY'; opacity: number }
+  | { type: 'MAGNIFIER_SET_EXPANDED'; expanded: boolean }
+  | { type: 'MAGNIFIER_TOGGLE_EXPANDED' }
   // Shared events
   | { type: 'RESET' }
   | { type: 'SET_MODE'; mode: 'desktop' | 'mobile' }
@@ -157,6 +192,7 @@ const initialDesktopState: InteractionState = {
   dragStart: null,
   hasDragged: false,
   shiftKey: false,
+  magnifier: { ...defaultMagnifierState },
 }
 
 const initialMobileState: InteractionState = {
@@ -168,6 +204,81 @@ const initialMobileState: InteractionState = {
   touchStart: null,
   hasPanned: false,
   magnifierTriggeredByDrag: false,
+  magnifier: { ...defaultMagnifierState },
+}
+
+// ============================================================================
+// Shared Magnifier Event Handler
+// ============================================================================
+
+/**
+ * Handle magnifier display events (shared by both desktop and mobile modes).
+ * Returns updated state if the event was handled, or null if not a magnifier event.
+ */
+function handleMagnifierEvent(
+  state: InteractionState,
+  event: InteractionEvent
+): InteractionState | null {
+  switch (event.type) {
+    case 'MAGNIFIER_SHOW':
+      return {
+        ...state,
+        magnifier: {
+          ...state.magnifier,
+          isVisible: true,
+          targetOpacity: 1,
+          ...(event.position && { position: event.position }),
+          ...(event.zoom !== undefined && { targetZoom: event.zoom }),
+        },
+      }
+
+    case 'MAGNIFIER_HIDE':
+      return {
+        ...state,
+        magnifier: {
+          ...state.magnifier,
+          isVisible: false,
+          targetOpacity: 0,
+          isExpanded: false,
+        },
+      }
+
+    case 'MAGNIFIER_SET_ZOOM':
+      return {
+        ...state,
+        magnifier: { ...state.magnifier, targetZoom: event.zoom },
+      }
+
+    case 'MAGNIFIER_SET_POSITION':
+      return {
+        ...state,
+        magnifier: {
+          ...state.magnifier,
+          position: { top: event.top, left: event.left },
+        },
+      }
+
+    case 'MAGNIFIER_SET_OPACITY':
+      return {
+        ...state,
+        magnifier: { ...state.magnifier, targetOpacity: event.opacity },
+      }
+
+    case 'MAGNIFIER_SET_EXPANDED':
+      return {
+        ...state,
+        magnifier: { ...state.magnifier, isExpanded: event.expanded },
+      }
+
+    case 'MAGNIFIER_TOGGLE_EXPANDED':
+      return {
+        ...state,
+        magnifier: { ...state.magnifier, isExpanded: !state.magnifier.isExpanded },
+      }
+
+    default:
+      return null // Event not handled
+  }
 }
 
 // ============================================================================
@@ -288,8 +399,12 @@ function desktopReducer(
     case 'RESET':
       return initialDesktopState
 
-    default:
+    default: {
+      // Try shared magnifier event handler
+      const magnifierResult = handleMagnifierEvent(state, event)
+      if (magnifierResult) return magnifierResult
       return state
+    }
   }
 }
 
@@ -424,8 +539,12 @@ function mobileReducer(
     case 'RESET':
       return initialMobileState
 
-    default:
+    default: {
+      // Try shared magnifier event handler
+      const magnifierResult = handleMagnifierEvent(state, event)
+      if (magnifierResult) return magnifierResult
       return state
+    }
   }
 }
 
@@ -502,6 +621,18 @@ export interface UseInteractionStateMachineReturn {
   /** Currently hovered/touched region ID */
   hoveredRegionId: string | null
 
+  // ---- Magnifier display state (unified for desktop/mobile) ----
+  /** Whether magnifier is visible (unified source of truth) */
+  showMagnifier: boolean
+  /** Target zoom level for magnifier */
+  magnifierZoom: number
+  /** Target opacity for magnifier fade animations */
+  magnifierOpacity: number
+  /** Magnifier screen position */
+  magnifierPosition: { top: number; left: number }
+  /** Whether magnifier is expanded (mobile) */
+  isMagnifierExpanded: boolean
+
   // ---- Actions ----
   /** Reset to initial state */
   reset: () => void
@@ -555,6 +686,13 @@ export function useInteractionStateMachine(
   const cursorPosition = state.mode === 'desktop' ? state.cursor : state.touchCenter
   const hoveredRegionId = state.mode === 'desktop' ? state.hoveredRegion : state.touchedRegion
 
+  // Magnifier display state (unified for desktop/mobile)
+  const showMagnifier = state.magnifier.isVisible
+  const magnifierZoom = state.magnifier.targetZoom
+  const magnifierOpacity = state.magnifier.targetOpacity
+  const magnifierPosition = state.magnifier.position
+  const isMagnifierExpanded = state.magnifier.isExpanded
+
   // Actions
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' })
@@ -586,6 +724,12 @@ export function useInteractionStateMachine(
       isDragging,
       cursorPosition,
       hoveredRegionId,
+      // Magnifier display
+      showMagnifier,
+      magnifierZoom,
+      magnifierOpacity,
+      magnifierPosition,
+      isMagnifierExpanded,
       // Actions
       reset,
       setMode,
@@ -606,6 +750,11 @@ export function useInteractionStateMachine(
       isDragging,
       cursorPosition,
       hoveredRegionId,
+      showMagnifier,
+      magnifierZoom,
+      magnifierOpacity,
+      magnifierPosition,
+      isMagnifierExpanded,
       reset,
       setMode,
     ]
