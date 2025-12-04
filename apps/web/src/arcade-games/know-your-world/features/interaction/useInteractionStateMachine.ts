@@ -95,6 +95,8 @@ export type InteractionState =
       dragStart: Point | null
       /** Has moved beyond drag threshold since mouse down */
       hasDragged: boolean
+      /** Whether shift key is currently pressed (for magnifier manual override) */
+      shiftKey: boolean
     }
   | {
       mode: 'mobile'
@@ -109,6 +111,8 @@ export type InteractionState =
       touchStart: Point | null
       /** Has moved beyond drag threshold since touch start */
       hasPanned: boolean
+      /** True if magnifier was activated by map drag (shows Select button) */
+      magnifierTriggeredByDrag: boolean
     }
 
 // Events that can trigger state transitions
@@ -125,9 +129,11 @@ export type InteractionEvent =
   | { type: 'POINTER_LOCK_RELEASED' }
   | { type: 'EDGE_ESCAPE' }
   | { type: 'RELEASE_ANIMATION_COMPLETE' }
+  | { type: 'SHIFT_KEY_DOWN' }
+  | { type: 'SHIFT_KEY_UP' }
   // Mobile events
   | { type: 'TOUCH_START'; position: Point; touchCount: number; regionId: string | null }
-  | { type: 'TOUCH_MOVE'; position: Point; touchCount: number }
+  | { type: 'TOUCH_MOVE'; position: Point; touchCount: number; regionId?: string | null }
   | { type: 'TOUCH_END'; touchCount: number }
   | { type: 'TAP'; regionId: string | null }
   | { type: 'PAN_THRESHOLD_EXCEEDED' }
@@ -137,6 +143,7 @@ export type InteractionEvent =
   | { type: 'MAGNIFIER_DEACTIVATED' }
   // Shared events
   | { type: 'RESET' }
+  | { type: 'SET_MODE'; mode: 'desktop' | 'mobile' }
 
 // ============================================================================
 // Initial States
@@ -149,6 +156,7 @@ const initialDesktopState: InteractionState = {
   hoveredRegion: null,
   dragStart: null,
   hasDragged: false,
+  shiftKey: false,
 }
 
 const initialMobileState: InteractionState = {
@@ -159,6 +167,7 @@ const initialMobileState: InteractionState = {
   touchedRegion: null,
   touchStart: null,
   hasPanned: false,
+  magnifierTriggeredByDrag: false,
 }
 
 // ============================================================================
@@ -183,7 +192,9 @@ function desktopReducer(
       return state
 
     case 'MOUSE_DOWN':
-      if (state.phase === 'hovering') {
+      // Allow MOUSE_DOWN from both idle and hovering phases
+      // User may click before moving (rare but possible)
+      if (state.phase === 'idle' || state.phase === 'hovering') {
         return {
           ...state,
           phase: 'dragging',
@@ -268,6 +279,12 @@ function desktopReducer(
       }
       return state
 
+    case 'SHIFT_KEY_DOWN':
+      return { ...state, shiftKey: true }
+
+    case 'SHIFT_KEY_UP':
+      return { ...state, shiftKey: false }
+
     case 'RESET':
       return initialDesktopState
 
@@ -309,6 +326,8 @@ function mobileReducer(
           ...state,
           phase: 'mapPanning',
           touchCenter: event.position,
+          // Update touchedRegion if provided (for hover highlighting)
+          touchedRegion: event.regionId !== undefined ? event.regionId : state.touchedRegion,
         }
       }
       if (state.phase === 'magnifierActive' || state.phase === 'magnifierPanning') {
@@ -316,10 +335,17 @@ function mobileReducer(
           ...state,
           phase: 'magnifierPanning',
           touchCenter: event.position,
+          // Update touchedRegion if provided (for hover highlighting)
+          touchedRegion: event.regionId !== undefined ? event.regionId : state.touchedRegion,
         }
       }
       if (state.phase === 'magnifierPinching') {
-        return { ...state, touchCenter: event.position }
+        return {
+          ...state,
+          touchCenter: event.position,
+          // Update touchedRegion if provided (for hover highlighting)
+          touchedRegion: event.regionId !== undefined ? event.regionId : state.touchedRegion,
+        }
       }
       return state
 
@@ -336,12 +362,22 @@ function mobileReducer(
           // Quick tap without movement - this is a selection
           return { ...state, phase: 'selected', touchCount: 0 }
         }
-        if (state.phase === 'mapPanning' || state.phase === 'magnifierPanning') {
-          // If panning triggered magnifier, stay in magnifier mode
+        if (state.phase === 'mapPanning') {
+          // Map panning ended - if we panned, activate magnifier and mark as drag-triggered
           if (state.hasPanned) {
-            return { ...state, phase: 'magnifierActive', touchCount: 0, hasPanned: false }
+            return {
+              ...state,
+              phase: 'magnifierActive',
+              touchCount: 0,
+              hasPanned: false,
+              magnifierTriggeredByDrag: true, // Magnifier was triggered by map drag
+            }
           }
           return { ...state, phase: 'idle', touchCount: 0, hasPanned: false }
+        }
+        if (state.phase === 'magnifierPanning') {
+          // Magnifier panning ended - stay in magnifier mode, preserve drag-triggered state
+          return { ...state, phase: 'magnifierActive', touchCount: 0, hasPanned: false }
         }
         if (state.phase === 'magnifierPinching') {
           return { ...state, phase: 'magnifierActive', touchCount: 0 }
@@ -377,7 +413,13 @@ function mobileReducer(
       return state
 
     case 'MAGNIFIER_DEACTIVATED':
-      return { ...state, phase: 'idle', touchCenter: null, touchStart: null }
+      return {
+        ...state,
+        phase: 'idle',
+        touchCenter: null,
+        touchStart: null,
+        magnifierTriggeredByDrag: false, // Reset when magnifier is dismissed
+      }
 
     case 'RESET':
       return initialMobileState
@@ -388,6 +430,18 @@ function mobileReducer(
 }
 
 function interactionReducer(state: InteractionState, event: InteractionEvent): InteractionState {
+  // Handle SET_MODE event at the top level (before mode-specific reducers)
+  if (event.type === 'SET_MODE') {
+    // Switch to the requested mode's initial state
+    if (event.mode === 'desktop' && state.mode !== 'desktop') {
+      return initialDesktopState
+    }
+    if (event.mode === 'mobile' && state.mode !== 'mobile') {
+      return initialMobileState
+    }
+    return state // Already in requested mode
+  }
+
   if (state.mode === 'desktop') {
     return desktopReducer(state, event)
   }
@@ -423,14 +477,22 @@ export interface UseInteractionStateMachineReturn {
   isDesktopDragging: boolean
   /** True if actively hovering over map content */
   isHovering: boolean
+  /** True if shift key is currently pressed (desktop only, for magnifier override) */
+  isShiftPressed: boolean
 
   // ---- Derived mobile state ----
-  /** True if panning the map on mobile */
+  /** True if panning the map on mobile (either map or magnifier) */
   isMobilePanning: boolean
+  /** True if panning the main map specifically (not magnifier) */
+  isMapPanning: boolean
   /** True if magnifier is active on mobile */
   isMagnifierActive: boolean
+  /** True if panning within the magnifier */
+  isMagnifierDragging: boolean
   /** True if pinch-zooming the magnifier */
   isPinching: boolean
+  /** True if magnifier was activated by map drag (shows Select button) */
+  magnifierTriggeredByDrag: boolean
 
   // ---- Shared derived state ----
   /** True if any drag/pan operation is in progress */
@@ -467,16 +529,26 @@ export function useInteractionStateMachine(
   const isDesktopDragging =
     state.mode === 'desktop' && state.phase === 'dragging' && state.hasDragged
   const isHovering = state.mode === 'desktop' && state.phase === 'hovering'
+  const isShiftPressed = state.mode === 'desktop' && state.shiftKey
 
   // Derived mobile state
   const isMobilePanning =
     state.mode === 'mobile' && (state.phase === 'mapPanning' || state.phase === 'magnifierPanning')
+  /** True if panning the main map (not magnifier) */
+  const isMapPanning = state.mode === 'mobile' && state.phase === 'mapPanning'
+  /** True if magnifier is visible and active (any magnifier phase OR map panning) */
+  // Magnifier shows during mapPanning (user dragging to position it) and all magnifier phases
   const isMagnifierActive =
     state.mode === 'mobile' &&
-    (state.phase === 'magnifierActive' ||
+    (state.phase === 'mapPanning' ||
+      state.phase === 'magnifierActive' ||
       state.phase === 'magnifierPanning' ||
       state.phase === 'magnifierPinching')
+  /** True if specifically dragging/panning within magnifier */
+  const isMagnifierDragging = state.mode === 'mobile' && state.phase === 'magnifierPanning'
   const isPinching = state.mode === 'mobile' && state.phase === 'magnifierPinching'
+  /** True if magnifier was activated by map drag (shows Select button) */
+  const magnifierTriggeredByDrag = state.mode === 'mobile' && state.magnifierTriggeredByDrag
 
   // Shared derived state
   const isDragging = isDesktopDragging || isMobilePanning
@@ -489,10 +561,7 @@ export function useInteractionStateMachine(
   }, [])
 
   const setMode = useCallback((mode: 'desktop' | 'mobile') => {
-    // This requires a custom event or we reinitialize
-    // For now, just dispatch reset and the mode is determined by initial state
-    // This is a simplification - full implementation would need mode switch event
-    dispatch({ type: 'RESET' })
+    dispatch({ type: 'SET_MODE', mode })
   }, [])
 
   // Memoize return value to prevent unnecessary re-renders
@@ -505,10 +574,14 @@ export function useInteractionStateMachine(
       isReleasingPointerLock,
       isDesktopDragging,
       isHovering,
+      isShiftPressed,
       // Mobile
       isMobilePanning,
+      isMapPanning,
       isMagnifierActive,
+      isMagnifierDragging,
       isPinching,
+      magnifierTriggeredByDrag,
       // Shared
       isDragging,
       cursorPosition,
@@ -523,9 +596,13 @@ export function useInteractionStateMachine(
       isReleasingPointerLock,
       isDesktopDragging,
       isHovering,
+      isShiftPressed,
       isMobilePanning,
+      isMapPanning,
       isMagnifierActive,
+      isMagnifierDragging,
       isPinching,
+      magnifierTriggeredByDrag,
       isDragging,
       cursorPosition,
       hoveredRegionId,

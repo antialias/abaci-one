@@ -1,11 +1,14 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { animated, to, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useSpring, animated, to } from '@react-spring/web'
-import { useViewerId } from '@/lib/arcade/game-sdk'
+import simplify from 'simplify-js'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
+import { useViewerId } from '@/lib/arcade/game-sdk'
+import { getNthNonSpaceLetter, normalizeToBaseLetter } from '../features/letter-confirmation'
 import {
   DEFAULT_DIFFICULTY_CONFIG,
   getAssistanceLevel,
@@ -13,19 +16,16 @@ import {
   USA_MAP,
   WORLD_MAP,
 } from '../maps'
+import { MusicControlModal, useMusic } from '../music'
 import { useKnowYourWorld } from '../Provider'
-import { getNthNonSpaceLetter, normalizeToBaseLetter } from '../features/letter-confirmation'
 import type { MapData } from '../types'
-import type { FeedbackType } from '../utils/hotColdPhrases'
 import {
-  shouldShowGuidanceDropdown,
   shouldShowAutoHintToggle,
   shouldShowAutoSpeakToggle,
+  shouldShowGuidanceDropdown,
 } from '../utils/guidanceVisibility'
+import type { FeedbackType } from '../utils/hotColdPhrases'
 import { SimpleLetterKeyboard, useIsTouchDevice } from './SimpleLetterKeyboard'
-import { MusicControlModal, useMusic } from '../music'
-import simplify from 'simplify-js'
-import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 
 // Animation duration in ms - must match MapRenderer
 const GIVE_UP_ANIMATION_DURATION = 2000
@@ -371,6 +371,9 @@ export function GameInfoPanel({
   // Ref to the takeover region shape SVG for capturing source position
   const takeoverRegionShapeRef = useRef<SVGSVGElement>(null)
 
+  // Track the last puzzlePieceTarget regionId to avoid resetting animation on unrelated re-renders
+  const lastPuzzlePieceRegionIdRef = useRef<string | null>(null)
+
   // Calculate the safe scale factor based on viewport size
   const [safeScale, setSafeScale] = useState(2.5)
 
@@ -432,6 +435,22 @@ export function GameInfoPanel({
     config: TAKEOVER_ANIMATION_CONFIG,
   })
 
+  // Determine if this is a NEW puzzle piece animation (different region or first time)
+  // This prevents resetting the animation on unrelated re-renders (like cursor movement)
+  const isNewPuzzlePiece =
+    puzzlePieceTarget?.sourceRect &&
+    puzzlePieceTarget.regionId !== lastPuzzlePieceRegionIdRef.current
+
+  // Update the ref when we start a new animation
+  if (isNewPuzzlePiece) {
+    lastPuzzlePieceRegionIdRef.current = puzzlePieceTarget.regionId
+  }
+
+  // Clear the ref when puzzlePieceTarget becomes null (animation complete)
+  if (!puzzlePieceTarget && lastPuzzlePieceRegionIdRef.current !== null) {
+    lastPuzzlePieceRegionIdRef.current = null
+  }
+
   // Puzzle piece animation spring - animates from takeover position to map position
   const puzzlePieceSpring = useSpring({
     // Only animate when we have both target and source (sourceRect)
@@ -462,7 +481,8 @@ export function GameInfoPanel({
           opacity: 1,
         }
       : undefined,
-    reset: !!puzzlePieceTarget?.sourceRect,
+    // Only reset when it's a NEW puzzle piece, not on every re-render
+    reset: isNewPuzzlePiece,
     config: { tension: 120, friction: 18 },
     onRest: () => {
       if (puzzlePieceTarget) {

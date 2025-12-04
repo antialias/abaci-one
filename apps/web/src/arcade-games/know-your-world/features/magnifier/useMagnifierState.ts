@@ -1,8 +1,11 @@
 /**
  * Magnifier State Hook
  *
- * Consolidates all magnifier-related state into a single hook.
- * This includes visibility, expansion, dragging, and pinching state.
+ * Consolidates magnifier-related state into a single hook.
+ * This includes visibility and expansion state.
+ *
+ * Note: Dragging state (isMagnifierDragging) and pinching state (isPinching)
+ * are now managed by the interaction state machine - see useInteractionStateMachine.
  *
  * Usage:
  * ```tsx
@@ -12,8 +15,8 @@
  * magnifier.show()
  * magnifier.dismiss()
  *
- * // Check state
- * if (magnifier.isVisible && !magnifier.isDragging) { ... }
+ * // Check state (use interaction.isPinching from state machine)
+ * if (magnifier.isVisible && !interaction.isPinching) { ... }
  * ```
  */
 
@@ -60,22 +63,9 @@ export interface UseMagnifierStateReturn {
   toggleExpanded: () => void
 
   // -------------------------------------------------------------------------
-  // Touch Interaction State
-  // -------------------------------------------------------------------------
-  /** Whether user is currently dragging the magnifier */
-  isDragging: boolean
-  /** Set dragging state */
-  setDragging: (dragging: boolean) => void
-  /** Whether user is currently pinching to zoom */
-  isPinching: boolean
-  /** Set pinching state */
-  setPinching: (pinching: boolean) => void
-  /** Whether any touch interaction is active */
-  isTouchActive: boolean
-
-  // -------------------------------------------------------------------------
   // Touch Tracking Refs
   // -------------------------------------------------------------------------
+  // Note: isDragging/setDragging and isPinching/setPinching removed - state machine is authoritative
   /** Reference to touch start position for drag calculations */
   touchStartRef: React.MutableRefObject<{ x: number; y: number } | null>
   /** Reference to track if user actually moved (vs just tapped) */
@@ -122,13 +112,8 @@ export function useMagnifierState(options: UseMagnifierStateOptions = {}): UseMa
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded)
 
   // -------------------------------------------------------------------------
-  // Touch Interaction State
-  // -------------------------------------------------------------------------
-  const [isDragging, setIsDragging] = useState(false)
-  const [isPinching, setIsPinching] = useState(false)
-
-  // -------------------------------------------------------------------------
   // Touch Tracking Refs
+  // Note: isDragging and isPinching removed - state machine is authoritative
   // -------------------------------------------------------------------------
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const didMoveRef = useRef(false)
@@ -153,13 +138,12 @@ export function useMagnifierState(options: UseMagnifierStateOptions = {}): UseMa
     setIsVisible(false)
     setTargetOpacity(0)
     setIsExpanded(false)
-    setIsDragging(false)
-    setIsPinching(false)
     touchStartRef.current = null
     didMoveRef.current = false
     pinchStartDistanceRef.current = null
     pinchStartZoomRef.current = null
     onDismiss?.()
+    // Note: isDragging and isPinching reset is now handled by state machine
   }, [onDismiss])
 
   // -------------------------------------------------------------------------
@@ -168,11 +152,6 @@ export function useMagnifierState(options: UseMagnifierStateOptions = {}): UseMa
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
   }, [])
-
-  // -------------------------------------------------------------------------
-  // Computed State
-  // -------------------------------------------------------------------------
-  const isTouchActive = isDragging || isPinching
 
   // -------------------------------------------------------------------------
   // Return
@@ -189,14 +168,8 @@ export function useMagnifierState(options: UseMagnifierStateOptions = {}): UseMa
     setExpanded: setIsExpanded,
     toggleExpanded,
 
-    // Touch Interaction
-    isDragging,
-    setDragging: setIsDragging,
-    isPinching,
-    setPinching: setIsPinching,
-    isTouchActive,
-
     // Touch Tracking Refs
+    // Note: isDragging/setDragging and isPinching/setPinching removed - state machine is authoritative
     touchStartRef,
     didMoveRef,
     pinchStartDistanceRef,

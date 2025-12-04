@@ -89,7 +89,14 @@
       "Bash(git reset:*)",
       "WebFetch(domain:abaci.one)",
       "Bash(awk:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(apps/web/src/arcade-games/know-your-world/components/MapRenderer.tsx )",
+      "Bash(apps/web/src/arcade-games/know-your-world/docs/MAPRENDERER_REFACTORING_PLAN.md )",
+      "Bash(apps/web/src/arcade-games/know-your-world/features/magnifier/index.ts )",
+      "Bash(apps/web/src/arcade-games/know-your-world/features/magnifier/useMagnifierStyle.ts )",
+      "Bash(apps/web/src/arcade-games/know-your-world/features/cursor/ )",
+      "Bash(apps/web/src/arcade-games/know-your-world/features/interaction/ )",
+      "Bash(apps/web/src/arcade-games/know-your-world/utils/heatStyles.ts)"
     ],
     "deny": [],
     "ask": []

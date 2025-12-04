@@ -8,33 +8,53 @@
  * - Magnifier visibility and expansion state
  * - Zoom state and animation
  * - Touch interaction state
- * - Viewport calculations
+ * - Cursor position and viewport calculations
+ * - Interaction state machine
+ * - Springs and animations
  */
 
 'use client'
 
 import { createContext, useContext, useMemo, type ReactNode, type RefObject } from 'react'
+import type { SpringValue } from '@react-spring/web'
 
-import type { UseMagnifierStateReturn } from './useMagnifierState'
-import type { UseMagnifierZoomReturn } from '../../hooks/useMagnifierZoom'
+import type { UseInteractionStateMachineReturn } from '../interaction'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface MagnifierSpring {
+  top: SpringValue<number>
+  left: SpringValue<number>
+  opacity: SpringValue<number>
+  movementMultiplier: SpringValue<number>
+}
+
+export interface ParsedViewBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface SafeZoneMargins {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export interface PrecisionCalculations {
+  isAtThreshold: boolean
+  screenPixelRatio: number
+}
 
 // ============================================================================
 // Context Value Type
 // ============================================================================
 
 export interface MagnifierContextValue {
-  // -------------------------------------------------------------------------
-  // State (from useMagnifierState)
-  // -------------------------------------------------------------------------
-  /** Magnifier state including visibility, expansion, and touch state */
-  state: UseMagnifierStateReturn
-
-  // -------------------------------------------------------------------------
-  // Zoom (from useMagnifierZoom)
-  // -------------------------------------------------------------------------
-  /** Zoom state and controls */
-  zoom: UseMagnifierZoomReturn
-
   // -------------------------------------------------------------------------
   // Refs
   // -------------------------------------------------------------------------
@@ -44,28 +64,87 @@ export interface MagnifierContextValue {
   svgRef: RefObject<SVGSVGElement>
   /** Magnifier element ref */
   magnifierRef: RefObject<HTMLDivElement>
+  /** Cursor position ref (mutable) */
+  cursorPositionRef: React.MutableRefObject<{ x: number; y: number } | null>
 
   // -------------------------------------------------------------------------
-  // Viewport
+  // Position & Animation
   // -------------------------------------------------------------------------
-  /** Current cursor position in container coordinates */
+  /** Current cursor position in container coordinates (from state machine) */
   cursorPosition: { x: number; y: number } | null
-  /** SVG viewBox string */
-  viewBox: string
+  // Note: setCursorPosition removed - dispatch to interaction state machine instead
+  /** Zoom spring value */
+  zoomSpring: SpringValue<number>
+  /** Magnifier position/opacity springs */
+  magnifierSpring: MagnifierSpring
+  /** Parsed viewBox dimensions */
+  parsedViewBox: ParsedViewBox
+  /** Safe zone margins for UI elements */
+  safeZoneMargins: SafeZoneMargins
 
   // -------------------------------------------------------------------------
-  // Theme
+  // Magnifier State
+  // -------------------------------------------------------------------------
+  /** Whether magnifier is visible */
+  showMagnifier: boolean
+  /** Set magnifier visibility */
+  setShowMagnifier: (show: boolean) => void
+  /** Whether magnifier is expanded (full size) */
+  isMagnifierExpanded: boolean
+  /** Set magnifier expansion */
+  setIsMagnifierExpanded: (expanded: boolean) => void
+  /** Target opacity for magnifier */
+  targetOpacity: number
+  /** Set target opacity */
+  setTargetOpacity: (opacity: number) => void
+  /** Target zoom level */
+  targetZoom: number
+  /** Set target zoom */
+  setTargetZoom: (zoom: number) => void
+
+  // -------------------------------------------------------------------------
+  // Interaction State Machine
+  // -------------------------------------------------------------------------
+  /** Full interaction state machine return */
+  interaction: UseInteractionStateMachineReturn
+
+  // -------------------------------------------------------------------------
+  // Derived Interaction State (convenience)
+  // -------------------------------------------------------------------------
+  /** Whether mobile map dragging triggered the magnifier */
+  mobileMapDragTriggeredMagnifier: boolean
+  /** Whether mobile map is being dragged */
+  isMobileMapDragging: boolean
+  /** Whether magnifier is being dragged */
+  isMagnifierDragging: boolean
+  /** Whether pointer is locked (precision mode) */
+  pointerLocked: boolean
+
+  // -------------------------------------------------------------------------
+  // Device & Theme
   // -------------------------------------------------------------------------
   /** Whether dark mode is active */
   isDark: boolean
-
-  // -------------------------------------------------------------------------
-  // Device Capabilities
-  // -------------------------------------------------------------------------
   /** Whether device is touch-based */
   isTouchDevice: boolean
   /** Whether device supports precision mode (pointer lock) */
   canUsePrecisionMode: boolean
+
+  // -------------------------------------------------------------------------
+  // Precision Mode
+  // -------------------------------------------------------------------------
+  /** Precision mode threshold */
+  precisionModeThreshold: number
+  /** Precision calculations */
+  precisionCalcs: PrecisionCalculations
+
+  // -------------------------------------------------------------------------
+  // Zoom Controls
+  // -------------------------------------------------------------------------
+  /** Get current zoom level (from spring) */
+  getCurrentZoom: () => number
+  /** High zoom threshold for styling changes */
+  highZoomThreshold: number
 }
 
 // ============================================================================
@@ -93,24 +172,53 @@ export interface MagnifierProviderProps {
  * ```tsx
  * <MagnifierProvider value={magnifierContextValue}>
  *   <MagnifierOverlay />
+ *   <ZoomLinesOverlay />
  * </MagnifierProvider>
  * ```
  */
 export function MagnifierProvider({ children, value }: MagnifierProviderProps) {
   // Memoize the value to prevent unnecessary re-renders
+  // Only re-create when key values change
   const memoizedValue = useMemo(
     () => value,
     [
-      value.state,
-      value.zoom,
+      // Refs (stable)
       value.containerRef,
       value.svgRef,
       value.magnifierRef,
+      value.cursorPositionRef,
+      // Position & Animation
       value.cursorPosition,
-      value.viewBox,
+      value.zoomSpring,
+      value.magnifierSpring,
+      value.parsedViewBox,
+      value.safeZoneMargins,
+      // Magnifier State
+      value.showMagnifier,
+      value.setShowMagnifier,
+      value.isMagnifierExpanded,
+      value.setIsMagnifierExpanded,
+      value.targetOpacity,
+      value.setTargetOpacity,
+      value.targetZoom,
+      value.setTargetZoom,
+      // Interaction State Machine
+      value.interaction,
+      // Derived State
+      value.mobileMapDragTriggeredMagnifier,
+      value.isMobileMapDragging,
+      value.isMagnifierDragging,
+      value.pointerLocked,
+      // Device & Theme
       value.isDark,
       value.isTouchDevice,
       value.canUsePrecisionMode,
+      // Precision Mode
+      value.precisionModeThreshold,
+      value.precisionCalcs,
+      // Zoom
+      value.getCurrentZoom,
+      value.highZoomThreshold,
     ]
   )
 
@@ -130,7 +238,7 @@ export function MagnifierProvider({ children, value }: MagnifierProviderProps) {
  * @example
  * ```tsx
  * function MagnifierControls() {
- *   const { state, zoom, isDark } = useMagnifierContext()
+ *   const { showMagnifier, isMagnifierExpanded, isDark } = useMagnifierContext()
  *   // ...
  * }
  * ```

@@ -11,7 +11,7 @@
  * - Whether there are small regions requiring magnifier zoom
  */
 
-import { useState, useCallback, useRef, useEffect, type RefObject } from 'react'
+import { useCallback, useRef, useEffect, type RefObject } from 'react'
 import type { MapData } from '../types'
 
 export interface DetectionBox {
@@ -70,10 +70,9 @@ export interface UseRegionDetectionOptions {
 export interface UseRegionDetectionReturn {
   /** Detect regions at the given cursor position */
   detectRegions: (cursorX: number, cursorY: number) => RegionDetectionResult
-  /** Current hovered region */
-  hoveredRegion: string | null
-  /** Set the hovered region */
-  setHoveredRegion: (regionId: string | null) => void
+  // Note: hoveredRegion and setHoveredRegion were removed.
+  // The interaction state machine is now authoritative for hovered region state.
+  // Consumers should use interaction.hoveredRegionId instead.
 }
 
 /**
@@ -99,8 +98,6 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
     largestPieceSizesCache,
     regionsFound = [],
   } = options
-
-  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null)
 
   // Cache path elements to avoid repeated querySelector calls
   const pathElementCache = useRef<Map<string, SVGGeometryElement>>(new Map())
@@ -297,7 +294,5 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
 
   return {
     detectRegions,
-    hoveredRegion,
-    setHoveredRegion,
   }
 }

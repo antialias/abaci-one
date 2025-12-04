@@ -14,27 +14,21 @@
  * ```tsx
  * import {
  *   useMagnifierState,
- *   useMagnifierTouch,
+ *   useMagnifierTouchHandlers,
  *   useMagnifierZoom,
  *   MagnifierCrosshair,
  *   MagnifierPixelGrid,
+ *   MagnifierProvider,
  * } from '../features/magnifier'
  *
  * function MapRenderer() {
  *   const magnifier = useMagnifierState()
  *   const zoom = useMagnifierZoom({ ... })
- *   const touch = useMagnifierTouch({
- *     magnifierState: magnifier,
- *     getCurrentZoom: zoom.getCurrentZoom,
- *     setZoom: zoom.setTargetZoom,
- *     ...
- *   })
  *
  *   return (
- *     <div {...touch.handlers}>
- *       <MagnifierCrosshair ... />
- *       <MagnifierPixelGrid ... />
- *     </div>
+ *     <MagnifierProvider value={magnifierContextValue}>
+ *       <MagnifierOverlayWithHandlers ... />
+ *     </MagnifierProvider>
  *   )
  * }
  * ```
@@ -55,14 +49,10 @@ export type {
 } from './useMagnifierStyle'
 export { useMagnifierStyle } from './useMagnifierStyle'
 export type {
-  PanInfo,
-  PinchInfo,
-  TapInfo,
-  TouchPosition,
-  UseMagnifierTouchOptions,
-  UseMagnifierTouchReturn,
-} from './useMagnifierTouch'
-export { useMagnifierTouch } from './useMagnifierTouch'
+  UseMagnifierTouchHandlersOptions,
+  UseMagnifierTouchHandlersReturn,
+} from './useMagnifierTouchHandlers'
+export { useMagnifierTouchHandlers } from './useMagnifierTouchHandlers'
 
 // ============================================================================
 // Components
@@ -72,6 +62,10 @@ export type { MagnifierControlsProps } from './MagnifierControls'
 export { MagnifierControls } from './MagnifierControls'
 export type { MagnifierCrosshairProps } from './MagnifierCrosshair'
 export { MagnifierCrosshair } from './MagnifierCrosshair'
+export type { MagnifierOverlayProps } from './MagnifierOverlay'
+export { MagnifierOverlay } from './MagnifierOverlay'
+export type { MagnifierOverlayWithHandlersProps } from './MagnifierOverlayWithHandlers'
+export { MagnifierOverlayWithHandlers } from './MagnifierOverlayWithHandlers'
 export type { MagnifierPixelGridProps } from './MagnifierPixelGrid'
 export { MagnifierPixelGrid } from './MagnifierPixelGrid'
 export type {
@@ -81,6 +75,8 @@ export type {
   RegionState,
 } from './MagnifierRegions'
 export { MagnifierRegions } from './MagnifierRegions'
+export type { ZoomLinesOverlayProps } from './ZoomLinesOverlay'
+export { ZoomLinesOverlay } from './ZoomLinesOverlay'
 
 // ============================================================================
 // Context
@@ -89,6 +85,10 @@ export { MagnifierRegions } from './MagnifierRegions'
 export type {
   MagnifierContextValue,
   MagnifierProviderProps,
+  MagnifierSpring,
+  ParsedViewBox,
+  PrecisionCalculations,
+  SafeZoneMargins,
 } from './MagnifierContext'
 export {
   MagnifierProvider,
