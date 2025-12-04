@@ -24,7 +24,6 @@ import {
   shouldShowAutoSpeakToggle,
   shouldShowGuidanceDropdown,
 } from '../utils/guidanceVisibility'
-import type { FeedbackType } from '../utils/hotColdPhrases'
 import { SimpleLetterKeyboard, useIsTouchDevice } from './SimpleLetterKeyboard'
 
 // Animation duration in ms - must match MapRenderer
@@ -45,33 +44,6 @@ function pointsToSvgPath(points: Array<{ x: number; y: number }>): string {
   }
   path += ' Z'
   return path
-}
-
-// Helper to get hot/cold feedback emoji (matches MapRenderer's getHotColdEmoji)
-function getHotColdEmoji(type: FeedbackType | null | undefined): string {
-  if (!type) return '🔥'
-  switch (type) {
-    case 'found_it':
-      return '🎯'
-    case 'on_fire':
-      return '🔥'
-    case 'hot':
-      return '🥵'
-    case 'warmer':
-      return '☀️'
-    case 'colder':
-      return '🌧️'
-    case 'cold':
-      return '🥶'
-    case 'freezing':
-      return '❄️'
-    case 'overshot':
-      return '↩️'
-    case 'stuck':
-      return '🤔'
-    default:
-      return '🔥'
-  }
 }
 
 interface GameInfoPanelProps {
