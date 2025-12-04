@@ -507,6 +507,10 @@ export function MapRenderer({
   // Refs for scale probe elements (for empirical 1:1 tracking measurement)
   const scaleProbe1Ref = useRef<SVGCircleElement>(null)
   const scaleProbe2Ref = useRef<SVGCircleElement>(null)
+  // Refs for closed-loop anchor probe tracking (1:1 touch tracking)
+  const anchorProbeRef = useRef<SVGCircleElement>(null)
+  const anchorSvgPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const fingerStartRef = useRef<{ x: number; y: number } | null>(null)
   // Where user tapped on magnifier
   const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null)
 
@@ -2356,6 +2360,9 @@ export function MapRenderer({
       cursorPositionRef,
       scaleProbe1Ref,
       scaleProbe2Ref,
+      anchorProbeRef,
+      anchorSvgPositionRef,
+      fingerStartRef,
       // Position & Animation (cursorPosition comes from state machine)
       cursorPosition,
       zoomSpring,
@@ -2396,6 +2403,9 @@ export function MapRenderer({
       cursorPositionRef,
       scaleProbe1Ref,
       scaleProbe2Ref,
+      anchorProbeRef,
+      anchorSvgPositionRef,
+      fingerStartRef,
       cursorPosition,
       zoomSpring,
       magnifierSpring,

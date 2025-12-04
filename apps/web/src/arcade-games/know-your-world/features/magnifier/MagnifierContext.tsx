@@ -70,6 +70,12 @@ export interface MagnifierContextValue {
   scaleProbe1Ref: RefObject<SVGCircleElement>
   /** Scale probe 2 ref (for empirical scale measurement) */
   scaleProbe2Ref: RefObject<SVGCircleElement>
+  /** Anchor probe ref (for closed-loop 1:1 tracking) */
+  anchorProbeRef: RefObject<SVGCircleElement>
+  /** Anchor SVG position - set on touch start, probe stays at this SVG coord */
+  anchorSvgPositionRef: React.MutableRefObject<{ x: number; y: number } | null>
+  /** Finger start position in screen coords - where finger was when anchor was placed */
+  fingerStartRef: React.MutableRefObject<{ x: number; y: number } | null>
 
   // -------------------------------------------------------------------------
   // Position & Animation
@@ -193,6 +199,9 @@ export function MagnifierProvider({ children, value }: MagnifierProviderProps) {
       value.cursorPositionRef,
       value.scaleProbe1Ref,
       value.scaleProbe2Ref,
+      value.anchorProbeRef,
+      value.anchorSvgPositionRef,
+      value.fingerStartRef,
       // Position & Animation
       value.cursorPosition,
       value.zoomSpring,

@@ -20,12 +20,7 @@ import { getMagnifierDimensions } from '../../utils/magnifierDimensions'
 import { useMapGameContext } from '../game'
 import { getRenderedViewport } from '../labels'
 import { useMagnifierContext } from './MagnifierContext'
-import {
-  applyPanDelta,
-  calculateTouchMultiplier,
-  clampToSvgBounds,
-  parseViewBoxDimensions,
-} from './panningMath'
+import { calculateTouchMultiplier, clampToSvgBounds, parseViewBoxDimensions } from './panningMath'
 
 // ============================================================================
 // Constants
@@ -130,6 +125,7 @@ export function useMagnifierTouchHandlers(
     cursorPositionRef,
     scaleProbe1Ref,
     scaleProbe2Ref,
+    anchorSvgPositionRef,
     isMagnifierExpanded,
     setIsMagnifierExpanded,
     getCurrentZoom,
@@ -197,6 +193,20 @@ export function useMagnifierTouchHandlers(
   }, [scaleProbe1Ref, scaleProbe2Ref, SCALE_PROBE_SVG_DISTANCE])
 
   // -------------------------------------------------------------------------
+  // Direct Anchor Tracking
+  // -------------------------------------------------------------------------
+  /**
+   * Direct approach to 1:1 tracking:
+   * 1. On touch start, record anchor's INITIAL screen position
+   * 2. On touch move, measure finger delta from its start position
+   * 3. Apply inverse delta to cursor (in container coords via empirical scale)
+   *
+   * This avoids the feedback loop issue where measuring anchor error after
+   * cursor update causes instability.
+   */
+  const anchorInitialScreenRef = useRef<{ x: number; y: number } | null>(null)
+
+  // -------------------------------------------------------------------------
   // Refs for touch tracking (internal to this hook)
   // -------------------------------------------------------------------------
   const magnifierTouchStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -204,6 +214,8 @@ export function useMagnifierTouchHandlers(
   const magnifierTapPositionRef = useRef<{ x: number; y: number } | null>(null)
   const pinchStartDistanceRef = useRef<number | null>(null)
   const pinchStartZoomRef = useRef<number | null>(null)
+  // Track last zoom level to detect zoom changes and re-anchor
+  const lastZoomRef = useRef<number | null>(null)
 
   // -------------------------------------------------------------------------
   // Helper: Calculate distance between two touch points
@@ -243,27 +255,83 @@ export function useMagnifierTouchHandlers(
         magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
         magnifierDidMoveRef.current = false // Reset movement tracking
 
-        // Record tap position relative to magnifier for tap-to-select
-        if (magnifierRef.current) {
+        // =======================================================================
+        // ANCHOR TRACKING SETUP (for empirical scale measurement)
+        // =======================================================================
+        // Calculate where the finger touch is in SVG coordinates
+        // This becomes the anchor position - a fixed point in SVG space that we'll
+        // try to keep under the finger as it moves
+        if (
+          magnifierRef.current &&
+          svgRef.current &&
+          containerRef.current &&
+          cursorPositionRef.current
+        ) {
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const svgRect = svgRef.current.getBoundingClientRect()
           const magnifierRect = magnifierRef.current.getBoundingClientRect()
+
+          // Get viewport info for coordinate conversion
+          const viewBox = parseViewBoxDimensions(displayViewBox)
+          const viewport = getRenderedViewport(
+            svgRect,
+            parsedViewBox.x,
+            parsedViewBox.y,
+            parsedViewBox.width,
+            parsedViewBox.height
+          )
+          const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+          const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
+
+          // Current cursor position in SVG coordinates (center of magnifier view)
+          const cursorSvgX =
+            (cursorPositionRef.current.x - svgOffsetX) / viewport.scale + parsedViewBox.x
+          const cursorSvgY =
+            (cursorPositionRef.current.y - svgOffsetY) / viewport.scale + parsedViewBox.y
+
+          // Calculate magnified viewBox dimensions
+          const currentZoom = getCurrentZoom()
+          const magnifiedWidth = parsedViewBox.width / currentZoom
+          const magnifiedHeight = parsedViewBox.height / currentZoom
+
+          // Where did the finger touch within the magnifier? (0-1 normalized)
+          const touchInMagnifierX = (touch.clientX - magnifierRect.left) / magnifierRect.width
+          const touchInMagnifierY = (touch.clientY - magnifierRect.top) / magnifierRect.height
+
+          // Convert to SVG coordinates within the magnified view
+          const touchSvgX = cursorSvgX - magnifiedWidth / 2 + touchInMagnifierX * magnifiedWidth
+          const touchSvgY = cursorSvgY - magnifiedHeight / 2 + touchInMagnifierY * magnifiedHeight
+
+          // Set anchor position - this SVG coordinate should stay under the finger
+          anchorSvgPositionRef.current = { x: touchSvgX, y: touchSvgY }
+
+          // Record the finger's initial screen position for delta tracking
+          // We'll use this to track how far the finger has moved from start
+          anchorInitialScreenRef.current = { x: touch.clientX, y: touch.clientY }
+
+          console.log('[MagnifierTouchStart] ANCHOR SETUP:', {
+            fingerScreen: { x: touch.clientX, y: touch.clientY },
+            touchInMagnifier: {
+              x: touchInMagnifierX.toFixed(2),
+              y: touchInMagnifierY.toFixed(2),
+            },
+            cursorSvg: { x: cursorSvgX.toFixed(1), y: cursorSvgY.toFixed(1) },
+            anchorSvg: { x: touchSvgX.toFixed(1), y: touchSvgY.toFixed(1) },
+            magnifiedSize: {
+              w: magnifiedWidth.toFixed(1),
+              h: magnifiedHeight.toFixed(1),
+            },
+            zoom: currentZoom.toFixed(2),
+          })
+
+          // Record tap position relative to magnifier for tap-to-select
           magnifierTapPositionRef.current = {
             x: touch.clientX - magnifierRect.left,
             y: touch.clientY - magnifierRect.top,
           }
 
-          console.log('[MagnifierTouchStart] Touch started on magnifier:', {
-            touchClient: { x: touch.clientX, y: touch.clientY },
-            magnifierRect: {
-              left: magnifierRect.left.toFixed(0),
-              top: magnifierRect.top.toFixed(0),
-              width: magnifierRect.width.toFixed(0),
-              height: magnifierRect.height.toFixed(0),
-            },
-            tapPositionInMagnifier: magnifierTapPositionRef.current,
-            cursorPosition: cursorPositionRef.current,
-            currentZoom: getCurrentZoom().toFixed(2),
-            isMagnifierExpanded,
-          })
+          // Initialize lastZoomRef for zoom change detection
+          lastZoomRef.current = currentZoom
         }
 
         // State machine handles dragging state via TOUCH_MOVE (transitions to magnifierPanning)
@@ -276,8 +344,12 @@ export function useMagnifierTouchHandlers(
       interaction,
       setIsMagnifierExpanded,
       magnifierRef,
+      svgRef,
+      containerRef,
       cursorPositionRef,
-      isMagnifierExpanded,
+      anchorSvgPositionRef,
+      parsedViewBox,
+      displayViewBox,
     ]
   )
 
@@ -347,36 +419,69 @@ export function useMagnifierTouchHandlers(
       magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
 
       // =========================================================================
-      // EMPIRICAL SCALE MEASUREMENT for 1:1 Touch Tracking
+      // DIRECT DELTA TRACKING for True 1:1 Touch Tracking
       // =========================================================================
-      // Instead of calculating through all transform layers, we measure the actual
-      // pixel-to-SVG ratio by comparing screen positions of probe elements.
-      // This is robust to any rendering pipeline changes.
+      // Simple approach that avoids feedback loops:
+      // 1. On touch start, record finger's initial screen position
+      // 2. On each move, calculate how far finger moved from START
+      // 3. Convert that screen delta to cursor delta using empirical scale
+      // 4. Apply inverse delta to cursor (dragging right moves view left)
+      //
+      // This uses the same "screen pixels per SVG unit" measurement but applies
+      // it to the delta from start, not frame-by-frame deltas. This is more
+      // stable because we're not accumulating errors.
 
-      const empiricalScale = measureEmpiricalScale()
       const currentZoom = getCurrentZoom()
+      const anchorInitialScreen = anchorInitialScreenRef.current
+
+      let cursorDeltaX: number
+      let cursorDeltaY: number
+
+      // Get empirical scale - this tells us how many screen pixels = 1 SVG unit in magnifier
+      const empiricalScale = measureEmpiricalScale()
       const viewBox = parseViewBoxDimensions(displayViewBox)
 
-      // touchMultiplier = how many container pixels to move per touch pixel
-      // For 1:1: when finger moves N pixels, content should move N pixels in magnifier
-      // Since we measure pixelsPerSvgUnit (magnifier pixels per SVG unit),
-      // and cursor position is in container coords (main SVG scale),
-      // we need: touchMultiplier = viewportScale / pixelsPerSvgUnit
+      // viewport scale = container pixels per SVG unit (for the main map, not magnifier)
       const viewportScale =
         svgRect.width / viewBox.width > svgRect.height / viewBox.height
           ? svgRect.height / viewBox.height
           : svgRect.width / viewBox.width
 
-      // Default to calculated value if empirical measurement fails
-      let touchMultiplier: number
-      if (empiricalScale.isValid) {
-        // Empirical: finger moves in screen pixels, we need cursor delta in container pixels
-        // pixelsPerSvgUnit = screen pixels per SVG unit in magnifier
-        // viewportScale = container pixels per SVG unit in main map
-        // touchMultiplier = viewportScale / pixelsPerSvgUnit
-        touchMultiplier = viewportScale / empiricalScale.pixelsPerSvgUnit
+      if (empiricalScale.isValid && anchorInitialScreen) {
+        // EMPIRICAL APPROACH: Use measured scale for accurate conversion
+        //
+        // The user drags in screen pixels. We need to move the cursor in container pixels.
+        // - In the magnifier: 1 SVG unit = empiricalScale.pixelsPerSvgUnit screen pixels
+        // - In the main map: 1 SVG unit = viewportScale container pixels
+        //
+        // So: touchMultiplier = viewportScale / empiricalScale.pixelsPerSvgUnit
+        //
+        // When finger moves 1 screen pixel in magnifier:
+        // - That's (1 / pixelsPerSvgUnit) SVG units
+        // - Which is (viewportScale / pixelsPerSvgUnit) container pixels of cursor movement
+
+        const touchMultiplier = viewportScale / empiricalScale.pixelsPerSvgUnit
+
+        // Apply delta from this frame (deltaX, deltaY already calculated above)
+        // Inverted because dragging right should move cursor left (panning view)
+        cursorDeltaX = -deltaX * touchMultiplier
+        cursorDeltaY = -deltaY * touchMultiplier
+
+        // DEBUG: Log tracking (throttled)
+        const now = performance.now()
+        if (now - lastLogTimeRef.current > 200) {
+          lastLogTimeRef.current = now
+          console.log('[MagnifierPan] DIRECT delta tracking:', {
+            frameDelta: { x: deltaX.toFixed(1), y: deltaY.toFixed(1) },
+            touchMultiplier: touchMultiplier.toFixed(4),
+            cursorDelta: { x: cursorDeltaX.toFixed(2), y: cursorDeltaY.toFixed(2) },
+            empiricalPxPerSvg: empiricalScale.pixelsPerSvgUnit.toFixed(2),
+            viewportScale: viewportScale.toFixed(2),
+            zoom: currentZoom.toFixed(2),
+          })
+        }
       } else {
-        // Fallback to old calculation
+        // FALLBACK: Calculate touch multiplier from dimensions
         const leftoverWidth = containerRect.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
         const leftoverHeight =
           containerRect.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
@@ -399,50 +504,30 @@ export function useMagnifierTouchHandlers(
             zoom: currentZoom,
           }
         )
-        touchMultiplier = touchMultiplierResult.multiplier
+        const touchMultiplier = touchMultiplierResult.multiplier
+
+        // Apply delta-based calculation (inverted because dragging right should move view left)
+        cursorDeltaX = -deltaX * touchMultiplier
+        cursorDeltaY = -deltaY * touchMultiplier
+
+        const now = performance.now()
+        if (now - lastLogTimeRef.current > 500) {
+          lastLogTimeRef.current = now
+          console.log('[MagnifierPan] FALLBACK calculated tracking:', {
+            touchDelta: { x: deltaX.toFixed(1), y: deltaY.toFixed(1) },
+            touchMultiplier: touchMultiplier.toFixed(4),
+            zoom: currentZoom.toFixed(2),
+          })
+        }
       }
 
-      // DEBUG: Log empirical scale measurement (throttled to once per 500ms)
-      const now = performance.now()
-      if (now - lastLogTimeRef.current > 500) {
-        lastLogTimeRef.current = now
-
-        console.log('[MagnifierPan] EMPIRICAL 1:1 tracking:', {
-          // Touch delta
-          touchDelta: { x: deltaX.toFixed(1), y: deltaY.toFixed(1) },
-
-          // Empirical measurement
-          empirical: {
-            isValid: empiricalScale.isValid,
-            pixelsPerSvgUnit: empiricalScale.pixelsPerSvgUnit.toFixed(4),
-          },
-
-          // Multiplier being used
-          touchMultiplier: touchMultiplier.toFixed(4),
-          viewportScale: viewportScale.toFixed(4),
-
-          // Current zoom
-          zoom: currentZoom.toFixed(2),
-
-          // Cursor movement (in container pixels)
-          cursorMovement: {
-            expected: { x: (-deltaX).toFixed(1), y: (-deltaY).toFixed(1) },
-            actual: {
-              x: (-deltaX * touchMultiplier).toFixed(1),
-              y: (-deltaY * touchMultiplier).toFixed(1),
-            },
-          },
-        })
-      }
-
-      // Apply pan delta and clamp to SVG bounds
+      // Apply cursor delta and clamp to SVG bounds
       const svgOffsetX = svgRect.left - containerRect.left
       const svgOffsetY = svgRect.top - containerRect.top
-      const newCursor = applyPanDelta(
-        cursorPositionRef.current,
-        { x: deltaX, y: deltaY },
-        touchMultiplier
-      )
+      const newCursor = {
+        x: cursorPositionRef.current.x + cursorDeltaX,
+        y: cursorPositionRef.current.y + cursorDeltaY,
+      }
       const clamped = clampToSvgBounds(newCursor, {
         left: svgOffsetX,
         top: svgOffsetY,
@@ -516,6 +601,7 @@ export function useMagnifierTouchHandlers(
         pointerLocked: false, // Mobile never uses pointer lock
       })
 
+      // Set the target zoom (no re-anchoring needed with direct delta tracking)
       setTargetZoom(zoomSearchResult.zoom)
 
       // Broadcast cursor update to other players (if in multiplayer)
@@ -559,11 +645,13 @@ export function useMagnifierTouchHandlers(
       svgRef,
       containerRef,
       cursorPositionRef,
+      anchorSvgPositionRef,
       // Note: hoveredRegion and setHoveredRegion removed - state machine is authoritative
       hotColdEnabledRef,
       largestPieceSizesRef,
       parsedViewBox,
       interaction,
+      magnifierRef,
     ]
   )
 
@@ -619,6 +707,10 @@ export function useMagnifierTouchHandlers(
       magnifierTouchStartRef.current = null
       magnifierDidMoveRef.current = false
       magnifierTapPositionRef.current = null
+
+      // Clear anchor tracking refs
+      anchorSvgPositionRef.current = null
+      anchorInitialScreenRef.current = null
 
       // If there was a changed touch that ended and it wasn't a drag, check for tap-to-select
       if (e.changedTouches.length === 1 && !didMove && tapPosition) {
@@ -691,6 +783,7 @@ export function useMagnifierTouchHandlers(
       containerRef,
       cursorPositionRef,
       parsedViewBox,
+      anchorSvgPositionRef,
     ]
   )
 

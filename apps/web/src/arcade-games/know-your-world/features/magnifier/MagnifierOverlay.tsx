@@ -90,6 +90,8 @@ export function MagnifierOverlay({
     highZoomThreshold,
     scaleProbe1Ref,
     scaleProbe2Ref,
+    anchorProbeRef,
+    anchorSvgPositionRef,
   } = useMagnifierContext()
 
   // Distance between scale probes in SVG units (must match useEmpiricalScale.ts)
@@ -310,6 +312,21 @@ export function MagnifierOverlay({
                 pointerEvents="none"
                 data-scale-probe="2"
               />
+              {/* Anchor probe for closed-loop 1:1 tracking */}
+              {/* Position is set on touch start and stays fixed in SVG coords */}
+              {/* We measure its screen position to solve for cursor movement */}
+              {anchorSvgPositionRef.current && (
+                <circle
+                  ref={anchorProbeRef}
+                  cx={anchorSvgPositionRef.current.x}
+                  cy={anchorSvgPositionRef.current.y}
+                  r={0.5}
+                  fill="transparent"
+                  stroke="none"
+                  pointerEvents="none"
+                  data-anchor-probe="true"
+                />
+              )}
             </>
           )
         })()}
