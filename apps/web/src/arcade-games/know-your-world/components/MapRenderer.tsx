@@ -2292,8 +2292,7 @@ export function MapRenderer({
 
       // Once we detect a drag (moved past threshold), show magnifier and update cursor
       if (distance >= MOBILE_DRAG_THRESHOLD) {
-        // Prevent default to stop text selection and other browser gestures
-        e.preventDefault()
+        // Note: touchAction: 'none' CSS prevents browser gestures without needing preventDefault()
 
         if (!isMobileMapDragging) {
           setIsMobileMapDragging(true)
@@ -2517,7 +2516,7 @@ export function MapRenderer({
         setIsMagnifierExpanded(true) // Expand magnifier to fill leftover area during pinch
         setIsMagnifierDragging(false) // Cancel any single-finger drag
         magnifierTouchStartRef.current = null
-        e.preventDefault()
+        // Note: touchAction: 'none' CSS prevents browser gestures
         return
       }
 
@@ -2537,7 +2536,7 @@ export function MapRenderer({
         }
 
         setIsMagnifierDragging(true)
-        e.preventDefault() // Prevent scrolling
+        // Note: touchAction: 'none' CSS prevents scrolling
       }
     },
     [getTouchDistance, getCurrentZoom]
@@ -2561,7 +2560,7 @@ export function MapRenderer({
           setTargetZoom(newZoom)
         }
 
-        e.preventDefault()
+        // Note: touchAction: 'none' CSS prevents browser zoom gestures
         return
       }
 
@@ -2708,7 +2707,8 @@ export function MapRenderer({
         onCursorUpdate({ x: cursorSvgX, y: cursorSvgY }, regionUnderCursor)
       }
 
-      e.preventDefault() // Prevent scrolling
+      // Note: No preventDefault() needed here - the container has touchAction: 'none' CSS
+      // which prevents scrolling without triggering passive event listener warnings
     },
     [
       isMagnifierDragging,
