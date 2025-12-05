@@ -19,6 +19,7 @@ import { findOptimalZoom } from '../../utils/adaptiveZoomSearch'
 import { getMagnifierDimensions } from '../../utils/magnifierDimensions'
 import { useMapGameContext } from '../game'
 import { getRenderedViewport } from '../labels'
+import { MAX_ZOOM } from '../shared/constants'
 import { useMagnifierContext } from './MagnifierContext'
 import { calculateTouchMultiplier, clampToSvgBounds, parseViewBoxDimensions } from './panningMath'
 
@@ -26,7 +27,6 @@ import { calculateTouchMultiplier, clampToSvgBounds, parseViewBoxDimensions } fr
 // Constants
 // ============================================================================
 
-const MAX_ZOOM = 50
 const SAFE_ZONE_MARGINS = {
   top: 60,
   right: 8,
