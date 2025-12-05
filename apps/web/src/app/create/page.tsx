@@ -5,6 +5,200 @@ import { useTranslations } from 'next-intl'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 
+// Card theme configurations
+const cardThemes = {
+  flashcards: {
+    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    shadowColor: 'rgba(102, 126, 234, 0.4)',
+    checkBg: 'purple.100',
+    checkColor: 'purple.600',
+  },
+  worksheets: {
+    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    shadowColor: 'rgba(16, 185, 129, 0.4)',
+    checkBg: 'green.100',
+    checkColor: 'green.600',
+  },
+  calendar: {
+    gradient: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+    shadowColor: 'rgba(251, 191, 36, 0.4)',
+    checkBg: 'yellow.100',
+    checkColor: 'yellow.600',
+  },
+} as const
+
+type CardType = keyof typeof cardThemes
+
+interface CreatorCardProps {
+  type: CardType
+  href: string
+  emoji: string
+  title: string
+  description: string
+  features: string[]
+  buttonText: string
+}
+
+function CreatorCard({
+  type,
+  href,
+  emoji,
+  title,
+  description,
+  features,
+  buttonText,
+}: CreatorCardProps) {
+  const theme = cardThemes[type]
+
+  return (
+    <Link href={href} className={css({ display: 'block', height: '100%' })}>
+      <div
+        data-element={`${type}-card`}
+        className={css({
+          bg: 'bg.surface',
+          borderRadius: { base: '2xl', md: '3xl' },
+          p: { base: 5, sm: 6, md: 8 },
+          border: '1px solid',
+          borderColor: 'border.default',
+          boxShadow: { base: '0 10px 40px rgba(0,0,0,0.15)', md: '0 20px 60px rgba(0,0,0,0.2)' },
+          cursor: 'pointer',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          position: 'relative',
+          overflow: 'hidden',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          _hover: {
+            transform: { base: 'translateY(-4px)', md: 'translateY(-8px) scale(1.01)' },
+            boxShadow: { base: '0 16px 50px rgba(0,0,0,0.2)', md: '0 30px 80px rgba(0,0,0,0.25)' },
+            borderColor: 'border.emphasized',
+          },
+          _before: {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: { base: '4px', md: '6px' },
+            background: theme.gradient,
+          },
+        })}
+      >
+        {/* Icon */}
+        <div
+          className={css({
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: { base: '2xl', sm: '3xl', md: '4xl' },
+            mb: { base: 3, md: 5 },
+            width: { base: '56px', sm: '64px', md: '80px' },
+            height: { base: '56px', sm: '64px', md: '80px' },
+            borderRadius: { base: 'xl', md: '2xl' },
+            background: theme.gradient,
+            boxShadow: `0 8px 24px ${theme.shadowColor}`,
+            flexShrink: 0,
+          })}
+        >
+          {emoji}
+        </div>
+
+        {/* Title */}
+        <h2
+          className={css({
+            fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
+            fontWeight: 'bold',
+            mb: { base: 2, md: 3 },
+            color: 'text.primary',
+            letterSpacing: 'tight',
+          })}
+        >
+          {title}
+        </h2>
+
+        {/* Description */}
+        <p
+          className={css({
+            fontSize: { base: 'sm', md: 'md' },
+            color: 'text.secondary',
+            mb: { base: 3, md: 5 },
+            lineHeight: '1.6',
+            flex: 1,
+          })}
+        >
+          {description}
+        </p>
+
+        {/* Features */}
+        <ul
+          className={css({
+            listStyle: 'none',
+            display: { base: 'none', sm: 'flex' },
+            flexDirection: 'column',
+            gap: { base: 2, md: 3 },
+            mb: { base: 4, md: 0 },
+          })}
+        >
+          {features.map((feature, i) => (
+            <li
+              key={i}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: { base: 2, md: 3 },
+                fontSize: { base: 'xs', md: 'sm' },
+                color: 'text.secondary',
+              })}
+            >
+              <span
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: { base: '16px', md: '20px' },
+                  height: { base: '16px', md: '20px' },
+                  borderRadius: 'full',
+                  bg: theme.checkBg,
+                  color: theme.checkColor,
+                  fontSize: 'xs',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                })}
+              >
+                ✓
+              </span>
+              {feature}
+            </li>
+          ))}
+        </ul>
+
+        {/* CTA Button */}
+        <div className={css({ mt: { base: 0, sm: 5, md: 7 } })}>
+          <div
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 2,
+              px: { base: 4, md: 6 },
+              py: { base: 2, md: 3 },
+              borderRadius: 'xl',
+              background: theme.gradient,
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: { base: 'sm', md: 'md' },
+              boxShadow: `0 4px 15px ${theme.shadowColor}`,
+              transition: 'all 0.3s',
+            })}
+          >
+            <span>{buttonText}</span>
+            <span className={css({ fontSize: { base: 'md', md: 'lg' } })}>→</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 export default function CreateHubPage() {
   const t = useTranslations('create.hub')
 
@@ -15,670 +209,108 @@ export default function CreateHubPage() {
         className={css({
           minHeight: '100vh',
           bg: 'bg.canvas',
-          pt: 24,
-          pb: 16,
-          position: 'relative',
-          overflow: 'hidden',
+          pt: { base: 20, md: 24 },
+          pb: { base: 8, md: 16 },
+          px: { base: 4, sm: 6, md: 8 },
         })}
       >
+        {/* Header */}
         <div
           className={css({
-            maxWidth: '1200px',
+            textAlign: 'center',
+            mb: { base: 8, md: 12, lg: 16 },
+            maxWidth: '800px',
             mx: 'auto',
-            px: 6,
-            position: 'relative',
-            zIndex: 1,
           })}
         >
-          {/* Header */}
           <div
             className={css({
-              textAlign: 'center',
-              mb: 16,
+              fontSize: { base: '4xl', md: '6xl' },
+              mb: { base: 2, md: 4 },
             })}
           >
-            <div
-              className={css({
-                fontSize: '6xl',
-                mb: 4,
-                animation: 'float 3s ease-in-out infinite',
-              })}
-            >
-              ✨
-            </div>
-            <h1
-              className={css({
-                fontSize: { base: '3xl', md: '5xl' },
-                fontWeight: 'extrabold',
-                mb: 5,
-                color: 'text.primary',
-                letterSpacing: 'tight',
-              })}
-            >
-              {t('pageTitle')}
-            </h1>
-            <p
-              className={css({
-                fontSize: { base: 'lg', md: 'xl' },
-                color: 'text.secondary',
-                maxWidth: '2xl',
-                mx: 'auto',
-                lineHeight: '1.8',
-              })}
-            >
-              {t('pageSubtitle')}
-            </p>
+            ✨
           </div>
+          <h1
+            className={css({
+              fontSize: { base: '2xl', sm: '3xl', md: '4xl', lg: '5xl' },
+              fontWeight: 'extrabold',
+              mb: { base: 3, md: 5 },
+              color: 'text.primary',
+              letterSpacing: 'tight',
+            })}
+          >
+            {t('pageTitle')}
+          </h1>
+          <p
+            className={css({
+              fontSize: { base: 'md', sm: 'lg', md: 'xl' },
+              color: 'text.secondary',
+              lineHeight: '1.7',
+              px: { base: 2, md: 0 },
+            })}
+          >
+            {t('pageSubtitle')}
+          </p>
+        </div>
 
-          {/* Creator Cards */}
+        {/* Creator Cards - Centered Grid */}
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'center',
+          })}
+        >
           <div
             className={css({
               display: 'grid',
               gridTemplateColumns: {
                 base: '1fr',
-                md: '1fr 1fr',
-                lg: 'repeat(2, 1fr)',
-                xl: 'repeat(4, 1fr)',
+                sm: 'repeat(2, 1fr)',
+                lg: 'repeat(3, 1fr)',
               },
-              gap: 8,
+              gap: { base: 4, sm: 5, md: 6, lg: 8 },
+              maxWidth: '1200px',
+              width: '100%',
             })}
           >
-            {/* Flashcards Creator */}
-            <Link href="/create/flashcards">
-              <div
-                data-element="flashcards-card"
-                className={css({
-                  bg: 'bg.surface',
-                  borderRadius: '3xl',
-                  p: 8,
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  _hover: {
-                    transform: 'translateY(-12px) scale(1.02)',
-                    boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
-                    borderColor: 'border.emphasized',
-                  },
-                  _before: {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '6px',
-                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                  },
-                })}
-              >
-                {/* Icon with gradient background */}
-                <div
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '4xl',
-                    mb: 5,
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '2xl',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
-                  })}
-                >
-                  🃏
-                </div>
+            <CreatorCard
+              type="flashcards"
+              href="/create/flashcards"
+              emoji="🃏"
+              title={t('flashcards.title')}
+              description={t('flashcards.description')}
+              features={[
+                t('flashcards.feature1'),
+                t('flashcards.feature2'),
+                t('flashcards.feature3'),
+              ]}
+              buttonText={t('flashcards.button')}
+            />
 
-                {/* Title */}
-                <h2
-                  className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'extrabold',
-                    mb: 3,
-                    color: 'text.primary',
-                    letterSpacing: 'tight',
-                  })}
-                >
-                  {t('flashcards.title')}
-                </h2>
+            <CreatorCard
+              type="worksheets"
+              href="/create/worksheets"
+              emoji="📝"
+              title={t('worksheets.title')}
+              description={t('worksheets.description')}
+              features={[
+                t('worksheets.feature1'),
+                t('worksheets.feature2'),
+                t('worksheets.feature3'),
+              ]}
+              buttonText={t('worksheets.button')}
+            />
 
-                {/* Description */}
-                <p
-                  className={css({
-                    fontSize: 'md',
-                    color: 'text.secondary',
-                    mb: 5,
-                    lineHeight: '1.7',
-                  })}
-                >
-                  {t('flashcards.description')}
-                </p>
-
-                {/* Features */}
-                <ul
-                  className={css({
-                    listStyle: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                  })}
-                >
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'purple.100',
-                        color: 'purple.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('flashcards.feature1')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'purple.100',
-                        color: 'purple.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('flashcards.feature2')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'purple.100',
-                        color: 'purple.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('flashcards.feature3')}
-                  </li>
-                </ul>
-
-                {/* CTA Button */}
-                <div
-                  className={css({
-                    mt: 7,
-                  })}
-                >
-                  <div
-                    className={css({
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      px: 6,
-                      py: 3,
-                      borderRadius: 'xl',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: 'md',
-                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                      transition: 'all 0.3s',
-                      _hover: {
-                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
-                        transform: 'translateX(4px)',
-                      },
-                    })}
-                  >
-                    <span>{t('flashcards.button')}</span>
-                    <span className={css({ fontSize: 'lg' })}>→</span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            {/* Worksheet Creator */}
-            <Link href="/create/worksheets">
-              <div
-                data-element="worksheets-card"
-                className={css({
-                  bg: 'bg.surface',
-                  borderRadius: '3xl',
-                  p: 8,
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  _hover: {
-                    transform: 'translateY(-12px) scale(1.02)',
-                    boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
-                    borderColor: 'border.emphasized',
-                  },
-                  _before: {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '6px',
-                    background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                  },
-                })}
-              >
-                {/* Icon with gradient background */}
-                <div
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '4xl',
-                    mb: 5,
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '2xl',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
-                  })}
-                >
-                  📝
-                </div>
-
-                {/* Title */}
-                <h2
-                  className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'extrabold',
-                    mb: 3,
-                    color: 'text.primary',
-                    letterSpacing: 'tight',
-                  })}
-                >
-                  {t('worksheets.title')}
-                </h2>
-
-                {/* Description */}
-                <p
-                  className={css({
-                    fontSize: 'md',
-                    color: 'text.secondary',
-                    mb: 5,
-                    lineHeight: '1.7',
-                  })}
-                >
-                  {t('worksheets.description')}
-                </p>
-
-                {/* Features */}
-                <ul
-                  className={css({
-                    listStyle: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                  })}
-                >
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'green.100',
-                        color: 'green.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('worksheets.feature1')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'green.100',
-                        color: 'green.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('worksheets.feature2')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'green.100',
-                        color: 'green.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('worksheets.feature3')}
-                  </li>
-                </ul>
-
-                {/* CTA Button */}
-                <div
-                  className={css({
-                    mt: 7,
-                  })}
-                >
-                  <div
-                    className={css({
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      px: 6,
-                      py: 3,
-                      borderRadius: 'xl',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: 'md',
-                      boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
-                      transition: 'all 0.3s',
-                      _hover: {
-                        boxShadow: '0 6px 20px rgba(16, 185, 129, 0.5)',
-                        transform: 'translateX(4px)',
-                      },
-                    })}
-                  >
-                    <span>{t('worksheets.button')}</span>
-                    <span className={css({ fontSize: 'lg' })}>→</span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            {/* Calendar Creator */}
-            <Link href="/create/calendar">
-              <div
-                data-element="calendar-card"
-                className={css({
-                  bg: 'bg.surface',
-                  borderRadius: '3xl',
-                  p: 8,
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  _hover: {
-                    transform: 'translateY(-12px) scale(1.02)',
-                    boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
-                    borderColor: 'border.emphasized',
-                  },
-                  _before: {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '6px',
-                    background: 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%)',
-                  },
-                })}
-              >
-                {/* Icon with gradient background */}
-                <div
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '4xl',
-                    mb: 5,
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '2xl',
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                    boxShadow: '0 8px 24px rgba(251, 191, 36, 0.4)',
-                  })}
-                >
-                  📅
-                </div>
-
-                {/* Title */}
-                <h2
-                  className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'extrabold',
-                    mb: 3,
-                    color: 'text.primary',
-                    letterSpacing: 'tight',
-                  })}
-                >
-                  {t('calendar.title')}
-                </h2>
-
-                {/* Description */}
-                <p
-                  className={css({
-                    fontSize: 'md',
-                    color: 'text.secondary',
-                    mb: 5,
-                    lineHeight: '1.7',
-                  })}
-                >
-                  {t('calendar.description')}
-                </p>
-
-                {/* Features */}
-                <ul
-                  className={css({
-                    listStyle: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                  })}
-                >
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'yellow.100',
-                        color: 'yellow.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('calendar.feature1')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'yellow.100',
-                        color: 'yellow.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('calendar.feature2')}
-                  </li>
-                  <li
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                      fontSize: 'sm',
-                      color: 'text.secondary',
-                    })}
-                  >
-                    <span
-                      className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'full',
-                        bg: 'yellow.100',
-                        color: 'yellow.600',
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                      })}
-                    >
-                      ✓
-                    </span>
-                    {t('calendar.feature3')}
-                  </li>
-                </ul>
-
-                {/* CTA Button */}
-                <div
-                  className={css({
-                    mt: 7,
-                  })}
-                >
-                  <div
-                    className={css({
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      px: 6,
-                      py: 3,
-                      borderRadius: 'xl',
-                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: 'md',
-                      boxShadow: '0 4px 15px rgba(251, 191, 36, 0.4)',
-                      transition: 'all 0.3s',
-                      _hover: {
-                        boxShadow: '0 6px 20px rgba(251, 191, 36, 0.5)',
-                        transform: 'translateX(4px)',
-                      },
-                    })}
-                  >
-                    <span>{t('calendar.button')}</span>
-                    <span className={css({ fontSize: 'lg' })}>→</span>
-                  </div>
-                </div>
-              </div>
-            </Link>
+            <CreatorCard
+              type="calendar"
+              href="/create/calendar"
+              emoji="📅"
+              title={t('calendar.title')}
+              description={t('calendar.description')}
+              features={[t('calendar.feature1'), t('calendar.feature2'), t('calendar.feature3')]}
+              buttonText={t('calendar.button')}
+            />
           </div>
         </div>
       </div>
