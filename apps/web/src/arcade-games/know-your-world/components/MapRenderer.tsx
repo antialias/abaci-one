@@ -423,6 +423,16 @@ export function MapRenderer({
     }
   }, [pointerLocked, interaction])
 
+  // Sync precision threshold state to interaction state machine
+  // This keeps the state machine informed about when precision mode should be recommended
+  useEffect(() => {
+    interaction.dispatch({
+      type: 'PRECISION_THRESHOLD_UPDATE',
+      atThreshold: precisionCalcs.isAtThreshold,
+      screenPixelRatio: precisionCalcs.screenPixelRatio,
+    })
+  }, [precisionCalcs.isAtThreshold, precisionCalcs.screenPixelRatio, interaction])
+
   const [svgDimensions, setSvgDimensions] = useState({
     width: 1000,
     height: 500,

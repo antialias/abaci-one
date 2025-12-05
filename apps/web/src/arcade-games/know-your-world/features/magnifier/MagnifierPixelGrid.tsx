@@ -27,6 +27,12 @@ export interface MagnifierPixelGridProps {
   viewportScale: number
   /** Whether dark mode is active */
   isDark: boolean
+  /**
+   * Whether to show the grid at all.
+   * When false, the grid is hidden regardless of zoom level.
+   * Use this to hide the grid on mobile where precision mode doesn't exist.
+   */
+  enabled?: boolean
 }
 
 export function MagnifierPixelGrid({
@@ -39,7 +45,13 @@ export function MagnifierPixelGrid({
   viewBoxHeight,
   viewportScale,
   isDark,
+  enabled = true,
 }: MagnifierPixelGridProps) {
+  // Early out if disabled (e.g., on mobile where precision mode doesn't exist)
+  if (!enabled) {
+    return null
+  }
+
   // Fade grid in/out within 30% range on both sides of threshold
   // Visible from 70% to 130% of threshold (14 to 26 px/px at threshold=20)
   const fadeStartRatio = precisionModeThreshold * 0.7

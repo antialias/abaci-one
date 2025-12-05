@@ -77,6 +77,14 @@ export interface MagnifierDisplayState {
   isExpanded: boolean
 }
 
+/** Precision mode state (desktop only - mobile never uses this) */
+export interface PrecisionModeState {
+  /** Whether zoom is at or above the precision threshold */
+  atThreshold: boolean
+  /** Current screen pixel ratio (for UI display) */
+  screenPixelRatio: number
+}
+
 /** Default magnifier state */
 const defaultMagnifierState: MagnifierDisplayState = {
   isVisible: false,
@@ -84,6 +92,12 @@ const defaultMagnifierState: MagnifierDisplayState = {
   targetOpacity: 0,
   position: { top: 290, left: 20 }, // Safe zone defaults
   isExpanded: false,
+}
+
+/** Default precision mode state */
+const defaultPrecisionState: PrecisionModeState = {
+  atThreshold: false,
+  screenPixelRatio: 0,
 }
 
 // Desktop phases
@@ -122,6 +136,8 @@ export type InteractionState =
       shiftKey: boolean
       /** Magnifier display state */
       magnifier: MagnifierDisplayState
+      /** Precision mode state (desktop only) */
+      precision: PrecisionModeState
     }
   | {
       mode: 'mobile'
@@ -176,6 +192,8 @@ export type InteractionEvent =
   | { type: 'MAGNIFIER_SET_OPACITY'; opacity: number }
   | { type: 'MAGNIFIER_SET_EXPANDED'; expanded: boolean }
   | { type: 'MAGNIFIER_TOGGLE_EXPANDED' }
+  // Precision mode events (desktop only)
+  | { type: 'PRECISION_THRESHOLD_UPDATE'; atThreshold: boolean; screenPixelRatio: number }
   // Shared events
   | { type: 'RESET' }
   | { type: 'SET_MODE'; mode: 'desktop' | 'mobile' }
@@ -193,6 +211,7 @@ const initialDesktopState: InteractionState = {
   hasDragged: false,
   shiftKey: false,
   magnifier: { ...defaultMagnifierState },
+  precision: { ...defaultPrecisionState },
 }
 
 const initialMobileState: InteractionState = {
@@ -395,6 +414,15 @@ function desktopReducer(
 
     case 'SHIFT_KEY_UP':
       return { ...state, shiftKey: false }
+
+    case 'PRECISION_THRESHOLD_UPDATE':
+      return {
+        ...state,
+        precision: {
+          atThreshold: event.atThreshold,
+          screenPixelRatio: event.screenPixelRatio,
+        },
+      }
 
     case 'RESET':
       return initialDesktopState
@@ -646,6 +674,16 @@ export interface UseInteractionStateMachineReturn {
   /** Whether magnifier is expanded (mobile) */
   isMagnifierExpanded: boolean
 
+  // ---- Precision mode state (desktop only) ----
+  /**
+   * Whether precision mode UI should be shown (scrim, grid, etc.)
+   * True only on desktop when at threshold and not in pointer lock.
+   * Always false on mobile - mobile doesn't have precision mode.
+   */
+  precisionModeRecommended: boolean
+  /** Current screen pixel ratio (for display purposes, 0 on mobile) */
+  screenPixelRatio: number
+
   // ---- Actions ----
   /** Reset to initial state */
   reset: () => void
@@ -706,6 +744,13 @@ export function useInteractionStateMachine(
   const magnifierPosition = state.magnifier.position
   const isMagnifierExpanded = state.magnifier.isExpanded
 
+  // Precision mode state (desktop only)
+  // On desktop: show precision UI when at threshold and not in pointer lock
+  // On mobile: always false - mobile doesn't have precision mode concept
+  const precisionModeRecommended =
+    state.mode === 'desktop' && state.precision.atThreshold && !isPointerLocked
+  const screenPixelRatio = state.mode === 'desktop' ? state.precision.screenPixelRatio : 0
+
   // Actions
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' })
@@ -743,6 +788,9 @@ export function useInteractionStateMachine(
       magnifierOpacity,
       magnifierPosition,
       isMagnifierExpanded,
+      // Precision mode
+      precisionModeRecommended,
+      screenPixelRatio,
       // Actions
       reset,
       setMode,
@@ -768,6 +816,8 @@ export function useInteractionStateMachine(
       magnifierOpacity,
       magnifierPosition,
       isMagnifierExpanded,
+      precisionModeRecommended,
+      screenPixelRatio,
       reset,
       setMode,
     ]

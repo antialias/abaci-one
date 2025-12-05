@@ -92,6 +92,7 @@ export function MagnifierOverlay({
     scaleProbe2Ref,
     anchorProbeRef,
     anchorSvgPositionRef,
+    interaction,
   } = useMagnifierContext()
 
   // Distance between scale probes in SVG units (must match useEmpiricalScale.ts)
@@ -230,11 +231,8 @@ export function MagnifierOverlay({
         style={{
           width: '100%',
           height: '100%',
-          // Apply "disabled" visual effect when at threshold but not in precision mode
-          filter:
-            precisionCalcs.isAtThreshold && !pointerLocked
-              ? 'brightness(0.6) saturate(0.5)'
-              : 'none',
+          // Apply "disabled" visual effect when precision mode is recommended (desktop only)
+          filter: interaction.precisionModeRecommended ? 'brightness(0.6) saturate(0.5)' : 'none',
         }}
       >
         {/* Sea/ocean background for magnifier - solid color to match container */}
@@ -359,6 +357,7 @@ export function MagnifierOverlay({
               viewBoxHeight={viewBoxHeight}
               viewportScale={viewport.scale}
               isDark={isDark}
+              enabled={canUsePrecisionMode}
             />
           )
         })()}
@@ -525,8 +524,8 @@ export function MagnifierOverlay({
         })}
       </animated.div>
 
-      {/* Scrim overlay - shows when at threshold to indicate barrier */}
-      {precisionCalcs.isAtThreshold && !pointerLocked && (
+      {/* Scrim overlay - shows when precision mode is recommended (desktop only) */}
+      {interaction.precisionModeRecommended && (
         <div
           data-element="precision-mode-scrim"
           style={{
