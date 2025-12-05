@@ -251,6 +251,9 @@ export function PreviewCenter({
   // Ref to the portal dice element for direct DOM manipulation during drag/flying (avoids re-renders)
   const portalDiceRef = useRef<HTMLDivElement>(null)
 
+  // Compute target rotation for the current face (needed by physics simulation)
+  const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
+
   // Physics simulation for thrown dice - uses direct DOM manipulation for performance
   useEffect(() => {
     if (!isFlying) return
@@ -345,9 +348,51 @@ export function PreviewCenter({
 
       // Update rotation based on velocity (dice rolls as it moves)
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-      p.rotationX += p.vy * ROTATION_FACTOR * 12
-      p.rotationY -= p.vx * ROTATION_FACTOR * 12
-      p.rotationZ += speed * ROTATION_FACTOR * 3
+
+      // As dice gets closer to home, gradually lerp rotation toward final face
+      // settleProgress: 0 = far away (full physics rotation), 1 = at home (target rotation)
+      const SETTLE_START_DIST = 150 // Start settling rotation at this distance
+      const settleProgress = Math.max(0, 1 - dist / SETTLE_START_DIST)
+      const settleFactor = settleProgress * settleProgress * settleProgress // Cubic easing for smooth settle
+
+      // Physics rotation (tumbling)
+      const physicsRotationDelta = {
+        x: p.vy * ROTATION_FACTOR * 12,
+        y: -p.vx * ROTATION_FACTOR * 12,
+        z: speed * ROTATION_FACTOR * 3,
+      }
+
+      // Apply physics rotation, but reduced as we settle
+      p.rotationX += physicsRotationDelta.x * (1 - settleFactor)
+      p.rotationY += physicsRotationDelta.y * (1 - settleFactor)
+      p.rotationZ += physicsRotationDelta.z * (1 - settleFactor)
+
+      // Lerp toward target face rotation as we settle
+      // Target rotation should show the correct face (from DICE_FACE_ROTATIONS)
+      const lerpSpeed = 0.08 * settleFactor // Faster lerp as we get closer
+      if (settleFactor > 0.01) {
+        // Normalize rotations to find shortest path to target
+        const targetX = targetFaceRotation.rotateX
+        const targetY = targetFaceRotation.rotateY
+        const targetZ = 0 // Final Z rotation should be 0 (flat)
+
+        // Normalize current rotation to -180 to 180 range for smooth interpolation
+        const normalizeAngle = (angle: number) => {
+          let normalized = angle % 360
+          if (normalized > 180) normalized -= 360
+          if (normalized < -180) normalized += 360
+          return normalized
+        }
+
+        const currentX = normalizeAngle(p.rotationX)
+        const currentY = normalizeAngle(p.rotationY)
+        const currentZ = normalizeAngle(p.rotationZ)
+
+        // Lerp each axis toward target
+        p.rotationX = currentX + (targetX - currentX) * lerpSpeed
+        p.rotationY = currentY + (targetY - currentY) * lerpSpeed
+        p.rotationZ = currentZ + (targetZ - currentZ) * lerpSpeed
+      }
 
       // Update scale - grow when far/fast, shrink when close/slow
       const targetScale =
@@ -377,9 +422,19 @@ export function PreviewCenter({
         diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
       }
 
-      // Check if we should stop - snap to home when close and slow
+      // Check if we should stop - snap to home when close, slow, small, AND rotation is settled
       const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-      if (dist < STOP_THRESHOLD && totalVelocity < VELOCITY_THRESHOLD && p.scale < 1.1) {
+      const rotationSettled =
+        Math.abs(p.rotationX - targetFaceRotation.rotateX) < 5 &&
+        Math.abs(p.rotationY - targetFaceRotation.rotateY) < 5 &&
+        Math.abs(p.rotationZ) < 5
+
+      if (
+        dist < STOP_THRESHOLD &&
+        totalVelocity < VELOCITY_THRESHOLD &&
+        p.scale < 1.1 &&
+        rotationSettled
+      ) {
         // Dice has returned home - clear shadow
         el.style.filter = 'none'
         setIsFlying(false)
@@ -388,8 +443,8 @@ export function PreviewCenter({
           y: 0,
           vx: 0,
           vy: 0,
-          rotationX: 0,
-          rotationY: 0,
+          rotationX: targetFaceRotation.rotateX,
+          rotationY: targetFaceRotation.rotateY,
           rotationZ: 0,
           scale: 1,
         }
@@ -406,10 +461,9 @@ export function PreviewCenter({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isFlying, diceOrigin.x, diceOrigin.y])
+  }, [isFlying, diceOrigin.x, diceOrigin.y, targetFaceRotation.rotateX, targetFaceRotation.rotateY])
 
-  // Compute target rotation: add dramatic spins, then land on the face rotation
-  const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
+  // Compute dice rotation for react-spring animation (used when not flying)
   const diceRotation = {
     rotateX: spinCount * 360 + targetFaceRotation.rotateX,
     rotateY: spinCount * 360 + targetFaceRotation.rotateY,
