@@ -27,6 +27,8 @@ import type { UseInteractionStateMachineReturn } from '../interaction'
 export interface MagnifierSpring {
   top: SpringValue<number>
   left: SpringValue<number>
+  width: SpringValue<number>
+  height: SpringValue<number>
   opacity: SpringValue<number>
   movementMultiplier: SpringValue<number>
 }

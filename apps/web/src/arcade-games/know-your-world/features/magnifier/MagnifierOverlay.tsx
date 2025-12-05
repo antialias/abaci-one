@@ -123,23 +123,15 @@ export function MagnifierOverlay({
   // -------------------------------------------------------------------------
   // Early Returns
   // -------------------------------------------------------------------------
-  // Calculate magnifier size based on leftover rectangle (area not covered by UI)
+  // Get container and SVG info for viewBox calculations
   const containerRect = containerRef.current?.getBoundingClientRect()
   if (!containerRect || !svgRef.current || !cursorPosition) {
     return null
   }
 
+  // Calculate leftover area for debug/label positioning (not for magnifier sizing)
   const leftoverWidth = containerRect.width - safeZoneMargins.left - safeZoneMargins.right
   const leftoverHeight = containerRect.height - safeZoneMargins.top - safeZoneMargins.bottom
-
-  // When expanded (during/after pinch-to-zoom), use full leftover area
-  // Otherwise use the normal calculated dimensions
-  const { width: normalWidth, height: normalHeight } = getMagnifierDimensions(
-    leftoverWidth,
-    leftoverHeight
-  )
-  const magnifierWidthPx = isMagnifierExpanded ? leftoverWidth : normalWidth
-  const magnifierHeightPx = isMagnifierExpanded ? leftoverHeight : normalHeight
 
   const svgRect = svgRef.current.getBoundingClientRect()
   const { x: viewBoxX, y: viewBoxY, width: viewBoxWidth, height: viewBoxHeight } = parsedViewBox
@@ -154,11 +146,11 @@ export function MagnifierOverlay({
       onTouchCancel={handleMagnifierTouchEnd}
       style={{
         position: 'absolute',
-        // When expanded, position at top-left of leftover area; otherwise use animated positioning
-        top: isMagnifierExpanded ? safeZoneMargins.top : magnifierSpring.top,
-        left: isMagnifierExpanded ? safeZoneMargins.left : magnifierSpring.left,
-        width: magnifierWidthPx,
-        height: magnifierHeightPx,
+        // Position and size are always animated via react-spring
+        top: magnifierSpring.top,
+        left: magnifierSpring.left,
+        width: magnifierSpring.width,
+        height: magnifierSpring.height,
         // Border color priority: 1) Hot/cold heat colors (if enabled), 2) High zoom gold, 3) Default blue
         border: (() => {
           // When hot/cold is enabled, use heat-based colors (from memoized magnifierBorderStyle)
@@ -538,7 +530,7 @@ export function MagnifierOverlay({
         />
       )}
 
-      {/* Mobile magnifier controls (Expand, Select, Full Map buttons) */}
+      {/* Mobile magnifier controls (Expand, Select, Close buttons) */}
       <MagnifierControls
         isTouchDevice={isTouchDevice}
         showSelectButton={
@@ -548,9 +540,11 @@ export function MagnifierOverlay({
         isSelectDisabled={!hoveredRegion || regionsFound.includes(hoveredRegion)}
         isDark={isDark}
         pointerLocked={pointerLocked}
+        hideControls={isMagnifierDragging}
         onSelect={selectRegionAtCrosshairs}
         onExitExpanded={() => setIsMagnifierExpanded(false)}
         onExpand={() => setIsMagnifierExpanded(true)}
+        onClose={() => interaction.dispatch({ type: 'MAGNIFIER_DEACTIVATED' })}
       />
     </animated.div>
   )

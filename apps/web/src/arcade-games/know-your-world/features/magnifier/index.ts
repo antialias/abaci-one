@@ -151,7 +151,9 @@ export type {
 export { useMagnifierZoom } from '../../hooks/useMagnifierZoom'
 // Utilities (backward compatibility)
 export {
+  EXPANDED_MAGNIFIER_MARGIN,
   getAdjustedMagnifiedDimensions,
+  getExpandedMagnifierDimensions,
   getMagnifierDimensions,
   MAGNIFIER_SIZE_LARGE,
   MAGNIFIER_SIZE_SMALL,

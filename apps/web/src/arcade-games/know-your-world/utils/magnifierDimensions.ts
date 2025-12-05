@@ -9,6 +9,9 @@
 export const MAGNIFIER_SIZE_SMALL = 1 / 3 // Used for the constrained dimension
 export const MAGNIFIER_SIZE_LARGE = 1 / 2 // Used for the unconstrained dimension
 
+// Margin around expanded magnifier (allows clicking outside to dismiss)
+export const EXPANDED_MAGNIFIER_MARGIN = 20 // pixels
+
 /**
  * Calculate magnifier dimensions based on container aspect ratio.
  * - Landscape (wider): 1/3 width, 1/2 height (more vertical space available)
@@ -19,6 +22,17 @@ export function getMagnifierDimensions(containerWidth: number, containerHeight: 
   return {
     width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
     height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
+  }
+}
+
+/**
+ * Calculate expanded magnifier dimensions (fills leftover area minus margin).
+ * The margin allows clicking outside the magnifier to dismiss it.
+ */
+export function getExpandedMagnifierDimensions(leftoverWidth: number, leftoverHeight: number) {
+  return {
+    width: leftoverWidth - EXPANDED_MAGNIFIER_MARGIN * 2,
+    height: leftoverHeight - EXPANDED_MAGNIFIER_MARGIN * 2,
   }
 }
 

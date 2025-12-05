@@ -3,12 +3,13 @@
  *
  * Mobile control buttons for the magnifier overlay:
  * - Select button: Selects the region under the crosshairs
- * - Full Map button: Exits expanded mode back to normal magnifier
- * - Expand button: Expands magnifier to fill available space
+ * - Close button: Dismisses the magnifier entirely
+ * - Expand/Collapse button: Toggles between normal and expanded size
  */
 
 'use client'
 
+import { animated, useSpring } from '@react-spring/web'
 import { memo, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
 
 // ============================================================================
@@ -28,12 +29,16 @@ export interface MagnifierControlsProps {
   isDark: boolean
   /** Whether pointer is locked (hides expand button when true) */
   pointerLocked?: boolean
+  /** Whether to hide all controls except zoom label (during panning) */
+  hideControls?: boolean
   /** Called when Select button is pressed */
   onSelect: () => void
-  /** Called when Full Map button is pressed (exit expanded mode) */
+  /** Called when exiting expanded mode back to regular magnifier size */
   onExitExpanded: () => void
   /** Called when Expand button is pressed */
   onExpand: () => void
+  /** Called when Close button is pressed (dismiss magnifier entirely) */
+  onClose: () => void
 }
 
 // ============================================================================
@@ -43,17 +48,19 @@ export interface MagnifierControlsProps {
 interface ControlButtonProps {
   position: 'top-right' | 'bottom-right' | 'bottom-left'
   disabled?: boolean
+  visible?: boolean
   style?: 'select' | 'secondary' | 'icon'
   onClick: () => void
   children: React.ReactNode
 }
 
 /**
- * Base button component for magnifier controls
+ * Base button component for magnifier controls with animated opacity
  */
 function ControlButton({
   position,
   disabled = false,
+  visible = true,
   style = 'secondary',
   onClick,
   children,
@@ -65,13 +72,19 @@ function ControlButton({
   const handleTouchEnd = (e: ReactTouchEvent) => {
     e.stopPropagation()
     e.preventDefault()
-    if (!disabled) onClick()
+    if (!disabled && visible) onClick()
   }
 
   const handleClick = (e: ReactMouseEvent) => {
     e.stopPropagation()
-    if (!disabled) onClick()
+    if (!disabled && visible) onClick()
   }
+
+  // Animate opacity based on visibility
+  const springProps = useSpring({
+    opacity: visible ? (disabled ? 0.7 : 1) : 0,
+    config: { tension: 300, friction: 20 },
+  })
 
   // Position styles
   const positionStyles: Record<string, React.CSSProperties> = {
@@ -124,9 +137,9 @@ function ControlButton({
   const variantStyle = disabled ? styleVariants[style].disabled : styleVariants[style].enabled
 
   return (
-    <button
+    <animated.button
       type="button"
-      disabled={disabled}
+      disabled={disabled || !visible}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onClick={handleClick}
@@ -145,20 +158,22 @@ function ControlButton({
         color: 'white',
         fontSize: '14px',
         fontWeight: 'bold',
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        cursor: disabled || !visible ? 'not-allowed' : 'pointer',
         touchAction: 'none',
-        opacity: disabled ? 0.7 : 1,
+        pointerEvents: visible ? 'auto' : 'none',
+        opacity: springProps.opacity,
       }}
     >
       {children}
-    </button>
+    </animated.button>
   )
 }
 
 // ============================================================================
-// Expand Icon
+// Icons
 // ============================================================================
 
+/** Expand icon - arrows pointing outward (fullscreen) */
 function ExpandIcon({ isDark }: { isDark: boolean }) {
   return (
     <svg
@@ -179,6 +194,46 @@ function ExpandIcon({ isDark }: { isDark: boolean }) {
   )
 }
 
+/** Collapse icon - arrows pointing inward (exit fullscreen) */
+function CollapseIcon({ isDark }: { isDark: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={isDark ? '#60a5fa' : '#3b82f6'}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="4 14 10 14 10 20" />
+      <polyline points="20 10 14 10 14 4" />
+      <line x1="14" y1="10" x2="21" y2="3" />
+      <line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  )
+}
+
+/** Close icon - X mark */
+function CloseIcon({ isDark }: { isDark: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={isDark ? '#f87171' : '#ef4444'}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -186,10 +241,14 @@ function ExpandIcon({ isDark }: { isDark: boolean }) {
 /**
  * Magnifier control buttons for touch devices.
  *
- * Layout:
- * - Expand button: top-right (when not expanded)
- * - Select button: bottom-right (when visible)
- * - Full Map button: bottom-left (when expanded)
+ * Layout when NOT expanded:
+ * - Expand button (fullscreen icon): bottom-right
+ * - Select button: bottom-left (when visible)
+ *
+ * Layout when expanded:
+ * - Close button (X icon): top-right
+ * - Collapse button (exit fullscreen icon): bottom-right
+ * - Select button: bottom-left (when visible)
  */
 export const MagnifierControls = memo(function MagnifierControls({
   isTouchDevice,
@@ -198,9 +257,11 @@ export const MagnifierControls = memo(function MagnifierControls({
   isSelectDisabled,
   isDark,
   pointerLocked = false,
+  hideControls = false,
   onSelect,
   onExitExpanded,
   onExpand,
+  onClose,
 }: MagnifierControlsProps) {
   // Only render on touch devices
   if (!isTouchDevice) {
@@ -209,31 +270,41 @@ export const MagnifierControls = memo(function MagnifierControls({
 
   return (
     <>
-      {/* Expand button - top-right corner (when not expanded and not pointer locked) */}
-      {!isExpanded && !pointerLocked && (
-        <ControlButton position="top-right" style="icon" onClick={onExpand}>
-          <ExpandIcon isDark={isDark} />
-        </ControlButton>
-      )}
+      {/* Close button (X) - top-right corner - dismisses magnifier entirely */}
+      <ControlButton position="top-right" style="icon" visible={!hideControls} onClick={onClose}>
+        <CloseIcon isDark={isDark} />
+      </ControlButton>
 
-      {/* Select button - bottom-right corner (when triggered by drag) */}
-      {showSelectButton && (
-        <ControlButton
-          position="bottom-right"
-          style="select"
-          disabled={isSelectDisabled}
-          onClick={onSelect}
-        >
-          Select
-        </ControlButton>
-      )}
+      {/* Expand button - bottom-right corner (when not expanded and not pointer locked) */}
+      <ControlButton
+        position="bottom-right"
+        style="icon"
+        visible={!hideControls && !isExpanded && !pointerLocked}
+        onClick={onExpand}
+      >
+        <ExpandIcon isDark={isDark} />
+      </ControlButton>
 
-      {/* Full Map button - bottom-left corner (when expanded) */}
-      {isExpanded && showSelectButton && (
-        <ControlButton position="bottom-left" style="secondary" onClick={onExitExpanded}>
-          Full Map
-        </ControlButton>
-      )}
+      {/* Collapse button - bottom-right corner (when expanded) - shrinks to regular size */}
+      <ControlButton
+        position="bottom-right"
+        style="icon"
+        visible={!hideControls && isExpanded}
+        onClick={onExitExpanded}
+      >
+        <CollapseIcon isDark={isDark} />
+      </ControlButton>
+
+      {/* Select button - bottom-left corner (when triggered by drag) */}
+      <ControlButton
+        position="bottom-left"
+        style="select"
+        visible={showSelectButton}
+        disabled={isSelectDisabled}
+        onClick={onSelect}
+      >
+        Select
+      </ControlButton>
     </>
   )
 })

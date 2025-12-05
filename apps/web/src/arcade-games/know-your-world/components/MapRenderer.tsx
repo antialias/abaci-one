@@ -19,7 +19,9 @@ import {
 } from '../features/interaction'
 import { getRenderedViewport, LabelLayer, useD3ForceLabels } from '../features/labels'
 import {
+  EXPANDED_MAGNIFIER_MARGIN,
   getAdjustedMagnifiedDimensions,
+  getExpandedMagnifierDimensions,
   getMagnifierDimensions,
   type MagnifierContextValue,
   MagnifierOverlayWithHandlers,
@@ -841,14 +843,36 @@ export function MapRenderer({
     }
   }
 
+  // Calculate leftover area (space not covered by UI) for magnifier sizing
+  const leftoverWidth = svgDimensions.width - SAFE_ZONE_MARGINS.left - SAFE_ZONE_MARGINS.right
+  const leftoverHeight = svgDimensions.height - SAFE_ZONE_MARGINS.top - SAFE_ZONE_MARGINS.bottom
+
+  // Calculate target magnifier dimensions based on expanded state
+  const { width: normalWidth, height: normalHeight } = getMagnifierDimensions(
+    leftoverWidth,
+    leftoverHeight
+  )
+  const { width: expandedWidth, height: expandedHeight } = getExpandedMagnifierDimensions(
+    leftoverWidth,
+    leftoverHeight
+  )
+  const targetWidth = isMagnifierExpanded ? expandedWidth : normalWidth
+  const targetHeight = isMagnifierExpanded ? expandedHeight : normalHeight
+
+  // When expanded, center the magnifier in the leftover area (with margin)
+  const expandedTop = SAFE_ZONE_MARGINS.top + EXPANDED_MAGNIFIER_MARGIN
+  const expandedLeft = SAFE_ZONE_MARGINS.left + EXPANDED_MAGNIFIER_MARGIN
+
   // Animated spring values for smooth transitions
   // Note: Zoom animation is now handled by useMagnifierZoom hook
-  // This spring only handles: opacity, position, and movement multiplier
+  // This spring handles: opacity, position, dimensions, and movement multiplier
   const [magnifierSpring, magnifierApi] = useSpring(
     () => ({
       opacity: targetOpacity,
-      top: targetTop,
-      left: targetLeft,
+      top: isMagnifierExpanded ? expandedTop : targetTop,
+      left: isMagnifierExpanded ? expandedLeft : targetLeft,
+      width: targetWidth,
+      height: targetHeight,
       movementMultiplier: getMovementMultiplier(smallestRegionSize),
       config: (key) => {
         if (key === 'opacity') {
@@ -861,11 +885,25 @@ export function MapRenderer({
           // Lower tension = slower animation, higher friction = less overshoot
           return { tension: 60, friction: 20 }
         }
+        if (key === 'width' || key === 'height') {
+          // Size transitions: smooth spring for resize animation
+          return { tension: 200, friction: 25 }
+        }
         // Position: medium speed
         return { tension: 200, friction: 25 }
       },
     }),
-    [targetOpacity, targetTop, targetLeft, smallestRegionSize]
+    [
+      targetOpacity,
+      targetTop,
+      targetLeft,
+      targetWidth,
+      targetHeight,
+      smallestRegionSize,
+      isMagnifierExpanded,
+      expandedTop,
+      expandedLeft,
+    ]
   )
 
   // Calculate the display viewBox using fit-crop-with-fill strategy
@@ -994,15 +1032,28 @@ export function MapRenderer({
   })
 
   // Note: Zoom animation with pause/resume is now handled by useMagnifierZoom hook
-  // This effect only updates the remaining spring properties: opacity, position, movement multiplier
+  // This effect updates the remaining spring properties: opacity, position, dimensions, movement multiplier
   useEffect(() => {
     magnifierApi.start({
       opacity: targetOpacity,
-      top: targetTop,
-      left: targetLeft,
+      top: isMagnifierExpanded ? expandedTop : targetTop,
+      left: isMagnifierExpanded ? expandedLeft : targetLeft,
+      width: targetWidth,
+      height: targetHeight,
       movementMultiplier: getMovementMultiplier(smallestRegionSize),
     })
-  }, [targetOpacity, targetTop, targetLeft, smallestRegionSize, magnifierApi])
+  }, [
+    targetOpacity,
+    targetTop,
+    targetLeft,
+    targetWidth,
+    targetHeight,
+    smallestRegionSize,
+    magnifierApi,
+    isMagnifierExpanded,
+    expandedTop,
+    expandedLeft,
+  ])
 
   // Check if current target region needs magnification
   useEffect(() => {
