@@ -241,6 +241,7 @@ export function PreviewCenter({
     rotationX: 0,
     rotationY: 0,
     rotationZ: 0,
+    scale: 1, // Grows to 3x when flying, shrinks back when settling
   })
   const lastPointerPos = useRef({ x: 0, y: 0, time: 0 })
   const animationFrameRef = useRef<number>()
@@ -258,6 +259,9 @@ export function PreviewCenter({
     const STOP_THRESHOLD = 2 // Distance threshold to snap home
     const VELOCITY_THRESHOLD = 0.5 // Velocity threshold to snap home
     const CLOSE_RANGE = 30 // Distance at which extra damping kicks in
+    const MAX_SCALE = 3 // Maximum scale when flying
+    const SCALE_GROW_SPEED = 0.15 // How fast to grow
+    const SCALE_SHRINK_SPEED = 0.08 // How fast to shrink when close
 
     const animate = () => {
       const p = dicePhysics.current
@@ -292,8 +296,19 @@ export function PreviewCenter({
       p.rotationY -= p.vx * ROTATION_FACTOR * 10
       p.rotationZ += speed * ROTATION_FACTOR * 2
 
+      // Update scale - grow when far/fast, shrink when close/slow
+      const targetScale =
+        dist > CLOSE_RANGE ? MAX_SCALE : 1 + ((MAX_SCALE - 1) * dist) / CLOSE_RANGE
+      if (p.scale < targetScale) {
+        p.scale = Math.min(p.scale + SCALE_GROW_SPEED, targetScale)
+      } else if (p.scale > targetScale) {
+        p.scale = Math.max(p.scale - SCALE_SHRINK_SPEED, targetScale)
+      }
+
       // Update DOM directly - no React re-renders
-      el.style.transform = `translate(${p.x}px, ${p.y}px)`
+      // Scale from center, offset position to keep visual center stable
+      const scaleOffset = ((p.scale - 1) * 22) / 2 // 22 is dice size
+      el.style.transform = `translate(${p.x - scaleOffset}px, ${p.y - scaleOffset}px) scale(${p.scale})`
 
       // Update dice rotation via CSS custom properties (the DiceIcon reads these)
       const diceEl = el.querySelector('[data-dice-cube]') as HTMLElement | null
@@ -303,10 +318,19 @@ export function PreviewCenter({
 
       // Check if we should stop - snap to home when close and slow
       const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-      if (dist < STOP_THRESHOLD && totalVelocity < VELOCITY_THRESHOLD) {
+      if (dist < STOP_THRESHOLD && totalVelocity < VELOCITY_THRESHOLD && p.scale < 1.1) {
         // Dice has returned home
         setIsFlying(false)
-        dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+        dicePhysics.current = {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          rotationX: 0,
+          rotationY: 0,
+          rotationZ: 0,
+          scale: 1,
+        }
         return
       }
 
@@ -380,7 +404,16 @@ export function PreviewCenter({
 
       dragStartPos.current = { x: e.clientX, y: e.clientY }
       lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
-      dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+      dicePhysics.current = {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        scale: 1,
+      }
       setIsDragging(true)
     },
     [isGenerating]
@@ -441,13 +474,23 @@ export function PreviewCenter({
           rotationX: 0,
           rotationY: 0,
           rotationZ: 0,
+          scale: 1, // Will grow during flight
         }
         setIsFlying(true)
         // Trigger shuffle when thrown
         handleShuffle()
       } else {
         // Not thrown far enough, snap back
-        dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+        dicePhysics.current = {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          rotationX: 0,
+          rotationY: 0,
+          rotationZ: 0,
+          scale: 1,
+        }
       }
 
       setIsDragging(false)
