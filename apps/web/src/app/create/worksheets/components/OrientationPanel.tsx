@@ -30,8 +30,12 @@ interface OrientationPanelProps {
   // Layout options
   problemNumbers?: 'always' | 'never'
   cellBorders?: 'always' | 'never'
+  includeAnswerKey?: boolean
+  includeQRCode?: boolean
   onProblemNumbersChange?: (value: 'always' | 'never') => void
   onCellBordersChange?: (value: 'always' | 'never') => void
+  onIncludeAnswerKeyChange?: (value: boolean) => void
+  onIncludeQRCodeChange?: (value: boolean) => void
 }
 
 /**
@@ -53,8 +57,12 @@ export function OrientationPanel({
   mode = 'custom',
   problemNumbers = 'always',
   cellBorders = 'always',
+  includeAnswerKey = false,
+  includeQRCode = false,
   onProblemNumbersChange,
   onCellBordersChange,
+  onIncludeAnswerKeyChange,
+  onIncludeQRCodeChange,
 }: OrientationPanelProps) {
   // Calculate best problems per page for an orientation to minimize total change
   const getBestProblemsPerPage = (targetOrientation: 'portrait' | 'landscape') => {
@@ -1263,6 +1271,126 @@ export function OrientationPanel({
                     position: 'absolute',
                     top: '1',
                     left: cellBorders === 'always' ? '7' : '1',
+                    w: '4',
+                    h: '4',
+                    bg: 'white',
+                    rounded: 'full',
+                    transition: 'left 0.2s',
+                  })}
+                />
+              </button>
+            </label>
+
+            {/* Answer Key Toggle */}
+            <label
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              })}
+            >
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                  })}
+                >
+                  Answer Key
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  Include answer key at end of PDF
+                </div>
+              </div>
+              <button
+                type="button"
+                data-action="toggle-answer-key"
+                onClick={() => {
+                  onIncludeAnswerKeyChange?.(!includeAnswerKey)
+                }}
+                className={css({
+                  position: 'relative',
+                  w: '12',
+                  h: '6',
+                  bg: includeAnswerKey ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  rounded: 'full',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                })}
+              >
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: '1',
+                    left: includeAnswerKey ? '7' : '1',
+                    w: '4',
+                    h: '4',
+                    bg: 'white',
+                    rounded: 'full',
+                    transition: 'left 0.2s',
+                  })}
+                />
+              </button>
+            </label>
+
+            {/* QR Code Toggle */}
+            <label
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              })}
+            >
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                  })}
+                >
+                  QR Code
+                </div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  Link to shareable worksheet
+                </div>
+              </div>
+              <button
+                type="button"
+                data-action="toggle-qr-code"
+                onClick={() => {
+                  onIncludeQRCodeChange?.(!includeQRCode)
+                }}
+                className={css({
+                  position: 'relative',
+                  w: '12',
+                  h: '6',
+                  bg: includeQRCode ? 'brand.500' : isDark ? 'gray.600' : 'gray.300',
+                  rounded: 'full',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                })}
+              >
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: '1',
+                    left: includeQRCode ? '7' : '1',
                     w: '4',
                     h: '4',
                     bg: 'white',

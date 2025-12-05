@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     // Generate preview
-    const result = generateWorksheetPreview(fullConfig)
+    const result = await generateWorksheetPreview(fullConfig)
 
     if (!result.success) {
       return NextResponse.json(

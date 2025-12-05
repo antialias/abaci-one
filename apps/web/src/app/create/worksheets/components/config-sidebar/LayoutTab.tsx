@@ -160,6 +160,22 @@ export function LayoutTab() {
 
         onChange(updates)
       }}
+      includeAnswerKey={formState.includeAnswerKey ?? false}
+      onIncludeAnswerKeyChange={(value) => {
+        console.log('[LayoutTab] Changing includeAnswerKey:', {
+          from: formState.includeAnswerKey,
+          to: value,
+        })
+        onChange({ includeAnswerKey: value })
+      }}
+      includeQRCode={formState.includeQRCode ?? false}
+      onIncludeQRCodeChange={(value) => {
+        console.log('[LayoutTab] Changing includeQRCode:', {
+          from: formState.includeQRCode,
+          to: value,
+        })
+        onChange({ includeQRCode: value })
+      }}
     />
   )
 }

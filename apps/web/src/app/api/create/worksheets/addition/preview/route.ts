@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body: WorksheetFormState = await request.json()
 
     // Generate preview using shared logic
-    const result = generateWorksheetPreview(body)
+    const result = await generateWorksheetPreview(body)
 
     if (!result.success) {
       return NextResponse.json(

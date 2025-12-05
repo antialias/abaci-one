@@ -29,6 +29,12 @@ export type WorksheetConfig = AdditionConfigV4 & {
   seed: number
   prngAlgorithm: string
 
+  // Answer key generation
+  includeAnswerKey: boolean
+
+  // QR code linking to shared worksheet
+  includeQRCode: boolean
+
   // Layout
   page: {
     wIn: number

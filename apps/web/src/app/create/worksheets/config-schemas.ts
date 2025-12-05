@@ -350,6 +350,12 @@ const additionConfigV4BaseSchema = z.object({
   pAllStart: z.number().min(0).max(1),
   interpolate: z.boolean(),
 
+  // V4: Include answer key pages at end of PDF
+  includeAnswerKey: z.boolean().optional().default(false),
+
+  // V4: Include QR code linking to shared worksheet on each page
+  includeQRCode: z.boolean().optional().default(false),
+
   // Problem reproducibility (CRITICAL for sharing worksheets)
   seed: z.number().int().min(0).optional(),
   prngAlgorithm: z.string().optional(),

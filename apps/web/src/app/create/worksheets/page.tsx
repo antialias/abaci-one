@@ -105,7 +105,7 @@ export default async function AdditionWorksheetPage() {
   const INITIAL_PAGES = 3
   const pagesToGenerate = Math.min(INITIAL_PAGES, pages)
   console.log(`[SSR] Generating initial ${pagesToGenerate} pages on server (total: ${pages})...`)
-  const previewResult = generateWorksheetPreview(fullConfig, 0, pagesToGenerate - 1)
+  const previewResult = await generateWorksheetPreview(fullConfig, 0, pagesToGenerate - 1)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
   // Pass settings and preview to client, wrapped in error boundary

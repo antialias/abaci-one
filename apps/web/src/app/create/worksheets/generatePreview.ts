@@ -39,11 +39,11 @@ export interface SinglePageResult {
  * @param startPage - Optional start page (0-indexed, inclusive). Default: 0
  * @param endPage - Optional end page (0-indexed, inclusive). Default: last page
  */
-export function generateWorksheetPreview(
+export async function generateWorksheetPreview(
   config: WorksheetFormState,
   startPage?: number,
   endPage?: number
-): PreviewResult {
+): Promise<PreviewResult> {
   const totalProblems = (config.problemsPerPage ?? 20) * (config.pages ?? 1)
   console.log(`[PREVIEW] Starting generation: ${totalProblems} problems, pages ${config.pages}`)
 
@@ -159,9 +159,13 @@ export function generateWorksheetPreview(
     console.log(`[PREVIEW] Step 2: ✓ Generated ${problems.length} problems`)
 
     // Generate Typst sources (one per page)
+    // Use placeholder URL for QR code in preview (actual URL will be generated when PDF is created)
+    const previewShareUrl = validatedConfig.includeQRCode
+      ? 'https://abaci.one/worksheets/shared/preview'
+      : undefined
     console.log(`[PREVIEW] Step 3: Generating Typst source for ${validatedConfig.pages} pages...`)
     const startTypst = Date.now()
-    const typstSources = generateTypstSource(validatedConfig, problems)
+    const typstSources = await generateTypstSource(validatedConfig, problems, previewShareUrl)
     const typstTime = Date.now() - startTypst
     const totalPages = typstSources.length
     console.log(`[PREVIEW] Step 3: ✓ Generated ${totalPages} Typst sources in ${typstTime}ms`)
@@ -246,10 +250,10 @@ export function generateWorksheetPreview(
  * Generate a single worksheet page SVG
  * Much faster than generating all pages when you only need one
  */
-export function generateSinglePage(
+export async function generateSinglePage(
   config: WorksheetFormState,
   pageNumber: number
-): SinglePageResult {
+): Promise<SinglePageResult> {
   try {
     // First, validate and get total page count
     const validation = validateWorksheetConfig(config)
@@ -346,7 +350,11 @@ export function generateSinglePage(
     }
 
     // Generate Typst source for ALL pages (lightweight operation)
-    const typstSources = generateTypstSource(problems, validatedConfig)
+    // Use placeholder URL for QR code in preview
+    const previewShareUrl = validatedConfig.includeQRCode
+      ? 'https://abaci.one/worksheets/shared/preview'
+      : undefined
+    const typstSources = await generateTypstSource(validatedConfig, problems, previewShareUrl)
 
     // Only compile the requested page
     const typstSource = typstSources[pageNumber]

@@ -233,6 +233,12 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
     fontSize,
     seed,
     prngAlgorithm: formState.prngAlgorithm ?? 'mulberry32',
+
+    // V4: Include answer key pages at end of PDF
+    includeAnswerKey: formState.includeAnswerKey ?? false,
+
+    // V4: Include QR code linking to shared worksheet on each page
+    includeQRCode: formState.includeQRCode ?? false,
   }
 
   // Build mode-specific config

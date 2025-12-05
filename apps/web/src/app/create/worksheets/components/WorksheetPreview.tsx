@@ -163,6 +163,8 @@ function PreviewContent({
       formState.showTenFrames,
       formState.showTenFramesForAll,
       formState.seed, // Include seed to bust cache when problem set regenerates
+      formState.includeQRCode, // Include QR code setting to regenerate preview when toggled
+      formState.includeAnswerKey, // Include answer key setting to regenerate preview when toggled
       // Note: fontSize, date, rows, total intentionally excluded
       // (rows and total are derived from primary state)
     ],

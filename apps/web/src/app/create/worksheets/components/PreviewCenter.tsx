@@ -10,6 +10,7 @@ import { UploadWorksheetModal } from '@/components/worksheets/UploadWorksheetMod
 import { useTheme } from '@/contexts/ThemeContext'
 import { extractConfigFields } from '../utils/extractConfigFields'
 import { FloatingPageIndicator } from './FloatingPageIndicator'
+import { LoadShareCodeModal } from './LoadShareCodeModal'
 import { ShareModal } from './ShareModal'
 import { useWorksheetConfig } from './WorksheetConfigContext'
 import { WorksheetPreview } from './WorksheetPreview'
@@ -211,6 +212,7 @@ export function PreviewCenter({
   const scrollTimeoutRef = useRef<NodeJS.Timeout>()
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isLoadShareModalOpen, setIsLoadShareModalOpen] = useState(false)
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [justCopied, setJustCopied] = useState(false)
   // Dice rotation state for react-spring animation
@@ -698,6 +700,34 @@ export function PreviewCenter({
                     <span className={css({ fontSize: 'lg' })}>⬆️</span>
                     <span>Upload</span>
                   </DropdownMenu.Item>
+
+                  <DropdownMenu.Item
+                    data-action="load-share-code"
+                    onClick={() => setIsLoadShareModalOpen(true)}
+                    className={css({
+                      px: '4',
+                      py: '2.5',
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      color: 'gray.700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2',
+                      outline: 'none',
+                      _hover: {
+                        bg: 'amber.50',
+                        color: 'amber.700',
+                      },
+                      _focus: {
+                        bg: 'amber.50',
+                        color: 'amber.700',
+                      },
+                    })}
+                  >
+                    <span className={css({ fontSize: 'lg' })}>🔗</span>
+                    <span>Load Share Code</span>
+                  </DropdownMenu.Item>
                 </>
               )}
             </DropdownMenu.Content>
@@ -720,6 +750,12 @@ export function PreviewCenter({
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onUploadComplete={handleUploadComplete}
+          />
+
+          <LoadShareCodeModal
+            isOpen={isLoadShareModalOpen}
+            onClose={() => setIsLoadShareModalOpen(false)}
+            isDark={isDark}
           />
         </>
       )}

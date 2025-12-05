@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate preview using shared logic with pagination
-    const result = generateWorksheetPreview(body, startPage, endPage)
+    const result = await generateWorksheetPreview(body, startPage, endPage)
 
     if (!result.success) {
       return NextResponse.json(

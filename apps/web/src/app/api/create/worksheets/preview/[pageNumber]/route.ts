@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: { pageNum
     }
 
     // Generate only the requested page
-    const result = generateSinglePage(body, pageNumber)
+    const result = await generateSinglePage(body, pageNumber)
 
     if (!result.success) {
       return NextResponse.json(
