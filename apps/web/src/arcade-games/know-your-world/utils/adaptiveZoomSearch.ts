@@ -101,15 +101,18 @@ export function calculateAdaptiveThresholds(smallestSize: number): {
   max: number
 } {
   if (smallestSize < 1) {
-    // Sub-pixel regions: accept 2-8% of magnifier
-    return { min: 0.02, max: 0.08 }
+    // Sub-pixel regions (Gibraltar at 0.08px, Vatican, Monaco):
+    // These are so small that we want maximum zoom. Accept anything from 2% up to 40%.
+    // At 1000x zoom, a 0.08px region becomes 80px in a ~400px magnifier = 20%.
+    // We want to accept this rather than stepping down to lower zoom.
+    return { min: 0.02, max: 0.4 }
   }
   if (smallestSize < 5) {
-    // Tiny regions (1-5px): accept 5-15% of magnifier
-    return { min: 0.05, max: 0.15 }
+    // Tiny regions (1-5px): accept 5-25% of magnifier
+    return { min: 0.05, max: 0.25 }
   }
-  // Normal small regions: accept 10-25% of magnifier
-  return { min: 0.1, max: 0.25 }
+  // Normal small regions: accept 10-30% of magnifier
+  return { min: 0.1, max: 0.3 }
 }
 
 /**
