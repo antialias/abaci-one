@@ -398,6 +398,28 @@ export function generateProblems(
       // ===== PROGRESSIVE DIFFICULTY MODE =====
       // Sort all problems by difficulty (carry count), then sample based on
       // position in worksheet to create easy→medium→hard progression
+
+      // CRITICAL: Handle empty problem space to prevent crashes
+      if (allProblems.length === 0) {
+        console.error(
+          `[ADD GEN] ERROR: No valid problems exist for constraints digitRange=${minDigits}-${maxDigits}, pAnyStart=${pAnyStart}. Using fallback problems.`
+        )
+        // Return fallback problems to prevent crash
+        const fallbackProblems: AdditionProblem[] = []
+        for (let i = 0; i < total; i++) {
+          fallbackProblems.push({
+            a: minDigits === 1 ? 3 : 23,
+            b: minDigits === 1 ? 4 : 45,
+            operator: 'add',
+          })
+        }
+        const elapsed = Date.now() - startTime
+        console.log(
+          `[ADD GEN] Complete: ${fallbackProblems.length} fallback problems in ${elapsed}ms (empty problem space)`
+        )
+        return fallbackProblems
+      }
+
       console.log(`[ADD GEN] Sorting problems by difficulty for progressive difficulty`)
       const sortedByDifficulty = [...allProblems].sort((a, b) => {
         const diffA = countRegroupingOperations(a.a, a.b)
@@ -493,6 +515,28 @@ export function generateProblems(
       // ===== CONSTANT DIFFICULTY MODE =====
       // Shuffle all problems randomly, no sorting by difficulty
       const shuffled = shuffleArray(allProblems, rand)
+
+      // CRITICAL: Handle empty problem space to prevent division by zero and infinite loops
+      // This can happen when constraints are impossible to satisfy
+      if (shuffled.length === 0) {
+        console.error(
+          `[ADD GEN] ERROR: No valid problems exist for constraints digitRange=${minDigits}-${maxDigits}, pAnyStart=${pAnyStart}. Using fallback problems.`
+        )
+        // Return fallback problems to prevent crash
+        const fallbackProblems: AdditionProblem[] = []
+        for (let i = 0; i < total; i++) {
+          fallbackProblems.push({
+            a: minDigits === 1 ? 3 : 23,
+            b: minDigits === 1 ? 4 : 45,
+            operator: 'add',
+          })
+        }
+        const elapsed = Date.now() - startTime
+        console.log(
+          `[ADD GEN] Complete: ${fallbackProblems.length} fallback problems in ${elapsed}ms (empty problem space)`
+        )
+        return fallbackProblems
+      }
 
       // If we need more problems than available, cycle through the shuffled array
       // Example: 45 unique problems, requesting 100
@@ -928,6 +972,29 @@ export function generateSubtractionProblems(
 
     // Shuffle deterministically using seed
     const shuffled = shuffleArray(allProblems, rand)
+
+    // CRITICAL: Handle empty problem space to prevent infinite loop
+    // This can happen when constraints are impossible to satisfy (e.g., 1-digit with 100% borrowing)
+    if (shuffled.length === 0) {
+      console.error(
+        `[SUB GEN] ERROR: No valid problems exist for constraints digitRange=${minDigits}-${maxDigits}, pAnyBorrow=${pAnyBorrow}. Using fallback problems.`
+      )
+      // Return fallback problems to prevent infinite loop
+      const fallbackProblems: SubtractionProblem[] = []
+      for (let i = 0; i < count; i++) {
+        // Use safe fallback that always works
+        fallbackProblems.push({
+          minuend: minDigits === 1 ? 9 : 52,
+          subtrahend: minDigits === 1 ? 3 : 17,
+          operator: 'sub',
+        })
+      }
+      const elapsed = Date.now() - startTime
+      console.log(
+        `[SUB GEN] Complete: ${fallbackProblems.length} fallback problems in ${elapsed}ms (empty problem space)`
+      )
+      return fallbackProblems
+    }
 
     // If we need more problems than available, we'll have duplicates
     if (count > shuffled.length) {
