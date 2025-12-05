@@ -73,17 +73,20 @@ function CreatorCard({
             boxShadow: { base: '0 16px 50px rgba(0,0,0,0.2)', md: '0 30px 80px rgba(0,0,0,0.25)' },
             borderColor: 'border.emphasized',
           },
-          _before: {
-            content: '""',
+        })}
+      >
+        {/* Top gradient bar (replaces _before pseudo-element for dynamic gradient support) */}
+        <div
+          className={css({
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             height: { base: '4px', md: '6px' },
-            background: theme.gradient,
-          },
-        })}
-      >
+          })}
+          style={{ background: theme.gradient }}
+        />
+
         {/* Icon */}
         <div
           className={css({
@@ -95,10 +98,12 @@ function CreatorCard({
             width: { base: '56px', sm: '64px', md: '80px' },
             height: { base: '56px', sm: '64px', md: '80px' },
             borderRadius: { base: 'xl', md: '2xl' },
-            background: theme.gradient,
-            boxShadow: `0 8px 24px ${theme.shadowColor}`,
             flexShrink: 0,
           })}
+          style={{
+            background: theme.gradient,
+            boxShadow: `0 8px 24px ${theme.shadowColor}`,
+          }}
         >
           {emoji}
         </div>
@@ -182,13 +187,15 @@ function CreatorCard({
               px: { base: 4, md: 6 },
               py: { base: 2, md: 3 },
               borderRadius: 'xl',
-              background: theme.gradient,
               color: 'white',
               fontWeight: 'bold',
               fontSize: { base: 'sm', md: 'md' },
-              boxShadow: `0 4px 15px ${theme.shadowColor}`,
               transition: 'all 0.3s',
             })}
+            style={{
+              background: theme.gradient,
+              boxShadow: `0 4px 15px ${theme.shadowColor}`,
+            }}
           >
             <span>{buttonText}</span>
             <span className={css({ fontSize: { base: 'md', md: 'lg' } })}>→</span>
