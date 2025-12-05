@@ -437,10 +437,8 @@ export function MapRenderer({
   // The old useMagnifierState hook is no longer needed.
 
   // Unified showMagnifier from state machine (works for both mobile and desktop)
-  // For mobile: also check isMagnifierActive phase for backward compatibility
-  const showMagnifier = isTouchDevice
-    ? interaction.isMagnifierActive || interaction.showMagnifier
-    : interaction.showMagnifier
+  // State machine now syncs magnifier.isVisible with phase transitions, so this is simple
+  const showMagnifier = interaction.showMagnifier
 
   // Magnifier display state from state machine
   const targetOpacity = interaction.magnifierOpacity
@@ -1852,8 +1850,8 @@ export function MapRenderer({
         }
 
         // Set up magnifier opacity for mobile drag
-        // Note: showMagnifier for mobile now derives from interaction.isMagnifierActive,
-        // so we just need to set the opacity for the fade animation
+        // Note: State machine now sets magnifier.isVisible=true when entering mapPanning phase,
+        // and also sets targetOpacity=1, but we call setTargetOpacity here for any animations
         setTargetOpacity(1)
 
         // hoveredRegion is now derived from state machine (interaction.hoveredRegionId)
@@ -2000,23 +1998,28 @@ export function MapRenderer({
 
   // Helper to dismiss the magnifier (used by tap-to-dismiss and after selection)
   const dismissMagnifier = useCallback(() => {
-    // For desktop: setShowMagnifier(false) hides via magnifierState.isVisible
-    // For mobile: MAGNIFIER_DEACTIVATED event sets isMagnifierActive = false
-    setShowMagnifier(false)
-    setTargetOpacity(0)
+    // Clear cursor position ref
     cursorPositionRef.current = null
-    setIsMagnifierExpanded(false) // Reset expanded state on dismiss
 
-    // Dispatch state machine event for magnifier deactivation (mobile)
-    // This transitions mobile phase to idle and sets touchCenter to null
-    interaction.dispatch({ type: 'MAGNIFIER_DEACTIVATED' })
+    if (isTouchDevice) {
+      // Mobile: MAGNIFIER_DEACTIVATED handles:
+      // - Setting phase to idle
+      // - Setting magnifier.isVisible = false
+      // - Setting magnifier.targetOpacity = 0
+      // - Setting magnifier.isExpanded = false
+      // - Clearing touchCenter and magnifierTriggeredByDrag
+      interaction.dispatch({ type: 'MAGNIFIER_DEACTIVATED' })
+    } else {
+      // Desktop: MAGNIFIER_HIDE just hides the magnifier display
+      interaction.dispatch({ type: 'MAGNIFIER_HIDE' })
+    }
 
     // Notify other players that cursor is no longer active
     // In turn-based mode, only broadcast when it's our turn
     if (onCursorUpdate && (gameMode !== 'turn-based' || currentPlayer === localPlayerId)) {
       onCursorUpdate(null, null)
     }
-  }, [onCursorUpdate, gameMode, currentPlayer, localPlayerId, interaction])
+  }, [onCursorUpdate, gameMode, currentPlayer, localPlayerId, interaction, isTouchDevice])
 
   const handleMapTouchEnd = useCallback(() => {
     const wasDraggingMap = isMobileMapDragging

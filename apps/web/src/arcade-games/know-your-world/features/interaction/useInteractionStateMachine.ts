@@ -437,12 +437,18 @@ function mobileReducer(
 
     case 'TOUCH_MOVE':
       if (state.phase === 'touched' || state.phase === 'mapPanning') {
+        // When transitioning to mapPanning, show the magnifier
+        const enteringMapPanning = state.phase === 'touched'
         return {
           ...state,
           phase: 'mapPanning',
           touchCenter: event.position,
           // Update touchedRegion if provided (for hover highlighting)
           touchedRegion: event.regionId !== undefined ? event.regionId : state.touchedRegion,
+          // Show magnifier when entering mapPanning phase
+          ...(enteringMapPanning && {
+            magnifier: { ...state.magnifier, isVisible: true, targetOpacity: 1 },
+          }),
         }
       }
       if (state.phase === 'magnifierActive' || state.phase === 'magnifierPanning') {
@@ -534,6 +540,13 @@ function mobileReducer(
         touchCenter: null,
         touchStart: null,
         magnifierTriggeredByDrag: false, // Reset when magnifier is dismissed
+        // Hide magnifier when deactivated
+        magnifier: {
+          ...state.magnifier,
+          isVisible: false,
+          targetOpacity: 0,
+          isExpanded: false,
+        },
       }
 
     case 'RESET':
