@@ -1,6 +1,7 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { animated, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -15,84 +16,95 @@ import { WorksheetPreview } from './WorksheetPreview'
 import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
 import { WorksheetPreviewProvider } from './worksheet-preview/WorksheetPreviewContext'
 
+// Dot patterns for each dice face (positions as fractions of face size)
+const DICE_DOT_PATTERNS: Record<number, Array<[number, number]>> = {
+  1: [[0.5, 0.5]],
+  2: [
+    [0.25, 0.25],
+    [0.75, 0.75],
+  ],
+  3: [
+    [0.25, 0.25],
+    [0.5, 0.5],
+    [0.75, 0.75],
+  ],
+  4: [
+    [0.25, 0.25],
+    [0.75, 0.25],
+    [0.25, 0.75],
+    [0.75, 0.75],
+  ],
+  5: [
+    [0.25, 0.25],
+    [0.75, 0.25],
+    [0.5, 0.5],
+    [0.25, 0.75],
+    [0.75, 0.75],
+  ],
+  6: [
+    [0.25, 0.2],
+    [0.25, 0.5],
+    [0.25, 0.8],
+    [0.75, 0.2],
+    [0.75, 0.5],
+    [0.75, 0.8],
+  ],
+}
+
+// Rotation needed to show each face
+// Standard dice: 1 opposite 6, 2 opposite 5, 3 opposite 4
+const DICE_FACE_ROTATIONS: Record<number, { rotateX: number; rotateY: number }> = {
+  1: { rotateX: 0, rotateY: 0 }, // front
+  2: { rotateX: 0, rotateY: -90 }, // right
+  3: { rotateX: -90, rotateY: 0 }, // top
+  4: { rotateX: 90, rotateY: 0 }, // bottom
+  5: { rotateX: 0, rotateY: 90 }, // left
+  6: { rotateX: 0, rotateY: 180 }, // back
+}
+
 /**
- * 3D Dice Icon using CSS 3D transforms
+ * 3D Dice Icon using react-spring for smooth animations
  *
  * Creates a cube with 6 faces, each showing the appropriate dot pattern.
- * The cube rotates on all 3 axes when rolling.
+ * The cube rotates on all 3 axes when rolling, with physics-based easing.
  */
 function DiceIcon({
   className,
-  isRolling,
-  currentFace = 5,
-  animationName = 'diceRoll3D',
+  rotateX,
+  rotateY,
+  rotateZ,
+  isDark,
 }: {
   className?: string
-  isRolling?: boolean
-  currentFace?: number
-  animationName?: string
+  rotateX: number
+  rotateY: number
+  rotateZ: number
+  isDark: boolean
 }) {
   const size = 22
   const halfSize = size / 2
 
-  // Dot patterns for each face (positions as fractions of face size)
-  // Face 1: center
-  // Face 2: diagonal
-  // Face 3: diagonal with center
-  // Face 4: four corners
-  // Face 5: four corners + center
-  // Face 6: two columns of three
-  const dotPatterns: Record<number, Array<[number, number]>> = {
-    1: [[0.5, 0.5]],
-    2: [
-      [0.25, 0.25],
-      [0.75, 0.75],
-    ],
-    3: [
-      [0.25, 0.25],
-      [0.5, 0.5],
-      [0.75, 0.75],
-    ],
-    4: [
-      [0.25, 0.25],
-      [0.75, 0.25],
-      [0.25, 0.75],
-      [0.75, 0.75],
-    ],
-    5: [
-      [0.25, 0.25],
-      [0.75, 0.25],
-      [0.5, 0.5],
-      [0.25, 0.75],
-      [0.75, 0.75],
-    ],
-    6: [
-      [0.25, 0.2],
-      [0.25, 0.5],
-      [0.25, 0.8],
-      [0.75, 0.2],
-      [0.75, 0.5],
-      [0.75, 0.8],
-    ],
-  }
+  // Animate rotation with react-spring
+  const springProps = useSpring({
+    rotateX,
+    rotateY,
+    rotateZ,
+    config: {
+      tension: 120,
+      friction: 14,
+    },
+  })
 
-  // Calculate rotation to show the current face
-  // Standard dice: 1 opposite 6, 2 opposite 5, 3 opposite 4
-  // Face positions on cube: front=1, back=6, right=2, left=5, top=3, bottom=4
-  const faceRotations: Record<number, { rotateX: number; rotateY: number }> = {
-    1: { rotateX: 0, rotateY: 0 }, // front
-    2: { rotateX: 0, rotateY: -90 }, // right
-    3: { rotateX: -90, rotateY: 0 }, // top
-    4: { rotateX: 90, rotateY: 0 }, // bottom
-    5: { rotateX: 0, rotateY: 90 }, // left
-    6: { rotateX: 0, rotateY: 180 }, // back
-  }
-
-  const rotation = faceRotations[currentFace] || faceRotations[1]
+  // Theme-aware colors
+  // Dark mode: lighter indigo with more contrast against dark backgrounds
+  // Light mode: deeper indigo that stands out against light backgrounds
+  const faceBackground = isDark ? '#818cf8' : '#4f46e5' // indigo-400 dark, indigo-600 light
+  const faceBorder = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.5)'
+  const dotColor = isDark ? '#1e1b4b' : 'white' // indigo-950 dots on light bg in dark mode
 
   // Render dots for a face
   const renderDots = (face: number) => {
-    const dots = dotPatterns[face] || []
+    const dots = DICE_DOT_PATTERNS[face] || []
     return dots.map(([x, y], i) => (
       <div
         key={i}
@@ -102,7 +114,7 @@ function DiceIcon({
           top: `${y * 100}%`,
           width: '18%',
           height: '18%',
-          backgroundColor: 'currentColor',
+          backgroundColor: dotColor,
           borderRadius: '50%',
           transform: 'translate(-50%, -50%)',
         }}
@@ -115,8 +127,8 @@ function DiceIcon({
     position: 'absolute',
     width: size,
     height: size,
-    backgroundColor: '#4f46e5', // Solid brand color (indigo-600)
-    border: '1.5px solid rgba(255, 255, 255, 0.5)',
+    backgroundColor: faceBackground,
+    border: `1.5px solid ${faceBorder}`,
     borderRadius: 2,
     backfaceVisibility: 'hidden',
     WebkitBackfaceVisibility: 'hidden',
@@ -132,15 +144,16 @@ function DiceIcon({
         perspectiveOrigin: 'center',
       }}
     >
-      <div
+      <animated.div
         style={{
           width: size,
           height: size,
           position: 'relative',
           transformStyle: 'preserve-3d',
-          transform: `rotateX(${rotation.rotateX}deg) rotateY(${rotation.rotateY}deg)`,
-          animation: isRolling ? `${animationName} 1.2s linear infinite` : 'none',
-          transition: isRolling ? 'none' : 'transform 0.3s ease-out',
+          transform: springProps.rotateX.to(
+            (rx) =>
+              `rotateX(${rx}deg) rotateY(${springProps.rotateY.get()}deg) rotateZ(${springProps.rotateZ.get()}deg)`
+          ),
         }}
       >
         {/* Front face (1) */}
@@ -165,7 +178,7 @@ function DiceIcon({
         <div style={{ ...faceStyle, transform: `rotateX(-90deg) translateZ(${halfSize}px)` }}>
           {renderDots(4)}
         </div>
-      </div>
+      </animated.div>
     </div>
   )
 }
@@ -200,13 +213,20 @@ export function PreviewCenter({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [justCopied, setJustCopied] = useState(false)
-  const [isShuffling, setIsShuffling] = useState(false)
-  // Default to face derived from initial seed (2-6, excluding 1)
-  const [diceFace, setDiceFace] = useState(() => ((formState.seed ?? 0) % 5) + 2)
-  // Random rotation parameters for variety
-  const [rollAnimation, setRollAnimation] = useState('')
-  const shuffleTimeoutRef = useRef<NodeJS.Timeout>()
-  const diceFaceIntervalRef = useRef<NodeJS.Timeout>()
+  // Dice rotation state for react-spring animation
+  // We track cumulative spins to add visual flair, then compute final rotation
+  // to land on the correct face derived from the seed
+  const [spinCount, setSpinCount] = useState(0)
+  // Track which face we're showing (for ensuring consecutive rolls differ)
+  const [currentFace, setCurrentFace] = useState(() => ((formState.seed ?? 0) % 5) + 2)
+
+  // Compute target rotation: add dramatic spins, then land on the face rotation
+  const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
+  const diceRotation = {
+    rotateX: spinCount * 360 + targetFaceRotation.rotateX,
+    rotateY: spinCount * 360 + targetFaceRotation.rotateY,
+    rotateZ: spinCount * 180, // Z rotation for extra tumble effect
+  }
   const isGenerating = status === 'generating'
   const [pageData, setPageData] = useState<{
     currentPage: number
@@ -220,90 +240,19 @@ export function PreviewCenter({
     const newSeed = Date.now() % 2147483647
     onChange({ seed: newSeed })
 
-    // Generate random rotation parameters for this roll
-    const xDir = Math.random() > 0.5 ? 1 : -1
-    const yDir = Math.random() > 0.5 ? 1 : -1
-    const zDir = Math.random() > 0.5 ? 1 : -1
-    const xSpins = Math.floor(Math.random() * 2) + 1 // 1-2 full rotations
-    const ySpins = Math.floor(Math.random() * 2) + 1
-    const zSpins = Math.floor(Math.random() * 2) + 1
-    const animationName = `diceRoll3D_${newSeed}`
+    // Calculate target face from seed (2-6, excluding 1 so it's clearly a dice)
+    // baseFace is deterministic based on seed
+    const baseFace = (newSeed % 5) + 2
 
-    // Inject a unique keyframe animation for this roll
-    const styleId = 'dice-roll-keyframes'
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = styleId
-      document.head.appendChild(styleEl)
-    }
-    // Quadratic ease-out: starts fast, slows down progressively
-    // Using more keyframes to simulate quadratic deceleration
-    const totalX = xDir * xSpins * 360
-    const totalY = yDir * ySpins * 360
-    const totalZ = zDir * zSpins * 180
+    // Ensure it's different from the current face
+    const targetFace = baseFace === currentFace ? (baseFace === 6 ? 2 : baseFace + 1) : baseFace
 
-    // Quadratic ease-out: progress = 1 - (1-t)^2
-    // At t=0.25: ~44%, t=0.5: ~75%, t=0.75: ~94%, t=1.0: 100%
-    const ease = (t: number) => 1 - (1 - t) * (1 - t)
+    // Add 1-2 full spins for visual drama
+    const extraSpins = Math.floor(Math.random() * 2) + 1
 
-    styleEl.textContent = `
-      @keyframes ${animationName} {
-        0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-        25% { transform: rotateX(${totalX * ease(0.25)}deg) rotateY(${totalY * ease(0.25)}deg) rotateZ(${totalZ * ease(0.25)}deg); }
-        50% { transform: rotateX(${totalX * ease(0.5)}deg) rotateY(${totalY * ease(0.5)}deg) rotateZ(${totalZ * ease(0.5)}deg); }
-        75% { transform: rotateX(${totalX * ease(0.75)}deg) rotateY(${totalY * ease(0.75)}deg) rotateZ(${totalZ * ease(0.75)}deg); }
-        100% { transform: rotateX(${totalX}deg) rotateY(${totalY}deg) rotateZ(${totalZ}deg); }
-      }
-    `
-    setRollAnimation(animationName)
-
-    // Start rolling animation
-    setIsShuffling(true)
-
-    // Clear any existing intervals/timeouts
-    if (shuffleTimeoutRef.current) {
-      clearTimeout(shuffleTimeoutRef.current)
-    }
-    if (diceFaceIntervalRef.current) {
-      clearInterval(diceFaceIntervalRef.current)
-    }
-
-    // Cycle through dice faces rapidly
-    diceFaceIntervalRef.current = setInterval(() => {
-      setDiceFace((prev) => (prev % 6) + 1)
-    }, 100) // Change face every 100ms
-
-    // Stop animation after preview should have updated (debounce time + render time)
-    shuffleTimeoutRef.current = setTimeout(() => {
-      setIsShuffling(false)
-      if (diceFaceIntervalRef.current) {
-        clearInterval(diceFaceIntervalRef.current)
-      }
-      // End on a face derived from the seed (2-6, excluding 1 so it's clearly a dice)
-      // Also ensure it's different from the current face by offsetting if collision
-      setDiceFace((currentFace) => {
-        const baseFace = (newSeed % 5) + 2 // Results in 2, 3, 4, 5, or 6
-        if (baseFace === currentFace) {
-          // If same, rotate to next face (wrapping 6 -> 2, skipping 1)
-          return baseFace === 6 ? 2 : baseFace + 1
-        }
-        return baseFace
-      })
-    }, 1500) // 1.5 seconds should cover debounce + render
-  }, [onChange])
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (shuffleTimeoutRef.current) {
-        clearTimeout(shuffleTimeoutRef.current)
-      }
-      if (diceFaceIntervalRef.current) {
-        clearInterval(diceFaceIntervalRef.current)
-      }
-    }
-  }, [])
+    setSpinCount((prev) => prev + extraSpins)
+    setCurrentFace(targetFace)
+  }, [onChange, currentFace])
 
   // Detect scrolling in the scroll container
   useEffect(() => {
@@ -383,16 +332,6 @@ export function PreviewCenter({
         position: 'relative',
       })}
     >
-      {/* Inject keyframes for 3D dice roll animation */}
-      <style>
-        {`
-          @keyframes diceRoll3D {
-            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg); }
-          }
-        `}
-      </style>
-
       {/* Floating Action Button - Top Right */}
       <div
         data-component="floating-action-button"
@@ -493,9 +432,10 @@ export function PreviewCenter({
             })}
           >
             <DiceIcon
-              isRolling={isShuffling}
-              currentFace={diceFace}
-              animationName={rollAnimation || 'diceRoll3D'}
+              rotateX={diceRotation.rotateX}
+              rotateY={diceRotation.rotateY}
+              rotateZ={diceRotation.rotateZ}
+              isDark={isDark}
             />
           </button>
         )}
