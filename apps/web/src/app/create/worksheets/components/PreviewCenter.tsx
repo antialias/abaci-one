@@ -253,15 +253,24 @@ export function PreviewCenter({
   useEffect(() => {
     if (!isFlying) return
 
-    const GRAVITY_STRENGTH = 1.2 // Pull toward origin (spring-like)
-    const BASE_FRICTION = 0.92 // Base velocity dampening
+    const BASE_GRAVITY = 0.8 // Base pull toward origin
+    const BASE_FRICTION = 0.94 // Base velocity dampening (slightly less friction for longer flight)
     const ROTATION_FACTOR = 0.5 // How much velocity affects rotation
     const STOP_THRESHOLD = 2 // Distance threshold to snap home
     const VELOCITY_THRESHOLD = 0.5 // Velocity threshold to snap home
-    const CLOSE_RANGE = 30 // Distance at which extra damping kicks in
+    const CLOSE_RANGE = 40 // Distance at which extra damping kicks in
     const MAX_SCALE = 3 // Maximum scale when flying
-    const SCALE_GROW_SPEED = 0.15 // How fast to grow
-    const SCALE_SHRINK_SPEED = 0.08 // How fast to shrink when close
+    const SCALE_GROW_SPEED = 0.2 // How fast to grow (faster)
+    const SCALE_SHRINK_SPEED = 0.06 // How fast to shrink when close (slower for drama)
+
+    // Calculate initial throw power to adjust gravity (stronger throws = weaker initial gravity)
+    const initialSpeed = Math.sqrt(
+      dicePhysics.current.vx * dicePhysics.current.vx +
+        dicePhysics.current.vy * dicePhysics.current.vy
+    )
+    const throwPower = Math.min(initialSpeed / 20, 1) // 0-1 based on throw strength
+
+    let frameCount = 0
 
     const animate = () => {
       const p = dicePhysics.current
@@ -271,18 +280,25 @@ export function PreviewCenter({
         return
       }
 
+      frameCount++
+
       // Calculate distance to origin
       const dist = Math.sqrt(p.x * p.x + p.y * p.y)
 
+      // Gravity ramps up over time (weak at first for strong throws, then strengthens)
+      const gravityRampUp = Math.min(frameCount / 30, 1) // Full gravity after ~0.5s
+      const effectiveGravity = BASE_GRAVITY * (0.3 + 0.7 * gravityRampUp) * (1 - throwPower * 0.5)
+
       // Apply spring force toward origin (proportional to distance)
       if (dist > 0) {
-        const springForce = GRAVITY_STRENGTH
-        p.vx += (-p.x / dist) * springForce * (dist / 50) // Stronger when further
-        p.vy += (-p.y / dist) * springForce * (dist / 50)
+        // Quadratic falloff for more natural feel
+        const pullStrength = effectiveGravity * (dist / 50) ** 1.2
+        p.vx += (-p.x / dist) * pullStrength
+        p.vy += (-p.y / dist) * pullStrength
       }
 
       // Apply friction - extra damping when close to prevent oscillation
-      const friction = dist < CLOSE_RANGE ? 0.85 : BASE_FRICTION
+      const friction = dist < CLOSE_RANGE ? 0.88 : BASE_FRICTION
       p.vx *= friction
       p.vy *= friction
 
@@ -292,9 +308,9 @@ export function PreviewCenter({
 
       // Update rotation based on velocity (dice rolls as it moves)
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-      p.rotationX += p.vy * ROTATION_FACTOR * 10
-      p.rotationY -= p.vx * ROTATION_FACTOR * 10
-      p.rotationZ += speed * ROTATION_FACTOR * 2
+      p.rotationX += p.vy * ROTATION_FACTOR * 12
+      p.rotationY -= p.vx * ROTATION_FACTOR * 12
+      p.rotationZ += speed * ROTATION_FACTOR * 3
 
       // Update scale - grow when far/fast, shrink when close/slow
       const targetScale =
@@ -310,7 +326,15 @@ export function PreviewCenter({
       const scaleOffset = ((p.scale - 1) * 22) / 2 // 22 is dice size
       el.style.transform = `translate(${p.x - scaleOffset}px, ${p.y - scaleOffset}px) scale(${p.scale})`
 
-      // Update dice rotation via CSS custom properties (the DiceIcon reads these)
+      // Dynamic shadow based on scale (larger = higher = bigger shadow)
+      const shadowSize = (p.scale - 1) * 10
+      const shadowOpacity = Math.min((p.scale - 1) * 0.2, 0.4)
+      el.style.filter =
+        shadowSize > 0
+          ? `drop-shadow(0 ${shadowSize}px ${shadowSize * 1.5}px rgba(0,0,0,${shadowOpacity}))`
+          : 'none'
+
+      // Update dice rotation
       const diceEl = el.querySelector('[data-dice-cube]') as HTMLElement | null
       if (diceEl) {
         diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
@@ -319,7 +343,8 @@ export function PreviewCenter({
       // Check if we should stop - snap to home when close and slow
       const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
       if (dist < STOP_THRESHOLD && totalVelocity < VELOCITY_THRESHOLD && p.scale < 1.1) {
-        // Dice has returned home
+        // Dice has returned home - clear shadow
+        el.style.filter = 'none'
         setIsFlying(false)
         dicePhysics.current = {
           x: 0,
@@ -427,17 +452,44 @@ export function PreviewCenter({
       const dx = e.clientX - dragStartPos.current.x
       const dy = e.clientY - dragStartPos.current.y
 
+      // Calculate drag velocity for live rotation
+      const now = performance.now()
+      const dt = Math.max(now - lastPointerPos.current.time, 8)
+      const vx = (e.clientX - lastPointerPos.current.x) / dt
+      const vy = (e.clientY - lastPointerPos.current.y) / dt
+
+      // Update rotation based on drag velocity (dice tumbles while being dragged)
+      const p = dicePhysics.current
+      p.rotationX += vy * 8
+      p.rotationY -= vx * 8
+      p.rotationZ += Math.sqrt(vx * vx + vy * vy) * 2
+
+      // Scale up slightly based on distance (feels like pulling it out)
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      p.scale = 1 + Math.min(dist / 150, 0.5) // Max 1.5x during drag
+
       // Update DOM directly to avoid React re-renders during drag
       if (portalDiceRef.current) {
-        portalDiceRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+        const scaleOffset = ((p.scale - 1) * 22) / 2
+        portalDiceRef.current.style.transform = `translate(${dx - scaleOffset}px, ${dy - scaleOffset}px) scale(${p.scale})`
+        // Add shadow that grows with distance
+        const shadowSize = Math.min(dist / 10, 20)
+        const shadowOpacity = Math.min(dist / 200, 0.4)
+        portalDiceRef.current.style.filter = `drop-shadow(0 ${shadowSize}px ${shadowSize * 1.5}px rgba(0,0,0,${shadowOpacity}))`
+
+        // Update dice rotation
+        const diceEl = portalDiceRef.current.querySelector('[data-dice-cube]') as HTMLElement | null
+        if (diceEl) {
+          diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
+        }
       }
 
       // Store position in ref for use when releasing
-      dicePhysics.current.x = dx
-      dicePhysics.current.y = dy
+      p.x = dx
+      p.y = dy
 
       // Track velocity for throw calculation
-      lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
+      lastPointerPos.current = { x: e.clientX, y: e.clientY, time: now }
     },
     [isDragging]
   )
