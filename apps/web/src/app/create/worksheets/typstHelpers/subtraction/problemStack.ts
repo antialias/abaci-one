@@ -3,10 +3,11 @@
 
 import { getPlaceValueColorNames } from '../shared/colors'
 import type { CellDimensions } from '../shared/types'
+import { generateAnswerBoxesRow, generateLineRow, generateTenFramesRow } from './answerRow'
 import { generateBorrowBoxesRow } from './borrowBoxes'
 import { generateMinuendRow } from './minuendRow'
+import { generateOperatorOverlay } from './operatorOverlay'
 import { generateSubtrahendRow } from './subtrahendRow'
-import { generateLineRow, generateTenFramesRow, generateAnswerBoxesRow } from './answerRow'
 
 /**
  * Generate the main subtraction problem stack function for Typst
@@ -115,9 +116,11 @@ export function generateSubtractionProblemStackFunction(
     dir: ttb,
     spacing: 0pt,
     problem-number-display,
-    grid(
-      columns: column-list,
-      gutter: 0pt,
+    // Wrap grid in a box to enable place() overlay for operator
+    box[
+      #grid(
+        columns: column-list,
+        gutter: 0pt,
 
 ${generateBorrowBoxesRow(cellDimensions)}
 
@@ -130,7 +133,9 @@ ${generateLineRow(cellDimensions)}
 ${generateTenFramesRow(cellDimensions)}
 
 ${generateAnswerBoxesRow(cellDimensions)}
-    )
+      )
+${generateOperatorOverlay(cellDimensions)}
+    ]
   )
 }
 `

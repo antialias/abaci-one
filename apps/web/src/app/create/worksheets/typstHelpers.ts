@@ -7,13 +7,13 @@
 // Import types for internal use
 import type { DisplayOptions } from './typstHelpers/shared/types'
 
+export { generatePlaceValueColors } from './typstHelpers/shared/colors'
+export { generateTypstHelpers } from './typstHelpers/shared/helpers'
 // Re-export everything from modular structure
 export type {
-  DisplayOptions,
   CellDimensions,
+  DisplayOptions,
 } from './typstHelpers/shared/types'
-export { generateTypstHelpers } from './typstHelpers/shared/helpers'
-export { generatePlaceValueColors } from './typstHelpers/shared/colors'
 export { generateSubtractionProblemStackFunction } from './typstHelpers/subtraction/problemStack'
 
 /**
@@ -103,12 +103,14 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
     dir: ttb,
     spacing: 0pt,
     problem-number-display,
-    grid(
-      columns: column-list,
-      gutter: 0pt,
+    // Wrap grid in a box to enable place() overlay for operator
+    box[
+      #grid(
+        columns: column-list,
+        gutter: 0pt,
 
-      // Carry boxes row (one per place value, right to left)
-      [],  // Empty cell for + sign column
+        // Carry boxes row (one per place value, right to left)
+        [],  // Empty cell for + sign column
       ..for i in range(0, actual-digits).rev() {
         // DEBUG: Show which place values get carry boxes and why
         let show-carry = show-carries and i > 0
@@ -152,8 +154,8 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
         ],)
       },
 
-      // Second addend row with + sign (right to left)
-      box(width: 0.5em, height: ${cellSizeIn})[#align(center + horizon)[#text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[+]]],
+      // Second addend row (operator sign rendered separately via place() for proper layering)
+      [],  // Empty cell for operator column (operator overlaid later)
       ..for i in range(0, actual-digits).rev() {
         let digit = b-digits.at(i)
         let place-color = place-colors.at(i)  // Dynamic color lookup by place value
@@ -240,7 +242,20 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
           ],)
         }
       },
-    )
+      )
+      // Operator overlay - rendered last for proper layering
+      // Position: left edge, at second addend row vertical position
+      #place(
+        left + top,
+        dx: 0pt,
+        dy: ${cellSizeIn} * 2,  // Skip carry boxes row + first addend row
+        box(width: 0.5em, height: ${cellSizeIn})[
+          #align(center + horizon)[
+            #text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[+]
+          ]
+        ]
+      )
+    ]
   )
 }
 `

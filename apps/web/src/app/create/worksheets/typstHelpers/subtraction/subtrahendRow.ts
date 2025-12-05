@@ -18,12 +18,8 @@ export function generateSubtrahendRow(cellDimensions: CellDimensions): string {
   const { cellSize, cellSizeIn, cellSizePt } = cellDimensions
 
   return String.raw`
-      // Subtrahend row with − sign
-      box(width: 0.5em, height: ${cellSizeIn})[
-        #align(center + horizon)[
-          #text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[−]
-        ]
-      ],
+      // Subtrahend row (operator sign rendered separately via place() for proper layering)
+      [],  // Empty cell for operator column (operator overlaid later)
       ..for i in range(0, grid-digits).rev() {
         let digit = s-digits.at(i)
         let place-color = place-colors.at(i)
