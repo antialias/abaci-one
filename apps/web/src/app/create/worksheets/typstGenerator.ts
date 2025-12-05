@@ -12,6 +12,100 @@ import {
 } from './typstHelpers'
 
 /**
+ * Generate a human-readable description of the worksheet settings
+ * Format matches the difficulty preset dropdown collapsed view:
+ * - Line 1: Digit range + operator + regrouping percentage
+ * - Line 2: Scaffolding summary (Always: X, Y / When needed: Z)
+ *
+ * @param config - The worksheet configuration
+ * @returns Object with title (for prominent display) and scaffolding (for detail line)
+ */
+function generateWorksheetDescription(config: WorksheetConfig): {
+  title: string
+  scaffolding: string
+} {
+  // Line 1: Digit range + operator + regrouping percentage
+  const parts: string[] = []
+
+  // Digit range (e.g., "2-digit" or "1–3 digit")
+  const minDigits = config.digitRange?.min ?? 1
+  const maxDigits = config.digitRange?.max ?? 2
+  if (minDigits === maxDigits) {
+    parts.push(`${minDigits}-digit`)
+  } else {
+    parts.push(`${minDigits}–${maxDigits} digit`)
+  }
+
+  // Operator
+  if (config.operator === 'addition') {
+    parts.push('addition')
+  } else if (config.operator === 'subtraction') {
+    parts.push('subtraction')
+  } else {
+    parts.push('mixed operations')
+  }
+
+  // Regrouping percentage (pAnyStart)
+  const pAnyStart = (config as any).pAnyStart ?? 0.25
+  const regroupingPercent = Math.round(pAnyStart * 100)
+  parts.push(`• ${regroupingPercent}% regrouping`)
+
+  const title = parts.join(' ')
+
+  // Line 2: Scaffolding summary (matches getScaffoldingSummary format)
+  const alwaysItems: string[] = []
+  const conditionalItems: string[] = []
+
+  if (config.displayRules) {
+    const rules = config.displayRules
+    const operator = config.operator
+
+    // Addition-specific scaffolds (skip for subtraction-only)
+    if (operator !== 'subtraction') {
+      if (rules.carryBoxes === 'always') alwaysItems.push('carry boxes')
+      else if (rules.carryBoxes && rules.carryBoxes !== 'never')
+        conditionalItems.push('carry boxes')
+
+      if (rules.tenFrames === 'always') alwaysItems.push('ten-frames')
+      else if (rules.tenFrames && rules.tenFrames !== 'never') conditionalItems.push('ten-frames')
+    }
+
+    // Universal scaffolds
+    if (rules.answerBoxes === 'always') alwaysItems.push('answer boxes')
+    else if (rules.answerBoxes && rules.answerBoxes !== 'never')
+      conditionalItems.push('answer boxes')
+
+    if (rules.placeValueColors === 'always') alwaysItems.push('place value colors')
+    else if (rules.placeValueColors && rules.placeValueColors !== 'never')
+      conditionalItems.push('place value colors')
+
+    // Subtraction-specific scaffolds (skip for addition-only)
+    if (operator !== 'addition') {
+      if (rules.borrowNotation === 'always') alwaysItems.push('borrow notation')
+      else if (rules.borrowNotation && rules.borrowNotation !== 'never')
+        conditionalItems.push('borrow notation')
+
+      if (rules.borrowingHints === 'always') alwaysItems.push('borrowing hints')
+      else if (rules.borrowingHints && rules.borrowingHints !== 'never')
+        conditionalItems.push('borrowing hints')
+    }
+  }
+
+  // Build scaffolding summary string
+  const scaffoldingParts: string[] = []
+  if (alwaysItems.length > 0) {
+    scaffoldingParts.push(`Always: ${alwaysItems.join(', ')}`)
+  }
+  if (conditionalItems.length > 0) {
+    scaffoldingParts.push(`When needed: ${conditionalItems.join(', ')}`)
+  }
+
+  const scaffolding = scaffoldingParts.length > 0 ? scaffoldingParts.join(' • ') : 'No scaffolding'
+
+  return { title, scaffolding }
+}
+
+/**
  * Chunk array into pages of specified size
  */
 function chunkProblems(problems: WorksheetProblem[], pageSize: number): WorksheetProblem[][] {
@@ -49,6 +143,7 @@ function calculateMaxDigits(problems: WorksheetProblem[]): number {
  * Generate Typst source code for a single page
  * @param qrCodeSvg - Optional raw SVG string for QR code to embed
  * @param shareCode - Optional share code to display under QR code (e.g., "k7mP2qR")
+ * @param domain - Optional domain name for branding (e.g., "abaci.one")
  */
 function generatePageTypst(
   config: WorksheetConfig,
@@ -56,7 +151,8 @@ function generatePageTypst(
   problemOffset: number,
   rowsPerPage: number,
   qrCodeSvg?: string,
-  shareCode?: string
+  shareCode?: string,
+  domain?: string
 ): string {
   // Calculate maximum digits for proper column layout
   const maxDigits = calculateMaxDigits(pageProblems)
@@ -205,11 +301,17 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
   let grid-stroke = if problem.showCellBorder { (thickness: 1pt, dash: "dashed", paint: gray.darken(20%)) } else { none }
 
   box(
-    inset: 0pt,
+    inset: (top: 0pt, bottom: -${(cellSize / 3).toFixed(3)}in, left: 0pt, right: 0pt),
     width: ${problemBoxWidth}in,
     height: ${problemBoxHeight}in,
     stroke: grid-stroke
   )[
+    // Problem number in top-left corner of the cell
+    #if problem.showProblemNumbers and index != none {
+      place(top + left, dx: 0.02in, dy: 0.02in)[
+        #text(size: ${(cellSize * 72 * 0.4).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\##(index + 1).]
+      ]
+    }
     #align(center + horizon)[
       #if problem.operator == "+" {
         problem-stack(
@@ -218,7 +320,7 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
           problem.showAnswerBoxes,
           problem.showPlaceValueColors,
           problem.showTenFrames,
-          problem.showProblemNumbers
+          false  // Don't show problem numbers here - shown at cell level
         )
       } else {
         subtraction-problem-stack(
@@ -227,7 +329,7 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
           problem.showAnswerBoxes,
           problem.showPlaceValueColors,
           problem.showTenFrames,
-          problem.showProblemNumbers,
+          false,  // Don't show problem numbers here - shown at cell level
           problem.showBorrowNotation,  // show-borrow-notation (scratch work boxes in minuend)
           problem.showBorrowingHints   // show-borrowing-hints (hints with arrows)
         )
@@ -240,20 +342,84 @@ ${generateSubtractionProblemStackFunction(cellSize, maxDigits)}
 ${problemsTypst}
 )
 
-// Compact header - name on left, date and QR code with share code on right
-#grid(
-  columns: (1fr, auto, auto),
-  column-gutter: 0.15in,
-  align: (left, right, right),
-  text(size: 0.75em, weight: "bold")[${config.name}],
-  text(size: 0.65em)[${config.date}],
-  ${
-    qrCodeSvg
-      ? `stack(dir: ttb, spacing: 2pt, align(center)[#image.decode("${qrCodeSvg.replace(/"/g, '\\"').replace(/\n/g, '')}", width: 0.35in, height: 0.35in)], align(center)[#text(size: 6pt, font: "Courier New")[${shareCode || 'PREVIEW'}]])`
-      : `[]`
-  }
-)
-#v(${headerHeight}in - 0.25in)
+// Letterhead with worksheet description, student info, and QR code
+${(() => {
+  const description = generateWorksheetDescription(config)
+  // Check if user specified a real name (not the default 'Student' placeholder)
+  // Validation defaults empty names to 'Student', so we treat that as "no name specified"
+  const hasName = config.name && config.name.trim().length > 0 && config.name.trim() !== 'Student'
+  const brandDomain = domain || 'abaci.one'
+  const breadcrumb = 'Create › Worksheets'
+
+  // When name is empty, description gets more prominence (larger font)
+  const titleSize = hasName ? '0.7em' : '0.85em'
+  const scaffoldSize = hasName ? '0.5em' : '0.6em'
+
+  return `#box(
+  width: 100%,
+  stroke: (bottom: 1pt + gray),
+  inset: (bottom: 2pt),
+)[
+  #grid(
+    columns: (1fr, auto),
+    column-gutter: 0.1in,
+    align: (left + top, right + top),
+    // Left side: Description, Name (if specified)
+    [
+      // Title line: digit range, operator, regrouping %
+      #text(size: ${titleSize}, weight: "bold")[${description.title}] \\
+      // Scaffolding summary
+      #text(size: ${scaffoldSize}, fill: gray.darken(20%))[${description.scaffolding}]
+      ${
+        hasName
+          ? ` \\
+      // Name row (date moved to right side)
+      #grid(
+        columns: (auto, 1fr),
+        column-gutter: 4pt,
+        align: (left + horizon, left + horizon),
+        text(size: 0.65em)[*Name:*],
+        box(stroke: (bottom: 0.5pt + black))[#h(0.25em)${config.name}#h(1fr)]
+      )`
+          : ''
+      }
+    ],
+    // Right side: Date + QR code, share code, domain, breadcrumb
+    [
+      ${
+        qrCodeSvg
+          ? `#align(right)[
+        #stack(dir: ttb, spacing: 0pt, align(right)[
+          // Date and QR code on same row, top-aligned
+          #grid(
+            columns: (auto, auto),
+            column-gutter: 0.1in,
+            align: (right + top, right + top),
+            text(size: 0.6em)[*Date:* ${config.date}],
+            image(bytes("${qrCodeSvg.replace(/"/g, '\\"').replace(/\n/g, '')}"), format: "svg", width: 0.5in, height: 0.5in)
+          )
+        ], align(right)[
+          // Share code and domain/breadcrumb tightly packed
+          #set par(leading: 0pt)
+          #text(size: 5pt, font: "Courier New", fill: gray.darken(20%))[${shareCode || 'PREVIEW'}] \\
+          #text(size: 0.4em, fill: gray.darken(10%), weight: "medium")[${brandDomain}] #text(size: 0.35em, fill: gray)[${breadcrumb}]
+        ])
+      ]`
+          : `#align(right)[
+        #stack(dir: ttb, spacing: 1pt, align(right)[
+          #text(size: 0.6em)[*Date:* ${config.date}]
+        ], align(right)[
+          #text(size: 0.5em, fill: gray.darken(10%), weight: "medium")[${brandDomain}]
+        ], align(right)[
+          #text(size: 0.4em, fill: gray)[${breadcrumb}]
+        ])
+      ]`
+      }
+    ]
+  )
+]`
+})()}
+#v(-0.25in)
 
 // Problem grid - exactly ${actualRows} rows × ${config.cols} columns
 #grid(
@@ -398,7 +564,7 @@ ${
   qrCodeSvg
     ? `// QR code linking to shared worksheet with share code below
 #place(bottom + left, dx: 0.1in, dy: -0.1in)[
-  #stack(dir: ttb, spacing: 2pt, align(center)[#image.decode("${qrCodeSvg.replace(/"/g, '\\"').replace(/\n/g, '')}", width: 0.5in, height: 0.5in)], align(center)[#text(size: 7pt, font: "Courier New")[${shareCode || 'PREVIEW'}]])
+  #stack(dir: ttb, spacing: 2pt, align(center)[#image(bytes("${qrCodeSvg.replace(/"/g, '\\"').replace(/\n/g, '')}"), format: "svg", width: 0.63in, height: 0.63in)], align(center)[#text(size: 7pt, font: "Courier New")[${shareCode || 'PREVIEW'}]])
 ]`
     : ''
 }
@@ -422,11 +588,13 @@ function extractShareCode(shareUrl?: string): string | undefined {
 /**
  * Generate Typst source code for the worksheet (returns array of page sources)
  * @param shareUrl - Optional share URL for QR code embedding (required if config.includeQRCode is true)
+ * @param domain - Optional domain name for branding (defaults to extracting from shareUrl or "abaci.one")
  */
 export async function generateTypstSource(
   config: WorksheetConfig,
   problems: WorksheetProblem[],
-  shareUrl?: string
+  shareUrl?: string,
+  domain?: string
 ): Promise<string[]> {
   // Use the problemsPerPage directly from config (primary state)
   const problemsPerPage = config.problemsPerPage
@@ -440,6 +608,17 @@ export async function generateTypstSource(
     shareCode = extractShareCode(shareUrl)
   }
 
+  // Extract domain from shareUrl if not provided explicitly
+  let brandDomain = domain
+  if (!brandDomain && shareUrl) {
+    try {
+      const url = new URL(shareUrl)
+      brandDomain = url.hostname
+    } catch {
+      // Invalid URL, use default
+    }
+  }
+
   // Chunk problems into discrete pages
   const pages = chunkProblems(problems, problemsPerPage)
 
@@ -451,7 +630,8 @@ export async function generateTypstSource(
       pageIndex * problemsPerPage,
       rowsPerPage,
       qrCodeSvg,
-      shareCode
+      shareCode,
+      brandDomain
     )
   )
 

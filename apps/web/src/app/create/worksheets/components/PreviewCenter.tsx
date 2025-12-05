@@ -5,6 +5,7 @@ import { animated, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { UploadWorksheetModal } from '@/components/worksheets/UploadWorksheetModal'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -146,6 +147,7 @@ function DiceIcon({
       }}
     >
       <animated.div
+        data-dice-cube
         style={{
           width: size,
           height: size,
@@ -222,6 +224,104 @@ export function PreviewCenter({
   // Track which face we're showing (for ensuring consecutive rolls differ)
   const [currentFace, setCurrentFace] = useState(() => ((formState.seed ?? 0) % 5) + 2)
 
+  // Draggable dice state with physics simulation
+  const [isDragging, setIsDragging] = useState(false)
+  const [diceOrigin, setDiceOrigin] = useState({ x: 0, y: 0 })
+  const diceButtonRef = useRef<HTMLButtonElement>(null)
+  const diceContainerRef = useRef<HTMLDivElement>(null)
+  const dragStartPos = useRef({ x: 0, y: 0 })
+
+  // Physics state for thrown dice
+  const [isFlying, setIsFlying] = useState(false)
+  const dicePhysics = useRef({
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+  })
+  const lastPointerPos = useRef({ x: 0, y: 0, time: 0 })
+  const animationFrameRef = useRef<number>()
+
+  // Ref to the portal dice element for direct DOM manipulation during drag/flying (avoids re-renders)
+  const portalDiceRef = useRef<HTMLDivElement>(null)
+
+  // Physics simulation for thrown dice - uses direct DOM manipulation for performance
+  useEffect(() => {
+    if (!isFlying) return
+
+    const GRAVITY_STRENGTH = 1.2 // Pull toward origin (spring-like)
+    const BASE_FRICTION = 0.92 // Base velocity dampening
+    const ROTATION_FACTOR = 0.5 // How much velocity affects rotation
+    const STOP_THRESHOLD = 2 // Distance threshold to snap home
+    const VELOCITY_THRESHOLD = 0.5 // Velocity threshold to snap home
+    const CLOSE_RANGE = 30 // Distance at which extra damping kicks in
+
+    const animate = () => {
+      const p = dicePhysics.current
+      const el = portalDiceRef.current
+      if (!el) {
+        animationFrameRef.current = requestAnimationFrame(animate)
+        return
+      }
+
+      // Calculate distance to origin
+      const dist = Math.sqrt(p.x * p.x + p.y * p.y)
+
+      // Apply spring force toward origin (proportional to distance)
+      if (dist > 0) {
+        const springForce = GRAVITY_STRENGTH
+        p.vx += (-p.x / dist) * springForce * (dist / 50) // Stronger when further
+        p.vy += (-p.y / dist) * springForce * (dist / 50)
+      }
+
+      // Apply friction - extra damping when close to prevent oscillation
+      const friction = dist < CLOSE_RANGE ? 0.85 : BASE_FRICTION
+      p.vx *= friction
+      p.vy *= friction
+
+      // Update position
+      p.x += p.vx
+      p.y += p.vy
+
+      // Update rotation based on velocity (dice rolls as it moves)
+      const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+      p.rotationX += p.vy * ROTATION_FACTOR * 10
+      p.rotationY -= p.vx * ROTATION_FACTOR * 10
+      p.rotationZ += speed * ROTATION_FACTOR * 2
+
+      // Update DOM directly - no React re-renders
+      el.style.transform = `translate(${p.x}px, ${p.y}px)`
+
+      // Update dice rotation via CSS custom properties (the DiceIcon reads these)
+      const diceEl = el.querySelector('[data-dice-cube]') as HTMLElement | null
+      if (diceEl) {
+        diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
+      }
+
+      // Check if we should stop - snap to home when close and slow
+      const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+      if (dist < STOP_THRESHOLD && totalVelocity < VELOCITY_THRESHOLD) {
+        // Dice has returned home
+        setIsFlying(false)
+        dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+        return
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    animationFrameRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [isFlying])
+
   // Compute target rotation: add dramatic spins, then land on the face rotation
   const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
   const diceRotation = {
@@ -255,6 +355,105 @@ export function PreviewCenter({
     setSpinCount((prev) => prev + extraSpins)
     setCurrentFace(targetFace)
   }, [onChange, currentFace])
+
+  // Dice drag handlers for the easter egg - drag dice off and release to roll
+  const handleDicePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (isGenerating) return
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Cancel any ongoing physics animation
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+      setIsFlying(false)
+
+      // Capture the pointer
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+
+      // Get the dice container's position for portal rendering
+      if (diceContainerRef.current) {
+        const rect = diceContainerRef.current.getBoundingClientRect()
+        setDiceOrigin({ x: rect.left, y: rect.top })
+      }
+
+      dragStartPos.current = { x: e.clientX, y: e.clientY }
+      lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
+      dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+      setIsDragging(true)
+    },
+    [isGenerating]
+  )
+
+  const handleDicePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging) return
+      e.preventDefault()
+
+      const dx = e.clientX - dragStartPos.current.x
+      const dy = e.clientY - dragStartPos.current.y
+
+      // Update DOM directly to avoid React re-renders during drag
+      if (portalDiceRef.current) {
+        portalDiceRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+      }
+
+      // Store position in ref for use when releasing
+      dicePhysics.current.x = dx
+      dicePhysics.current.y = dy
+
+      // Track velocity for throw calculation
+      lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
+    },
+    [isDragging]
+  )
+
+  const handleDicePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging) return
+      e.preventDefault()
+
+      // Release the pointer
+      ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+
+      // Calculate throw velocity from recent movement
+      const now = performance.now()
+      const dt = Math.max(now - lastPointerPos.current.time, 16) // At least 1 frame
+      const vx = ((e.clientX - lastPointerPos.current.x) / dt) * 16 // Normalize to ~60fps
+      const vy = ((e.clientY - lastPointerPos.current.y) / dt) * 16
+
+      // Get position from physics ref (set during drag)
+      const posX = dicePhysics.current.x
+      const posY = dicePhysics.current.y
+
+      // Calculate distance dragged
+      const distance = Math.sqrt(posX ** 2 + posY ** 2)
+
+      // If dragged more than 20px, trigger throw physics
+      if (distance > 20) {
+        // Initialize physics with current position and throw velocity
+        dicePhysics.current = {
+          x: posX,
+          y: posY,
+          vx: vx * 1.5, // Amplify throw velocity
+          vy: vy * 1.5,
+          rotationX: 0,
+          rotationY: 0,
+          rotationZ: 0,
+        }
+        setIsFlying(true)
+        // Trigger shuffle when thrown
+        handleShuffle()
+      } else {
+        // Not thrown far enough, snap back
+        dicePhysics.current = { x: 0, y: 0, vx: 0, vy: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+      }
+
+      setIsDragging(false)
+    },
+    [isDragging, handleShuffle]
+  )
 
   // Detect scrolling in the scroll container
   useEffect(() => {
@@ -406,26 +605,34 @@ export function PreviewCenter({
         </button>
 
         {/* Shuffle Button - only in edit mode (1/3 split secondary action) */}
+        {/* Easter egg: drag the dice off and release to roll it back! */}
         {!isReadOnly && (
           <button
+            ref={diceButtonRef}
             type="button"
             data-action="shuffle-problems"
             onClick={handleShuffle}
+            onPointerDown={handleDicePointerDown}
+            onPointerMove={handleDicePointerMove}
+            onPointerUp={handleDicePointerUp}
+            onPointerCancel={handleDicePointerUp}
             disabled={isGenerating}
-            title="Shuffle problems (generate new set)"
+            title="Shuffle problems (drag or click to roll)"
             className={css({
               px: '3',
               py: '2.5',
               bg: 'brand.600',
               color: 'white',
-              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              cursor: isDragging ? 'grabbing' : isGenerating ? 'not-allowed' : 'grab',
               opacity: isGenerating ? '0.7' : '1',
               borderLeft: '1px solid',
               borderColor: 'brand.700',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s',
+              transition: 'background 0.2s',
+              touchAction: 'none', // Prevent scroll on touch devices
+              userSelect: 'none',
               _hover: isGenerating
                 ? {}
                 : {
@@ -433,14 +640,52 @@ export function PreviewCenter({
                   },
             })}
           >
-            <DiceIcon
-              rotateX={diceRotation.rotateX}
-              rotateY={diceRotation.rotateY}
-              rotateZ={diceRotation.rotateZ}
-              isDark={isDark}
-            />
+            {/* Dice container - hidden when dragging/flying since we show portal version */}
+            <div
+              ref={diceContainerRef}
+              style={{
+                opacity: isDragging || isFlying ? 0 : 1,
+                pointerEvents: 'none',
+              }}
+            >
+              <DiceIcon
+                rotateX={diceRotation.rotateX}
+                rotateY={diceRotation.rotateY}
+                rotateZ={diceRotation.rotateZ}
+                isDark={isDark}
+              />
+            </div>
           </button>
         )}
+
+        {/* Portal-rendered dice when dragging/flying - renders outside button to avoid clipping */}
+        {/* All transforms are applied directly via ref for performance - no React re-renders */}
+        {(isDragging || isFlying) &&
+          createPortal(
+            <div
+              ref={portalDiceRef}
+              style={{
+                position: 'fixed',
+                left: diceOrigin.x,
+                top: diceOrigin.y,
+                // Transform is updated directly via ref during drag/flying
+                transform: 'translate(0px, 0px)',
+                pointerEvents: 'none',
+                zIndex: 100000,
+                cursor: isDragging ? 'grabbing' : 'default',
+                willChange: 'transform', // Hint to browser for GPU acceleration
+              }}
+            >
+              {/* During flying, rotation is updated directly on data-dice-cube element */}
+              <DiceIcon
+                rotateX={diceRotation.rotateX}
+                rotateY={diceRotation.rotateY}
+                rotateZ={diceRotation.rotateZ}
+                isDark={isDark}
+              />
+            </div>,
+            document.body
+          )}
 
         {/* Dropdown Trigger */}
         <DropdownMenu.Root>

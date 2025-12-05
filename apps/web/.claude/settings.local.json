@@ -96,7 +96,9 @@
       "Bash(apps/web/src/arcade-games/know-your-world/features/magnifier/useMagnifierStyle.ts )",
       "Bash(apps/web/src/arcade-games/know-your-world/features/cursor/ )",
       "Bash(apps/web/src/arcade-games/know-your-world/features/interaction/ )",
-      "Bash(apps/web/src/arcade-games/know-your-world/utils/heatStyles.ts)"
+      "Bash(apps/web/src/arcade-games/know-your-world/utils/heatStyles.ts)",
+      "Bash(ping:*)",
+      "WebFetch(domain:typst.app)"
     ],
     "deny": [],
     "ask": []

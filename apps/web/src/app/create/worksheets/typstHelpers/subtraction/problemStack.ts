@@ -103,22 +103,10 @@ export function generateSubtractionProblemStackFunction(
     column-list.push(${cellSizeIn})
   }
 
-  // Show problem number (only if problem numbers are enabled)
-  let problem-number-display = if show-numbers and index-or-none != none {
-    align(top + left)[
-      #box(inset: (left: 0.08in, top: 0.05in))[
-        #text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\##(index-or-none + 1).]
-      ]
-    ]
-  }
-
-  stack(
-    dir: ttb,
-    spacing: 0pt,
-    problem-number-display,
-    // Wrap grid in a box to enable place() overlay for operator
-    box[
-      #grid(
+  // Wrap grid in a box to enable place() overlay for operator
+  // Note: Problem numbers are now rendered at the problem-box level, not here
+  box[
+    #grid(
         columns: column-list,
         gutter: 0pt,
 
@@ -136,7 +124,6 @@ ${generateAnswerBoxesRow(cellDimensions)}
       )
 ${generateOperatorOverlay(cellDimensions)}
     ]
-  )
 }
 `
 }
