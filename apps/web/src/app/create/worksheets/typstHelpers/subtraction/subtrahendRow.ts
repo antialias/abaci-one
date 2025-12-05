@@ -19,7 +19,7 @@ export function generateSubtrahendRow(cellDimensions: CellDimensions): string {
 
   return String.raw`
       // Subtrahend row with − sign
-      box(width: ${cellSizeIn}, height: ${cellSizeIn})[
+      box(width: 0.5em, height: ${cellSizeIn})[
         #align(center + horizon)[
           #text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[−]
         ]

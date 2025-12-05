@@ -153,7 +153,7 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
       },
 
       // Second addend row with + sign (right to left)
-      box(width: ${cellSizeIn}, height: ${cellSizeIn})[#align(center + horizon)[#text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[+]]],
+      box(width: 0.5em, height: ${cellSizeIn})[#align(center + horizon)[#text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[+]]],
       ..for i in range(0, actual-digits).rev() {
         let digit = b-digits.at(i)
         let place-color = place-colors.at(i)  // Dynamic color lookup by place value

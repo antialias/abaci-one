@@ -3,16 +3,106 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { css } from '@styled/css'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { UploadWorksheetModal } from '@/components/worksheets/UploadWorksheetModal'
 import { useTheme } from '@/contexts/ThemeContext'
 import { extractConfigFields } from '../utils/extractConfigFields'
-import { ShareModal } from './ShareModal'
-import { WorksheetPreview } from './WorksheetPreview'
 import { FloatingPageIndicator } from './FloatingPageIndicator'
+import { ShareModal } from './ShareModal'
+import { useWorksheetConfig } from './WorksheetConfigContext'
+import { WorksheetPreview } from './WorksheetPreview'
 import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
 import { WorksheetPreviewProvider } from './worksheet-preview/WorksheetPreviewContext'
+
+// Dice face configurations: positions of dots for faces 1-6
+const DICE_FACES = [
+  // Face 1: center dot
+  [[12, 12]],
+  // Face 2: diagonal dots
+  [
+    [8, 8],
+    [16, 16],
+  ],
+  // Face 3: diagonal line
+  [
+    [8, 8],
+    [12, 12],
+    [16, 16],
+  ],
+  // Face 4: four corners
+  [
+    [8, 8],
+    [16, 8],
+    [8, 16],
+    [16, 16],
+  ],
+  // Face 5: four corners + center
+  [
+    [8, 8],
+    [16, 8],
+    [12, 12],
+    [8, 16],
+    [16, 16],
+  ],
+  // Face 6: two columns of three
+  [
+    [8, 6],
+    [8, 12],
+    [8, 18],
+    [16, 6],
+    [16, 12],
+    [16, 18],
+  ],
+]
+
+/**
+ * Animated dice icon that shows rolling dice with changing faces
+ * @param isRolling - When true, shows a rolling animation with changing faces
+ * @param currentFace - The current face to display (1-6), used during rolling
+ */
+function DiceIcon({
+  className,
+  isRolling,
+  currentFace = 5,
+}: {
+  className?: string
+  isRolling?: boolean
+  currentFace?: number
+}) {
+  const dots = DICE_FACES[(currentFace - 1) % 6]
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      width="22"
+      height="22"
+      style={{
+        animation: isRolling ? 'diceRoll 0.4s ease-in-out infinite' : 'none',
+        transformOrigin: 'center',
+      }}
+    >
+      <rect x="2" y="2" width="20" height="20" rx="2" />
+      {dots.map(([cx, cy], i) => (
+        <circle
+          key={`${cx}-${cy}-${i}`}
+          cx={cx}
+          cy={cy}
+          r="1.5"
+          fill="currentColor"
+          stroke="none"
+        />
+      ))}
+    </svg>
+  )
+}
 
 interface PreviewCenterProps {
   formState: WorksheetFormState
@@ -35,6 +125,7 @@ export function PreviewCenter({
 }: PreviewCenterProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
+  const { onChange } = useWorksheetConfig()
   const isDark = resolvedTheme === 'dark'
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isScrolling, setIsScrolling] = useState(false)
@@ -43,12 +134,70 @@ export function PreviewCenter({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [justCopied, setJustCopied] = useState(false)
+  const [isShuffling, setIsShuffling] = useState(false)
+  // Default to face derived from initial seed (2-6, excluding 1)
+  const [diceFace, setDiceFace] = useState(() => (formState.seed % 5) + 2)
+  const shuffleTimeoutRef = useRef<NodeJS.Timeout>()
+  const diceFaceIntervalRef = useRef<NodeJS.Timeout>()
   const isGenerating = status === 'generating'
   const [pageData, setPageData] = useState<{
     currentPage: number
     totalPages: number
     jumpToPage: (pageIndex: number) => void
   } | null>(null)
+
+  // Shuffle problems by generating a new random seed
+  const handleShuffle = useCallback(() => {
+    // Generate a new random seed (use modulo to keep it in 32-bit int range)
+    const newSeed = Date.now() % 2147483647
+    onChange({ seed: newSeed })
+
+    // Start rolling animation
+    setIsShuffling(true)
+
+    // Clear any existing intervals/timeouts
+    if (shuffleTimeoutRef.current) {
+      clearTimeout(shuffleTimeoutRef.current)
+    }
+    if (diceFaceIntervalRef.current) {
+      clearInterval(diceFaceIntervalRef.current)
+    }
+
+    // Cycle through dice faces rapidly
+    diceFaceIntervalRef.current = setInterval(() => {
+      setDiceFace((prev) => (prev % 6) + 1)
+    }, 100) // Change face every 100ms
+
+    // Stop animation after preview should have updated (debounce time + render time)
+    shuffleTimeoutRef.current = setTimeout(() => {
+      setIsShuffling(false)
+      if (diceFaceIntervalRef.current) {
+        clearInterval(diceFaceIntervalRef.current)
+      }
+      // End on a face derived from the seed (2-6, excluding 1 so it's clearly a dice)
+      // Also ensure it's different from the current face by offsetting if collision
+      setDiceFace((currentFace) => {
+        const baseFace = (newSeed % 5) + 2 // Results in 2, 3, 4, 5, or 6
+        if (baseFace === currentFace) {
+          // If same, rotate to next face (wrapping 6 -> 2, skipping 1)
+          return baseFace === 6 ? 2 : baseFace + 1
+        }
+        return baseFace
+      })
+    }, 1500) // 1.5 seconds should cover debounce + render
+  }, [onChange])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (shuffleTimeoutRef.current) {
+        clearTimeout(shuffleTimeoutRef.current)
+      }
+      if (diceFaceIntervalRef.current) {
+        clearInterval(diceFaceIntervalRef.current)
+      }
+    }
+  }, [])
 
   // Detect scrolling in the scroll container
   useEffect(() => {
@@ -128,6 +277,16 @@ export function PreviewCenter({
         position: 'relative',
       })}
     >
+      {/* Inject keyframes for dice roll animation */}
+      <style>
+        {`
+          @keyframes diceRoll {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
       {/* Floating Action Button - Top Right */}
       <div
         data-component="floating-action-button"
@@ -198,6 +357,38 @@ export function PreviewCenter({
             </>
           )}
         </button>
+
+        {/* Shuffle Button - only in edit mode (1/3 split secondary action) */}
+        {!isReadOnly && (
+          <button
+            type="button"
+            data-action="shuffle-problems"
+            onClick={handleShuffle}
+            disabled={isGenerating}
+            title="Shuffle problems (generate new set)"
+            className={css({
+              px: '3',
+              py: '2.5',
+              bg: 'brand.600',
+              color: 'white',
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              opacity: isGenerating ? '0.7' : '1',
+              borderLeft: '1px solid',
+              borderColor: 'brand.700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              _hover: isGenerating
+                ? {}
+                : {
+                    bg: 'brand.700',
+                  },
+            })}
+          >
+            <DiceIcon isRolling={isShuffling} currentFace={diceFace} />
+          </button>
+        )}
 
         {/* Dropdown Trigger */}
         <DropdownMenu.Root>
