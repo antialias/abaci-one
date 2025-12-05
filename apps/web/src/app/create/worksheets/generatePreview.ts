@@ -10,8 +10,8 @@ import {
 } from './problemGenerator'
 import { getSkillById } from './skills'
 import { generateTypstSource } from './typstGenerator'
-import { validateWorksheetConfig } from './validation'
 import { validateProblemSpace } from './utils/validateProblemSpace'
+import { validateWorksheetConfig } from './validation'
 
 export interface PreviewResult {
   success: boolean
@@ -321,6 +321,7 @@ export function generateSinglePage(
         validatedConfig.digitRange,
         validatedConfig.pAnyStart,
         validatedConfig.pAllStart,
+        validatedConfig.interpolate,
         validatedConfig.seed
       )
     } else if (operator === 'subtraction') {
@@ -329,15 +330,18 @@ export function generateSinglePage(
         validatedConfig.digitRange,
         validatedConfig.pAnyStart,
         validatedConfig.pAllStart,
+        validatedConfig.interpolate,
         validatedConfig.seed
       )
     } else {
+      // Addition
       problems = generateProblems(
         validatedConfig.total,
-        validatedConfig.digitRange,
         validatedConfig.pAnyStart,
         validatedConfig.pAllStart,
-        validatedConfig.seed
+        validatedConfig.interpolate,
+        validatedConfig.seed,
+        validatedConfig.digitRange
       )
     }
 
