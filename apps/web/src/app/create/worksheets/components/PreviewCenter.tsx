@@ -244,6 +244,8 @@ export function PreviewCenter({
     scale: 1, // Grows to 3x when flying, shrinks back when settling
   })
   const lastPointerPos = useRef({ x: 0, y: 0, time: 0 })
+  // Track velocity samples for smoother flick detection
+  const velocitySamples = useRef<Array<{ vx: number; vy: number; time: number }>>([])
   const animationFrameRef = useRef<number>()
 
   // Ref to the portal dice element for direct DOM manipulation during drag/flying (avoids re-renders)
@@ -262,6 +264,8 @@ export function PreviewCenter({
     const MAX_SCALE = 3 // Maximum scale when flying
     const SCALE_GROW_SPEED = 0.2 // How fast to grow (faster)
     const SCALE_SHRINK_SPEED = 0.06 // How fast to shrink when close (slower for drama)
+    const BOUNCE_DAMPING = 0.7 // How much velocity is retained on bounce (0-1)
+    const DICE_SIZE = 22 // Size of the dice in pixels
 
     // Calculate initial throw power to adjust gravity (stronger throws = weaker initial gravity)
     const initialSpeed = Math.sqrt(
@@ -305,6 +309,39 @@ export function PreviewCenter({
       // Update position
       p.x += p.vx
       p.y += p.vy
+
+      // Viewport edge bounce - calculate absolute position and check bounds
+      const scaledSize = DICE_SIZE * p.scale
+      const absoluteX = diceOrigin.x + p.x
+      const absoluteY = diceOrigin.y + p.y
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+
+      // Left edge bounce
+      if (absoluteX < 0) {
+        p.x = -diceOrigin.x // Position at left edge
+        p.vx = Math.abs(p.vx) * BOUNCE_DAMPING // Reverse and dampen
+        // Add extra spin on bounce
+        p.rotationZ += p.vx * 5
+      }
+      // Right edge bounce
+      if (absoluteX + scaledSize > viewportWidth) {
+        p.x = viewportWidth - diceOrigin.x - scaledSize
+        p.vx = -Math.abs(p.vx) * BOUNCE_DAMPING
+        p.rotationZ -= p.vx * 5
+      }
+      // Top edge bounce
+      if (absoluteY < 0) {
+        p.y = -diceOrigin.y
+        p.vy = Math.abs(p.vy) * BOUNCE_DAMPING
+        p.rotationZ += p.vy * 5
+      }
+      // Bottom edge bounce
+      if (absoluteY + scaledSize > viewportHeight) {
+        p.y = viewportHeight - diceOrigin.y - scaledSize
+        p.vy = -Math.abs(p.vy) * BOUNCE_DAMPING
+        p.rotationZ -= p.vy * 5
+      }
 
       // Update rotation based on velocity (dice rolls as it moves)
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
@@ -369,7 +406,7 @@ export function PreviewCenter({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isFlying])
+  }, [isFlying, diceOrigin.x, diceOrigin.y])
 
   // Compute target rotation: add dramatic spins, then land on the face rotation
   const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
@@ -429,6 +466,7 @@ export function PreviewCenter({
 
       dragStartPos.current = { x: e.clientX, y: e.clientY }
       lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
+      velocitySamples.current = [] // Reset velocity tracking
       dicePhysics.current = {
         x: 0,
         y: 0,
@@ -488,6 +526,12 @@ export function PreviewCenter({
       p.x = dx
       p.y = dy
 
+      // Track velocity samples for flick detection (keep last 5 samples, ~80ms window)
+      velocitySamples.current.push({ vx, vy, time: now })
+      if (velocitySamples.current.length > 5) {
+        velocitySamples.current.shift()
+      }
+
       // Track velocity for throw calculation
       lastPointerPos.current = { x: e.clientX, y: e.clientY, time: now }
     },
@@ -502,11 +546,23 @@ export function PreviewCenter({
       // Release the pointer
       ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
 
-      // Calculate throw velocity from recent movement
-      const now = performance.now()
-      const dt = Math.max(now - lastPointerPos.current.time, 16) // At least 1 frame
-      const vx = ((e.clientX - lastPointerPos.current.x) / dt) * 16 // Normalize to ~60fps
-      const vy = ((e.clientY - lastPointerPos.current.y) / dt) * 16
+      // Calculate throw velocity from velocity samples (average of recent samples for smooth flick)
+      const samples = velocitySamples.current
+      let vx = 0
+      let vy = 0
+
+      if (samples.length > 0) {
+        // Weight recent samples more heavily
+        let totalWeight = 0
+        for (let i = 0; i < samples.length; i++) {
+          const weight = i + 1 // Later samples get higher weight
+          vx += samples[i].vx * weight
+          vy += samples[i].vy * weight
+          totalWeight += weight
+        }
+        vx /= totalWeight
+        vy /= totalWeight
+      }
 
       // Get position from physics ref (set during drag)
       const posX = dicePhysics.current.x
@@ -515,18 +571,24 @@ export function PreviewCenter({
       // Calculate distance dragged
       const distance = Math.sqrt(posX ** 2 + posY ** 2)
 
-      // If dragged more than 20px, trigger throw physics
-      if (distance > 20) {
+      // Calculate flick speed
+      const flickSpeed = Math.sqrt(vx * vx + vy * vy)
+
+      // If dragged more than 20px OR flicked fast enough, trigger throw physics
+      if (distance > 20 || flickSpeed > 0.3) {
+        // Amplify throw velocity significantly for satisfying flick
+        const throwMultiplier = 25 // Much stronger throw!
+
         // Initialize physics with current position and throw velocity
         dicePhysics.current = {
           x: posX,
           y: posY,
-          vx: vx * 1.5, // Amplify throw velocity
-          vy: vy * 1.5,
-          rotationX: 0,
-          rotationY: 0,
-          rotationZ: 0,
-          scale: 1, // Will grow during flight
+          vx: vx * throwMultiplier,
+          vy: vy * throwMultiplier,
+          rotationX: dicePhysics.current.rotationX, // Keep current rotation
+          rotationY: dicePhysics.current.rotationY,
+          rotationZ: dicePhysics.current.rotationZ,
+          scale: dicePhysics.current.scale, // Keep current scale
         }
         setIsFlying(true)
         // Trigger shuffle when thrown
