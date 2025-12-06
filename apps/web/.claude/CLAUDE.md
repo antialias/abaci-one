@@ -872,6 +872,25 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 
 **Common mistake:** Seeing https://abaci.one is online and assuming the new code is deployed. Always verify the commit SHA.
 
+## Daily Practice System
+
+When working on the curriculum-based daily practice system, refer to:
+
+- **[`docs/DAILY_PRACTICE_SYSTEM.md`](../docs/DAILY_PRACTICE_SYSTEM.md)** - Complete architecture documentation
+  - Curriculum structure (Level 1/2/3, phases)
+  - Student progress tracking (skill mastery, sessions)
+  - Practice session planning (adaptive learning engine)
+  - Session health indicators and teacher adjustments
+  - Database schema and API endpoints
+
+**Key Files**:
+- `src/lib/curriculum/progress-manager.ts` - CRUD operations
+- `src/hooks/usePlayerCurriculum.ts` - Client-side state management
+- `src/components/practice/` - UI components (StudentSelector, ProgressDashboard)
+- `src/app/practice/page.tsx` - Entry point
+- `src/app/api/curriculum/[playerId]/` - API routes
+- `src/db/schema/player-curriculum.ts`, `player-skill-mastery.ts`, `practice-sessions.ts` - Database schema
+
 ## Rithmomachia Game
 
 When working on the Rithmomachia arcade game, refer to:

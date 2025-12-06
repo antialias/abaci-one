@@ -34,7 +34,8 @@ export interface TutorialStep {
 
 // Skill-based system for practice problem generation
 export interface SkillSet {
-  // Five complements (single-column operations)
+  // Five complements for ADDITION (single-column operations)
+  // e.g., +4 = +5-1 means "add 4 by adding 5 and subtracting 1"
   fiveComplements: {
     '4=5-1': boolean
     '3=5-2': boolean
@@ -42,7 +43,8 @@ export interface SkillSet {
     '1=5-4': boolean
   }
 
-  // Ten complements (carrying operations)
+  // Ten complements for ADDITION (carrying operations)
+  // e.g., +9 = +10-1 means "add 9 by adding 10 and subtracting 1"
   tenComplements: {
     '9=10-1': boolean
     '8=10-2': boolean
@@ -55,11 +57,37 @@ export interface SkillSet {
     '1=10-9': boolean
   }
 
+  // Five complements for SUBTRACTION (single-column operations)
+  // e.g., -4 = -5+1 means "subtract 4 by subtracting 5 and adding 1"
+  fiveComplementsSub: {
+    '-4=-5+1': boolean
+    '-3=-5+2': boolean
+    '-2=-5+3': boolean
+    '-1=-5+4': boolean
+  }
+
+  // Ten complements for SUBTRACTION (borrowing operations)
+  // e.g., -9 = +1-10 means "subtract 9 by adding 1 and borrowing 10"
+  tenComplementsSub: {
+    '-9=+1-10': boolean
+    '-8=+2-10': boolean
+    '-7=+3-10': boolean
+    '-6=+4-10': boolean
+    '-5=+5-10': boolean
+    '-4=+6-10': boolean
+    '-3=+7-10': boolean
+    '-2=+8-10': boolean
+    '-1=+9-10': boolean
+  }
+
   // Basic operations
   basic: {
     directAddition: boolean // Can add 1-4 directly
     heavenBead: boolean // Can use heaven bead (5)
     simpleCombinations: boolean // Can do 6-9 without complements
+    directSubtraction: boolean // Can subtract 1-4 directly
+    heavenBeadSubtraction: boolean // Can remove heaven bead (5)
+    simpleCombinationsSub: boolean // Can do 6-9 subtraction without complements
   }
 }
 
@@ -102,6 +130,9 @@ export function createEmptySkillSet(): SkillSet {
       directAddition: false,
       heavenBead: false,
       simpleCombinations: false,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
     fiveComplements: {
       '4=5-1': false,
@@ -119,6 +150,23 @@ export function createEmptySkillSet(): SkillSet {
       '3=10-7': false,
       '2=10-8': false,
       '1=10-9': false,
+    },
+    fiveComplementsSub: {
+      '-4=-5+1': false,
+      '-3=-5+2': false,
+      '-2=-5+3': false,
+      '-1=-5+4': false,
+    },
+    tenComplementsSub: {
+      '-9=+1-10': false,
+      '-8=+2-10': false,
+      '-7=+3-10': false,
+      '-6=+4-10': false,
+      '-5=+5-10': false,
+      '-4=+6-10': false,
+      '-3=+7-10': false,
+      '-2=+8-10': false,
+      '-1=+9-10': false,
     },
   }
 }
@@ -129,6 +177,9 @@ export function createBasicSkillSet(): SkillSet {
       directAddition: true,
       heavenBead: false,
       simpleCombinations: false,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
     fiveComplements: {
       '4=5-1': false,
@@ -146,6 +197,23 @@ export function createBasicSkillSet(): SkillSet {
       '3=10-7': false,
       '2=10-8': false,
       '1=10-9': false,
+    },
+    fiveComplementsSub: {
+      '-4=-5+1': false,
+      '-3=-5+2': false,
+      '-2=-5+3': false,
+      '-1=-5+4': false,
+    },
+    tenComplementsSub: {
+      '-9=+1-10': false,
+      '-8=+2-10': false,
+      '-7=+3-10': false,
+      '-6=+4-10': false,
+      '-5=+5-10': false,
+      '-4=+6-10': false,
+      '-3=+7-10': false,
+      '-2=+8-10': false,
+      '-1=+9-10': false,
     },
   }
 }

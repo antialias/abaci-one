@@ -162,6 +162,34 @@
       "when": 1762889315497,
       "tag": "0022_nappy_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1765030393699,
+      "tag": "0023_flaky_naoko",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1765033915501,
+      "tag": "0024_past_richard_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1765034769549,
+      "tag": "0025_sparkling_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1765035309900,
+      "tag": "0026_add_practice_sessions",
+      "breakpoints": true
     }
   ]
 }

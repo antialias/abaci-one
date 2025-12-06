@@ -1,0 +1,80 @@
+import { type NextRequest, NextResponse } from 'next/server'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import {
+  type GenerateSessionPlanOptions,
+  generateSessionPlan,
+  getActiveSessionPlan,
+} from '@/lib/curriculum'
+
+interface RouteParams {
+  params: Promise<{ playerId: string }>
+}
+
+/**
+ * Serialize a SessionPlan for JSON response.
+ * Converts Date objects to timestamps (milliseconds) for consistent client handling.
+ */
+function serializePlan(plan: SessionPlan) {
+  return {
+    ...plan,
+    createdAt: plan.createdAt instanceof Date ? plan.createdAt.getTime() : plan.createdAt,
+    approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
+    startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
+    completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
+  }
+}
+
+/**
+ * GET /api/curriculum/[playerId]/sessions/plans
+ * Get the active session plan for a player (if any)
+ */
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  const { playerId } = await params
+
+  try {
+    const plan = await getActiveSessionPlan(playerId)
+    return NextResponse.json({ plan: plan ? serializePlan(plan) : null })
+  } catch (error) {
+    console.error('Error fetching active plan:', error)
+    return NextResponse.json({ error: 'Failed to fetch active plan' }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/curriculum/[playerId]/sessions/plans
+ * Generate a new three-part session plan
+ *
+ * Body:
+ * - durationMinutes: number (required) - Total session duration
+ *
+ * The plan will automatically include all three parts:
+ * - Part 1: Abacus (use physical abacus, vertical format)
+ * - Part 2: Visualization (mental math, vertical format)
+ * - Part 3: Linear (mental math, sentence format)
+ */
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  const { playerId } = await params
+
+  try {
+    const body = await request.json()
+    const { durationMinutes } = body
+
+    if (!durationMinutes || typeof durationMinutes !== 'number') {
+      return NextResponse.json(
+        { error: 'durationMinutes is required and must be a number' },
+        { status: 400 }
+      )
+    }
+
+    const options: GenerateSessionPlanOptions = {
+      playerId,
+      durationMinutes,
+    }
+
+    const plan = await generateSessionPlan(options)
+    return NextResponse.json({ plan: serializePlan(plan) }, { status: 201 })
+  } catch (error) {
+    console.error('Error generating session plan:', error)
+    return NextResponse.json({ error: 'Failed to generate session plan' }, { status: 500 })
+  }
+}

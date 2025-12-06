@@ -843,6 +843,19 @@ Create customizable math worksheets with progressive difficulty, problem space v
 
 React component library for rendering interactive and static abacus visualizations.
 
+### Daily Practice System
+
+**Location**: [`apps/web/docs/DAILY_PRACTICE_SYSTEM.md`](./apps/web/docs/DAILY_PRACTICE_SYSTEM.md)
+**Entry Point**: `/practice` route in the web app
+
+Structured curriculum-based practice system following traditional Japanese soroban teaching methodology.
+
+**Key Features**:
+- **Student Progress Tracking** - Per-skill mastery levels (learning → practicing → mastered)
+- **Session Planning** - Adaptive problem selection based on student history
+- **Teacher Controls** - Real-time session health monitoring and mid-session adjustments
+- **Worksheet Integration** - Generate worksheets based on student's current level
+
 ## 🚀 Active Development Projects
 
 ### Speed Complement Race Port (In Progress)

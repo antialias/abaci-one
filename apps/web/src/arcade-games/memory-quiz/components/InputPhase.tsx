@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useHasPhysicalKeyboard } from '@/hooks/useDeviceCapabilities'
 import { isPrefix } from '@/lib/memory-quiz-utils'
 import { useMemoryQuiz } from '../Provider'
-import { useViewport } from '@/contexts/ViewportContext'
 import { CardGrid } from './CardGrid'
 
 export function InputPhase() {
   const { state, dispatch, acceptNumber, rejectNumber, setInput, showResults } = useMemoryQuiz()
-  const viewport = useViewport()
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>(
     'neutral'
   )
@@ -14,96 +13,22 @@ export function InputPhase() {
   // Use keyboard state from parent state instead of local state
   const { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard } = state
 
-  // Debug: Log state changes and detect what's causing re-renders
-  useEffect(() => {
-    console.log('🔍 Keyboard state changed:', {
-      hasPhysicalKeyboard,
-      testingMode,
-      showOnScreenKeyboard,
-    })
-    console.trace('🔍 State change trace:')
-  }, [hasPhysicalKeyboard, testingMode, showOnScreenKeyboard])
+  // Use shared keyboard detection hook
+  const detectedKeyboard = useHasPhysicalKeyboard()
 
-  // Debug: Monitor for unexpected state resets
+  // Sync detected keyboard state to provider (unless testing mode overrides)
   useEffect(() => {
-    if (showOnScreenKeyboard) {
-      const timer = setTimeout(() => {
-        if (!showOnScreenKeyboard) {
-          console.error('🚨 Keyboard was unexpectedly hidden!')
-        }
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [showOnScreenKeyboard])
-
-  // Detect physical keyboard availability (disabled when testing mode is active)
-  useEffect(() => {
-    // Skip keyboard detection entirely when testing mode is enabled
     if (testingMode) {
-      console.log('🧪 Testing mode enabled - skipping keyboard detection')
+      // Testing mode overrides keyboard detection - don't sync
       return
     }
-
-    let detectionTimer: NodeJS.Timeout | null = null
-
-    const detectKeyboard = () => {
-      // Method 1: Check if device supports keyboard via media queries
-      const hasKeyboardSupport =
-        window.matchMedia('(pointer: fine)').matches && window.matchMedia('(hover: hover)').matches
-
-      // Method 2: Check if device is likely touch-only
-      const isTouchDevice =
-        'ontouchstart' in window ||
-        navigator.maxTouchPoints > 0 ||
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-      // Method 3: Check viewport characteristics for mobile devices
-      const isMobileViewport = viewport.width <= 768 && viewport.height <= 1024
-
-      // Combined heuristic: assume no physical keyboard if:
-      // - It's a touch device AND has mobile viewport AND lacks precise pointer
-      const likelyNoKeyboard = isTouchDevice && isMobileViewport && !hasKeyboardSupport
-
-      console.log('⌨️ Keyboard detection result:', !likelyNoKeyboard)
+    if (detectedKeyboard !== null) {
       dispatch({
         type: 'SET_PHYSICAL_KEYBOARD',
-        hasKeyboard: !likelyNoKeyboard,
+        hasKeyboard: detectedKeyboard,
       })
     }
-
-    // Test for actual keyboard input within 3 seconds
-    let keyboardDetected = false
-    const handleFirstKeyPress = (e: KeyboardEvent) => {
-      if (/^[0-9]$/.test(e.key)) {
-        console.log('⌨️ Physical keyboard detected via keypress')
-        keyboardDetected = true
-        dispatch({ type: 'SET_PHYSICAL_KEYBOARD', hasKeyboard: true })
-        document.removeEventListener('keypress', handleFirstKeyPress)
-        if (detectionTimer) clearTimeout(detectionTimer)
-      }
-    }
-
-    // Start detection
-    document.addEventListener('keypress', handleFirstKeyPress)
-
-    // Fallback to heuristic detection after 3 seconds
-    detectionTimer = setTimeout(() => {
-      if (!keyboardDetected) {
-        console.log('⌨️ Using fallback keyboard detection')
-        detectKeyboard()
-      }
-      document.removeEventListener('keypress', handleFirstKeyPress)
-    }, 3000)
-
-    // Initial heuristic detection (but don't commit to it yet)
-    const initialDetection = setTimeout(detectKeyboard, 100)
-
-    return () => {
-      document.removeEventListener('keypress', handleFirstKeyPress)
-      if (detectionTimer) clearTimeout(detectionTimer)
-      clearTimeout(initialDetection)
-    }
-  }, [testingMode, dispatch])
+  }, [detectedKeyboard, testingMode, dispatch])
 
   const acceptCorrectNumber = useCallback(
     (number: number) => {

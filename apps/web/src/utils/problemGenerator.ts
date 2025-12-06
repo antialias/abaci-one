@@ -132,6 +132,145 @@ function analyzeColumnAddition(
 }
 
 /**
+ * Analyzes skills needed for subtraction in a single column
+ *
+ * Subtraction techniques on soroban:
+ * 1. Direct subtraction: Remove earth beads directly (when currentDigit >= termDigit)
+ * 2. Five complement: -n = -5+(5-n), e.g., -4 = -5+1 (when need to use heaven bead)
+ * 3. Ten complement: -n = +(10-n)-10, e.g., -9 = +1-10 (when need to borrow from next column)
+ * 4. Combined: Need both five and ten complements for some cases
+ *
+ * @param currentDigit - Current value in this column (0-9)
+ * @param termDigit - Amount to subtract (1-9)
+ * @param needsBorrow - Whether this subtraction requires borrowing from the next column
+ * @returns Array of skill strings required for this operation
+ */
+export function analyzeColumnSubtraction(
+  currentDigit: number,
+  termDigit: number,
+  needsBorrow: boolean
+): string[] {
+  const skills: string[] = []
+
+  // Case 1: Direct subtraction possible (no borrow needed)
+  if (!needsBorrow && currentDigit >= termDigit) {
+    if (termDigit >= 1 && termDigit <= 4) {
+      // Check if we can subtract directly from earth beads
+      const earthBeads = currentDigit % 5 // 0-4
+      if (earthBeads >= termDigit) {
+        skills.push('basic.directSubtraction')
+      } else {
+        // Need to use five complement: -n = -5+(5-n)
+        // Example: 7-4=3 → have 5+2, subtract 5 add 1 → 3
+        const fiveComplement = 5 - termDigit
+        skills.push(`fiveComplementsSub.-${termDigit}=-5+${fiveComplement}`)
+        skills.push('basic.heavenBeadSubtraction')
+      }
+    } else if (termDigit === 5) {
+      // Direct heaven bead removal
+      if (currentDigit >= 5) {
+        skills.push('basic.heavenBeadSubtraction')
+      }
+      // If currentDigit < 5, this shouldn't happen without borrowing
+    } else if (termDigit >= 6 && termDigit <= 9) {
+      // Subtracting 6-9 directly (when currentDigit >= termDigit)
+      // Need to remove heaven bead and some earth beads
+      skills.push('basic.heavenBeadSubtraction')
+      skills.push('basic.simpleCombinationsSub')
+    }
+  }
+
+  // Case 2: Borrowing required (currentDigit < termDigit)
+  else if (needsBorrow) {
+    // Ten complement for subtraction: -n = +(10-n)-10
+    const tenComplement = 10 - termDigit
+
+    // Check if adding the ten complement requires a five complement
+    // We're adding (10-termDigit) to currentDigit
+    const afterAddition = currentDigit + tenComplement
+
+    if (tenComplement >= 1 && tenComplement <= 4) {
+      // Adding 1-4 to currentDigit
+      if (currentDigit + tenComplement <= 4) {
+        // Direct addition of complement
+        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+      } else if (currentDigit + tenComplement >= 5 && afterAddition <= 9) {
+        // Adding complement crosses 5 boundary - need five complement for the addition part
+        // Combined technique: use five complement to add the ten complement
+        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+        skills.push(`fiveComplements.${tenComplement}=5-${5 - tenComplement}`)
+      } else {
+        // Simple ten complement
+        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+      }
+    } else if (tenComplement === 5) {
+      // -5 = +5-10
+      skills.push(`tenComplementsSub.-5=+5-10`)
+      skills.push('basic.heavenBead')
+    } else if (tenComplement >= 6 && tenComplement <= 9) {
+      // Adding 6-9 as the complement
+      skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+      skills.push('basic.heavenBead')
+      skills.push('basic.simpleCombinations')
+    }
+  }
+
+  return skills
+}
+
+/**
+ * Analyzes skills needed for a single subtraction step: currentValue - term = newValue
+ * Works column by column from right to left, tracking borrows
+ */
+export function analyzeSubtractionStepSkills(
+  currentValue: number,
+  term: number,
+  newValue: number
+): string[] {
+  const skills: string[] = []
+
+  const currentDigits = getDigits(currentValue)
+  const termDigits = getDigits(term)
+  const newDigits = getDigits(newValue)
+
+  const maxColumns = Math.max(currentDigits.length, termDigits.length, newDigits.length)
+
+  // Track borrows as we work from right to left
+  let pendingBorrow = false
+
+  for (let column = 0; column < maxColumns; column++) {
+    let currentDigit = currentDigits[column] || 0
+    const termDigit = termDigits[column] || 0
+
+    // Apply pending borrow from previous column
+    if (pendingBorrow) {
+      currentDigit -= 1
+      pendingBorrow = false
+    }
+
+    if (termDigit === 0 && currentDigit >= 0) continue // No subtraction needed
+
+    // Check if we need to borrow for this column
+    const needsBorrow = currentDigit < termDigit
+
+    if (needsBorrow) {
+      pendingBorrow = true
+      // After borrowing, we effectively have currentDigit + 10
+    }
+
+    // Analyze skills needed for this column
+    const columnSkills = analyzeColumnSubtraction(
+      needsBorrow ? currentDigit + 10 : currentDigit,
+      termDigit,
+      needsBorrow
+    )
+    skills.push(...columnSkills)
+  }
+
+  return [...new Set(skills)] // Remove duplicates
+}
+
+/**
  * Converts a number to array of digits (ones, tens, hundreds, etc.)
  */
 function getDigits(num: number): number[] {
@@ -146,6 +285,25 @@ function getDigits(num: number): number[] {
 }
 
 /**
+ * Helper to check if a skill is enabled in a skill set category
+ */
+function isSkillEnabled(skillPath: string, skillSet: SkillSet | Partial<SkillSet>): boolean {
+  const [category, skill] = skillPath.split('.')
+  if (category === 'basic' && skillSet.basic) {
+    return skillSet.basic[skill as keyof typeof skillSet.basic] || false
+  } else if (category === 'fiveComplements' && skillSet.fiveComplements) {
+    return skillSet.fiveComplements[skill as keyof typeof skillSet.fiveComplements] || false
+  } else if (category === 'tenComplements' && skillSet.tenComplements) {
+    return skillSet.tenComplements[skill as keyof typeof skillSet.tenComplements] || false
+  } else if (category === 'fiveComplementsSub' && skillSet.fiveComplementsSub) {
+    return skillSet.fiveComplementsSub[skill as keyof typeof skillSet.fiveComplementsSub] || false
+  } else if (category === 'tenComplementsSub' && skillSet.tenComplementsSub) {
+    return skillSet.tenComplementsSub[skill as keyof typeof skillSet.tenComplementsSub] || false
+  }
+  return false
+}
+
+/**
  * Checks if a problem matches the required skills
  */
 export function problemMatchesSkills(
@@ -155,58 +313,34 @@ export function problemMatchesSkills(
   forbiddenSkills?: Partial<SkillSet>
 ): boolean {
   // Check required skills - problem must use at least one enabled required skill
-  const hasRequiredSkill = problem.requiredSkills.some((skillPath) => {
-    const [category, skill] = skillPath.split('.')
-    if (category === 'basic') {
-      return requiredSkills.basic[skill as keyof typeof requiredSkills.basic]
-    } else if (category === 'fiveComplements') {
-      return requiredSkills.fiveComplements[skill as keyof typeof requiredSkills.fiveComplements]
-    } else if (category === 'tenComplements') {
-      return requiredSkills.tenComplements[skill as keyof typeof requiredSkills.tenComplements]
-    }
-    return false
-  })
+  const hasRequiredSkill = problem.requiredSkills.some((skillPath) =>
+    isSkillEnabled(skillPath, requiredSkills)
+  )
 
   if (!hasRequiredSkill) return false
 
   // Check forbidden skills - problem must not use any forbidden skills
   if (forbiddenSkills) {
-    const usesForbiddenSkill = problem.requiredSkills.some((skillPath) => {
-      const [category, skill] = skillPath.split('.')
-      if (category === 'basic' && forbiddenSkills.basic) {
-        return forbiddenSkills.basic[skill as keyof typeof forbiddenSkills.basic]
-      } else if (category === 'fiveComplements' && forbiddenSkills.fiveComplements) {
-        return forbiddenSkills.fiveComplements[
-          skill as keyof typeof forbiddenSkills.fiveComplements
-        ]
-      } else if (category === 'tenComplements' && forbiddenSkills.tenComplements) {
-        return forbiddenSkills.tenComplements[skill as keyof typeof forbiddenSkills.tenComplements]
-      }
-      return false
-    })
+    const usesForbiddenSkill = problem.requiredSkills.some((skillPath) =>
+      isSkillEnabled(skillPath, forbiddenSkills)
+    )
 
     if (usesForbiddenSkill) return false
   }
 
   // Check target skills - if specified, problem should use at least one target skill
   if (targetSkills) {
-    const hasTargetSkill = problem.requiredSkills.some((skillPath) => {
-      const [category, skill] = skillPath.split('.')
-      if (category === 'basic' && targetSkills.basic) {
-        return targetSkills.basic[skill as keyof typeof targetSkills.basic]
-      } else if (category === 'fiveComplements' && targetSkills.fiveComplements) {
-        return targetSkills.fiveComplements[skill as keyof typeof targetSkills.fiveComplements]
-      } else if (category === 'tenComplements' && targetSkills.tenComplements) {
-        return targetSkills.tenComplements[skill as keyof typeof targetSkills.tenComplements]
-      }
-      return false
-    })
+    const hasTargetSkill = problem.requiredSkills.some((skillPath) =>
+      isSkillEnabled(skillPath, targetSkills)
+    )
 
     // If target skills are specified but none match, reject
     const hasAnyTargetSkill =
       Object.values(targetSkills.basic || {}).some(Boolean) ||
       Object.values(targetSkills.fiveComplements || {}).some(Boolean) ||
-      Object.values(targetSkills.tenComplements || {}).some(Boolean)
+      Object.values(targetSkills.tenComplements || {}).some(Boolean) ||
+      Object.values(targetSkills.fiveComplementsSub || {}).some(Boolean) ||
+      Object.values(targetSkills.tenComplementsSub || {}).some(Boolean)
 
     if (hasAnyTargetSkill && !hasTargetSkill) return false
   }
@@ -328,41 +462,13 @@ function findValidNextTerm(
     // Check if this addition step is valid
     const stepSkills = analyzeStepSkills(currentValue, term, newValue)
 
-    // Check if the step uses only allowed skills
+    // Check if the step uses only allowed skills (and no forbidden skills)
     const usesValidSkills = stepSkills.every((skillPath) => {
-      const [category, skill] = skillPath.split('.')
-
       // Must use only required skills
-      let hasSkill = false
-      if (category === 'basic') {
-        hasSkill = requiredSkills.basic[skill as keyof typeof requiredSkills.basic]
-      } else if (category === 'fiveComplements') {
-        hasSkill =
-          requiredSkills.fiveComplements[skill as keyof typeof requiredSkills.fiveComplements]
-      } else if (category === 'tenComplements') {
-        hasSkill =
-          requiredSkills.tenComplements[skill as keyof typeof requiredSkills.tenComplements]
-      }
-
-      if (!hasSkill) return false
+      if (!isSkillEnabled(skillPath, requiredSkills)) return false
 
       // Must not use forbidden skills
-      if (forbiddenSkills) {
-        let isForbidden = false
-        if (category === 'basic' && forbiddenSkills.basic) {
-          isForbidden = forbiddenSkills.basic[skill as keyof typeof forbiddenSkills.basic] || false
-        } else if (category === 'fiveComplements' && forbiddenSkills.fiveComplements) {
-          isForbidden =
-            forbiddenSkills.fiveComplements[
-              skill as keyof typeof forbiddenSkills.fiveComplements
-            ] || false
-        } else if (category === 'tenComplements' && forbiddenSkills.tenComplements) {
-          isForbidden =
-            forbiddenSkills.tenComplements[skill as keyof typeof forbiddenSkills.tenComplements] ||
-            false
-        }
-        if (isForbidden) return false
-      }
+      if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
 
       return true
     })
@@ -380,17 +486,7 @@ function findValidNextTerm(
       const newValue = currentValue + term
       const stepSkills = analyzeStepSkills(currentValue, term, newValue)
 
-      return stepSkills.some((skillPath) => {
-        const [category, skill] = skillPath.split('.')
-        if (category === 'basic' && targetSkills.basic) {
-          return targetSkills.basic[skill as keyof typeof targetSkills.basic]
-        } else if (category === 'fiveComplements' && targetSkills.fiveComplements) {
-          return targetSkills.fiveComplements[skill as keyof typeof targetSkills.fiveComplements]
-        } else if (category === 'tenComplements' && targetSkills.tenComplements) {
-          return targetSkills.tenComplements[skill as keyof typeof targetSkills.tenComplements]
-        }
-        return false
-      })
+      return stepSkills.some((skillPath) => isSkillEnabled(skillPath, targetSkills))
     })
 
     if (targetCandidates.length > 0) {
