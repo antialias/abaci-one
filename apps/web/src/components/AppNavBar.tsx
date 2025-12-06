@@ -200,8 +200,9 @@ function MenuContent({
 
             {renderNavLink('/', '🧮', 'Home')}
             {renderNavLink('/create', '✏️', 'Create')}
-            {renderNavLink('/guide', '📖', 'Guide')}
+            {renderNavLink('/practice', '📚', 'Practice')}
             {renderNavLink('/games', '🎮', 'Games')}
+            {renderNavLink('/guide', '📖', 'Guide')}
             {renderNavLink('/blog', '📝', 'Blog')}
 
             <div style={separatorStyle} />
@@ -358,8 +359,9 @@ function MenuContent({
 
           {renderNavLink('/', '🧮', 'Home')}
           {renderNavLink('/create', '✏️', 'Create')}
-          {renderNavLink('/guide', '📖', 'Guide')}
+          {renderNavLink('/practice', '📚', 'Practice')}
           {renderNavLink('/games', '🎮', 'Games')}
+          {renderNavLink('/guide', '📖', 'Guide')}
           {renderNavLink('/blog', '📝', 'Blog')}
 
           <DropdownMenu.Separator style={separatorStyle} />
@@ -1023,10 +1025,10 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   </NavLink>
                 </div>
 
-                {/* Guide - hidden below md breakpoint */}
+                {/* Practice - hidden below md breakpoint */}
                 <div className={css({ display: { base: 'none', md: 'block' } })}>
-                  <NavLink href="/guide" currentPath={pathname} isTransparent={isTransparent}>
-                    Guide
+                  <NavLink href="/practice" currentPath={pathname} isTransparent={isTransparent}>
+                    Practice
                   </NavLink>
                 </div>
 
