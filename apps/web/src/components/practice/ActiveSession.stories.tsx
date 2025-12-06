@@ -189,9 +189,9 @@ function createMockSessionPlanWithProblems(config: {
     sessionHealth: config.sessionHealth ?? null,
     adjustments: [],
     results: [],
-    createdAt: Date.now(),
-    approvedAt: Date.now() - 60000,
-    startedAt: Date.now() - 30000,
+    createdAt: new Date(),
+    approvedAt: new Date(Date.now() - 60000),
+    startedAt: new Date(Date.now() - 30000),
     completedAt: null,
   }
 }
@@ -367,6 +367,10 @@ function InteractiveSessionDemo() {
         ...result,
         partNumber: (plan.currentPartIndex + 1) as 1 | 2 | 3,
         timestamp: new Date(),
+        // Default help tracking fields if not provided
+        helpLevelUsed: result.helpLevelUsed ?? 0,
+        incorrectAttempts: result.incorrectAttempts ?? 0,
+        helpTrigger: result.helpTrigger ?? 'none',
       }
       setResults((prev) => [...prev, fullResult])
 

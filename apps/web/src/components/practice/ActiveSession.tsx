@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   GeneratedProblem,
+  HelpLevel,
   ProblemConstraints,
   ProblemSlot,
   SessionHealth,
@@ -10,6 +11,8 @@ import type {
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
+import type { StudentHelpSettings } from '@/db/schema/players'
+import { usePracticeHelp, type TermContext } from '@/hooks/usePracticeHelp'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
   analyzeRequiredSkills,
@@ -19,6 +22,7 @@ import {
 import { css } from '../../../styled-system/css'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
+import { PracticeHelpPanel } from './PracticeHelpPanel'
 import { VerticalProblem } from './VerticalProblem'
 
 interface ActiveSessionProps {
@@ -34,6 +38,10 @@ interface ActiveSessionProps {
   onResume?: () => void
   /** Called when session completes */
   onComplete: () => void
+  /** Student's help settings (optional, uses defaults if not provided) */
+  helpSettings?: StudentHelpSettings
+  /** Whether this student is in beginner mode (free help without penalty) */
+  isBeginnerMode?: boolean
 }
 
 interface CurrentProblem {
@@ -172,6 +180,8 @@ export function ActiveSession({
   onPause,
   onResume,
   onComplete,
+  helpSettings,
+  isBeginnerMode = false,
 }: ActiveSessionProps) {
   const [currentProblem, setCurrentProblem] = useState<CurrentProblem | null>(null)
   const [userAnswer, setUserAnswer] = useState('')
@@ -179,8 +189,66 @@ export function ActiveSession({
   const [isPaused, setIsPaused] = useState(false)
   const [showAbacus, setShowAbacus] = useState(false)
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none')
+  const [currentTermIndex, setCurrentTermIndex] = useState(0)
+  const [incorrectAttempts, setIncorrectAttempts] = useState(0)
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
+
+  // Calculate running total and target for help context
+  const runningTotal = useMemo(() => {
+    if (!currentProblem) return 0
+    const terms = currentProblem.problem.terms
+    let total = 0
+    for (let i = 0; i < currentTermIndex; i++) {
+      total += terms[i]
+    }
+    return total
+  }, [currentProblem, currentTermIndex])
+
+  const currentTermTarget = useMemo(() => {
+    if (!currentProblem) return 0
+    const terms = currentProblem.problem.terms
+    if (currentTermIndex >= terms.length) return currentProblem.problem.answer
+    return runningTotal + terms[currentTermIndex]
+  }, [currentProblem, currentTermIndex, runningTotal])
+
+  const currentTerm = useMemo(() => {
+    if (!currentProblem || currentTermIndex >= currentProblem.problem.terms.length) return 0
+    return currentProblem.problem.terms[currentTermIndex]
+  }, [currentProblem, currentTermIndex])
+
+  // Initialize help system
+  const [helpState, helpActions] = usePracticeHelp({
+    settings: helpSettings || {
+      helpMode: 'auto',
+      autoEscalationTimingMs: { level1: 30000, level2: 60000, level3: 90000 },
+      beginnerFreeHelp: true,
+      advancedRequiresApproval: false,
+    },
+    isBeginnerMode,
+    onHelpLevelChange: (level, trigger) => {
+      // Could add analytics tracking here
+      console.log(`Help level changed to ${level} via ${trigger}`)
+    },
+  })
+
+  // Update help context when problem or term changes
+  useEffect(() => {
+    if (currentProblem && currentTermIndex < currentProblem.problem.terms.length) {
+      helpActions.resetForNewTerm({
+        currentValue: runningTotal,
+        targetValue: currentTermTarget,
+        term: currentTerm,
+        termIndex: currentTermIndex,
+      })
+    }
+  }, [
+    currentProblem?.problem.terms.join(','),
+    currentTermIndex,
+    runningTotal,
+    currentTermTarget,
+    currentTerm,
+  ])
 
   // Get current part and slot
   const parts = plan.parts
@@ -271,7 +339,13 @@ export function ActiveSession({
     // Show feedback
     setFeedback(isCorrect ? 'correct' : 'incorrect')
 
-    // Record the result
+    // Track incorrect attempts for help escalation
+    if (!isCorrect) {
+      setIncorrectAttempts((prev) => prev + 1)
+      helpActions.recordError()
+    }
+
+    // Record the result with help tracking data
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
       slotIndex: currentProblem.slotIndex,
       problem: currentProblem.problem,
@@ -280,6 +354,10 @@ export function ActiveSession({
       responseTimeMs,
       skillsExercised: currentProblem.problem.skillsRequired,
       usedOnScreenAbacus: showAbacus,
+      // Help tracking fields
+      helpLevelUsed: helpState.maxLevelUsed,
+      incorrectAttempts,
+      helpTrigger: helpState.trigger,
     }
 
     await onAnswer(result)
@@ -288,11 +366,23 @@ export function ActiveSession({
     setTimeout(
       () => {
         setCurrentProblem(null)
+        setCurrentTermIndex(0)
+        setIncorrectAttempts(0)
         setIsSubmitting(false)
       },
       isCorrect ? 500 : 1500
     )
-  }, [currentProblem, isSubmitting, userAnswer, showAbacus, onAnswer])
+  }, [
+    currentProblem,
+    isSubmitting,
+    userAnswer,
+    showAbacus,
+    onAnswer,
+    helpState.maxLevelUsed,
+    helpState.trigger,
+    incorrectAttempts,
+    helpActions,
+  ])
 
   const handlePause = useCallback(() => {
     setIsPaused(true)
@@ -561,6 +651,18 @@ export function ActiveSession({
             {feedback === 'correct'
               ? 'Correct!'
               : `The answer was ${currentProblem.problem.answer}`}
+          </div>
+        )}
+
+        {/* Help panel - show when not submitting and feedback hasn't been shown yet */}
+        {!isSubmitting && feedback === 'none' && (
+          <div data-section="help-area" className={css({ width: '100%' })}>
+            <PracticeHelpPanel
+              helpState={helpState}
+              onRequestHelp={helpActions.requestHelp}
+              onDismissHelp={helpActions.dismissHelp}
+              isAbacusPart={currentPart.type === 'abacus'}
+            />
           </div>
         )}
       </div>
