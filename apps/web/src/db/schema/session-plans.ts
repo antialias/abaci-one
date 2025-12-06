@@ -129,6 +129,15 @@ export interface SessionAdjustment {
 }
 
 /**
+ * Help level used during a problem
+ * - 0: No help requested
+ * - 1: Coach hint only (e.g., "Add the tens digit first")
+ * - 2: Decomposition shown (e.g., "45 + 27 = 45 + 20 + 7")
+ * - 3: Bead highlighting (arrows showing which beads to move)
+ */
+export type HelpLevel = 0 | 1 | 2 | 3
+
+/**
  * Result of a single problem slot
  */
 export interface SlotResult {
@@ -143,6 +152,17 @@ export interface SlotResult {
   skillsExercised: string[]
   usedOnScreenAbacus: boolean
   timestamp: Date
+
+  // ---- Help Tracking (for feedback loop) ----
+
+  /** Maximum help level used during this problem (0 = no help) */
+  helpLevelUsed: HelpLevel
+
+  /** Number of incorrect attempts before getting the right answer */
+  incorrectAttempts: number
+
+  /** How help was triggered */
+  helpTrigger?: 'none' | 'manual' | 'auto-time' | 'auto-errors' | 'teacher-approved'
 }
 
 export type SessionStatus = 'draft' | 'approved' | 'in_progress' | 'completed' | 'abandoned'

@@ -77,6 +77,29 @@ export const playerSkillMastery = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
+
+    // ---- Reinforcement Tracking (for help system feedback loop) ----
+
+    /**
+     * Whether this skill needs reinforcement
+     * Set to true when student uses heavy help (level 2+) or has multiple incorrect attempts
+     * Cleared after N consecutive correct answers without help
+     */
+    needsReinforcement: integer('needs_reinforcement', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+
+    /**
+     * Last help level used on this skill (0-3)
+     * Used to track struggling patterns
+     */
+    lastHelpLevel: integer('last_help_level').notNull().default(0),
+
+    /**
+     * Consecutive correct answers without heavy help since reinforcement was flagged
+     * Resets to 0 when reinforcement is cleared or when help level 2+ is used
+     */
+    reinforcementStreak: integer('reinforcement_streak').notNull().default(0),
   },
   (table) => ({
     /** Index for fast lookups by playerId */
@@ -108,6 +131,39 @@ export const MASTERY_CONFIG = {
 
   /** Minimum attempts to transition from 'learning' to 'practicing' */
   minimumForPracticing: 5,
+} as const
+
+/**
+ * Reinforcement configuration constants
+ */
+export const REINFORCEMENT_CONFIG = {
+  /**
+   * Help level threshold that triggers reinforcement flag
+   * Level 2+ (decomposition or bead arrows) indicates the student needed significant help
+   */
+  helpLevelThreshold: 2,
+
+  /**
+   * Number of consecutive correct answers without heavy help to clear reinforcement
+   */
+  streakToClear: 3,
+
+  /**
+   * Maximum help level that still counts toward clearing reinforcement
+   * Level 1 (hints) is OK, but Level 2+ resets the streak
+   */
+  maxHelpLevelToCount: 1,
+
+  /**
+   * Mastery credit multipliers based on help level
+   * Used when updating skill mastery after a correct answer
+   */
+  creditMultipliers: {
+    0: 1.0, // No help: full credit
+    1: 1.0, // Hint only: full credit
+    2: 0.5, // Decomposition: half credit
+    3: 0.25, // Bead arrows: quarter credit
+  } as Record<0 | 1 | 2 | 3, number>,
 } as const
 
 /**
