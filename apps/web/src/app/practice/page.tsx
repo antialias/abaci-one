@@ -11,6 +11,12 @@ import {
   StudentSelector,
   type StudentWithProgress,
 } from '@/components/practice'
+import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
+import {
+  type OfflineSessionData,
+  OfflineSessionForm,
+} from '@/components/practice/OfflineSessionForm'
+import { PlacementTest } from '@/components/practice/PlacementTest'
 import type { SlotResult } from '@/db/schema/session-plans'
 import { usePlayerCurriculum } from '@/hooks/usePlayerCurriculum'
 import {
@@ -61,6 +67,7 @@ type ViewState =
   | 'practicing'
   | 'summary'
   | 'creating'
+  | 'placement-test'
 
 interface SessionConfig {
   durationMinutes: number
@@ -83,6 +90,10 @@ export default function PracticePage() {
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
     durationMinutes: 10,
   })
+
+  // Modal states for onboarding features
+  const [showManualSkillModal, setShowManualSkillModal] = useState(false)
+  const [showOfflineSessionModal, setShowOfflineSessionModal] = useState(false)
 
   // React Query hooks for players
   const { data: players = [], isLoading: isLoadingStudents } = useUserPlayers()
@@ -288,6 +299,59 @@ export default function PracticePage() {
     window.location.href = '/create/worksheets/addition'
   }, [])
 
+  // Handle opening placement test
+  const handleRunPlacementTest = useCallback(() => {
+    setViewState('placement-test')
+  }, [])
+
+  // Handle placement test completion
+  const handlePlacementTestComplete = useCallback(
+    (results: {
+      masteredSkillIds: string[]
+      practicingSkillIds: string[]
+      totalProblems: number
+      totalCorrect: number
+    }) => {
+      // TODO: Save results to curriculum via API
+      console.log('Placement test complete:', results)
+      // Return to dashboard after completion
+      setViewState('dashboard')
+    },
+    []
+  )
+
+  // Handle placement test cancel
+  const handlePlacementTestCancel = useCallback(() => {
+    setViewState('dashboard')
+  }, [])
+
+  // Handle opening manual skill selector
+  const handleSetSkillsManually = useCallback(() => {
+    setShowManualSkillModal(true)
+  }, [])
+
+  // Handle saving manual skill selections
+  const handleSaveManualSkills = useCallback(async (masteredSkillIds: string[]): Promise<void> => {
+    // TODO: Save skills to curriculum via API
+    console.log('Manual skills saved:', masteredSkillIds)
+    setShowManualSkillModal(false)
+  }, [])
+
+  // Handle opening offline session form
+  const handleRecordOfflinePractice = useCallback(() => {
+    setShowOfflineSessionModal(true)
+  }, [])
+
+  // Handle submitting offline session
+  const handleSubmitOfflineSession = useCallback(
+    async (data: OfflineSessionData): Promise<void> => {
+      // TODO: Save offline session to database via API
+      console.log('Offline session recorded:', data)
+      setShowOfflineSessionModal(false)
+    },
+    []
+  )
+
   // Build current phase info from curriculum
   const currentPhase = curriculum.curriculum
     ? getPhaseInfo(curriculum.curriculum.currentPhaseId)
@@ -406,6 +470,9 @@ export default function PracticePage() {
             onViewFullProgress={handleViewFullProgress}
             onGenerateWorksheet={handleGenerateWorksheet}
             onChangeStudent={handleChangeStudent}
+            onRunPlacementTest={handleRunPlacementTest}
+            onSetSkillsManually={handleSetSkillsManually}
+            onRecordOfflinePractice={handleRecordOfflinePractice}
           />
         )}
 
@@ -738,7 +805,38 @@ export default function PracticePage() {
             </button>
           </div>
         )}
+
+        {viewState === 'placement-test' && selectedStudent && (
+          <PlacementTest
+            studentName={selectedStudent.name}
+            playerId={selectedStudent.id}
+            onComplete={handlePlacementTestComplete}
+            onCancel={handlePlacementTestCancel}
+          />
+        )}
       </div>
+
+      {/* Manual Skill Selector Modal */}
+      {selectedStudent && (
+        <ManualSkillSelector
+          studentName={selectedStudent.name}
+          playerId={selectedStudent.id}
+          open={showManualSkillModal}
+          onClose={() => setShowManualSkillModal(false)}
+          onSave={handleSaveManualSkills}
+        />
+      )}
+
+      {/* Offline Session Form Modal */}
+      {selectedStudent && (
+        <OfflineSessionForm
+          studentName={selectedStudent.name}
+          playerId={selectedStudent.id}
+          open={showOfflineSessionModal}
+          onClose={() => setShowOfflineSessionModal(false)}
+          onSubmit={handleSubmitOfflineSession}
+        />
+      )}
     </main>
   )
 }

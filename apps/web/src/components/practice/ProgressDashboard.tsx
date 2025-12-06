@@ -37,6 +37,12 @@ interface ProgressDashboardProps {
   onViewFullProgress: () => void
   onGenerateWorksheet: () => void
   onChangeStudent: () => void
+  /** Callback to run placement test */
+  onRunPlacementTest?: () => void
+  /** Callback to manually set skills */
+  onSetSkillsManually?: () => void
+  /** Callback to record offline practice */
+  onRecordOfflinePractice?: () => void
 }
 
 /**
@@ -71,6 +77,9 @@ export function ProgressDashboard({
   onViewFullProgress,
   onGenerateWorksheet,
   onChangeStudent,
+  onRunPlacementTest,
+  onSetSkillsManually,
+  onRecordOfflinePractice,
 }: ProgressDashboardProps) {
   const progressPercent =
     currentPhase.totalSkills > 0
@@ -307,6 +316,112 @@ export function ProgressDashboard({
           </button>
         </div>
       </div>
+
+      {/* Onboarding & Assessment Tools */}
+      {(onRunPlacementTest || onSetSkillsManually || onRecordOfflinePractice) && (
+        <div
+          data-section="onboarding-tools"
+          className={css({
+            width: '100%',
+            padding: '1rem',
+            backgroundColor: 'gray.50',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: 'gray.200',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '0.875rem',
+              fontWeight: 'semibold',
+              color: 'gray.600',
+              marginBottom: '0.75rem',
+            })}
+          >
+            Assessment & Sync
+          </h3>
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            })}
+          >
+            {onRunPlacementTest && (
+              <button
+                type="button"
+                data-action="run-placement-test"
+                onClick={onRunPlacementTest}
+                className={css({
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.875rem',
+                  color: 'blue.700',
+                  backgroundColor: 'blue.50',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: 'blue.200',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    backgroundColor: 'blue.100',
+                    borderColor: 'blue.300',
+                  },
+                })}
+              >
+                Placement Test
+              </button>
+            )}
+            {onSetSkillsManually && (
+              <button
+                type="button"
+                data-action="set-skills-manually"
+                onClick={onSetSkillsManually}
+                className={css({
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.875rem',
+                  color: 'purple.700',
+                  backgroundColor: 'purple.50',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: 'purple.200',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    backgroundColor: 'purple.100',
+                    borderColor: 'purple.300',
+                  },
+                })}
+              >
+                Set Skills Manually
+              </button>
+            )}
+            {onRecordOfflinePractice && (
+              <button
+                type="button"
+                data-action="record-offline-practice"
+                onClick={onRecordOfflinePractice}
+                className={css({
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.875rem',
+                  color: 'green.700',
+                  backgroundColor: 'green.50',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: 'green.200',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    backgroundColor: 'green.100',
+                    borderColor: 'green.300',
+                  },
+                })}
+              >
+                Record Offline Practice
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent skills (if available) */}
       {recentSkills.length > 0 && (
