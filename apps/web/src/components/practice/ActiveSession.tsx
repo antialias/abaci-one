@@ -560,114 +560,226 @@ export function ActiveSession({
         minHeight: '100vh',
       })}
     >
-      {/* Header with progress and health */}
+      {/* Practice Session HUD - Control bar with session info and tape-deck controls */}
       <div
-        data-section="session-header"
+        data-section="session-hud"
         className={css({
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '0.75rem',
-          backgroundColor: 'white',
+          gap: '0.75rem',
+          padding: '0.75rem 1rem',
+          backgroundColor: 'gray.900',
           borderRadius: '12px',
-          boxShadow: 'sm',
+          boxShadow: 'lg',
         })}
       >
-        <div>
-          <div
+        {/* Tape deck controls */}
+        <div
+          data-element="transport-controls"
+          className={css({
+            display: 'flex',
+            gap: '0.5rem',
+          })}
+        >
+          {/* Pause/Play button */}
+          <button
+            type="button"
+            data-action={isPaused ? 'resume' : 'pause'}
+            onClick={isPaused ? handleResume : handlePause}
             className={css({
-              fontSize: '0.875rem',
-              color: 'gray.500',
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              color: 'white',
+              backgroundColor: isPaused ? 'green.500' : 'gray.700',
+              borderRadius: '8px',
+              border: '2px solid',
+              borderColor: isPaused ? 'green.400' : 'gray.600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isPaused ? 'green.400' : 'gray.600',
+                transform: 'scale(1.05)',
+              },
+              _active: {
+                transform: 'scale(0.95)',
+              },
             })}
+            aria-label={isPaused ? 'Resume session' : 'Pause session'}
           >
-            {studentName}'s Practice
-          </div>
-          <div
+            {isPaused ? '▶' : '⏸'}
+          </button>
+
+          {/* Stop button */}
+          <button
+            type="button"
+            data-action="end-early"
+            onClick={() => onEndEarly('Session ended')}
             className={css({
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: 'gray.800',
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              color: 'red.300',
+              backgroundColor: 'gray.700',
+              borderRadius: '8px',
+              border: '2px solid',
+              borderColor: 'gray.600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: 'red.900',
+                borderColor: 'red.700',
+                color: 'red.200',
+                transform: 'scale(1.05)',
+              },
+              _active: {
+                transform: 'scale(0.95)',
+              },
             })}
+            aria-label="End session"
           >
-            Problem {completedProblems + 1} of {totalProblems}
-          </div>
+            ⏹
+          </button>
         </div>
 
-        {sessionHealth && (
+        {/* Session info display */}
+        <div
+          data-element="session-info"
+          className={css({
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.125rem',
+          })}
+        >
+          {/* Part type with emoji */}
           <div
-            data-element="session-health"
             className={css({
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              backgroundColor: 'gray.50',
             })}
           >
-            <span>{getHealthEmoji(sessionHealth.overall)}</span>
+            <span
+              className={css({
+                fontSize: '1rem',
+              })}
+            >
+              {getPartTypeEmoji(currentPart.type)}
+            </span>
             <span
               className={css({
                 fontSize: '0.875rem',
                 fontWeight: 'bold',
-                color: getHealthColor(sessionHealth.overall),
+                color: 'white',
               })}
             >
-              {Math.round(sessionHealth.accuracy * 100)}%
+              Part {currentPart.partNumber}: {getPartTypeLabel(currentPart.type)}
             </span>
           </div>
-        )}
+
+          {/* Progress within part */}
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: 'gray.400',
+            })}
+          >
+            Problem {currentSlotIndex + 1} of {currentPart.slots.length} in this part
+          </div>
+        </div>
+
+        {/* Overall progress and health */}
+        <div
+          data-element="progress-display"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          })}
+        >
+          {/* Problem counter */}
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                color: 'white',
+                fontFamily: 'monospace',
+              })}
+            >
+              {completedProblems + 1}/{totalProblems}
+            </div>
+            <div
+              className={css({
+                fontSize: '0.625rem',
+                color: 'gray.500',
+                textTransform: 'uppercase',
+              })}
+            >
+              Total
+            </div>
+          </div>
+
+          {/* Health indicator */}
+          {sessionHealth && (
+            <div
+              data-element="session-health"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '0.25rem 0.5rem',
+                backgroundColor: 'gray.800',
+                borderRadius: '6px',
+              })}
+            >
+              <span className={css({ fontSize: '1rem' })}>
+                {getHealthEmoji(sessionHealth.overall)}
+              </span>
+              <span
+                className={css({
+                  fontSize: '0.625rem',
+                  fontWeight: 'bold',
+                  color: getHealthColor(sessionHealth.overall),
+                })}
+              >
+                {Math.round(sessionHealth.accuracy * 100)}%
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Part indicator */}
+      {/* Part instruction banner - brief contextual hint */}
       <div
-        data-element="part-indicator"
+        data-element="part-instruction"
         className={css({
-          padding: '1rem',
+          padding: '0.5rem 1rem',
           backgroundColor: partColors.bg,
-          borderRadius: '12px',
-          border: '2px solid',
+          borderRadius: '8px',
+          border: '1px solid',
           borderColor: partColors.border,
           textAlign: 'center',
+          fontSize: '0.875rem',
+          color: partColors.text,
         })}
       >
-        <div
-          className={css({
-            fontSize: '1.5rem',
-            marginBottom: '0.25rem',
-          })}
-        >
-          {getPartTypeEmoji(currentPart.type)}
-        </div>
-        <div
-          className={css({
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-            color: partColors.text,
-            marginBottom: '0.25rem',
-          })}
-        >
-          Part {currentPart.partNumber}: {getPartTypeLabel(currentPart.type)}
-        </div>
-        <div
-          className={css({
-            fontSize: '0.875rem',
-            color: partColors.text,
-          })}
-        >
-          {currentPart.type === 'abacus' && 'Use your physical abacus to solve these problems'}
-          {currentPart.type === 'visualization' && 'Picture the beads moving in your mind'}
-          {currentPart.type === 'linear' && 'Calculate the answer mentally'}
-        </div>
-        <div
-          className={css({
-            fontSize: '0.75rem',
-            color: partColors.text,
-            marginTop: '0.5rem',
-          })}
-        >
-          Problem {currentSlotIndex + 1} of {currentPart.slots.length} in this part
-        </div>
+        {currentPart.type === 'abacus' && '🧮 Use your physical abacus'}
+        {currentPart.type === 'visualization' && '🧠 Picture the beads moving in your mind'}
+        {currentPart.type === 'linear' && '💭 Calculate the answer mentally'}
       </div>
 
       {/* Problem display */}
@@ -905,86 +1017,6 @@ export function ActiveSession({
           )}
         </div>
       )}
-
-      {/* Teacher controls */}
-      <div
-        data-section="teacher-controls"
-        className={css({
-          display: 'flex',
-          gap: '0.75rem',
-          marginTop: 'auto',
-          paddingTop: '1rem',
-          borderTop: '1px solid',
-          borderColor: 'gray.200',
-        })}
-      >
-        {isPaused ? (
-          <button
-            type="button"
-            data-action="resume"
-            onClick={handleResume}
-            className={css({
-              flex: 1,
-              padding: '0.75rem',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              color: 'white',
-              backgroundColor: 'green.500',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              _hover: {
-                backgroundColor: 'green.600',
-              },
-            })}
-          >
-            Resume Practice
-          </button>
-        ) : (
-          <button
-            type="button"
-            data-action="pause"
-            onClick={handlePause}
-            className={css({
-              flex: 1,
-              padding: '0.75rem',
-              fontSize: '0.875rem',
-              color: 'gray.600',
-              backgroundColor: 'gray.100',
-              borderRadius: '8px',
-              border: '1px solid',
-              borderColor: 'gray.200',
-              cursor: 'pointer',
-              _hover: {
-                backgroundColor: 'gray.200',
-              },
-            })}
-          >
-            Pause
-          </button>
-        )}
-
-        <button
-          type="button"
-          data-action="end-early"
-          onClick={() => onEndEarly('Teacher ended session')}
-          className={css({
-            padding: '0.75rem 1.5rem',
-            fontSize: '0.875rem',
-            color: 'red.600',
-            backgroundColor: 'red.50',
-            borderRadius: '8px',
-            border: '1px solid',
-            borderColor: 'red.200',
-            cursor: 'pointer',
-            _hover: {
-              backgroundColor: 'red.100',
-            },
-          })}
-        >
-          End Session
-        </button>
-      </div>
 
       {/* Pause overlay */}
       {isPaused && (
