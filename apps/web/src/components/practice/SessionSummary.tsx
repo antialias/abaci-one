@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 
@@ -35,6 +36,8 @@ export function SessionSummary({
   onPracticeAgain,
   onBackToDashboard,
 }: SessionSummaryProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const results = plan.results as SlotResult[]
   const totalProblems = results.length
   const correctProblems = results.filter((r) => r.isCorrect).length
@@ -78,12 +81,30 @@ export function SessionSummary({
         className={css({
           textAlign: 'center',
           padding: '1.5rem',
-          backgroundColor:
-            accuracy >= 0.8 ? 'green.50' : accuracy >= 0.6 ? 'yellow.50' : 'orange.50',
+          backgroundColor: isDark
+            ? accuracy >= 0.8
+              ? 'green.900'
+              : accuracy >= 0.6
+                ? 'yellow.900'
+                : 'orange.900'
+            : accuracy >= 0.8
+              ? 'green.50'
+              : accuracy >= 0.6
+                ? 'yellow.50'
+                : 'orange.50',
           borderRadius: '16px',
           border: '2px solid',
-          borderColor:
-            accuracy >= 0.8 ? 'green.200' : accuracy >= 0.6 ? 'yellow.200' : 'orange.200',
+          borderColor: isDark
+            ? accuracy >= 0.8
+              ? 'green.700'
+              : accuracy >= 0.6
+                ? 'yellow.700'
+                : 'orange.700'
+            : accuracy >= 0.8
+              ? 'green.200'
+              : accuracy >= 0.6
+                ? 'yellow.200'
+                : 'orange.200',
         })}
       >
         <div
@@ -98,7 +119,7 @@ export function SessionSummary({
           className={css({
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: 'gray.800',
+            color: isDark ? 'gray.100' : 'gray.800',
             marginBottom: '0.25rem',
           })}
         >
@@ -107,7 +128,7 @@ export function SessionSummary({
         <p
           className={css({
             fontSize: '1rem',
-            color: 'gray.600',
+            color: isDark ? 'gray.400' : 'gray.600',
           })}
         >
           {performanceMessage}
@@ -128,7 +149,7 @@ export function SessionSummary({
           className={css({
             textAlign: 'center',
             padding: '1rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '12px',
             boxShadow: 'sm',
           })}
@@ -137,7 +158,17 @@ export function SessionSummary({
             className={css({
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: accuracy >= 0.8 ? 'green.600' : accuracy >= 0.6 ? 'yellow.600' : 'orange.600',
+              color: isDark
+                ? accuracy >= 0.8
+                  ? 'green.400'
+                  : accuracy >= 0.6
+                    ? 'yellow.400'
+                    : 'orange.400'
+                : accuracy >= 0.8
+                  ? 'green.600'
+                  : accuracy >= 0.6
+                    ? 'yellow.600'
+                    : 'orange.600',
             })}
           >
             {Math.round(accuracy * 100)}%
@@ -145,7 +176,7 @@ export function SessionSummary({
           <div
             className={css({
               fontSize: '0.75rem',
-              color: 'gray.500',
+              color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
             Accuracy
@@ -157,7 +188,7 @@ export function SessionSummary({
           className={css({
             textAlign: 'center',
             padding: '1rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '12px',
             boxShadow: 'sm',
           })}
@@ -166,7 +197,7 @@ export function SessionSummary({
             className={css({
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: 'blue.600',
+              color: isDark ? 'blue.400' : 'blue.600',
             })}
           >
             {correctProblems}/{totalProblems}
@@ -174,7 +205,7 @@ export function SessionSummary({
           <div
             className={css({
               fontSize: '0.75rem',
-              color: 'gray.500',
+              color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
             Correct
@@ -186,7 +217,7 @@ export function SessionSummary({
           className={css({
             textAlign: 'center',
             padding: '1rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '12px',
             boxShadow: 'sm',
           })}
@@ -195,7 +226,7 @@ export function SessionSummary({
             className={css({
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: 'purple.600',
+              color: isDark ? 'purple.400' : 'purple.600',
             })}
           >
             {Math.round(sessionDurationMinutes)}
@@ -203,7 +234,7 @@ export function SessionSummary({
           <div
             className={css({
               fontSize: '0.75rem',
-              color: 'gray.500',
+              color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
             Minutes
@@ -219,7 +250,7 @@ export function SessionSummary({
           flexDirection: 'column',
           gap: '0.75rem',
           padding: '1rem',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? 'gray.800' : 'white',
           borderRadius: '12px',
           boxShadow: 'sm',
         })}
@@ -228,7 +259,7 @@ export function SessionSummary({
           className={css({
             fontSize: '1rem',
             fontWeight: 'bold',
-            color: 'gray.700',
+            color: isDark ? 'gray.300' : 'gray.700',
             marginBottom: '0.5rem',
           })}
         >
@@ -242,8 +273,10 @@ export function SessionSummary({
             fontSize: '0.875rem',
           })}
         >
-          <span className={css({ color: 'gray.600' })}>Average time per problem</span>
-          <span className={css({ fontWeight: 'bold', color: 'gray.800' })}>
+          <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+            Average time per problem
+          </span>
+          <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
             {Math.round(avgTimeMs / 1000)}s
           </span>
         </div>
@@ -255,8 +288,10 @@ export function SessionSummary({
             fontSize: '0.875rem',
           })}
         >
-          <span className={css({ color: 'gray.600' })}>On-screen abacus used</span>
-          <span className={css({ fontWeight: 'bold', color: 'gray.800' })}>
+          <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+            On-screen abacus used
+          </span>
+          <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
             {abacusUsageCount} times ({Math.round(abacusUsagePercent)}%)
           </span>
         </div>
@@ -268,7 +303,7 @@ export function SessionSummary({
           data-section="skill-breakdown"
           className={css({
             padding: '1rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '12px',
             boxShadow: 'sm',
           })}
@@ -277,7 +312,7 @@ export function SessionSummary({
             className={css({
               fontSize: '1rem',
               fontWeight: 'bold',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               marginBottom: '1rem',
             })}
           >
@@ -305,7 +340,7 @@ export function SessionSummary({
                   className={css({
                     flex: 1,
                     fontSize: '0.875rem',
-                    color: 'gray.700',
+                    color: isDark ? 'gray.300' : 'gray.700',
                   })}
                 >
                   {formatSkillName(skill.skillId)}
@@ -314,7 +349,7 @@ export function SessionSummary({
                   className={css({
                     width: '120px',
                     height: '8px',
-                    backgroundColor: 'gray.200',
+                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
                     borderRadius: '4px',
                     overflow: 'hidden',
                   })}
@@ -322,8 +357,13 @@ export function SessionSummary({
                   <div
                     className={css({
                       height: '100%',
-                      backgroundColor:
-                        skill.accuracy >= 0.8
+                      backgroundColor: isDark
+                        ? skill.accuracy >= 0.8
+                          ? 'green.400'
+                          : skill.accuracy >= 0.6
+                            ? 'yellow.400'
+                            : 'red.400'
+                        : skill.accuracy >= 0.8
                           ? 'green.500'
                           : skill.accuracy >= 0.6
                             ? 'yellow.500'
@@ -338,8 +378,13 @@ export function SessionSummary({
                   className={css({
                     fontSize: '0.75rem',
                     fontWeight: 'bold',
-                    color:
-                      skill.accuracy >= 0.8
+                    color: isDark
+                      ? skill.accuracy >= 0.8
+                        ? 'green.400'
+                        : skill.accuracy >= 0.6
+                          ? 'yellow.400'
+                          : 'red.400'
+                      : skill.accuracy >= 0.8
                         ? 'green.600'
                         : skill.accuracy >= 0.6
                           ? 'yellow.600'
@@ -361,20 +406,20 @@ export function SessionSummary({
         data-section="problem-review"
         className={css({
           padding: '1rem',
-          backgroundColor: 'gray.50',
+          backgroundColor: isDark ? 'gray.800' : 'gray.50',
           borderRadius: '12px',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
         <summary
           className={css({
             fontSize: '0.875rem',
             fontWeight: 'bold',
-            color: 'gray.700',
+            color: isDark ? 'gray.300' : 'gray.700',
             cursor: 'pointer',
             _hover: {
-              color: 'gray.900',
+              color: isDark ? 'gray.100' : 'gray.900',
             },
           })}
         >
@@ -398,9 +443,16 @@ export function SessionSummary({
                 alignItems: 'center',
                 gap: '0.75rem',
                 padding: '0.5rem',
-                backgroundColor: result.isCorrect ? 'green.50' : 'red.50',
+                backgroundColor: isDark
+                  ? result.isCorrect
+                    ? 'green.900'
+                    : 'red.900'
+                  : result.isCorrect
+                    ? 'green.50'
+                    : 'red.50',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
+                color: isDark ? 'gray.200' : 'inherit',
               })}
             >
               <span>{result.isCorrect ? '✓' : '✗'}</span>
@@ -415,7 +467,7 @@ export function SessionSummary({
               {!result.isCorrect && (
                 <span
                   className={css({
-                    color: 'red.600',
+                    color: isDark ? 'red.400' : 'red.600',
                     textDecoration: 'line-through',
                   })}
                 >
@@ -465,13 +517,13 @@ export function SessionSummary({
           className={css({
             padding: '0.75rem',
             fontSize: '1rem',
-            color: 'gray.600',
-            backgroundColor: 'gray.100',
+            color: isDark ? 'gray.300' : 'gray.600',
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
             borderRadius: '12px',
             border: 'none',
             cursor: 'pointer',
             _hover: {
-              backgroundColor: 'gray.200',
+              backgroundColor: isDark ? 'gray.600' : 'gray.200',
             },
           })}
         >

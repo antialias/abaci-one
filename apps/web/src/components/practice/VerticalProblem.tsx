@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
 interface VerticalProblemProps {
@@ -40,6 +41,9 @@ export function VerticalProblem({
   confirmedTermCount = 0,
   currentHelpTermIndex,
 }: VerticalProblemProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   // Calculate max digits needed for alignment
   const maxDigits = Math.max(
     ...terms.map((t) => Math.abs(t).toString().length),
@@ -70,19 +74,33 @@ export function VerticalProblem({
         borderRadius: '8px',
         backgroundColor: isCompleted
           ? isCorrect
-            ? 'green.50'
-            : 'red.50'
+            ? isDark
+              ? 'green.900'
+              : 'green.50'
+            : isDark
+              ? 'red.900'
+              : 'red.50'
           : isFocused
-            ? 'blue.50'
-            : 'gray.50',
+            ? isDark
+              ? 'blue.900'
+              : 'blue.50'
+            : isDark
+              ? 'gray.800'
+              : 'gray.50',
         border: '2px solid',
         borderColor: isCompleted
           ? isCorrect
-            ? 'green.400'
-            : 'red.400'
+            ? isDark
+              ? 'green.600'
+              : 'green.400'
+            : isDark
+              ? 'red.600'
+              : 'red.400'
           : isFocused
             ? 'blue.400'
-            : 'gray.200',
+            : isDark
+              ? 'gray.600'
+              : 'gray.200',
         transition: 'all 0.2s ease',
       })}
     >
@@ -109,7 +127,11 @@ export function VerticalProblem({
               // Confirmed terms are dimmed with checkmark
               opacity: isConfirmed ? 0.5 : 1,
               // Current help term is highlighted
-              backgroundColor: isCurrentHelp ? 'purple.100' : 'transparent',
+              backgroundColor: isCurrentHelp
+                ? isDark
+                  ? 'purple.800'
+                  : 'purple.100'
+                : 'transparent',
               borderRadius: isCurrentHelp ? '4px' : '0',
               padding: isCurrentHelp ? '2px 4px' : '0',
               marginLeft: isCurrentHelp ? '-4px' : '0',
@@ -123,7 +145,7 @@ export function VerticalProblem({
                 className={css({
                   position: 'absolute',
                   left: '-1.5rem',
-                  color: 'green.500',
+                  color: isDark ? 'green.400' : 'green.500',
                   fontSize: '0.875rem',
                 })}
               >
@@ -138,7 +160,7 @@ export function VerticalProblem({
                 className={css({
                   position: 'absolute',
                   left: '-1.5rem',
-                  color: 'purple.600',
+                  color: isDark ? 'purple.300' : 'purple.600',
                   fontSize: '0.875rem',
                 })}
               >
@@ -155,7 +177,7 @@ export function VerticalProblem({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isNegative ? 'red.600' : 'transparent',
+                color: isNegative ? (isDark ? 'red.400' : 'red.600') : 'transparent',
               })}
             >
               {isNegative ? '−' : ''}
@@ -172,7 +194,13 @@ export function VerticalProblem({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: isCurrentHelp ? 'purple.800' : 'gray.800',
+                  color: isCurrentHelp
+                    ? isDark
+                      ? 'purple.200'
+                      : 'purple.800'
+                    : isDark
+                      ? 'gray.200'
+                      : 'gray.800',
                   fontWeight: isCurrentHelp ? 'bold' : 'inherit',
                 })}
               >
@@ -189,7 +217,7 @@ export function VerticalProblem({
         className={css({
           width: '100%',
           height: '2px',
-          backgroundColor: 'gray.400',
+          backgroundColor: isDark ? 'gray.600' : 'gray.400',
           marginTop: '4px',
           marginBottom: '4px',
         })}
@@ -213,58 +241,80 @@ export function VerticalProblem({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
           =
         </div>
 
-        {/* Answer digit cells */}
-        {(isCompleted && isIncorrect ? correctAnswer?.toString() || '' : userAnswer)
-          .padStart(maxDigits, ' ')
-          .split('')
-          .map((digit, index) => (
-            <div
-              key={index}
-              data-element="answer-cell"
-              className={css({
-                width: cellWidth,
-                height: cellHeight,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isCompleted ? (isCorrect ? 'green.100' : 'red.100') : 'white',
-                borderRadius: '4px',
-                border: '1px solid',
-                borderColor: isCompleted ? (isCorrect ? 'green.300' : 'red.300') : 'gray.300',
-                color: isCompleted ? (isCorrect ? 'green.700' : 'red.700') : 'gray.800',
-              })}
-            >
-              {digit}
-            </div>
-          ))}
+        {/* Answer digit cells - show maxDigits cells total */}
+        {Array(maxDigits)
+          .fill(null)
+          .map((_, index) => {
+            // Determine what to show in this cell
+            const displayValue =
+              isCompleted && isIncorrect ? correctAnswer?.toString() || '' : userAnswer
+            const paddedValue = displayValue.padStart(maxDigits, '')
+            const digit = paddedValue[index] || ''
+            const isEmpty = digit === ''
 
-        {/* Empty cells to fill remaining space */}
-        {!isCompleted &&
-          Array(Math.max(0, maxDigits - userAnswer.length))
-            .fill(null)
-            .map((_, index) => (
+            return (
               <div
-                key={`empty-${index}`}
-                data-element="empty-cell"
+                key={index}
+                data-element={isEmpty ? 'empty-cell' : 'answer-cell'}
                 className={css({
                   width: cellWidth,
                   height: cellHeight,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: 'white',
+                  backgroundColor: isCompleted
+                    ? isCorrect
+                      ? isDark
+                        ? 'green.800'
+                        : 'green.100'
+                      : isDark
+                        ? 'red.800'
+                        : 'red.100'
+                    : isDark
+                      ? 'gray.700'
+                      : 'white',
                   borderRadius: '4px',
-                  border: '1px dashed',
-                  borderColor: isFocused ? 'blue.300' : 'gray.300',
+                  border: isEmpty && !isCompleted ? '1px dashed' : '1px solid',
+                  borderColor: isCompleted
+                    ? isCorrect
+                      ? isDark
+                        ? 'green.600'
+                        : 'green.300'
+                      : isDark
+                        ? 'red.600'
+                        : 'red.300'
+                    : isEmpty
+                      ? isFocused
+                        ? 'blue.400'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.300',
+                  color: isCompleted
+                    ? isCorrect
+                      ? isDark
+                        ? 'green.200'
+                        : 'green.700'
+                      : isDark
+                        ? 'red.200'
+                        : 'red.700'
+                    : isDark
+                      ? 'gray.200'
+                      : 'gray.800',
                 })}
-              />
-            ))}
+              >
+                {digit}
+              </div>
+            )
+          })}
       </div>
 
       {/* Show user's incorrect answer below correct answer */}
@@ -273,7 +323,7 @@ export function VerticalProblem({
           data-element="user-answer"
           className={css({
             fontSize: '0.875rem',
-            color: 'red.500',
+            color: isDark ? 'red.400' : 'red.500',
             marginTop: '4px',
             textDecoration: 'line-through',
           })}

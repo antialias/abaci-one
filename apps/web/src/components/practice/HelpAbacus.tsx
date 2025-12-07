@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   AbacusReact,
   calculateBeadDiffFromValues,
@@ -51,6 +52,8 @@ export function HelpAbacus({
   onValueChange,
   interactive = false,
 }: HelpAbacusProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const { config: abacusConfig } = useAbacusDisplay()
   const [currentStep] = useState(0)
 
@@ -115,10 +118,10 @@ export function HelpAbacus({
     return {
       // Subtle background to indicate this is a help visualization
       frame: {
-        fill: 'rgba(59, 130, 246, 0.05)',
+        fill: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.05)',
       },
     }
-  }, [])
+  }, [isDark])
 
   if (!hasChanges) {
     return (
@@ -128,7 +131,7 @@ export function HelpAbacus({
         className={css({
           textAlign: 'center',
           padding: '1rem',
-          color: 'green.600',
+          color: isDark ? 'green.400' : 'green.600',
           fontSize: '0.875rem',
         })}
       >
@@ -153,10 +156,10 @@ export function HelpAbacus({
           data-element="help-summary"
           className={css({
             padding: '0.5rem 1rem',
-            backgroundColor: 'blue.50',
+            backgroundColor: isDark ? 'blue.900' : 'blue.50',
             borderRadius: '8px',
             fontSize: '0.875rem',
-            color: 'blue.700',
+            color: isDark ? 'blue.200' : 'blue.700',
             fontWeight: 'medium',
             textAlign: 'center',
           })}
@@ -169,10 +172,10 @@ export function HelpAbacus({
       <div
         className={css({
           padding: '1rem',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? 'gray.800' : 'white',
           borderRadius: '12px',
           border: '2px solid',
-          borderColor: 'blue.200',
+          borderColor: isDark ? 'blue.700' : 'blue.200',
           boxShadow: 'md',
         })}
       >
@@ -203,18 +206,44 @@ export function HelpAbacus({
           fontSize: '0.875rem',
         })}
       >
-        <div className={css({ color: isAtTarget ? 'green.600' : 'gray.600' })}>
+        <div
+          className={css({
+            color: isAtTarget ? (isDark ? 'green.400' : 'green.600') : isDark ? 'gray.400' : 'gray.600',
+          })}
+        >
           Current:{' '}
           <span
-            className={css({ fontWeight: 'bold', color: isAtTarget ? 'green.700' : 'gray.800' })}
+            className={css({
+              fontWeight: 'bold',
+              color: isAtTarget
+                ? isDark
+                  ? 'green.300'
+                  : 'green.700'
+                : isDark
+                  ? 'gray.200'
+                  : 'gray.800',
+            })}
           >
             {displayedValue}
           </span>
         </div>
-        <div className={css({ color: isAtTarget ? 'green.600' : 'blue.600' })}>
+        <div
+          className={css({
+            color: isAtTarget ? (isDark ? 'green.400' : 'green.600') : isDark ? 'blue.400' : 'blue.600',
+          })}
+        >
           Target:{' '}
           <span
-            className={css({ fontWeight: 'bold', color: isAtTarget ? 'green.700' : 'blue.800' })}
+            className={css({
+              fontWeight: 'bold',
+              color: isAtTarget
+                ? isDark
+                  ? 'green.300'
+                  : 'green.700'
+                : isDark
+                  ? 'blue.300'
+                  : 'blue.800',
+            })}
           >
             {targetValue}
           </span>
@@ -227,10 +256,10 @@ export function HelpAbacus({
           data-element="target-reached"
           className={css({
             padding: '0.5rem 1rem',
-            backgroundColor: 'green.100',
+            backgroundColor: isDark ? 'green.900' : 'green.100',
             borderRadius: '8px',
             fontSize: '0.875rem',
-            color: 'green.700',
+            color: isDark ? 'green.200' : 'green.700',
             fontWeight: 'bold',
             textAlign: 'center',
           })}

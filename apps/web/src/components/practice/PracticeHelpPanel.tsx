@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { HelpLevel } from '@/db/schema/session-plans'
 import type { PracticeHelpState } from '@/hooks/usePracticeHelp'
 import { css } from '../../../styled-system/css'
@@ -58,6 +59,8 @@ export function PracticeHelpPanel({
   currentValue,
   targetValue,
 }: PracticeHelpPanelProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const { currentLevel, content, isAvailable, maxLevelUsed } = helpState
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -104,16 +107,16 @@ export function PracticeHelpPanel({
             width: '100%',
             padding: '0.75rem',
             fontSize: '0.875rem',
-            color: 'blue.600',
-            backgroundColor: 'blue.50',
+            color: isDark ? 'blue.300' : 'blue.600',
+            backgroundColor: isDark ? 'blue.900' : 'blue.50',
             border: '1px solid',
-            borderColor: 'blue.200',
+            borderColor: isDark ? 'blue.700' : 'blue.200',
             borderRadius: '8px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             _hover: {
-              backgroundColor: 'blue.100',
-              borderColor: 'blue.300',
+              backgroundColor: isDark ? 'blue.800' : 'blue.100',
+              borderColor: isDark ? 'blue.600' : 'blue.300',
             },
           })}
         >
@@ -134,10 +137,10 @@ export function PracticeHelpPanel({
         flexDirection: 'column',
         gap: '0.75rem',
         padding: '1rem',
-        backgroundColor: 'blue.50',
+        backgroundColor: isDark ? 'blue.900' : 'blue.50',
         borderRadius: '12px',
         border: '2px solid',
-        borderColor: 'blue.200',
+        borderColor: isDark ? 'blue.700' : 'blue.200',
       })}
     >
       {/* Header with level indicator */}
@@ -161,7 +164,7 @@ export function PracticeHelpPanel({
             className={css({
               fontSize: '0.875rem',
               fontWeight: 'bold',
-              color: 'blue.700',
+              color: isDark ? 'blue.200' : 'blue.700',
             })}
           >
             {HELP_LEVEL_LABELS[currentLevel]}
@@ -181,7 +184,8 @@ export function PracticeHelpPanel({
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  backgroundColor: level <= currentLevel ? 'blue.500' : 'blue.200',
+                  backgroundColor:
+                    level <= currentLevel ? 'blue.500' : isDark ? 'blue.700' : 'blue.200',
                 })}
               />
             ))}
@@ -195,12 +199,12 @@ export function PracticeHelpPanel({
           className={css({
             padding: '0.25rem 0.5rem',
             fontSize: '0.75rem',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
             backgroundColor: 'transparent',
             border: 'none',
             cursor: 'pointer',
             _hover: {
-              color: 'gray.700',
+              color: isDark ? 'gray.200' : 'gray.700',
             },
           })}
         >
@@ -214,16 +218,16 @@ export function PracticeHelpPanel({
           data-element="coach-hint"
           className={css({
             padding: '0.75rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '8px',
             border: '1px solid',
-            borderColor: 'blue.100',
+            borderColor: isDark ? 'blue.800' : 'blue.100',
           })}
         >
           <p
             className={css({
               fontSize: '1rem',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               lineHeight: '1.5',
             })}
           >
@@ -238,17 +242,17 @@ export function PracticeHelpPanel({
           data-element="decomposition"
           className={css({
             padding: '0.75rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '8px',
             border: '1px solid',
-            borderColor: 'blue.100',
+            borderColor: isDark ? 'blue.800' : 'blue.100',
           })}
         >
           <div
             className={css({
               fontSize: '0.75rem',
               fontWeight: 'bold',
-              color: 'blue.600',
+              color: isDark ? 'blue.300' : 'blue.600',
               marginBottom: '0.5rem',
               textTransform: 'uppercase',
             })}
@@ -259,7 +263,7 @@ export function PracticeHelpPanel({
             className={css({
               fontFamily: 'monospace',
               fontSize: '1.125rem',
-              color: 'gray.800',
+              color: isDark ? 'gray.100' : 'gray.800',
               wordBreak: 'break-word',
             })}
           >
@@ -281,7 +285,7 @@ export function PracticeHelpPanel({
                   key={segment.id}
                   className={css({
                     padding: '0.5rem',
-                    backgroundColor: 'gray.50',
+                    backgroundColor: isDark ? 'gray.700' : 'gray.50',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
                   })}
@@ -289,12 +293,12 @@ export function PracticeHelpPanel({
                   <span
                     className={css({
                       fontWeight: 'bold',
-                      color: 'gray.700',
+                      color: isDark ? 'gray.200' : 'gray.700',
                     })}
                   >
                     {segment.readable?.title || `Column ${segment.place + 1}`}:
                   </span>{' '}
-                  <span className={css({ color: 'gray.600' })}>
+                  <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
                     {segment.readable?.summary || segment.expression}
                   </span>
                 </div>
@@ -310,17 +314,17 @@ export function PracticeHelpPanel({
           data-element="help-abacus"
           className={css({
             padding: '0.75rem',
-            backgroundColor: 'white',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '8px',
             border: '1px solid',
-            borderColor: 'purple.200',
+            borderColor: isDark ? 'purple.700' : 'purple.200',
           })}
         >
           <div
             className={css({
               fontSize: '0.75rem',
               fontWeight: 'bold',
-              color: 'purple.600',
+              color: isDark ? 'purple.300' : 'purple.600',
               marginBottom: '0.75rem',
               textTransform: 'uppercase',
               textAlign: 'center',
@@ -341,10 +345,10 @@ export function PracticeHelpPanel({
               className={css({
                 marginTop: '0.75rem',
                 padding: '0.5rem',
-                backgroundColor: 'purple.50',
+                backgroundColor: isDark ? 'purple.900' : 'purple.50',
                 borderRadius: '6px',
                 fontSize: '0.75rem',
-                color: 'purple.700',
+                color: isDark ? 'purple.200' : 'purple.700',
                 textAlign: 'center',
               })}
             >
@@ -363,17 +367,17 @@ export function PracticeHelpPanel({
             data-element="bead-steps-text"
             className={css({
               padding: '0.75rem',
-              backgroundColor: 'white',
+              backgroundColor: isDark ? 'gray.800' : 'white',
               borderRadius: '8px',
               border: '1px solid',
-              borderColor: 'blue.100',
+              borderColor: isDark ? 'blue.800' : 'blue.100',
             })}
           >
             <div
               className={css({
                 fontSize: '0.75rem',
                 fontWeight: 'bold',
-                color: 'purple.600',
+                color: isDark ? 'purple.300' : 'purple.600',
                 marginBottom: '0.5rem',
                 textTransform: 'uppercase',
               })}
@@ -394,19 +398,22 @@ export function PracticeHelpPanel({
                   key={index}
                   className={css({
                     fontSize: '0.875rem',
-                    color: 'gray.700',
+                    color: isDark ? 'gray.300' : 'gray.700',
                   })}
                 >
                   <span
                     className={css({
                       fontWeight: 'bold',
-                      color: 'purple.700',
+                      color: isDark ? 'purple.300' : 'purple.700',
                     })}
                   >
                     {step.mathematicalTerm}
                   </span>
                   {step.englishInstruction && (
-                    <span className={css({ color: 'gray.600' })}> — {step.englishInstruction}</span>
+                    <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+                      {' '}
+                      — {step.englishInstruction}
+                    </span>
                   )}
                 </li>
               ))}
@@ -428,15 +435,15 @@ export function PracticeHelpPanel({
             width: '100%',
             padding: '0.5rem',
             fontSize: '0.875rem',
-            color: 'blue.600',
-            backgroundColor: 'white',
+            color: isDark ? 'blue.300' : 'blue.600',
+            backgroundColor: isDark ? 'gray.800' : 'white',
             border: '1px solid',
-            borderColor: 'blue.200',
+            borderColor: isDark ? 'blue.700' : 'blue.200',
             borderRadius: '6px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             _hover: {
-              backgroundColor: 'blue.50',
+              backgroundColor: isDark ? 'gray.700' : 'blue.50',
             },
           })}
         >
@@ -450,7 +457,7 @@ export function PracticeHelpPanel({
         <div
           className={css({
             fontSize: '0.75rem',
-            color: 'gray.400',
+            color: isDark ? 'gray.500' : 'gray.400',
             textAlign: 'center',
           })}
         >

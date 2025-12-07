@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import type { MasteryLevel } from '@/db/schema/player-skill-mastery'
 import { css } from '../../../styled-system/css'
 import type { StudentWithProgress } from './StudentSelector'
@@ -58,17 +59,23 @@ interface ProgressDashboardProps {
 }
 
 /**
- * Mastery level badge colors
+ * Mastery level badge colors (dark mode aware)
  */
-function getMasteryColor(level: MasteryLevel): { bg: string; text: string } {
+function getMasteryColor(level: MasteryLevel, isDark: boolean): { bg: string; text: string } {
   switch (level) {
     case 'mastered':
-      return { bg: 'green.100', text: 'green.700' }
+      return isDark
+        ? { bg: 'green.900', text: 'green.200' }
+        : { bg: 'green.100', text: 'green.700' }
     case 'practicing':
-      return { bg: 'yellow.100', text: 'yellow.700' }
+      return isDark
+        ? { bg: 'yellow.900', text: 'yellow.200' }
+        : { bg: 'yellow.100', text: 'yellow.700' }
     default:
       // 'learning' and any unknown values use gray
-      return { bg: 'gray.100', text: 'gray.600' }
+      return isDark
+        ? { bg: 'gray.700', text: 'gray.300' }
+        : { bg: 'gray.100', text: 'gray.600' }
   }
 }
 
@@ -96,6 +103,9 @@ export function ProgressDashboard({
   onClearReinforcement,
   onClearAllReinforcement,
 }: ProgressDashboardProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   const progressPercent =
     currentPhase.totalSkills > 0
       ? Math.round((currentPhase.masteredSkills / currentPhase.totalSkills) * 100)
@@ -141,7 +151,7 @@ export function ProgressDashboard({
             className={css({
               fontSize: '1.75rem',
               fontWeight: 'bold',
-              color: 'gray.800',
+              color: isDark ? 'gray.100' : 'gray.800',
             })}
           >
             Hi {student.name}!
@@ -151,7 +161,7 @@ export function ProgressDashboard({
             onClick={onChangeStudent}
             className={css({
               fontSize: '0.875rem',
-              color: 'blue.500',
+              color: isDark ? 'blue.400' : 'blue.500',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -173,10 +183,10 @@ export function ProgressDashboard({
           width: '100%',
           padding: '1.5rem',
           borderRadius: '12px',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? 'gray.800' : 'white',
           boxShadow: 'md',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
         <div
@@ -192,7 +202,7 @@ export function ProgressDashboard({
               className={css({
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
-                color: 'gray.800',
+                color: isDark ? 'gray.100' : 'gray.800',
               })}
             >
               {currentPhase.levelName}
@@ -200,7 +210,7 @@ export function ProgressDashboard({
             <p
               className={css({
                 fontSize: '1rem',
-                color: 'gray.600',
+                color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
               {currentPhase.phaseName}
@@ -210,7 +220,7 @@ export function ProgressDashboard({
             className={css({
               fontSize: '0.875rem',
               fontWeight: 'bold',
-              color: 'blue.600',
+              color: isDark ? 'blue.400' : 'blue.600',
             })}
           >
             {progressPercent}% mastered
@@ -222,7 +232,7 @@ export function ProgressDashboard({
           className={css({
             width: '100%',
             height: '12px',
-            backgroundColor: 'gray.200',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
             borderRadius: '6px',
             overflow: 'hidden',
             marginBottom: '1rem',
@@ -231,7 +241,7 @@ export function ProgressDashboard({
           <div
             className={css({
               height: '100%',
-              backgroundColor: 'green.500',
+              backgroundColor: isDark ? 'green.400' : 'green.500',
               borderRadius: '6px',
               transition: 'width 0.5s ease',
             })}
@@ -242,7 +252,7 @@ export function ProgressDashboard({
         <p
           className={css({
             fontSize: '0.875rem',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
           {currentPhase.description}
@@ -294,14 +304,14 @@ export function ProgressDashboard({
               flex: 1,
               padding: '0.75rem',
               fontSize: '1rem',
-              color: 'gray.700',
-              backgroundColor: 'gray.100',
+              color: isDark ? 'gray.200' : 'gray.700',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
               _hover: {
-                backgroundColor: 'gray.200',
+                backgroundColor: isDark ? 'gray.600' : 'gray.200',
               },
             })}
           >
@@ -316,14 +326,14 @@ export function ProgressDashboard({
               flex: 1,
               padding: '0.75rem',
               fontSize: '1rem',
-              color: 'gray.700',
-              backgroundColor: 'gray.100',
+              color: isDark ? 'gray.200' : 'gray.700',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
               _hover: {
-                backgroundColor: 'gray.200',
+                backgroundColor: isDark ? 'gray.600' : 'gray.200',
               },
             })}
           >
@@ -339,10 +349,10 @@ export function ProgressDashboard({
           className={css({
             width: '100%',
             padding: '1rem',
-            backgroundColor: 'orange.50',
+            backgroundColor: isDark ? 'orange.900' : 'orange.50',
             borderRadius: '12px',
             border: '1px solid',
-            borderColor: 'orange.200',
+            borderColor: isDark ? 'orange.700' : 'orange.200',
           })}
         >
           <div
@@ -357,7 +367,7 @@ export function ProgressDashboard({
               className={css({
                 fontSize: '0.875rem',
                 fontWeight: 'bold',
-                color: 'orange.700',
+                color: isDark ? 'orange.200' : 'orange.700',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
@@ -373,12 +383,12 @@ export function ProgressDashboard({
                 onClick={onClearAllReinforcement}
                 className={css({
                   fontSize: '0.75rem',
-                  color: 'gray.500',
+                  color: isDark ? 'gray.400' : 'gray.500',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   _hover: {
-                    color: 'gray.700',
+                    color: isDark ? 'gray.200' : 'gray.700',
                     textDecoration: 'underline',
                   },
                 })}
@@ -390,7 +400,7 @@ export function ProgressDashboard({
           <p
             className={css({
               fontSize: '0.75rem',
-              color: 'orange.600',
+              color: isDark ? 'orange.300' : 'orange.600',
               marginBottom: '0.75rem',
             })}
           >
@@ -411,17 +421,17 @@ export function ProgressDashboard({
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '0.5rem 0.75rem',
-                  backgroundColor: 'white',
+                  backgroundColor: isDark ? 'gray.800' : 'white',
                   borderRadius: '6px',
                   border: '1px solid',
-                  borderColor: 'orange.100',
+                  borderColor: isDark ? 'orange.800' : 'orange.100',
                 })}
               >
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
                   <span
                     className={css({
                       fontSize: '0.875rem',
-                      color: 'gray.700',
+                      color: isDark ? 'gray.200' : 'gray.700',
                       fontWeight: 'medium',
                     })}
                   >
@@ -431,7 +441,7 @@ export function ProgressDashboard({
                     <span
                       className={css({
                         fontSize: '0.75rem',
-                        color: 'green.600',
+                        color: isDark ? 'green.400' : 'green.600',
                       })}
                       title={`${skill.reinforcementStreak} correct answers toward clearing`}
                     >
@@ -446,13 +456,13 @@ export function ProgressDashboard({
                     onClick={() => onClearReinforcement(skill.skillId)}
                     className={css({
                       fontSize: '0.75rem',
-                      color: 'gray.400',
+                      color: isDark ? 'gray.500' : 'gray.400',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       padding: '0.25rem',
                       _hover: {
-                        color: 'gray.600',
+                        color: isDark ? 'gray.300' : 'gray.600',
                       },
                     })}
                     title="Mark as mastered (teacher only)"
@@ -473,17 +483,17 @@ export function ProgressDashboard({
           className={css({
             width: '100%',
             padding: '1rem',
-            backgroundColor: 'gray.50',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
             borderRadius: '12px',
             border: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
           })}
         >
           <h3
             className={css({
               fontSize: '0.875rem',
               fontWeight: 'semibold',
-              color: 'gray.600',
+              color: isDark ? 'gray.400' : 'gray.600',
               marginBottom: '0.75rem',
             })}
           >
@@ -504,16 +514,16 @@ export function ProgressDashboard({
                 className={css({
                   padding: '0.5rem 0.75rem',
                   fontSize: '0.875rem',
-                  color: 'blue.700',
-                  backgroundColor: 'blue.50',
+                  color: isDark ? 'blue.300' : 'blue.700',
+                  backgroundColor: isDark ? 'blue.900' : 'blue.50',
                   borderRadius: '6px',
                   border: '1px solid',
-                  borderColor: 'blue.200',
+                  borderColor: isDark ? 'blue.700' : 'blue.200',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   _hover: {
-                    backgroundColor: 'blue.100',
-                    borderColor: 'blue.300',
+                    backgroundColor: isDark ? 'blue.800' : 'blue.100',
+                    borderColor: isDark ? 'blue.600' : 'blue.300',
                   },
                 })}
               >
@@ -528,16 +538,16 @@ export function ProgressDashboard({
                 className={css({
                   padding: '0.5rem 0.75rem',
                   fontSize: '0.875rem',
-                  color: 'purple.700',
-                  backgroundColor: 'purple.50',
+                  color: isDark ? 'purple.300' : 'purple.700',
+                  backgroundColor: isDark ? 'purple.900' : 'purple.50',
                   borderRadius: '6px',
                   border: '1px solid',
-                  borderColor: 'purple.200',
+                  borderColor: isDark ? 'purple.700' : 'purple.200',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   _hover: {
-                    backgroundColor: 'purple.100',
-                    borderColor: 'purple.300',
+                    backgroundColor: isDark ? 'purple.800' : 'purple.100',
+                    borderColor: isDark ? 'purple.600' : 'purple.300',
                   },
                 })}
               >
@@ -552,16 +562,16 @@ export function ProgressDashboard({
                 className={css({
                   padding: '0.5rem 0.75rem',
                   fontSize: '0.875rem',
-                  color: 'green.700',
-                  backgroundColor: 'green.50',
+                  color: isDark ? 'green.300' : 'green.700',
+                  backgroundColor: isDark ? 'green.900' : 'green.50',
                   borderRadius: '6px',
                   border: '1px solid',
-                  borderColor: 'green.200',
+                  borderColor: isDark ? 'green.700' : 'green.200',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   _hover: {
-                    backgroundColor: 'green.100',
-                    borderColor: 'green.300',
+                    backgroundColor: isDark ? 'green.800' : 'green.100',
+                    borderColor: isDark ? 'green.600' : 'green.300',
                   },
                 })}
               >
@@ -584,7 +594,7 @@ export function ProgressDashboard({
             className={css({
               fontSize: '1rem',
               fontWeight: 'bold',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               marginBottom: '0.75rem',
             })}
           >
@@ -598,7 +608,7 @@ export function ProgressDashboard({
             })}
           >
             {recentSkills.map((skill) => {
-              const colors = getMasteryColor(skill.masteryLevel)
+              const colors = getMasteryColor(skill.masteryLevel, isDark)
               return (
                 <span
                   key={skill.skillId}

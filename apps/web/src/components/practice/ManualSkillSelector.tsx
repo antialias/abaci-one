@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import * as Dialog from '@radix-ui/react-dialog'
 import * as Accordion from '@radix-ui/react-accordion'
+import * as Dialog from '@radix-ui/react-dialog'
+import { useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -185,6 +186,8 @@ export function ManualSkillSelector({
   currentMasteredSkills = [],
   onSave,
 }: ManualSkillSelectorProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set(currentMasteredSkills))
   const [isSaving, setIsSaving] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
@@ -276,7 +279,7 @@ export function ManualSkillSelector({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            bg: 'white',
+            bg: isDark ? 'gray.800' : 'white',
             borderRadius: 'xl',
             boxShadow: 'xl',
             p: '6',
@@ -293,7 +296,7 @@ export function ManualSkillSelector({
               className={css({
                 fontSize: 'xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: isDark ? 'gray.100' : 'gray.900',
               })}
             >
               Set Skills for {studentName}
@@ -301,7 +304,7 @@ export function ManualSkillSelector({
             <Dialog.Description
               className={css({
                 fontSize: 'sm',
-                color: 'gray.600',
+                color: isDark ? 'gray.400' : 'gray.600',
                 mt: '1',
               })}
             >
@@ -318,7 +321,7 @@ export function ManualSkillSelector({
                 display: 'block',
                 fontSize: 'sm',
                 fontWeight: 'semibold',
-                color: 'gray.700',
+                color: isDark ? 'gray.300' : 'gray.700',
                 mb: '2',
               })}
             >
@@ -333,9 +336,10 @@ export function ManualSkillSelector({
                 px: '3',
                 py: '2',
                 border: '1px solid',
-                borderColor: 'gray.300',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
                 borderRadius: 'md',
-                bg: 'white',
+                bg: isDark ? 'gray.700' : 'white',
+                color: isDark ? 'gray.100' : 'gray.900',
                 fontSize: 'sm',
                 cursor: 'pointer',
                 _focus: {
@@ -359,7 +363,7 @@ export function ManualSkillSelector({
           <div
             className={css({
               fontSize: 'sm',
-              color: 'gray.600',
+              color: isDark ? 'gray.400' : 'gray.600',
               mb: '3',
               display: 'flex',
               justifyContent: 'space-between',
@@ -374,7 +378,7 @@ export function ManualSkillSelector({
               onClick={() => setSelectedSkills(new Set())}
               className={css({
                 fontSize: 'xs',
-                color: 'red.600',
+                color: isDark ? 'red.400' : 'red.600',
                 bg: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -392,7 +396,7 @@ export function ManualSkillSelector({
             onValueChange={setExpandedCategories}
             className={css({
               border: '1px solid',
-              borderColor: 'gray.200',
+              borderColor: isDark ? 'gray.600' : 'gray.200',
               borderRadius: 'lg',
               overflow: 'hidden',
             })}
@@ -418,7 +422,7 @@ export function ManualSkillSelector({
                   value={categoryKey}
                   className={css({
                     borderBottom: '1px solid',
-                    borderColor: 'gray.200',
+                    borderColor: isDark ? 'gray.600' : 'gray.200',
                     _last: { borderBottom: 'none' },
                   })}
                 >
@@ -430,11 +434,11 @@ export function ManualSkillSelector({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '12px 16px',
-                        bg: 'gray.50',
+                        bg: isDark ? 'gray.700' : 'gray.50',
                         border: 'none',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        _hover: { bg: 'gray.100' },
+                        _hover: { bg: isDark ? 'gray.600' : 'gray.100' },
                       })}
                     >
                       <div
@@ -464,7 +468,7 @@ export function ManualSkillSelector({
                         <span
                           className={css({
                             fontWeight: 'semibold',
-                            color: 'gray.800',
+                            color: isDark ? 'gray.100' : 'gray.800',
                           })}
                         >
                           {category.name}
@@ -480,7 +484,7 @@ export function ManualSkillSelector({
                         <span
                           className={css({
                             fontSize: 'xs',
-                            color: 'gray.500',
+                            color: isDark ? 'gray.400' : 'gray.500',
                           })}
                         >
                           {selectedInCategory}/{categorySkillIds.length}
@@ -498,7 +502,7 @@ export function ManualSkillSelector({
                   <Accordion.Content
                     className={css({
                       overflow: 'hidden',
-                      bg: 'white',
+                      bg: isDark ? 'gray.800' : 'white',
                     })}
                   >
                     <div className={css({ p: '3' })}>
@@ -516,7 +520,7 @@ export function ManualSkillSelector({
                               padding: '8px 12px',
                               borderRadius: 'md',
                               cursor: 'pointer',
-                              _hover: { bg: 'gray.50' },
+                              _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
                             })}
                           >
                             <input
@@ -532,7 +536,13 @@ export function ManualSkillSelector({
                             <span
                               className={css({
                                 fontSize: 'sm',
-                                color: isSelected ? 'green.700' : 'gray.700',
+                                color: isSelected
+                                  ? isDark
+                                    ? 'green.400'
+                                    : 'green.700'
+                                  : isDark
+                                    ? 'gray.300'
+                                    : 'gray.700',
                                 fontWeight: isSelected ? 'medium' : 'normal',
                               })}
                             >
@@ -542,8 +552,8 @@ export function ManualSkillSelector({
                               <span
                                 className={css({
                                   fontSize: 'xs',
-                                  color: 'green.600',
-                                  bg: 'green.50',
+                                  color: isDark ? 'green.300' : 'green.600',
+                                  bg: isDark ? 'green.900' : 'green.50',
                                   px: '2',
                                   py: '0.5',
                                   borderRadius: 'full',
@@ -581,13 +591,13 @@ export function ManualSkillSelector({
                 py: '2',
                 fontSize: 'sm',
                 fontWeight: 'medium',
-                color: 'gray.700',
+                color: isDark ? 'gray.300' : 'gray.700',
                 bg: 'transparent',
                 border: '1px solid',
-                borderColor: 'gray.300',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
                 borderRadius: 'md',
                 cursor: 'pointer',
-                _hover: { bg: 'gray.50' },
+                _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >

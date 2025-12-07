@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { css } from '../../../styled-system/css'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   DEFAULT_THRESHOLDS,
   generateProblemForSkill,
@@ -9,12 +9,13 @@ import {
   initializePlacementTest,
   type PlacementTestState,
   type PlacementThresholds,
+  type PresetKey,
   recordAnswer,
   SKILL_NAMES,
   SKILL_ORDER,
   THRESHOLD_PRESETS,
-  type PresetKey,
 } from '@/lib/curriculum/placement-test'
+import { css } from '../../../styled-system/css'
 import { NumericKeypad } from './NumericKeypad'
 import { VerticalProblem } from './VerticalProblem'
 
@@ -54,6 +55,8 @@ export function PlacementTest({
   onCancel,
   initialThresholds = DEFAULT_THRESHOLDS,
 }: PlacementTestProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [phase, setPhase] = useState<TestPhase>('setup')
   const [thresholds, setThresholds] = useState<PlacementThresholds>(initialThresholds)
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>('standard')
@@ -166,7 +169,7 @@ export function PlacementTest({
           className={css({
             fontSize: '1.75rem',
             fontWeight: 'bold',
-            color: 'gray.800',
+            color: isDark ? 'gray.100' : 'gray.800',
             textAlign: 'center',
           })}
         >
@@ -176,7 +179,7 @@ export function PlacementTest({
         <p
           className={css({
             fontSize: '1rem',
-            color: 'gray.600',
+            color: isDark ? 'gray.400' : 'gray.600',
             textAlign: 'center',
           })}
         >
@@ -190,7 +193,7 @@ export function PlacementTest({
               display: 'block',
               fontSize: 'sm',
               fontWeight: 'semibold',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               mb: '2',
             })}
           >
@@ -213,19 +216,35 @@ export function PlacementTest({
                   px: '3',
                   borderRadius: 'lg',
                   border: '2px solid',
-                  borderColor: selectedPreset === key ? 'blue.500' : 'gray.200',
-                  bg: selectedPreset === key ? 'blue.50' : 'white',
+                  borderColor:
+                    selectedPreset === key ? 'blue.500' : isDark ? 'gray.600' : 'gray.200',
+                  bg:
+                    selectedPreset === key
+                      ? isDark
+                        ? 'blue.900'
+                        : 'blue.50'
+                      : isDark
+                        ? 'gray.800'
+                        : 'white',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   _hover: {
-                    borderColor: selectedPreset === key ? 'blue.500' : 'gray.300',
+                    borderColor:
+                      selectedPreset === key ? 'blue.500' : isDark ? 'gray.500' : 'gray.300',
                   },
                 })}
               >
                 <div
                   className={css({
                     fontWeight: 'bold',
-                    color: selectedPreset === key ? 'blue.700' : 'gray.800',
+                    color:
+                      selectedPreset === key
+                        ? isDark
+                          ? 'blue.200'
+                          : 'blue.700'
+                        : isDark
+                          ? 'gray.100'
+                          : 'gray.800',
                     fontSize: 'sm',
                   })}
                 >
@@ -234,7 +253,14 @@ export function PlacementTest({
                 <div
                   className={css({
                     fontSize: 'xs',
-                    color: selectedPreset === key ? 'blue.600' : 'gray.500',
+                    color:
+                      selectedPreset === key
+                        ? isDark
+                          ? 'blue.300'
+                          : 'blue.600'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.500',
                     mt: '1',
                   })}
                 >
@@ -250,17 +276,17 @@ export function PlacementTest({
           className={css({
             width: '100%',
             p: '4',
-            bg: 'gray.50',
+            bg: isDark ? 'gray.700' : 'gray.50',
             borderRadius: 'lg',
             border: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: isDark ? 'gray.600' : 'gray.200',
           })}
         >
           <h3
             className={css({
               fontSize: 'sm',
               fontWeight: 'semibold',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               mb: '2',
             })}
           >
@@ -269,7 +295,7 @@ export function PlacementTest({
           <ul
             className={css({
               fontSize: 'sm',
-              color: 'gray.600',
+              color: isDark ? 'gray.400' : 'gray.600',
               listStyle: 'none',
               display: 'flex',
               flexDirection: 'column',
@@ -295,12 +321,12 @@ export function PlacementTest({
               py: '3',
               fontSize: '1rem',
               fontWeight: 'medium',
-              color: 'gray.700',
-              bg: 'gray.100',
+              color: isDark ? 'gray.300' : 'gray.700',
+              bg: isDark ? 'gray.700' : 'gray.100',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
-              _hover: { bg: 'gray.200' },
+              _hover: { bg: isDark ? 'gray.600' : 'gray.200' },
             })}
           >
             Cancel
@@ -365,8 +391,10 @@ export function PlacementTest({
               mb: '2',
             })}
           >
-            <span className={css({ fontSize: 'sm', color: 'gray.600' })}>Testing: {skillName}</span>
-            <span className={css({ fontSize: 'sm', color: 'gray.500' })}>
+            <span className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+              Testing: {skillName}
+            </span>
+            <span className={css({ fontSize: 'sm', color: isDark ? 'gray.500' : 'gray.500' })}>
               {testState.problemsAnswered} problems answered
             </span>
           </div>
@@ -374,7 +402,7 @@ export function PlacementTest({
             className={css({
               width: '100%',
               height: '8px',
-              bg: 'gray.200',
+              bg: isDark ? 'gray.700' : 'gray.200',
               borderRadius: '4px',
               overflow: 'hidden',
             })}
@@ -395,7 +423,7 @@ export function PlacementTest({
                 gap: '3',
                 mt: '2',
                 fontSize: 'xs',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
               })}
             >
               <span>
@@ -426,7 +454,13 @@ export function PlacementTest({
             className={css({
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: lastAnswerCorrect ? 'green.600' : 'red.600',
+              color: lastAnswerCorrect
+                ? isDark
+                  ? 'green.400'
+                  : 'green.600'
+                : isDark
+                  ? 'red.400'
+                  : 'red.600',
               animation: 'pulse 0.5s ease-in-out',
             })}
           >
@@ -451,11 +485,11 @@ export function PlacementTest({
           className={css({
             mt: '2',
             fontSize: 'sm',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
             bg: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            _hover: { color: 'gray.700', textDecoration: 'underline' },
+            _hover: { color: isDark ? 'gray.200' : 'gray.700', textDecoration: 'underline' },
           })}
         >
           End Test Early
@@ -487,13 +521,13 @@ export function PlacementTest({
             className={css({
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: 'gray.800',
+              color: isDark ? 'gray.100' : 'gray.800',
               mb: '2',
             })}
           >
             Placement Complete!
           </h1>
-          <p className={css({ fontSize: '1.25rem', color: 'blue.600' })}>
+          <p className={css({ fontSize: '1.25rem', color: isDark ? 'blue.300' : 'blue.600' })}>
             {studentName} placed at: <strong>{results.suggestedLevel}</strong>
           </p>
         </div>
@@ -510,7 +544,7 @@ export function PlacementTest({
             className={css({
               flex: 1,
               p: '3',
-              bg: 'green.50',
+              bg: isDark ? 'green.900' : 'green.50',
               borderRadius: 'lg',
               textAlign: 'center',
             })}
@@ -519,18 +553,20 @@ export function PlacementTest({
               className={css({
                 fontSize: '2rem',
                 fontWeight: 'bold',
-                color: 'green.700',
+                color: isDark ? 'green.200' : 'green.700',
               })}
             >
               {results.masteredSkills.length}
             </div>
-            <div className={css({ fontSize: 'sm', color: 'green.600' })}>Skills Mastered</div>
+            <div className={css({ fontSize: 'sm', color: isDark ? 'green.300' : 'green.600' })}>
+              Skills Mastered
+            </div>
           </div>
           <div
             className={css({
               flex: 1,
               p: '3',
-              bg: 'yellow.50',
+              bg: isDark ? 'yellow.900' : 'yellow.50',
               borderRadius: 'lg',
               textAlign: 'center',
             })}
@@ -539,18 +575,20 @@ export function PlacementTest({
               className={css({
                 fontSize: '2rem',
                 fontWeight: 'bold',
-                color: 'yellow.700',
+                color: isDark ? 'yellow.200' : 'yellow.700',
               })}
             >
               {results.practicingSkills.length}
             </div>
-            <div className={css({ fontSize: 'sm', color: 'yellow.600' })}>Skills Practicing</div>
+            <div className={css({ fontSize: 'sm', color: isDark ? 'yellow.300' : 'yellow.600' })}>
+              Skills Practicing
+            </div>
           </div>
           <div
             className={css({
               flex: 1,
               p: '3',
-              bg: 'blue.50',
+              bg: isDark ? 'blue.900' : 'blue.50',
               borderRadius: 'lg',
               textAlign: 'center',
             })}
@@ -559,12 +597,14 @@ export function PlacementTest({
               className={css({
                 fontSize: '2rem',
                 fontWeight: 'bold',
-                color: 'blue.700',
+                color: isDark ? 'blue.200' : 'blue.700',
               })}
             >
               {Math.round(results.overallAccuracy * 100)}%
             </div>
-            <div className={css({ fontSize: 'sm', color: 'blue.600' })}>Accuracy</div>
+            <div className={css({ fontSize: 'sm', color: isDark ? 'blue.300' : 'blue.600' })}>
+              Accuracy
+            </div>
           </div>
         </div>
 
@@ -575,7 +615,7 @@ export function PlacementTest({
               className={css({
                 fontSize: 'sm',
                 fontWeight: 'semibold',
-                color: 'gray.700',
+                color: isDark ? 'gray.300' : 'gray.700',
                 mb: '2',
               })}
             >
@@ -588,8 +628,8 @@ export function PlacementTest({
                   className={css({
                     px: '3',
                     py: '1',
-                    bg: 'green.100',
-                    color: 'green.700',
+                    bg: isDark ? 'green.900' : 'green.100',
+                    color: isDark ? 'green.200' : 'green.700',
                     borderRadius: 'full',
                     fontSize: 'xs',
                     fontWeight: 'medium',
@@ -608,7 +648,7 @@ export function PlacementTest({
               className={css({
                 fontSize: 'sm',
                 fontWeight: 'semibold',
-                color: 'gray.700',
+                color: isDark ? 'gray.300' : 'gray.700',
                 mb: '2',
               })}
             >
@@ -621,8 +661,8 @@ export function PlacementTest({
                   className={css({
                     px: '3',
                     py: '1',
-                    bg: 'yellow.100',
-                    color: 'yellow.700',
+                    bg: isDark ? 'yellow.900' : 'yellow.100',
+                    color: isDark ? 'yellow.200' : 'yellow.700',
                     borderRadius: 'full',
                     fontSize: 'xs',
                     fontWeight: 'medium',

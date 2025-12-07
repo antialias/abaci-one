@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
 import type {
   PartSummary,
   ProblemSlot,
@@ -8,6 +8,7 @@ import type {
   SessionPlan,
   SessionSummary,
 } from '@/db/schema/session-plans'
+import { useState } from 'react'
 import { css } from '../../../styled-system/css'
 
 interface PlanReviewProps {
@@ -32,20 +33,29 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
 }
 
 /**
- * Get part type colors
+ * Get part type colors (dark mode aware)
  */
-function getPartTypeColors(type: SessionPart['type']): {
+function getPartTypeColors(
+  type: SessionPart['type'],
+  isDark: boolean
+): {
   bg: string
   border: string
   text: string
 } {
   switch (type) {
     case 'abacus':
-      return { bg: 'blue.50', border: 'blue.200', text: 'blue.700' }
+      return isDark
+        ? { bg: 'blue.900', border: 'blue.700', text: 'blue.200' }
+        : { bg: 'blue.50', border: 'blue.200', text: 'blue.700' }
     case 'visualization':
-      return { bg: 'purple.50', border: 'purple.200', text: 'purple.700' }
+      return isDark
+        ? { bg: 'purple.900', border: 'purple.700', text: 'purple.200' }
+        : { bg: 'purple.50', border: 'purple.200', text: 'purple.700' }
     case 'linear':
-      return { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
+      return isDark
+        ? { bg: 'orange.900', border: 'orange.700', text: 'orange.200' }
+        : { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
   }
 }
 
@@ -59,6 +69,8 @@ function getPartTypeColors(type: SessionPart['type']): {
  * - "Let's Go!" button to start
  */
 export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanReviewProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [showConfig, setShowConfig] = useState(false)
 
   const summary = plan.summary as SessionSummary
@@ -94,7 +106,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
           className={css({
             fontSize: '1.75rem',
             fontWeight: 'bold',
-            color: 'gray.800',
+            color: isDark ? 'gray.100' : 'gray.800',
             marginBottom: '0.5rem',
           })}
         >
@@ -103,7 +115,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
         <p
           className={css({
             fontSize: '1rem',
-            color: 'gray.600',
+            color: isDark ? 'gray.400' : 'gray.600',
           })}
         >
           Review your plan before starting
@@ -117,10 +129,10 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
           width: '100%',
           padding: '1.5rem',
           borderRadius: '12px',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? 'gray.800' : 'white',
           boxShadow: 'md',
           border: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
         {/* Time and problem count */}
@@ -132,7 +144,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             marginBottom: '1.5rem',
             paddingBottom: '1rem',
             borderBottom: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
           })}
         >
           <div>
@@ -140,7 +152,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               className={css({
                 fontSize: '2rem',
                 fontWeight: 'bold',
-                color: 'blue.600',
+                color: isDark ? 'blue.400' : 'blue.600',
               })}
             >
               ~{summary.estimatedMinutes} min
@@ -148,7 +160,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.875rem',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
               })}
             >
               {summary.totalProblemCount} problems
@@ -162,7 +174,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.875rem',
-                color: 'gray.600',
+                color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
               Focus: <strong>{summary.focusDescription}</strong>
@@ -180,7 +192,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               fontSize: '1rem',
               fontWeight: 'bold',
-              color: 'gray.800',
+              color: isDark ? 'gray.100' : 'gray.800',
               marginBottom: '0.75rem',
             })}
           >
@@ -195,7 +207,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             })}
           >
             {summary.parts.map((partSummary: PartSummary) => {
-              const colors = getPartTypeColors(partSummary.type)
+              const colors = getPartTypeColors(partSummary.type, isDark)
               return (
                 <div
                   key={partSummary.partNumber}
@@ -251,7 +263,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               padding: '0.5rem',
               borderRadius: '8px',
-              backgroundColor: 'blue.50',
+              backgroundColor: isDark ? 'blue.900' : 'blue.50',
               textAlign: 'center',
             })}
           >
@@ -259,7 +271,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               className={css({
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
-                color: 'blue.700',
+                color: isDark ? 'blue.200' : 'blue.700',
               })}
             >
               {focusCount}
@@ -267,7 +279,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.625rem',
-                color: 'blue.600',
+                color: isDark ? 'blue.300' : 'blue.600',
               })}
             >
               Focus
@@ -278,7 +290,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               padding: '0.5rem',
               borderRadius: '8px',
-              backgroundColor: 'orange.50',
+              backgroundColor: isDark ? 'orange.900' : 'orange.50',
               textAlign: 'center',
             })}
           >
@@ -286,7 +298,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               className={css({
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
-                color: 'orange.700',
+                color: isDark ? 'orange.200' : 'orange.700',
               })}
             >
               {reinforceCount}
@@ -294,7 +306,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.625rem',
-                color: 'orange.600',
+                color: isDark ? 'orange.300' : 'orange.600',
               })}
             >
               Reinforce
@@ -305,7 +317,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               padding: '0.5rem',
               borderRadius: '8px',
-              backgroundColor: 'green.50',
+              backgroundColor: isDark ? 'green.900' : 'green.50',
               textAlign: 'center',
             })}
           >
@@ -313,7 +325,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               className={css({
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
-                color: 'green.700',
+                color: isDark ? 'green.200' : 'green.700',
               })}
             >
               {reviewCount}
@@ -321,7 +333,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.625rem',
-                color: 'green.600',
+                color: isDark ? 'green.300' : 'green.600',
               })}
             >
               Review
@@ -332,7 +344,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               padding: '0.5rem',
               borderRadius: '8px',
-              backgroundColor: 'purple.50',
+              backgroundColor: isDark ? 'purple.900' : 'purple.50',
               textAlign: 'center',
             })}
           >
@@ -340,7 +352,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               className={css({
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
-                color: 'purple.700',
+                color: isDark ? 'purple.200' : 'purple.700',
               })}
             >
               {challengeCount}
@@ -348,7 +360,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             <div
               className={css({
                 fontSize: '0.625rem',
-                color: 'purple.600',
+                color: isDark ? 'purple.300' : 'purple.600',
               })}
             >
               Challenge
@@ -368,14 +380,14 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
           gap: '0.5rem',
           padding: '0.5rem 1rem',
           fontSize: '0.875rem',
-          color: 'gray.600',
+          color: isDark ? 'gray.400' : 'gray.600',
           backgroundColor: 'transparent',
           border: '1px solid',
-          borderColor: 'gray.300',
+          borderColor: isDark ? 'gray.600' : 'gray.300',
           borderRadius: '6px',
           cursor: 'pointer',
           _hover: {
-            backgroundColor: 'gray.50',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
           },
         })}
       >
@@ -391,9 +403,9 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             width: '100%',
             padding: '1rem',
             borderRadius: '8px',
-            backgroundColor: 'gray.50',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
             border: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
             fontFamily: 'monospace',
             fontSize: '0.75rem',
             overflow: 'auto',
@@ -404,7 +416,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             className={css({
               fontSize: '0.875rem',
               fontWeight: 'bold',
-              color: 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
               marginBottom: '1rem',
             })}
           >
@@ -416,7 +428,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               display: 'flex',
               flexDirection: 'column',
               gap: '0.5rem',
-              color: 'gray.600',
+              color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
             <div>
@@ -438,7 +450,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               <strong>Created:</strong> {new Date(plan.createdAt).toLocaleString()}
             </div>
 
-            <hr className={css({ margin: '0.5rem 0', borderColor: 'gray.300' })} />
+            <hr className={css({ margin: '0.5rem 0', borderColor: isDark ? 'gray.600' : 'gray.300' })} />
 
             {parts.map((part: SessionPart) => (
               <details key={part.partNumber}>
@@ -456,7 +468,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
                         className={css({
                           padding: '0.25rem 0',
                           borderBottom: '1px dashed',
-                          borderColor: 'gray.200',
+                          borderColor: isDark ? 'gray.600' : 'gray.200',
                         })}
                       >
                         <div>
@@ -517,14 +529,14 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
           className={css({
             padding: '0.75rem',
             fontSize: '1rem',
-            color: 'gray.600',
+            color: isDark ? 'gray.400' : 'gray.600',
             backgroundColor: 'transparent',
             borderRadius: '8px',
             border: '1px solid',
-            borderColor: 'gray.300',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
             cursor: 'pointer',
             _hover: {
-              backgroundColor: 'gray.50',
+              backgroundColor: isDark ? 'gray.800' : 'gray.50',
             },
           })}
         >

@@ -11,6 +11,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { StudentHelpSettings } from '@/db/schema/players'
+import { useTheme } from '@/contexts/ThemeContext'
 import { usePracticeHelp } from '@/hooks/usePracticeHelp'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
@@ -79,20 +80,29 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
 }
 
 /**
- * Get part type colors
+ * Get part type colors (dark mode aware)
  */
-function getPartTypeColors(type: SessionPart['type']): {
+function getPartTypeColors(
+  type: SessionPart['type'],
+  isDark: boolean
+): {
   bg: string
   border: string
   text: string
 } {
   switch (type) {
     case 'abacus':
-      return { bg: 'blue.50', border: 'blue.200', text: 'blue.700' }
+      return isDark
+        ? { bg: 'blue.900', border: 'blue.700', text: 'blue.200' }
+        : { bg: 'blue.50', border: 'blue.200', text: 'blue.700' }
     case 'visualization':
-      return { bg: 'purple.50', border: 'purple.200', text: 'purple.700' }
+      return isDark
+        ? { bg: 'purple.900', border: 'purple.700', text: 'purple.200' }
+        : { bg: 'purple.50', border: 'purple.200', text: 'purple.700' }
     case 'linear':
-      return { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
+      return isDark
+        ? { bg: 'orange.900', border: 'orange.700', text: 'orange.200' }
+        : { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
   }
 }
 
@@ -105,12 +115,14 @@ function LinearProblem({
   isFocused,
   isCompleted,
   correctAnswer,
+  isDark,
 }: {
   terms: number[]
   userAnswer: string
   isFocused: boolean
   isCompleted: boolean
   correctAnswer: number
+  isDark: boolean
 }) {
   // Build the equation string
   const equation = terms
@@ -133,7 +145,7 @@ function LinearProblem({
         fontWeight: 'bold',
       })}
     >
-      <span className={css({ color: 'gray.800' })}>{equation} =</span>
+      <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>{equation} =</span>
       <span
         className={css({
           minWidth: '80px',
@@ -142,16 +154,28 @@ function LinearProblem({
           textAlign: 'center',
           backgroundColor: isCompleted
             ? userAnswer === String(correctAnswer)
-              ? 'green.100'
-              : 'red.100'
-            : 'gray.100',
+              ? isDark
+                ? 'green.900'
+                : 'green.100'
+              : isDark
+                ? 'red.900'
+                : 'red.100'
+            : isDark
+              ? 'gray.800'
+              : 'gray.100',
           color: isCompleted
             ? userAnswer === String(correctAnswer)
-              ? 'green.700'
-              : 'red.700'
-            : 'gray.800',
+              ? isDark
+                ? 'green.200'
+                : 'green.700'
+              : isDark
+                ? 'red.200'
+                : 'red.700'
+            : isDark
+              ? 'gray.200'
+              : 'gray.800',
           border: '2px solid',
-          borderColor: isFocused ? 'blue.400' : 'gray.300',
+          borderColor: isFocused ? 'blue.400' : isDark ? 'gray.600' : 'gray.300',
         })}
       >
         {userAnswer || (isFocused ? '?' : '')}
@@ -182,6 +206,9 @@ export function ActiveSession({
   helpSettings,
   isBeginnerMode = false,
 }: ActiveSessionProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   const [currentProblem, setCurrentProblem] = useState<CurrentProblem | null>(null)
   const [userAnswer, setUserAnswer] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -534,7 +561,7 @@ export function ActiveSession({
         <div
           className={css({
             fontSize: '1.25rem',
-            color: 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
           Loading next problem...
@@ -543,7 +570,7 @@ export function ActiveSession({
     )
   }
 
-  const partColors = getPartTypeColors(currentPart.type)
+  const partColors = getPartTypeColors(currentPart.type, isDark)
 
   return (
     <div
@@ -791,7 +818,7 @@ export function ActiveSession({
           alignItems: 'center',
           gap: '1.5rem',
           padding: '2rem',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? 'gray.800' : 'white',
           borderRadius: '16px',
           boxShadow: 'md',
         })}
@@ -807,20 +834,36 @@ export function ActiveSession({
             textTransform: 'uppercase',
             backgroundColor:
               currentSlot?.purpose === 'focus'
-                ? 'blue.100'
+                ? isDark
+                  ? 'blue.900'
+                  : 'blue.100'
                 : currentSlot?.purpose === 'reinforce'
-                  ? 'orange.100'
+                  ? isDark
+                    ? 'orange.900'
+                    : 'orange.100'
                   : currentSlot?.purpose === 'review'
-                    ? 'green.100'
-                    : 'purple.100',
+                    ? isDark
+                      ? 'green.900'
+                      : 'green.100'
+                    : isDark
+                      ? 'purple.900'
+                      : 'purple.100',
             color:
               currentSlot?.purpose === 'focus'
-                ? 'blue.700'
+                ? isDark
+                  ? 'blue.200'
+                  : 'blue.700'
                 : currentSlot?.purpose === 'reinforce'
-                  ? 'orange.700'
+                  ? isDark
+                    ? 'orange.200'
+                    : 'orange.700'
                   : currentSlot?.purpose === 'review'
-                    ? 'green.700'
-                    : 'purple.700',
+                    ? isDark
+                      ? 'green.200'
+                      : 'green.700'
+                    : isDark
+                      ? 'purple.200'
+                      : 'purple.700',
           })}
         >
           {currentSlot?.purpose}
@@ -856,6 +899,7 @@ export function ActiveSession({
               isFocused={!isPaused && !isSubmitting}
               isCompleted={feedback !== 'none'}
               correctAnswer={currentProblem.problem.answer}
+              isDark={isDark}
             />
           )}
 
@@ -865,10 +909,10 @@ export function ActiveSession({
               data-section="term-help"
               className={css({
                 padding: '1rem',
-                backgroundColor: 'purple.50',
+                backgroundColor: isDark ? 'purple.900' : 'purple.50',
                 borderRadius: '12px',
                 border: '2px solid',
-                borderColor: 'purple.200',
+                borderColor: isDark ? 'purple.700' : 'purple.200',
                 minWidth: '200px',
               })}
             >
@@ -884,7 +928,7 @@ export function ActiveSession({
                   className={css({
                     fontSize: '0.875rem',
                     fontWeight: 'bold',
-                    color: 'purple.700',
+                    color: isDark ? 'purple.200' : 'purple.700',
                   })}
                 >
                   {helpContext.term >= 0 ? '+' : ''}
@@ -895,12 +939,12 @@ export function ActiveSession({
                   onClick={handleDismissHelp}
                   className={css({
                     fontSize: '0.75rem',
-                    color: 'gray.500',
+                    color: isDark ? 'gray.400' : 'gray.500',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     padding: '0.25rem',
-                    _hover: { color: 'gray.700' },
+                    _hover: { color: isDark ? 'gray.200' : 'gray.700' },
                   })}
                 >
                   ✕
@@ -928,8 +972,22 @@ export function ActiveSession({
               borderRadius: '8px',
               fontSize: '1.25rem',
               fontWeight: 'bold',
-              backgroundColor: feedback === 'correct' ? 'green.100' : 'red.100',
-              color: feedback === 'correct' ? 'green.700' : 'red.700',
+              backgroundColor:
+                feedback === 'correct'
+                  ? isDark
+                    ? 'green.900'
+                    : 'green.100'
+                  : isDark
+                    ? 'red.900'
+                    : 'red.100',
+              color:
+                feedback === 'correct'
+                  ? isDark
+                    ? 'green.200'
+                    : 'green.700'
+                  : isDark
+                    ? 'red.200'
+                    : 'red.700',
             })}
           >
             {feedback === 'correct'
@@ -969,8 +1027,10 @@ export function ActiveSession({
                     ? 'purple.500'
                     : buttonState === 'submit'
                       ? 'blue.500'
-                      : 'gray.300',
-                color: buttonState === 'disabled' ? 'gray.500' : 'white',
+                      : isDark
+                        ? 'gray.700'
+                        : 'gray.300',
+                color: buttonState === 'disabled' ? (isDark ? 'gray.400' : 'gray.500') : 'white',
                 opacity: buttonState === 'disabled' ? 0.5 : 1,
                 _hover: {
                   backgroundColor:
@@ -978,7 +1038,9 @@ export function ActiveSession({
                       ? 'purple.600'
                       : buttonState === 'submit'
                         ? 'blue.600'
-                        : 'gray.300',
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300',
                 },
               })}
             >
@@ -995,7 +1057,7 @@ export function ActiveSession({
             <div
               className={css({
                 textAlign: 'center',
-                color: 'gray.500',
+                color: isDark ? 'gray.400' : 'gray.500',
                 fontSize: '0.875rem',
                 marginBottom: '1rem',
               })}
@@ -1028,7 +1090,7 @@ export function ActiveSession({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1038,7 +1100,7 @@ export function ActiveSession({
           <div
             className={css({
               padding: '2rem',
-              backgroundColor: 'white',
+              backgroundColor: isDark ? 'gray.800' : 'white',
               borderRadius: '16px',
               textAlign: 'center',
             })}
@@ -1055,7 +1117,7 @@ export function ActiveSession({
               className={css({
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
-                color: 'gray.800',
+                color: isDark ? 'gray.100' : 'gray.800',
                 marginBottom: '0.5rem',
               })}
             >
@@ -1064,7 +1126,7 @@ export function ActiveSession({
             <div
               className={css({
                 fontSize: '1rem',
-                color: 'gray.600',
+                color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
               Take a break! Tap Resume when ready.

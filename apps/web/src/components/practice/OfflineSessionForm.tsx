@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -52,6 +53,8 @@ export function OfflineSessionForm({
   playerId,
   onSubmit,
 }: OfflineSessionFormProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   // Form state
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
   const [problemCount, setProblemCount] = useState(20)
@@ -140,7 +143,7 @@ export function OfflineSessionForm({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            bg: 'white',
+            bg: isDark ? 'gray.800' : 'white',
             borderRadius: 'xl',
             boxShadow: 'xl',
             p: '6',
@@ -157,7 +160,7 @@ export function OfflineSessionForm({
               className={css({
                 fontSize: 'xl',
                 fontWeight: 'bold',
-                color: 'gray.900',
+                color: isDark ? 'gray.100' : 'gray.900',
               })}
             >
               Record Offline Practice
@@ -165,7 +168,7 @@ export function OfflineSessionForm({
             <Dialog.Description
               className={css({
                 fontSize: 'sm',
-                color: 'gray.600',
+                color: isDark ? 'gray.400' : 'gray.600',
                 mt: '1',
               })}
             >
@@ -183,7 +186,7 @@ export function OfflineSessionForm({
                   display: 'block',
                   fontSize: 'sm',
                   fontWeight: 'semibold',
-                  color: 'gray.700',
+                  color: isDark ? 'gray.300' : 'gray.700',
                   mb: '1',
                 })}
               >
@@ -203,9 +206,11 @@ export function OfflineSessionForm({
                   px: '3',
                   py: '2',
                   border: '1px solid',
-                  borderColor: errors.date ? 'red.500' : 'gray.300',
+                  borderColor: errors.date ? 'red.500' : isDark ? 'gray.600' : 'gray.300',
                   borderRadius: 'md',
                   fontSize: 'sm',
+                  bg: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.900',
                   _focus: {
                     outline: 'none',
                     borderColor: 'blue.500',
@@ -215,7 +220,15 @@ export function OfflineSessionForm({
                 })}
               />
               {errors.date && (
-                <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>{errors.date}</p>
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'red.400' : 'red.600',
+                    mt: '1',
+                  })}
+                >
+                  {errors.date}
+                </p>
               )}
             </div>
 
@@ -227,7 +240,7 @@ export function OfflineSessionForm({
                   display: 'block',
                   fontSize: 'sm',
                   fontWeight: 'semibold',
-                  color: 'gray.700',
+                  color: isDark ? 'gray.300' : 'gray.700',
                   mb: '1',
                 })}
               >
@@ -248,9 +261,11 @@ export function OfflineSessionForm({
                   px: '3',
                   py: '2',
                   border: '1px solid',
-                  borderColor: errors.problemCount ? 'red.500' : 'gray.300',
+                  borderColor: errors.problemCount ? 'red.500' : isDark ? 'gray.600' : 'gray.300',
                   borderRadius: 'md',
                   fontSize: 'sm',
+                  bg: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.900',
                   _focus: {
                     outline: 'none',
                     borderColor: 'blue.500',
@@ -260,7 +275,13 @@ export function OfflineSessionForm({
                 })}
               />
               {errors.problemCount && (
-                <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'red.400' : 'red.600',
+                    mt: '1',
+                  })}
+                >
                   {errors.problemCount}
                 </p>
               )}
@@ -276,7 +297,7 @@ export function OfflineSessionForm({
                   alignItems: 'baseline',
                   fontSize: 'sm',
                   fontWeight: 'semibold',
-                  color: 'gray.700',
+                  color: isDark ? 'gray.300' : 'gray.700',
                   mb: '1',
                 })}
               >
@@ -284,7 +305,17 @@ export function OfflineSessionForm({
                 <span
                   className={css({
                     fontWeight: 'bold',
-                    color: accuracy >= 85 ? 'green.600' : accuracy >= 70 ? 'yellow.600' : 'red.600',
+                    color: isDark
+                      ? accuracy >= 85
+                        ? 'green.400'
+                        : accuracy >= 70
+                          ? 'yellow.400'
+                          : 'red.400'
+                      : accuracy >= 85
+                        ? 'green.600'
+                        : accuracy >= 70
+                          ? 'yellow.600'
+                          : 'red.600',
                   })}
                 >
                   {accuracy}%
@@ -311,7 +342,7 @@ export function OfflineSessionForm({
                   display: 'flex',
                   justifyContent: 'space-between',
                   fontSize: 'xs',
-                  color: 'gray.500',
+                  color: isDark ? 'gray.400' : 'gray.500',
                 })}
               >
                 <span>0%</span>
@@ -321,7 +352,13 @@ export function OfflineSessionForm({
                 <span>100%</span>
               </div>
               {errors.accuracy && (
-                <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'red.400' : 'red.600',
+                    mt: '1',
+                  })}
+                >
                   {errors.accuracy}
                 </p>
               )}
@@ -335,7 +372,7 @@ export function OfflineSessionForm({
                   display: 'block',
                   fontSize: 'sm',
                   fontWeight: 'semibold',
-                  color: 'gray.700',
+                  color: isDark ? 'gray.300' : 'gray.700',
                   mb: '1',
                 })}
               >
@@ -353,9 +390,10 @@ export function OfflineSessionForm({
                   px: '3',
                   py: '2',
                   border: '1px solid',
-                  borderColor: errors.focusSkill ? 'red.500' : 'gray.300',
+                  borderColor: errors.focusSkill ? 'red.500' : isDark ? 'gray.600' : 'gray.300',
                   borderRadius: 'md',
-                  bg: 'white',
+                  bg: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.900',
                   fontSize: 'sm',
                   cursor: 'pointer',
                   _focus: {
@@ -373,7 +411,13 @@ export function OfflineSessionForm({
                 ))}
               </select>
               {errors.focusSkill && (
-                <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: isDark ? 'red.400' : 'red.600',
+                    mt: '1',
+                  })}
+                >
                   {errors.focusSkill}
                 </p>
               )}
@@ -387,7 +431,7 @@ export function OfflineSessionForm({
                   display: 'block',
                   fontSize: 'sm',
                   fontWeight: 'semibold',
-                  color: 'gray.700',
+                  color: isDark ? 'gray.300' : 'gray.700',
                   mb: '1',
                 })}
               >
@@ -404,15 +448,20 @@ export function OfflineSessionForm({
                   px: '3',
                   py: '2',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
                   borderRadius: 'md',
                   fontSize: 'sm',
                   resize: 'vertical',
+                  bg: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.900',
                   _focus: {
                     outline: 'none',
                     borderColor: 'blue.500',
                     ring: '2px',
                     ringColor: 'blue.500/20',
+                  },
+                  _placeholder: {
+                    color: isDark ? 'gray.500' : 'gray.400',
                   },
                 })}
               />
@@ -422,13 +471,13 @@ export function OfflineSessionForm({
             <div
               className={css({
                 p: '3',
-                bg: 'blue.50',
+                bg: isDark ? 'blue.900' : 'blue.50',
                 borderRadius: 'md',
                 border: '1px solid',
-                borderColor: 'blue.100',
+                borderColor: isDark ? 'blue.700' : 'blue.100',
               })}
             >
-              <p className={css({ fontSize: 'sm', color: 'blue.800' })}>
+              <p className={css({ fontSize: 'sm', color: isDark ? 'blue.200' : 'blue.800' })}>
                 This will record <strong>{problemCount} problems</strong> at{' '}
                 <strong>{accuracy}% accuracy</strong> (~{estimatedCorrect} correct) for{' '}
                 <strong>{studentName}</strong> on{' '}
@@ -456,13 +505,13 @@ export function OfflineSessionForm({
                 py: '2',
                 fontSize: 'sm',
                 fontWeight: 'medium',
-                color: 'gray.700',
+                color: isDark ? 'gray.300' : 'gray.700',
                 bg: 'transparent',
                 border: '1px solid',
-                borderColor: 'gray.300',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
                 borderRadius: 'md',
                 cursor: 'pointer',
-                _hover: { bg: 'gray.50' },
+                _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/types/player'
 import { css } from '../../../styled-system/css'
 
@@ -22,6 +23,8 @@ interface StudentCardProps {
  * Individual student card showing avatar, name, and progress
  */
 function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const levelLabel = student.currentLevel ? `Lv.${student.currentLevel}` : 'New'
 
   return (
@@ -38,8 +41,8 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
         padding: '1rem',
         borderRadius: '12px',
         border: isSelected ? '3px solid' : '2px solid',
-        borderColor: isSelected ? 'blue.500' : 'gray.200',
-        backgroundColor: isSelected ? 'blue.50' : 'white',
+        borderColor: isSelected ? 'blue.500' : isDark ? 'gray.600' : 'gray.200',
+        backgroundColor: isSelected ? (isDark ? 'blue.900' : 'blue.50') : isDark ? 'gray.800' : 'white',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         minWidth: '100px',
@@ -71,7 +74,7 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
         className={css({
           fontWeight: 'bold',
           fontSize: '1rem',
-          color: 'gray.800',
+          color: isDark ? 'gray.100' : 'gray.800',
         })}
       >
         {student.name}
@@ -83,8 +86,8 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
           fontSize: '0.75rem',
           padding: '0.125rem 0.5rem',
           borderRadius: '9999px',
-          backgroundColor: 'gray.100',
-          color: 'gray.600',
+          backgroundColor: isDark ? 'gray.700' : 'gray.100',
+          color: isDark ? 'gray.300' : 'gray.600',
         })}
       >
         {levelLabel}
@@ -96,7 +99,7 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
           className={css({
             width: '100%',
             height: '4px',
-            backgroundColor: 'gray.200',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
             borderRadius: '2px',
             overflow: 'hidden',
           })}
@@ -104,7 +107,7 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
           <div
             className={css({
               height: '100%',
-              backgroundColor: 'green.500',
+              backgroundColor: isDark ? 'green.400' : 'green.500',
               transition: 'width 0.3s ease',
             })}
             style={{ width: `${student.masteryPercent}%` }}
@@ -123,6 +126,9 @@ interface AddStudentButtonProps {
  * Button to add a new student
  */
 function AddStudentButton({ onClick }: AddStudentButtonProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   return (
     <button
       type="button"
@@ -137,22 +143,22 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
         padding: '1rem',
         borderRadius: '12px',
         border: '2px dashed',
-        borderColor: 'gray.300',
-        backgroundColor: 'gray.50',
+        borderColor: isDark ? 'gray.600' : 'gray.300',
+        backgroundColor: isDark ? 'gray.800' : 'gray.50',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         minWidth: '100px',
         minHeight: '140px',
         _hover: {
           borderColor: 'blue.400',
-          backgroundColor: 'blue.50',
+          backgroundColor: isDark ? 'blue.900' : 'blue.50',
         },
       })}
     >
       <span
         className={css({
           fontSize: '2rem',
-          color: 'gray.400',
+          color: isDark ? 'gray.500' : 'gray.400',
         })}
       >
         ➕
@@ -160,7 +166,7 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
       <span
         className={css({
           fontSize: '0.875rem',
-          color: 'gray.500',
+          color: isDark ? 'gray.400' : 'gray.500',
         })}
       >
         Add New
@@ -191,6 +197,9 @@ export function StudentSelector({
   onAddStudent,
   title = 'Who is practicing today?',
 }: StudentSelectorProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   return (
     <div
       data-component="student-selector"
@@ -207,7 +216,7 @@ export function StudentSelector({
         className={css({
           fontSize: '1.5rem',
           fontWeight: 'bold',
-          color: 'gray.800',
+          color: isDark ? 'gray.100' : 'gray.800',
         })}
       >
         {title}
@@ -245,11 +254,11 @@ export function StudentSelector({
           <p
             className={css({
               fontSize: '1rem',
-              color: 'gray.600',
+              color: isDark ? 'gray.400' : 'gray.600',
               marginBottom: '1rem',
             })}
           >
-            Selected: <strong>{selectedStudent.name}</strong> {selectedStudent.emoji}
+            Selected: <strong className={css({ color: isDark ? 'gray.100' : 'inherit' })}>{selectedStudent.name}</strong> {selectedStudent.emoji}
           </p>
           <button
             type="button"

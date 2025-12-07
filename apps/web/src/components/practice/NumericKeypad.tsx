@@ -1,5 +1,6 @@
 'use client'
 
+import { useTheme } from '@/contexts/ThemeContext'
 import { useCallback, useRef } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import 'react-simple-keyboard/build/css/index.css'
@@ -29,6 +30,8 @@ export function NumericKeypad({
   disabled = false,
   currentValue = '',
 }: NumericKeypadProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const keyboardRef = useRef<any>(null)
 
   // Numeric layout with backspace and submit
@@ -69,20 +72,20 @@ export function NumericKeypad({
     >
       <style>{`
         .practice-numeric-keyboard .simple-keyboard {
-          background: #f8fafc;
+          background: ${isDark ? '#1f2937' : '#f8fafc'};
           border-radius: 12px;
           padding: 8px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid ${isDark ? '#374151' : '#e2e8f0'};
         }
         .practice-numeric-keyboard .hg-button {
           height: 56px;
           border-radius: 8px;
-          background: white;
-          color: #1e293b;
-          border: 1px solid #e2e8f0;
+          background: ${isDark ? '#374151' : 'white'};
+          color: ${isDark ? '#f3f4f6' : '#1e293b'};
+          border: 1px solid ${isDark ? '#4b5563' : '#e2e8f0'};
           font-size: 24px;
           font-weight: 600;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          box-shadow: ${isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
           transition: all 0.1s ease;
           flex: 1;
           margin: 3px;
@@ -93,18 +96,18 @@ export function NumericKeypad({
           transform: scale(0.95);
         }
         .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"] {
-          background: #fee2e2;
-          color: #dc2626;
-          border-color: #fecaca;
+          background: ${isDark ? '#7f1d1d' : '#fee2e2'};
+          color: ${isDark ? '#fca5a5' : '#dc2626'};
+          border-color: ${isDark ? '#991b1b' : '#fecaca'};
         }
         .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"]:active {
           background: #dc2626;
           color: white;
         }
         .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"] {
-          background: #dcfce7;
-          color: #16a34a;
-          border-color: #bbf7d0;
+          background: ${isDark ? '#14532d' : '#dcfce7'};
+          color: ${isDark ? '#86efac' : '#16a34a'};
+          border-color: ${isDark ? '#166534' : '#bbf7d0'};
         }
         .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"]:active {
           background: #16a34a;
