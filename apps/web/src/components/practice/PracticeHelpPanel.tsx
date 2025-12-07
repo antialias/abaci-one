@@ -1,10 +1,12 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { HelpLevel } from '@/db/schema/session-plans'
 import type { PracticeHelpState } from '@/hooks/usePracticeHelp'
+import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'
 import { css } from '../../../styled-system/css'
+import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
 import { HelpAbacus } from './HelpAbacus'
 
 interface PracticeHelpPanelProps {
@@ -63,6 +65,51 @@ export function PracticeHelpPanel({
   const isDark = resolvedTheme === 'dark'
   const { currentLevel, content, isAvailable, maxLevelUsed } = helpState
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // Track current abacus value for step synchronization
+  const [abacusValue, setAbacusValue] = useState(currentValue ?? 0)
+
+  // Generate the decomposition steps to determine current step from abacus value
+  const sequence = useMemo(() => {
+    if (currentValue === undefined || targetValue === undefined) return null
+    return generateUnifiedInstructionSequence(currentValue, targetValue)
+  }, [currentValue, targetValue])
+
+  // Calculate which step the user is on based on abacus value
+  // Find the highest step index where expectedValue <= abacusValue
+  const currentStepIndex = useMemo(() => {
+    if (!sequence || sequence.steps.length === 0) return 0
+    if (currentValue === undefined) return 0
+
+    // Start value is the value before any steps
+    const startVal = currentValue
+
+    // If abacus is still at start value, we're at step 0
+    if (abacusValue === startVal) return 0
+
+    // Find which step we're on by checking expected values
+    // The step index to highlight is the one we're working toward (next incomplete step)
+    for (let i = 0; i < sequence.steps.length; i++) {
+      const step = sequence.steps[i]
+      // If abacus value is less than this step's expected value, we're working on this step
+      if (abacusValue < step.expectedValue) {
+        return i
+      }
+      // If we've reached or passed this step's expected value, check next step
+      if (abacusValue === step.expectedValue) {
+        // We've completed this step, move to next
+        return Math.min(i + 1, sequence.steps.length - 1)
+      }
+    }
+
+    // At or past target - show last step as complete
+    return sequence.steps.length - 1
+  }, [sequence, abacusValue, currentValue])
+
+  // Handle abacus value changes
+  const handleAbacusValueChange = useCallback((newValue: number) => {
+    setAbacusValue(newValue)
+  }, [])
 
   const handleRequestHelp = useCallback(() => {
     if (currentLevel === 0) {
@@ -237,76 +284,52 @@ export function PracticeHelpPanel({
       )}
 
       {/* Level 2: Decomposition */}
-      {currentLevel >= 2 && content?.decomposition && content.decomposition.isMeaningful && (
-        <div
-          data-element="decomposition"
-          className={css({
-            padding: '0.75rem',
-            backgroundColor: isDark ? 'gray.800' : 'white',
-            borderRadius: '8px',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.800' : 'blue.100',
-          })}
-        >
+      {currentLevel >= 2 &&
+        content?.decomposition &&
+        content.decomposition.isMeaningful &&
+        currentValue !== undefined &&
+        targetValue !== undefined && (
           <div
+            data-element="decomposition-container"
             className={css({
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.300' : 'blue.600',
-              marginBottom: '0.5rem',
-              textTransform: 'uppercase',
+              padding: '0.75rem',
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              borderRadius: '8px',
+              border: '1px solid',
+              borderColor: isDark ? 'blue.800' : 'blue.100',
             })}
           >
-            Step-by-Step
-          </div>
-          <div
-            className={css({
-              fontFamily: 'monospace',
-              fontSize: '1.125rem',
-              color: isDark ? 'gray.100' : 'gray.800',
-              wordBreak: 'break-word',
-            })}
-          >
-            {content.decomposition.fullDecomposition}
-          </div>
-
-          {/* Segment explanations */}
-          {content.decomposition.segments.length > 0 && (
             <div
               className={css({
-                marginTop: '0.75rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                color: isDark ? 'blue.300' : 'blue.600',
+                marginBottom: '0.5rem',
+                textTransform: 'uppercase',
               })}
             >
-              {content.decomposition.segments.map((segment) => (
-                <div
-                  key={segment.id}
-                  className={css({
-                    padding: '0.5rem',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.50',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                  })}
-                >
-                  <span
-                    className={css({
-                      fontWeight: 'bold',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                    })}
-                  >
-                    {segment.readable?.title || `Column ${segment.place + 1}`}:
-                  </span>{' '}
-                  <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
-                    {segment.readable?.summary || segment.expression}
-                  </span>
-                </div>
-              ))}
+              Step-by-Step
             </div>
-          )}
-        </div>
-      )}
+            <div
+              data-element="decomposition-display"
+              className={css({
+                fontFamily: 'monospace',
+                fontSize: '1.125rem',
+                color: isDark ? 'gray.100' : 'gray.800',
+                wordBreak: 'break-word',
+              })}
+            >
+              <DecompositionProvider
+                startValue={currentValue}
+                targetValue={targetValue}
+                currentStepIndex={currentStepIndex}
+                abacusColumns={3}
+              >
+                <DecompositionDisplay />
+              </DecompositionProvider>
+            </div>
+          </div>
+        )}
 
       {/* Level 3: Visual abacus with bead arrows */}
       {currentLevel >= 3 && currentValue !== undefined && targetValue !== undefined && (
@@ -338,6 +361,8 @@ export function PracticeHelpPanel({
             targetValue={targetValue}
             columns={3}
             scaleFactor={1.0}
+            interactive={true}
+            onValueChange={handleAbacusValueChange}
           />
 
           {isAbacusPart && (

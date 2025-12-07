@@ -21,7 +21,7 @@ import type {
 } from '../../types/tutorial'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { CoachBar } from './CoachBar/CoachBar'
-import { DecompositionWithReasons } from './DecompositionWithReasons'
+import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { TutorialUIProvider } from './TutorialUIContext'
@@ -317,14 +317,7 @@ function TutorialPlayerContent({
   }
 
   // Define the static expected steps using our unified step generator
-  const {
-    expectedSteps,
-    fullDecomposition,
-    isMeaningfulDecomposition,
-    pedagogicalSegments,
-    termPositions,
-    unifiedSteps,
-  } = useMemo(() => {
+  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(
         currentStep.startValue,
@@ -343,25 +336,16 @@ function TutorialPlayerContent({
         termPosition: step.termPosition, // Add the precise position information
       }))
 
-      // Extract term positions from steps for DecompositionWithReasons
-      const positions = unifiedSequence.steps.map((step) => step.termPosition).filter(Boolean)
-
       return {
         expectedSteps: steps,
         fullDecomposition: unifiedSequence.fullDecomposition,
         isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition,
-        pedagogicalSegments: unifiedSequence.segments,
-        termPositions: positions,
-        unifiedSteps: unifiedSequence.steps, // NEW: Include the raw unified steps with provenance
       }
     } catch (_error) {
       return {
         expectedSteps: [],
         fullDecomposition: '',
         isMeaningfulDecomposition: false,
-        pedagogicalSegments: [],
-        termPositions: [],
-        unifiedSteps: [], // NEW: Also add empty array for error case
       }
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -1138,6 +1122,9 @@ function TutorialPlayerContent({
 
   return (
     <div
+      data-component="tutorial-player"
+      data-step-index={currentStepIndex}
+      data-step-completed={isStepCompleted}
       className={`${css({
         display: 'flex',
         flexDirection: 'column',
@@ -1148,6 +1135,7 @@ function TutorialPlayerContent({
       {/* Header */}
       {!hideNavigation && (
         <div
+          data-section="tutorial-header"
           className={css({
             borderBottom: '1px solid',
             borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
@@ -1162,8 +1150,16 @@ function TutorialPlayerContent({
             })}
           >
             <div>
-              <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{tutorial.title}</h1>
-              <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
+              <h1
+                data-element="tutorial-title"
+                className={css({ fontSize: 'xl', fontWeight: 'bold' })}
+              >
+                {tutorial.title}
+              </h1>
+              <p
+                data-element="step-progress"
+                className={css({ fontSize: 'sm', color: 'gray.600' })}
+              >
                 {t('header.step', {
                   current: currentStepIndex + 1,
                   total: tutorial.steps.length,
@@ -1172,10 +1168,11 @@ function TutorialPlayerContent({
               </p>
             </div>
 
-            <div className={hstack({ gap: 2 })}>
+            <div data-element="header-controls" className={hstack({ gap: 2 })}>
               {isDebugMode && (
                 <>
                   <button
+                    data-action="toggle-debug-panel"
                     onClick={toggleDebugPanel}
                     className={css({
                       px: 3,
@@ -1193,6 +1190,7 @@ function TutorialPlayerContent({
                     {t('controls.debug')}
                   </button>
                   <button
+                    data-action="toggle-step-list"
                     onClick={toggleStepList}
                     className={css({
                       px: 3,
@@ -1317,6 +1315,7 @@ function TutorialPlayerContent({
 
           {/* Progress bar */}
           <div
+            data-element="progress-bar"
             className={css({
               mt: 2,
               bg: 'gray.200',
@@ -1325,6 +1324,7 @@ function TutorialPlayerContent({
             })}
           >
             <div
+              data-element="progress-fill"
               className={css({
                 bg: 'blue.500',
                 h: 'full',
@@ -1337,10 +1337,11 @@ function TutorialPlayerContent({
         </div>
       )}
 
-      <div className={hstack({ flex: 1, gap: 0 })}>
+      <div data-section="tutorial-body" className={hstack({ flex: 1, gap: 0 })}>
         {/* Step list sidebar */}
         {uiState.showStepList && (
           <div
+            data-section="step-list-sidebar"
             className={css({
               w: '300px',
               borderRight: '1px solid',
@@ -1400,13 +1401,20 @@ function TutorialPlayerContent({
         )}
 
         {/* Main content */}
-        <div className={css({ flex: 1, display: 'flex', flexDirection: 'column' })}>
+        <div
+          data-section="main-content"
+          className={css({ flex: 1, display: 'flex', flexDirection: 'column' })}
+        >
           {/* Step content */}
-          <div className={css({ flex: 1, p: 6 })}>
+          <div data-section="step-content" className={css({ flex: 1, p: 6 })}>
             <div className={vstack({ gap: 6, alignItems: 'center' })}>
               {/* Step instructions */}
-              <div className={css({ textAlign: 'center', maxW: '600px' })}>
+              <div
+                data-element="step-instructions"
+                className={css({ textAlign: 'center', maxW: '600px' })}
+              >
                 <h2
+                  data-element="problem-display"
                   className={css({
                     fontSize: '2xl',
                     fontWeight: 'bold',
@@ -1417,6 +1425,7 @@ function TutorialPlayerContent({
                   {currentStep.problem}
                 </h2>
                 <p
+                  data-element="step-description"
                   className={css({
                     fontSize: 'lg',
                     color: theme === 'dark' ? 'gray.400' : 'gray.700',
@@ -1427,7 +1436,10 @@ function TutorialPlayerContent({
                 </p>
                 {/* Hide action description for multi-step problems since it duplicates pedagogical decomposition */}
                 {!currentStep.multiStepInstructions && (
-                  <p className={css({ fontSize: 'md', color: 'blue.600' })}>
+                  <p
+                    data-element="action-description"
+                    className={css({ fontSize: 'md', color: 'blue.600' })}
+                  >
                     {currentStep.actionDescription}
                   </p>
                 )}
@@ -1438,6 +1450,8 @@ function TutorialPlayerContent({
                 currentStep.multiStepInstructions &&
                 currentStep.multiStepInstructions.length > 0 && (
                   <div
+                    data-element="guidance-panel"
+                    data-multi-step={currentMultiStep}
                     className={css({
                       p: 5,
                       background:
@@ -1471,6 +1485,7 @@ function TutorialPlayerContent({
                     })}
                   >
                     <p
+                      data-element="guidance-title"
                       className={css({
                         fontSize: 'base',
                         fontWeight: 600,
@@ -1486,6 +1501,7 @@ function TutorialPlayerContent({
                     {/* Pedagogical decomposition with interactive reasoning */}
                     {fullDecomposition && isMeaningfulDecomposition && (
                       <div
+                        data-element="decomposition-container"
                         className={css({
                           mb: 4,
                           p: 3,
@@ -1506,6 +1522,7 @@ function TutorialPlayerContent({
                         })}
                       >
                         <div
+                          data-element="decomposition-display"
                           className={css({
                             fontSize: 'base',
                             color: theme === 'dark' ? 'gray.300' : 'slate.800',
@@ -1515,16 +1532,20 @@ function TutorialPlayerContent({
                             lineHeight: '1.5',
                           })}
                         >
-                          <DecompositionWithReasons
-                            fullDecomposition={fullDecomposition}
-                            termPositions={termPositions}
-                            segments={pedagogicalSegments}
-                          />
+                          <DecompositionProvider
+                            startValue={currentStep.startValue}
+                            targetValue={currentStep.targetValue}
+                            currentStepIndex={currentMultiStep}
+                            abacusColumns={abacusColumns}
+                          >
+                            <DecompositionDisplay />
+                          </DecompositionProvider>
                         </div>
                       </div>
                     )}
 
                     <div
+                      data-element="current-instruction-container"
                       className={css({
                         fontSize: 'sm',
                         color: theme === 'dark' ? 'gray.400' : 'amber.800',
@@ -1568,6 +1589,7 @@ function TutorialPlayerContent({
                         return (
                           <div>
                             <div
+                              data-element="current-instruction"
                               className={css({
                                 mb: 1,
                                 fontWeight: 'bold',
@@ -1589,6 +1611,7 @@ function TutorialPlayerContent({
               {/* Error message */}
               {error && (
                 <div
+                  data-element="error-message"
                   className={css({
                     p: 4,
                     bg: 'red.50',
@@ -1607,6 +1630,7 @@ function TutorialPlayerContent({
 
               {/* Abacus */}
               <div
+                data-element="abacus-container"
                 className={css({
                   bg: theme === 'dark' ? 'rgba(30, 30, 40, 0.4)' : 'white',
                   border: '2px solid',
@@ -1643,6 +1667,7 @@ function TutorialPlayerContent({
                 {/* Debug info */}
                 {isDebugMode && (
                   <div
+                    data-element="debug-info"
                     className={css({
                       mt: 4,
                       p: 3,
@@ -1694,6 +1719,7 @@ function TutorialPlayerContent({
               {/* Tooltip */}
               {!hideTooltip && currentStep.tooltip && (
                 <div
+                  data-element="tooltip-panel"
                   className={css({
                     maxW: '500px',
                     p: 4,
@@ -1704,6 +1730,7 @@ function TutorialPlayerContent({
                   })}
                 >
                   <h4
+                    data-element="tooltip-title"
                     className={css({
                       fontWeight: 'bold',
                       color: 'yellow.800',
@@ -1712,7 +1739,10 @@ function TutorialPlayerContent({
                   >
                     {currentStep.tooltip.content}
                   </h4>
-                  <p className={css({ fontSize: 'sm', color: 'yellow.700' })}>
+                  <p
+                    data-element="tooltip-explanation"
+                    className={css({ fontSize: 'sm', color: 'yellow.700' })}
+                  >
                     {currentStep.tooltip.explanation}
                   </p>
                 </div>
@@ -1723,6 +1753,7 @@ function TutorialPlayerContent({
           {/* Navigation controls */}
           {!hideNavigation && (
             <div
+              data-section="navigation-controls"
               className={css({
                 borderTop: '1px solid',
                 borderColor: 'gray.200',
@@ -1732,6 +1763,7 @@ function TutorialPlayerContent({
             >
               <div className={hstack({ justifyContent: 'space-between' })}>
                 <button
+                  data-action="previous-step"
                   onClick={goToPreviousStep}
                   disabled={!navigationState.canGoPrevious}
                   className={css({
@@ -1749,7 +1781,10 @@ function TutorialPlayerContent({
                   {t('navigation.previous')}
                 </button>
 
-                <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
+                <div
+                  data-element="step-counter"
+                  className={css({ fontSize: 'sm', color: 'gray.600' })}
+                >
                   {t('navigation.stepCounter', {
                     current: currentStepIndex + 1,
                     total: navigationState.totalSteps,
@@ -1757,6 +1792,7 @@ function TutorialPlayerContent({
                 </div>
 
                 <button
+                  data-action="next-step"
                   onClick={goToNextStep}
                   disabled={!navigationState.canGoNext && !isStepCompleted}
                   className={css({
@@ -1783,6 +1819,7 @@ function TutorialPlayerContent({
         {/* Debug panel */}
         {uiState.showDebugPanel && (
           <div
+            data-section="debug-panel"
             className={css({
               w: '400px',
               borderLeft: '1px solid',

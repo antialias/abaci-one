@@ -1,0 +1,125 @@
+/* CSS styling for DecompositionDisplay component */
+
+.decomposition {
+  display: inline;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.term {
+  display: inline-block;
+  padding: 2px 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.term--plain {
+  cursor: default;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.term:focus {
+  outline: none;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Active term - the one being directly hovered/clicked */
+.term--active {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.6);
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Current step - the term that matches the current step */
+.term--current {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.6);
+  border-width: 2px;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  animation: currentStepGlow 1.5s ease-in-out infinite;
+}
+
+/* Grouped terms - terms that belong to pedagogical segments */
+.term--grouped {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Segment group styling */
+.segment-group {
+  display: inline;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 1px;
+  transition: all 0.2s ease;
+}
+
+.segment-group:hover {
+  background: rgba(147, 51, 234, 0.1);
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+/* Accessibility improvements */
+.term:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.segment-group:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+@keyframes currentStepGlow {
+  0% {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(245, 158, 11, 0.5),
+      0 0 8px rgba(245, 158, 11, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  }
+}
+
+@keyframes groupPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term {
+    transition: none;
+  }
+
+  .term--current {
+    animation: none;
+  }
+}

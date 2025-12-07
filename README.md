@@ -804,6 +804,13 @@ MIT License - see LICENSE file for details.
 
 ## 📚 Additional Documentation
 
+### Web Application
+
+**Location**: [`apps/web/`](./apps/web/)
+**Documentation**: [`apps/web/README.md`](./apps/web/README.md)
+
+The main Next.js web application containing tutorials, practice sessions, arcade games, and worksheet generation.
+
 ### Arcade Game System
 
 **Location**: [`apps/web/src/arcade-games/`](./apps/web/src/arcade-games/)
@@ -842,6 +849,19 @@ Create customizable math worksheets with progressive difficulty, problem space v
 **Storybook**: [Interactive Examples](https://antialias.github.io/soroban-abacus-flashcards/abacus-react/)
 
 React component library for rendering interactive and static abacus visualizations.
+
+### Decomposition Display
+
+**Location**: [`apps/web/src/components/decomposition/`](./apps/web/src/components/decomposition/)
+**Documentation**: [`apps/web/src/components/decomposition/README.md`](./apps/web/src/components/decomposition/README.md)
+
+Interactive mathematical decomposition visualization showing step-by-step soroban operations. Features hoverable terms with pedagogical explanations, grouped operations, and bidirectional abacus coordination.
+
+**Key Features**:
+- **Interactive Terms** - Hover to see why each operation is performed
+- **Pedagogical Grouping** - Related operations (e.g., "+10 -3" for adding 7) grouped visually
+- **Step Tracking** - Integrates with tutorial and practice step progression
+- **Abacus Coordination** - Bidirectional highlighting between decomposition and abacus
 
 ### Daily Practice System
 

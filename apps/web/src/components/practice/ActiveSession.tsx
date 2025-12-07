@@ -20,9 +20,9 @@ import {
   generateSingleProblem,
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
-import { HelpAbacus } from './HelpAbacus'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
+import { PracticeHelpPanel } from './PracticeHelpPanel'
 import { VerticalProblem } from './VerticalProblem'
 
 interface ActiveSessionProps {
@@ -224,6 +224,8 @@ export function ActiveSession({
   const [correctionCount, setCorrectionCount] = useState(0)
   // Track if auto-submit was triggered (for celebration animation)
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
+  // Track rejected digit for red X animation (null = no rejection, string = the rejected digit)
+  const [rejectedDigit, setRejectedDigit] = useState<string | null>(null)
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
@@ -333,6 +335,27 @@ export function ActiveSession({
     currentTerm,
   ])
 
+  // Update help context when helpTermIndex changes (for "Get Help" button flow)
+  // This ensures helpState.content has data for the term being helped, not currentTermIndex
+  useEffect(() => {
+    if (helpTermIndex === null || !currentProblem) return
+
+    const terms = currentProblem.problem.terms
+    if (helpTermIndex >= terms.length) return
+
+    // Calculate the context for the help term
+    const helpCurrentValue = helpTermIndex === 0 ? 0 : prefixSums[helpTermIndex - 1]
+    const helpTargetValue = prefixSums[helpTermIndex]
+    const helpTerm = terms[helpTermIndex]
+
+    helpActions.resetForNewTerm({
+      currentValue: helpCurrentValue,
+      targetValue: helpTargetValue,
+      term: helpTerm,
+      termIndex: helpTermIndex,
+    })
+  }, [helpTermIndex, currentProblem?.problem.terms.join(','), prefixSums])
+
   // Get current part and slot
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
@@ -378,9 +401,45 @@ export function ActiveSession({
     }
   }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, currentProblem])
 
-  const handleDigit = useCallback((digit: string) => {
-    setUserAnswer((prev) => prev + digit)
-  }, [])
+  // Check if adding a digit would be consistent with any prefix sum
+  const isDigitConsistent = useCallback(
+    (currentAnswer: string, digit: string): boolean => {
+      const newAnswer = currentAnswer + digit
+      const newAnswerNum = parseInt(newAnswer, 10)
+      if (Number.isNaN(newAnswerNum)) return false
+
+      // Check if newAnswer is a prefix of any prefix sum's string representation
+      // e.g., if prefix sums are [23, 68, 80], and newAnswer is "6", that's consistent with "68"
+      // if newAnswer is "8", that's consistent with "80"
+      // if newAnswer is "68", that's an exact match
+      for (const sum of prefixSums) {
+        const sumStr = sum.toString()
+        if (sumStr.startsWith(newAnswer)) {
+          return true
+        }
+      }
+      return false
+    },
+    [prefixSums]
+  )
+
+  const handleDigit = useCallback(
+    (digit: string) => {
+      setUserAnswer((prev) => {
+        if (isDigitConsistent(prev, digit)) {
+          return prev + digit
+        } else {
+          // Reject the digit - show red X and count as correction
+          setRejectedDigit(digit)
+          setCorrectionCount((c) => c + 1)
+          // Clear the rejection after a short delay
+          setTimeout(() => setRejectedDigit(null), 300)
+          return prev // Don't change the answer
+        }
+      })
+    },
+    [isDigitConsistent]
+  )
 
   const handleBackspace = useCallback(() => {
     setUserAnswer((prev) => {
@@ -405,13 +464,16 @@ export function ActiveSession({
       setHelpTermIndex(newConfirmedCount)
       // Clear the input so they can continue
       setUserAnswer('')
+      // Start progressive help at level 1 (coach hint)
+      helpActions.requestHelp(1)
     }
-  }, [matchedPrefixIndex, currentProblem?.problem.terms.length])
+  }, [matchedPrefixIndex, currentProblem?.problem.terms.length, helpActions])
 
   // Handle dismissing help (continue without visual assistance)
   const handleDismissHelp = useCallback(() => {
     setHelpTermIndex(null)
-  }, [])
+    helpActions.dismissHelp()
+  }, [helpActions])
 
   // Handle when student reaches the target value on the help abacus
   const handleTargetReached = useCallback(() => {
@@ -526,26 +588,27 @@ export function ActiveSession({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault()
-        setUserAnswer((prev) => {
-          if (prev.length > 0) {
-            setCorrectionCount((c) => c + 1)
-          }
-          return prev.slice(0, -1)
-        })
+        handleBackspace()
       } else if (e.key === 'Enter') {
         e.preventDefault()
         handleSubmit()
       } else if (/^[0-9]$/.test(e.key)) {
-        setUserAnswer((prev) => prev + e.key)
-      } else if (e.key === '-' && userAnswer.length === 0) {
-        // Allow negative sign at start
-        setUserAnswer('-')
+        handleDigit(e.key)
       }
+      // Note: removed negative sign handling since prefix sums are always positive
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasPhysicalKeyboard, isPaused, currentProblem, isSubmitting, userAnswer, handleSubmit])
+  }, [
+    hasPhysicalKeyboard,
+    isPaused,
+    currentProblem,
+    isSubmitting,
+    handleSubmit,
+    handleDigit,
+    handleBackspace,
+  ])
 
   const handlePause = useCallback(() => {
     setIsPaused(true)
@@ -934,6 +997,7 @@ export function ActiveSession({
                   : undefined
               }
               autoSubmitPending={autoSubmitTriggered}
+              rejectedDigit={rejectedDigit}
             />
           ) : (
             <LinearProblem
@@ -946,126 +1010,51 @@ export function ActiveSession({
             />
           )}
 
-          {/* Per-term help with HelpAbacus - shown when helpTermIndex is set */}
+          {/* Per-term progressive help - shown when helpTermIndex is set */}
           {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
             <div
               data-section="term-help"
               className={css({
-                padding: '1rem',
-                backgroundColor: isDark ? 'purple.900' : 'purple.50',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: isDark ? 'purple.700' : 'purple.200',
-                minWidth: '200px',
+                minWidth: '280px',
+                maxWidth: '400px',
               })}
             >
+              {/* Term being helped indicator */}
               <div
                 className={css({
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  justifyContent: 'center',
                   marginBottom: '0.5rem',
                 })}
               >
                 <div
                   className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.25rem 0.75rem',
+                    backgroundColor: isDark ? 'purple.900' : 'purple.100',
+                    borderRadius: '20px',
                     fontSize: '0.875rem',
                     fontWeight: 'bold',
                     color: isDark ? 'purple.200' : 'purple.700',
                   })}
                 >
-                  {helpContext.term >= 0 ? '+' : ''}
-                  {helpContext.term}
+                  <span>Help with:</span>
+                  <span className={css({ fontFamily: 'monospace', fontSize: '1rem' })}>
+                    {helpContext.term >= 0 ? '+' : ''}
+                    {helpContext.term}
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleDismissHelp}
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '0.25rem',
-                    _hover: { color: isDark ? 'gray.200' : 'gray.700' },
-                  })}
-                >
-                  ✕
-                </button>
               </div>
 
-              {/* Provenance breakdown - shows which digits come from the term */}
-              {helpState.content?.beadSteps && helpState.content.beadSteps.length > 0 && (
-                <div
-                  data-element="provenance-breakdown"
-                  className={css({
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem',
-                    padding: '0.5rem',
-                    backgroundColor: isDark ? 'gray.800' : 'white',
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: isDark ? 'purple.700' : 'purple.200',
-                  })}
-                >
-                  {/* Group steps by unique provenance to show digit breakdown */}
-                  {(() => {
-                    const seenPlaces = new Set<string>()
-                    return helpState.content?.beadSteps
-                      .filter((step) => {
-                        if (!step.provenance) return false
-                        const key = `${step.provenance.rhsPlace}-${step.provenance.rhsDigit}`
-                        if (seenPlaces.has(key)) return false
-                        seenPlaces.add(key)
-                        return true
-                      })
-                      .map((step, idx) => {
-                        const prov = step.provenance
-                        if (!prov) return null
-                        return (
-                          <div
-                            key={idx}
-                            data-element="provenance-chip"
-                            className={css({
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '0.25rem 0.5rem',
-                              backgroundColor: isDark ? 'purple.800' : 'purple.100',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                            })}
-                          >
-                            <span
-                              className={css({
-                                fontWeight: 'bold',
-                                color: isDark ? 'purple.200' : 'purple.800',
-                              })}
-                            >
-                              {prov.rhsDigit}
-                            </span>
-                            <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
-                              {prov.rhsPlaceName}
-                            </span>
-                            <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>
-                              = {prov.rhsValue}
-                            </span>
-                          </div>
-                        )
-                      })
-                  })()}
-                </div>
-              )}
-
-              <HelpAbacus
+              <PracticeHelpPanel
+                helpState={helpState}
+                onRequestHelp={helpActions.requestHelp}
+                onDismissHelp={handleDismissHelp}
+                isAbacusPart={currentPart?.type === 'abacus'}
                 currentValue={helpContext.currentValue}
                 targetValue={helpContext.targetValue}
-                columns={3}
-                scaleFactor={0.9}
-                interactive={true}
-                onTargetReached={handleTargetReached}
               />
             </div>
           )}
