@@ -408,7 +408,10 @@ export default function PracticePage() {
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          padding: viewState === 'practicing' ? '0' : '2rem',
+          paddingTop: viewState === 'practicing' ? '80px' : 'calc(80px + 2rem)',
+          paddingLeft: viewState === 'practicing' ? '0' : '2rem',
+          paddingRight: viewState === 'practicing' ? '0' : '2rem',
+          paddingBottom: viewState === 'practicing' ? '0' : '2rem',
         })}
       >
         <div
