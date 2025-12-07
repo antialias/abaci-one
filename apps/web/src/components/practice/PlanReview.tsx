@@ -450,7 +450,9 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               <strong>Created:</strong> {new Date(plan.createdAt).toLocaleString()}
             </div>
 
-            <hr className={css({ margin: '0.5rem 0', borderColor: isDark ? 'gray.600' : 'gray.300' })} />
+            <hr
+              className={css({ margin: '0.5rem 0', borderColor: isDark ? 'gray.600' : 'gray.300' })}
+            />
 
             {parts.map((part: SessionPart) => (
               <details key={part.partNumber}>

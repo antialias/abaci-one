@@ -1,6 +1,6 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
+
 import type { Tutorial } from '../types/tutorial'
-import type { Locale } from '../i18n/messages'
 import { generateAbacusInstructions } from './abacusInstructionGenerator'
 
 // Import the existing tutorial step interface to match the current structure
@@ -218,7 +218,9 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
 ]
 
 // Convert the existing tutorial format to our new format
-export function convertGuidedAdditionTutorial(tutorialMessages: Record<string, any>): Tutorial {
+export function convertGuidedAdditionTutorial(
+  tutorialMessages: Record<string, any> = {}
+): Tutorial {
   // Convert existing static steps to progressive step data
   const convertedSteps = guidedAdditionSteps.map((step) => {
     // Generate progressive instruction data
@@ -284,7 +286,7 @@ export function convertGuidedAdditionTutorial(tutorialMessages: Record<string, a
 }
 
 // Helper to validate that the existing tutorial steps work with our new interfaces
-export function validateTutorialConversion(tutorialMessages: Record<string, any>): {
+export function validateTutorialConversion(tutorialMessages: Record<string, any> = {}): {
   isValid: boolean
   errors: string[]
 } {
@@ -332,7 +334,7 @@ export function validateTutorialConversion(tutorialMessages: Record<string, any>
 }
 
 // Helper to export tutorial data for use in the editor
-export function getTutorialForEditor(tutorialMessages: Record<string, any>): Tutorial {
+export function getTutorialForEditor(tutorialMessages: Record<string, any> = {}): Tutorial {
   const validation = validateTutorialConversion(tutorialMessages)
 
   if (!validation.isValid) {

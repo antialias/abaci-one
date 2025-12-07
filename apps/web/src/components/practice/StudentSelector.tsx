@@ -42,7 +42,13 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
         borderRadius: '12px',
         border: isSelected ? '3px solid' : '2px solid',
         borderColor: isSelected ? 'blue.500' : isDark ? 'gray.600' : 'gray.200',
-        backgroundColor: isSelected ? (isDark ? 'blue.900' : 'blue.50') : isDark ? 'gray.800' : 'white',
+        backgroundColor: isSelected
+          ? isDark
+            ? 'blue.900'
+            : 'blue.50'
+          : isDark
+            ? 'gray.800'
+            : 'white',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         minWidth: '100px',
@@ -258,7 +264,11 @@ export function StudentSelector({
               marginBottom: '1rem',
             })}
           >
-            Selected: <strong className={css({ color: isDark ? 'gray.100' : 'inherit' })}>{selectedStudent.name}</strong> {selectedStudent.emoji}
+            Selected:{' '}
+            <strong className={css({ color: isDark ? 'gray.100' : 'inherit' })}>
+              {selectedStudent.name}
+            </strong>{' '}
+            {selectedStudent.emoji}
           </p>
           <button
             type="button"

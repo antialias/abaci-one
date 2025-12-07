@@ -22,7 +22,7 @@ import {
 import { css } from '../../../styled-system/css'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
-import { PracticeHelpPanel } from './PracticeHelpPanel'
+import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { VerticalProblem } from './VerticalProblem'
 
 interface ActiveSessionProps {
@@ -116,6 +116,7 @@ function LinearProblem({
   isCompleted,
   correctAnswer,
   isDark,
+  detectedPrefixIndex,
 }: {
   terms: number[]
   userAnswer: string
@@ -123,6 +124,8 @@ function LinearProblem({
   isCompleted: boolean
   correctAnswer: number
   isDark: boolean
+  /** Detected prefix index - shows "..." instead of "=" for partial sums */
+  detectedPrefixIndex?: number
 }) {
   // Build the equation string
   const equation = terms
@@ -132,9 +135,14 @@ function LinearProblem({
     })
     .join('')
 
+  // Use "..." for prefix sums (mathematically incomplete), "=" for final answer
+  const isPrefixSum = detectedPrefixIndex !== undefined
+  const operator = isPrefixSum ? '…' : '='
+
   return (
     <div
       data-component="linear-problem"
+      data-prefix-mode={isPrefixSum ? 'true' : undefined}
       className={css({
         display: 'flex',
         alignItems: 'center',
@@ -145,7 +153,22 @@ function LinearProblem({
         fontWeight: 'bold',
       })}
     >
-      <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>{equation} =</span>
+      <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>
+        {equation}{' '}
+        <span
+          className={css({
+            color: isPrefixSum
+              ? isDark
+                ? 'yellow.400'
+                : 'yellow.600'
+              : isDark
+                ? 'gray.200'
+                : 'gray.800',
+          })}
+        >
+          {operator}
+        </span>
+      </span>
       <span
         className={css({
           minWidth: '80px',
@@ -355,6 +378,36 @@ export function ActiveSession({
       termIndex: helpTermIndex,
     })
   }, [helpTermIndex, currentProblem?.problem.terms.join(','), prefixSums])
+
+  // Auto-trigger help when prefix sum is detected (don't make them click twice)
+  useEffect(() => {
+    // Only auto-trigger if:
+    // 1. We detected a prefix sum match (buttonState === 'help')
+    // 2. We're not already showing help for this term
+    // 3. The matched prefix is the next term they need help with
+    if (
+      buttonState === 'help' &&
+      helpTermIndex === null &&
+      matchedPrefixIndex >= 0 &&
+      matchedPrefixIndex < prefixSums.length - 1
+    ) {
+      const newConfirmedCount = matchedPrefixIndex + 1
+      setConfirmedTermCount(newConfirmedCount)
+
+      if (newConfirmedCount < (currentProblem?.problem.terms.length || 0)) {
+        setHelpTermIndex(newConfirmedCount)
+        setUserAnswer('')
+        helpActions.requestHelp(1)
+      }
+    }
+  }, [
+    buttonState,
+    helpTermIndex,
+    matchedPrefixIndex,
+    prefixSums.length,
+    currentProblem?.problem.terms.length,
+    helpActions,
+  ])
 
   // Get current part and slot
   const parts = plan.parts
@@ -969,96 +1022,91 @@ export function ActiveSession({
           {currentSlot?.purpose}
         </div>
 
-        {/* Problem and Help Abacus - side by side layout */}
-        <div
-          data-section="problem-and-help"
-          className={css({
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            gap: '1.5rem',
-            flexWrap: 'wrap',
-          })}
-        >
-          {/* Problem display - vertical or linear based on part type */}
-          {currentPart.format === 'vertical' ? (
-            <VerticalProblem
-              terms={currentProblem.problem.terms}
-              userAnswer={userAnswer}
-              isFocused={!isPaused && !isSubmitting}
-              isCompleted={feedback !== 'none'}
-              correctAnswer={currentProblem.problem.answer}
-              size="large"
-              confirmedTermCount={confirmedTermCount}
-              currentHelpTermIndex={helpTermIndex ?? undefined}
-              detectedPrefixIndex={
-                matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                  ? matchedPrefixIndex
-                  : undefined
-              }
-              autoSubmitPending={autoSubmitTriggered}
-              rejectedDigit={rejectedDigit}
-            />
-          ) : (
-            <LinearProblem
-              terms={currentProblem.problem.terms}
-              userAnswer={userAnswer}
-              isFocused={!isPaused && !isSubmitting}
-              isCompleted={feedback !== 'none'}
-              correctAnswer={currentProblem.problem.answer}
-              isDark={isDark}
-            />
-          )}
-
-          {/* Per-term progressive help - shown when helpTermIndex is set */}
-          {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
-            <div
-              data-section="term-help"
-              className={css({
-                minWidth: '280px',
-                maxWidth: '400px',
-              })}
-            >
-              {/* Term being helped indicator */}
-              <div
-                className={css({
-                  display: 'flex',
-                  justifyContent: 'center',
-                  marginBottom: '0.5rem',
-                })}
-              >
+        {/* Problem display - vertical or linear based on part type */}
+        {currentPart.format === 'vertical' ? (
+          <VerticalProblem
+            terms={currentProblem.problem.terms}
+            userAnswer={userAnswer}
+            isFocused={!isPaused && !isSubmitting}
+            isCompleted={feedback !== 'none'}
+            correctAnswer={currentProblem.problem.answer}
+            size="large"
+            confirmedTermCount={confirmedTermCount}
+            currentHelpTermIndex={helpTermIndex ?? undefined}
+            detectedPrefixIndex={
+              matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                ? matchedPrefixIndex
+                : undefined
+            }
+            autoSubmitPending={autoSubmitTriggered}
+            rejectedDigit={rejectedDigit}
+            helpOverlay={
+              !isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext ? (
                 <div
                   className={css({
-                    display: 'inline-flex',
+                    display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.25rem 0.75rem',
-                    backgroundColor: isDark ? 'purple.900' : 'purple.100',
-                    borderRadius: '20px',
-                    fontSize: '0.875rem',
-                    fontWeight: 'bold',
-                    color: isDark ? 'purple.200' : 'purple.700',
+                    gap: '0.25rem',
+                    backgroundColor: isDark
+                      ? 'rgba(30, 58, 138, 0.95)'
+                      : 'rgba(219, 234, 254, 0.95)',
+                    borderRadius: '12px',
+                    padding: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                   })}
                 >
-                  <span>Help with:</span>
-                  <span className={css({ fontFamily: 'monospace', fontSize: '1rem' })}>
-                    {helpContext.term >= 0 ? '+' : ''}
-                    {helpContext.term}
-                  </span>
-                </div>
-              </div>
+                  {/* Term being helped indicator */}
+                  <div
+                    className={css({
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.25rem 0.75rem',
+                      backgroundColor: isDark ? 'purple.900' : 'purple.100',
+                      borderRadius: '20px',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      color: isDark ? 'purple.200' : 'purple.700',
+                    })}
+                  >
+                    <span>Adding:</span>
+                    <span className={css({ fontFamily: 'monospace', fontSize: '1rem' })}>
+                      {helpContext.term >= 0 ? '+' : ''}
+                      {helpContext.term}
+                    </span>
+                  </div>
 
-              <PracticeHelpPanel
-                helpState={helpState}
-                onRequestHelp={helpActions.requestHelp}
-                onDismissHelp={handleDismissHelp}
-                isAbacusPart={currentPart?.type === 'abacus'}
-                currentValue={helpContext.currentValue}
-                targetValue={helpContext.targetValue}
-              />
-            </div>
-          )}
-        </div>
+                  {/* Interactive abacus with arrows - just the abacus, no extra UI */}
+                  {/* Columns = max digits between current and target values (minimum 1) */}
+                  <PracticeHelpOverlay
+                    currentValue={helpContext.currentValue}
+                    targetValue={helpContext.targetValue}
+                    columns={Math.max(
+                      1,
+                      Math.max(helpContext.currentValue, helpContext.targetValue).toString().length
+                    )}
+                    onTargetReached={handleTargetReached}
+                  />
+                </div>
+              ) : undefined
+            }
+          />
+        ) : (
+          <LinearProblem
+            terms={currentProblem.problem.terms}
+            userAnswer={userAnswer}
+            isFocused={!isPaused && !isSubmitting}
+            isCompleted={feedback !== 'none'}
+            correctAnswer={currentProblem.problem.answer}
+            isDark={isDark}
+            detectedPrefixIndex={
+              matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                ? matchedPrefixIndex
+                : undefined
+            }
+          />
+        )}
 
         {/* Feedback message */}
         {feedback !== 'none' && (

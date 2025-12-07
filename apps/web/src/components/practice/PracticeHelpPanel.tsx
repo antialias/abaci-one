@@ -9,6 +9,81 @@ import { css } from '../../../styled-system/css'
 import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
 import { HelpAbacus } from './HelpAbacus'
 
+/**
+ * Generate a dynamic coach hint based on the current step
+ */
+function generateDynamicCoachHint(
+  sequence: ReturnType<typeof generateUnifiedInstructionSequence> | null,
+  currentStepIndex: number,
+  abacusValue: number,
+  targetValue: number
+): string {
+  if (!sequence || sequence.steps.length === 0) {
+    return 'Take your time and think through each step.'
+  }
+
+  // Check if we're done
+  if (abacusValue === targetValue) {
+    return 'You did it! Move on to the next step.'
+  }
+
+  // Get the current step
+  const currentStep = sequence.steps[currentStepIndex]
+  if (!currentStep) {
+    return 'Take your time and think through each step.'
+  }
+
+  // Find the segment this step belongs to
+  const segment = sequence.segments.find((s) => s.id === currentStep.segmentId)
+
+  // Use the segment's readable summary if available
+  if (segment?.readable?.summary) {
+    return segment.readable.summary
+  }
+
+  // Fall back to generating from the rule
+  if (segment) {
+    const rule = segment.plan[0]?.rule
+    switch (rule) {
+      case 'Direct':
+        return `Add ${segment.digit} directly to the ${getPlaceName(segment.place)} column.`
+      case 'FiveComplement':
+        return `Think about friends of 5. What plus ${5 - segment.digit} makes 5?`
+      case 'TenComplement':
+        return `Think about friends of 10. What plus ${10 - segment.digit} makes 10?`
+      case 'Cascade':
+        return 'This will carry through multiple columns. Start from the left.'
+      default:
+        break
+    }
+  }
+
+  // Fall back to english instruction from the step
+  if (currentStep.englishInstruction) {
+    return currentStep.englishInstruction
+  }
+
+  return 'Think about which beads need to move.'
+}
+
+/**
+ * Get place name from place value
+ */
+function getPlaceName(place: number): string {
+  switch (place) {
+    case 0:
+      return 'ones'
+    case 1:
+      return 'tens'
+    case 2:
+      return 'hundreds'
+    case 3:
+      return 'thousands'
+    default:
+      return `10^${place}`
+  }
+}
+
 interface PracticeHelpPanelProps {
   /** Current help state from usePracticeHelp hook */
   helpState: PracticeHelpState
@@ -106,19 +181,27 @@ export function PracticeHelpPanel({
     return sequence.steps.length - 1
   }, [sequence, abacusValue, currentValue])
 
+  // Generate dynamic coach hint based on current step
+  const dynamicCoachHint = useMemo(() => {
+    return generateDynamicCoachHint(sequence, currentStepIndex, abacusValue, targetValue ?? 0)
+  }, [sequence, currentStepIndex, abacusValue, targetValue])
+
   // Handle abacus value changes
   const handleAbacusValueChange = useCallback((newValue: number) => {
     setAbacusValue(newValue)
   }, [])
 
+  // Calculate effective level here so handleRequestHelp can use it
+  // (effectiveLevel treats L0 as L1 since we auto-show help on prefix sum detection)
+  const effectiveLevel = currentLevel === 0 ? 1 : currentLevel
+
   const handleRequestHelp = useCallback(() => {
-    if (currentLevel === 0) {
-      onRequestHelp(1)
+    // Always request the next level above effectiveLevel
+    if (effectiveLevel < 3) {
+      onRequestHelp((effectiveLevel + 1) as HelpLevel)
       setIsExpanded(true)
-    } else if (currentLevel < 3) {
-      onRequestHelp((currentLevel + 1) as HelpLevel)
     }
-  }, [currentLevel, onRequestHelp])
+  }, [effectiveLevel, onRequestHelp])
 
   const handleDismiss = useCallback(() => {
     onDismissHelp()
@@ -130,55 +213,11 @@ export function PracticeHelpPanel({
     return null
   }
 
-  // Level 0: Just show the help request button
-  if (currentLevel === 0) {
-    return (
-      <div
-        data-component="practice-help-panel"
-        data-level={0}
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-        })}
-      >
-        <button
-          type="button"
-          data-action="request-help"
-          onClick={handleRequestHelp}
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            width: '100%',
-            padding: '0.75rem',
-            fontSize: '0.875rem',
-            color: isDark ? 'blue.300' : 'blue.600',
-            backgroundColor: isDark ? 'blue.900' : 'blue.50',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.700' : 'blue.200',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            _hover: {
-              backgroundColor: isDark ? 'blue.800' : 'blue.100',
-              borderColor: isDark ? 'blue.600' : 'blue.300',
-            },
-          })}
-        >
-          <span>💡</span>
-          <span>Need Help?</span>
-        </button>
-      </div>
-    )
-  }
-
-  // Levels 1-3: Show the help content
+  // Levels 1-3: Show the help content (effectiveLevel is calculated above)
   return (
     <div
       data-component="practice-help-panel"
-      data-level={currentLevel}
+      data-level={effectiveLevel}
       className={css({
         display: 'flex',
         flexDirection: 'column',
@@ -206,7 +245,7 @@ export function PracticeHelpPanel({
             gap: '0.5rem',
           })}
         >
-          <span className={css({ fontSize: '1.25rem' })}>{HELP_LEVEL_ICONS[currentLevel]}</span>
+          <span className={css({ fontSize: '1.25rem' })}>{HELP_LEVEL_ICONS[effectiveLevel]}</span>
           <span
             className={css({
               fontSize: '0.875rem',
@@ -214,7 +253,7 @@ export function PracticeHelpPanel({
               color: isDark ? 'blue.200' : 'blue.700',
             })}
           >
-            {HELP_LEVEL_LABELS[currentLevel]}
+            {HELP_LEVEL_LABELS[effectiveLevel]}
           </span>
           {/* Help level indicator dots */}
           <div
@@ -232,7 +271,7 @@ export function PracticeHelpPanel({
                   height: '8px',
                   borderRadius: '50%',
                   backgroundColor:
-                    level <= currentLevel ? 'blue.500' : isDark ? 'blue.700' : 'blue.200',
+                    level <= effectiveLevel ? 'blue.500' : isDark ? 'blue.700' : 'blue.200',
                 })}
               />
             ))}
@@ -259,10 +298,11 @@ export function PracticeHelpPanel({
         </button>
       </div>
 
-      {/* Level 1: Coach hint */}
-      {currentLevel >= 1 && content?.coachHint && (
+      {/* Level 1: Coach hint - uses dynamic hint that updates with abacus progress */}
+      {effectiveLevel >= 1 && dynamicCoachHint && (
         <div
           data-element="coach-hint"
+          data-step-index={currentStepIndex}
           className={css({
             padding: '0.75rem',
             backgroundColor: isDark ? 'gray.800' : 'white',
@@ -278,13 +318,13 @@ export function PracticeHelpPanel({
               lineHeight: '1.5',
             })}
           >
-            {content.coachHint}
+            {dynamicCoachHint}
           </p>
         </div>
       )}
 
       {/* Level 2: Decomposition */}
-      {currentLevel >= 2 &&
+      {effectiveLevel >= 2 &&
         content?.decomposition &&
         content.decomposition.isMeaningful &&
         currentValue !== undefined &&
@@ -332,7 +372,7 @@ export function PracticeHelpPanel({
         )}
 
       {/* Level 3: Visual abacus with bead arrows */}
-      {currentLevel >= 3 && currentValue !== undefined && targetValue !== undefined && (
+      {effectiveLevel >= 3 && currentValue !== undefined && targetValue !== undefined && (
         <div
           data-element="help-abacus"
           className={css({
@@ -384,7 +424,7 @@ export function PracticeHelpPanel({
       )}
 
       {/* Fallback: Text bead steps if abacus values not provided */}
-      {currentLevel >= 3 &&
+      {effectiveLevel >= 3 &&
         (currentValue === undefined || targetValue === undefined) &&
         content?.beadSteps &&
         content.beadSteps.length > 0 && (
@@ -447,7 +487,7 @@ export function PracticeHelpPanel({
         )}
 
       {/* More help button (if not at max level) */}
-      {currentLevel < 3 && (
+      {effectiveLevel < 3 && (
         <button
           type="button"
           data-action="escalate-help"
@@ -472,8 +512,8 @@ export function PracticeHelpPanel({
             },
           })}
         >
-          <span>{HELP_LEVEL_ICONS[(currentLevel + 1) as HelpLevel]}</span>
-          <span>More Help: {HELP_LEVEL_LABELS[(currentLevel + 1) as HelpLevel]}</span>
+          <span>{HELP_LEVEL_ICONS[(effectiveLevel + 1) as HelpLevel]}</span>
+          <span>More Help: {HELP_LEVEL_LABELS[(effectiveLevel + 1) as HelpLevel]}</span>
         </button>
       )}
 

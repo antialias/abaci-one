@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
@@ -24,6 +25,10 @@ interface VerticalProblemProps {
   detectedPrefixIndex?: number
   /** Whether auto-submit is about to trigger (shows celebration animation) */
   autoSubmitPending?: boolean
+  /** Rejected digit to show as red X (null = no rejection) */
+  rejectedDigit?: string | null
+  /** Help overlay to render adjacent to the current help term (positioned above the term row) */
+  helpOverlay?: ReactNode
 }
 
 /**
@@ -46,6 +51,8 @@ export function VerticalProblem({
   currentHelpTermIndex,
   detectedPrefixIndex,
   autoSubmitPending = false,
+  rejectedDigit = null,
+  helpOverlay,
 }: VerticalProblemProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -78,6 +85,8 @@ export function VerticalProblem({
         gap: '2px',
         padding: '0.5rem',
         borderRadius: '8px',
+        // Allow help overlay to overflow outside the component bounds
+        overflow: 'visible',
         backgroundColor: isCompleted
           ? isCorrect
             ? isDark
@@ -267,6 +276,24 @@ export function VerticalProblem({
                 {digit}
               </div>
             ))}
+
+            {/* Help overlay - positioned above this term row, translated up by its height */}
+            {isCurrentHelp && helpOverlay && (
+              <div
+                data-section="term-help"
+                data-help-term-index={index}
+                className={css({
+                  position: 'absolute',
+                  // Position at bottom of this row, then translate up by 100% to sit above it
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 10,
+                })}
+              >
+                {helpOverlay}
+              </div>
+            )}
           </div>
         )
       })}
@@ -325,19 +352,27 @@ export function VerticalProblem({
             <span>Perfect!</span>
           </div>
         )}
-        {/* Equals sign column */}
+        {/* Equals sign column - show "..." for prefix sums (mathematically incomplete), "=" for final answer */}
         <div
           data-element="equals"
+          data-prefix-mode={detectedPrefixIndex !== undefined ? 'true' : undefined}
           className={css({
             width: cellWidth,
             height: cellHeight,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: isDark ? 'gray.400' : 'gray.500',
+            color:
+              detectedPrefixIndex !== undefined
+                ? isDark
+                  ? 'yellow.400'
+                  : 'yellow.600'
+                : isDark
+                  ? 'gray.400'
+                  : 'gray.500',
           })}
         >
-          =
+          {detectedPrefixIndex !== undefined ? '…' : '='}
         </div>
 
         {/* Answer digit cells - show maxDigits cells total */}
@@ -351,55 +386,74 @@ export function VerticalProblem({
             const digit = paddedValue[index] || ''
             const isEmpty = digit === ''
 
+            // Check if this is the cell where a rejected digit should show
+            // Digits are entered left-to-right, filling from left side of the answer area
+            // So the next digit position is right after the current answer length
+            const nextDigitIndex = userAnswer.length
+            const isRejectedCell = rejectedDigit && isEmpty && index === nextDigitIndex
+
             return (
               <div
                 key={index}
-                data-element={isEmpty ? 'empty-cell' : 'answer-cell'}
+                data-element={
+                  isRejectedCell ? 'rejected-cell' : isEmpty ? 'empty-cell' : 'answer-cell'
+                }
                 className={css({
                   width: cellWidth,
                   height: cellHeight,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: autoSubmitPending
+                  position: 'relative',
+                  backgroundColor: isRejectedCell
                     ? isDark
-                      ? 'green.800'
-                      : 'green.100'
-                    : isCompleted
-                      ? isCorrect
-                        ? isDark
-                          ? 'green.800'
-                          : 'green.100'
+                      ? 'red.900'
+                      : 'red.100'
+                    : autoSubmitPending
+                      ? isDark
+                        ? 'green.800'
+                        : 'green.100'
+                      : isCompleted
+                        ? isCorrect
+                          ? isDark
+                            ? 'green.800'
+                            : 'green.100'
+                          : isDark
+                            ? 'red.800'
+                            : 'red.100'
                         : isDark
-                          ? 'red.800'
-                          : 'red.100'
-                      : isDark
-                        ? 'gray.700'
-                        : 'white',
+                          ? 'gray.700'
+                          : 'white',
                   borderRadius: '4px',
                   border:
-                    isEmpty && !isCompleted && !autoSubmitPending ? '1px dashed' : '1px solid',
-                  borderColor: autoSubmitPending
+                    isEmpty && !isCompleted && !autoSubmitPending && !isRejectedCell
+                      ? '1px dashed'
+                      : '1px solid',
+                  borderColor: isRejectedCell
                     ? isDark
-                      ? 'green.500'
-                      : 'green.400'
-                    : isCompleted
-                      ? isCorrect
-                        ? isDark
-                          ? 'green.600'
-                          : 'green.300'
-                        : isDark
-                          ? 'red.600'
-                          : 'red.300'
-                      : isEmpty
-                        ? isFocused
-                          ? 'blue.400'
+                      ? 'red.500'
+                      : 'red.400'
+                    : autoSubmitPending
+                      ? isDark
+                        ? 'green.500'
+                        : 'green.400'
+                      : isCompleted
+                        ? isCorrect
+                          ? isDark
+                            ? 'green.600'
+                            : 'green.300'
+                          : isDark
+                            ? 'red.600'
+                            : 'red.300'
+                        : isEmpty
+                          ? isFocused
+                            ? 'blue.400'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.300'
                           : isDark
                             ? 'gray.600'
-                            : 'gray.300'
-                        : isDark
-                          ? 'gray.600'
-                          : 'gray.300',
+                            : 'gray.300',
                   transition: 'all 0.15s ease-out',
                   color: isCompleted
                     ? isCorrect
@@ -412,9 +466,24 @@ export function VerticalProblem({
                     : isDark
                       ? 'gray.200'
                       : 'gray.800',
+                  // Shake animation for rejected cell
+                  ...(isRejectedCell && {
+                    animation: 'shake 0.3s ease-out',
+                  }),
                 })}
               >
-                {digit}
+                {isRejectedCell ? (
+                  <span
+                    className={css({
+                      color: isDark ? 'red.400' : 'red.600',
+                      fontWeight: 'bold',
+                    })}
+                  >
+                    ✕
+                  </span>
+                ) : (
+                  digit
+                )}
               </div>
             )
           })}

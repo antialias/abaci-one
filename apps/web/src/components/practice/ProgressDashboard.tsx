@@ -73,9 +73,7 @@ function getMasteryColor(level: MasteryLevel, isDark: boolean): { bg: string; te
         : { bg: 'yellow.100', text: 'yellow.700' }
     default:
       // 'learning' and any unknown values use gray
-      return isDark
-        ? { bg: 'gray.700', text: 'gray.300' }
-        : { bg: 'gray.100', text: 'gray.600' }
+      return isDark ? { bg: 'gray.700', text: 'gray.300' } : { bg: 'gray.100', text: 'gray.600' }
   }
 }
 

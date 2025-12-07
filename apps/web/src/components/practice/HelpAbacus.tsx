@@ -2,12 +2,13 @@
 
 import { useTheme } from '@/contexts/ThemeContext'
 import {
+  type AbacusOverlay,
   AbacusReact,
   calculateBeadDiffFromValues,
   type StepBeadHighlight,
   useAbacusDisplay,
 } from '@soroban/abacus-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
 
 /** Bead change from calculateBeadDiffFromValues */
@@ -19,7 +20,7 @@ interface BeadChange {
   order?: number
 }
 
-interface HelpAbacusProps {
+export interface HelpAbacusProps {
   /** Initial value to start the abacus at */
   currentValue: number
   /** Target value we want to reach */
@@ -34,6 +35,16 @@ interface HelpAbacusProps {
   onValueChange?: (value: number) => void
   /** Whether the abacus is interactive (default: false for help mode) */
   interactive?: boolean
+  /** Optional overlays (e.g., tooltips pointing at beads) */
+  overlays?: AbacusOverlay[]
+  /** Whether to show the summary instruction above abacus (default: true) */
+  showSummary?: boolean
+  /** Whether to show the value labels below abacus (default: true) */
+  showValueLabels?: boolean
+  /** Whether to show the target reached message (default: true) */
+  showTargetReached?: boolean
+  /** Callback to receive bead highlights for tooltip positioning */
+  onBeadHighlightsChange?: (highlights: StepBeadHighlight[] | undefined) => void
 }
 
 /**
@@ -51,11 +62,17 @@ export function HelpAbacus({
   onTargetReached,
   onValueChange,
   interactive = false,
+  overlays,
+  showSummary = true,
+  showValueLabels = true,
+  showTargetReached = true,
+  onBeadHighlightsChange,
 }: HelpAbacusProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { config: abacusConfig } = useAbacusDisplay()
   const [currentStep] = useState(0)
+  const onBeadHighlightsChangeRef = useRef(onBeadHighlightsChange)
 
   // Track the displayed value for bead diff calculations
   // This is updated via onValueChange from AbacusReact
@@ -113,6 +130,14 @@ export function HelpAbacus({
     }
   }, [displayedValue, targetValue, columns])
 
+  // Keep callback ref up to date
+  onBeadHighlightsChangeRef.current = onBeadHighlightsChange
+
+  // Notify parent when bead highlights change
+  useEffect(() => {
+    onBeadHighlightsChangeRef.current?.(stepBeadHighlights)
+  }, [stepBeadHighlights])
+
   // Custom styles for help mode - highlight the arrows more prominently
   const customStyles = useMemo(() => {
     return {
@@ -151,7 +176,7 @@ export function HelpAbacus({
       })}
     >
       {/* Summary instruction */}
-      {summary && (
+      {showSummary && summary && (
         <div
           data-element="help-summary"
           className={css({
@@ -194,64 +219,79 @@ export function HelpAbacus({
           showDirectionIndicators={!isAtTarget}
           customStyles={customStyles}
           onValueChange={handleValueChange}
+          overlays={overlays}
         />
       </div>
 
       {/* Value labels */}
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '2rem',
-          fontSize: '0.875rem',
-        })}
-      >
+      {showValueLabels && (
         <div
           className={css({
-            color: isAtTarget ? (isDark ? 'green.400' : 'green.600') : isDark ? 'gray.400' : 'gray.600',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '2rem',
+            fontSize: '0.875rem',
           })}
         >
-          Current:{' '}
-          <span
+          <div
             className={css({
-              fontWeight: 'bold',
               color: isAtTarget
                 ? isDark
-                  ? 'green.300'
-                  : 'green.700'
+                  ? 'green.400'
+                  : 'green.600'
                 : isDark
-                  ? 'gray.200'
-                  : 'gray.800',
+                  ? 'gray.400'
+                  : 'gray.600',
             })}
           >
-            {displayedValue}
-          </span>
-        </div>
-        <div
-          className={css({
-            color: isAtTarget ? (isDark ? 'green.400' : 'green.600') : isDark ? 'blue.400' : 'blue.600',
-          })}
-        >
-          Target:{' '}
-          <span
+            Current:{' '}
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isAtTarget
+                  ? isDark
+                    ? 'green.300'
+                    : 'green.700'
+                  : isDark
+                    ? 'gray.200'
+                    : 'gray.800',
+              })}
+            >
+              {displayedValue}
+            </span>
+          </div>
+          <div
             className={css({
-              fontWeight: 'bold',
               color: isAtTarget
                 ? isDark
-                  ? 'green.300'
-                  : 'green.700'
+                  ? 'green.400'
+                  : 'green.600'
                 : isDark
-                  ? 'blue.300'
-                  : 'blue.800',
+                  ? 'blue.400'
+                  : 'blue.600',
             })}
           >
-            {targetValue}
-          </span>
+            Target:{' '}
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isAtTarget
+                  ? isDark
+                    ? 'green.300'
+                    : 'green.700'
+                  : isDark
+                    ? 'blue.300'
+                    : 'blue.800',
+              })}
+            >
+              {targetValue}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Success feedback when target reached */}
-      {isAtTarget && (
+      {showTargetReached && isAtTarget && (
         <div
           data-element="target-reached"
           className={css({

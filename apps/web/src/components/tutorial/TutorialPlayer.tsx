@@ -1,6 +1,5 @@
 'use client'
 
-import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   type AbacusOverlay,
   AbacusReact,
@@ -19,54 +18,14 @@ import type {
   TutorialStep,
   UIState,
 } from '../../types/tutorial'
+import { findTopmostBeadWithArrows, hasActiveBeadsToLeft } from '../../utils/beadTooltipUtils'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { CoachBar } from './CoachBar/CoachBar'
 import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
-import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
+import { BeadTooltipContent } from '../shared/BeadTooltipContent'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { TutorialUIProvider } from './TutorialUIContext'
 import './CoachBar/coachbar.css'
-
-// Helper function to find the topmost bead with arrows
-function findTopmostBeadWithArrows(
-  stepBeadHighlights: StepBeadHighlight[] | undefined
-): StepBeadHighlight | null {
-  if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
-
-  // Filter only beads that have direction arrows (should have highlights)
-  const beadsWithArrows = stepBeadHighlights.filter(
-    (bead) => bead.direction && bead.direction !== 'none'
-  )
-
-  if (beadsWithArrows.length === 0) {
-    console.warn('No beads with arrows found in step highlights:', stepBeadHighlights)
-    return null
-  }
-
-  // Sort by place value (highest first, since place value 4 = leftmost = highest value)
-  // Then by bead type (heaven beads are higher than earth beads)
-  // Then by position for earth beads (lower position = higher on abacus)
-  const sortedBeads = [...beadsWithArrows].sort((a, b) => {
-    // First sort by place value (higher place value = more significant = topmost priority)
-    if (a.placeValue !== b.placeValue) {
-      return b.placeValue - a.placeValue
-    }
-
-    // If same place value, heaven beads come before earth beads
-    if (a.beadType !== b.beadType) {
-      return a.beadType === 'heaven' ? -1 : 1
-    }
-
-    // If both earth beads in same column, lower position number = higher on abacus
-    if (a.beadType === 'earth' && b.beadType === 'earth') {
-      return (a.position || 0) - (b.position || 0)
-    }
-
-    return 0
-  })
-
-  return sortedBeads[0] || null
-}
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -534,49 +493,17 @@ function TutorialPlayerContent({
       return null
     }
 
-    // Smart positioning logic: avoid covering active beads
-    // Convert placeValue to columnIndex based on actual number of columns
+    // Smart positioning logic: avoid covering active beads using shared utility
     const targetColumnIndex = abacusColumns - 1 - topmostBead.placeValue
-
-    // Check if there are any active beads (against reckoning bar OR with arrows) in columns to the left
-    const hasActiveBeadsToLeft = (() => {
-      // Get current abacus state - we need to check which beads are against the reckoning bar
-      const abacusDigits = currentValue
-        .toString()
-        .padStart(abacusColumns, '0')
-        .split('')
-        .map(Number)
-
-      for (let col = 0; col < targetColumnIndex; col++) {
-        const placeValue = abacusColumns - 1 - col // Convert columnIndex back to placeValue
-        const digitValue = abacusDigits[col]
-
-        // Check if any beads are active (against reckoning bar) in this column
-        if (digitValue >= 5) {
-          // Heaven bead is active
-          return true
-        }
-        if (digitValue % 5 > 0) {
-          // Earth beads are active
-          return true
-        }
-
-        // Also check if this column has beads with direction arrows (from current step)
-        const hasArrowsInColumn =
-          currentStepBeads?.some((bead) => {
-            const beadColumnIndex = abacusColumns - 1 - bead.placeValue
-            return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
-          }) ?? false
-        if (hasArrowsInColumn) {
-          return true
-        }
-      }
-
-      return false
-    })()
+    const activeToLeft = hasActiveBeadsToLeft(
+      currentValue,
+      currentStepBeads,
+      abacusColumns,
+      targetColumnIndex
+    )
 
     // Determine tooltip position and target
-    const shouldPositionAbove = hasActiveBeadsToLeft
+    const shouldPositionAbove = activeToLeft
     const tooltipSide = shouldPositionAbove ? 'top' : 'left'
     const tooltipTarget = shouldPositionAbove
       ? {
@@ -600,85 +527,14 @@ function TutorialPlayerContent({
       type: 'tooltip',
       target: tooltipTarget,
       content: (
-        <Tooltip.Provider>
-          <Tooltip.Root open={true}>
-            <Tooltip.Trigger asChild>
-              <div style={{ width: '1px', height: '1px', opacity: 0 }} />
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Content
-                side={tooltipSide}
-                align="center"
-                sideOffset={20}
-                style={{
-                  background: showCelebration
-                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)'
-                    : theme === 'dark'
-                      ? '#1e40af'
-                      : '#1e3a8a',
-                  color: '#ffffff',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  boxShadow: showCelebration
-                    ? '0 8px 25px rgba(34, 197, 94, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.2)'
-                    : theme === 'dark'
-                      ? '0 4px 12px rgba(0,0,0,0.3)'
-                      : '0 4px 12px rgba(0,0,0,0.2)',
-                  whiteSpace: 'normal',
-                  maxWidth: '200px',
-                  minWidth: '150px',
-                  wordBreak: 'break-word',
-                  zIndex: 50,
-                  opacity: 0.95,
-                  transition: 'all 0.3s ease',
-                  transform: showCelebration ? 'scale(1.05)' : 'scale(1)',
-                  animation: showCelebration ? 'celebrationPulse 0.6s ease-out' : 'none',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.85'
-                }}
-              >
-                <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                  {showCelebration ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      <span style={{ fontSize: '18px' }}>🎉</span>
-                      <span>Excellent work!</span>
-                    </div>
-                  ) : (
-                    <>
-                      {isMeaningfulDecomposition && (
-                        <PedagogicalDecompositionDisplay
-                          variant="tooltip"
-                          showLabel={true}
-                          decomposition={renderHighlightedDecomposition()}
-                        />
-                      )}
-                      <span style={{ fontSize: '18px' }}>💡</span> {currentStepSummary}
-                    </>
-                  )}
-                </div>
-                <Tooltip.Arrow
-                  style={{
-                    fill: showCelebration ? '#15803d' : '#1e40af',
-                  }}
-                />
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        </Tooltip.Provider>
+        <BeadTooltipContent
+          showCelebration={showCelebration}
+          currentStepSummary={currentStepSummary}
+          isMeaningfulDecomposition={isMeaningfulDecomposition}
+          decomposition={renderHighlightedDecomposition()}
+          side={tooltipSide}
+          theme={theme}
+        />
       ),
       offset: { x: 0, y: 0 },
       visible: true,
@@ -695,6 +551,7 @@ function TutorialPlayerContent({
     currentStep,
     isMeaningfulDecomposition,
     abacusColumns,
+    theme,
   ])
 
   // Timer for smart help detection
