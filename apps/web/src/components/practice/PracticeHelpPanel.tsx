@@ -2,8 +2,9 @@
 
 import { useCallback, useState } from 'react'
 import type { HelpLevel } from '@/db/schema/session-plans'
-import type { HelpContent, PracticeHelpState } from '@/hooks/usePracticeHelp'
+import type { PracticeHelpState } from '@/hooks/usePracticeHelp'
 import { css } from '../../../styled-system/css'
+import { HelpAbacus } from './HelpAbacus'
 
 interface PracticeHelpPanelProps {
   /** Current help state from usePracticeHelp hook */
@@ -14,6 +15,10 @@ interface PracticeHelpPanelProps {
   onDismissHelp: () => void
   /** Whether this is the abacus part (enables bead arrows at L3) */
   isAbacusPart?: boolean
+  /** Current value on the abacus (for bead arrows at L3) */
+  currentValue?: number
+  /** Target value to reach (for bead arrows at L3) */
+  targetValue?: number
 }
 
 /**
@@ -50,6 +55,8 @@ export function PracticeHelpPanel({
   onRequestHelp,
   onDismissHelp,
   isAbacusPart = false,
+  currentValue,
+  targetValue,
 }: PracticeHelpPanelProps) {
   const { currentLevel, content, isAvailable, maxLevelUsed } = helpState
   const [isExpanded, setIsExpanded] = useState(false)
@@ -297,16 +304,16 @@ export function PracticeHelpPanel({
         </div>
       )}
 
-      {/* Level 3: Bead steps */}
-      {currentLevel >= 3 && content?.beadSteps && content.beadSteps.length > 0 && (
+      {/* Level 3: Visual abacus with bead arrows */}
+      {currentLevel >= 3 && currentValue !== undefined && targetValue !== undefined && (
         <div
-          data-element="bead-steps"
+          data-element="help-abacus"
           className={css({
             padding: '0.75rem',
             backgroundColor: 'white',
             borderRadius: '8px',
             border: '1px solid',
-            borderColor: 'blue.100',
+            borderColor: 'purple.200',
           })}
         >
           <div
@@ -314,43 +321,20 @@ export function PracticeHelpPanel({
               fontSize: '0.75rem',
               fontWeight: 'bold',
               color: 'purple.600',
-              marginBottom: '0.5rem',
+              marginBottom: '0.75rem',
               textTransform: 'uppercase',
+              textAlign: 'center',
             })}
           >
-            Bead Movements
+            🧮 Follow the Arrows
           </div>
-          <ol
-            className={css({
-              listStyle: 'decimal',
-              paddingLeft: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-            })}
-          >
-            {content.beadSteps.map((step, index) => (
-              <li
-                key={index}
-                className={css({
-                  fontSize: '0.875rem',
-                  color: 'gray.700',
-                })}
-              >
-                <span
-                  className={css({
-                    fontWeight: 'bold',
-                    color: 'purple.700',
-                  })}
-                >
-                  {step.mathematicalTerm}
-                </span>
-                {step.englishInstruction && (
-                  <span className={css({ color: 'gray.600' })}> — {step.englishInstruction}</span>
-                )}
-              </li>
-            ))}
-          </ol>
+
+          <HelpAbacus
+            currentValue={currentValue}
+            targetValue={targetValue}
+            columns={3}
+            scaleFactor={1.0}
+          />
 
           {isAbacusPart && (
             <div
@@ -364,11 +348,71 @@ export function PracticeHelpPanel({
                 textAlign: 'center',
               })}
             >
-              Try following these steps on your abacus
+              Try following these movements on your physical abacus
             </div>
           )}
         </div>
       )}
+
+      {/* Fallback: Text bead steps if abacus values not provided */}
+      {currentLevel >= 3 &&
+        (currentValue === undefined || targetValue === undefined) &&
+        content?.beadSteps &&
+        content.beadSteps.length > 0 && (
+          <div
+            data-element="bead-steps-text"
+            className={css({
+              padding: '0.75rem',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              border: '1px solid',
+              borderColor: 'blue.100',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                color: 'purple.600',
+                marginBottom: '0.5rem',
+                textTransform: 'uppercase',
+              })}
+            >
+              Bead Movements
+            </div>
+            <ol
+              className={css({
+                listStyle: 'decimal',
+                paddingLeft: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+              })}
+            >
+              {content.beadSteps.map((step, index) => (
+                <li
+                  key={index}
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: 'gray.700',
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontWeight: 'bold',
+                      color: 'purple.700',
+                    })}
+                  >
+                    {step.mathematicalTerm}
+                  </span>
+                  {step.englishInstruction && (
+                    <span className={css({ color: 'gray.600' })}> — {step.englishInstruction}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
       {/* More help button (if not at max level) */}
       {currentLevel < 3 && (

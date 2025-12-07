@@ -15,6 +15,10 @@ interface VerticalProblemProps {
   correctAnswer?: number
   /** Size variant */
   size?: 'normal' | 'large'
+  /** Index of terms that have been confirmed (0 = first term done, 1 = first two terms done, etc.) */
+  confirmedTermCount?: number
+  /** Index of the term currently being helped with (highlighted) */
+  currentHelpTermIndex?: number
 }
 
 /**
@@ -33,6 +37,8 @@ export function VerticalProblem({
   isCompleted = false,
   correctAnswer,
   size = 'normal',
+  confirmedTermCount = 0,
+  currentHelpTermIndex,
 }: VerticalProblemProps) {
   // Calculate max digits needed for alignment
   const maxDigits = Math.max(
@@ -86,16 +92,60 @@ export function VerticalProblem({
         const absValue = Math.abs(term)
         const digits = absValue.toString().padStart(maxDigits, ' ').split('')
 
+        // Term status for highlighting
+        const isConfirmed = index < confirmedTermCount
+        const isCurrentHelp = index === currentHelpTermIndex
+
         return (
           <div
             key={index}
             data-element="term-row"
+            data-term-status={isConfirmed ? 'confirmed' : isCurrentHelp ? 'current' : 'pending'}
             className={css({
               display: 'flex',
               alignItems: 'center',
               gap: '2px',
+              position: 'relative',
+              // Confirmed terms are dimmed with checkmark
+              opacity: isConfirmed ? 0.5 : 1,
+              // Current help term is highlighted
+              backgroundColor: isCurrentHelp ? 'purple.100' : 'transparent',
+              borderRadius: isCurrentHelp ? '4px' : '0',
+              padding: isCurrentHelp ? '2px 4px' : '0',
+              marginLeft: isCurrentHelp ? '-4px' : '0',
+              marginRight: isCurrentHelp ? '-4px' : '0',
             })}
           >
+            {/* Checkmark for confirmed terms */}
+            {isConfirmed && (
+              <div
+                data-element="confirmed-check"
+                className={css({
+                  position: 'absolute',
+                  left: '-1.5rem',
+                  color: 'green.500',
+                  fontSize: '0.875rem',
+                })}
+              >
+                ✓
+              </div>
+            )}
+
+            {/* Arrow indicator for current help term */}
+            {isCurrentHelp && (
+              <div
+                data-element="current-arrow"
+                className={css({
+                  position: 'absolute',
+                  left: '-1.5rem',
+                  color: 'purple.600',
+                  fontSize: '0.875rem',
+                })}
+              >
+                →
+              </div>
+            )}
+
             {/* Operator column (only show minus for negative) */}
             <div
               data-element="operator"
@@ -122,7 +172,8 @@ export function VerticalProblem({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'gray.800',
+                  color: isCurrentHelp ? 'purple.800' : 'gray.800',
+                  fontWeight: isCurrentHelp ? 'bold' : 'inherit',
                 })}
               >
                 {digit}

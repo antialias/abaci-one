@@ -1,0 +1,245 @@
+'use client'
+
+import {
+  AbacusReact,
+  calculateBeadDiffFromValues,
+  type StepBeadHighlight,
+  useAbacusDisplay,
+} from '@soroban/abacus-react'
+import { useCallback, useMemo, useState } from 'react'
+import { css } from '../../../styled-system/css'
+
+/** Bead change from calculateBeadDiffFromValues */
+interface BeadChange {
+  placeValue: number
+  beadType: 'heaven' | 'earth'
+  position?: number
+  direction: 'up' | 'down' | 'activate' | 'deactivate' | 'none'
+  order?: number
+}
+
+interface HelpAbacusProps {
+  /** Initial value to start the abacus at */
+  currentValue: number
+  /** Target value we want to reach */
+  targetValue: number
+  /** Number of columns to display (default: 3) */
+  columns?: number
+  /** Scale factor for the abacus (default: 1.2) */
+  scaleFactor?: number
+  /** Callback when target is reached */
+  onTargetReached?: () => void
+  /** Optional callback when value changes (if interactive) */
+  onValueChange?: (value: number) => void
+  /** Whether the abacus is interactive (default: false for help mode) */
+  interactive?: boolean
+}
+
+/**
+ * HelpAbacus - Shows an abacus with bead movement arrows
+ *
+ * Uses AbacusReact in uncontrolled mode (defaultValue) so interactions
+ * work automatically. Tracks value changes via onValueChange to update
+ * the bead diff arrows and detect when target is reached.
+ */
+export function HelpAbacus({
+  currentValue,
+  targetValue,
+  columns = 3,
+  scaleFactor = 1.2,
+  onTargetReached,
+  onValueChange,
+  interactive = false,
+}: HelpAbacusProps) {
+  const { config: abacusConfig } = useAbacusDisplay()
+  const [currentStep] = useState(0)
+
+  // Track the displayed value for bead diff calculations
+  // This is updated via onValueChange from AbacusReact
+  const [displayedValue, setDisplayedValue] = useState(currentValue)
+
+  // Handle value changes from user interaction
+  const handleValueChange = useCallback(
+    (newValue: number | bigint) => {
+      const numValue = typeof newValue === 'bigint' ? Number(newValue) : newValue
+      setDisplayedValue(numValue)
+      onValueChange?.(numValue)
+
+      // Check if target reached
+      if (numValue === targetValue) {
+        onTargetReached?.()
+      }
+    },
+    [targetValue, onTargetReached, onValueChange]
+  )
+
+  // Check if currently at target (for showing success state)
+  const isAtTarget = displayedValue === targetValue
+
+  // Generate bead movement highlights using the bead diff algorithm
+  // Updates as user moves beads closer to (or away from) the target
+  const { stepBeadHighlights, hasChanges, summary } = useMemo(() => {
+    try {
+      const beadDiff = calculateBeadDiffFromValues(displayedValue, targetValue)
+
+      if (!beadDiff.hasChanges) {
+        return { stepBeadHighlights: undefined, hasChanges: false, summary: '' }
+      }
+
+      // Convert bead diff to StepBeadHighlight format
+      // Filter to only columns that exist in our display
+      const highlights: StepBeadHighlight[] = (beadDiff.changes as BeadChange[])
+        .filter((change: BeadChange) => change.placeValue < columns)
+        .map((change: BeadChange) => ({
+          placeValue: change.placeValue,
+          beadType: change.beadType,
+          position: change.position,
+          direction: change.direction,
+          stepIndex: 0, // All in step 0 for now (could be multi-step later)
+          order: change.order,
+        }))
+
+      return {
+        stepBeadHighlights: highlights.length > 0 ? highlights : undefined,
+        hasChanges: true,
+        summary: beadDiff.summary,
+      }
+    } catch (error) {
+      console.error('HelpAbacus: Error generating bead diff:', error)
+      return { stepBeadHighlights: undefined, hasChanges: false, summary: '' }
+    }
+  }, [displayedValue, targetValue, columns])
+
+  // Custom styles for help mode - highlight the arrows more prominently
+  const customStyles = useMemo(() => {
+    return {
+      // Subtle background to indicate this is a help visualization
+      frame: {
+        fill: 'rgba(59, 130, 246, 0.05)',
+      },
+    }
+  }, [])
+
+  if (!hasChanges) {
+    return (
+      <div
+        data-component="help-abacus"
+        data-status="complete"
+        className={css({
+          textAlign: 'center',
+          padding: '1rem',
+          color: 'green.600',
+          fontSize: '0.875rem',
+        })}
+      >
+        ✓ Already at target value
+      </div>
+    )
+  }
+
+  return (
+    <div
+      data-component="help-abacus"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.75rem',
+      })}
+    >
+      {/* Summary instruction */}
+      {summary && (
+        <div
+          data-element="help-summary"
+          className={css({
+            padding: '0.5rem 1rem',
+            backgroundColor: 'blue.50',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            color: 'blue.700',
+            fontWeight: 'medium',
+            textAlign: 'center',
+          })}
+        >
+          💡 {summary}
+        </div>
+      )}
+
+      {/* The abacus with bead arrows - uses defaultValue for uncontrolled mode */}
+      <div
+        className={css({
+          padding: '1rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          border: '2px solid',
+          borderColor: 'blue.200',
+          boxShadow: 'md',
+        })}
+      >
+        <AbacusReact
+          defaultValue={currentValue}
+          columns={columns}
+          interactive={interactive}
+          animated={true}
+          scaleFactor={scaleFactor}
+          colorScheme={abacusConfig.colorScheme}
+          beadShape={abacusConfig.beadShape}
+          hideInactiveBeads={abacusConfig.hideInactiveBeads}
+          soundEnabled={false} // Disable sound in help mode
+          stepBeadHighlights={isAtTarget ? undefined : stepBeadHighlights}
+          currentStep={currentStep}
+          showDirectionIndicators={!isAtTarget}
+          customStyles={customStyles}
+          onValueChange={handleValueChange}
+        />
+      </div>
+
+      {/* Value labels */}
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '2rem',
+          fontSize: '0.875rem',
+        })}
+      >
+        <div className={css({ color: isAtTarget ? 'green.600' : 'gray.600' })}>
+          Current:{' '}
+          <span
+            className={css({ fontWeight: 'bold', color: isAtTarget ? 'green.700' : 'gray.800' })}
+          >
+            {displayedValue}
+          </span>
+        </div>
+        <div className={css({ color: isAtTarget ? 'green.600' : 'blue.600' })}>
+          Target:{' '}
+          <span
+            className={css({ fontWeight: 'bold', color: isAtTarget ? 'green.700' : 'blue.800' })}
+          >
+            {targetValue}
+          </span>
+        </div>
+      </div>
+
+      {/* Success feedback when target reached */}
+      {isAtTarget && (
+        <div
+          data-element="target-reached"
+          className={css({
+            padding: '0.5rem 1rem',
+            backgroundColor: 'green.100',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            color: 'green.700',
+            fontWeight: 'bold',
+            textAlign: 'center',
+          })}
+        >
+          ✓ Perfect! Moving to next term...
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default HelpAbacus

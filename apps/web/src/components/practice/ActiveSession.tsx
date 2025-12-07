@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   GeneratedProblem,
-  HelpLevel,
   ProblemConstraints,
   ProblemSlot,
   SessionHealth,
@@ -12,7 +11,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { StudentHelpSettings } from '@/db/schema/players'
-import { usePracticeHelp, type TermContext } from '@/hooks/usePracticeHelp'
+import { usePracticeHelp } from '@/hooks/usePracticeHelp'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
   analyzeRequiredSkills,
@@ -20,9 +19,9 @@ import {
   generateSingleProblem,
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
+import { HelpAbacus } from './HelpAbacus'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
-import { PracticeHelpPanel } from './PracticeHelpPanel'
 import { VerticalProblem } from './VerticalProblem'
 
 interface ActiveSessionProps {
@@ -187,10 +186,13 @@ export function ActiveSession({
   const [userAnswer, setUserAnswer] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
-  const [showAbacus, setShowAbacus] = useState(false)
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none')
   const [currentTermIndex, setCurrentTermIndex] = useState(0)
   const [incorrectAttempts, setIncorrectAttempts] = useState(0)
+  // Help mode: which terms have been confirmed correct so far
+  const [confirmedTermCount, setConfirmedTermCount] = useState(0)
+  // Which term we're currently showing help for (null = not showing help)
+  const [helpTermIndex, setHelpTermIndex] = useState<number | null>(null)
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
@@ -216,6 +218,56 @@ export function ActiveSession({
     if (!currentProblem || currentTermIndex >= currentProblem.problem.terms.length) return 0
     return currentProblem.problem.terms[currentTermIndex]
   }, [currentProblem, currentTermIndex])
+
+  // Compute all prefix sums for the current problem
+  // prefixSums[i] = sum of terms[0..i] (inclusive)
+  // e.g., for [23, 45, 12]: prefixSums = [23, 68, 80]
+  const prefixSums = useMemo(() => {
+    if (!currentProblem) return []
+    const terms = currentProblem.problem.terms
+    const sums: number[] = []
+    let total = 0
+    for (const term of terms) {
+      total += term
+      sums.push(total)
+    }
+    return sums
+  }, [currentProblem])
+
+  // Check if user's input matches any prefix sum
+  // Returns the index of the matched prefix, or -1 if no match
+  const matchedPrefixIndex = useMemo(() => {
+    const answerNum = parseInt(userAnswer, 10)
+    if (Number.isNaN(answerNum)) return -1
+    return prefixSums.indexOf(answerNum)
+  }, [userAnswer, prefixSums])
+
+  // Determine button state based on input
+  const buttonState = useMemo((): 'help' | 'submit' | 'disabled' => {
+    if (!userAnswer) return 'disabled'
+    const answerNum = parseInt(userAnswer, 10)
+    if (Number.isNaN(answerNum)) return 'disabled'
+
+    // If it matches a prefix sum (but not the final answer), offer help
+    if (matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1) {
+      return 'help'
+    }
+
+    // Otherwise it's a submit (final answer or wrong answer)
+    return 'submit'
+  }, [userAnswer, matchedPrefixIndex, prefixSums.length])
+
+  // Compute context for help abacus when showing help
+  const helpContext = useMemo(() => {
+    if (helpTermIndex === null || !currentProblem) return null
+    const terms = currentProblem.problem.terms
+    // Current value is the prefix sum up to helpTermIndex (exclusive)
+    const currentValue = helpTermIndex === 0 ? 0 : prefixSums[helpTermIndex - 1]
+    // Target is the prefix sum including this term
+    const targetValue = prefixSums[helpTermIndex]
+    const term = terms[helpTermIndex]
+    return { currentValue, targetValue, term }
+  }, [helpTermIndex, currentProblem, prefixSums])
 
   // Initialize help system
   const [helpState, helpActions] = usePracticeHelp({
@@ -326,6 +378,50 @@ export function ActiveSession({
     setUserAnswer((prev) => prev.slice(0, -1))
   }, [])
 
+  // Handle "Get Help" button - show help for the next term
+  const handleGetHelp = useCallback(() => {
+    if (matchedPrefixIndex < 0) return
+
+    // User has confirmed up through matchedPrefixIndex (inclusive)
+    // Set confirmed count and show help for the NEXT term
+    const newConfirmedCount = matchedPrefixIndex + 1
+    setConfirmedTermCount(newConfirmedCount)
+
+    // If there's a next term to help with, show it
+    if (newConfirmedCount < (currentProblem?.problem.terms.length || 0)) {
+      setHelpTermIndex(newConfirmedCount)
+      // Clear the input so they can continue
+      setUserAnswer('')
+    }
+  }, [matchedPrefixIndex, currentProblem?.problem.terms.length])
+
+  // Handle dismissing help (continue without visual assistance)
+  const handleDismissHelp = useCallback(() => {
+    setHelpTermIndex(null)
+  }, [])
+
+  // Handle when student reaches the target value on the help abacus
+  const handleTargetReached = useCallback(() => {
+    if (helpTermIndex === null || !currentProblem) return
+
+    // Current term is now confirmed
+    const newConfirmedCount = helpTermIndex + 1
+    setConfirmedTermCount(newConfirmedCount)
+
+    // Brief delay so user sees the success feedback
+    setTimeout(() => {
+      // If there's another term after this one, move to it
+      if (newConfirmedCount < currentProblem.problem.terms.length) {
+        setHelpTermIndex(newConfirmedCount)
+        setUserAnswer('')
+      } else {
+        // This was the last term - hide help and let them type the final answer
+        setHelpTermIndex(null)
+        setUserAnswer('')
+      }
+    }, 800) // 800ms delay to show "Perfect!" feedback
+  }, [helpTermIndex, currentProblem])
+
   const handleSubmit = useCallback(async () => {
     if (!currentProblem || isSubmitting || !userAnswer) return
 
@@ -353,7 +449,7 @@ export function ActiveSession({
       isCorrect,
       responseTimeMs,
       skillsExercised: currentProblem.problem.skillsRequired,
-      usedOnScreenAbacus: showAbacus,
+      usedOnScreenAbacus: confirmedTermCount > 0 || helpTermIndex !== null,
       // Help tracking fields
       helpLevelUsed: helpState.maxLevelUsed,
       incorrectAttempts,
@@ -368,6 +464,8 @@ export function ActiveSession({
         setCurrentProblem(null)
         setCurrentTermIndex(0)
         setIncorrectAttempts(0)
+        setConfirmedTermCount(0)
+        setHelpTermIndex(null)
         setIsSubmitting(false)
       },
       isCorrect ? 500 : 1500
@@ -376,7 +474,8 @@ export function ActiveSession({
     currentProblem,
     isSubmitting,
     userAnswer,
-    showAbacus,
+    confirmedTermCount,
+    helpTermIndex,
     onAnswer,
     helpState.maxLevelUsed,
     helpState.trigger,
@@ -615,25 +714,98 @@ export function ActiveSession({
           {currentSlot?.purpose}
         </div>
 
-        {/* Problem display - vertical or linear based on part type */}
-        {currentPart.format === 'vertical' ? (
-          <VerticalProblem
-            terms={currentProblem.problem.terms}
-            userAnswer={userAnswer}
-            isFocused={!isPaused && !isSubmitting}
-            isCompleted={feedback !== 'none'}
-            correctAnswer={currentProblem.problem.answer}
-            size="large"
-          />
-        ) : (
-          <LinearProblem
-            terms={currentProblem.problem.terms}
-            userAnswer={userAnswer}
-            isFocused={!isPaused && !isSubmitting}
-            isCompleted={feedback !== 'none'}
-            correctAnswer={currentProblem.problem.answer}
-          />
-        )}
+        {/* Problem and Help Abacus - side by side layout */}
+        <div
+          data-section="problem-and-help"
+          className={css({
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+          })}
+        >
+          {/* Problem display - vertical or linear based on part type */}
+          {currentPart.format === 'vertical' ? (
+            <VerticalProblem
+              terms={currentProblem.problem.terms}
+              userAnswer={userAnswer}
+              isFocused={!isPaused && !isSubmitting}
+              isCompleted={feedback !== 'none'}
+              correctAnswer={currentProblem.problem.answer}
+              size="large"
+              confirmedTermCount={confirmedTermCount}
+              currentHelpTermIndex={helpTermIndex ?? undefined}
+            />
+          ) : (
+            <LinearProblem
+              terms={currentProblem.problem.terms}
+              userAnswer={userAnswer}
+              isFocused={!isPaused && !isSubmitting}
+              isCompleted={feedback !== 'none'}
+              correctAnswer={currentProblem.problem.answer}
+            />
+          )}
+
+          {/* Per-term help with HelpAbacus - shown when helpTermIndex is set */}
+          {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
+            <div
+              data-section="term-help"
+              className={css({
+                padding: '1rem',
+                backgroundColor: 'purple.50',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: 'purple.200',
+                minWidth: '200px',
+              })}
+            >
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                    color: 'purple.700',
+                  })}
+                >
+                  {helpContext.term >= 0 ? '+' : ''}
+                  {helpContext.term}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDismissHelp}
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: 'gray.500',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    _hover: { color: 'gray.700' },
+                  })}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <HelpAbacus
+                currentValue={helpContext.currentValue}
+                targetValue={helpContext.targetValue}
+                columns={3}
+                scaleFactor={0.9}
+                interactive={true}
+                onTargetReached={handleTargetReached}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Feedback message */}
         {feedback !== 'none' && (
@@ -653,23 +825,59 @@ export function ActiveSession({
               : `The answer was ${currentProblem.problem.answer}`}
           </div>
         )}
-
-        {/* Help panel - show when not submitting and feedback hasn't been shown yet */}
-        {!isSubmitting && feedback === 'none' && (
-          <div data-section="help-area" className={css({ width: '100%' })}>
-            <PracticeHelpPanel
-              helpState={helpState}
-              onRequestHelp={helpActions.requestHelp}
-              onDismissHelp={helpActions.dismissHelp}
-              isAbacusPart={currentPart.type === 'abacus'}
-            />
-          </div>
-        )}
       </div>
 
       {/* Input area */}
       {!isPaused && feedback === 'none' && (
         <div data-section="input-area">
+          {/* Dynamic action button */}
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: '1rem',
+            })}
+          >
+            <button
+              type="button"
+              data-action={buttonState}
+              onClick={buttonState === 'help' ? handleGetHelp : handleSubmit}
+              disabled={buttonState === 'disabled' || isSubmitting}
+              className={css({
+                padding: '0.75rem 2rem',
+                fontSize: '1.125rem',
+                fontWeight: 'bold',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: buttonState === 'disabled' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                // Different styles based on button state
+                backgroundColor:
+                  buttonState === 'help'
+                    ? 'purple.500'
+                    : buttonState === 'submit'
+                      ? 'blue.500'
+                      : 'gray.300',
+                color: buttonState === 'disabled' ? 'gray.500' : 'white',
+                opacity: buttonState === 'disabled' ? 0.5 : 1,
+                _hover: {
+                  backgroundColor:
+                    buttonState === 'help'
+                      ? 'purple.600'
+                      : buttonState === 'submit'
+                        ? 'blue.600'
+                        : 'gray.300',
+                },
+              })}
+            >
+              {buttonState === 'help'
+                ? 'Get Help →'
+                : buttonState === 'submit'
+                  ? 'Submit ✓'
+                  : 'Enter Total'}
+            </button>
+          </div>
+
           {/* Physical keyboard hint */}
           {hasPhysicalKeyboard && (
             <div
@@ -680,7 +888,8 @@ export function ActiveSession({
                 marginBottom: '1rem',
               })}
             >
-              Type your answer and press Enter
+              Type your abacus total
+              {buttonState === 'help' ? ' to get help, or your final answer' : ''}
             </div>
           )}
 
@@ -689,63 +898,11 @@ export function ActiveSession({
             <NumericKeypad
               onDigit={handleDigit}
               onBackspace={handleBackspace}
-              onSubmit={handleSubmit}
+              onSubmit={buttonState === 'help' ? handleGetHelp : handleSubmit}
               disabled={isSubmitting}
               currentValue={userAnswer}
             />
           )}
-        </div>
-      )}
-
-      {/* Abacus toggle (only for abacus part) */}
-      {currentPart.type === 'abacus' && (
-        <div data-section="abacus-tools">
-          <button
-            type="button"
-            data-action="toggle-abacus"
-            onClick={() => setShowAbacus(!showAbacus)}
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              width: '100%',
-              padding: '0.75rem',
-              fontSize: '0.875rem',
-              color: showAbacus ? 'blue.700' : 'gray.600',
-              backgroundColor: showAbacus ? 'blue.50' : 'gray.100',
-              border: '1px solid',
-              borderColor: showAbacus ? 'blue.200' : 'gray.200',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              _hover: {
-                backgroundColor: showAbacus ? 'blue.100' : 'gray.200',
-              },
-            })}
-          >
-            {showAbacus ? 'Hide On-Screen Abacus' : 'Need Help? Show Abacus'}
-          </button>
-
-          {showAbacus && (
-            <div
-              data-element="abacus-reminder"
-              className={css({
-                marginTop: '0.5rem',
-                padding: '0.75rem',
-                backgroundColor: 'yellow.50',
-                borderRadius: '8px',
-                border: '1px solid',
-                borderColor: 'yellow.200',
-                fontSize: '0.875rem',
-                color: 'yellow.700',
-                textAlign: 'center',
-              })}
-            >
-              Try using your physical abacus first! The on-screen version is for checking only.
-            </div>
-          )}
-
-          {/* TODO: Add AbacusReact component here when showAbacus is true */}
         </div>
       )}
 
