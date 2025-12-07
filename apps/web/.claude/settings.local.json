@@ -131,11 +131,14 @@
       "Bash(docs/DAILY_PRACTICE_SYSTEM.md )",
       "Bash(../../README.md )",
       "Bash(.claude/CLAUDE.md)",
-      "Bash(mcp__sqlite__describe_table:*)"
+      "Bash(mcp__sqlite__describe_table:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

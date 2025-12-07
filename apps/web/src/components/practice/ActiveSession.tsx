@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
+import type { StudentHelpSettings } from '@/db/schema/players'
 import type {
   GeneratedProblem,
   ProblemConstraints,
@@ -10,8 +12,6 @@ import type {
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
-import type { StudentHelpSettings } from '@/db/schema/players'
-import { useTheme } from '@/contexts/ThemeContext'
 import { usePracticeHelp } from '@/hooks/usePracticeHelp'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
@@ -220,6 +220,10 @@ export function ActiveSession({
   const [confirmedTermCount, setConfirmedTermCount] = useState(0)
   // Which term we're currently showing help for (null = not showing help)
   const [helpTermIndex, setHelpTermIndex] = useState<number | null>(null)
+  // Track corrections for auto-submit (allow 1 correction, then require manual submit)
+  const [correctionCount, setCorrectionCount] = useState(0)
+  // Track if auto-submit was triggered (for celebration animation)
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
@@ -374,35 +378,17 @@ export function ActiveSession({
     }
   }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, currentProblem])
 
-  // Handle keyboard input
-  useEffect(() => {
-    if (!hasPhysicalKeyboard || isPaused || !currentProblem || isSubmitting) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Backspace' || e.key === 'Delete') {
-        e.preventDefault()
-        setUserAnswer((prev) => prev.slice(0, -1))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        handleSubmit()
-      } else if (/^[0-9]$/.test(e.key)) {
-        setUserAnswer((prev) => prev + e.key)
-      } else if (e.key === '-' && userAnswer.length === 0) {
-        // Allow negative sign at start
-        setUserAnswer('-')
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasPhysicalKeyboard, isPaused, currentProblem, isSubmitting, userAnswer])
-
   const handleDigit = useCallback((digit: string) => {
     setUserAnswer((prev) => prev + digit)
   }, [])
 
   const handleBackspace = useCallback(() => {
-    setUserAnswer((prev) => prev.slice(0, -1))
+    setUserAnswer((prev) => {
+      if (prev.length > 0) {
+        setCorrectionCount((c) => c + 1)
+      }
+      return prev.slice(0, -1)
+    })
   }, [])
 
   // Handle "Get Help" button - show help for the next term
@@ -494,6 +480,8 @@ export function ActiveSession({
         setConfirmedTermCount(0)
         setHelpTermIndex(null)
         setIsSubmitting(false)
+        setCorrectionCount(0)
+        setAutoSubmitTriggered(false)
       },
       isCorrect ? 500 : 1500
     )
@@ -509,6 +497,55 @@ export function ActiveSession({
     incorrectAttempts,
     helpActions,
   ])
+
+  // Auto-submit when correct answer is entered on first attempt (allow minor corrections)
+  useEffect(() => {
+    if (!currentProblem || isSubmitting || feedback !== 'none' || !userAnswer) return
+    // Allow up to 2 backspaces (one typo fix), but no more
+    if (correctionCount > 2) return
+
+    const answerNum = parseInt(userAnswer, 10)
+    if (Number.isNaN(answerNum)) return
+
+    // Check if answer matches
+    if (answerNum === currentProblem.problem.answer) {
+      // Trigger auto-submit with celebration
+      setAutoSubmitTriggered(true)
+      // Small delay to show the celebration animation before submitting
+      const timer = setTimeout(() => {
+        handleSubmit()
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  }, [userAnswer, currentProblem, isSubmitting, feedback, correctionCount, handleSubmit])
+
+  // Handle keyboard input (placed after handleSubmit to avoid temporal dead zone)
+  useEffect(() => {
+    if (!hasPhysicalKeyboard || isPaused || !currentProblem || isSubmitting) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        setUserAnswer((prev) => {
+          if (prev.length > 0) {
+            setCorrectionCount((c) => c + 1)
+          }
+          return prev.slice(0, -1)
+        })
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSubmit()
+      } else if (/^[0-9]$/.test(e.key)) {
+        setUserAnswer((prev) => prev + e.key)
+      } else if (e.key === '-' && userAnswer.length === 0) {
+        // Allow negative sign at start
+        setUserAnswer('-')
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [hasPhysicalKeyboard, isPaused, currentProblem, isSubmitting, userAnswer, handleSubmit])
 
   const handlePause = useCallback(() => {
     setIsPaused(true)
@@ -891,6 +928,12 @@ export function ActiveSession({
               size="large"
               confirmedTermCount={confirmedTermCount}
               currentHelpTermIndex={helpTermIndex ?? undefined}
+              detectedPrefixIndex={
+                matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                  ? matchedPrefixIndex
+                  : undefined
+              }
+              autoSubmitPending={autoSubmitTriggered}
             />
           ) : (
             <LinearProblem
@@ -950,6 +993,71 @@ export function ActiveSession({
                   ✕
                 </button>
               </div>
+
+              {/* Provenance breakdown - shows which digits come from the term */}
+              {helpState.content?.beadSteps && helpState.content.beadSteps.length > 0 && (
+                <div
+                  data-element="provenance-breakdown"
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                    padding: '0.5rem',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'purple.700' : 'purple.200',
+                  })}
+                >
+                  {/* Group steps by unique provenance to show digit breakdown */}
+                  {(() => {
+                    const seenPlaces = new Set<string>()
+                    return helpState.content?.beadSteps
+                      .filter((step) => {
+                        if (!step.provenance) return false
+                        const key = `${step.provenance.rhsPlace}-${step.provenance.rhsDigit}`
+                        if (seenPlaces.has(key)) return false
+                        seenPlaces.add(key)
+                        return true
+                      })
+                      .map((step, idx) => {
+                        const prov = step.provenance
+                        if (!prov) return null
+                        return (
+                          <div
+                            key={idx}
+                            data-element="provenance-chip"
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: isDark ? 'purple.800' : 'purple.100',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                            })}
+                          >
+                            <span
+                              className={css({
+                                fontWeight: 'bold',
+                                color: isDark ? 'purple.200' : 'purple.800',
+                              })}
+                            >
+                              {prov.rhsDigit}
+                            </span>
+                            <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+                              {prov.rhsPlaceName}
+                            </span>
+                            <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>
+                              = {prov.rhsValue}
+                            </span>
+                          </div>
+                        )
+                      })
+                  })()}
+                </div>
+              )}
 
               <HelpAbacus
                 currentValue={helpContext.currentValue}

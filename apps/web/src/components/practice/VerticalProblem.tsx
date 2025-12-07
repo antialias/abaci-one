@@ -20,6 +20,10 @@ interface VerticalProblemProps {
   confirmedTermCount?: number
   /** Index of the term currently being helped with (highlighted) */
   currentHelpTermIndex?: number
+  /** Detected prefix index - shows preview checkmarks/arrow before user clicks "Get Help" */
+  detectedPrefixIndex?: number
+  /** Whether auto-submit is about to trigger (shows celebration animation) */
+  autoSubmitPending?: boolean
 }
 
 /**
@@ -40,6 +44,8 @@ export function VerticalProblem({
   size = 'normal',
   confirmedTermCount = 0,
   currentHelpTermIndex,
+  detectedPrefixIndex,
+  autoSubmitPending = false,
 }: VerticalProblemProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -113,29 +119,52 @@ export function VerticalProblem({
         // Term status for highlighting
         const isConfirmed = index < confirmedTermCount
         const isCurrentHelp = index === currentHelpTermIndex
+        // Preview states - shown when user's input matches a prefix sum (before clicking "Get Help")
+        const isPreviewConfirmed =
+          detectedPrefixIndex !== undefined && index <= detectedPrefixIndex && !isConfirmed
+        const isPreviewNext =
+          detectedPrefixIndex !== undefined &&
+          index === detectedPrefixIndex + 1 &&
+          !isCurrentHelp &&
+          detectedPrefixIndex < terms.length - 1 // Don't show if prefix is the full answer
 
         return (
           <div
             key={index}
             data-element="term-row"
-            data-term-status={isConfirmed ? 'confirmed' : isCurrentHelp ? 'current' : 'pending'}
+            data-term-status={
+              isConfirmed
+                ? 'confirmed'
+                : isCurrentHelp
+                  ? 'current'
+                  : isPreviewConfirmed
+                    ? 'preview-confirmed'
+                    : isPreviewNext
+                      ? 'preview-next'
+                      : 'pending'
+            }
             className={css({
               display: 'flex',
               alignItems: 'center',
               gap: '2px',
               position: 'relative',
               // Confirmed terms are dimmed with checkmark
-              opacity: isConfirmed ? 0.5 : 1,
+              opacity: isConfirmed ? 0.5 : isPreviewConfirmed ? 0.7 : 1,
               // Current help term is highlighted
               backgroundColor: isCurrentHelp
                 ? isDark
                   ? 'purple.800'
                   : 'purple.100'
-                : 'transparent',
-              borderRadius: isCurrentHelp ? '4px' : '0',
-              padding: isCurrentHelp ? '2px 4px' : '0',
-              marginLeft: isCurrentHelp ? '-4px' : '0',
-              marginRight: isCurrentHelp ? '-4px' : '0',
+                : isPreviewNext
+                  ? isDark
+                    ? 'yellow.900'
+                    : 'yellow.50'
+                  : 'transparent',
+              borderRadius: isCurrentHelp || isPreviewNext ? '4px' : '0',
+              padding: isCurrentHelp || isPreviewNext ? '2px 4px' : '0',
+              marginLeft: isCurrentHelp || isPreviewNext ? '-4px' : '0',
+              marginRight: isCurrentHelp || isPreviewNext ? '-4px' : '0',
+              transition: 'all 0.2s ease',
             })}
           >
             {/* Checkmark for confirmed terms */}
@@ -153,6 +182,22 @@ export function VerticalProblem({
               </div>
             )}
 
+            {/* Preview checkmark for detected prefix terms (shown in muted color with subtle pulse) */}
+            {isPreviewConfirmed && (
+              <div
+                data-element="preview-check"
+                className={css({
+                  position: 'absolute',
+                  left: '-1.5rem',
+                  color: isDark ? 'yellow.400' : 'yellow.600',
+                  fontSize: '0.875rem',
+                  opacity: 0.8,
+                })}
+              >
+                ✓
+              </div>
+            )}
+
             {/* Arrow indicator for current help term */}
             {isCurrentHelp && (
               <div
@@ -161,6 +206,21 @@ export function VerticalProblem({
                   position: 'absolute',
                   left: '-1.5rem',
                   color: isDark ? 'purple.300' : 'purple.600',
+                  fontSize: '0.875rem',
+                })}
+              >
+                →
+              </div>
+            )}
+
+            {/* Preview arrow for next term after detected prefix */}
+            {isPreviewNext && (
+              <div
+                data-element="preview-arrow"
+                className={css({
+                  position: 'absolute',
+                  left: '-1.5rem',
+                  color: isDark ? 'yellow.400' : 'yellow.600',
                   fontSize: '0.875rem',
                 })}
               >
@@ -226,12 +286,45 @@ export function VerticalProblem({
       {/* Answer row */}
       <div
         data-element="answer-row"
+        data-auto-submit={autoSubmitPending ? 'pending' : undefined}
         className={css({
           display: 'flex',
           alignItems: 'center',
           gap: '2px',
+          position: 'relative',
+          // Auto-submit celebration animation
+          ...(autoSubmitPending && {
+            animation: 'successPulse 0.3s ease-out',
+          }),
         })}
       >
+        {/* Auto-submit celebration indicator */}
+        {autoSubmitPending && (
+          <div
+            data-element="auto-submit-indicator"
+            className={css({
+              position: 'absolute',
+              top: '-1.5rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.125rem 0.5rem',
+              backgroundColor: isDark ? 'green.700' : 'green.100',
+              borderRadius: '999px',
+              fontSize: '0.625rem',
+              fontWeight: 'bold',
+              color: isDark ? 'green.200' : 'green.700',
+              whiteSpace: 'nowrap',
+              animation: 'bounceIn 0.3s ease-out',
+              zIndex: 10,
+            })}
+          >
+            <span>✓</span>
+            <span>Perfect!</span>
+          </div>
+        )}
         {/* Equals sign column */}
         <div
           data-element="equals"
@@ -268,36 +361,46 @@ export function VerticalProblem({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: isCompleted
-                    ? isCorrect
-                      ? isDark
-                        ? 'green.800'
-                        : 'green.100'
+                  backgroundColor: autoSubmitPending
+                    ? isDark
+                      ? 'green.800'
+                      : 'green.100'
+                    : isCompleted
+                      ? isCorrect
+                        ? isDark
+                          ? 'green.800'
+                          : 'green.100'
+                        : isDark
+                          ? 'red.800'
+                          : 'red.100'
                       : isDark
-                        ? 'red.800'
-                        : 'red.100'
-                    : isDark
-                      ? 'gray.700'
-                      : 'white',
+                        ? 'gray.700'
+                        : 'white',
                   borderRadius: '4px',
-                  border: isEmpty && !isCompleted ? '1px dashed' : '1px solid',
-                  borderColor: isCompleted
-                    ? isCorrect
-                      ? isDark
-                        ? 'green.600'
-                        : 'green.300'
-                      : isDark
-                        ? 'red.600'
-                        : 'red.300'
-                    : isEmpty
-                      ? isFocused
-                        ? 'blue.400'
+                  border:
+                    isEmpty && !isCompleted && !autoSubmitPending ? '1px dashed' : '1px solid',
+                  borderColor: autoSubmitPending
+                    ? isDark
+                      ? 'green.500'
+                      : 'green.400'
+                    : isCompleted
+                      ? isCorrect
+                        ? isDark
+                          ? 'green.600'
+                          : 'green.300'
+                        : isDark
+                          ? 'red.600'
+                          : 'red.300'
+                      : isEmpty
+                        ? isFocused
+                          ? 'blue.400'
+                          : isDark
+                            ? 'gray.600'
+                            : 'gray.300'
                         : isDark
                           ? 'gray.600'
-                          : 'gray.300'
-                      : isDark
-                        ? 'gray.600'
-                        : 'gray.300',
+                          : 'gray.300',
+                  transition: 'all 0.15s ease-out',
                   color: isCompleted
                     ? isCorrect
                       ? isDark
