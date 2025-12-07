@@ -84,9 +84,7 @@ export const players = sqliteTable(
      * Help settings for practice sessions
      * Controls how help is triggered and escalated
      */
-    helpSettings: text('help_settings', { mode: 'json' })
-      .$type<StudentHelpSettings>()
-      .default(JSON.stringify(DEFAULT_HELP_SETTINGS)),
+    helpSettings: text('help_settings', { mode: 'json' }).$type<StudentHelpSettings>(),
   },
   (table) => ({
     /** Index for fast lookups by userId */

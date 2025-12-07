@@ -21,7 +21,7 @@ const sampleStudent: StudentWithProgress = {
   name: 'Sonia',
   emoji: '🦋',
   color: '#FFE4E1',
-  isGuest: false,
+  isActive: true,
   currentLevel: 3,
   currentPhaseId: 'five-complements-1',
   masteryPercent: 75,
@@ -192,7 +192,7 @@ export const NewStudent: Story = {
           name: 'New Learner',
           emoji: '🌟',
           color: '#FFFACD',
-          isGuest: false,
+          isActive: true,
           createdAt: new Date(),
         }}
         currentPhase={{
@@ -226,7 +226,7 @@ export const DifferentStudents: Story = {
             student={{
               id: `student-${student.name}`,
               ...student,
-              isGuest: false,
+              isActive: true,
               createdAt: new Date(),
             }}
             currentPhase={intermediatePhase}
@@ -235,5 +235,47 @@ export const DifferentStudents: Story = {
         </DashboardWrapper>
       ))}
     </div>
+  ),
+}
+
+/**
+ * With Focus Areas - showing skills needing reinforcement
+ */
+export const WithFocusAreas: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        currentPhase={intermediatePhase}
+        recentSkills={sampleRecentSkills}
+        focusAreas={[
+          {
+            skillId: 'fiveComplements.3=5-2',
+            skillName: '+3 Five Complement',
+            masteryLevel: 'practicing',
+            attempts: 15,
+            correct: 10,
+            consecutiveCorrect: 1,
+            needsReinforcement: true,
+            lastHelpLevel: 2,
+            reinforcementStreak: 1,
+          },
+          {
+            skillId: 'tenComplements.8=10-2',
+            skillName: '+8 Ten Complement',
+            masteryLevel: 'learning',
+            attempts: 8,
+            correct: 4,
+            consecutiveCorrect: 0,
+            needsReinforcement: true,
+            lastHelpLevel: 3,
+            reinforcementStreak: 0,
+          },
+        ]}
+        onClearReinforcement={(skillId) => alert(`Clear reinforcement for ${skillId}`)}
+        onClearAllReinforcement={() => alert('Clear all reinforcement')}
+        {...handlers}
+      />
+    </DashboardWrapper>
   ),
 }

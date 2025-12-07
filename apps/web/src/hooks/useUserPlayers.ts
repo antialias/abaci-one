@@ -111,6 +111,7 @@ export function useCreatePlayer() {
           createdAt: new Date(),
           isActive: newPlayer.isActive ?? false,
           userId: 'temp-user', // Temporary userId, will be replaced by server response
+          helpSettings: null, // Will be set by server with default values
         }
         queryClient.setQueryData<Player[]>(playerKeys.list(), [
           ...previousPlayers,

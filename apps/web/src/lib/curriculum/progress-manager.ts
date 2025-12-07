@@ -11,8 +11,10 @@ import {
   type MasteryLevel,
   type NewPlayerSkillMastery,
   type PlayerSkillMastery,
+  REINFORCEMENT_CONFIG,
 } from '@/db/schema/player-skill-mastery'
 import type { NewPracticeSession, PracticeSession } from '@/db/schema/practice-sessions'
+import type { HelpLevel } from '@/db/schema/session-plans'
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -171,6 +173,175 @@ export async function recordSkillAttempt(
 
   await db.insert(schema.playerSkillMastery).values(newRecord)
   return (await getSkillMastery(playerId, skillId))!
+}
+
+/**
+ * Record a skill attempt with help level tracking
+ * Applies credit multipliers based on help used and manages reinforcement
+ *
+ * Credit multipliers:
+ * - L0 (no help) or L1 (hint): Full credit (1.0)
+ * - L2 (decomposition): Half credit (0.5)
+ * - L3 (bead arrows): Quarter credit (0.25)
+ *
+ * Reinforcement logic:
+ * - If help level >= threshold, mark skill as needing reinforcement
+ * - If correct answer without heavy help, increment reinforcement streak
+ * - After N consecutive correct answers, clear reinforcement flag
+ */
+export async function recordSkillAttemptWithHelp(
+  playerId: string,
+  skillId: string,
+  isCorrect: boolean,
+  helpLevel: HelpLevel
+): Promise<PlayerSkillMastery> {
+  const existing = await getSkillMastery(playerId, skillId)
+  const now = new Date()
+
+  // Calculate effective credit based on help level
+  const creditMultiplier = REINFORCEMENT_CONFIG.creditMultipliers[helpLevel]
+
+  // Determine if this help level triggers reinforcement tracking
+  const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold
+
+  if (existing) {
+    // Update existing record with help-adjusted progress
+    const newAttempts = existing.attempts + 1
+
+    // Apply credit multiplier - only count fraction of correct answer
+    // For simplicity, we round: 1.0 = full credit, 0.5+ = credit, <0.5 = no credit
+    const effectiveCorrect = isCorrect && creditMultiplier >= 0.5 ? 1 : 0
+    const newCorrect = existing.correct + effectiveCorrect
+
+    // Consecutive streak logic with help consideration
+    // Heavy help (L2, L3) breaks the streak even if correct
+    const newConsecutive =
+      isCorrect && !isHeavyHelp ? existing.consecutiveCorrect + 1 : isCorrect ? 1 : 0
+
+    const newMasteryLevel = calculateMasteryLevel(newAttempts, newCorrect, newConsecutive)
+
+    // Reinforcement tracking
+    let needsReinforcement = existing.needsReinforcement
+    let reinforcementStreak = existing.reinforcementStreak
+
+    if (isHeavyHelp) {
+      // Heavy help triggers reinforcement flag
+      needsReinforcement = true
+      reinforcementStreak = 0
+    } else if (isCorrect && existing.needsReinforcement) {
+      // Correct answer without heavy help - increment streak toward clearing
+      reinforcementStreak = existing.reinforcementStreak + 1
+
+      // Clear reinforcement if streak reaches threshold
+      if (reinforcementStreak >= REINFORCEMENT_CONFIG.streakToClear) {
+        needsReinforcement = false
+        reinforcementStreak = 0
+      }
+    } else if (!isCorrect) {
+      // Incorrect answer resets reinforcement streak
+      reinforcementStreak = 0
+    }
+
+    await db
+      .update(schema.playerSkillMastery)
+      .set({
+        attempts: newAttempts,
+        correct: newCorrect,
+        consecutiveCorrect: newConsecutive,
+        masteryLevel: newMasteryLevel,
+        lastPracticedAt: now,
+        updatedAt: now,
+        needsReinforcement,
+        lastHelpLevel: helpLevel,
+        reinforcementStreak,
+      })
+      .where(eq(schema.playerSkillMastery.id, existing.id))
+
+    return (await getSkillMastery(playerId, skillId))!
+  }
+
+  // Create new record with help tracking
+  const newRecord: NewPlayerSkillMastery = {
+    playerId,
+    skillId,
+    attempts: 1,
+    correct: isCorrect && creditMultiplier >= 0.5 ? 1 : 0,
+    consecutiveCorrect: isCorrect && !isHeavyHelp ? 1 : 0,
+    masteryLevel: 'learning',
+    lastPracticedAt: now,
+    needsReinforcement: isHeavyHelp,
+    lastHelpLevel: helpLevel,
+    reinforcementStreak: 0,
+  }
+
+  await db.insert(schema.playerSkillMastery).values(newRecord)
+  return (await getSkillMastery(playerId, skillId))!
+}
+
+/**
+ * Record multiple skill attempts with help tracking (for batch updates after a problem)
+ */
+export async function recordSkillAttemptsWithHelp(
+  playerId: string,
+  skillResults: Array<{ skillId: string; isCorrect: boolean }>,
+  helpLevel: HelpLevel
+): Promise<PlayerSkillMastery[]> {
+  const results: PlayerSkillMastery[] = []
+
+  for (const { skillId, isCorrect } of skillResults) {
+    const result = await recordSkillAttemptWithHelp(playerId, skillId, isCorrect, helpLevel)
+    results.push(result)
+  }
+
+  return results
+}
+
+/**
+ * Get skills that need reinforcement for a player
+ */
+export async function getSkillsNeedingReinforcement(
+  playerId: string
+): Promise<PlayerSkillMastery[]> {
+  return db.query.playerSkillMastery.findMany({
+    where: and(
+      eq(schema.playerSkillMastery.playerId, playerId),
+      eq(schema.playerSkillMastery.needsReinforcement, true)
+    ),
+    orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
+  })
+}
+
+/**
+ * Clear reinforcement for a specific skill (teacher override)
+ */
+export async function clearSkillReinforcement(playerId: string, skillId: string): Promise<void> {
+  await db
+    .update(schema.playerSkillMastery)
+    .set({
+      needsReinforcement: false,
+      reinforcementStreak: 0,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(schema.playerSkillMastery.playerId, playerId),
+        eq(schema.playerSkillMastery.skillId, skillId)
+      )
+    )
+}
+
+/**
+ * Clear all reinforcement flags for a player (teacher override)
+ */
+export async function clearAllReinforcement(playerId: string): Promise<void> {
+  await db
+    .update(schema.playerSkillMastery)
+    .set({
+      needsReinforcement: false,
+      reinforcementStreak: 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.playerSkillMastery.playerId, playerId))
 }
 
 /**
