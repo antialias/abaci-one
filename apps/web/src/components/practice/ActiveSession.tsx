@@ -922,7 +922,11 @@ export function ActiveSession({
           flexDirection: 'column',
           alignItems: 'center',
           gap: '1.5rem',
-          padding: '2rem',
+          // Use explicit padding values - shorthand 'padding' can override specific paddingTop
+          paddingTop: '4rem', // Extra top padding for help overlay that extends above
+          paddingRight: '2rem',
+          paddingBottom: '2rem',
+          paddingLeft: '2rem',
           backgroundColor: isDark ? 'gray.800' : 'white',
           borderRadius: '16px',
           boxShadow: 'md',
