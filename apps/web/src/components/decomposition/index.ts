@@ -1,7 +1,7 @@
 // Decomposition Display Components
 // Standalone decomposition visualization that works anywhere in the app
 
-export { DecompositionDisplay } from './DecompositionDisplay'
+export { DecompositionDisplay, DecompositionSection } from './DecompositionDisplay'
 export { ReasonTooltip } from './ReasonTooltip'
 export type { PedagogicalRule, PedagogicalSegment, TermReason } from './ReasonTooltip'
 

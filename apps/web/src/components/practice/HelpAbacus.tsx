@@ -78,6 +78,22 @@ export function HelpAbacus({
   // This is updated via onValueChange from AbacusReact
   const [displayedValue, setDisplayedValue] = useState(currentValue)
 
+  // Track visibility state for animations
+  // 'entering' = fade in, 'visible' = fully shown, 'waiting' = target reached, waiting to exit
+  // 'exiting' = fade out, 'hidden' = removed from DOM
+  const [visibilityState, setVisibilityState] = useState<
+    'entering' | 'visible' | 'waiting' | 'exiting' | 'hidden'
+  >('entering')
+
+  // After mount, transition to visible
+  useEffect(() => {
+    if (visibilityState === 'entering') {
+      // Small delay to ensure CSS transition triggers
+      const timer = setTimeout(() => setVisibilityState('visible'), 50)
+      return () => clearTimeout(timer)
+    }
+  }, [visibilityState])
+
   // Handle value changes from user interaction
   const handleValueChange = useCallback(
     (newValue: number | bigint) => {
@@ -85,12 +101,31 @@ export function HelpAbacus({
       setDisplayedValue(numValue)
       onValueChange?.(numValue)
 
-      // Check if target reached
+      // If we just reached the target, mark that we're waiting for animation to complete
       if (numValue === targetValue) {
-        onTargetReached?.()
+        setVisibilityState('waiting')
       }
     },
-    [targetValue, onTargetReached, onValueChange]
+    [onValueChange, targetValue]
+  )
+
+  // Handle value change complete (called after animations settle)
+  const handleValueChangeComplete = useCallback(
+    (newValue: number | bigint) => {
+      const numValue = typeof newValue === 'bigint' ? Number(newValue) : newValue
+      // Only trigger dismissal after animation completes
+      if (numValue === targetValue) {
+        // Wait a moment to let user see the completed state, then start exit animation
+        setTimeout(() => {
+          setVisibilityState('exiting')
+          // After exit animation completes, notify parent
+          setTimeout(() => {
+            onTargetReached?.()
+          }, 300) // Match CSS transition duration
+        }, 600) // Delay before starting exit
+      }
+    },
+    [targetValue, onTargetReached]
   )
 
   // Check if currently at target (for showing success state)
@@ -148,20 +183,27 @@ export function HelpAbacus({
     }
   }, [isDark])
 
-  // When there are no changes left (target reached), return null
-  // The success feedback is shown via showTargetReached prop below
-  if (!hasChanges) {
-    return null
-  }
+  // Compute visibility - hidden when no changes and not animating
+  const isHidden = !hasChanges && visibilityState !== 'waiting' && visibilityState !== 'exiting'
+  const isEntering = visibilityState === 'entering'
+  const isExiting = visibilityState === 'exiting'
+  const shouldHide = isEntering || isExiting || isHidden
 
   return (
     <div
       data-component="help-abacus"
+      data-visibility={visibilityState}
       className={css({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '0.75rem',
+        // Animation properties
+        transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+        opacity: shouldHide ? 0 : 1,
+        transform: shouldHide ? 'translateY(-10px)' : 'translateY(0)',
+        // Disable interaction when hidden/transitioning
+        pointerEvents: shouldHide ? 'none' : 'auto',
       })}
     >
       {/* Summary instruction */}
@@ -209,6 +251,7 @@ export function HelpAbacus({
           showDirectionIndicators={!isAtTarget}
           customStyles={customStyles}
           onValueChange={handleValueChange}
+          onValueChangeComplete={handleValueChangeComplete}
           overlays={overlays}
         />
       </div>

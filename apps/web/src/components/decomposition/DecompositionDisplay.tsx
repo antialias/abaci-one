@@ -1,7 +1,7 @@
 'use client'
 
 import type React from 'react'
-import { createContext, useContext, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useDecomposition } from '@/contexts/DecompositionContext'
 import type { PedagogicalSegment, UnifiedStepData } from '@/utils/unifiedStepGenerator'
 import { ReasonTooltip } from './ReasonTooltip'
@@ -150,7 +150,18 @@ export function DecompositionDisplay() {
     setActiveTermIndices,
     setActiveIndividualTermIndex,
     getGroupTermIndicesFromTermIndex,
+    isMeaningfulDecomposition,
   } = useDecomposition()
+
+  // Don't render if decomposition is not meaningful (e.g., "5 = 5")
+  if (!isMeaningfulDecomposition) {
+    return null
+  }
+
+  // Refs for overflow detection
+  const containerRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [needsMultiLine, setNeedsMultiLine] = useState(false)
 
   // Build a quick lookup: termIndex -> segment
   const termIndexToSegment = useMemo(() => {
@@ -172,6 +183,33 @@ export function DecompositionDisplay() {
     }
     return null
   }, [activeTermIndices, termIndexToSegment])
+
+  // Detect overflow and enable multi-line mode if needed
+  // Uses a hidden measurement element that always renders in single-line mode
+  useEffect(() => {
+    const container = containerRef.current
+    const measure = measureRef.current
+    if (!container || !measure) return
+
+    const checkOverflow = () => {
+      // measureRef always contains the single-line version, so we can
+      // reliably compare its width to the container width
+      const singleLineWidth = measure.scrollWidth
+      const containerWidth = container.clientWidth
+
+      // Add a small buffer (2px) to avoid edge cases
+      setNeedsMultiLine(singleLineWidth > containerWidth + 2)
+    }
+
+    // Check on mount and content changes
+    checkOverflow()
+
+    // Use ResizeObserver to detect container size changes
+    const resizeObserver = new ResizeObserver(checkOverflow)
+    resizeObserver.observe(container)
+
+    return () => resizeObserver.disconnect()
+  }, [fullDecomposition])
 
   // Term hover handlers
   const addActiveTerm = (termIndex: number, _segmentId?: string) => {
@@ -199,19 +237,38 @@ export function DecompositionDisplay() {
     setActiveTermIndices(new Set())
   }
 
-  // Render elements with segment groupings
-  const renderElements = () => {
+  // Find positions of '=' signs in fullDecomposition for line breaking
+  const equalSignPositions = useMemo(() => {
+    const positions: number[] = []
+    for (let i = 0; i < fullDecomposition.length; i++) {
+      if (fullDecomposition[i] === '=') {
+        positions.push(i)
+      }
+    }
+    return positions
+  }, [fullDecomposition])
+
+  // Render elements for a given range of the decomposition string
+  const renderElementsForRange = (rangeStart: number, rangeEnd: number, keyPrefix: string) => {
     const elements: React.ReactNode[] = []
-    let cursor = 0
+    let cursor = rangeStart
 
     for (let termIndex = 0; termIndex < termPositions.length; termIndex++) {
       const { startIndex, endIndex } = termPositions[termIndex]
+
+      // Skip terms outside our range
+      if (endIndex <= rangeStart || startIndex >= rangeEnd) continue
+
       const segment = termIndexToSegment.get(termIndex)
 
-      // Add connector text before this term
-      if (cursor < startIndex) {
+      // Add connector text before this term (within range)
+      const connectorStart = Math.max(cursor, rangeStart)
+      const connectorEnd = Math.min(startIndex, rangeEnd)
+      if (connectorStart < connectorEnd) {
         elements.push(
-          <span key={`connector-${cursor}`}>{fullDecomposition.slice(cursor, startIndex)}</span>
+          <span key={`${keyPrefix}-connector-${connectorStart}`}>
+            {fullDecomposition.slice(connectorStart, connectorEnd)}
+          </span>
         )
       }
 
@@ -219,70 +276,129 @@ export function DecompositionDisplay() {
       if (segment && segment.termIndices[0] === termIndex) {
         // This is the first term of a segment - wrap all segment terms
         const segmentElements: React.ReactNode[] = []
-        let segmentCursor = startIndex
+        let segmentCursor = Math.max(startIndex, rangeStart)
 
         for (const segTermIndex of segment.termIndices) {
           const segPos = termPositions[segTermIndex]
           if (!segPos) continue
 
-          // Add connector within segment
-          if (segmentCursor < segPos.startIndex) {
+          // Skip segment terms outside our range
+          if (segPos.endIndex <= rangeStart || segPos.startIndex >= rangeEnd) continue
+
+          // Add connector within segment (within range)
+          const segConnectorStart = Math.max(segmentCursor, rangeStart)
+          const segConnectorEnd = Math.min(segPos.startIndex, rangeEnd)
+          if (segConnectorStart < segConnectorEnd) {
             segmentElements.push(
-              <span key={`seg-connector-${segmentCursor}`}>
-                {fullDecomposition.slice(segmentCursor, segPos.startIndex)}
+              <span key={`${keyPrefix}-seg-connector-${segConnectorStart}`}>
+                {fullDecomposition.slice(segConnectorStart, segConnectorEnd)}
               </span>
             )
           }
 
-          const segText = fullDecomposition.slice(segPos.startIndex, segPos.endIndex)
+          const termStart = Math.max(segPos.startIndex, rangeStart)
+          const termEnd = Math.min(segPos.endIndex, rangeEnd)
+          const segText = fullDecomposition.slice(termStart, termEnd)
 
-          segmentElements.push(
-            <TermSpan
-              key={`seg-term-${segTermIndex}`}
-              termIndex={segTermIndex}
-              text={segText}
-              segment={segment}
-              isCurrentStep={segTermIndex === currentStepIndex}
-            />
-          )
+          if (segText) {
+            segmentElements.push(
+              <TermSpan
+                key={`${keyPrefix}-seg-term-${segTermIndex}`}
+                termIndex={segTermIndex}
+                text={segText}
+                segment={segment}
+                isCurrentStep={segTermIndex === currentStepIndex}
+              />
+            )
+          }
 
           segmentCursor = segPos.endIndex
         }
 
-        elements.push(
-          <SegmentGroup key={`segment-${segment.id}`} segment={segment} steps={steps}>
-            {segmentElements}
-          </SegmentGroup>
-        )
+        if (segmentElements.length > 0) {
+          elements.push(
+            <SegmentGroup
+              key={`${keyPrefix}-segment-${segment.id}`}
+              segment={segment}
+              steps={steps}
+            >
+              {segmentElements}
+            </SegmentGroup>
+          )
+        }
 
         // Skip ahead past all terms in this segment
         const lastSegTermIndex = segment.termIndices[segment.termIndices.length - 1]
         const lastSegPos = termPositions[lastSegTermIndex]
-        cursor = lastSegPos?.endIndex ?? endIndex
+        cursor = Math.min(lastSegPos?.endIndex ?? endIndex, rangeEnd)
         termIndex = lastSegTermIndex // Will be incremented by for loop
       } else if (!segment) {
         // Regular term not in a segment
-        const termText = fullDecomposition.slice(startIndex, endIndex)
-        elements.push(
-          <TermSpan
-            key={`term-${termIndex}`}
-            termIndex={termIndex}
-            text={termText}
-            segment={segment}
-            isCurrentStep={termIndex === currentStepIndex}
-          />
-        )
-        cursor = endIndex
+        const termStart = Math.max(startIndex, rangeStart)
+        const termEnd = Math.min(endIndex, rangeEnd)
+        const termText = fullDecomposition.slice(termStart, termEnd)
+
+        if (termText) {
+          elements.push(
+            <TermSpan
+              key={`${keyPrefix}-term-${termIndex}`}
+              termIndex={termIndex}
+              text={termText}
+              segment={segment}
+              isCurrentStep={termIndex === currentStepIndex}
+            />
+          )
+        }
+        cursor = termEnd
       }
       // If this term is part of a segment but not the first, it was already handled above
     }
 
-    // Add trailing text
-    if (cursor < fullDecomposition.length) {
-      elements.push(<span key="trailing">{fullDecomposition.slice(cursor)}</span>)
+    // Add trailing text within range
+    if (cursor < rangeEnd) {
+      elements.push(
+        <span key={`${keyPrefix}-trailing`}>{fullDecomposition.slice(cursor, rangeEnd)}</span>
+      )
     }
 
     return elements
+  }
+
+  // Render elements - either single line or multi-line split on '='
+  const renderElements = () => {
+    if (!needsMultiLine || equalSignPositions.length === 0) {
+      // Single line mode
+      return renderElementsForRange(0, fullDecomposition.length, 'single')
+    }
+
+    // Multi-line mode: split on '=' signs
+    // First line: everything before first '='
+    // Subsequent lines: start with '=' and go to next '=' (or end)
+    const lines: React.ReactNode[] = []
+
+    // First line: from start to first '='
+    const firstEqualPos = equalSignPositions[0]
+    if (firstEqualPos > 0) {
+      lines.push(
+        <div key="line-0" className="decomposition-line">
+          {renderElementsForRange(0, firstEqualPos, 'line-0')}
+        </div>
+      )
+    }
+
+    // Subsequent lines: each starts with '=' and goes to next '=' or end
+    for (let i = 0; i < equalSignPositions.length; i++) {
+      const lineStart = equalSignPositions[i]
+      const lineEnd = equalSignPositions[i + 1] ?? fullDecomposition.length
+
+      lines.push(
+        <div key={`line-${i + 1}`} className="decomposition-line">
+          {renderElementsForRange(lineStart, lineEnd, `line-${i + 1}`)}
+        </div>
+      )
+    }
+
+    return lines
   }
 
   return (
@@ -294,9 +410,55 @@ export function DecompositionDisplay() {
         removeActiveTerm,
       }}
     >
-      <div data-element="decomposition-display" className="decomposition">
-        {renderElements()}
+      <div
+        ref={containerRef}
+        data-element="decomposition-display"
+        className={`decomposition ${needsMultiLine ? 'decomposition--multiline' : ''}`}
+      >
+        {/* Hidden measurement element - always renders single-line to measure true width */}
+        <div ref={measureRef} className="decomposition-measure" aria-hidden="true">
+          {renderElementsForRange(0, fullDecomposition.length, 'measure')}
+        </div>
+        {/* Visible content - may be multi-line if overflow detected */}
+        <div className="decomposition-content">{renderElements()}</div>
       </div>
     </InternalDecompositionContext.Provider>
+  )
+}
+
+/**
+ * DecompositionSection - A self-contained section with label that hides when decomposition is not meaningful
+ *
+ * Use this when you want the entire section (including "Step-by-Step" label) to disappear
+ * when the decomposition is trivial (e.g., "5 = 5").
+ *
+ * Must be used inside a DecompositionProvider.
+ */
+export function DecompositionSection({
+  label = 'Step-by-Step',
+  className,
+  labelClassName,
+  contentClassName,
+}: {
+  label?: string
+  className?: string
+  labelClassName?: string
+  contentClassName?: string
+}) {
+  const { isMeaningfulDecomposition } = useDecomposition()
+
+  if (!isMeaningfulDecomposition) {
+    return null
+  }
+
+  return (
+    <div data-element="decomposition-section" className={className}>
+      <div data-element="decomposition-label" className={labelClassName}>
+        {label}
+      </div>
+      <div data-element="decomposition-content" className={contentClassName}>
+        <DecompositionDisplay />
+      </div>
+    </div>
   )
 }

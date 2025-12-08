@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { animated, useSpring } from '@react-spring/web'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
   GeneratedProblem,
@@ -18,7 +20,7 @@ import {
   generateSingleProblem,
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
-import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
+import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
@@ -45,6 +47,14 @@ interface CurrentProblem {
   slotIndex: number
   problem: GeneratedProblem
   startTime: number
+}
+
+/** Snapshot of a problem that's animating out */
+interface OutgoingProblem {
+  key: string
+  problem: GeneratedProblem
+  userAnswer: string
+  isCorrect: true
 }
 
 /**
@@ -216,6 +226,77 @@ export function ActiveSession({
   // Track rejected digit for red X animation (null = no rejection, string = the rejected digit)
   const [rejectedDigit, setRejectedDigit] = useState<string | null>(null)
 
+  // Problem transition animation state
+  const [outgoingProblem, setOutgoingProblem] = useState<OutgoingProblem | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  // Refs for measuring problem widths during animation
+  const outgoingRef = useRef<HTMLDivElement>(null)
+  const activeRef = useRef<HTMLDivElement>(null)
+
+  // Track if we need to apply centering offset (set true when transition starts)
+  const needsCenteringOffsetRef = useRef(false)
+  // Store the centering offset value for the animation end
+  const centeringOffsetRef = useRef(0)
+
+  // Spring for problem transition animation
+  const [trackSpring, trackApi] = useSpring(() => ({
+    x: 0,
+    outgoingOpacity: 1,
+    activeOpacity: 1,
+    config: { tension: 200, friction: 26 },
+  }))
+
+  // Apply centering offset before paint to prevent jank
+  useLayoutEffect(() => {
+    if (needsCenteringOffsetRef.current && outgoingRef.current) {
+      const outgoingWidth = outgoingRef.current.offsetWidth
+      const gap = 32 // 2rem gap
+      const centeringOffset = (outgoingWidth + gap) / 2
+      centeringOffsetRef.current = centeringOffset
+
+      // Set initial position to compensate for flexbox centering
+      trackApi.set({
+        x: centeringOffset,
+        outgoingOpacity: 1,
+        activeOpacity: 0,
+      })
+
+      needsCenteringOffsetRef.current = false
+
+      // Start fade-in of new problem
+      trackApi.start({
+        activeOpacity: 1,
+        config: { tension: 200, friction: 26 },
+      })
+
+      // Start slide after a brief moment (150ms) - don't wait for fade-in to complete
+      // This eliminates the jarring pause between phases
+      setTimeout(() => {
+        trackApi.start({
+          x: -centeringOffset,
+          outgoingOpacity: 0,
+          config: { tension: 170, friction: 22 },
+          onRest: () => {
+            // Outgoing is now invisible (opacity 0).
+            // Remove it and reset X to 0 in the same synchronous batch
+            // so flexbox recentering and track reset happen together.
+            flushSync(() => {
+              setOutgoingProblem(null)
+              setIsTransitioning(false)
+              setFeedback('none')
+              setIsSubmitting(false)
+              setIncorrectAttempts(0)
+              setConfirmedTermCount(0)
+            })
+            // Reset spring immediately after DOM update
+            trackApi.set({ x: 0, outgoingOpacity: 1, activeOpacity: 1 })
+          },
+        })
+      }, 150)
+    }
+  }, [outgoingProblem, trackApi])
+
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
   // Compute all prefix sums for the current problem
@@ -311,7 +392,8 @@ export function ActiveSession({
 
   // Initialize or advance to current problem
   useEffect(() => {
-    if (currentPart && currentSlot && !currentProblem) {
+    // Don't auto-load during transitions - startTransition handles this
+    if (currentPart && currentSlot && !currentProblem && !isTransitioning) {
       // Generate problem from slot constraints (simplified for now)
       const problem = currentSlot.problem || generateProblemFromConstraints(currentSlot.constraints)
       setCurrentProblem({
@@ -323,7 +405,14 @@ export function ActiveSession({
       setUserAnswer('')
       setFeedback('none')
     }
-  }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, currentProblem])
+  }, [
+    currentPart,
+    currentSlot,
+    currentPartIndex,
+    currentSlotIndex,
+    currentProblem,
+    isTransitioning,
+  ])
 
   // Check if adding a digit would be consistent with any prefix sum
   const isDigitConsistent = useCallback(
@@ -388,6 +477,39 @@ export function ActiveSession({
     }, 800) // 800ms delay to show "Perfect!" feedback
   }, [helpTermIndex, currentProblem])
 
+  // Start transition animation to next problem
+  const startTransition = useCallback(
+    (nextProblem: GeneratedProblem, nextSlotIndex: number) => {
+      if (!currentProblem) return
+
+      // Mark that we need to apply centering offset in useLayoutEffect
+      needsCenteringOffsetRef.current = true
+
+      // Capture outgoing problem state
+      setOutgoingProblem({
+        key: `${currentProblem.partIndex}-${currentProblem.slotIndex}`,
+        problem: currentProblem.problem,
+        userAnswer: userAnswer,
+        isCorrect: true,
+      })
+
+      // Set up next problem immediately (it fades in on right side)
+      setCurrentProblem({
+        partIndex: currentPartIndex,
+        slotIndex: nextSlotIndex,
+        problem: nextProblem,
+        startTime: Date.now(),
+      })
+      setUserAnswer('')
+      setHelpTermIndex(null)
+      setCorrectionCount(0)
+      setAutoSubmitTriggered(false)
+      setIsTransitioning(true)
+      // Animation is triggered by useLayoutEffect when outgoingProblem changes
+    },
+    [currentProblem, userAnswer, currentPartIndex]
+  )
+
   const handleSubmit = useCallback(async () => {
     if (!currentProblem || isSubmitting || !userAnswer) return
 
@@ -416,6 +538,8 @@ export function ActiveSession({
       skillsExercised: currentProblem.problem.skillsRequired,
       usedOnScreenAbacus: confirmedTermCount > 0 || helpTermIndex !== null,
       incorrectAttempts,
+      // Help level: 1 if any abacus help was used, 0 otherwise (simplified from multi-level system)
+      helpLevelUsed: helpTermIndex !== null ? 1 : 0,
     }
 
     await onAnswer(result)
@@ -423,17 +547,41 @@ export function ActiveSession({
     // Wait for feedback display then advance
     setTimeout(
       () => {
-        setCurrentProblem(null)
-        setIncorrectAttempts(0)
-        setConfirmedTermCount(0)
-        setHelpTermIndex(null)
-        setIsSubmitting(false)
-        setCorrectionCount(0)
-        setAutoSubmitTriggered(false)
+        // Check if there's a next problem in this part
+        const nextSlotIndex = currentSlotIndex + 1
+        const nextSlot = currentPart?.slots[nextSlotIndex]
+
+        if (nextSlot && currentPart && isCorrect) {
+          // Has next problem - animate transition
+          const nextProblem =
+            nextSlot.problem || generateProblemFromConstraints(nextSlot.constraints)
+          startTransition(nextProblem, nextSlotIndex)
+        } else {
+          // End of part or incorrect - no animation, just clean up
+          setCurrentProblem(null)
+          setIncorrectAttempts(0)
+          setConfirmedTermCount(0)
+          setHelpTermIndex(null)
+          setIsSubmitting(false)
+          setCorrectionCount(0)
+          setAutoSubmitTriggered(false)
+          setFeedback('none')
+        }
       },
       isCorrect ? 500 : 1500
     )
-  }, [currentProblem, isSubmitting, userAnswer, confirmedTermCount, helpTermIndex, onAnswer, incorrectAttempts])
+  }, [
+    currentProblem,
+    isSubmitting,
+    userAnswer,
+    confirmedTermCount,
+    helpTermIndex,
+    onAnswer,
+    incorrectAttempts,
+    currentSlotIndex,
+    currentPart,
+    startTransition,
+  ])
 
   // Auto-submit when correct answer is entered on first attempt (allow minor corrections)
   useEffect(() => {
@@ -458,7 +606,9 @@ export function ActiveSession({
 
   // Handle keyboard input (placed after handleSubmit to avoid temporal dead zone)
   useEffect(() => {
-    if (!hasPhysicalKeyboard || isPaused || !currentProblem || isSubmitting) return
+    // Block input during transitions
+    if (!hasPhysicalKeyboard || isPaused || !currentProblem || isSubmitting || isTransitioning)
+      return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
@@ -480,6 +630,7 @@ export function ActiveSession({
     isPaused,
     currentProblem,
     isSubmitting,
+    isTransitioning,
     handleSubmit,
     handleDigit,
     handleBackspace,
@@ -823,135 +974,175 @@ export function ActiveSession({
           {currentSlot?.purpose}
         </div>
 
-        {/* Problem display - horizontal layout with help panel on right when in help mode */}
+        {/* Problem display - centered, with help panel positioned outside */}
         <div
           data-element="problem-with-help"
           className={css({
             display: 'flex',
-            alignItems: 'flex-start',
             justifyContent: 'center',
-            gap: '1.5rem',
             width: '100%',
+            overflow: 'hidden', // Clip during transition animation
           })}
         >
-          {/* Center: Problem display */}
-          {currentPart.format === 'vertical' ? (
-            <VerticalProblem
-              terms={currentProblem.problem.terms}
-              userAnswer={userAnswer}
-              isFocused={!isPaused && !isSubmitting}
-              isCompleted={feedback !== 'none'}
-              correctAnswer={currentProblem.problem.answer}
-              size="large"
-              currentHelpTermIndex={helpTermIndex ?? undefined}
-              autoSubmitPending={autoSubmitTriggered}
-              rejectedDigit={rejectedDigit}
-              helpOverlay={
-                !isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext ? (
-                  <PracticeHelpOverlay
-                    currentValue={helpContext.currentValue}
-                    targetValue={helpContext.targetValue}
-                    columns={Math.max(
-                      1,
-                      Math.max(helpContext.currentValue, helpContext.targetValue).toString().length
-                    )}
-                    onTargetReached={handleTargetReached}
-                  />
-                ) : undefined
-              }
-            />
-          ) : (
-            <LinearProblem
-              terms={currentProblem.problem.terms}
-              userAnswer={userAnswer}
-              isFocused={!isPaused && !isSubmitting}
-              isCompleted={feedback !== 'none'}
-              correctAnswer={currentProblem.problem.answer}
-              isDark={isDark}
-              detectedPrefixIndex={
-                matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                  ? matchedPrefixIndex
-                  : undefined
-              }
-            />
-          )}
-
-          {/* Right: Help panel with coach hint and decomposition (only in help mode) */}
-          {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
-            <div
-              data-element="help-panel"
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-                padding: '1rem',
-                backgroundColor: isDark ? 'blue.900' : 'blue.50',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: isDark ? 'blue.700' : 'blue.200',
-                minWidth: '200px',
-                maxWidth: '280px',
-              })}
-            >
-              {/* Coach hint */}
-              {(() => {
-                const hint = generateCoachHint(helpContext.currentValue, helpContext.targetValue)
-                if (!hint) return null
-                return (
-                  <div
-                    data-element="coach-hint"
-                    className={css({
-                      padding: '0.5rem 0.75rem',
-                      backgroundColor: isDark ? 'gray.800' : 'white',
-                      borderRadius: '8px',
-                      border: '1px solid',
-                      borderColor: isDark ? 'blue.800' : 'blue.100',
-                    })}
-                  >
-                    <p
-                      className={css({
-                        fontSize: '0.875rem',
-                        color: isDark ? 'gray.300' : 'gray.700',
-                        lineHeight: '1.4',
-                        margin: 0,
-                      })}
-                    >
-                      {hint}
-                    </p>
-                  </div>
-                )
-              })()}
-
-              {/* Decomposition display */}
-              <div
-                data-element="decomposition-display"
-                className={css({
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '8px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'blue.800' : 'blue.100',
-                  whiteSpace: 'nowrap',
-                })}
+          {/* Animated track for problem transitions */}
+          <animated.div
+            data-element="problem-track"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              transform: trackSpring.x.to((x) => `translateX(${x}px)`),
+            }}
+          >
+            {/* Outgoing problem (slides left during transition) */}
+            {outgoingProblem && (
+              <animated.div
+                ref={outgoingRef}
+                data-element="outgoing-problem"
+                style={{
+                  opacity: trackSpring.outgoingOpacity,
+                  marginRight: '2rem',
+                  position: 'relative' as const,
+                }}
               >
+                <VerticalProblem
+                  terms={outgoingProblem.problem.terms}
+                  userAnswer={outgoingProblem.userAnswer}
+                  isCompleted={true}
+                  correctAnswer={outgoingProblem.problem.answer}
+                  size="large"
+                />
+                {/* Feedback stays with outgoing problem */}
                 <div
+                  data-element="outgoing-feedback"
                   className={css({
-                    fontSize: '0.625rem',
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginTop: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
                     fontWeight: 'bold',
-                    color: isDark ? 'blue.300' : 'blue.600',
-                    marginBottom: '0.25rem',
-                    textTransform: 'uppercase',
+                    backgroundColor: isDark ? 'green.900' : 'green.100',
+                    color: isDark ? 'green.200' : 'green.700',
+                    whiteSpace: 'nowrap',
                   })}
                 >
-                  Step-by-Step
+                  Correct!
                 </div>
+              </animated.div>
+            )}
+
+            {/* Problem container - relative positioning for help panel */}
+            <animated.div
+              ref={activeRef}
+              data-element="problem-container"
+              style={{
+                opacity: trackSpring.activeOpacity,
+                position: 'relative' as const,
+              }}
+            >
+              {/* Problem display */}
+              {currentPart.format === 'vertical' ? (
+                <VerticalProblem
+                  terms={currentProblem.problem.terms}
+                  userAnswer={userAnswer}
+                  isFocused={!isPaused && !isSubmitting}
+                  isCompleted={feedback !== 'none'}
+                  correctAnswer={currentProblem.problem.answer}
+                  size="large"
+                  currentHelpTermIndex={helpTermIndex ?? undefined}
+                  autoSubmitPending={autoSubmitTriggered}
+                  rejectedDigit={rejectedDigit}
+                  helpOverlay={
+                    !isSubmitting &&
+                    feedback === 'none' &&
+                    helpTermIndex !== null &&
+                    helpContext ? (
+                      <PracticeHelpOverlay
+                        currentValue={helpContext.currentValue}
+                        targetValue={helpContext.targetValue}
+                        columns={Math.max(
+                          1,
+                          Math.max(helpContext.currentValue, helpContext.targetValue).toString()
+                            .length
+                        )}
+                        onTargetReached={handleTargetReached}
+                      />
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <LinearProblem
+                  terms={currentProblem.problem.terms}
+                  userAnswer={userAnswer}
+                  isFocused={!isPaused && !isSubmitting}
+                  isCompleted={feedback !== 'none'}
+                  correctAnswer={currentProblem.problem.answer}
+                  isDark={isDark}
+                  detectedPrefixIndex={
+                    matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                      ? matchedPrefixIndex
+                      : undefined
+                  }
+                />
+              )}
+
+              {/* Help panel - absolutely positioned to the right of the problem */}
+              {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
                 <div
+                  data-element="help-panel"
                   className={css({
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                    color: isDark ? 'gray.100' : 'gray.800',
+                    position: 'absolute',
+                    left: '100%',
+                    top: 0,
+                    marginLeft: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    padding: '1rem',
+                    backgroundColor: isDark ? 'blue.900' : 'blue.50',
+                    borderRadius: '12px',
+                    border: '2px solid',
+                    borderColor: isDark ? 'blue.700' : 'blue.200',
+                    minWidth: '200px',
+                    maxWidth: '280px',
                   })}
                 >
+                  {/* Coach hint */}
+                  {(() => {
+                    const hint = generateCoachHint(
+                      helpContext.currentValue,
+                      helpContext.targetValue
+                    )
+                    if (!hint) return null
+                    return (
+                      <div
+                        data-element="coach-hint"
+                        className={css({
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: isDark ? 'gray.800' : 'white',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: isDark ? 'blue.800' : 'blue.100',
+                        })}
+                      >
+                        <p
+                          className={css({
+                            fontSize: '0.875rem',
+                            color: isDark ? 'gray.300' : 'gray.700',
+                            lineHeight: '1.4',
+                            margin: 0,
+                          })}
+                        >
+                          {hint}
+                        </p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Decomposition display - hides when not meaningful */}
                   <DecompositionProvider
                     startValue={helpContext.currentValue}
                     targetValue={helpContext.targetValue}
@@ -961,12 +1152,33 @@ export function ActiveSession({
                       Math.max(helpContext.currentValue, helpContext.targetValue).toString().length
                     )}
                   >
-                    <DecompositionDisplay />
+                    <DecompositionSection
+                      className={css({
+                        padding: '0.5rem 0.75rem',
+                        backgroundColor: isDark ? 'gray.800' : 'white',
+                        borderRadius: '8px',
+                        border: '1px solid',
+                        borderColor: isDark ? 'blue.800' : 'blue.100',
+                        whiteSpace: 'nowrap',
+                      })}
+                      labelClassName={css({
+                        fontSize: '0.625rem',
+                        fontWeight: 'bold',
+                        color: isDark ? 'blue.300' : 'blue.600',
+                        marginBottom: '0.25rem',
+                        textTransform: 'uppercase',
+                      })}
+                      contentClassName={css({
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.100' : 'gray.800',
+                      })}
+                    />
                   </DecompositionProvider>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
+            </animated.div>
+          </animated.div>
         </div>
 
         {/* Feedback message */}
