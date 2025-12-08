@@ -981,7 +981,8 @@ export function ActiveSession({
             display: 'flex',
             justifyContent: 'center',
             width: '100%',
-            overflow: 'hidden', // Clip during transition animation
+            overflowX: 'hidden', // Clip horizontal transition, allow vertical for help overlays
+            overflowY: 'visible',
           })}
         >
           {/* Animated track for problem transitions */}
