@@ -7,6 +7,7 @@ This document outlines potential refactoring opportunities for the DrillDownMapS
 **Current State:** `sizesToRange` and `rangeToSizes` are defined inline in DrillDownMapSelector.tsx.
 
 **Problem:**
+
 - Functions can't be easily imported for testing
 - Duplicated logic if needed elsewhere
 - Component file is larger than necessary
@@ -15,20 +16,20 @@ This document outlines potential refactoring opportunities for the DrillDownMapS
 
 ```typescript
 // regionSizeUtils.ts
-import type { RegionSize } from '../maps'
-import { ALL_REGION_SIZES } from '../maps'
+import type { RegionSize } from "../maps";
+import { ALL_REGION_SIZES } from "../maps";
 
 export function sizesToRange(sizes: RegionSize[]): [RegionSize, RegionSize] {
   const sorted = [...sizes].sort(
-    (a, b) => ALL_REGION_SIZES.indexOf(a) - ALL_REGION_SIZES.indexOf(b)
-  )
-  return [sorted[0], sorted[sorted.length - 1]]
+    (a, b) => ALL_REGION_SIZES.indexOf(a) - ALL_REGION_SIZES.indexOf(b),
+  );
+  return [sorted[0], sorted[sorted.length - 1]];
 }
 
 export function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
-  const minIdx = ALL_REGION_SIZES.indexOf(min)
-  const maxIdx = ALL_REGION_SIZES.indexOf(max)
-  return ALL_REGION_SIZES.slice(minIdx, maxIdx + 1)
+  const minIdx = ALL_REGION_SIZES.indexOf(min);
+  const maxIdx = ALL_REGION_SIZES.indexOf(max);
+  return ALL_REGION_SIZES.slice(minIdx, maxIdx + 1);
 }
 ```
 
@@ -41,6 +42,7 @@ export function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
 **Current State:** Multiple `useMemo` blocks in DrillDownMapSelector calculate excluded regions, preview regions, and region names.
 
 **Problem:**
+
 - Complex memoization dependencies
 - Hard to test filtering logic in isolation
 - Repeated patterns across different calculations
@@ -50,22 +52,24 @@ export function rangeToSizes(min: RegionSize, max: RegionSize): RegionSize[] {
 ```typescript
 // hooks/useRegionFiltering.ts
 interface UseRegionFilteringProps {
-  mapId: 'world' | 'usa'
-  continentId: ContinentId | 'all'
-  includeSizes: RegionSize[]
-  previewSizes?: RegionSize[] | null
+  mapId: "world" | "usa";
+  continentId: ContinentId | "all";
+  includeSizes: RegionSize[];
+  previewSizes?: RegionSize[] | null;
 }
 
 interface UseRegionFilteringResult {
-  includedRegions: string[]
-  excludedRegions: string[]
-  previewAddRegions: string[]
-  previewRemoveRegions: string[]
-  regionNamesBySize: Record<RegionSize, string[]>
-  selectedRegionNames: string[]
+  includedRegions: string[];
+  excludedRegions: string[];
+  previewAddRegions: string[];
+  previewRemoveRegions: string[];
+  regionNamesBySize: Record<RegionSize, string[]>;
+  selectedRegionNames: string[];
 }
 
-export function useRegionFiltering(props: UseRegionFilteringProps): UseRegionFilteringResult {
+export function useRegionFiltering(
+  props: UseRegionFilteringProps,
+): UseRegionFilteringResult {
   // Consolidate all filtering logic here
 }
 ```
@@ -79,6 +83,7 @@ export function useRegionFiltering(props: UseRegionFilteringProps): UseRegionFil
 **Current State:** RangeThermometer has 14+ props, many of which are optional and interdependent.
 
 **Problem:**
+
 - Prop drilling complexity
 - Unclear which props work together
 - Large interface to understand
@@ -126,6 +131,7 @@ interface RangeThermometerProps<T> {
 **Current State:** The inline region list in DrillDownMapSelector is defined inline with ~50 lines of JSX.
 
 **Problem:**
+
 - DrillDownMapSelector is 1300+ lines
 - Region list styling is tightly coupled
 - Can't reuse list in other contexts
@@ -168,6 +174,7 @@ export function RegionListPanel({ regions, onRegionHover, maxHeight = '200px', i
 **Current State:** Multiple places check for responsive behavior with `{ base: '...', md: '...' }` patterns.
 
 **Problem:**
+
 - Breakpoint values scattered across components
 - Inconsistent breakpoint choices
 - Hard to change responsive behavior globally
@@ -177,23 +184,23 @@ export function RegionListPanel({ regions, onRegionHover, maxHeight = '200px', i
 ```typescript
 // utils/responsive.ts
 export const BREAKPOINTS = {
-  mobile: 'base',
-  tablet: 'sm',
-  desktop: 'md',
-  wide: 'lg',
-} as const
+  mobile: "base",
+  tablet: "sm",
+  desktop: "md",
+  wide: "lg",
+} as const;
 
 export function responsiveDisplay(showOnDesktop: boolean) {
   return showOnDesktop
-    ? { base: 'none', md: 'flex' }
-    : { base: 'flex', md: 'none' }
+    ? { base: "none", md: "flex" }
+    : { base: "flex", md: "none" };
 }
 
 export function responsiveScale(mobileScale: number, desktopScale: number) {
   return {
     transform: { base: `scale(${mobileScale})`, sm: `scale(${desktopScale})` },
-    transformOrigin: 'top right',
-  }
+    transformOrigin: "top right",
+  };
 }
 ```
 
@@ -206,6 +213,7 @@ export function responsiveScale(mobileScale: number, desktopScale: number) {
 **Current State:** `SelectionPath` is defined as `[] | [ContinentId] | [ContinentId, string]`
 
 **Problem:**
+
 - Hard to exhaustively check path levels
 - Type narrowing requires manual length checks
 - Semantics not self-documenting
@@ -214,19 +222,19 @@ export function responsiveScale(mobileScale: number, desktopScale: number) {
 
 ```typescript
 type SelectionPath =
-  | { level: 'world' }
-  | { level: 'continent'; continentId: ContinentId }
-  | { level: 'submap'; continentId: ContinentId; submapId: string }
+  | { level: "world" }
+  | { level: "continent"; continentId: ContinentId }
+  | { level: "submap"; continentId: ContinentId; submapId: string };
 
 // Usage becomes more explicit
 function getMapData(path: SelectionPath) {
   switch (path.level) {
-    case 'world':
-      return WORLD_MAP
-    case 'continent':
-      return filterByContinent(path.continentId)
-    case 'submap':
-      return getSubMap(path.submapId)
+    case "world":
+      return WORLD_MAP;
+    case "continent":
+      return filterByContinent(path.continentId);
+    case "submap":
+      return getSubMap(path.submapId);
   }
 }
 ```
@@ -240,6 +248,7 @@ function getMapData(path: SelectionPath) {
 **Current State:** Multiple `useMemo` hooks recalculate on every render cycle.
 
 **Problem:**
+
 - `getFilteredMapDataBySizesSync` called multiple times with same params
 - No caching between component unmount/remount
 - Complex dependency arrays
@@ -248,22 +257,30 @@ function getMapData(path: SelectionPath) {
 
 ```typescript
 // Option A: Simple memoization cache
-const regionDataCache = new Map<string, MapData>()
+const regionDataCache = new Map<string, MapData>();
 
-function getCachedFilteredMapData(mapId: string, continentId: string, sizes: RegionSize[]) {
-  const key = `${mapId}-${continentId}-${sizes.join(',')}`
+function getCachedFilteredMapData(
+  mapId: string,
+  continentId: string,
+  sizes: RegionSize[],
+) {
+  const key = `${mapId}-${continentId}-${sizes.join(",")}`;
   if (!regionDataCache.has(key)) {
-    regionDataCache.set(key, getFilteredMapDataBySizesSync(mapId, continentId, sizes))
+    regionDataCache.set(
+      key,
+      getFilteredMapDataBySizesSync(mapId, continentId, sizes),
+    );
   }
-  return regionDataCache.get(key)!
+  return regionDataCache.get(key)!;
 }
 
 // Option B: React Query
 const { data: filteredRegions } = useQuery({
-  queryKey: ['filtered-regions', mapId, continentId, includeSizes],
-  queryFn: () => getFilteredMapDataBySizesSync(mapId, continentId, includeSizes),
+  queryKey: ["filtered-regions", mapId, continentId, includeSizes],
+  queryFn: () =>
+    getFilteredMapDataBySizesSync(mapId, continentId, includeSizes),
   staleTime: Infinity,
-})
+});
 ```
 
 **Impact:** Medium complexity, potential performance improvement.
@@ -290,6 +307,7 @@ const { data: filteredRegions } = useQuery({
 ## Testing Considerations
 
 After any refactoring:
+
 - Run existing tests: `npm run test:run -- src/components/Thermometer src/arcade-games/know-your-world`
 - Add integration tests for extracted components
 - Verify responsive behavior manually on mobile/desktop

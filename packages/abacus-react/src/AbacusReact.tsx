@@ -311,6 +311,8 @@ export interface AbacusConfig {
 	// Legacy callbacks for backward compatibility
 	onClick?: (bead: BeadConfig) => void;
 	onValueChange?: (newValue: number | bigint) => void;
+	/** Called after value changes AND animations complete (useful for chaining actions) */
+	onValueChangeComplete?: (newValue: number | bigint) => void;
 }
 
 export interface AbacusDimensions {
@@ -1641,6 +1643,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 	// Legacy callbacks
 	onClick,
 	onValueChange,
+	onValueChangeComplete,
 }) => {
 	// Try to use context config, fallback to defaults if no context
 	let contextConfig;
@@ -1759,7 +1762,19 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
 		// This is a user-initiated change, notify parent
 		onValueChange?.(currentValue);
-	}, [currentValue, onValueChange]);
+
+		// Schedule onValueChangeComplete after animations settle
+		// React Spring with default config (tension: 200, friction: 10) settles in ~400ms
+		if (onValueChangeComplete && finalConfig.animated) {
+			const timeoutId = setTimeout(() => {
+				onValueChangeComplete(currentValue);
+			}, 400);
+			return () => clearTimeout(timeoutId);
+		} else if (onValueChangeComplete) {
+			// No animation, call immediately
+			onValueChangeComplete(currentValue);
+		}
+	}, [currentValue, onValueChange, onValueChangeComplete, finalConfig.animated]);
 
 	// Track controlled value changes
 	React.useEffect(() => {

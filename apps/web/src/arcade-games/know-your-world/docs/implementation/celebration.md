@@ -34,21 +34,27 @@ The transition is instant - no pause, no celebration, no feedback.
 ## Celebration Types
 
 ### 1. Lightning Find ⚡ (< 3 seconds)
+
 Kid knew exactly where to look - reward the speed!
+
 - **Flash**: Quick, bright gold pulse (400ms)
 - **Confetti**: Fast, sparkly burst (small particles, quick fade)
 - **Sound**: Quick "ding!" or sparkle
 - **Duration**: ~800ms total
 
 ### 2. Standard Find ✨ (3-15 seconds, direct path)
+
 Normal discovery - celebrate appropriately
+
 - **Flash**: Smooth gold pulse (600ms)
 - **Confetti**: Medium burst with gravity fall
 - **Sound**: Pleasant chime
 - **Duration**: ~1.2 seconds total
 
 ### 3. Hard-Earned Find 💪 (searched extensively)
+
 Kid really worked for it - acknowledge the effort!
+
 - **Flash**: Warm, satisfying glow (800ms)
 - **Confetti**: Big celebration! More particles, longer duration
 - **Sound**: Triumphant fanfare/chord
@@ -62,6 +68,7 @@ Kid really worked for it - acknowledge the effort!
 ### Data Available from Hot/Cold System
 
 The `useHotColdFeedback` hook already tracks:
+
 ```typescript
 interface PathEntry {
   x: number
@@ -81,46 +88,48 @@ minDistanceSinceLastFeedback   // Got close then moved away?
 ```typescript
 interface SearchMetrics {
   // Time
-  timeToFind: number           // ms from prompt start to correct click
+  timeToFind: number; // ms from prompt start to correct click
 
   // Distance traveled
-  totalCursorDistance: number  // Total pixels cursor moved (from history)
-  straightLineDistance: number // Direct path would have been
-  searchEfficiency: number     // straight / total (1.0 = perfect, <0.3 = searched hard)
+  totalCursorDistance: number; // Total pixels cursor moved (from history)
+  straightLineDistance: number; // Direct path would have been
+  searchEfficiency: number; // straight / total (1.0 = perfect, <0.3 = searched hard)
 
   // Direction changes
-  directionReversals: number   // How many times changed direction toward/away
+  directionReversals: number; // How many times changed direction toward/away
 
   // Near misses
-  nearMissCount: number        // Times got within CLOSE threshold then moved away
-  overshotCount: number        // Times passed the target
+  nearMissCount: number; // Times got within CLOSE threshold then moved away
+  overshotCount: number; // Times passed the target
 
   // Zone transitions
-  zoneTransitions: number      // warming→cooling→warming transitions
+  zoneTransitions: number; // warming→cooling→warming transitions
 }
 ```
 
 ### Classification Logic
 
 ```typescript
-function classifyCelebration(metrics: SearchMetrics): 'lightning' | 'standard' | 'hard-earned' {
+function classifyCelebration(
+  metrics: SearchMetrics,
+): "lightning" | "standard" | "hard-earned" {
   // Lightning: Fast and direct
   if (metrics.timeToFind < 3000 && metrics.searchEfficiency > 0.7) {
-    return 'lightning'
+    return "lightning";
   }
 
   // Hard-earned: Any of these indicate real effort
   if (
-    metrics.timeToFind > 20000 ||                    // Took a while
-    metrics.searchEfficiency < 0.3 ||                // Wandered a lot
-    metrics.directionReversals > 10 ||               // Lots of back-and-forth
-    metrics.nearMissCount > 2 ||                     // Got close multiple times
-    metrics.overshotCount > 1                        // Passed it more than once
+    metrics.timeToFind > 20000 || // Took a while
+    metrics.searchEfficiency < 0.3 || // Wandered a lot
+    metrics.directionReversals > 10 || // Lots of back-and-forth
+    metrics.nearMissCount > 2 || // Got close multiple times
+    metrics.overshotCount > 1 // Passed it more than once
   ) {
-    return 'hard-earned'
+    return "hard-earned";
   }
 
-  return 'standard'
+  return "standard";
 }
 ```
 
@@ -144,6 +153,7 @@ User clicks region → onRegionClick(id, name)
 ### Key Change: Delay State Update
 
 Instead of immediately calling `clickRegion` and advancing, we:
+
 1. Detect correct click locally in MapRenderer
 2. Start celebration animation
 3. Block input during celebration
@@ -160,13 +170,13 @@ This ensures the map doesn't clutter with the next prompt while celebrating.
 ```typescript
 // Add to Provider.tsx context
 interface CelebrationState {
-  regionId: string
-  regionName: string
-  type: 'lightning' | 'standard' | 'hard-earned'
-  startTime: number
+  regionId: string;
+  regionName: string;
+  type: "lightning" | "standard" | "hard-earned";
+  startTime: number;
 }
 
-const [celebration, setCelebration] = useState<CelebrationState | null>(null)
+const [celebration, setCelebration] = useState<CelebrationState | null>(null);
 ```
 
 ### Expose Search Metrics from Hot/Cold Hook
@@ -221,23 +231,26 @@ export function useHotColdFeedback(...) {
 
 ```typescript
 // useCelebrationSound.ts
-const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 function playLightningSound() {
   // Quick sparkle: high frequency, fast decay
-  const osc = audioContext.createOscillator()
-  const gain = audioContext.createGain()
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
 
-  osc.type = 'sine'
-  osc.frequency.setValueAtTime(1200, audioContext.currentTime)
-  osc.frequency.exponentialRampToValueAtTime(2400, audioContext.currentTime + 0.1)
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1200, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(
+    2400,
+    audioContext.currentTime + 0.1,
+  );
 
-  gain.gain.setValueAtTime(0.3, audioContext.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+  gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
 
-  osc.connect(gain).connect(audioContext.destination)
-  osc.start()
-  osc.stop(audioContext.currentTime + 0.2)
+  osc.connect(gain).connect(audioContext.destination);
+  osc.start();
+  osc.stop(audioContext.currentTime + 0.2);
 }
 
 function playStandardSound() {
@@ -287,19 +300,19 @@ style={{
 ```typescript
 // components/Confetti.tsx
 interface ConfettiProps {
-  type: 'lightning' | 'standard' | 'hard-earned'
-  origin: { x: number; y: number }  // Screen coordinates
-  onComplete: () => void
+  type: "lightning" | "standard" | "hard-earned";
+  origin: { x: number; y: number }; // Screen coordinates
+  onComplete: () => void;
 }
 
 const CONFETTI_CONFIG = {
   lightning: { count: 12, duration: 600, spread: 60 },
   standard: { count: 20, duration: 1000, spread: 90 },
-  'hard-earned': { count: 35, duration: 1500, spread: 120 },
-}
+  "hard-earned": { count: 35, duration: 1500, spread: 120 },
+};
 
 function Confetti({ type, origin, onComplete }: ConfettiProps) {
-  const config = CONFETTI_CONFIG[type]
+  const config = CONFETTI_CONFIG[type];
 
   // Generate particles with random directions, colors, sizes
   // Use CSS animations for performance
@@ -347,12 +360,14 @@ function CelebrationOverlay({ celebration, regionCenter, onComplete }: Celebrati
 ## Files to Create/Modify
 
 ### New Files
+
 1. **`hooks/useCelebrationSound.ts`** - Web Audio API sound effects
 2. **`hooks/useSearchMetrics.ts`** - Extract metrics from hot/cold history
 3. **`components/Confetti.tsx`** - CSS confetti particles
 4. **`components/CelebrationOverlay.tsx`** - Orchestrates celebration
 
 ### Modified Files
+
 1. **`Provider.tsx`** - Add celebration state to context
 2. **`hooks/useHotColdFeedback.ts`** - Expose `getSearchMetrics()` method
 3. **`MapRenderer.tsx`** - Intercept correct clicks, trigger celebration, delay advancement
@@ -362,31 +377,37 @@ function CelebrationOverlay({ celebration, regionCenter, onComplete }: Celebrati
 ## Implementation Order
 
 ### Phase 1: Infrastructure
+
 1. Add `celebration` state to Provider context
 2. Add `promptStartTime` tracking (when each region prompt begins)
 3. Modify `useHotColdFeedback` to expose `getSearchMetrics()`
 
 ### Phase 2: Classification
+
 4. Create `useSearchMetrics` hook to calculate metrics
 5. Implement `classifyCelebration()` function
 6. Test metric calculation with various search patterns
 
 ### Phase 3: Visuals
+
 7. Create `Confetti` component with CSS animations
 8. Add gold flash effect to MapRenderer (react-spring)
 9. Create `CelebrationOverlay` to orchestrate
 
 ### Phase 4: Audio
+
 10. Create `useCelebrationSound` hook with Web Audio API
 11. Implement three sound types (lightning, standard, hard-earned)
 12. Wire up sounds to celebration types
 
 ### Phase 5: Integration
+
 13. Intercept correct clicks in MapRenderer
 14. Block advancement during celebration
 15. Call `clickRegion` only after celebration completes
 
 ### Phase 6: Polish
+
 16. Add `prefers-reduced-motion` support
 17. Test on mobile (performance, touch)
 18. Fine-tune timing and particle counts
@@ -417,8 +438,8 @@ function CelebrationOverlay({ celebration, regionCenter, onComplete }: Celebrati
 
 ## Timing Summary
 
-| Type | Flash | Confetti | Sound | Total Block |
-|------|-------|----------|-------|-------------|
-| Lightning ⚡ | 400ms | 600ms | 200ms | 600ms |
-| Standard ✨ | 600ms | 1000ms | 400ms | 1000ms |
-| Hard-earned 💪 | 800ms | 1500ms | 600ms | 1500ms |
+| Type           | Flash | Confetti | Sound | Total Block |
+| -------------- | ----- | -------- | ----- | ----------- |
+| Lightning ⚡   | 400ms | 600ms    | 200ms | 600ms       |
+| Standard ✨    | 600ms | 1000ms   | 400ms | 1000ms      |
+| Hard-earned 💪 | 800ms | 1500ms   | 600ms | 1500ms      |

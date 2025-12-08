@@ -9,18 +9,21 @@ The dotted outline on the main map that shows the magnified region no longer mat
    - Portrait: 1/2 width × 1/3 height
 
 2. **The magnifier viewBox still uses map-based aspect ratio**:
+
    ```typescript
    // Current - MapRenderer.tsx lines 3017-3018
-   const magnifiedWidth = viewBoxWidth / zoom   // e.g., 1000/10 = 100
-   const magnifiedHeight = viewBoxHeight / zoom // e.g., 500/10 = 50 (2:1 ratio)
+   const magnifiedWidth = viewBoxWidth / zoom; // e.g., 1000/10 = 100
+   const magnifiedHeight = viewBoxHeight / zoom; // e.g., 500/10 = 50 (2:1 ratio)
    ```
+
    This creates a viewBox with the map's aspect ratio (e.g., 2:1 for world map).
 
 3. **The outline uses the same calculation**:
+
    ```typescript
    // Current - MapRenderer.tsx lines 2578-2586
-   width = viewBoxWidth / zoom
-   height = viewBoxHeight / zoom
+   width = viewBoxWidth / zoom;
+   height = viewBoxHeight / zoom;
    ```
 
 4. **Aspect ratio mismatch causes letterboxing**: The magnifier container might be 1/3w × 1/2h (taller), but the viewBox is 2:1 (wider). With default `preserveAspectRatio="xMidYMid meet"`, the SVG scales to fit with letterboxing. The outline shows the viewBox dimensions, but the magnifier container appears a different shape.
@@ -59,6 +62,7 @@ Screen in landscape mode:
 **Change the magnifier viewBox to match the container's aspect ratio.**
 
 Instead of letterboxing, make the magnifier show exactly what its container shape suggests. This means:
+
 1. Calculate magnifier container aspect ratio
 2. Adjust the magnified viewBox dimensions to match
 3. Use the same adjusted dimensions for the outline
@@ -66,35 +70,38 @@ Instead of letterboxing, make the magnifier show exactly what its container shap
 ### How It Works
 
 Given:
+
 - Magnifier container: `magnifierWidth × magnifierHeight` (from `getMagnifierDimensions`)
 - Base magnified region: `viewBoxWidth/zoom × viewBoxHeight/zoom`
 - Container aspect ratio: `CA = magnifierWidth / magnifierHeight`
 - ViewBox aspect ratio: `VA = viewBoxWidth / viewBoxHeight`
 
 Calculate the adjusted viewBox that fills the container:
+
 ```typescript
 // Start with zoom-based dimensions
-const baseWidth = viewBoxWidth / zoom
-const baseHeight = viewBoxHeight / zoom
+const baseWidth = viewBoxWidth / zoom;
+const baseHeight = viewBoxHeight / zoom;
 
 // Container aspect ratio
-const containerAspect = magnifierWidth / magnifierHeight
-const viewBoxAspect = baseWidth / baseHeight
+const containerAspect = magnifierWidth / magnifierHeight;
+const viewBoxAspect = baseWidth / baseHeight;
 
-let adjustedWidth, adjustedHeight
+let adjustedWidth, adjustedHeight;
 
 if (containerAspect > viewBoxAspect) {
   // Container is wider than viewBox - expand width to match
-  adjustedHeight = baseHeight
-  adjustedWidth = baseHeight * containerAspect
+  adjustedHeight = baseHeight;
+  adjustedWidth = baseHeight * containerAspect;
 } else {
   // Container is taller than viewBox - expand height to match
-  adjustedWidth = baseWidth
-  adjustedHeight = baseWidth / containerAspect
+  adjustedWidth = baseWidth;
+  adjustedHeight = baseWidth / containerAspect;
 }
 ```
 
 This gives us a viewBox that:
+
 - Has the same aspect ratio as the magnifier container
 - Is centered on the same point
 - Shows a slightly larger region (no letterboxing)
@@ -106,15 +113,22 @@ This gives us a viewBox that:
 Move the constants and function from MapRenderer:
 
 ```typescript
-export const MAGNIFIER_SIZE_SMALL = 1 / 3
-export const MAGNIFIER_SIZE_LARGE = 1 / 2
+export const MAGNIFIER_SIZE_SMALL = 1 / 3;
+export const MAGNIFIER_SIZE_LARGE = 1 / 2;
 
-export function getMagnifierDimensions(containerWidth: number, containerHeight: number) {
-  const isLandscape = containerWidth > containerHeight
+export function getMagnifierDimensions(
+  containerWidth: number,
+  containerHeight: number,
+) {
+  const isLandscape = containerWidth > containerHeight;
   return {
-    width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
-    height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
-  }
+    width:
+      containerWidth *
+      (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
+    height:
+      containerHeight *
+      (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
+  };
 }
 
 /**
@@ -126,28 +140,31 @@ export function getAdjustedMagnifiedDimensions(
   viewBoxHeight: number,
   zoom: number,
   containerWidth: number,
-  containerHeight: number
+  containerHeight: number,
 ) {
-  const { width: magWidth, height: magHeight } = getMagnifierDimensions(containerWidth, containerHeight)
+  const { width: magWidth, height: magHeight } = getMagnifierDimensions(
+    containerWidth,
+    containerHeight,
+  );
 
-  const baseWidth = viewBoxWidth / zoom
-  const baseHeight = viewBoxHeight / zoom
+  const baseWidth = viewBoxWidth / zoom;
+  const baseHeight = viewBoxHeight / zoom;
 
-  const containerAspect = magWidth / magHeight
-  const viewBoxAspect = baseWidth / baseHeight
+  const containerAspect = magWidth / magHeight;
+  const viewBoxAspect = baseWidth / baseHeight;
 
   if (containerAspect > viewBoxAspect) {
     // Container is wider - expand width
     return {
       width: baseHeight * containerAspect,
       height: baseHeight,
-    }
+    };
   } else {
     // Container is taller - expand height
     return {
       width: baseWidth,
       height: baseWidth / containerAspect,
-    }
+    };
   }
 }
 ```
@@ -155,32 +172,36 @@ export function getAdjustedMagnifiedDimensions(
 ### 2. Update `MapRenderer.tsx`
 
 #### Import from new utility:
+
 ```typescript
 import {
   getMagnifierDimensions,
   getAdjustedMagnifiedDimensions,
   MAGNIFIER_SIZE_SMALL,
   MAGNIFIER_SIZE_LARGE,
-} from '../utils/magnifierDimensions'
+} from "../utils/magnifierDimensions";
 ```
 
 #### Update magnifier viewBox (lines 3017-3024):
+
 ```typescript
 // OLD:
-const magnifiedWidth = viewBoxWidth / zoom
-const magnifiedHeight = viewBoxHeight / zoom
+const magnifiedWidth = viewBoxWidth / zoom;
+const magnifiedHeight = viewBoxHeight / zoom;
 
 // NEW:
-const { width: magnifiedWidth, height: magnifiedHeight } = getAdjustedMagnifiedDimensions(
-  viewBoxWidth,
-  viewBoxHeight,
-  zoom,
-  containerRect.width,
-  containerRect.height
-)
+const { width: magnifiedWidth, height: magnifiedHeight } =
+  getAdjustedMagnifiedDimensions(
+    viewBoxWidth,
+    viewBoxHeight,
+    zoom,
+    containerRect.width,
+    containerRect.height,
+  );
 ```
 
 #### Update outline dimensions (lines 2578-2586):
+
 ```typescript
 // Same calculation as magnifier viewBox
 width={zoomSpring.to((zoom: number) => {
@@ -211,27 +232,28 @@ height={zoomSpring.to((zoom: number) => {
 Replace hardcoded `0.5` with actual dimensions:
 
 ```typescript
-import { getMagnifierDimensions } from '../utils/magnifierDimensions'
+import { getMagnifierDimensions } from "../utils/magnifierDimensions";
 
 // Line 94, 138, 163 - replace:
 // const magnifierWidth = containerRect.width * 0.5
 // with:
 const { width: magnifierWidth } = getMagnifierDimensions(
   containerRect.width,
-  containerRect.height
-)
+  containerRect.height,
+);
 ```
 
 ## Summary
 
-| Component | Current Behavior | After Fix |
-|-----------|-----------------|-----------|
-| Magnifier container | Responsive (1/3×1/2 or 1/2×1/3) | No change |
-| Magnifier viewBox | Fixed 2:1 ratio → letterboxing | Matches container aspect ratio |
-| Outline | Fixed 2:1 ratio | Matches container aspect ratio |
-| Zoom calculation | Wrong (uses 0.5) | Correct (uses actual dimensions) |
+| Component           | Current Behavior                | After Fix                        |
+| ------------------- | ------------------------------- | -------------------------------- |
+| Magnifier container | Responsive (1/3×1/2 or 1/2×1/3) | No change                        |
+| Magnifier viewBox   | Fixed 2:1 ratio → letterboxing  | Matches container aspect ratio   |
+| Outline             | Fixed 2:1 ratio                 | Matches container aspect ratio   |
+| Zoom calculation    | Wrong (uses 0.5)                | Correct (uses actual dimensions) |
 
 ### Implementation Order
+
 1. Create `utils/magnifierDimensions.ts` with shared functions
 2. Update `MapRenderer.tsx` imports and remove local copies of constants/function
 3. Update magnifier viewBox calculation
