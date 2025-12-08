@@ -1,7 +1,7 @@
 'use client'
 
 import { animated, useSpring } from '@react-spring/web'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
@@ -23,6 +23,8 @@ import { css } from '../../../styled-system/css'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
+import { useInteractionPhase } from './hooks/useInteractionPhase'
+import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { VerticalProblem } from './VerticalProblem'
@@ -40,21 +42,6 @@ interface ActiveSessionProps {
   onResume?: () => void
   /** Called when session completes */
   onComplete: () => void
-}
-
-interface CurrentProblem {
-  partIndex: number
-  slotIndex: number
-  problem: GeneratedProblem
-  startTime: number
-}
-
-/** Snapshot of a problem that's animating out */
-interface OutgoingProblem {
-  key: string
-  problem: GeneratedProblem
-  userAnswer: string
-  isCorrect: true
 }
 
 /**
@@ -196,6 +183,11 @@ function LinearProblem({
  * - Session health indicators
  * - On-screen abacus toggle (for abacus part only)
  * - Teacher controls (pause, end early)
+ *
+ * State Architecture:
+ * - Uses useInteractionPhase hook for interaction state machine
+ * - Single source of truth for all UI state
+ * - Explicit phase transitions instead of boolean flags
  */
 export function ActiveSession({
   plan,
@@ -209,26 +201,37 @@ export function ActiveSession({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const [currentProblem, setCurrentProblem] = useState<CurrentProblem | null>(null)
-  const [userAnswer, setUserAnswer] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
-  const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none')
-  const [incorrectAttempts, setIncorrectAttempts] = useState(0)
-  // Help mode: which terms have been confirmed correct so far
-  const [confirmedTermCount, setConfirmedTermCount] = useState(0)
-  // Which term we're currently showing help for (null = not showing help)
-  const [helpTermIndex, setHelpTermIndex] = useState<number | null>(null)
-  // Track corrections for auto-submit (allow 1 correction, then require manual submit)
-  const [correctionCount, setCorrectionCount] = useState(0)
-  // Track if auto-submit was triggered (for celebration animation)
-  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
-  // Track rejected digit for red X animation (null = no rejection, string = the rejected digit)
-  const [rejectedDigit, setRejectedDigit] = useState<string | null>(null)
+  // Sound effects
+  const { playSound } = usePracticeSoundEffects()
 
-  // Problem transition animation state
-  const [outgoingProblem, setOutgoingProblem] = useState<OutgoingProblem | null>(null)
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  // Interaction state machine - single source of truth for UI state
+  const {
+    phase,
+    canAcceptInput,
+    showAsCompleted,
+    showHelpOverlay,
+    showInputArea,
+    showFeedback,
+    inputIsFocused,
+    prefixSums,
+    matchedPrefixIndex,
+    canSubmit,
+    shouldAutoSubmit,
+    loadProblem,
+    handleDigit,
+    handleBackspace,
+    enterHelpMode,
+    exitHelpMode,
+    startSubmit,
+    completeSubmit,
+    startTransition,
+    completeTransition,
+    clearToLoading,
+    pause,
+    resume,
+  } = useInteractionPhase({
+    onManualSubmitRequired: () => playSound('womp_womp'),
+  })
 
   // Refs for measuring problem widths during animation
   const outgoingRef = useRef<HTMLDivElement>(null)
@@ -246,6 +249,68 @@ export function ActiveSession({
     activeOpacity: 1,
     config: { tension: 200, friction: 26 },
   }))
+
+  // Extract attempt from phase for UI rendering
+  const attempt = useMemo(() => {
+    switch (phase.phase) {
+      case 'inputting':
+      case 'helpMode':
+      case 'submitting':
+      case 'showingFeedback':
+        return phase.attempt
+      case 'transitioning':
+        return phase.incoming
+      case 'paused': {
+        const inner = phase.resumePhase
+        if (
+          inner.phase === 'inputting' ||
+          inner.phase === 'helpMode' ||
+          inner.phase === 'submitting' ||
+          inner.phase === 'showingFeedback'
+        ) {
+          return inner.attempt
+        }
+        if (inner.phase === 'transitioning') {
+          return inner.incoming
+        }
+        return null
+      }
+      default:
+        return null
+    }
+  }, [phase])
+
+  // Extract help context from phase
+  const helpContext = useMemo(() => {
+    if (phase.phase === 'helpMode') {
+      return phase.helpContext
+    }
+    // Also check paused phase
+    if (phase.phase === 'paused' && phase.resumePhase.phase === 'helpMode') {
+      return phase.resumePhase.helpContext
+    }
+    return null
+  }, [phase])
+
+  // Extract outgoing attempt for transition animation
+  const outgoingAttempt = phase.phase === 'transitioning' ? phase.outgoing : null
+
+  // Check if we're in transitioning phase
+  const isTransitioning = phase.phase === 'transitioning'
+
+  // Check if we're paused
+  const isPaused = phase.phase === 'paused'
+
+  // Check if we're submitting
+  const isSubmitting = phase.phase === 'submitting'
+
+  // Spring for submit button entrance animation
+  const submitButtonSpring = useSpring({
+    transform: attempt?.manualSubmitRequired ? 'translateY(0px)' : 'translateY(60px)',
+    opacity: attempt?.manualSubmitRequired ? 1 : 0,
+    scale: attempt?.manualSubmitRequired ? 1 : 0.8,
+    config: { tension: 280, friction: 14 },
+  })
 
   // Apply centering offset before paint to prevent jank
   useLayoutEffect(() => {
@@ -270,98 +335,27 @@ export function ActiveSession({
         config: { tension: 200, friction: 26 },
       })
 
-      // Start slide after a brief moment (150ms) - don't wait for fade-in to complete
-      // This eliminates the jarring pause between phases
+      // Start slide after a brief moment (150ms)
       setTimeout(() => {
         trackApi.start({
           x: -centeringOffset,
           outgoingOpacity: 0,
           config: { tension: 170, friction: 22 },
           onRest: () => {
-            // Outgoing is now invisible (opacity 0).
-            // Remove it and reset X to 0 in the same synchronous batch
-            // so flexbox recentering and track reset happen together.
+            // Outgoing is now invisible - complete the transition
             flushSync(() => {
-              setOutgoingProblem(null)
-              setIsTransitioning(false)
-              setFeedback('none')
-              setIsSubmitting(false)
-              setIncorrectAttempts(0)
-              setConfirmedTermCount(0)
+              completeTransition()
             })
-            // Reset spring immediately after DOM update
             trackApi.set({ x: 0, outgoingOpacity: 1, activeOpacity: 1 })
           },
         })
       }, 150)
     }
-  }, [outgoingProblem, trackApi])
+  }, [outgoingAttempt, trackApi, completeTransition])
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
-  // Compute all prefix sums for the current problem
-  // prefixSums[i] = sum of terms[0..i] (inclusive)
-  // e.g., for [23, 45, 12]: prefixSums = [23, 68, 80]
-  const prefixSums = useMemo(() => {
-    if (!currentProblem) return []
-    const terms = currentProblem.problem.terms
-    const sums: number[] = []
-    let total = 0
-    for (const term of terms) {
-      total += term
-      sums.push(total)
-    }
-    return sums
-  }, [currentProblem])
-
-  // Check if user's input matches any prefix sum
-  // Returns the index of the matched prefix, or -1 if no match
-  const matchedPrefixIndex = useMemo(() => {
-    const answerNum = parseInt(userAnswer, 10)
-    if (Number.isNaN(answerNum)) return -1
-    return prefixSums.indexOf(answerNum)
-  }, [userAnswer, prefixSums])
-
-  // Determine if submit button should be enabled
-  const canSubmit = useMemo(() => {
-    if (!userAnswer) return false
-    const answerNum = parseInt(userAnswer, 10)
-    return !Number.isNaN(answerNum)
-  }, [userAnswer])
-
-  // Compute context for help abacus when showing help
-  const helpContext = useMemo(() => {
-    if (helpTermIndex === null || !currentProblem) return null
-    const terms = currentProblem.problem.terms
-    // Current value is the prefix sum up to helpTermIndex (exclusive)
-    const currentValue = helpTermIndex === 0 ? 0 : prefixSums[helpTermIndex - 1]
-    // Target is the prefix sum including this term
-    const targetValue = prefixSums[helpTermIndex]
-    const term = terms[helpTermIndex]
-    return { currentValue, targetValue, term }
-  }, [helpTermIndex, currentProblem, prefixSums])
-
-  // Auto-trigger help when prefix sum is detected
-  useEffect(() => {
-    // Only auto-trigger if:
-    // 1. We detected a prefix sum match (but not the final answer)
-    // 2. We're not already showing help for this term
-    if (
-      helpTermIndex === null &&
-      matchedPrefixIndex >= 0 &&
-      matchedPrefixIndex < prefixSums.length - 1
-    ) {
-      const newConfirmedCount = matchedPrefixIndex + 1
-      setConfirmedTermCount(newConfirmedCount)
-
-      if (newConfirmedCount < (currentProblem?.problem.terms.length || 0)) {
-        setHelpTermIndex(newConfirmedCount)
-        setUserAnswer('')
-      }
-    }
-  }, [helpTermIndex, matchedPrefixIndex, prefixSums.length, currentProblem?.problem.terms.length])
-
-  // Get current part and slot
+  // Get current part and slot from plan
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
   const currentSlotIndex = plan.currentSlotIndex
@@ -390,164 +384,72 @@ export function ActiveSession({
     }
   }, [currentPartIndex, parts.length, onComplete])
 
-  // Initialize or advance to current problem
+  // Initialize problem when slot changes and in loading phase
   useEffect(() => {
-    // Don't auto-load during transitions - startTransition handles this
-    if (currentPart && currentSlot && !currentProblem && !isTransitioning) {
-      // Generate problem from slot constraints (simplified for now)
+    if (currentPart && currentSlot && phase.phase === 'loading') {
       const problem = currentSlot.problem || generateProblemFromConstraints(currentSlot.constraints)
-      setCurrentProblem({
-        partIndex: currentPartIndex,
-        slotIndex: currentSlotIndex,
-        problem,
-        startTime: Date.now(),
-      })
-      setUserAnswer('')
-      setFeedback('none')
+      loadProblem(problem, currentSlotIndex, currentPartIndex)
     }
-  }, [
-    currentPart,
-    currentSlot,
-    currentPartIndex,
-    currentSlotIndex,
-    currentProblem,
-    isTransitioning,
-  ])
+  }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, phase.phase, loadProblem])
 
-  // Check if adding a digit would be consistent with any prefix sum
-  const isDigitConsistent = useCallback(
-    (currentAnswer: string, digit: string): boolean => {
-      const newAnswer = currentAnswer + digit
-      const newAnswerNum = parseInt(newAnswer, 10)
-      if (Number.isNaN(newAnswerNum)) return false
-
-      // Check if newAnswer is a prefix of any prefix sum's string representation
-      // e.g., if prefix sums are [23, 68, 80], and newAnswer is "6", that's consistent with "68"
-      // if newAnswer is "8", that's consistent with "80"
-      // if newAnswer is "68", that's an exact match
-      for (const sum of prefixSums) {
-        const sumStr = sum.toString()
-        if (sumStr.startsWith(newAnswer)) {
-          return true
-        }
+  // Auto-trigger help when prefix sum is detected
+  useEffect(() => {
+    if (
+      phase.phase === 'inputting' &&
+      matchedPrefixIndex >= 0 &&
+      matchedPrefixIndex < prefixSums.length - 1
+    ) {
+      const newConfirmedCount = matchedPrefixIndex + 1
+      if (newConfirmedCount < phase.attempt.problem.terms.length) {
+        enterHelpMode(newConfirmedCount)
       }
-      return false
-    },
-    [prefixSums]
-  )
+    }
+  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode])
 
-  const handleDigit = useCallback(
-    (digit: string) => {
-      setUserAnswer((prev) => {
-        if (isDigitConsistent(prev, digit)) {
-          return prev + digit
-        } else {
-          // Reject the digit - show red X and count as correction
-          setRejectedDigit(digit)
-          setCorrectionCount((c) => c + 1)
-          // Clear the rejection after a short delay
-          setTimeout(() => setRejectedDigit(null), 300)
-          return prev // Don't change the answer
-        }
-      })
-    },
-    [isDigitConsistent]
-  )
-
-  const handleBackspace = useCallback(() => {
-    setUserAnswer((prev) => {
-      if (prev.length > 0) {
-        setCorrectionCount((c) => c + 1)
-      }
-      return prev.slice(0, -1)
-    })
-  }, [])
-
-  // Handle when student reaches the target value on the help abacus
-  // This exits help mode completely and resets the problem to normal state
+  // Handle when student reaches target value on help abacus
   const handleTargetReached = useCallback(() => {
-    if (helpTermIndex === null || !currentProblem) return
-
-    // Brief delay so user sees the success feedback, then exit help mode completely
+    if (phase.phase !== 'helpMode') return
     setTimeout(() => {
-      // Reset all help-related state - problem returns to as if they never entered a prefix
-      setHelpTermIndex(null)
-      setConfirmedTermCount(0)
-      setUserAnswer('')
-    }, 800) // 800ms delay to show "Perfect!" feedback
-  }, [helpTermIndex, currentProblem])
+      exitHelpMode()
+    }, 800)
+  }, [phase.phase, exitHelpMode])
 
-  // Start transition animation to next problem
-  const startTransition = useCallback(
-    (nextProblem: GeneratedProblem, nextSlotIndex: number) => {
-      if (!currentProblem) return
-
-      // Mark that we need to apply centering offset in useLayoutEffect
-      needsCenteringOffsetRef.current = true
-
-      // Capture outgoing problem state
-      setOutgoingProblem({
-        key: `${currentProblem.partIndex}-${currentProblem.slotIndex}`,
-        problem: currentProblem.problem,
-        userAnswer: userAnswer,
-        isCorrect: true,
-      })
-
-      // Set up next problem immediately (it fades in on right side)
-      setCurrentProblem({
-        partIndex: currentPartIndex,
-        slotIndex: nextSlotIndex,
-        problem: nextProblem,
-        startTime: Date.now(),
-      })
-      setUserAnswer('')
-      setHelpTermIndex(null)
-      setCorrectionCount(0)
-      setAutoSubmitTriggered(false)
-      setIsTransitioning(true)
-      // Animation is triggered by useLayoutEffect when outgoingProblem changes
-    },
-    [currentProblem, userAnswer, currentPartIndex]
-  )
-
+  // Handle submit
   const handleSubmit = useCallback(async () => {
-    if (!currentProblem || isSubmitting || !userAnswer) return
+    if (phase.phase !== 'inputting' && phase.phase !== 'helpMode') return
+    if (!phase.attempt.userAnswer) return
 
-    const answerNum = parseInt(userAnswer, 10)
+    const attemptData = phase.attempt
+    const answerNum = parseInt(attemptData.userAnswer, 10)
     if (Number.isNaN(answerNum)) return
 
-    setIsSubmitting(true)
-    const responseTimeMs = Date.now() - currentProblem.startTime
-    const isCorrect = answerNum === currentProblem.problem.answer
+    // Transition to submitting phase
+    startSubmit()
 
-    // Show feedback
-    setFeedback(isCorrect ? 'correct' : 'incorrect')
-
-    // Track incorrect attempts
-    if (!isCorrect) {
-      setIncorrectAttempts((prev) => prev + 1)
-    }
+    const responseTimeMs = Date.now() - attemptData.startTime
+    const isCorrect = answerNum === attemptData.problem.answer
 
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotIndex: currentProblem.slotIndex,
-      problem: currentProblem.problem,
+      slotIndex: attemptData.slotIndex,
+      problem: attemptData.problem,
       studentAnswer: answerNum,
       isCorrect,
       responseTimeMs,
-      skillsExercised: currentProblem.problem.skillsRequired,
-      usedOnScreenAbacus: confirmedTermCount > 0 || helpTermIndex !== null,
-      incorrectAttempts,
-      // Help level: 1 if any abacus help was used, 0 otherwise (simplified from multi-level system)
-      helpLevelUsed: helpTermIndex !== null ? 1 : 0,
+      skillsExercised: attemptData.problem.skillsRequired,
+      usedOnScreenAbacus: phase.phase === 'helpMode',
+      incorrectAttempts: 0, // TODO: track this properly
+      helpLevelUsed: phase.phase === 'helpMode' ? 1 : 0,
     }
 
     await onAnswer(result)
 
+    // Complete submit with result
+    completeSubmit(isCorrect ? 'correct' : 'incorrect')
+
     // Wait for feedback display then advance
     setTimeout(
       () => {
-        // Check if there's a next problem in this part
         const nextSlotIndex = currentSlotIndex + 1
         const nextSlot = currentPart?.slots[nextSlotIndex]
 
@@ -555,60 +457,39 @@ export function ActiveSession({
           // Has next problem - animate transition
           const nextProblem =
             nextSlot.problem || generateProblemFromConstraints(nextSlot.constraints)
+
+          // Mark that we need to apply centering offset in useLayoutEffect
+          needsCenteringOffsetRef.current = true
+
           startTransition(nextProblem, nextSlotIndex)
         } else {
-          // End of part or incorrect - no animation, just clean up
-          setCurrentProblem(null)
-          setIncorrectAttempts(0)
-          setConfirmedTermCount(0)
-          setHelpTermIndex(null)
-          setIsSubmitting(false)
-          setCorrectionCount(0)
-          setAutoSubmitTriggered(false)
-          setFeedback('none')
+          // End of part or incorrect - clear to loading
+          clearToLoading()
         }
       },
       isCorrect ? 500 : 1500
     )
   }, [
-    currentProblem,
-    isSubmitting,
-    userAnswer,
-    confirmedTermCount,
-    helpTermIndex,
+    phase,
     onAnswer,
-    incorrectAttempts,
     currentSlotIndex,
     currentPart,
+    startSubmit,
+    completeSubmit,
     startTransition,
+    clearToLoading,
   ])
 
-  // Auto-submit when correct answer is entered on first attempt (allow minor corrections)
+  // Auto-submit when correct answer is entered
   useEffect(() => {
-    if (!currentProblem || isSubmitting || feedback !== 'none' || !userAnswer) return
-    // Allow up to 2 backspaces (one typo fix), but no more
-    if (correctionCount > 2) return
-
-    const answerNum = parseInt(userAnswer, 10)
-    if (Number.isNaN(answerNum)) return
-
-    // Check if answer matches
-    if (answerNum === currentProblem.problem.answer) {
-      // Trigger auto-submit with celebration
-      setAutoSubmitTriggered(true)
-      // Small delay to show the celebration animation before submitting
-      const timer = setTimeout(() => {
-        handleSubmit()
-      }, 400)
-      return () => clearTimeout(timer)
+    if (shouldAutoSubmit) {
+      handleSubmit()
     }
-  }, [userAnswer, currentProblem, isSubmitting, feedback, correctionCount, handleSubmit])
+  }, [shouldAutoSubmit, handleSubmit])
 
-  // Handle keyboard input (placed after handleSubmit to avoid temporal dead zone)
+  // Handle keyboard input
   useEffect(() => {
-    // Block input during transitions
-    if (!hasPhysicalKeyboard || isPaused || !currentProblem || isSubmitting || isTransitioning)
-      return
+    if (!hasPhysicalKeyboard || !canAcceptInput) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
@@ -620,31 +501,21 @@ export function ActiveSession({
       } else if (/^[0-9]$/.test(e.key)) {
         handleDigit(e.key)
       }
-      // Note: removed negative sign handling since prefix sums are always positive
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [
-    hasPhysicalKeyboard,
-    isPaused,
-    currentProblem,
-    isSubmitting,
-    isTransitioning,
-    handleSubmit,
-    handleDigit,
-    handleBackspace,
-  ])
+  }, [hasPhysicalKeyboard, canAcceptInput, handleSubmit, handleDigit, handleBackspace])
 
   const handlePause = useCallback(() => {
-    setIsPaused(true)
+    pause()
     onPause?.()
-  }, [onPause])
+  }, [pause, onPause])
 
   const handleResume = useCallback(() => {
-    setIsPaused(false)
+    resume()
     onResume?.()
-  }, [onResume])
+  }, [resume, onResume])
 
   const getHealthColor = (health: SessionHealth['overall']) => {
     switch (health) {
@@ -672,7 +543,7 @@ export function ActiveSession({
     }
   }
 
-  if (!currentPart || !currentProblem) {
+  if (!currentPart || !attempt) {
     return (
       <div
         data-component="active-session"
@@ -700,6 +571,7 @@ export function ActiveSession({
     <div
       data-component="active-session"
       data-status={isPaused ? 'paused' : 'active'}
+      data-phase={phase.phase}
       data-part-type={currentPart.type}
       className={css({
         display: 'flex',
@@ -922,8 +794,7 @@ export function ActiveSession({
           flexDirection: 'column',
           alignItems: 'center',
           gap: '1.5rem',
-          // Use explicit padding values - shorthand 'padding' can override specific paddingTop
-          paddingTop: '4rem', // Extra top padding for help overlay that extends above
+          paddingTop: '4rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',
           paddingLeft: '2rem',
@@ -985,7 +856,6 @@ export function ActiveSession({
             display: 'flex',
             justifyContent: 'center',
             width: '100%',
-            // No overflow clipping - outgoing problem fades to opacity 0 anyway
           })}
         >
           {/* Animated track for problem transitions */}
@@ -998,7 +868,7 @@ export function ActiveSession({
             }}
           >
             {/* Outgoing problem (slides left during transition) */}
-            {outgoingProblem && (
+            {outgoingAttempt && (
               <animated.div
                 ref={outgoingRef}
                 data-element="outgoing-problem"
@@ -1009,10 +879,10 @@ export function ActiveSession({
                 }}
               >
                 <VerticalProblem
-                  terms={outgoingProblem.problem.terms}
-                  userAnswer={outgoingProblem.userAnswer}
+                  terms={outgoingAttempt.problem.terms}
+                  userAnswer={outgoingAttempt.userAnswer}
                   isCompleted={true}
-                  correctAnswer={outgoingProblem.problem.answer}
+                  correctAnswer={outgoingAttempt.problem.answer}
                   size="large"
                 />
                 {/* Feedback stays with outgoing problem */}
@@ -1038,7 +908,7 @@ export function ActiveSession({
               </animated.div>
             )}
 
-            {/* Problem container - relative positioning for help panel */}
+            {/* Current problem */}
             <animated.div
               ref={activeRef}
               data-element="problem-container"
@@ -1047,23 +917,18 @@ export function ActiveSession({
                 position: 'relative' as const,
               }}
             >
-              {/* Problem display */}
               {currentPart.format === 'vertical' ? (
                 <VerticalProblem
-                  terms={currentProblem.problem.terms}
-                  userAnswer={userAnswer}
-                  isFocused={!isPaused && !isSubmitting}
-                  isCompleted={feedback !== 'none'}
-                  correctAnswer={currentProblem.problem.answer}
+                  terms={attempt.problem.terms}
+                  userAnswer={attempt.userAnswer}
+                  isFocused={inputIsFocused}
+                  isCompleted={showAsCompleted}
+                  correctAnswer={attempt.problem.answer}
                   size="large"
-                  currentHelpTermIndex={helpTermIndex ?? undefined}
-                  autoSubmitPending={autoSubmitTriggered}
-                  rejectedDigit={rejectedDigit}
+                  currentHelpTermIndex={helpContext?.termIndex}
+                  rejectedDigit={attempt.rejectedDigit}
                   helpOverlay={
-                    !isSubmitting &&
-                    feedback === 'none' &&
-                    helpTermIndex !== null &&
-                    helpContext ? (
+                    showHelpOverlay && helpContext ? (
                       <PracticeHelpOverlay
                         currentValue={helpContext.currentValue}
                         targetValue={helpContext.targetValue}
@@ -1079,11 +944,11 @@ export function ActiveSession({
                 />
               ) : (
                 <LinearProblem
-                  terms={currentProblem.problem.terms}
-                  userAnswer={userAnswer}
-                  isFocused={!isPaused && !isSubmitting}
-                  isCompleted={feedback !== 'none'}
-                  correctAnswer={currentProblem.problem.answer}
+                  terms={attempt.problem.terms}
+                  userAnswer={attempt.userAnswer}
+                  isFocused={inputIsFocused}
+                  isCompleted={showAsCompleted}
+                  correctAnswer={attempt.problem.answer}
                   isDark={isDark}
                   detectedPrefixIndex={
                     matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
@@ -1094,7 +959,7 @@ export function ActiveSession({
               )}
 
               {/* Help panel - absolutely positioned to the right of the problem */}
-              {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
+              {showHelpOverlay && helpContext && (
                 <div
                   data-element="help-panel"
                   className={css({
@@ -1146,7 +1011,7 @@ export function ActiveSession({
                     )
                   })()}
 
-                  {/* Decomposition display - hides when not meaningful */}
+                  {/* Decomposition display */}
                   <DecompositionProvider
                     startValue={helpContext.currentValue}
                     targetValue={helpContext.targetValue}
@@ -1185,8 +1050,8 @@ export function ActiveSession({
           </animated.div>
         </div>
 
-        {/* Feedback message */}
-        {feedback !== 'none' && (
+        {/* Feedback message - only show for incorrect */}
+        {showFeedback && (
           <div
             data-element="feedback"
             className={css({
@@ -1194,80 +1059,57 @@ export function ActiveSession({
               borderRadius: '8px',
               fontSize: '1.25rem',
               fontWeight: 'bold',
-              backgroundColor:
-                feedback === 'correct'
-                  ? isDark
-                    ? 'green.900'
-                    : 'green.100'
-                  : isDark
-                    ? 'red.900'
-                    : 'red.100',
-              color:
-                feedback === 'correct'
-                  ? isDark
-                    ? 'green.200'
-                    : 'green.700'
-                  : isDark
-                    ? 'red.200'
-                    : 'red.700',
+              backgroundColor: isDark ? 'red.900' : 'red.100',
+              color: isDark ? 'red.200' : 'red.700',
             })}
           >
-            {feedback === 'correct'
-              ? 'Correct!'
-              : `The answer was ${currentProblem.problem.answer}`}
+            The answer was {attempt.problem.answer}
           </div>
         )}
       </div>
 
       {/* Input area */}
-      {!isPaused && feedback === 'none' && (
+      {showInputArea && !isPaused && (
         <div data-section="input-area">
-          {/* Submit button */}
+          {/* Submit button - only shown when auto-submit threshold exceeded */}
           <div
             className={css({
               display: 'flex',
               justifyContent: 'center',
               marginBottom: '1rem',
+              minHeight: '52px',
+              overflow: 'hidden',
             })}
           >
-            <button
+            <animated.button
               type="button"
               data-action="submit"
+              data-visible={attempt.manualSubmitRequired}
               onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting}
+              disabled={!canSubmit || isSubmitting || !attempt.manualSubmitRequired}
+              style={submitButtonSpring}
               className={css({
                 padding: '0.75rem 2rem',
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
                 borderRadius: '8px',
                 border: 'none',
-                cursor: !canSubmit ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
+                cursor: !canSubmit || !attempt.manualSubmitRequired ? 'not-allowed' : 'pointer',
                 backgroundColor: canSubmit ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
                 color: !canSubmit ? (isDark ? 'gray.400' : 'gray.500') : 'white',
-                opacity: !canSubmit ? 0.5 : 1,
                 _hover: {
-                  backgroundColor: canSubmit ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                  backgroundColor:
+                    canSubmit && attempt.manualSubmitRequired
+                      ? 'blue.600'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.300',
                 },
               })}
             >
-              {canSubmit ? 'Submit' : 'Enter Total'}
-            </button>
+              Submit
+            </animated.button>
           </div>
-
-          {/* Physical keyboard hint */}
-          {hasPhysicalKeyboard && (
-            <div
-              className={css({
-                textAlign: 'center',
-                color: isDark ? 'gray.400' : 'gray.500',
-                fontSize: '0.875rem',
-                marginBottom: '1rem',
-              })}
-            >
-              Type your abacus total
-            </div>
-          )}
 
           {/* On-screen keypad for mobile */}
           {hasPhysicalKeyboard === false && (
@@ -1276,7 +1118,8 @@ export function ActiveSession({
               onBackspace={handleBackspace}
               onSubmit={handleSubmit}
               disabled={isSubmitting}
-              currentValue={userAnswer}
+              currentValue={attempt.userAnswer}
+              showSubmitButton={attempt.manualSubmitRequired}
             />
           )}
         </div>
@@ -1342,15 +1185,10 @@ export function ActiveSession({
 
 /**
  * Generate a problem from slot constraints using the actual skill-based algorithm.
- *
- * Converts session plan constraints to the format expected by the problem generator,
- * then generates a skill-appropriate problem.
  */
 function generateProblemFromConstraints(constraints: ProblemConstraints): GeneratedProblem {
-  // Build a complete SkillSet from the partial constraints
   const baseSkillSet = createBasicSkillSet()
 
-  // Merge required skills if provided
   const requiredSkills: SkillSet = {
     basic: { ...baseSkillSet.basic, ...constraints.requiredSkills?.basic },
     fiveComplements: {
@@ -1371,7 +1209,6 @@ function generateProblemFromConstraints(constraints: ProblemConstraints): Genera
     },
   }
 
-  // Convert to generator constraints format
   const maxDigits = constraints.digitRange?.max || 1
   const maxValue = 10 ** maxDigits - 1
 
@@ -1381,7 +1218,6 @@ function generateProblemFromConstraints(constraints: ProblemConstraints): Genera
     problemCount: 1,
   }
 
-  // Try to generate using the skill-based algorithm
   const generatedProblem = generateSingleProblem(
     generatorConstraints,
     requiredSkills,
@@ -1390,7 +1226,6 @@ function generateProblemFromConstraints(constraints: ProblemConstraints): Genera
   )
 
   if (generatedProblem) {
-    // Convert from generator format to session format
     return {
       terms: generatedProblem.terms,
       answer: generatedProblem.answer,
@@ -1398,7 +1233,7 @@ function generateProblemFromConstraints(constraints: ProblemConstraints): Genera
     }
   }
 
-  // Fallback: generate a simple problem if skill-based generation fails
+  // Fallback
   const termCount = constraints.termCount?.min || 3
   const terms: number[] = []
   for (let i = 0; i < termCount; i++) {
