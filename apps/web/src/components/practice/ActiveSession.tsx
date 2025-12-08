@@ -20,6 +20,8 @@ import {
   generateSingleProblem,
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
+import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
+import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
@@ -529,24 +531,16 @@ export function ActiveSession({
   }, [helpActions])
 
   // Handle when student reaches the target value on the help abacus
+  // This exits help mode completely and resets the problem to normal state
   const handleTargetReached = useCallback(() => {
     if (helpTermIndex === null || !currentProblem) return
 
-    // Current term is now confirmed
-    const newConfirmedCount = helpTermIndex + 1
-    setConfirmedTermCount(newConfirmedCount)
-
-    // Brief delay so user sees the success feedback
+    // Brief delay so user sees the success feedback, then exit help mode completely
     setTimeout(() => {
-      // If there's another term after this one, move to it
-      if (newConfirmedCount < currentProblem.problem.terms.length) {
-        setHelpTermIndex(newConfirmedCount)
-        setUserAnswer('')
-      } else {
-        // This was the last term - hide help and let them type the final answer
-        setHelpTermIndex(null)
-        setUserAnswer('')
-      }
+      // Reset all help-related state - problem returns to as if they never entered a prefix
+      setHelpTermIndex(null)
+      setConfirmedTermCount(0)
+      setUserAnswer('')
     }, 800) // 800ms delay to show "Perfect!" feedback
   }, [helpTermIndex, currentProblem])
 
@@ -1022,63 +1016,31 @@ export function ActiveSession({
           {currentSlot?.purpose}
         </div>
 
-        {/* Problem display - vertical or linear based on part type */}
-        {currentPart.format === 'vertical' ? (
-          <VerticalProblem
-            terms={currentProblem.problem.terms}
-            userAnswer={userAnswer}
-            isFocused={!isPaused && !isSubmitting}
-            isCompleted={feedback !== 'none'}
-            correctAnswer={currentProblem.problem.answer}
-            size="large"
-            confirmedTermCount={confirmedTermCount}
-            currentHelpTermIndex={helpTermIndex ?? undefined}
-            detectedPrefixIndex={
-              matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                ? matchedPrefixIndex
-                : undefined
-            }
-            autoSubmitPending={autoSubmitTriggered}
-            rejectedDigit={rejectedDigit}
-            helpOverlay={
-              !isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext ? (
-                <div
-                  className={css({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    backgroundColor: isDark
-                      ? 'rgba(30, 58, 138, 0.95)'
-                      : 'rgba(219, 234, 254, 0.95)',
-                    borderRadius: '12px',
-                    padding: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  })}
-                >
-                  {/* Term being helped indicator */}
-                  <div
-                    className={css({
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.25rem 0.75rem',
-                      backgroundColor: isDark ? 'purple.900' : 'purple.100',
-                      borderRadius: '20px',
-                      fontSize: '0.875rem',
-                      fontWeight: 'bold',
-                      color: isDark ? 'purple.200' : 'purple.700',
-                    })}
-                  >
-                    <span>Adding:</span>
-                    <span className={css({ fontFamily: 'monospace', fontSize: '1rem' })}>
-                      {helpContext.term >= 0 ? '+' : ''}
-                      {helpContext.term}
-                    </span>
-                  </div>
-
-                  {/* Interactive abacus with arrows - just the abacus, no extra UI */}
-                  {/* Columns = max digits between current and target values (minimum 1) */}
+        {/* Problem display - horizontal layout with help panel on right when in help mode */}
+        <div
+          data-element="problem-with-help"
+          className={css({
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: '1.5rem',
+            width: '100%',
+          })}
+        >
+          {/* Center: Problem display */}
+          {currentPart.format === 'vertical' ? (
+            <VerticalProblem
+              terms={currentProblem.problem.terms}
+              userAnswer={userAnswer}
+              isFocused={!isPaused && !isSubmitting}
+              isCompleted={feedback !== 'none'}
+              correctAnswer={currentProblem.problem.answer}
+              size="large"
+              currentHelpTermIndex={helpTermIndex ?? undefined}
+              autoSubmitPending={autoSubmitTriggered}
+              rejectedDigit={rejectedDigit}
+              helpOverlay={
+                !isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext ? (
                   <PracticeHelpOverlay
                     currentValue={helpContext.currentValue}
                     targetValue={helpContext.targetValue}
@@ -1088,25 +1050,116 @@ export function ActiveSession({
                     )}
                     onTargetReached={handleTargetReached}
                   />
+                ) : undefined
+              }
+            />
+          ) : (
+            <LinearProblem
+              terms={currentProblem.problem.terms}
+              userAnswer={userAnswer}
+              isFocused={!isPaused && !isSubmitting}
+              isCompleted={feedback !== 'none'}
+              correctAnswer={currentProblem.problem.answer}
+              isDark={isDark}
+              detectedPrefixIndex={
+                matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                  ? matchedPrefixIndex
+                  : undefined
+              }
+            />
+          )}
+
+          {/* Right: Help panel with coach hint and decomposition (only in help mode) */}
+          {!isSubmitting && feedback === 'none' && helpTermIndex !== null && helpContext && (
+            <div
+              data-element="help-panel"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                padding: '1rem',
+                backgroundColor: isDark ? 'blue.900' : 'blue.50',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: isDark ? 'blue.700' : 'blue.200',
+                minWidth: '200px',
+                maxWidth: '280px',
+              })}
+            >
+              {/* Coach hint */}
+              {(() => {
+                const hint = generateCoachHint(helpContext.currentValue, helpContext.targetValue)
+                if (!hint) return null
+                return (
+                  <div
+                    data-element="coach-hint"
+                    className={css({
+                      padding: '0.5rem 0.75rem',
+                      backgroundColor: isDark ? 'gray.800' : 'white',
+                      borderRadius: '8px',
+                      border: '1px solid',
+                      borderColor: isDark ? 'blue.800' : 'blue.100',
+                    })}
+                  >
+                    <p
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.300' : 'gray.700',
+                        lineHeight: '1.4',
+                        margin: 0,
+                      })}
+                    >
+                      {hint}
+                    </p>
+                  </div>
+                )
+              })()}
+
+              {/* Decomposition display */}
+              <div
+                data-element="decomposition-display"
+                className={css({
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: isDark ? 'gray.800' : 'white',
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'blue.800' : 'blue.100',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: '0.625rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'blue.300' : 'blue.600',
+                    marginBottom: '0.25rem',
+                    textTransform: 'uppercase',
+                  })}
+                >
+                  Step-by-Step
                 </div>
-              ) : undefined
-            }
-          />
-        ) : (
-          <LinearProblem
-            terms={currentProblem.problem.terms}
-            userAnswer={userAnswer}
-            isFocused={!isPaused && !isSubmitting}
-            isCompleted={feedback !== 'none'}
-            correctAnswer={currentProblem.problem.answer}
-            isDark={isDark}
-            detectedPrefixIndex={
-              matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                ? matchedPrefixIndex
-                : undefined
-            }
-          />
-        )}
+                <div
+                  className={css({
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                  })}
+                >
+                  <DecompositionProvider
+                    startValue={helpContext.currentValue}
+                    targetValue={helpContext.targetValue}
+                    currentStepIndex={0}
+                    abacusColumns={Math.max(
+                      1,
+                      Math.max(helpContext.currentValue, helpContext.targetValue).toString().length
+                    )}
+                  >
+                    <DecompositionDisplay />
+                  </DecompositionProvider>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Feedback message */}
         {feedback !== 'none' && (

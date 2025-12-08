@@ -1,6 +1,5 @@
 'use client'
 
-import { useTheme } from '@/contexts/ThemeContext'
 import {
   type AbacusOverlay,
   AbacusReact,
@@ -9,6 +8,7 @@ import {
   useAbacusDisplay,
 } from '@soroban/abacus-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
 /** Bead change from calculateBeadDiffFromValues */
@@ -213,6 +213,7 @@ export function HelpAbacus({
           colorScheme={abacusConfig.colorScheme}
           beadShape={abacusConfig.beadShape}
           hideInactiveBeads={abacusConfig.hideInactiveBeads}
+          showNumbers={false} // Hide numerals to keep display tight
           soundEnabled={false} // Disable sound in help mode
           stepBeadHighlights={isAtTarget ? undefined : stepBeadHighlights}
           currentStep={currentStep}

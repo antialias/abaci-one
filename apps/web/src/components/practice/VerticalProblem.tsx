@@ -17,12 +17,8 @@ interface VerticalProblemProps {
   correctAnswer?: number
   /** Size variant */
   size?: 'normal' | 'large'
-  /** Index of terms that have been confirmed (0 = first term done, 1 = first two terms done, etc.) */
-  confirmedTermCount?: number
-  /** Index of the term currently being helped with (highlighted) */
+  /** Index of the term currently being helped with (shows arrow indicator) */
   currentHelpTermIndex?: number
-  /** Detected prefix index - shows preview checkmarks/arrow before user clicks "Get Help" */
-  detectedPrefixIndex?: number
   /** Whether auto-submit is about to trigger (shows celebration animation) */
   autoSubmitPending?: boolean
   /** Rejected digit to show as red X (null = no rejection) */
@@ -47,9 +43,7 @@ export function VerticalProblem({
   isCompleted = false,
   correctAnswer,
   size = 'normal',
-  confirmedTermCount = 0,
   currentHelpTermIndex,
-  detectedPrefixIndex,
   autoSubmitPending = false,
   rejectedDigit = null,
   helpOverlay,
@@ -125,89 +119,23 @@ export function VerticalProblem({
         const absValue = Math.abs(term)
         const digits = absValue.toString().padStart(maxDigits, ' ').split('')
 
-        // Term status for highlighting
-        const isConfirmed = index < confirmedTermCount
+        // Check if this term row should show the help overlay
         const isCurrentHelp = index === currentHelpTermIndex
-        // Preview states - shown when user's input matches a prefix sum (before clicking "Get Help")
-        const isPreviewConfirmed =
-          detectedPrefixIndex !== undefined && index <= detectedPrefixIndex && !isConfirmed
-        const isPreviewNext =
-          detectedPrefixIndex !== undefined &&
-          index === detectedPrefixIndex + 1 &&
-          !isCurrentHelp &&
-          detectedPrefixIndex < terms.length - 1 // Don't show if prefix is the full answer
 
         return (
           <div
             key={index}
             data-element="term-row"
-            data-term-status={
-              isConfirmed
-                ? 'confirmed'
-                : isCurrentHelp
-                  ? 'current'
-                  : isPreviewConfirmed
-                    ? 'preview-confirmed'
-                    : isPreviewNext
-                      ? 'preview-next'
-                      : 'pending'
-            }
+            data-term-status={isCurrentHelp ? 'current' : 'pending'}
             className={css({
               display: 'flex',
               alignItems: 'center',
               gap: '2px',
               position: 'relative',
-              // Confirmed terms are dimmed with checkmark
-              opacity: isConfirmed ? 0.5 : isPreviewConfirmed ? 0.7 : 1,
-              // Current help term is highlighted
-              backgroundColor: isCurrentHelp
-                ? isDark
-                  ? 'purple.800'
-                  : 'purple.100'
-                : isPreviewNext
-                  ? isDark
-                    ? 'yellow.900'
-                    : 'yellow.50'
-                  : 'transparent',
-              borderRadius: isCurrentHelp || isPreviewNext ? '4px' : '0',
-              padding: isCurrentHelp || isPreviewNext ? '2px 4px' : '0',
-              marginLeft: isCurrentHelp || isPreviewNext ? '-4px' : '0',
-              marginRight: isCurrentHelp || isPreviewNext ? '-4px' : '0',
               transition: 'all 0.2s ease',
             })}
           >
-            {/* Checkmark for confirmed terms */}
-            {isConfirmed && (
-              <div
-                data-element="confirmed-check"
-                className={css({
-                  position: 'absolute',
-                  left: '-1.5rem',
-                  color: isDark ? 'green.400' : 'green.500',
-                  fontSize: '0.875rem',
-                })}
-              >
-                ✓
-              </div>
-            )}
-
-            {/* Preview checkmark for detected prefix terms (shown in muted color with subtle pulse) */}
-            {isPreviewConfirmed && (
-              <div
-                data-element="preview-check"
-                className={css({
-                  position: 'absolute',
-                  left: '-1.5rem',
-                  color: isDark ? 'yellow.400' : 'yellow.600',
-                  fontSize: '0.875rem',
-                  opacity: 0.8,
-                })}
-              >
-                ✓
-              </div>
-            )}
-
-            {/* Arrow indicator for current help term */}
+            {/* Arrow indicator for current help term (the term being added) */}
             {isCurrentHelp && (
               <div
                 data-element="current-arrow"
@@ -215,21 +143,6 @@ export function VerticalProblem({
                   position: 'absolute',
                   left: '-1.5rem',
                   color: isDark ? 'purple.300' : 'purple.600',
-                  fontSize: '0.875rem',
-                })}
-              >
-                →
-              </div>
-            )}
-
-            {/* Preview arrow for next term after detected prefix */}
-            {isPreviewNext && (
-              <div
-                data-element="preview-arrow"
-                className={css({
-                  position: 'absolute',
-                  left: '-1.5rem',
-                  color: isDark ? 'yellow.400' : 'yellow.600',
                   fontSize: '0.875rem',
                 })}
               >
@@ -352,27 +265,19 @@ export function VerticalProblem({
             <span>Perfect!</span>
           </div>
         )}
-        {/* Equals sign column - show "..." for prefix sums (mathematically incomplete), "=" for final answer */}
+        {/* Equals column */}
         <div
           data-element="equals"
-          data-prefix-mode={detectedPrefixIndex !== undefined ? 'true' : undefined}
           className={css({
             width: cellWidth,
             height: cellHeight,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color:
-              detectedPrefixIndex !== undefined
-                ? isDark
-                  ? 'yellow.400'
-                  : 'yellow.600'
-                : isDark
-                  ? 'gray.400'
-                  : 'gray.500',
+            color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
-          {detectedPrefixIndex !== undefined ? '…' : '='}
+          =
         </div>
 
         {/* Answer digit cells - show maxDigits cells total */}
