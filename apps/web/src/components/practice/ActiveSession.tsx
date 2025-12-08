@@ -981,8 +981,7 @@ export function ActiveSession({
             display: 'flex',
             justifyContent: 'center',
             width: '100%',
-            overflowX: 'hidden', // Clip horizontal transition, allow vertical for help overlays
-            overflowY: 'visible',
+            // No overflow clipping - outgoing problem fades to opacity 0 anyway
           })}
         >
           {/* Animated track for problem transitions */}
