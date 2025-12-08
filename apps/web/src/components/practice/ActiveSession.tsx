@@ -931,6 +931,7 @@ export function ActiveSession({
                   borderRadius: '8px',
                   border: '1px solid',
                   borderColor: isDark ? 'blue.800' : 'blue.100',
+                  whiteSpace: 'nowrap',
                 })}
               >
                 <div
