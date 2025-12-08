@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { StudentHelpSettings } from '@/db/schema/players'
 import type {
   GeneratedProblem,
   ProblemConstraints,
@@ -12,7 +11,6 @@ import type {
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
-import { usePracticeHelp } from '@/hooks/usePracticeHelp'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
   analyzeRequiredSkills,
@@ -40,10 +38,6 @@ interface ActiveSessionProps {
   onResume?: () => void
   /** Called when session completes */
   onComplete: () => void
-  /** Student's help settings (optional, uses defaults if not provided) */
-  helpSettings?: StudentHelpSettings
-  /** Whether this student is in beginner mode (free help without penalty) */
-  isBeginnerMode?: boolean
 }
 
 interface CurrentProblem {
@@ -201,8 +195,6 @@ export function ActiveSession({
   onPause,
   onResume,
   onComplete,
-  helpSettings,
-  isBeginnerMode = false,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -212,7 +204,6 @@ export function ActiveSession({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none')
-  const [currentTermIndex, setCurrentTermIndex] = useState(0)
   const [incorrectAttempts, setIncorrectAttempts] = useState(0)
   // Help mode: which terms have been confirmed correct so far
   const [confirmedTermCount, setConfirmedTermCount] = useState(0)
@@ -226,29 +217,6 @@ export function ActiveSession({
   const [rejectedDigit, setRejectedDigit] = useState<string | null>(null)
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
-
-  // Calculate running total and target for help context
-  const runningTotal = useMemo(() => {
-    if (!currentProblem) return 0
-    const terms = currentProblem.problem.terms
-    let total = 0
-    for (let i = 0; i < currentTermIndex; i++) {
-      total += terms[i]
-    }
-    return total
-  }, [currentProblem, currentTermIndex])
-
-  const currentTermTarget = useMemo(() => {
-    if (!currentProblem) return 0
-    const terms = currentProblem.problem.terms
-    if (currentTermIndex >= terms.length) return currentProblem.problem.answer
-    return runningTotal + terms[currentTermIndex]
-  }, [currentProblem, currentTermIndex, runningTotal])
-
-  const currentTerm = useMemo(() => {
-    if (!currentProblem || currentTermIndex >= currentProblem.problem.terms.length) return 0
-    return currentProblem.problem.terms[currentTermIndex]
-  }, [currentProblem, currentTermIndex])
 
   // Compute all prefix sums for the current problem
   // prefixSums[i] = sum of terms[0..i] (inclusive)
@@ -292,60 +260,6 @@ export function ActiveSession({
     return { currentValue, targetValue, term }
   }, [helpTermIndex, currentProblem, prefixSums])
 
-  // Initialize help system
-  const [helpState, helpActions] = usePracticeHelp({
-    settings: helpSettings || {
-      helpMode: 'auto',
-      autoEscalationTimingMs: { level1: 30000, level2: 60000, level3: 90000 },
-      beginnerFreeHelp: true,
-      advancedRequiresApproval: false,
-    },
-    isBeginnerMode,
-    onHelpLevelChange: (level, trigger) => {
-      // Could add analytics tracking here
-      console.log(`Help level changed to ${level} via ${trigger}`)
-    },
-  })
-
-  // Update help context when problem or term changes
-  useEffect(() => {
-    if (currentProblem && currentTermIndex < currentProblem.problem.terms.length) {
-      helpActions.resetForNewTerm({
-        currentValue: runningTotal,
-        targetValue: currentTermTarget,
-        term: currentTerm,
-        termIndex: currentTermIndex,
-      })
-    }
-  }, [
-    currentProblem?.problem.terms.join(','),
-    currentTermIndex,
-    runningTotal,
-    currentTermTarget,
-    currentTerm,
-  ])
-
-  // Update help context when helpTermIndex changes (for "Get Help" button flow)
-  // This ensures helpState.content has data for the term being helped, not currentTermIndex
-  useEffect(() => {
-    if (helpTermIndex === null || !currentProblem) return
-
-    const terms = currentProblem.problem.terms
-    if (helpTermIndex >= terms.length) return
-
-    // Calculate the context for the help term
-    const helpCurrentValue = helpTermIndex === 0 ? 0 : prefixSums[helpTermIndex - 1]
-    const helpTargetValue = prefixSums[helpTermIndex]
-    const helpTerm = terms[helpTermIndex]
-
-    helpActions.resetForNewTerm({
-      currentValue: helpCurrentValue,
-      targetValue: helpTargetValue,
-      term: helpTerm,
-      termIndex: helpTermIndex,
-    })
-  }, [helpTermIndex, currentProblem?.problem.terms.join(','), prefixSums])
-
   // Auto-trigger help when prefix sum is detected
   useEffect(() => {
     // Only auto-trigger if:
@@ -362,16 +276,9 @@ export function ActiveSession({
       if (newConfirmedCount < (currentProblem?.problem.terms.length || 0)) {
         setHelpTermIndex(newConfirmedCount)
         setUserAnswer('')
-        helpActions.requestHelp(1)
       }
     }
-  }, [
-    helpTermIndex,
-    matchedPrefixIndex,
-    prefixSums.length,
-    currentProblem?.problem.terms.length,
-    helpActions,
-  ])
+  }, [helpTermIndex, matchedPrefixIndex, prefixSums.length, currentProblem?.problem.terms.length])
 
   // Get current part and slot
   const parts = plan.parts
@@ -467,12 +374,6 @@ export function ActiveSession({
     })
   }, [])
 
-  // Handle dismissing help (continue without visual assistance)
-  const handleDismissHelp = useCallback(() => {
-    setHelpTermIndex(null)
-    helpActions.dismissHelp()
-  }, [helpActions])
-
   // Handle when student reaches the target value on the help abacus
   // This exits help mode completely and resets the problem to normal state
   const handleTargetReached = useCallback(() => {
@@ -500,13 +401,12 @@ export function ActiveSession({
     // Show feedback
     setFeedback(isCorrect ? 'correct' : 'incorrect')
 
-    // Track incorrect attempts for help escalation
+    // Track incorrect attempts
     if (!isCorrect) {
       setIncorrectAttempts((prev) => prev + 1)
-      helpActions.recordError()
     }
 
-    // Record the result with help tracking data
+    // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
       slotIndex: currentProblem.slotIndex,
       problem: currentProblem.problem,
@@ -515,10 +415,7 @@ export function ActiveSession({
       responseTimeMs,
       skillsExercised: currentProblem.problem.skillsRequired,
       usedOnScreenAbacus: confirmedTermCount > 0 || helpTermIndex !== null,
-      // Help tracking fields
-      helpLevelUsed: helpState.maxLevelUsed,
       incorrectAttempts,
-      helpTrigger: helpState.trigger,
     }
 
     await onAnswer(result)
@@ -527,7 +424,6 @@ export function ActiveSession({
     setTimeout(
       () => {
         setCurrentProblem(null)
-        setCurrentTermIndex(0)
         setIncorrectAttempts(0)
         setConfirmedTermCount(0)
         setHelpTermIndex(null)
@@ -537,18 +433,7 @@ export function ActiveSession({
       },
       isCorrect ? 500 : 1500
     )
-  }, [
-    currentProblem,
-    isSubmitting,
-    userAnswer,
-    confirmedTermCount,
-    helpTermIndex,
-    onAnswer,
-    helpState.maxLevelUsed,
-    helpState.trigger,
-    incorrectAttempts,
-    helpActions,
-  ])
+  }, [currentProblem, isSubmitting, userAnswer, confirmedTermCount, helpTermIndex, onAnswer, incorrectAttempts])
 
   // Auto-submit when correct answer is entered on first attempt (allow minor corrections)
   useEffect(() => {
