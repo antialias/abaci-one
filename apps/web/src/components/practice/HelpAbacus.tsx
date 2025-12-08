@@ -148,21 +148,10 @@ export function HelpAbacus({
     }
   }, [isDark])
 
+  // When there are no changes left (target reached), return null
+  // The success feedback is shown via showTargetReached prop below
   if (!hasChanges) {
-    return (
-      <div
-        data-component="help-abacus"
-        data-status="complete"
-        className={css({
-          textAlign: 'center',
-          padding: '1rem',
-          color: isDark ? 'green.400' : 'green.600',
-          fontSize: '0.875rem',
-        })}
-      >
-        ✓ Already at target value
-      </div>
-    )
+    return null
   }
 
   return (
