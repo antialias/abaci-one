@@ -19,8 +19,6 @@ interface VerticalProblemProps {
   size?: 'normal' | 'large'
   /** Index of the term currently being helped with (shows arrow indicator) */
   currentHelpTermIndex?: number
-  /** Whether auto-submit is about to trigger (shows celebration animation) */
-  autoSubmitPending?: boolean
   /** Rejected digit to show as red X (null = no rejection) */
   rejectedDigit?: string | null
   /** Help overlay to render adjacent to the current help term (positioned above the term row) */
@@ -44,7 +42,6 @@ export function VerticalProblem({
   correctAnswer,
   size = 'normal',
   currentHelpTermIndex,
-  autoSubmitPending = false,
   rejectedDigit = null,
   helpOverlay,
 }: VerticalProblemProps) {
@@ -226,45 +223,13 @@ export function VerticalProblem({
       {/* Answer row */}
       <div
         data-element="answer-row"
-        data-auto-submit={autoSubmitPending ? 'pending' : undefined}
         className={css({
           display: 'flex',
           alignItems: 'center',
           gap: '2px',
           position: 'relative',
-          // Auto-submit celebration animation
-          ...(autoSubmitPending && {
-            animation: 'successPulse 0.3s ease-out',
-          }),
         })}
       >
-        {/* Auto-submit celebration indicator */}
-        {autoSubmitPending && (
-          <div
-            data-element="auto-submit-indicator"
-            className={css({
-              position: 'absolute',
-              top: '-1.5rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              padding: '0.125rem 0.5rem',
-              backgroundColor: isDark ? 'green.700' : 'green.100',
-              borderRadius: '999px',
-              fontSize: '0.625rem',
-              fontWeight: 'bold',
-              color: isDark ? 'green.200' : 'green.700',
-              whiteSpace: 'nowrap',
-              animation: 'bounceIn 0.3s ease-out',
-              zIndex: 10,
-            })}
-          >
-            <span>✓</span>
-            <span>Perfect!</span>
-          </div>
-        )}
         {/* Equals column */}
         <div
           data-element="equals"
@@ -314,51 +279,40 @@ export function VerticalProblem({
                     ? isDark
                       ? 'red.900'
                       : 'red.100'
-                    : autoSubmitPending
-                      ? isDark
-                        ? 'green.800'
-                        : 'green.100'
-                      : isCompleted
-                        ? isCorrect
-                          ? isDark
-                            ? 'green.800'
-                            : 'green.100'
-                          : isDark
-                            ? 'red.800'
-                            : 'red.100'
+                    : isCompleted
+                      ? isCorrect
+                        ? isDark
+                          ? 'green.800'
+                          : 'green.100'
                         : isDark
-                          ? 'gray.700'
-                          : 'white',
+                          ? 'red.800'
+                          : 'red.100'
+                      : isDark
+                        ? 'gray.700'
+                        : 'white',
                   borderRadius: '4px',
-                  border:
-                    isEmpty && !isCompleted && !autoSubmitPending && !isRejectedCell
-                      ? '1px dashed'
-                      : '1px solid',
+                  border: isEmpty && !isCompleted && !isRejectedCell ? '1px dashed' : '1px solid',
                   borderColor: isRejectedCell
                     ? isDark
                       ? 'red.500'
                       : 'red.400'
-                    : autoSubmitPending
-                      ? isDark
-                        ? 'green.500'
-                        : 'green.400'
-                      : isCompleted
-                        ? isCorrect
-                          ? isDark
-                            ? 'green.600'
-                            : 'green.300'
-                          : isDark
-                            ? 'red.600'
-                            : 'red.300'
-                        : isEmpty
-                          ? isFocused
-                            ? 'blue.400'
-                            : isDark
-                              ? 'gray.600'
-                              : 'gray.300'
+                    : isCompleted
+                      ? isCorrect
+                        ? isDark
+                          ? 'green.600'
+                          : 'green.300'
+                        : isDark
+                          ? 'red.600'
+                          : 'red.300'
+                      : isEmpty
+                        ? isFocused
+                          ? 'blue.400'
                           : isDark
                             ? 'gray.600'
-                            : 'gray.300',
+                            : 'gray.300'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300',
                   transition: 'all 0.15s ease-out',
                   color: isCompleted
                     ? isCorrect

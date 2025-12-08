@@ -17,6 +17,8 @@ interface NumericKeypadProps {
   disabled?: boolean
   /** Current input value (for display feedback) */
   currentValue?: string
+  /** Whether to show the submit/checkmark button (hidden during auto-submit mode) */
+  showSubmitButton?: boolean
 }
 
 /**
@@ -67,6 +69,10 @@ function getKeyboardThemeStyles(isDark: boolean): string {
       background: var(--colors-green-600);
       color: white;
     }
+    .practice-numeric-keyboard .hg-button[data-skbtn="{empty}"] {
+      visibility: hidden;
+      pointer-events: none;
+    }
     .practice-numeric-keyboard .hg-row {
       display: flex;
       justify-content: center;
@@ -85,19 +91,24 @@ export function NumericKeypad({
   onSubmit,
   disabled = false,
   currentValue = '',
+  showSubmitButton = true,
 }: NumericKeypadProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const keyboardRef = useRef<any>(null)
 
-  // Numeric layout with backspace and submit
+  // Numeric layout - conditionally include submit button
+  // When submit is hidden, we use a spacer {empty} to maintain grid alignment
   const layout = {
-    default: ['1 2 3', '4 5 6', '7 8 9', '{bksp} 0 {enter}'],
+    default: showSubmitButton
+      ? ['1 2 3', '4 5 6', '7 8 9', '{bksp} 0 {enter}']
+      : ['1 2 3', '4 5 6', '7 8 9', '{bksp} 0 {empty}'],
   }
 
   const display = {
     '{bksp}': '\u232B', // Unicode backspace symbol
     '{enter}': '\u2713', // Unicode checkmark
+    '{empty}': '', // Empty spacer
   }
 
   const handleKeyPress = useCallback(
