@@ -273,20 +273,12 @@ export function ActiveSession({
     return prefixSums.indexOf(answerNum)
   }, [userAnswer, prefixSums])
 
-  // Determine button state based on input
-  const buttonState = useMemo((): 'help' | 'submit' | 'disabled' => {
-    if (!userAnswer) return 'disabled'
+  // Determine if submit button should be enabled
+  const canSubmit = useMemo(() => {
+    if (!userAnswer) return false
     const answerNum = parseInt(userAnswer, 10)
-    if (Number.isNaN(answerNum)) return 'disabled'
-
-    // If it matches a prefix sum (but not the final answer), offer help
-    if (matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1) {
-      return 'help'
-    }
-
-    // Otherwise it's a submit (final answer or wrong answer)
-    return 'submit'
-  }, [userAnswer, matchedPrefixIndex, prefixSums.length])
+    return !Number.isNaN(answerNum)
+  }, [userAnswer])
 
   // Compute context for help abacus when showing help
   const helpContext = useMemo(() => {
@@ -354,14 +346,12 @@ export function ActiveSession({
     })
   }, [helpTermIndex, currentProblem?.problem.terms.join(','), prefixSums])
 
-  // Auto-trigger help when prefix sum is detected (don't make them click twice)
+  // Auto-trigger help when prefix sum is detected
   useEffect(() => {
     // Only auto-trigger if:
-    // 1. We detected a prefix sum match (buttonState === 'help')
+    // 1. We detected a prefix sum match (but not the final answer)
     // 2. We're not already showing help for this term
-    // 3. The matched prefix is the next term they need help with
     if (
-      buttonState === 'help' &&
       helpTermIndex === null &&
       matchedPrefixIndex >= 0 &&
       matchedPrefixIndex < prefixSums.length - 1
@@ -376,7 +366,6 @@ export function ActiveSession({
       }
     }
   }, [
-    buttonState,
     helpTermIndex,
     matchedPrefixIndex,
     prefixSums.length,
@@ -477,25 +466,6 @@ export function ActiveSession({
       return prev.slice(0, -1)
     })
   }, [])
-
-  // Handle "Get Help" button - show help for the next term
-  const handleGetHelp = useCallback(() => {
-    if (matchedPrefixIndex < 0) return
-
-    // User has confirmed up through matchedPrefixIndex (inclusive)
-    // Set confirmed count and show help for the NEXT term
-    const newConfirmedCount = matchedPrefixIndex + 1
-    setConfirmedTermCount(newConfirmedCount)
-
-    // If there's a next term to help with, show it
-    if (newConfirmedCount < (currentProblem?.problem.terms.length || 0)) {
-      setHelpTermIndex(newConfirmedCount)
-      // Clear the input so they can continue
-      setUserAnswer('')
-      // Start progressive help at level 1 (coach hint)
-      helpActions.requestHelp(1)
-    }
-  }, [matchedPrefixIndex, currentProblem?.problem.terms.length, helpActions])
 
   // Handle dismissing help (continue without visual assistance)
   const handleDismissHelp = useCallback(() => {
@@ -1150,7 +1120,7 @@ export function ActiveSession({
       {/* Input area */}
       {!isPaused && feedback === 'none' && (
         <div data-section="input-area">
-          {/* Dynamic action button */}
+          {/* Submit button */}
           <div
             className={css({
               display: 'flex',
@@ -1160,45 +1130,26 @@ export function ActiveSession({
           >
             <button
               type="button"
-              data-action={buttonState}
-              onClick={buttonState === 'help' ? handleGetHelp : handleSubmit}
-              disabled={buttonState === 'disabled' || isSubmitting}
+              data-action="submit"
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
               className={css({
                 padding: '0.75rem 2rem',
                 fontSize: '1.125rem',
                 fontWeight: 'bold',
                 borderRadius: '8px',
                 border: 'none',
-                cursor: buttonState === 'disabled' ? 'not-allowed' : 'pointer',
+                cursor: !canSubmit ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
-                // Different styles based on button state
-                backgroundColor:
-                  buttonState === 'help'
-                    ? 'purple.500'
-                    : buttonState === 'submit'
-                      ? 'blue.500'
-                      : isDark
-                        ? 'gray.700'
-                        : 'gray.300',
-                color: buttonState === 'disabled' ? (isDark ? 'gray.400' : 'gray.500') : 'white',
-                opacity: buttonState === 'disabled' ? 0.5 : 1,
+                backgroundColor: canSubmit ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
+                color: !canSubmit ? (isDark ? 'gray.400' : 'gray.500') : 'white',
+                opacity: !canSubmit ? 0.5 : 1,
                 _hover: {
-                  backgroundColor:
-                    buttonState === 'help'
-                      ? 'purple.600'
-                      : buttonState === 'submit'
-                        ? 'blue.600'
-                        : isDark
-                          ? 'gray.600'
-                          : 'gray.300',
+                  backgroundColor: canSubmit ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
                 },
               })}
             >
-              {buttonState === 'help'
-                ? 'Get Help →'
-                : buttonState === 'submit'
-                  ? 'Submit ✓'
-                  : 'Enter Total'}
+              {canSubmit ? 'Submit' : 'Enter Total'}
             </button>
           </div>
 
@@ -1213,7 +1164,6 @@ export function ActiveSession({
               })}
             >
               Type your abacus total
-              {buttonState === 'help' ? ' to get help, or your final answer' : ''}
             </div>
           )}
 
@@ -1222,7 +1172,7 @@ export function ActiveSession({
             <NumericKeypad
               onDigit={handleDigit}
               onBackspace={handleBackspace}
-              onSubmit={buttonState === 'help' ? handleGetHelp : handleSubmit}
+              onSubmit={handleSubmit}
               disabled={isSubmitting}
               currentValue={userAnswer}
             />
