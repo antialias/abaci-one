@@ -82,33 +82,6 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
 }
 
 /**
- * Get part type colors (dark mode aware)
- */
-function getPartTypeColors(
-  type: SessionPart['type'],
-  isDark: boolean
-): {
-  bg: string
-  border: string
-  text: string
-} {
-  switch (type) {
-    case 'abacus':
-      return isDark
-        ? { bg: 'blue.900', border: 'blue.700', text: 'blue.200' }
-        : { bg: 'blue.50', border: 'blue.200', text: 'blue.700' }
-    case 'visualization':
-      return isDark
-        ? { bg: 'purple.900', border: 'purple.700', text: 'purple.200' }
-        : { bg: 'purple.50', border: 'purple.200', text: 'purple.700' }
-    case 'linear':
-      return isDark
-        ? { bg: 'orange.900', border: 'orange.700', text: 'orange.200' }
-        : { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
-  }
-}
-
-/**
  * Linear problem display component for Part 3
  */
 function LinearProblem({
@@ -717,8 +690,6 @@ export function ActiveSession({
     )
   }
 
-  const partColors = getPartTypeColors(currentPart.type, isDark)
-
   return (
     <div
       data-component="active-session"
@@ -935,25 +906,6 @@ export function ActiveSession({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Part instruction banner - brief contextual hint */}
-      <div
-        data-element="part-instruction"
-        className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: partColors.bg,
-          borderRadius: '8px',
-          border: '1px solid',
-          borderColor: partColors.border,
-          textAlign: 'center',
-          fontSize: '0.875rem',
-          color: partColors.text,
-        })}
-      >
-        {currentPart.type === 'abacus' && '🧮 Use your physical abacus'}
-        {currentPart.type === 'visualization' && '🧠 Picture the beads moving in your mind'}
-        {currentPart.type === 'linear' && '💭 Calculate the answer mentally'}
       </div>
 
       {/* Problem display */}
