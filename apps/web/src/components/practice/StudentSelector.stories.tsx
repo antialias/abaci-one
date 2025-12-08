@@ -22,7 +22,6 @@ const sampleStudents: StudentWithProgress[] = [
     name: 'Sonia',
     emoji: '🦋',
     color: '#FFE4E1',
-    isGuest: false,
     currentLevel: 3,
     currentPhaseId: 'five-complements-1',
     masteryPercent: 75,
@@ -33,7 +32,6 @@ const sampleStudents: StudentWithProgress[] = [
     name: 'Marcus',
     emoji: '🦖',
     color: '#E0FFE0',
-    isGuest: false,
     currentLevel: 2,
     currentPhaseId: 'basic-addition-2',
     masteryPercent: 45,
@@ -44,7 +42,6 @@ const sampleStudents: StudentWithProgress[] = [
     name: 'Luna',
     emoji: '🌙',
     color: '#E0E0FF',
-    isGuest: false,
     currentLevel: 1,
     masteryPercent: 20,
     createdAt: new Date(),
@@ -56,7 +53,6 @@ const newStudent: StudentWithProgress = {
   name: 'New Learner',
   emoji: '🌟',
   color: '#FFFACD',
-  isGuest: false,
   createdAt: new Date(),
 }
 

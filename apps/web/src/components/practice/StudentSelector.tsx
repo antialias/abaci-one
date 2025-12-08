@@ -3,6 +3,26 @@
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/types/player'
 import { css } from '../../../styled-system/css'
+import {
+  avatarStyles,
+  badgeStyles,
+  centerStack,
+  fontBold,
+  gapLg,
+  gapMd,
+  gapSm,
+  paddingLg,
+  paddingMd,
+  primaryButtonStyles,
+  progressBarContainerStyles,
+  progressBarFillStyles,
+  roundedLg,
+  textBase,
+  textSm,
+  themed,
+  transitionNormal,
+  wrap,
+} from './styles'
 
 /**
  * Student data with curriculum info for display
@@ -34,23 +54,15 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
       data-selected={isSelected}
       onClick={() => onSelect(student)}
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '1rem',
-        borderRadius: '12px',
+        ...centerStack,
+        ...gapSm,
+        ...paddingMd,
+        ...roundedLg,
+        ...transitionNormal,
         border: isSelected ? '3px solid' : '2px solid',
-        borderColor: isSelected ? 'blue.500' : isDark ? 'gray.600' : 'gray.200',
-        backgroundColor: isSelected
-          ? isDark
-            ? 'blue.900'
-            : 'blue.50'
-          : isDark
-            ? 'gray.800'
-            : 'white',
+        borderColor: isSelected ? 'blue.500' : themed('border', isDark),
+        backgroundColor: isSelected ? themed('info', isDark) : themed('surface', isDark),
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
         minWidth: '100px',
         _hover: {
           borderColor: 'blue.400',
@@ -60,62 +72,29 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
       })}
     >
       {/* Avatar */}
-      <div
-        className={css({
-          width: '60px',
-          height: '60px',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '2rem',
-        })}
-        style={{ backgroundColor: student.color }}
-      >
+      <div className={css(avatarStyles('md'))} style={{ backgroundColor: student.color }}>
         {student.emoji}
       </div>
 
       {/* Name */}
       <span
         className={css({
-          fontWeight: 'bold',
-          fontSize: '1rem',
-          color: isDark ? 'gray.100' : 'gray.800',
+          ...fontBold,
+          ...textBase,
+          color: themed('text', isDark),
         })}
       >
         {student.name}
       </span>
 
       {/* Level badge */}
-      <span
-        className={css({
-          fontSize: '0.75rem',
-          padding: '0.125rem 0.5rem',
-          borderRadius: '9999px',
-          backgroundColor: isDark ? 'gray.700' : 'gray.100',
-          color: isDark ? 'gray.300' : 'gray.600',
-        })}
-      >
-        {levelLabel}
-      </span>
+      <span className={css(badgeStyles(isDark, 'neutral'))}>{levelLabel}</span>
 
       {/* Mastery progress bar (if available) */}
       {student.masteryPercent !== undefined && (
-        <div
-          className={css({
-            width: '100%',
-            height: '4px',
-            backgroundColor: isDark ? 'gray.700' : 'gray.200',
-            borderRadius: '2px',
-            overflow: 'hidden',
-          })}
-        >
+        <div className={css({ ...progressBarContainerStyles(isDark, 'sm'), width: '100%' })}>
           <div
-            className={css({
-              height: '100%',
-              backgroundColor: isDark ? 'green.400' : 'green.500',
-              transition: 'width 0.3s ease',
-            })}
+            className={css(progressBarFillStyles(isDark, 'success'))}
             style={{ width: `${student.masteryPercent}%` }}
           />
         </div>
@@ -141,38 +120,36 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
       data-action="add-student"
       onClick={onClick}
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
+        ...centerStack,
         justifyContent: 'center',
-        gap: '0.5rem',
-        padding: '1rem',
-        borderRadius: '12px',
+        ...gapSm,
+        ...paddingMd,
+        ...roundedLg,
+        ...transitionNormal,
         border: '2px dashed',
-        borderColor: isDark ? 'gray.600' : 'gray.300',
-        backgroundColor: isDark ? 'gray.800' : 'gray.50',
+        borderColor: themed('border', isDark),
+        backgroundColor: themed('surfaceMuted', isDark),
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
         minWidth: '100px',
         minHeight: '140px',
         _hover: {
           borderColor: 'blue.400',
-          backgroundColor: isDark ? 'blue.900' : 'blue.50',
+          backgroundColor: themed('info', isDark),
         },
       })}
     >
       <span
         className={css({
           fontSize: '2rem',
-          color: isDark ? 'gray.500' : 'gray.400',
+          color: themed('textSubtle', isDark),
         })}
       >
-        ➕
+        +
       </span>
       <span
         className={css({
-          fontSize: '0.875rem',
-          color: isDark ? 'gray.400' : 'gray.500',
+          ...textSm,
+          color: themed('textMuted', isDark),
         })}
       >
         Add New
@@ -210,19 +187,17 @@ export function StudentSelector({
     <div
       data-component="student-selector"
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '1.5rem',
-        padding: '2rem',
+        ...centerStack,
+        ...gapLg,
+        ...paddingLg,
       })}
     >
       {/* Title */}
       <h2
         className={css({
           fontSize: '1.5rem',
-          fontWeight: 'bold',
-          color: isDark ? 'gray.100' : 'gray.800',
+          ...fontBold,
+          color: themed('text', isDark),
         })}
       >
         {title}
@@ -231,10 +206,9 @@ export function StudentSelector({
       {/* Student grid */}
       <div
         className={css({
-          display: 'flex',
-          flexWrap: 'wrap',
+          ...wrap,
           justifyContent: 'center',
-          gap: '1rem',
+          ...gapMd,
         })}
       >
         {students.map((student) => (
@@ -259,35 +233,18 @@ export function StudentSelector({
         >
           <p
             className={css({
-              fontSize: '1rem',
-              color: isDark ? 'gray.400' : 'gray.600',
+              ...textBase,
+              color: themed('textMuted', isDark),
               marginBottom: '1rem',
             })}
           >
             Selected:{' '}
-            <strong className={css({ color: isDark ? 'gray.100' : 'inherit' })}>
+            <strong className={css({ color: themed('text', isDark) })}>
               {selectedStudent.name}
             </strong>{' '}
             {selectedStudent.emoji}
           </p>
-          <button
-            type="button"
-            data-action="start-practice"
-            className={css({
-              padding: '0.75rem 2rem',
-              fontSize: '1.125rem',
-              fontWeight: 'bold',
-              color: 'white',
-              backgroundColor: 'blue.500',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease',
-              _hover: {
-                backgroundColor: 'blue.600',
-              },
-            })}
-          >
+          <button type="button" data-action="start-practice" className={css(primaryButtonStyles())}>
             Start Practice →
           </button>
         </div>

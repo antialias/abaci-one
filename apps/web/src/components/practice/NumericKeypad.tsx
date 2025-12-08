@@ -1,8 +1,8 @@
 'use client'
 
-import { useTheme } from '@/contexts/ThemeContext'
 import { useCallback, useRef } from 'react'
 import Keyboard from 'react-simple-keyboard'
+import { useTheme } from '@/contexts/ThemeContext'
 import 'react-simple-keyboard/build/css/index.css'
 import { css } from '../../../styled-system/css'
 
@@ -17,6 +17,62 @@ interface NumericKeypadProps {
   disabled?: boolean
   /** Current input value (for display feedback) */
   currentValue?: string
+}
+
+/**
+ * Generate CSS variables for keyboard theming
+ * Uses Panda CSS tokens converted to CSS custom properties
+ */
+function getKeyboardThemeStyles(isDark: boolean): string {
+  return `
+    .practice-numeric-keyboard .simple-keyboard {
+      background: var(--colors-${isDark ? 'gray-800' : 'gray-50'});
+      border-radius: 12px;
+      padding: 8px;
+      border: 1px solid var(--colors-${isDark ? 'gray-700' : 'gray-200'});
+    }
+    .practice-numeric-keyboard .hg-button {
+      height: 56px;
+      border-radius: 8px;
+      background: var(--colors-${isDark ? 'gray-700' : 'white'});
+      color: var(--colors-${isDark ? 'gray-100' : 'gray-800'});
+      border: 1px solid var(--colors-${isDark ? 'gray-600' : 'gray-200'});
+      font-size: 24px;
+      font-weight: 600;
+      box-shadow: ${isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
+      transition: all 0.1s ease;
+      flex: 1;
+      margin: 3px;
+    }
+    .practice-numeric-keyboard .hg-button:active {
+      background: var(--colors-blue-500);
+      color: white;
+      transform: scale(0.95);
+    }
+    .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"] {
+      background: var(--colors-${isDark ? 'red-900' : 'red-100'});
+      color: var(--colors-${isDark ? 'red-300' : 'red-600'});
+      border-color: var(--colors-${isDark ? 'red-800' : 'red-200'});
+    }
+    .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"]:active {
+      background: var(--colors-red-600);
+      color: white;
+    }
+    .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"] {
+      background: var(--colors-${isDark ? 'green-900' : 'green-100'});
+      color: var(--colors-${isDark ? 'green-300' : 'green-600'});
+      border-color: var(--colors-${isDark ? 'green-800' : 'green-200'});
+    }
+    .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"]:active {
+      background: var(--colors-green-600);
+      color: white;
+    }
+    .practice-numeric-keyboard .hg-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2px;
+    }
+  `
 }
 
 /**
@@ -40,8 +96,8 @@ export function NumericKeypad({
   }
 
   const display = {
-    '{bksp}': '⌫',
-    '{enter}': '✓',
+    '{bksp}': '\u232B', // Unicode backspace symbol
+    '{enter}': '\u2713', // Unicode checkmark
   }
 
   const handleKeyPress = useCallback(
@@ -70,55 +126,7 @@ export function NumericKeypad({
         pointerEvents: disabled ? 'none' : 'auto',
       })}
     >
-      <style>{`
-        .practice-numeric-keyboard .simple-keyboard {
-          background: ${isDark ? '#1f2937' : '#f8fafc'};
-          border-radius: 12px;
-          padding: 8px;
-          border: 1px solid ${isDark ? '#374151' : '#e2e8f0'};
-        }
-        .practice-numeric-keyboard .hg-button {
-          height: 56px;
-          border-radius: 8px;
-          background: ${isDark ? '#374151' : 'white'};
-          color: ${isDark ? '#f3f4f6' : '#1e293b'};
-          border: 1px solid ${isDark ? '#4b5563' : '#e2e8f0'};
-          font-size: 24px;
-          font-weight: 600;
-          box-shadow: ${isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
-          transition: all 0.1s ease;
-          flex: 1;
-          margin: 3px;
-        }
-        .practice-numeric-keyboard .hg-button:active {
-          background: #3b82f6;
-          color: white;
-          transform: scale(0.95);
-        }
-        .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"] {
-          background: ${isDark ? '#7f1d1d' : '#fee2e2'};
-          color: ${isDark ? '#fca5a5' : '#dc2626'};
-          border-color: ${isDark ? '#991b1b' : '#fecaca'};
-        }
-        .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"]:active {
-          background: #dc2626;
-          color: white;
-        }
-        .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"] {
-          background: ${isDark ? '#14532d' : '#dcfce7'};
-          color: ${isDark ? '#86efac' : '#16a34a'};
-          border-color: ${isDark ? '#166534' : '#bbf7d0'};
-        }
-        .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"]:active {
-          background: #16a34a;
-          color: white;
-        }
-        .practice-numeric-keyboard .hg-row {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 2px;
-        }
-      `}</style>
+      <style>{getKeyboardThemeStyles(isDark)}</style>
       <div className="practice-numeric-keyboard">
         <Keyboard
           keyboardRef={(r) => (keyboardRef.current = r)}
