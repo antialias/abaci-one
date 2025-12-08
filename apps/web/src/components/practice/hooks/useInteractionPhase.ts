@@ -55,50 +55,27 @@ export interface OutgoingAttempt {
 }
 
 /**
+ * Non-paused phases (used for resumePhase type)
+ */
+export type ActivePhase =
+  | { phase: 'loading' }
+  | { phase: 'inputting'; attempt: AttemptInput }
+  | { phase: 'helpMode'; attempt: AttemptInput; helpContext: HelpContext }
+  | { phase: 'submitting'; attempt: AttemptInput }
+  | { phase: 'showingFeedback'; attempt: AttemptInput; result: 'correct' | 'incorrect' }
+  | { phase: 'transitioning'; outgoing: OutgoingAttempt; incoming: AttemptInput }
+  | { phase: 'complete' }
+
+/**
  * Discriminated union representing all possible interaction phases.
  * Each phase carries exactly the data needed for that phase.
  */
 export type InteractionPhase =
-  // No problem loaded yet, waiting for initialization
-  | { phase: 'loading' }
-
-  // Student is actively entering digits for their answer
-  | {
-      phase: 'inputting'
-      attempt: AttemptInput
-    }
-
-  // Student triggered help mode by entering a prefix sum
-  | {
-      phase: 'helpMode'
-      attempt: AttemptInput
-      helpContext: HelpContext
-    }
-
-  // Answer submitted, waiting for server response
-  | {
-      phase: 'submitting'
-      attempt: AttemptInput
-    }
-
-  // Showing feedback (correct/incorrect) after submission
-  | {
-      phase: 'showingFeedback'
-      attempt: AttemptInput
-      result: 'correct' | 'incorrect'
-    }
-
-  // Animating transition to next problem
-  | {
-      phase: 'transitioning'
-      outgoing: OutgoingAttempt
-      incoming: AttemptInput
-    }
-
+  | ActivePhase
   // Session paused - remembers what phase to return to
   | {
       phase: 'paused'
-      resumePhase: Exclude<InteractionPhase, { phase: 'paused' }>
+      resumePhase: ActivePhase
     }
 
 /** Threshold for correction count before requiring manual submit */
@@ -107,6 +84,30 @@ export const MANUAL_SUBMIT_THRESHOLD = 2
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Gets the active (non-paused) phase, unwrapping if paused.
+ */
+export function getActivePhase(phase: InteractionPhase): ActivePhase {
+  return phase.phase === 'paused' ? phase.resumePhase : phase
+}
+
+/**
+ * Applies a transformation to the active phase, preserving paused wrapper if present.
+ * If the transform returns null, the phase is unchanged.
+ */
+export function transformActivePhase(
+  phase: InteractionPhase,
+  transform: (active: ActivePhase) => ActivePhase | null
+): InteractionPhase {
+  if (phase.phase === 'paused') {
+    const newResumePhase = transform(phase.resumePhase)
+    if (newResumePhase === null) return phase
+    return { phase: 'paused', resumePhase: newResumePhase }
+  }
+  const newPhase = transform(phase)
+  return newPhase === null ? phase : newPhase
+}
 
 /**
  * Creates a fresh attempt input for a new problem
@@ -242,10 +243,14 @@ export interface UseInteractionPhaseReturn {
   completeTransition: () => void
   /** Clear to loading state */
   clearToLoading: () => void
+  /** Mark session as complete */
+  markComplete: () => void
   /** Pause session (* → paused) */
   pause: () => void
   /** Resume session (paused → resumePhase) */
   resume: () => void
+  /** Is the session complete? */
+  isComplete: boolean
 }
 
 export function useInteractionPhase(
@@ -415,7 +420,8 @@ export function useInteractionPhase(
 
   const enterHelpMode = useCallback((termIndex: number) => {
     setPhase((prev) => {
-      if (prev.phase !== 'inputting') return prev
+      // Allow entering help mode from inputting or helpMode (to navigate to a different term)
+      if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
 
       const helpContext = computeHelpContext(prev.attempt.problem.terms, termIndex)
       const updatedAttempt = { ...prev.attempt, userAnswer: '' }
@@ -439,10 +445,12 @@ export function useInteractionPhase(
   }, [])
 
   const completeSubmit = useCallback((result: 'correct' | 'incorrect') => {
-    setPhase((prev) => {
-      if (prev.phase !== 'submitting') return prev
-      return { phase: 'showingFeedback', attempt: prev.attempt, result }
-    })
+    setPhase((prev) =>
+      transformActivePhase(prev, (active) => {
+        if (active.phase !== 'submitting') return null
+        return { phase: 'showingFeedback', attempt: active.attempt, result }
+      })
+    )
   }, [])
 
   const startTransition = useCallback((nextProblem: GeneratedProblem, nextSlotIndex: number) => {
@@ -463,19 +471,26 @@ export function useInteractionPhase(
   }, [])
 
   const completeTransition = useCallback(() => {
-    setPhase((prev) => {
-      if (prev.phase !== 'transitioning') return prev
-      return { phase: 'inputting', attempt: prev.incoming }
-    })
+    setPhase((prev) =>
+      transformActivePhase(prev, (active) => {
+        if (active.phase !== 'transitioning') return null
+        return { phase: 'inputting', attempt: active.incoming }
+      })
+    )
   }, [])
 
   const clearToLoading = useCallback(() => {
     setPhase({ phase: 'loading' })
   }, [])
 
+  const markComplete = useCallback(() => {
+    setPhase({ phase: 'complete' })
+  }, [])
+
   const pause = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase === 'paused' || prev.phase === 'loading') return prev
+      if (prev.phase === 'paused' || prev.phase === 'loading' || prev.phase === 'complete')
+        return prev
       return { phase: 'paused', resumePhase: prev }
     })
   }, [])
@@ -486,6 +501,9 @@ export function useInteractionPhase(
       return prev.resumePhase
     })
   }, [])
+
+  // Is the session complete?
+  const isComplete = phase.phase === 'complete'
 
   return {
     phase,
@@ -509,7 +527,9 @@ export function useInteractionPhase(
     startTransition,
     completeTransition,
     clearToLoading,
+    markComplete,
     pause,
     resume,
+    isComplete,
   }
 }

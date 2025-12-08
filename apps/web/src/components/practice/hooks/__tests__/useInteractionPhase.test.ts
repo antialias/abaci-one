@@ -1,5 +1,8 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 import {
   computeHelpContext,
@@ -1024,6 +1027,144 @@ describe('useInteractionPhase', () => {
         result.current.startSubmit()
       })
       expect(result.current.phase.phase).toBe('submitting')
+    })
+  })
+
+  // ===========================================================================
+  // Complete phase
+  // ===========================================================================
+
+  describe('markComplete', () => {
+    it('transitions to complete phase', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.markComplete()
+      })
+
+      expect(result.current.phase.phase).toBe('complete')
+      expect(result.current.isComplete).toBe(true)
+    })
+
+    it('cannot pause from complete phase', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.markComplete()
+      })
+
+      act(() => {
+        result.current.pause()
+      })
+
+      expect(result.current.phase.phase).toBe('complete')
+    })
+  })
+
+  // ===========================================================================
+  // Paused phase transitions
+  // ===========================================================================
+
+  describe('completeSubmit while paused', () => {
+    it('updates resumePhase from submitting to showingFeedback', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.startSubmit()
+      })
+
+      act(() => {
+        result.current.pause()
+      })
+
+      expect(result.current.phase.phase).toBe('paused')
+
+      // Complete submit while paused
+      act(() => {
+        result.current.completeSubmit('correct')
+      })
+
+      // Should still be paused but resumePhase updated
+      expect(result.current.phase.phase).toBe('paused')
+      if (result.current.phase.phase === 'paused') {
+        expect(result.current.phase.resumePhase.phase).toBe('showingFeedback')
+        if (result.current.phase.resumePhase.phase === 'showingFeedback') {
+          expect(result.current.phase.resumePhase.result).toBe('correct')
+        }
+      }
+    })
+  })
+
+  describe('completeTransition while paused', () => {
+    it('updates resumePhase from transitioning to inputting', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+      const nextProblem = createTestProblem([7, 8])
+
+      // Get to transitioning phase
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('1')
+        result.current.handleDigit('2')
+        result.current.startSubmit()
+      })
+
+      act(() => {
+        result.current.completeSubmit('correct')
+      })
+
+      act(() => {
+        result.current.startTransition(nextProblem, 1)
+      })
+
+      // Now pause during transition
+      act(() => {
+        result.current.pause()
+      })
+
+      expect(result.current.phase.phase).toBe('paused')
+      if (result.current.phase.phase === 'paused') {
+        expect(result.current.phase.resumePhase.phase).toBe('transitioning')
+      }
+
+      // Complete transition while paused
+      act(() => {
+        result.current.completeTransition()
+      })
+
+      // Should still be paused but resumePhase updated
+      expect(result.current.phase.phase).toBe('paused')
+      if (result.current.phase.phase === 'paused') {
+        expect(result.current.phase.resumePhase.phase).toBe('inputting')
+      }
+    })
+  })
+
+  describe('enterHelpMode from helpMode', () => {
+    it('allows navigating to a different term', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.enterHelpMode(1) // Enter help for term at index 1
+      })
+
+      expect(result.current.phase.phase).toBe('helpMode')
+      if (result.current.phase.phase === 'helpMode') {
+        expect(result.current.phase.helpContext.termIndex).toBe(1)
+      }
+
+      // Navigate to different term
+      act(() => {
+        result.current.enterHelpMode(2) // Switch to term at index 2
+      })
+
+      expect(result.current.phase.phase).toBe('helpMode')
+      if (result.current.phase.phase === 'helpMode') {
+        expect(result.current.phase.helpContext.termIndex).toBe(2)
+        // Answer should be cleared when switching terms
+        expect(result.current.phase.attempt.userAnswer).toBe('')
+      }
     })
   })
 })
