@@ -27,6 +27,7 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import {
   useAbandonSession,
+  useActiveSessionPlan,
   useApproveSessionPlan,
   useEndSessionEarly,
   useGenerateSessionPlan,
@@ -122,13 +123,23 @@ export function StudentPracticeClient({
   const endEarly = useEndSessionEarly()
   const abandonSession = useAbandonSession()
 
-  // Current plan from mutations or initial active session (use the latest successful result)
+  // Fetch active session plan from cache or API
+  // - If cache has data (from ConfigureClient mutation): uses cache immediately
+  // - If no cache but initialActiveSession exists: uses server props as initial data
+  // - If neither: fetches from API (shows loading state briefly)
+  const {
+    data: fetchedPlan,
+    isLoading: isPlanLoading,
+  } = useActiveSessionPlan(studentId, initialActiveSession)
+
+  // Current plan from mutations or fetched data (priority order)
+  // Mutations take priority (most recent user action), then fetched/cached data
   const currentPlan =
     recordResult.data ??
     startPlan.data ??
     approvePlan.data ??
     generatePlan.data ??
-    initialActiveSession ??
+    fetchedPlan ??
     null
 
   // Derive error state from mutations
@@ -144,13 +155,16 @@ export function StudentPracticeClient({
 
   // Derive view from session plan state - NO useState!
   // This eliminates the "bastard state" problem where viewState and currentPlan could diverge
-  const sessionView: SessionView = useMemo(() => {
+  const sessionView: SessionView | 'loading' = useMemo(() => {
+    // Show loading only if we're fetching AND don't have any data yet
+    // (mutations or initial data would give us something to show)
+    if (isPlanLoading && !currentPlan) return 'loading'
     if (!currentPlan) return 'dashboard'
     if (currentPlan.completedAt) return 'summary'
     if (currentPlan.startedAt) return 'practicing'
     if (currentPlan.approvedAt) return 'reviewing'
     return 'continue' // Plan exists but not yet approved
-  }, [currentPlan])
+  }, [currentPlan, isPlanLoading])
 
   // Handle continue practice - navigate to configuration page
   const handleContinuePractice = useCallback(() => {
@@ -437,6 +451,29 @@ export function StudentPracticeClient({
           )}
 
           {/* Content based on session view (derived from data) */}
+          {sessionView === 'loading' && (
+            <div
+              data-section="loading"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3rem',
+                gap: '1rem',
+              })}
+            >
+              <div
+                className={css({
+                  fontSize: '2rem',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                })}
+              >
+                Loading practice session...
+              </div>
+            </div>
+          )}
+
           {sessionView === 'continue' && currentPlan && (
             <ContinueSessionCard
               studentName={selectedStudent.name}

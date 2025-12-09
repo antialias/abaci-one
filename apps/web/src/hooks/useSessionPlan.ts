@@ -92,12 +92,24 @@ async function updateSessionPlan({
 
 /**
  * Hook: Fetch active session plan for a player
+ *
+ * @param playerId - The player ID to fetch the session for
+ * @param initialData - Optional initial data from server-side props (avoids loading state on direct page load)
  */
-export function useActiveSessionPlan(playerId: string | null) {
+export function useActiveSessionPlan(
+  playerId: string | null,
+  initialData?: SessionPlan | null
+) {
   return useQuery({
     queryKey: sessionPlanKeys.active(playerId ?? ''),
     queryFn: () => fetchActiveSessionPlan(playerId!),
     enabled: !!playerId,
+    // Use server-provided data as initial cache value
+    // This prevents a loading flash on direct page loads while still allowing refetch
+    initialData: initialData ?? undefined,
+    // Don't refetch on mount if we have initial data - trust the server
+    // The query will still refetch on window focus or after stale time
+    staleTime: initialData ? 30000 : 0, // 30s stale time if we have initial data
   })
 }
 
