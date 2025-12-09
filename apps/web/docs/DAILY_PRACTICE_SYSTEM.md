@@ -676,8 +676,6 @@ The practice experience is the actual problem-solving interface where the studen
 │                          │  ● ● ● ● ○ ○ ○ ○ ○   │             │
 │                          └───────────────────────┘             │
 │                                                                 │
-│  3D Model: public/3d-models/simplified.abacus.stl              │
-│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -896,7 +894,6 @@ const constraints = {
 | `InputPhase` | `src/arcade-games/memory-quiz/components/InputPhase.tsx` | Custom numeric keypad + device detection |
 | `problemGenerator` | `src/utils/problemGenerator.ts` | Skill-constrained problem generation |
 | `AbacusReact` | `@soroban/abacus-react` | On-screen abacus (last resort) |
-| 3D Abacus Model | `public/3d-models/simplified.abacus.stl` | Physical abacus recommendation |
 
 ### Data Model Extensions
 
