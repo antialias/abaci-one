@@ -1,12 +1,6 @@
-import { notFound } from 'next/navigation'
-import {
-  getActiveSessionPlan,
-  getAllSkillMastery,
-  getPlayer,
-  getPlayerCurriculum,
-  getRecentSessions,
-} from '@/lib/curriculum/server'
-import { StudentPracticeClient } from './StudentPracticeClient'
+import { notFound, redirect } from 'next/navigation'
+import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
+import { PracticeClient } from './PracticeClient'
 
 // Disable caching for this page - session state must always be fresh
 export const dynamic = 'force-dynamic'
@@ -18,21 +12,24 @@ interface StudentPracticePageProps {
 /**
  * Student Practice Page - Server Component
  *
- * Fetches all required data on the server and passes to client component.
- * This provides instant rendering with no loading spinner.
+ * This page ONLY shows the current problem for active practice sessions.
+ * All other states redirect to appropriate pages.
+ *
+ * Guards/Redirects:
+ * - No active session → /dashboard (show progress, start new session)
+ * - Draft/approved session (not started) → /configure (approve and start)
+ * - In_progress session → SHOW PROBLEM (this is the only state we render here)
+ * - Completed session → /summary (show results)
  *
  * URL: /practice/[studentId]
  */
 export default async function StudentPracticePage({ params }: StudentPracticePageProps) {
   const { studentId } = await params
 
-  // Fetch all data in parallel
-  const [player, activeSession, curriculum, skills, recentSessions] = await Promise.all([
+  // Fetch player and active session in parallel
+  const [player, activeSession] = await Promise.all([
     getPlayer(studentId),
     getActiveSessionPlan(studentId),
-    getPlayerCurriculum(studentId),
-    getAllSkillMastery(studentId),
-    getRecentSessions(studentId, 10),
   ])
 
   // 404 if player doesn't exist
@@ -40,16 +37,21 @@ export default async function StudentPracticePage({ params }: StudentPracticePag
     notFound()
   }
 
-  return (
-    <StudentPracticeClient
-      studentId={studentId}
-      initialPlayer={player}
-      initialActiveSession={activeSession}
-      initialCurriculum={{
-        curriculum,
-        skills,
-        recentSessions,
-      }}
-    />
-  )
+  // No active session → dashboard
+  if (!activeSession) {
+    redirect(`/practice/${studentId}/dashboard`)
+  }
+
+  // Draft or approved but not started → configure page
+  if (!activeSession.startedAt) {
+    redirect(`/practice/${studentId}/configure`)
+  }
+
+  // Session is completed → summary page
+  if (activeSession.completedAt) {
+    redirect(`/practice/${studentId}/summary`)
+  }
+
+  // Only state left: in_progress session → show problem
+  return <PracticeClient studentId={studentId} player={player} initialSession={activeSession} />
 }

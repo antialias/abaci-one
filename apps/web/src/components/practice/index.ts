@@ -4,7 +4,6 @@
  * These components support the daily practice system:
  * - StudentSelector: Choose which student is practicing
  * - ProgressDashboard: Show current progress and actions
- * - PlanReview: Review and approve session plan
  * - ActiveSession: Solve problems during practice
  * - SessionSummary: Results after completing session
  */
@@ -14,7 +13,6 @@ export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
 export { useHasPhysicalKeyboard, useIsTouchDevice } from './hooks/useDeviceDetection'
 export { NumericKeypad } from './NumericKeypad'
-export { PlanReview } from './PlanReview'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export type { CurrentPhaseInfo, SkillProgress } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'

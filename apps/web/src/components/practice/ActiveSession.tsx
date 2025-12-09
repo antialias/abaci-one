@@ -1157,10 +1157,36 @@ export function ActiveSession({
               className={css({
                 fontSize: '1rem',
                 color: isDark ? 'gray.400' : 'gray.600',
+                marginBottom: '1.5rem',
               })}
             >
               Take a break! Tap Resume when ready.
             </div>
+            <button
+              type="button"
+              data-action="resume-from-overlay"
+              onClick={handleResume}
+              className={css({
+                padding: '1rem 2rem',
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: 'white',
+                backgroundColor: 'green.500',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: 'green.400',
+                  transform: 'scale(1.05)',
+                },
+                _active: {
+                  transform: 'scale(0.95)',
+                },
+              })}
+            >
+              ▶ Resume
+            </button>
           </div>
         </div>
       )}

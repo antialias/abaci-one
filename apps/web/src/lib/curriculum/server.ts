@@ -17,12 +17,12 @@ import { getViewerId } from '@/lib/viewer'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
-// Re-export types that consumers might need
-export type { SessionPlan } from '@/db/schema/session-plans'
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-export type { PracticeSession } from '@/db/schema/practice-sessions'
 export type { Player } from '@/db/schema/players'
+export type { PracticeSession } from '@/db/schema/practice-sessions'
+// Re-export types that consumers might need
+export type { SessionPlan } from '@/db/schema/session-plans'
 
 /**
  * Prefetch all data needed for the practice page
@@ -83,4 +83,4 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
 export { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
-export { getActiveSessionPlan } from './session-planner'
+export { getActiveSessionPlan, getMostRecentCompletedSession } from './session-planner'

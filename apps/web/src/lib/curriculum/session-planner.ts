@@ -315,6 +315,21 @@ export async function getActiveSessionPlan(playerId: string): Promise<SessionPla
 }
 
 /**
+ * Get the most recently completed session plan for a player
+ * Used for the summary page after completing a session
+ */
+export async function getMostRecentCompletedSession(playerId: string): Promise<SessionPlan | null> {
+  const result = await db.query.sessionPlans.findFirst({
+    where: and(
+      eq(schema.sessionPlans.playerId, playerId),
+      eq(schema.sessionPlans.status, 'completed')
+    ),
+    orderBy: (plans, { desc }) => [desc(plans.completedAt)],
+  })
+  return result ?? null
+}
+
+/**
  * Approve a plan (teacher says "Let's Go!")
  */
 export async function approveSessionPlan(planId: string): Promise<SessionPlan> {
