@@ -35,10 +35,11 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
     createdAt: player.createdAt,
   }))
 
-  // Handle student selection - navigate to student's practice page
+  // Handle student selection - navigate to student's resume page
+  // The /resume route shows "Welcome back" for in-progress sessions
   const handleSelectStudent = useCallback(
     (student: StudentWithProgress) => {
-      router.push(`/practice/${student.id}`, { scroll: false })
+      router.push(`/practice/${student.id}/resume`, { scroll: false })
     },
     [router]
   )

@@ -163,7 +163,7 @@ export function StudentPracticeClient({
     if (currentPlan.completedAt) return 'summary'
     if (currentPlan.startedAt) return 'practicing'
     if (currentPlan.approvedAt) return 'reviewing'
-    return 'continue' // Plan exists but not yet approved
+    return 'continue' // Plan exists but not yet approved (draft)
   }, [currentPlan, isPlanLoading])
 
   // Handle continue practice - navigate to configuration page
@@ -175,9 +175,9 @@ export function StudentPracticeClient({
   const handleResumeSession = useCallback(() => {
     if (!currentPlan) return
 
-    // Session already started → view will show 'practicing' automatically
+    // Session already started → navigate to main practice page (no ?returning)
     if (currentPlan.startedAt) {
-      // No action needed - sessionView is already 'practicing'
+      router.push(`/practice/${studentId}`, { scroll: false })
       return
     }
 
@@ -190,7 +190,7 @@ export function StudentPracticeClient({
     // Draft (not approved) → need to approve it first
     // This will update sessionView to 'reviewing'
     approvePlan.mutate({ playerId: studentId, planId: currentPlan.id })
-  }, [currentPlan, studentId, startPlan, approvePlan])
+  }, [currentPlan, studentId, startPlan, approvePlan, router])
 
   // Handle starting fresh (abandon current session)
   const handleStartFresh = useCallback(() => {
