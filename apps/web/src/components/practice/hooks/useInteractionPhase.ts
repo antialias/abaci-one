@@ -219,7 +219,7 @@ export interface PrefixMatchResult {
  * Finds which prefix sum the user's answer matches, if any.
  * Also detects ambiguous cases where the input could be either:
  * 1. An intermediate prefix sum (user is stuck)
- * 2. The first digit(s) of the final answer (user is still typing)
+ * 2. The first digit(s) of a later prefix sum (user is still typing)
  *
  * Leading zeros disambiguate and REQUEST help:
  * - "3" alone is ambiguous (could be prefix sum 3 OR first digit of 33)
@@ -241,7 +241,6 @@ export function findMatchedPrefixIndex(
   if (Number.isNaN(answerNum)) return noMatch
 
   const finalAnswer = prefixSums[prefixSums.length - 1]
-  const finalAnswerStr = finalAnswer.toString()
 
   // Check if this is the final answer
   if (answerNum === finalAnswer) {
@@ -265,12 +264,18 @@ export function findMatchedPrefixIndex(
     }
   }
 
-  // Check if user's input could be a digit-prefix of the final answer
-  const couldBeFinalAnswerPrefix = finalAnswerStr.startsWith(userAnswer)
+  // Check if user's input could be a digit-prefix of ANY later prefix sum
+  // For example, with prefix sums [2, 3, 33, 43, 44]:
+  // - "3" matches prefix sum at index 1, but could also be first digit of 33 or 43
+  // - So "3" is ambiguous
+  const couldBeLaterPrefixPrefix = prefixSums.slice(matchedIndex + 1).some((laterSum) => {
+    const laterSumStr = laterSum.toString()
+    return laterSumStr.startsWith(userAnswer)
+  })
 
   return {
     matchedIndex,
-    isAmbiguous: couldBeFinalAnswerPrefix,
+    isAmbiguous: couldBeLaterPrefixPrefix,
     helpTermIndex: matchedIndex + 1, // Help with the NEXT term after the matched sum
   }
 }

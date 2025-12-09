@@ -129,6 +129,18 @@ describe('findMatchedPrefixIndex', () => {
     expect(result.helpTermIndex).toBe(2) // help with term at index 2
   })
 
+  it('detects ambiguous match when prefix sum is digit-prefix of intermediate prefix sum', () => {
+    // Problem: [2, 1, 30, 10, 1] -> prefix sums [2, 3, 33, 43, 44]
+    // Typing "3" matches prefix sum 3 at index 1
+    // But "3" is also the first digit of "33" at index 2
+    // Note: "3" is NOT a prefix of "43" or "44" (those start with "4")
+    const multiSums = [2, 3, 33, 43, 44]
+    const result = findMatchedPrefixIndex('3', multiSums)
+    expect(result.matchedIndex).toBe(1) // matches prefix sum 3 at index 1
+    expect(result.isAmbiguous).toBe(true) // "3" is also digit-prefix of "33"
+    expect(result.helpTermIndex).toBe(2) // help with term at index 2
+  })
+
   it('returns no match for input that does not match any prefix sum', () => {
     const result = findMatchedPrefixIndex('5', sums)
     expect(result.matchedIndex).toBe(-1)
