@@ -96,10 +96,7 @@ async function updateSessionPlan({
  * @param playerId - The player ID to fetch the session for
  * @param initialData - Optional initial data from server-side props (avoids loading state on direct page load)
  */
-export function useActiveSessionPlan(
-  playerId: string | null,
-  initialData?: SessionPlan | null
-) {
+export function useActiveSessionPlan(playerId: string | null, initialData?: SessionPlan | null) {
   return useQuery({
     queryKey: sessionPlanKeys.active(playerId ?? ''),
     queryFn: () => fetchActiveSessionPlan(playerId!),

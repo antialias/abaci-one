@@ -127,10 +127,10 @@ export function StudentPracticeClient({
   // - If cache has data (from ConfigureClient mutation): uses cache immediately
   // - If no cache but initialActiveSession exists: uses server props as initial data
   // - If neither: fetches from API (shows loading state briefly)
-  const {
-    data: fetchedPlan,
-    isLoading: isPlanLoading,
-  } = useActiveSessionPlan(studentId, initialActiveSession)
+  const { data: fetchedPlan, isLoading: isPlanLoading } = useActiveSessionPlan(
+    studentId,
+    initialActiveSession
+  )
 
   // Current plan from mutations or fetched data (priority order)
   // Mutations take priority (most recent user action), then fetched/cached data
