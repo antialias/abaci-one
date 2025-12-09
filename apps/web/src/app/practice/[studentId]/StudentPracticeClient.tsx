@@ -135,6 +135,7 @@ export function StudentPracticeClient({
   // Current plan from mutations or fetched data (priority order)
   // Mutations take priority (most recent user action), then fetched/cached data
   const currentPlan =
+    endEarly.data ??
     recordResult.data ??
     startPlan.data ??
     approvePlan.data ??
