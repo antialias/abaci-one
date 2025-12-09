@@ -12,18 +12,24 @@ import { css } from '../../../../../styled-system/css'
 interface SummaryClientProps {
   studentId: string
   player: Player
-  session: SessionPlan
+  session: SessionPlan | null
 }
 
 /**
  * Summary Client Component
  *
  * Displays the session results and provides navigation options.
+ * Handles three cases:
+ * - In-progress session: shows partial results
+ * - Completed session: shows full results
+ * - No session: shows empty state
  */
 export function SummaryClient({ studentId, player, session }: SummaryClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  const isInProgress = session?.startedAt && !session?.completedAt
 
   // Handle practice again - navigate to configure page for new session
   const handlePracticeAgain = useCallback(() => {
@@ -34,6 +40,19 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
   const handleBackToDashboard = useCallback(() => {
     router.push(`/practice/${studentId}/dashboard`, { scroll: false })
   }, [studentId, router])
+
+  // Determine header text based on session state
+  const headerTitle = isInProgress
+    ? 'Session In Progress'
+    : session
+      ? 'Session Complete'
+      : 'No Sessions Yet'
+
+  const headerSubtitle = isInProgress
+    ? `${player.name} is currently practicing`
+    : session
+      ? 'Great work on your practice session!'
+      : `${player.name} hasn't completed any sessions yet`
 
   return (
     <PageWithNav>
@@ -69,7 +88,7 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
                 marginBottom: '0.5rem',
               })}
             >
-              Session Complete
+              {headerTitle}
             </h1>
             <p
               className={css({
@@ -77,17 +96,57 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
                 color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
-              Great work on your practice session!
+              {headerSubtitle}
             </p>
           </header>
 
-          {/* Session Summary */}
-          <SessionSummary
-            plan={session}
-            studentName={player.name}
-            onPracticeAgain={handlePracticeAgain}
-            onBackToDashboard={handleBackToDashboard}
-          />
+          {/* Session Summary or Empty State */}
+          {session ? (
+            <SessionSummary
+              plan={session}
+              studentName={player.name}
+              onPracticeAgain={handlePracticeAgain}
+              onBackToDashboard={handleBackToDashboard}
+            />
+          ) : (
+            <div
+              className={css({
+                padding: '3rem',
+                textAlign: 'center',
+                backgroundColor: isDark ? 'gray.800' : 'white',
+                borderRadius: '16px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+              })}
+            >
+              <p
+                className={css({
+                  fontSize: '1.125rem',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                  marginBottom: '1.5rem',
+                })}
+              >
+                Start a practice session to see results here.
+              </p>
+              <button
+                type="button"
+                onClick={handlePracticeAgain}
+                className={css({
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  backgroundColor: 'blue.500',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: 'blue.600' },
+                })}
+              >
+                Start Practice
+              </button>
+            </div>
+          )}
         </div>
       </main>
     </PageWithNav>

@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { getPhaseDisplayInfo } from '@/lib/curriculum/definitions'
 import {
   getActiveSessionPlan,
@@ -8,7 +8,7 @@ import {
 } from '@/lib/curriculum/server'
 import { ConfigureClient } from './ConfigureClient'
 
-// Disable caching - must check session state fresh every time
+// Disable caching - session data should be fresh
 export const dynamic = 'force-dynamic'
 
 interface ConfigurePageProps {
@@ -23,10 +23,8 @@ interface ConfigurePageProps {
  * - Live preview showing estimated problems, session structure, and problem breakdown
  * - Single "Let's Go!" button that generates + starts the session
  *
- * Guards:
- * - If there's an in_progress session → redirect to /practice (show problem)
- * - If there's a completed session → allow access (start new session)
- * - If there's a draft/approved session → allow access (will be handled by client)
+ * This page is always accessible regardless of session state.
+ * Parents/teachers can configure the next session while a session is in progress.
  *
  * URL: /practice/[studentId]/configure
  */
@@ -44,11 +42,6 @@ export default async function ConfigurePage({ params }: ConfigurePageProps) {
   // 404 if player doesn't exist
   if (!player) {
     notFound()
-  }
-
-  // Guard: if there's an in_progress session, redirect to practice (show problem)
-  if (activeSession?.startedAt && !activeSession.completedAt) {
-    redirect(`/practice/${studentId}`)
   }
 
   // Get phase display info for the focus description
@@ -70,9 +63,6 @@ export default async function ConfigurePage({ params }: ConfigurePageProps) {
     avgSecondsPerProblem = Math.round(weightedSum / totalProblems / 1000)
   }
 
-  // Allow access if:
-  // - No active session (start fresh)
-  // - Draft/approved session exists (will be started when "Let's Go!" clicked)
   return (
     <ConfigureClient
       studentId={studentId}

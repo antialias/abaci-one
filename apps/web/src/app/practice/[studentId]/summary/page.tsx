@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
@@ -6,7 +6,7 @@ import {
 } from '@/lib/curriculum/server'
 import { SummaryClient } from './SummaryClient'
 
-// Disable caching for this page - session state must always be fresh
+// Disable caching for this page - session data should be fresh
 export const dynamic = 'force-dynamic'
 
 interface SummaryPageProps {
@@ -16,11 +16,13 @@ interface SummaryPageProps {
 /**
  * Summary Page - Server Component
  *
- * Shows the results of a completed practice session.
+ * Shows the results of a practice session:
+ * - If there's an in-progress session → shows partial results so far
+ * - If there's a completed session → shows the most recent completed session
+ * - If no sessions exist → shows "no sessions yet" message
  *
- * Guards:
- * - If there's an in_progress session → redirect to /practice/[studentId] (can't view summary mid-session)
- * - If there's no completed session → redirect to /dashboard (nothing to show)
+ * This page is always accessible regardless of session state.
+ * Parents/teachers can view progress even while a session is in progress.
  *
  * URL: /practice/[studentId]/summary
  */
@@ -39,20 +41,8 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
     notFound()
   }
 
-  // Guard: if there's an in_progress session, can't view summary
-  if (activeSession?.startedAt && !activeSession.completedAt) {
-    redirect(`/practice/${studentId}`)
-  }
+  // Priority: show in-progress session (partial results) > completed session > null
+  const sessionToShow = activeSession?.startedAt ? activeSession : completedSession
 
-  // Guard: if there's a draft/approved session, redirect to configure
-  if (activeSession && !activeSession.startedAt) {
-    redirect(`/practice/${studentId}/configure`)
-  }
-
-  // Guard: if no completed session exists, redirect to dashboard
-  if (!completedSession) {
-    redirect(`/practice/${studentId}/dashboard`)
-  }
-
-  return <SummaryClient studentId={studentId} player={player} session={completedSession} />
+  return <SummaryClient studentId={studentId} player={player} session={sessionToShow} />
 }
