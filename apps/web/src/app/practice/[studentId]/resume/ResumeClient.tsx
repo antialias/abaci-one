@@ -7,25 +7,32 @@ import { ContinueSessionCard } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
-import { useAbandonSession } from '@/hooks/useSessionPlan'
+import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { css } from '../../../../../styled-system/css'
 
 interface ResumeClientProps {
   studentId: string
   player: Player
-  session: SessionPlan
+  initialSession: SessionPlan
 }
 
 /**
  * Client component for the Resume page
  *
  * Shows the "Welcome back" card for students returning to an in-progress session.
+ * Uses React Query to get the most up-to-date session data (from cache if available,
+ * otherwise uses server-provided initial data).
  */
-export function ResumeClient({ studentId, player, session }: ResumeClientProps) {
+export function ResumeClient({ studentId, player, initialSession }: ResumeClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const abandonSession = useAbandonSession()
+
+  // Use React Query to get fresh session data
+  // If there's cached data from in-progress session, use that; otherwise use server props
+  const { data: fetchedSession } = useActiveSessionPlan(studentId, initialSession)
+  const session = fetchedSession ?? initialSession
 
   // Handle continuing the session - navigate to main practice page
   const handleContinue = useCallback(() => {

@@ -41,11 +41,5 @@ export default async function ResumePage({ params }: ResumePageProps) {
     redirect(`/practice/${studentId}`)
   }
 
-  return (
-    <ResumeClient
-      studentId={studentId}
-      player={player}
-      session={activeSession}
-    />
-  )
+  return <ResumeClient studentId={studentId} player={player} initialSession={activeSession} />
 }
