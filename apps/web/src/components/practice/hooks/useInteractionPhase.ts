@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 
 // =============================================================================
@@ -81,6 +81,9 @@ export type InteractionPhase =
 /** Threshold for correction count before requiring manual submit */
 export const MANUAL_SUBMIT_THRESHOLD = 2
 
+/** Time to wait before auto-triggering help in ambiguous cases (ms) */
+export const AMBIGUOUS_HELP_DELAY_MS = 4000
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
@@ -145,6 +148,11 @@ export function computePrefixSums(terms: number[]): number[] {
 
 /**
  * Checks if a digit would be consistent with any prefix sum.
+ *
+ * Leading zeros are allowed as a disambiguation mechanism:
+ * - Typing "0" when answer is empty is allowed (starts a multi-digit entry)
+ * - Typing "03" signals intent to enter a 2+ digit number ending in 3
+ * - The numeric value after stripping leading zeros must be consistent
  */
 export function isDigitConsistent(
   currentAnswer: string,
@@ -152,12 +160,25 @@ export function isDigitConsistent(
   prefixSums: number[]
 ): boolean {
   const newAnswer = currentAnswer + digit
-  const newAnswerNum = parseInt(newAnswer, 10)
+
+  // Allow leading zeros as disambiguation (e.g., "0" or "03" for 3)
+  // Strip leading zeros to get the numeric prefix we're building toward
+  const strippedAnswer = newAnswer.replace(/^0+/, '') || '0'
+
+  // If the result is just zeros, allow it (user is typing leading zeros)
+  if (strippedAnswer === '0' && newAnswer.length > 0) {
+    // Allow typing zeros as long as we haven't exceeded max answer length
+    const maxLength = Math.max(...prefixSums.map((s) => s.toString().length))
+    return newAnswer.length <= maxLength
+  }
+
+  const newAnswerNum = parseInt(strippedAnswer, 10)
   if (Number.isNaN(newAnswerNum)) return false
 
   for (const sum of prefixSums) {
     const sumStr = sum.toString()
-    if (sumStr.startsWith(newAnswer)) {
+    // Check if stripped answer is a prefix of any sum
+    if (sumStr.startsWith(strippedAnswer)) {
       return true
     }
   }
@@ -165,13 +186,70 @@ export function isDigitConsistent(
 }
 
 /**
- * Finds which prefix sum the user's answer matches, if any.
- * Returns -1 if no match.
+ * Result of checking for prefix sum matches
  */
-export function findMatchedPrefixIndex(userAnswer: string, prefixSums: number[]): number {
+export interface PrefixMatchResult {
+  /** Index of matched prefix sum (-1 if none) */
+  matchedIndex: number
+  /** Whether this is an ambiguous match (could be digit-prefix of final answer) */
+  isAmbiguous: boolean
+  /** The term index to show help for (matchedIndex + 1, since we help with the NEXT term) */
+  helpTermIndex: number
+}
+
+/**
+ * Finds which prefix sum the user's answer matches, if any.
+ * Also detects ambiguous cases where the input could be either:
+ * 1. An intermediate prefix sum (user is stuck)
+ * 2. The first digit(s) of the final answer (user is still typing)
+ *
+ * Leading zeros disambiguate and REQUEST help:
+ * - "3" alone is ambiguous (could be prefix sum 3 OR first digit of 33)
+ * - "03" is unambiguous - user clearly wants help with prefix sum 3
+ */
+export function findMatchedPrefixIndex(userAnswer: string, prefixSums: number[]): PrefixMatchResult {
+  const noMatch: PrefixMatchResult = { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 }
+
+  if (!userAnswer) return noMatch
+
+  // Leading zeros indicate user is explicitly requesting help for that prefix sum
+  // "03" means "I want help with prefix sum 3" - this is NOT ambiguous
+  const hasLeadingZero = userAnswer.startsWith('0') && userAnswer.length > 1
+
   const answerNum = parseInt(userAnswer, 10)
-  if (Number.isNaN(answerNum)) return -1
-  return prefixSums.indexOf(answerNum)
+  if (Number.isNaN(answerNum)) return noMatch
+
+  const finalAnswer = prefixSums[prefixSums.length - 1]
+  const finalAnswerStr = finalAnswer.toString()
+
+  // Check if this is the final answer
+  if (answerNum === finalAnswer) {
+    return { matchedIndex: prefixSums.length - 1, isAmbiguous: false, helpTermIndex: -1 }
+  }
+
+  // Check if user's input matches an intermediate prefix sum
+  const matchedIndex = prefixSums.findIndex((sum, i) => i < prefixSums.length - 1 && sum === answerNum)
+
+  if (matchedIndex === -1) return noMatch
+
+  // If they used leading zeros, they're explicitly requesting help - NOT ambiguous
+  // "03" clearly means "help me with prefix sum 3"
+  if (hasLeadingZero) {
+    return {
+      matchedIndex,
+      isAmbiguous: false, // Leading zero removes ambiguity - they want help
+      helpTermIndex: matchedIndex + 1,
+    }
+  }
+
+  // Check if user's input could be a digit-prefix of the final answer
+  const couldBeFinalAnswerPrefix = finalAnswerStr.startsWith(userAnswer)
+
+  return {
+    matchedIndex,
+    isAmbiguous: couldBeFinalAnswerPrefix,
+    helpTermIndex: matchedIndex + 1, // Help with the NEXT term after the matched sum
+  }
 }
 
 /**
@@ -189,7 +267,15 @@ export function computeHelpContext(terms: number[], termIndex: number): HelpCont
 // Hook
 // =============================================================================
 
+export interface InitialProblemData {
+  problem: GeneratedProblem
+  slotIndex: number
+  partIndex: number
+}
+
 export interface UseInteractionPhaseOptions {
+  /** Initial problem to hydrate with (for SSR) */
+  initialProblem?: InitialProblemData
   /** Called when auto-submit threshold is exceeded */
   onManualSubmitRequired?: () => void
 }
@@ -215,12 +301,20 @@ export interface UseInteractionPhaseReturn {
   // Computed values (only valid when attempt exists)
   /** Prefix sums for current problem */
   prefixSums: number[]
-  /** Matched prefix index (-1 if none) */
+  /** Full prefix match result with ambiguity info */
+  prefixMatch: PrefixMatchResult
+  /** Matched prefix index (-1 if none) - shorthand for prefixMatch.matchedIndex */
   matchedPrefixIndex: number
   /** Can the submit button be pressed? */
   canSubmit: boolean
   /** Should auto-submit trigger? */
   shouldAutoSubmit: boolean
+
+  // Ambiguous prefix state
+  /** Term index to show "need help?" prompt for (-1 if not in ambiguous state) */
+  ambiguousHelpTermIndex: number
+  /** Whether the disambiguation timer has elapsed */
+  ambiguousTimerElapsed: boolean
 
   // Actions
   /** Load a new problem (loading → inputting) */
@@ -256,8 +350,20 @@ export interface UseInteractionPhaseReturn {
 export function useInteractionPhase(
   options: UseInteractionPhaseOptions = {}
 ): UseInteractionPhaseReturn {
-  const { onManualSubmitRequired } = options
-  const [phase, setPhase] = useState<InteractionPhase>({ phase: 'loading' })
+  const { initialProblem, onManualSubmitRequired } = options
+
+  // Initialize state with problem if provided (for SSR hydration)
+  const [phase, setPhase] = useState<InteractionPhase>(() => {
+    if (initialProblem) {
+      const attempt = createAttemptInput(
+        initialProblem.problem,
+        initialProblem.slotIndex,
+        initialProblem.partIndex
+      )
+      return { phase: 'inputting', attempt }
+    }
+    return { phase: 'loading' }
+  })
 
   // ==========================================================================
   // Derived State
@@ -299,10 +405,67 @@ export function useInteractionPhase(
     return computePrefixSums(attempt.problem.terms)
   }, [attempt])
 
-  const matchedPrefixIndex = useMemo(() => {
-    if (!attempt) return -1
+  const prefixMatch = useMemo((): PrefixMatchResult => {
+    if (!attempt) return { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 }
     return findMatchedPrefixIndex(attempt.userAnswer, prefixSums)
   }, [attempt, prefixSums])
+
+  // Shorthand for backward compatibility
+  const matchedPrefixIndex = prefixMatch.matchedIndex
+
+  // ==========================================================================
+  // Ambiguous Prefix Timer
+  // ==========================================================================
+
+  // Track when the current ambiguous match started
+  const [ambiguousTimerElapsed, setAmbiguousTimerElapsed] = useState(false)
+  const ambiguousTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastAmbiguousKeyRef = useRef<string | null>(null)
+
+  // Create a stable key for the current ambiguous state
+  const ambiguousKey = useMemo(() => {
+    if (!prefixMatch.isAmbiguous || prefixMatch.helpTermIndex === -1) return null
+    // Key includes the matched sum and term index so timer resets if they change
+    return `${attempt?.userAnswer}-${prefixMatch.helpTermIndex}`
+  }, [prefixMatch.isAmbiguous, prefixMatch.helpTermIndex, attempt?.userAnswer])
+
+  // Manage the timer
+  useEffect(() => {
+    // Clear existing timer
+    if (ambiguousTimerRef.current) {
+      clearTimeout(ambiguousTimerRef.current)
+      ambiguousTimerRef.current = null
+    }
+
+    // If no ambiguous state, reset
+    if (!ambiguousKey) {
+      setAmbiguousTimerElapsed(false)
+      lastAmbiguousKeyRef.current = null
+      return
+    }
+
+    // If this is a new ambiguous state, reset and start timer
+    if (ambiguousKey !== lastAmbiguousKeyRef.current) {
+      setAmbiguousTimerElapsed(false)
+      lastAmbiguousKeyRef.current = ambiguousKey
+
+      ambiguousTimerRef.current = setTimeout(() => {
+        setAmbiguousTimerElapsed(true)
+      }, AMBIGUOUS_HELP_DELAY_MS)
+    }
+
+    return () => {
+      if (ambiguousTimerRef.current) {
+        clearTimeout(ambiguousTimerRef.current)
+      }
+    }
+  }, [ambiguousKey])
+
+  // Compute the term index to show "need help?" for
+  const ambiguousHelpTermIndex = useMemo(() => {
+    if (!prefixMatch.isAmbiguous) return -1
+    return prefixMatch.helpTermIndex
+  }, [prefixMatch])
 
   const canSubmit = useMemo(() => {
     if (!attempt || !attempt.userAnswer) return false
@@ -514,9 +677,12 @@ export function useInteractionPhase(
     showFeedback,
     inputIsFocused,
     prefixSums,
+    prefixMatch,
     matchedPrefixIndex,
     canSubmit,
     shouldAutoSubmit,
+    ambiguousHelpTermIndex,
+    ambiguousTimerElapsed,
     loadProblem,
     handleDigit,
     handleBackspace,

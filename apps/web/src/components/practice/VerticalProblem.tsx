@@ -19,6 +19,8 @@ interface VerticalProblemProps {
   size?: 'normal' | 'large'
   /** Index of the term currently being helped with (shows arrow indicator) */
   currentHelpTermIndex?: number
+  /** Index of the term to show "need help?" prompt for (ambiguous prefix case) */
+  needHelpTermIndex?: number
   /** Rejected digit to show as red X (null = no rejection) */
   rejectedDigit?: string | null
   /** Help overlay to render adjacent to the current help term (positioned above the term row) */
@@ -42,6 +44,7 @@ export function VerticalProblem({
   correctAnswer,
   size = 'normal',
   currentHelpTermIndex,
+  needHelpTermIndex,
   rejectedDigit = null,
   helpOverlay,
 }: VerticalProblemProps) {
@@ -118,12 +121,14 @@ export function VerticalProblem({
 
         // Check if this term row should show the help overlay
         const isCurrentHelp = index === currentHelpTermIndex
+        // Check if this term row should show "need help?" prompt (ambiguous case)
+        const showNeedHelp = index === needHelpTermIndex && !isCurrentHelp
 
         return (
           <div
             key={index}
             data-element="term-row"
-            data-term-status={isCurrentHelp ? 'current' : 'pending'}
+            data-term-status={isCurrentHelp ? 'current' : showNeedHelp ? 'need-help' : 'pending'}
             className={css({
               display: 'flex',
               alignItems: 'center',
@@ -132,6 +137,44 @@ export function VerticalProblem({
               transition: 'all 0.2s ease',
             })}
           >
+            {/* "Need help?" prompt for ambiguous prefix case */}
+            {showNeedHelp && (
+              <div
+                data-element="need-help-prompt"
+                className={css({
+                  position: 'absolute',
+                  right: '100%',
+                  marginRight: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.375rem 0.625rem',
+                  backgroundColor: isDark ? 'rgba(250, 204, 21, 0.15)' : 'rgba(202, 138, 4, 0.1)',
+                  border: '1px solid',
+                  borderColor: isDark ? 'yellow.500' : 'yellow.400',
+                  borderRadius: '9999px',
+                  color: isDark ? 'yellow.300' : 'yellow.700',
+                  fontSize: '0.6875rem',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isDark
+                    ? '0 0 12px rgba(250, 204, 21, 0.2)'
+                    : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                  animation: 'pulse 2s ease-in-out infinite',
+                })}
+              >
+                <span>need help?</span>
+                <span
+                  className={css({
+                    fontSize: '0.875rem',
+                    lineHeight: 1,
+                  })}
+                >
+                  →
+                </span>
+              </div>
+            )}
+
             {/* Arrow indicator for current help term (the term being added) */}
             {isCurrentHelp && (
               <div

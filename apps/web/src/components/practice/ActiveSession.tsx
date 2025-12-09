@@ -5,20 +5,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
-  GeneratedProblem,
-  ProblemConstraints,
   ProblemSlot,
   SessionHealth,
   SessionPart,
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
-import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
-import {
-  analyzeRequiredSkills,
-  type ProblemConstraints as GeneratorConstraints,
-  generateSingleProblem,
-} from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
@@ -27,6 +19,7 @@ import { useInteractionPhase } from './hooks/useInteractionPhase'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
+import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
 
 interface ActiveSessionProps {
@@ -204,6 +197,20 @@ export function ActiveSession({
   // Sound effects
   const { playSound } = usePracticeSoundEffects()
 
+  // Compute initial problem from plan for SSR hydration (must be before useInteractionPhase)
+  const initialProblem = useMemo(() => {
+    const currentPart = plan.parts[plan.currentPartIndex]
+    const currentSlot = currentPart?.slots[plan.currentSlotIndex]
+    if (currentPart && currentSlot?.problem) {
+      return {
+        problem: currentSlot.problem,
+        slotIndex: plan.currentSlotIndex,
+        partIndex: plan.currentPartIndex,
+      }
+    }
+    return undefined
+  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+
   // Interaction state machine - single source of truth for UI state
   const {
     phase,
@@ -217,6 +224,8 @@ export function ActiveSession({
     matchedPrefixIndex,
     canSubmit,
     shouldAutoSubmit,
+    ambiguousHelpTermIndex,
+    ambiguousTimerElapsed,
     loadProblem,
     handleDigit,
     handleBackspace,
@@ -230,6 +239,7 @@ export function ActiveSession({
     pause,
     resume,
   } = useInteractionPhase({
+    initialProblem,
     onManualSubmitRequired: () => playSound('womp_womp'),
   })
 
@@ -387,24 +397,46 @@ export function ActiveSession({
   // Initialize problem when slot changes and in loading phase
   useEffect(() => {
     if (currentPart && currentSlot && phase.phase === 'loading') {
-      const problem = currentSlot.problem || generateProblemFromConstraints(currentSlot.constraints)
-      loadProblem(problem, currentSlotIndex, currentPartIndex)
+      if (!currentSlot.problem) {
+        throw new Error(
+          `Problem not pre-generated for slot ${currentSlotIndex} in part ${currentPartIndex}. ` +
+            'This indicates a bug in session planning - problems should be generated at plan creation time.'
+        )
+      }
+      loadProblem(currentSlot.problem, currentSlotIndex, currentPartIndex)
     }
   }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, phase.phase, loadProblem])
 
   // Auto-trigger help when prefix sum is detected
+  // For unambiguous matches: trigger immediately
+  // For ambiguous matches: wait for the disambiguation timer to elapse
   useEffect(() => {
-    if (
-      phase.phase === 'inputting' &&
-      matchedPrefixIndex >= 0 &&
-      matchedPrefixIndex < prefixSums.length - 1
-    ) {
+    if (phase.phase !== 'inputting') return
+
+    // If there's an ambiguous match, only trigger help when timer has elapsed
+    if (ambiguousHelpTermIndex >= 0) {
+      if (ambiguousTimerElapsed) {
+        enterHelpMode(ambiguousHelpTermIndex)
+      }
+      // Otherwise, wait - the "need help?" prompt is shown via ambiguousHelpTermIndex
+      return
+    }
+
+    // For unambiguous matches, trigger immediately
+    if (matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1) {
       const newConfirmedCount = matchedPrefixIndex + 1
       if (newConfirmedCount < phase.attempt.problem.terms.length) {
         enterHelpMode(newConfirmedCount)
       }
     }
-  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode])
+  }, [
+    phase,
+    matchedPrefixIndex,
+    prefixSums.length,
+    ambiguousHelpTermIndex,
+    ambiguousTimerElapsed,
+    enterHelpMode,
+  ])
 
   // Handle when student reaches target value on help abacus
   const handleTargetReached = useCallback(() => {
@@ -455,13 +487,16 @@ export function ActiveSession({
 
         if (nextSlot && currentPart && isCorrect) {
           // Has next problem - animate transition
-          const nextProblem =
-            nextSlot.problem || generateProblemFromConstraints(nextSlot.constraints)
-
+          if (!nextSlot.problem) {
+            throw new Error(
+              `Problem not pre-generated for slot ${nextSlotIndex} in part ${currentPartIndex}. ` +
+                'This indicates a bug in session planning - problems should be generated at plan creation time.'
+            )
+          }
           // Mark that we need to apply centering offset in useLayoutEffect
           needsCenteringOffsetRef.current = true
 
-          startTransition(nextProblem, nextSlotIndex)
+          startTransition(nextSlot.problem, nextSlotIndex)
         } else {
           // End of part or incorrect - clear to loading
           clearToLoading()
@@ -926,6 +961,12 @@ export function ActiveSession({
                   correctAnswer={attempt.problem.answer}
                   size="large"
                   currentHelpTermIndex={helpContext?.termIndex}
+                  needHelpTermIndex={
+                    // Only show "need help?" prompt when not already in help mode
+                    !showHelpOverlay && ambiguousHelpTermIndex >= 0
+                      ? ambiguousHelpTermIndex
+                      : undefined
+                  }
                   rejectedDigit={attempt.rejectedDigit}
                   helpOverlay={
                     showHelpOverlay && helpContext ? (
@@ -1179,74 +1220,20 @@ export function ActiveSession({
           </div>
         </div>
       )}
+
+      {/* Debug panel - shows current problem details when visual debug mode is on */}
+      {currentSlot?.problem && (
+        <ProblemDebugPanel
+          problem={currentSlot.problem}
+          slot={currentSlot}
+          part={currentPart}
+          partIndex={currentPartIndex}
+          slotIndex={currentSlotIndex}
+          userInput={attempt.userAnswer}
+          phaseName={phase.phase}
+        />
+      )}
     </div>
   )
 }
-
-/**
- * Generate a problem from slot constraints using the actual skill-based algorithm.
- */
-function generateProblemFromConstraints(constraints: ProblemConstraints): GeneratedProblem {
-  const baseSkillSet = createBasicSkillSet()
-
-  const requiredSkills: SkillSet = {
-    basic: { ...baseSkillSet.basic, ...constraints.requiredSkills?.basic },
-    fiveComplements: {
-      ...baseSkillSet.fiveComplements,
-      ...constraints.requiredSkills?.fiveComplements,
-    },
-    tenComplements: {
-      ...baseSkillSet.tenComplements,
-      ...constraints.requiredSkills?.tenComplements,
-    },
-    fiveComplementsSub: {
-      ...baseSkillSet.fiveComplementsSub,
-      ...constraints.requiredSkills?.fiveComplementsSub,
-    },
-    tenComplementsSub: {
-      ...baseSkillSet.tenComplementsSub,
-      ...constraints.requiredSkills?.tenComplementsSub,
-    },
-  }
-
-  const maxDigits = constraints.digitRange?.max || 1
-  const maxValue = 10 ** maxDigits - 1
-
-  const generatorConstraints: GeneratorConstraints = {
-    numberRange: { min: 1, max: maxValue },
-    maxTerms: constraints.termCount?.max || 5,
-    problemCount: 1,
-  }
-
-  const generatedProblem = generateSingleProblem(
-    generatorConstraints,
-    requiredSkills,
-    constraints.targetSkills,
-    constraints.forbiddenSkills
-  )
-
-  if (generatedProblem) {
-    return {
-      terms: generatedProblem.terms,
-      answer: generatedProblem.answer,
-      skillsRequired: generatedProblem.requiredSkills,
-    }
-  }
-
-  // Fallback
-  const termCount = constraints.termCount?.min || 3
-  const terms: number[] = []
-  for (let i = 0; i < termCount; i++) {
-    terms.push(Math.floor(Math.random() * Math.min(maxValue, 9)) + 1)
-  }
-  const answer = terms.reduce((sum, t) => sum + t, 0)
-  const skillsRequired = analyzeRequiredSkills(terms, answer)
-
-  return {
-    terms,
-    answer,
-    skillsRequired,
-  }
-}
-
 export default ActiveSession
