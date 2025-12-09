@@ -132,7 +132,8 @@
       "Bash(../../README.md )",
       "Bash(.claude/CLAUDE.md)",
       "Bash(mcp__sqlite__describe_table:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mcp__sqlite__list_tables:*)"
     ],
     "deny": [],
     "ask": []

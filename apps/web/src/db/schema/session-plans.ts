@@ -401,6 +401,9 @@ export const DEFAULT_PLAN_CONFIG = {
     mastered: 7,
     practicing: 3,
   },
+
+  /** Session timeout in hours - sessions older than this are auto-abandoned on next access */
+  sessionTimeoutHours: 24,
 } as const
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG

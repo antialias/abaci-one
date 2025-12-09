@@ -55,11 +55,29 @@ export interface OutgoingAttempt {
 }
 
 /**
+ * Context for the disambiguation phase - when user's input matches
+ * an intermediate prefix sum but could also be the start of the final answer
+ */
+export interface DisambiguationContext {
+  /** Index of the matched prefix sum */
+  matchedPrefixIndex: number
+  /** Term index to show help for if they want it */
+  helpTermIndex: number
+  /** When the disambiguation timer started */
+  timerStartedAt: number
+}
+
+/**
  * Non-paused phases (used for resumePhase type)
  */
 export type ActivePhase =
   | { phase: 'loading' }
   | { phase: 'inputting'; attempt: AttemptInput }
+  | {
+      phase: 'awaitingDisambiguation'
+      attempt: AttemptInput
+      disambiguationContext: DisambiguationContext
+    }
   | { phase: 'helpMode'; attempt: AttemptInput; helpContext: HelpContext }
   | { phase: 'submitting'; attempt: AttemptInput }
   | { phase: 'showingFeedback'; attempt: AttemptInput; result: 'correct' | 'incorrect' }
@@ -207,7 +225,10 @@ export interface PrefixMatchResult {
  * - "3" alone is ambiguous (could be prefix sum 3 OR first digit of 33)
  * - "03" is unambiguous - user clearly wants help with prefix sum 3
  */
-export function findMatchedPrefixIndex(userAnswer: string, prefixSums: number[]): PrefixMatchResult {
+export function findMatchedPrefixIndex(
+  userAnswer: string,
+  prefixSums: number[]
+): PrefixMatchResult {
   const noMatch: PrefixMatchResult = { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 }
 
   if (!userAnswer) return noMatch
@@ -228,7 +249,9 @@ export function findMatchedPrefixIndex(userAnswer: string, prefixSums: number[])
   }
 
   // Check if user's input matches an intermediate prefix sum
-  const matchedIndex = prefixSums.findIndex((sum, i) => i < prefixSums.length - 1 && sum === answerNum)
+  const matchedIndex = prefixSums.findIndex(
+    (sum, i) => i < prefixSums.length - 1 && sum === answerNum
+  )
 
   if (matchedIndex === -1) return noMatch
 
@@ -284,6 +307,14 @@ export interface UseInteractionPhaseReturn {
   // Current phase
   phase: InteractionPhase
 
+  // Extracted state from phase (single source of truth)
+  /** Current attempt being worked on (null in loading/complete phases) */
+  attempt: AttemptInput | null
+  /** Help context when in helpMode (null otherwise) */
+  helpContext: HelpContext | null
+  /** Outgoing attempt during transition animation (null otherwise) */
+  outgoingAttempt: OutgoingAttempt | null
+
   // Derived predicates for UI
   /** Can we accept keyboard/keypad input? */
   canAcceptInput: boolean
@@ -297,6 +328,12 @@ export interface UseInteractionPhaseReturn {
   showFeedback: boolean
   /** Is the input box focused? */
   inputIsFocused: boolean
+  /** Are we currently in the transitioning phase? */
+  isTransitioning: boolean
+  /** Are we currently paused? */
+  isPaused: boolean
+  /** Are we currently submitting? */
+  isSubmitting: boolean
 
   // Computed values (only valid when attempt exists)
   /** Prefix sums for current problem */
@@ -311,10 +348,8 @@ export interface UseInteractionPhaseReturn {
   shouldAutoSubmit: boolean
 
   // Ambiguous prefix state
-  /** Term index to show "need help?" prompt for (-1 if not in ambiguous state) */
+  /** Term index to show "need help?" prompt for (-1 if not in awaitingDisambiguation phase) */
   ambiguousHelpTermIndex: number
-  /** Whether the disambiguation timer has elapsed */
-  ambiguousTimerElapsed: boolean
 
   // Actions
   /** Load a new problem (loading → inputting) */
@@ -373,6 +408,7 @@ export function useInteractionPhase(
   const attempt = useMemo((): AttemptInput | null => {
     switch (phase.phase) {
       case 'inputting':
+      case 'awaitingDisambiguation':
       case 'helpMode':
       case 'submitting':
       case 'showingFeedback':
@@ -384,6 +420,7 @@ export function useInteractionPhase(
         const inner = phase.resumePhase
         if (
           inner.phase === 'inputting' ||
+          inner.phase === 'awaitingDisambiguation' ||
           inner.phase === 'helpMode' ||
           inner.phase === 'submitting' ||
           inner.phase === 'showingFeedback'
@@ -410,62 +447,62 @@ export function useInteractionPhase(
     return findMatchedPrefixIndex(attempt.userAnswer, prefixSums)
   }, [attempt, prefixSums])
 
-  // Shorthand for backward compatibility
+  // Convenience shorthand - most callers only need the index
   const matchedPrefixIndex = prefixMatch.matchedIndex
 
   // ==========================================================================
-  // Ambiguous Prefix Timer
+  // Disambiguation Timer (managed via phase state)
   // ==========================================================================
 
-  // Track when the current ambiguous match started
-  const [ambiguousTimerElapsed, setAmbiguousTimerElapsed] = useState(false)
-  const ambiguousTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const lastAmbiguousKeyRef = useRef<string | null>(null)
+  // Timer ref for the disambiguation timeout
+  const disambiguationTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Create a stable key for the current ambiguous state
-  const ambiguousKey = useMemo(() => {
-    if (!prefixMatch.isAmbiguous || prefixMatch.helpTermIndex === -1) return null
-    // Key includes the matched sum and term index so timer resets if they change
-    return `${attempt?.userAnswer}-${prefixMatch.helpTermIndex}`
-  }, [prefixMatch.isAmbiguous, prefixMatch.helpTermIndex, attempt?.userAnswer])
-
-  // Manage the timer
+  // Manage disambiguation timer based on phase
   useEffect(() => {
-    // Clear existing timer
-    if (ambiguousTimerRef.current) {
-      clearTimeout(ambiguousTimerRef.current)
-      ambiguousTimerRef.current = null
+    // Clear any existing timer
+    if (disambiguationTimerRef.current) {
+      clearTimeout(disambiguationTimerRef.current)
+      disambiguationTimerRef.current = null
     }
 
-    // If no ambiguous state, reset
-    if (!ambiguousKey) {
-      setAmbiguousTimerElapsed(false)
-      lastAmbiguousKeyRef.current = null
-      return
-    }
+    // Only run timer when in awaitingDisambiguation phase
+    if (phase.phase !== 'awaitingDisambiguation') return
 
-    // If this is a new ambiguous state, reset and start timer
-    if (ambiguousKey !== lastAmbiguousKeyRef.current) {
-      setAmbiguousTimerElapsed(false)
-      lastAmbiguousKeyRef.current = ambiguousKey
+    const ctx = phase.disambiguationContext
+    const elapsed = Date.now() - ctx.timerStartedAt
 
-      ambiguousTimerRef.current = setTimeout(() => {
-        setAmbiguousTimerElapsed(true)
-      }, AMBIGUOUS_HELP_DELAY_MS)
+    if (elapsed >= AMBIGUOUS_HELP_DELAY_MS) {
+      // Timer already elapsed - transition to help mode immediately
+      const helpContext = computeHelpContext(phase.attempt.problem.terms, ctx.helpTermIndex)
+      setPhase({ phase: 'helpMode', attempt: { ...phase.attempt, userAnswer: '' }, helpContext })
+    } else {
+      // Set timer for remaining time
+      const remaining = AMBIGUOUS_HELP_DELAY_MS - elapsed
+      disambiguationTimerRef.current = setTimeout(() => {
+        setPhase((prev) => {
+          if (prev.phase !== 'awaitingDisambiguation') return prev
+          const helpContext = computeHelpContext(
+            prev.attempt.problem.terms,
+            prev.disambiguationContext.helpTermIndex
+          )
+          return { phase: 'helpMode', attempt: { ...prev.attempt, userAnswer: '' }, helpContext }
+        })
+      }, remaining)
     }
 
     return () => {
-      if (ambiguousTimerRef.current) {
-        clearTimeout(ambiguousTimerRef.current)
+      if (disambiguationTimerRef.current) {
+        clearTimeout(disambiguationTimerRef.current)
       }
     }
-  }, [ambiguousKey])
+  }, [phase])
 
-  // Compute the term index to show "need help?" for
+  // Derive which term to show "need help?" prompt for from the phase
+  // Returns -1 when not in awaitingDisambiguation phase
   const ambiguousHelpTermIndex = useMemo(() => {
-    if (!prefixMatch.isAmbiguous) return -1
-    return prefixMatch.helpTermIndex
-  }, [prefixMatch])
+    if (phase.phase !== 'awaitingDisambiguation') return -1
+    return phase.disambiguationContext.helpTermIndex
+  }, [phase])
 
   const canSubmit = useMemo(() => {
     if (!attempt || !attempt.userAnswer) return false
@@ -474,6 +511,7 @@ export function useInteractionPhase(
   }, [attempt])
 
   const shouldAutoSubmit = useMemo(() => {
+    // Don't auto-submit in awaitingDisambiguation - the input might be a prefix sum
     if (phase.phase !== 'inputting' && phase.phase !== 'helpMode') return false
     if (!attempt || !attempt.userAnswer) return false
     if (attempt.correctionCount > MANUAL_SUBMIT_THRESHOLD) return false
@@ -485,18 +523,53 @@ export function useInteractionPhase(
   }, [phase.phase, attempt])
 
   // UI predicates
-  const canAcceptInput = phase.phase === 'inputting' || phase.phase === 'helpMode'
+  const canAcceptInput =
+    phase.phase === 'inputting' ||
+    phase.phase === 'awaitingDisambiguation' ||
+    phase.phase === 'helpMode'
 
   const showAsCompleted = phase.phase === 'showingFeedback'
 
   const showHelpOverlay = phase.phase === 'helpMode'
 
   const showInputArea =
-    phase.phase === 'inputting' || phase.phase === 'helpMode' || phase.phase === 'submitting'
+    phase.phase === 'inputting' ||
+    phase.phase === 'awaitingDisambiguation' ||
+    phase.phase === 'helpMode' ||
+    phase.phase === 'submitting'
 
   const showFeedback = phase.phase === 'showingFeedback' && phase.result === 'incorrect'
 
-  const inputIsFocused = phase.phase === 'inputting' || phase.phase === 'helpMode'
+  const inputIsFocused =
+    phase.phase === 'inputting' ||
+    phase.phase === 'awaitingDisambiguation' ||
+    phase.phase === 'helpMode'
+
+  const isTransitioning = phase.phase === 'transitioning'
+
+  const isPaused = phase.phase === 'paused'
+
+  const isSubmitting = phase.phase === 'submitting'
+
+  // Extract helpContext from phase
+  const helpContext = useMemo((): HelpContext | null => {
+    if (phase.phase === 'helpMode') {
+      return phase.helpContext
+    }
+    // Also check paused phase
+    if (phase.phase === 'paused' && phase.resumePhase.phase === 'helpMode') {
+      return phase.resumePhase.helpContext
+    }
+    return null
+  }, [phase])
+
+  // Extract outgoingAttempt from phase (only during transitions)
+  const outgoingAttempt = useMemo((): OutgoingAttempt | null => {
+    if (phase.phase === 'transitioning') {
+      return phase.outgoing
+    }
+    return null
+  }, [phase])
 
   // ==========================================================================
   // Actions
@@ -513,7 +586,14 @@ export function useInteractionPhase(
   const handleDigit = useCallback(
     (digit: string) => {
       setPhase((prev) => {
-        if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
+        // Accept input in inputting, awaitingDisambiguation, or helpMode
+        if (
+          prev.phase !== 'inputting' &&
+          prev.phase !== 'awaitingDisambiguation' &&
+          prev.phase !== 'helpMode'
+        ) {
+          return prev
+        }
 
         const attempt = prev.attempt
         const sums = computePrefixSums(attempt.problem.terms)
@@ -524,7 +604,41 @@ export function useInteractionPhase(
             userAnswer: attempt.userAnswer + digit,
             rejectedDigit: null,
           }
-          return { ...prev, attempt: updatedAttempt }
+
+          // Check if the new answer creates an ambiguous prefix match
+          const newPrefixMatch = findMatchedPrefixIndex(updatedAttempt.userAnswer, sums)
+
+          if (newPrefixMatch.isAmbiguous && newPrefixMatch.helpTermIndex >= 0) {
+            // Ambiguous match - transition to awaitingDisambiguation
+            return {
+              phase: 'awaitingDisambiguation',
+              attempt: updatedAttempt,
+              disambiguationContext: {
+                matchedPrefixIndex: newPrefixMatch.matchedIndex,
+                helpTermIndex: newPrefixMatch.helpTermIndex,
+                timerStartedAt: Date.now(),
+              },
+            }
+          } else if (
+            !newPrefixMatch.isAmbiguous &&
+            newPrefixMatch.matchedIndex >= 0 &&
+            newPrefixMatch.helpTermIndex >= 0
+          ) {
+            // Unambiguous intermediate prefix match (e.g., "03" for prefix sum 3)
+            // Immediately enter help mode
+            const helpContext = computeHelpContext(
+              attempt.problem.terms,
+              newPrefixMatch.helpTermIndex
+            )
+            return {
+              phase: 'helpMode',
+              attempt: { ...updatedAttempt, userAnswer: '' },
+              helpContext,
+            }
+          } else {
+            // No special prefix match - stay in inputting (or return to it from awaitingDisambiguation)
+            return { phase: 'inputting', attempt: updatedAttempt }
+          }
         } else {
           // Reject the digit
           const newCorrectionCount = attempt.correctionCount + 1
@@ -541,6 +655,11 @@ export function useInteractionPhase(
             correctionCount: newCorrectionCount,
             manualSubmitRequired: attempt.manualSubmitRequired || nowRequiresManualSubmit,
           }
+
+          // Keep the same phase type but update attempt
+          if (prev.phase === 'awaitingDisambiguation') {
+            return { ...prev, attempt: updatedAttempt }
+          }
           return { ...prev, attempt: updatedAttempt }
         }
       })
@@ -548,7 +667,13 @@ export function useInteractionPhase(
       // Clear rejected digit after animation
       setTimeout(() => {
         setPhase((prev) => {
-          if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
+          if (
+            prev.phase !== 'inputting' &&
+            prev.phase !== 'awaitingDisambiguation' &&
+            prev.phase !== 'helpMode'
+          ) {
+            return prev
+          }
           return { ...prev, attempt: { ...prev.attempt, rejectedDigit: null } }
         })
       }, 300)
@@ -558,7 +683,13 @@ export function useInteractionPhase(
 
   const handleBackspace = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
+      if (
+        prev.phase !== 'inputting' &&
+        prev.phase !== 'awaitingDisambiguation' &&
+        prev.phase !== 'helpMode'
+      ) {
+        return prev
+      }
 
       const attempt = prev.attempt
       if (attempt.userAnswer.length === 0) return prev
@@ -577,14 +708,22 @@ export function useInteractionPhase(
         correctionCount: newCorrectionCount,
         manualSubmitRequired: attempt.manualSubmitRequired || nowRequiresManualSubmit,
       }
-      return { ...prev, attempt: updatedAttempt }
+
+      // After backspace, always return to inputting phase (no longer ambiguous)
+      return { phase: 'inputting', attempt: updatedAttempt }
     })
   }, [onManualSubmitRequired])
 
   const enterHelpMode = useCallback((termIndex: number) => {
     setPhase((prev) => {
-      // Allow entering help mode from inputting or helpMode (to navigate to a different term)
-      if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
+      // Allow entering help mode from inputting, awaitingDisambiguation, or helpMode (to navigate to a different term)
+      if (
+        prev.phase !== 'inputting' &&
+        prev.phase !== 'awaitingDisambiguation' &&
+        prev.phase !== 'helpMode'
+      ) {
+        return prev
+      }
 
       const helpContext = computeHelpContext(prev.attempt.problem.terms, termIndex)
       const updatedAttempt = { ...prev.attempt, userAnswer: '' }
@@ -602,7 +741,14 @@ export function useInteractionPhase(
 
   const startSubmit = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase !== 'inputting' && prev.phase !== 'helpMode') return prev
+      // Allow submitting from inputting, awaitingDisambiguation, or helpMode
+      if (
+        prev.phase !== 'inputting' &&
+        prev.phase !== 'awaitingDisambiguation' &&
+        prev.phase !== 'helpMode'
+      ) {
+        return prev
+      }
       return { phase: 'submitting', attempt: prev.attempt }
     })
   }, [])
@@ -670,19 +816,24 @@ export function useInteractionPhase(
 
   return {
     phase,
+    attempt,
+    helpContext,
+    outgoingAttempt,
     canAcceptInput,
     showAsCompleted,
     showHelpOverlay,
     showInputArea,
     showFeedback,
     inputIsFocused,
+    isTransitioning,
+    isPaused,
+    isSubmitting,
     prefixSums,
     prefixMatch,
     matchedPrefixIndex,
     canSubmit,
     shouldAutoSubmit,
     ambiguousHelpTermIndex,
-    ambiguousTimerElapsed,
     loadProblem,
     handleDigit,
     handleBackspace,

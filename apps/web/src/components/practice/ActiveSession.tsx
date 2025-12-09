@@ -214,18 +214,23 @@ export function ActiveSession({
   // Interaction state machine - single source of truth for UI state
   const {
     phase,
+    attempt,
+    helpContext,
+    outgoingAttempt,
     canAcceptInput,
     showAsCompleted,
     showHelpOverlay,
     showInputArea,
     showFeedback,
     inputIsFocused,
+    isTransitioning,
+    isPaused,
+    isSubmitting,
     prefixSums,
     matchedPrefixIndex,
     canSubmit,
     shouldAutoSubmit,
     ambiguousHelpTermIndex,
-    ambiguousTimerElapsed,
     loadProblem,
     handleDigit,
     handleBackspace,
@@ -259,60 +264,6 @@ export function ActiveSession({
     activeOpacity: 1,
     config: { tension: 200, friction: 26 },
   }))
-
-  // Extract attempt from phase for UI rendering
-  const attempt = useMemo(() => {
-    switch (phase.phase) {
-      case 'inputting':
-      case 'helpMode':
-      case 'submitting':
-      case 'showingFeedback':
-        return phase.attempt
-      case 'transitioning':
-        return phase.incoming
-      case 'paused': {
-        const inner = phase.resumePhase
-        if (
-          inner.phase === 'inputting' ||
-          inner.phase === 'helpMode' ||
-          inner.phase === 'submitting' ||
-          inner.phase === 'showingFeedback'
-        ) {
-          return inner.attempt
-        }
-        if (inner.phase === 'transitioning') {
-          return inner.incoming
-        }
-        return null
-      }
-      default:
-        return null
-    }
-  }, [phase])
-
-  // Extract help context from phase
-  const helpContext = useMemo(() => {
-    if (phase.phase === 'helpMode') {
-      return phase.helpContext
-    }
-    // Also check paused phase
-    if (phase.phase === 'paused' && phase.resumePhase.phase === 'helpMode') {
-      return phase.resumePhase.helpContext
-    }
-    return null
-  }, [phase])
-
-  // Extract outgoing attempt for transition animation
-  const outgoingAttempt = phase.phase === 'transitioning' ? phase.outgoing : null
-
-  // Check if we're in transitioning phase
-  const isTransitioning = phase.phase === 'transitioning'
-
-  // Check if we're paused
-  const isPaused = phase.phase === 'paused'
-
-  // Check if we're submitting
-  const isSubmitting = phase.phase === 'submitting'
 
   // Spring for submit button entrance animation
   const submitButtonSpring = useSpring({
@@ -407,20 +358,13 @@ export function ActiveSession({
     }
   }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, phase.phase, loadProblem])
 
-  // Auto-trigger help when prefix sum is detected
-  // For unambiguous matches: trigger immediately
-  // For ambiguous matches: wait for the disambiguation timer to elapse
+  // Auto-trigger help when an unambiguous prefix sum is detected
+  // The awaitingDisambiguation phase handles the timer and auto-transitions to helpMode when it expires
+  // This effect only handles the inputting phase case for unambiguous matches
   useEffect(() => {
+    // Only handle unambiguous prefix matches in inputting phase
+    // Ambiguous cases are handled by awaitingDisambiguation phase, which auto-transitions to helpMode
     if (phase.phase !== 'inputting') return
-
-    // If there's an ambiguous match, only trigger help when timer has elapsed
-    if (ambiguousHelpTermIndex >= 0) {
-      if (ambiguousTimerElapsed) {
-        enterHelpMode(ambiguousHelpTermIndex)
-      }
-      // Otherwise, wait - the "need help?" prompt is shown via ambiguousHelpTermIndex
-      return
-    }
 
     // For unambiguous matches, trigger immediately
     if (matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1) {
@@ -429,14 +373,7 @@ export function ActiveSession({
         enterHelpMode(newConfirmedCount)
       }
     }
-  }, [
-    phase,
-    matchedPrefixIndex,
-    prefixSums.length,
-    ambiguousHelpTermIndex,
-    ambiguousTimerElapsed,
-    enterHelpMode,
-  ])
+  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode])
 
   // Handle when student reaches target value on help abacus
   const handleTargetReached = useCallback(() => {
@@ -448,7 +385,14 @@ export function ActiveSession({
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
-    if (phase.phase !== 'inputting' && phase.phase !== 'helpMode') return
+    // Allow submitting from inputting, awaitingDisambiguation, or helpMode
+    if (
+      phase.phase !== 'inputting' &&
+      phase.phase !== 'awaitingDisambiguation' &&
+      phase.phase !== 'helpMode'
+    ) {
+      return
+    }
     if (!phase.attempt.userAnswer) return
 
     const attemptData = phase.attempt

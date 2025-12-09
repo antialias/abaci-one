@@ -73,24 +73,102 @@ describe('isDigitConsistent', () => {
     expect(isDigitConsistent('4', '2', bigSums)).toBe(true) // 42
     expect(isDigitConsistent('4', '3', bigSums)).toBe(false) // 43 not valid
   })
+
+  describe('leading zeros for disambiguation', () => {
+    // Problem [2, 1, 30] -> sums [2, 3, 33]
+    const ambiguousSums = [2, 3, 33]
+
+    it('accepts leading zero as first digit', () => {
+      // "0" alone is allowed - indicates user is building a multi-digit number
+      expect(isDigitConsistent('', '0', ambiguousSums)).toBe(true)
+    })
+
+    it('accepts digit after leading zero that matches a prefix sum', () => {
+      // "03" is valid - stripped to "3" which matches prefix sum
+      expect(isDigitConsistent('0', '3', ambiguousSums)).toBe(true)
+      // "02" is valid - stripped to "2" which matches prefix sum
+      expect(isDigitConsistent('0', '2', ambiguousSums)).toBe(true)
+    })
+
+    it('rejects digit after leading zero that does not match any prefix sum', () => {
+      // "05" -> "5" does not match any prefix sum in [2, 3, 33]
+      expect(isDigitConsistent('0', '5', ambiguousSums)).toBe(false)
+    })
+
+    it('allows multiple leading zeros up to max answer length', () => {
+      // "00" is valid if we haven't exceeded max digit count
+      expect(isDigitConsistent('0', '0', ambiguousSums)).toBe(true)
+    })
+  })
 })
 
 describe('findMatchedPrefixIndex', () => {
   const sums = [3, 7, 12]
 
-  it('finds exact match', () => {
-    expect(findMatchedPrefixIndex('3', sums)).toBe(0)
-    expect(findMatchedPrefixIndex('7', sums)).toBe(1)
-    expect(findMatchedPrefixIndex('12', sums)).toBe(2)
+  it('finds exact match for intermediate prefix sum (unambiguous)', () => {
+    // "7" matches prefix sum at index 1, and 7 is NOT a digit-prefix of 12
+    const result = findMatchedPrefixIndex('7', sums)
+    expect(result.matchedIndex).toBe(1)
+    expect(result.isAmbiguous).toBe(false)
+    expect(result.helpTermIndex).toBe(2) // help with term at index 2
   })
 
-  it('returns -1 for no match', () => {
-    expect(findMatchedPrefixIndex('5', sums)).toBe(-1)
-    expect(findMatchedPrefixIndex('', sums)).toBe(-1)
+  it('finds final answer match', () => {
+    const result = findMatchedPrefixIndex('12', sums)
+    expect(result.matchedIndex).toBe(2) // final answer
+    expect(result.isAmbiguous).toBe(false)
+    expect(result.helpTermIndex).toBe(-1) // no help needed for final answer
   })
 
-  it('returns -1 for non-numeric', () => {
-    expect(findMatchedPrefixIndex('abc', sums)).toBe(-1)
+  it('detects ambiguous match when prefix sum is also digit-prefix of final answer', () => {
+    // Problem: [2, 1, 30] -> prefix sums [2, 3, 33], final answer 33
+    const ambiguousSums = [2, 3, 33]
+    const result = findMatchedPrefixIndex('3', ambiguousSums)
+    expect(result.matchedIndex).toBe(1) // matches prefix sum at index 1
+    expect(result.isAmbiguous).toBe(true) // "3" is also digit-prefix of "33"
+    expect(result.helpTermIndex).toBe(2) // help with term at index 2
+  })
+
+  it('returns no match for input that does not match any prefix sum', () => {
+    const result = findMatchedPrefixIndex('5', sums)
+    expect(result.matchedIndex).toBe(-1)
+    expect(result.isAmbiguous).toBe(false)
+    expect(result.helpTermIndex).toBe(-1)
+  })
+
+  it('returns no match for empty input', () => {
+    const result = findMatchedPrefixIndex('', sums)
+    expect(result.matchedIndex).toBe(-1)
+    expect(result.isAmbiguous).toBe(false)
+    expect(result.helpTermIndex).toBe(-1)
+  })
+
+  it('returns no match for non-numeric input', () => {
+    const result = findMatchedPrefixIndex('abc', sums)
+    expect(result.matchedIndex).toBe(-1)
+    expect(result.isAmbiguous).toBe(false)
+    expect(result.helpTermIndex).toBe(-1)
+  })
+
+  describe('leading zeros disambiguation', () => {
+    // Problem: [2, 1, 30] -> prefix sums [2, 3, 33]
+    const ambiguousSums = [2, 3, 33]
+
+    it('treats leading zero as explicit help request (not ambiguous)', () => {
+      // "03" means "I want help with prefix sum 3" - unambiguous
+      const result = findMatchedPrefixIndex('03', ambiguousSums)
+      expect(result.matchedIndex).toBe(1) // matches prefix sum 3 at index 1
+      expect(result.isAmbiguous).toBe(false) // leading zero removes ambiguity
+      expect(result.helpTermIndex).toBe(2) // help with term at index 2
+    })
+
+    it('treats single leading zero as part of a multi-digit entry', () => {
+      // "02" -> numeric value 2 matches prefix sum at index 0
+      const result = findMatchedPrefixIndex('02', ambiguousSums)
+      expect(result.matchedIndex).toBe(0)
+      expect(result.isAmbiguous).toBe(false) // leading zero = explicit help request
+      expect(result.helpTermIndex).toBe(1)
+    })
   })
 })
 
@@ -911,17 +989,6 @@ describe('useInteractionPhase', () => {
   })
 
   describe('matchedPrefixIndex', () => {
-    it('returns index when answer matches prefix sum', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('3')
-      })
-
-      expect(result.current.matchedPrefixIndex).toBe(0)
-    })
-
     it('returns -1 when no match', () => {
       const { result } = renderHook(() => useInteractionPhase())
 
@@ -931,6 +998,446 @@ describe('useInteractionPhase', () => {
       })
 
       expect(result.current.matchedPrefixIndex).toBe(-1)
+    })
+
+    it('returns -1 when partial match (not yet complete)', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      // Use twoDigitProblem [15, 27] -> sums [15, 42]
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 0, 0)
+        result.current.handleDigit('4') // partial match for 42
+      })
+
+      expect(result.current.matchedPrefixIndex).toBe(-1)
+    })
+
+    it('returns final answer index when answer is complete', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('1')
+        result.current.handleDigit('2') // 12 = final answer
+      })
+
+      expect(result.current.matchedPrefixIndex).toBe(2) // Final answer index
+    })
+  })
+
+  // ===========================================================================
+  // Disambiguation Phase Tests
+  // ===========================================================================
+
+  describe('awaitingDisambiguation phase', () => {
+    // Problem [2, 1, 30] -> prefix sums [2, 3, 33], answer 33
+    // Typing "3" is ambiguous: could be prefix sum 3 OR first digit of 33
+    const ambiguousProblem = createTestProblem([2, 1, 30])
+
+    describe('entering awaitingDisambiguation', () => {
+      it('transitions to awaitingDisambiguation when typing ambiguous prefix match', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+        })
+
+        act(() => {
+          result.current.handleDigit('3') // Ambiguous: prefix sum 3 or first digit of 33
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+        if (result.current.phase.phase === 'awaitingDisambiguation') {
+          expect(result.current.phase.attempt.userAnswer).toBe('3')
+          expect(result.current.phase.disambiguationContext.matchedPrefixIndex).toBe(1)
+          expect(result.current.phase.disambiguationContext.helpTermIndex).toBe(2)
+        }
+      })
+
+      it('sets ambiguousHelpTermIndex when in awaitingDisambiguation', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.ambiguousHelpTermIndex).toBe(2)
+      })
+
+      it('sets correct UI predicates in awaitingDisambiguation', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.canAcceptInput).toBe(true)
+        expect(result.current.showInputArea).toBe(true)
+        expect(result.current.inputIsFocused).toBe(true)
+        expect(result.current.showHelpOverlay).toBe(false) // Not in help mode yet
+        expect(result.current.isTransitioning).toBe(false)
+        expect(result.current.isPaused).toBe(false)
+        expect(result.current.isSubmitting).toBe(false)
+      })
+    })
+
+    describe('exiting awaitingDisambiguation via continued typing', () => {
+      it('returns to inputting when typing digit that breaks ambiguity (continues final answer)', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3') // → awaitingDisambiguation
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        act(() => {
+          result.current.handleDigit('3') // "33" is the final answer - no longer ambiguous
+        })
+
+        expect(result.current.phase.phase).toBe('inputting')
+        if (result.current.phase.phase === 'inputting') {
+          expect(result.current.phase.attempt.userAnswer).toBe('33')
+        }
+        expect(result.current.ambiguousHelpTermIndex).toBe(-1)
+      })
+    })
+
+    describe('exiting awaitingDisambiguation via leading zero', () => {
+      it('immediately enters helpMode when typing leading zero followed by prefix sum', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+        })
+
+        // Type "0" first (leading zero)
+        act(() => {
+          result.current.handleDigit('0')
+        })
+
+        // Then type "3" - "03" is unambiguous, means "help me with prefix sum 3"
+        act(() => {
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('helpMode')
+        if (result.current.phase.phase === 'helpMode') {
+          expect(result.current.phase.helpContext.termIndex).toBe(2) // help with term at index 2
+          expect(result.current.phase.attempt.userAnswer).toBe('') // answer cleared for help
+        }
+      })
+    })
+
+    describe('exiting awaitingDisambiguation via backspace', () => {
+      it('returns to inputting when backspacing', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        act(() => {
+          result.current.handleBackspace()
+        })
+
+        expect(result.current.phase.phase).toBe('inputting')
+        if (result.current.phase.phase === 'inputting') {
+          expect(result.current.phase.attempt.userAnswer).toBe('')
+        }
+      })
+    })
+
+    describe('exiting awaitingDisambiguation via timer', () => {
+      it('automatically transitions to helpMode when timer expires', async () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        // Advance time past the disambiguation delay (4000ms)
+        await act(async () => {
+          vi.advanceTimersByTime(4001)
+        })
+
+        expect(result.current.phase.phase).toBe('helpMode')
+        if (result.current.phase.phase === 'helpMode') {
+          expect(result.current.phase.helpContext.termIndex).toBe(2)
+          expect(result.current.phase.attempt.userAnswer).toBe('') // cleared for help
+        }
+      })
+
+      it('cancels timer when typing continues', async () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        // Advance time but not past the delay
+        await act(async () => {
+          vi.advanceTimersByTime(2000)
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        // Type another digit to break ambiguity
+        act(() => {
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('inputting')
+
+        // Advance past original timer - should NOT transition to helpMode
+        await act(async () => {
+          vi.advanceTimersByTime(3000)
+        })
+
+        expect(result.current.phase.phase).toBe('inputting')
+      })
+    })
+
+    describe('submit from awaitingDisambiguation', () => {
+      it('allows submitting from awaitingDisambiguation phase', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        act(() => {
+          result.current.startSubmit()
+        })
+
+        expect(result.current.phase.phase).toBe('submitting')
+        if (result.current.phase.phase === 'submitting') {
+          expect(result.current.phase.attempt.userAnswer).toBe('3')
+        }
+      })
+    })
+
+    describe('enterHelpMode from awaitingDisambiguation', () => {
+      it('allows entering helpMode explicitly from awaitingDisambiguation', () => {
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        act(() => {
+          result.current.enterHelpMode(2)
+        })
+
+        expect(result.current.phase.phase).toBe('helpMode')
+        if (result.current.phase.phase === 'helpMode') {
+          expect(result.current.phase.helpContext.termIndex).toBe(2)
+        }
+      })
+    })
+
+    describe('shouldAutoSubmit in awaitingDisambiguation', () => {
+      it('does not auto-submit when in awaitingDisambiguation', () => {
+        // Problem [2, 1, 30] -> sums [2, 3, 33], answer 33
+        // Typing "3" matches prefix sum 3, but "3" is also a digit-prefix of "33"
+        // This creates an ambiguous situation
+        const { result } = renderHook(() => useInteractionPhase())
+
+        act(() => {
+          result.current.loadProblem(ambiguousProblem, 0, 0)
+          result.current.handleDigit('3')
+        })
+
+        // Should be in awaitingDisambiguation phase
+        expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+        // shouldAutoSubmit should be false because we're in awaitingDisambiguation
+        expect(result.current.shouldAutoSubmit).toBe(false)
+      })
+    })
+  })
+
+  // ===========================================================================
+  // Exported State Tests
+  // ===========================================================================
+
+  describe('exported state from hook', () => {
+    it('exports attempt correctly', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('1')
+      })
+
+      expect(result.current.attempt).not.toBeNull()
+      expect(result.current.attempt?.userAnswer).toBe('1')
+      expect(result.current.attempt?.problem).toBe(simpleProblem)
+    })
+
+    it('exports helpContext when in helpMode', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.enterHelpMode(1)
+      })
+
+      expect(result.current.helpContext).not.toBeNull()
+      expect(result.current.helpContext?.termIndex).toBe(1)
+      expect(result.current.helpContext?.currentValue).toBe(3)
+      expect(result.current.helpContext?.targetValue).toBe(7)
+    })
+
+    it('exports null helpContext when not in helpMode', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      expect(result.current.helpContext).toBeNull()
+    })
+
+    it('exports outgoingAttempt during transition', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+      const nextProblem = createTestProblem([5, 6])
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('1')
+        result.current.handleDigit('2')
+        result.current.startSubmit()
+        result.current.completeSubmit('correct')
+        result.current.startTransition(nextProblem, 1)
+      })
+
+      expect(result.current.outgoingAttempt).not.toBeNull()
+      expect(result.current.outgoingAttempt?.userAnswer).toBe('12')
+      expect(result.current.outgoingAttempt?.result).toBe('correct')
+    })
+
+    it('exports null outgoingAttempt when not transitioning', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      expect(result.current.outgoingAttempt).toBeNull()
+    })
+
+    it('exports isTransitioning correctly', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+      const nextProblem = createTestProblem([5, 6])
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      expect(result.current.isTransitioning).toBe(false)
+
+      act(() => {
+        result.current.handleDigit('1')
+        result.current.handleDigit('2')
+        result.current.startSubmit()
+        result.current.completeSubmit('correct')
+        result.current.startTransition(nextProblem, 1)
+      })
+
+      expect(result.current.isTransitioning).toBe(true)
+    })
+
+    it('exports isPaused correctly', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      expect(result.current.isPaused).toBe(false)
+
+      act(() => {
+        result.current.pause()
+      })
+
+      expect(result.current.isPaused).toBe(true)
+    })
+
+    it('exports isSubmitting correctly', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      expect(result.current.isSubmitting).toBe(false)
+
+      act(() => {
+        result.current.startSubmit()
+      })
+
+      expect(result.current.isSubmitting).toBe(true)
+    })
+  })
+
+  // ===========================================================================
+  // Unambiguous Prefix Sum Tests
+  // ===========================================================================
+
+  describe('unambiguous prefix sum handling', () => {
+    // Problem [3, 4, 5] -> prefix sums [3, 7, 12]
+    // "7" is unambiguous - it's NOT a digit prefix of "12"
+
+    it('immediately transitions to helpMode for unambiguous prefix match', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('7') // Unambiguous prefix sum
+      })
+
+      // Unambiguous prefix matches immediately trigger helpMode
+      expect(result.current.phase.phase).toBe('helpMode')
+      if (result.current.phase.phase === 'helpMode') {
+        // Help is for the term AFTER the matched prefix (index 2)
+        expect(result.current.phase.helpContext.termIndex).toBe(2)
+        // User's answer is cleared for help mode
+        expect(result.current.phase.attempt.userAnswer).toBe('')
+      }
+      expect(result.current.ambiguousHelpTermIndex).toBe(-1) // Not in awaitingDisambiguation
+    })
+
+    it('transitions to helpMode for first prefix sum when unambiguous', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+        result.current.handleDigit('3') // First prefix sum, not a digit-prefix of 12
+      })
+
+      expect(result.current.phase.phase).toBe('helpMode')
+      if (result.current.phase.phase === 'helpMode') {
+        // Help is for the term AFTER the first prefix sum (index 1)
+        expect(result.current.phase.helpContext.termIndex).toBe(1)
+        expect(result.current.phase.attempt.userAnswer).toBe('')
+      }
     })
   })
 
@@ -989,20 +1496,60 @@ describe('useInteractionPhase', () => {
   })
 
   describe('help mode flow', () => {
-    it('inputting → helpMode → inputting → submitting', () => {
+    it('inputting → helpMode (via prefix sum) → inputting → submitting', () => {
       const { result } = renderHook(() => useInteractionPhase())
 
       act(() => {
         result.current.loadProblem(simpleProblem, 0, 0)
       })
 
-      // Enter prefix sum that triggers help
+      // Typing an unambiguous prefix sum immediately triggers helpMode
       act(() => {
-        result.current.handleDigit('3')
+        result.current.handleDigit('3') // Unambiguous prefix sum
       })
-      expect(result.current.matchedPrefixIndex).toBe(0)
+      // For simpleProblem [3, 4, 5], "3" is an unambiguous prefix match
+      // (3 is not a digit-prefix of 12), so we go straight to helpMode
+      expect(result.current.phase.phase).toBe('helpMode')
+      expect(result.current.showHelpOverlay).toBe(true)
+      if (result.current.phase.phase === 'helpMode') {
+        // Help is for term at index 1 (the NEXT term after prefix sum at index 0)
+        expect(result.current.phase.helpContext.termIndex).toBe(1)
+      }
 
-      // Enter help mode
+      // Exit help mode
+      act(() => {
+        result.current.exitHelpMode()
+      })
+      expect(result.current.phase.phase).toBe('inputting')
+      expect(result.current.showHelpOverlay).toBe(false)
+
+      // Enter final answer
+      act(() => {
+        result.current.handleDigit('1')
+        result.current.handleDigit('2')
+      })
+
+      // Submit
+      act(() => {
+        result.current.startSubmit()
+      })
+      expect(result.current.phase.phase).toBe('submitting')
+    })
+
+    it('inputting → helpMode (via explicit call) → inputting → submitting', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      // Type "1" (valid digit but not a prefix sum match)
+      act(() => {
+        result.current.handleDigit('1')
+      })
+      expect(result.current.phase.phase).toBe('inputting')
+
+      // Explicitly enter help mode
       act(() => {
         result.current.enterHelpMode(1)
       })

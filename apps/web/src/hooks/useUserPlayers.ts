@@ -1,18 +1,12 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { Player } from '@/db/schema/players'
 import { api } from '@/lib/queryClient'
+import { playerKeys } from '@/lib/queryKeys'
 
-/**
- * Query key factory for players
- */
-export const playerKeys = {
-  all: ['players'] as const,
-  lists: () => [...playerKeys.all, 'list'] as const,
-  list: () => [...playerKeys.lists()] as const,
-  detail: (id: string) => [...playerKeys.all, 'detail', id] as const,
-}
+// Re-export query keys for consumers
+export { playerKeys } from '@/lib/queryKeys'
 
 /**
  * Fetch all players for the current user
@@ -85,6 +79,31 @@ export function useUserPlayers() {
   return useQuery({
     queryKey: playerKeys.list(),
     queryFn: fetchPlayers,
+  })
+}
+
+/**
+ * Hook: Fetch all players with Suspense (for SSR contexts)
+ */
+export function useUserPlayersSuspense() {
+  return useSuspenseQuery({
+    queryKey: playerKeys.list(),
+    queryFn: fetchPlayers,
+  })
+}
+
+/**
+ * Hook: Fetch a single player with Suspense (for SSR contexts)
+ */
+export function usePlayerSuspense(playerId: string) {
+  return useSuspenseQuery({
+    queryKey: playerKeys.detail(playerId),
+    queryFn: async () => {
+      const res = await api(`players/${playerId}`)
+      if (!res.ok) throw new Error('Failed to fetch player')
+      const data = await res.json()
+      return data.player as Player
+    },
   })
 }
 

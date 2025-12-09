@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { StudentSelector, type StudentWithProgress } from './StudentSelector'
 
@@ -57,11 +56,9 @@ const newStudent: StudentWithProgress = {
 }
 
 /**
- * Interactive demo with selection
+ * Interactive demo - clicking a student logs to console
  */
 function InteractiveSelectorDemo() {
-  const [selected, setSelected] = useState<StudentWithProgress | undefined>()
-
   return (
     <div
       className={css({
@@ -73,9 +70,7 @@ function InteractiveSelectorDemo() {
     >
       <StudentSelector
         students={sampleStudents}
-        selectedStudent={selected}
-        onSelectStudent={setSelected}
-        onAddStudent={() => alert('Add Student clicked!')}
+        onSelectStudent={(student) => console.log('Selected:', student.name)}
       />
     </div>
   )
@@ -89,7 +84,6 @@ export const NoStudents: Story = {
   args: {
     students: [],
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
     title: 'Who is practicing today?',
   },
 }
@@ -97,45 +91,28 @@ export const NoStudents: Story = {
 export const SingleStudent: Story = {
   args: {
     students: [sampleStudents[0]],
-    selectedStudent: undefined,
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
   },
 }
 
 export const MultipleStudents: Story = {
   args: {
     students: sampleStudents,
-    selectedStudent: undefined,
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
   },
 }
 
-export const WithSelectedStudent: Story = {
-  args: {
-    students: sampleStudents,
-    selectedStudent: sampleStudents[0],
-    onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
-  },
-}
-
-export const NewStudentHighlighted: Story = {
+export const WithNewStudent: Story = {
   args: {
     students: [...sampleStudents, newStudent],
-    selectedStudent: newStudent,
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
   },
 }
 
 export const CustomTitle: Story = {
   args: {
     students: sampleStudents,
-    selectedStudent: undefined,
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
     title: "Let's Practice Math!",
   },
 }
@@ -150,8 +127,6 @@ export const StudentsWithoutProgress: Story = {
       masteryPercent: undefined,
       currentLevel: undefined,
     })),
-    selectedStudent: undefined,
     onSelectStudent: () => {},
-    onAddStudent: () => alert('Add Student clicked!'),
   },
 }

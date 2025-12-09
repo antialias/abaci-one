@@ -3,10 +3,19 @@
  *
  * Provides access to curriculum position, skill mastery, and practice sessions
  * for the currently selected student (player).
+ *
+ * Uses React Query for data fetching and caching, enabling SSR prefetching.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+'use client'
+
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { MasteryLevel } from '@/db/schema/player-skill-mastery'
+import { api } from '@/lib/queryClient'
+import { curriculumKeys } from '@/lib/queryKeys'
+
+// Re-export query keys for consumers
+export { curriculumKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -40,324 +49,321 @@ export interface PracticeSessionData {
   completedAt: Date | null
 }
 
-export interface CurriculumState {
+export interface CurriculumData {
   curriculum: CurriculumPosition | null
   skills: SkillMasteryData[]
   recentSessions: PracticeSessionData[]
-  isLoading: boolean
-  error: string | null
 }
 
-export interface CurriculumActions {
-  /** Refresh curriculum data from server */
-  refresh: () => Promise<void>
-  /** Advance to the next phase */
-  advancePhase: (nextPhaseId: string, nextLevel?: number) => Promise<void>
-  /** Record a skill attempt */
-  recordAttempt: (skillId: string, isCorrect: boolean) => Promise<void>
-  /** Record multiple skill attempts at once */
-  recordAttempts: (results: Array<{ skillId: string; isCorrect: boolean }>) => Promise<void>
-  /** Start a new practice session */
-  startSession: (phaseId: string, visualizationMode?: boolean) => Promise<string | null>
-  /** Complete the current practice session */
-  completeSession: (
+// ============================================================================
+// API Functions
+// ============================================================================
+
+async function fetchCurriculum(playerId: string): Promise<CurriculumData> {
+  const response = await api(`curriculum/${playerId}`)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch curriculum: ${response.statusText}`)
+  }
+
+  const data = await response.json()
+
+  return {
+    curriculum: data.curriculum,
+    skills: data.skills || [],
+    recentSessions: data.recentSessions || [],
+  }
+}
+
+// ============================================================================
+// Hooks
+// ============================================================================
+
+/**
+ * Hook for fetching curriculum data (useQuery version)
+ * Use this when you need loading/error states
+ */
+export function usePlayerCurriculumQuery(playerId: string | null) {
+  return useQuery({
+    queryKey: curriculumKeys.detail(playerId ?? ''),
+    queryFn: () => fetchCurriculum(playerId!),
+    enabled: !!playerId,
+  })
+}
+
+/**
+ * Hook for fetching curriculum data (useSuspenseQuery version)
+ * Use this in SSR contexts where data is prefetched
+ */
+export function usePlayerCurriculumSuspense(playerId: string) {
+  return useSuspenseQuery({
+    queryKey: curriculumKeys.detail(playerId),
+    queryFn: () => fetchCurriculum(playerId),
+  })
+}
+
+/**
+ * Hook for curriculum mutations (advance phase, record attempts, etc.)
+ */
+export function usePlayerCurriculumMutations(playerId: string | null) {
+  const queryClient = useQueryClient()
+
+  const invalidate = () => {
+    if (playerId) {
+      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+    }
+  }
+
+  // Advance to next phase
+  const advancePhase = useMutation({
+    mutationFn: async ({ nextPhaseId, nextLevel }: { nextPhaseId: string; nextLevel?: number }) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}/advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nextPhaseId, nextLevel }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to advance phase: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: invalidate,
+  })
+
+  // Record a single skill attempt
+  const recordAttempt = useMutation({
+    mutationFn: async ({ skillId, isCorrect }: { skillId: string; isCorrect: boolean }) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}/skills`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillId, isCorrect }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to record attempt: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: (updatedSkill) => {
+      // Optimistically update the skill in cache
+      if (playerId) {
+        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            skills: old.skills.some((s) => s.skillId === updatedSkill.skillId)
+              ? old.skills.map((s) => (s.skillId === updatedSkill.skillId ? updatedSkill : s))
+              : [...old.skills, updatedSkill],
+          }
+        })
+      }
+    },
+  })
+
+  // Record multiple skill attempts
+  const recordAttempts = useMutation({
+    mutationFn: async (results: Array<{ skillId: string; isCorrect: boolean }>) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}/skills/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to record attempts: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: invalidate,
+  })
+
+  // Start a practice session
+  const startSession = useMutation({
+    mutationFn: async ({
+      phaseId,
+      visualizationMode = false,
+    }: {
+      phaseId: string
+      visualizationMode?: boolean
+    }) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phaseId, visualizationMode }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to start session: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: (session) => {
+      if (playerId) {
+        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            recentSessions: [session, ...old.recentSessions].slice(0, 10),
+          }
+        })
+      }
+    },
+  })
+
+  // Complete a practice session
+  const completeSession = useMutation({
+    mutationFn: async ({
+      sessionId,
+      data,
+    }: {
+      sessionId: string
+      data?: {
+        problemsAttempted?: number
+        problemsCorrect?: number
+        skillsUsed?: string[]
+      }
+    }) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}/sessions/${sessionId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data || {}),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to complete session: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: invalidate,
+  })
+
+  // Update curriculum settings (worksheet preset, visualization mode)
+  const updateSettings = useMutation({
+    mutationFn: async (settings: {
+      worksheetPreset?: string | null
+      visualizationMode?: boolean
+    }) => {
+      if (!playerId) throw new Error('No player selected')
+
+      const response = await api(`curriculum/${playerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to update settings: ${response.statusText}`)
+      }
+
+      return response.json()
+    },
+    onSuccess: (updated) => {
+      if (playerId) {
+        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
+          if (!old) return old
+          return { ...old, curriculum: updated }
+        })
+      }
+    },
+  })
+
+  return {
+    advancePhase,
+    recordAttempt,
+    recordAttempts,
+    startSession,
+    completeSession,
+    updateSettings,
+  }
+}
+
+/**
+ * Combined hook that provides both query and mutations
+ * This maintains backwards compatibility with existing code
+ */
+export function usePlayerCurriculum(playerId: string | null) {
+  const query = usePlayerCurriculumQuery(playerId)
+  const mutations = usePlayerCurriculumMutations(playerId)
+  const queryClient = useQueryClient()
+
+  // Refresh function for backwards compatibility
+  const refresh = async () => {
+    if (playerId) {
+      await queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+    }
+  }
+
+  // Convenience wrappers for backwards compatibility
+  const advancePhase = async (nextPhaseId: string, nextLevel?: number) => {
+    await mutations.advancePhase.mutateAsync({ nextPhaseId, nextLevel })
+  }
+
+  const recordAttempt = async (skillId: string, isCorrect: boolean) => {
+    await mutations.recordAttempt.mutateAsync({ skillId, isCorrect })
+  }
+
+  const recordAttempts = async (results: Array<{ skillId: string; isCorrect: boolean }>) => {
+    await mutations.recordAttempts.mutateAsync(results)
+  }
+
+  const startSession = async (
+    phaseId: string,
+    visualizationMode: boolean = false
+  ): Promise<string | null> => {
+    try {
+      const session = await mutations.startSession.mutateAsync({ phaseId, visualizationMode })
+      return session.id
+    } catch {
+      return null
+    }
+  }
+
+  const completeSession = async (
     sessionId: string,
     data?: {
       problemsAttempted?: number
       problemsCorrect?: number
       skillsUsed?: string[]
     }
-  ) => Promise<void>
-  /** Update worksheet preset */
-  updateWorksheetPreset: (preset: string | null) => Promise<void>
-  /** Toggle visualization mode */
-  toggleVisualizationMode: () => Promise<void>
-}
+  ) => {
+    await mutations.completeSession.mutateAsync({ sessionId, data })
+  }
 
-// ============================================================================
-// Hook
-// ============================================================================
+  const updateWorksheetPreset = async (preset: string | null) => {
+    await mutations.updateSettings.mutateAsync({ worksheetPreset: preset })
+  }
 
-/**
- * Hook for managing a player's curriculum progress
- *
- * @param playerId - The ID of the player (student) to manage
- * @returns Curriculum state and actions
- */
-export function usePlayerCurriculum(playerId: string | null): CurriculumState & CurriculumActions {
-  const [state, setState] = useState<CurriculumState>({
-    curriculum: null,
-    skills: [],
-    recentSessions: [],
-    isLoading: false,
-    error: null,
-  })
-
-  // Fetch curriculum data
-  const fetchCurriculum = useCallback(async () => {
-    if (!playerId) {
-      setState({
-        curriculum: null,
-        skills: [],
-        recentSessions: [],
-        isLoading: false,
-        error: null,
-      })
-      return
-    }
-
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
-
-    try {
-      const response = await fetch(`/api/curriculum/${playerId}`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch curriculum: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      setState({
-        curriculum: data.curriculum,
-        skills: data.skills || [],
-        recentSessions: data.recentSessions || [],
-        isLoading: false,
-        error: null,
-      })
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      }))
-    }
-  }, [playerId])
-
-  // Initial fetch
-  useEffect(() => {
-    fetchCurriculum()
-  }, [fetchCurriculum])
-
-  // Advance to next phase
-  const advancePhase = useCallback(
-    async (nextPhaseId: string, nextLevel?: number) => {
-      if (!playerId) return
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}/advance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nextPhaseId, nextLevel }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to advance phase: ${response.statusText}`)
-        }
-
-        await fetchCurriculum()
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-      }
-    },
-    [playerId, fetchCurriculum]
-  )
-
-  // Record a single skill attempt
-  const recordAttempt = useCallback(
-    async (skillId: string, isCorrect: boolean) => {
-      if (!playerId) return
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}/skills`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ skillId, isCorrect }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to record attempt: ${response.statusText}`)
-        }
-
-        // Update local state with new skill data
-        const updatedSkill = await response.json()
-        setState((prev) => ({
-          ...prev,
-          skills: prev.skills.some((s) => s.skillId === skillId)
-            ? prev.skills.map((s) => (s.skillId === skillId ? updatedSkill : s))
-            : [...prev.skills, updatedSkill],
-        }))
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-      }
-    },
-    [playerId]
-  )
-
-  // Record multiple skill attempts
-  const recordAttempts = useCallback(
-    async (results: Array<{ skillId: string; isCorrect: boolean }>) => {
-      if (!playerId) return
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}/skills/batch`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ results }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to record attempts: ${response.statusText}`)
-        }
-
-        await fetchCurriculum()
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-      }
-    },
-    [playerId, fetchCurriculum]
-  )
-
-  // Start a practice session
-  const startSession = useCallback(
-    async (phaseId: string, visualizationMode: boolean = false): Promise<string | null> => {
-      if (!playerId) return null
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}/sessions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phaseId, visualizationMode }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to start session: ${response.statusText}`)
-        }
-
-        const session = await response.json()
-        setState((prev) => ({
-          ...prev,
-          recentSessions: [session, ...prev.recentSessions].slice(0, 10),
-        }))
-
-        return session.id
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-        return null
-      }
-    },
-    [playerId]
-  )
-
-  // Complete a practice session
-  const completeSession = useCallback(
-    async (
-      sessionId: string,
-      data?: {
-        problemsAttempted?: number
-        problemsCorrect?: number
-        skillsUsed?: string[]
-      }
-    ) => {
-      if (!playerId) return
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}/sessions/${sessionId}/complete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data || {}),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to complete session: ${response.statusText}`)
-        }
-
-        await fetchCurriculum()
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-      }
-    },
-    [playerId, fetchCurriculum]
-  )
-
-  // Update worksheet preset
-  const updateWorksheetPreset = useCallback(
-    async (preset: string | null) => {
-      if (!playerId) return
-
-      try {
-        const response = await fetch(`/api/curriculum/${playerId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ worksheetPreset: preset }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to update preset: ${response.statusText}`)
-        }
-
-        const updated = await response.json()
-        setState((prev) => ({
-          ...prev,
-          curriculum: updated,
-        }))
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        }))
-      }
-    },
-    [playerId]
-  )
-
-  // Toggle visualization mode
-  const toggleVisualizationMode = useCallback(async () => {
-    if (!playerId || !state.curriculum) return
-
-    try {
-      const response = await fetch(`/api/curriculum/${playerId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visualizationMode: !state.curriculum.visualizationMode,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to toggle visualization: ${response.statusText}`)
-      }
-
-      const updated = await response.json()
-      setState((prev) => ({
-        ...prev,
-        curriculum: updated,
-      }))
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      }))
-    }
-  }, [playerId, state.curriculum])
+  const toggleVisualizationMode = async () => {
+    const current = query.data?.curriculum?.visualizationMode ?? false
+    await mutations.updateSettings.mutateAsync({ visualizationMode: !current })
+  }
 
   return {
-    ...state,
-    refresh: fetchCurriculum,
+    // Data from query
+    curriculum: query.data?.curriculum ?? null,
+    skills: query.data?.skills ?? [],
+    recentSessions: query.data?.recentSessions ?? [],
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
+
+    // Actions
+    refresh,
     advancePhase,
     recordAttempt,
     recordAttempts,

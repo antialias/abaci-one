@@ -1,20 +1,12 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { api } from '@/lib/queryClient'
+import { sessionPlanKeys } from '@/lib/queryKeys'
 
-// ============================================================================
-// Query Key Factory
-// ============================================================================
-
-export const sessionPlanKeys = {
-  all: ['sessionPlans'] as const,
-  lists: () => [...sessionPlanKeys.all, 'list'] as const,
-  list: (playerId: string) => [...sessionPlanKeys.lists(), playerId] as const,
-  active: (playerId: string) => [...sessionPlanKeys.all, 'active', playerId] as const,
-  detail: (planId: string) => [...sessionPlanKeys.all, 'detail', planId] as const,
-}
+// Re-export query keys for consumers
+export { sessionPlanKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // API Functions
@@ -25,6 +17,17 @@ async function fetchActiveSessionPlan(playerId: string): Promise<SessionPlan | n
   if (!res.ok) throw new Error('Failed to fetch active session plan')
   const data = await res.json()
   return data.plan ?? null
+}
+
+/**
+ * Error thrown when trying to generate a plan but one already exists.
+ * Contains the existing plan so callers can recover.
+ */
+export class ActiveSessionExistsClientError extends Error {
+  constructor(public readonly existingPlan: SessionPlan) {
+    super('Active session already exists')
+    this.name = 'ActiveSessionExistsClientError'
+  }
 }
 
 async function generateSessionPlan({
@@ -40,8 +43,18 @@ async function generateSessionPlan({
     body: JSON.stringify({ durationMinutes }),
   })
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || 'Failed to generate session plan')
+    const errorData = await res.json().catch(() => ({}))
+
+    // Handle 409 conflict - active session exists
+    if (
+      res.status === 409 &&
+      errorData.code === 'ACTIVE_SESSION_EXISTS' &&
+      errorData.existingPlan
+    ) {
+      throw new ActiveSessionExistsClientError(errorData.existingPlan)
+    }
+
+    throw new Error(errorData.error || 'Failed to generate session plan')
   }
   const data = await res.json()
   return data.plan
@@ -85,6 +98,16 @@ export function useActiveSessionPlan(playerId: string | null) {
     queryKey: sessionPlanKeys.active(playerId ?? ''),
     queryFn: () => fetchActiveSessionPlan(playerId!),
     enabled: !!playerId,
+  })
+}
+
+/**
+ * Hook: Fetch active session plan with Suspense (for SSR contexts)
+ */
+export function useActiveSessionPlanSuspense(playerId: string) {
+  return useSuspenseQuery({
+    queryKey: sessionPlanKeys.active(playerId),
+    queryFn: () => fetchActiveSessionPlan(playerId),
   })
 }
 

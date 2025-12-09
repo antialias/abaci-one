@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import {
+  ActiveSessionExistsError,
   type GenerateSessionPlanOptions,
   generateSessionPlan,
   getActiveSessionPlan,
@@ -74,6 +75,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const plan = await generateSessionPlan(options)
     return NextResponse.json({ plan: serializePlan(plan) }, { status: 201 })
   } catch (error) {
+    // Handle active session conflict
+    if (error instanceof ActiveSessionExistsError) {
+      return NextResponse.json(
+        {
+          error: 'Active session exists',
+          code: 'ACTIVE_SESSION_EXISTS',
+          existingPlan: serializePlan(error.existingSession),
+        },
+        { status: 409 }
+      )
+    }
+
     console.error('Error generating session plan:', error)
     return NextResponse.json({ error: 'Failed to generate session plan' }, { status: 500 })
   }

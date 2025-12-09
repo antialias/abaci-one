@@ -10,10 +10,12 @@
  */
 
 export { ActiveSession } from './ActiveSession'
+export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
 export { useHasPhysicalKeyboard, useIsTouchDevice } from './hooks/useDeviceDetection'
 export { NumericKeypad } from './NumericKeypad'
 export { PlanReview } from './PlanReview'
+export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export type { CurrentPhaseInfo, SkillProgress } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
 export { SessionSummary } from './SessionSummary'

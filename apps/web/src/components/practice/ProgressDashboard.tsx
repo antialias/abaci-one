@@ -45,7 +45,6 @@ interface ProgressDashboardProps {
   onContinuePractice: () => void
   onViewFullProgress: () => void
   onGenerateWorksheet: () => void
-  onChangeStudent: () => void
   /** Callback to run placement test */
   onRunPlacementTest?: () => void
   /** Callback to manually set skills */
@@ -94,7 +93,6 @@ export function ProgressDashboard({
   onContinuePractice,
   onViewFullProgress,
   onGenerateWorksheet,
-  onChangeStudent,
   onRunPlacementTest,
   onSetSkillsManually,
   onRecordOfflinePractice,
@@ -154,23 +152,19 @@ export function ProgressDashboard({
           >
             Hi {student.name}!
           </h1>
-          <button
-            type="button"
-            onClick={onChangeStudent}
+          <a
+            href="/students"
             className={css({
               fontSize: '0.875rem',
               color: isDark ? 'blue.400' : 'blue.500',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
+              textDecoration: 'none',
               _hover: {
                 textDecoration: 'underline',
               },
             })}
           >
-            Not {student.name}? Switch student
-          </button>
+            Manage students
+          </a>
         </div>
       </div>
 

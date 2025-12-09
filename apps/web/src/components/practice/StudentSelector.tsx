@@ -13,7 +13,6 @@ import {
   gapSm,
   paddingLg,
   paddingMd,
-  primaryButtonStyles,
   progressBarContainerStyles,
   progressBarFillStyles,
   roundedLg,
@@ -35,14 +34,14 @@ export interface StudentWithProgress extends Player {
 
 interface StudentCardProps {
   student: StudentWithProgress
-  isSelected?: boolean
   onSelect: (student: StudentWithProgress) => void
 }
 
 /**
  * Individual student card showing avatar, name, and progress
+ * Clicking navigates to the student's practice page
  */
-function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
+function StudentCard({ student, onSelect }: StudentCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const levelLabel = student.currentLevel ? `Lv.${student.currentLevel}` : 'New'
@@ -51,7 +50,6 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
     <button
       type="button"
       data-component="student-card"
-      data-selected={isSelected}
       onClick={() => onSelect(student)}
       className={css({
         ...centerStack,
@@ -59,9 +57,9 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
         ...paddingMd,
         ...roundedLg,
         ...transitionNormal,
-        border: isSelected ? '3px solid' : '2px solid',
-        borderColor: isSelected ? 'blue.500' : themed('border', isDark),
-        backgroundColor: isSelected ? themed('info', isDark) : themed('surface', isDark),
+        border: '2px solid',
+        borderColor: themed('border', isDark),
+        backgroundColor: themed('surface', isDark),
         cursor: 'pointer',
         minWidth: '100px',
         _hover: {
@@ -103,22 +101,17 @@ function StudentCard({ student, isSelected, onSelect }: StudentCardProps) {
   )
 }
 
-interface AddStudentButtonProps {
-  onClick: () => void
-}
-
 /**
- * Button to add a new student
+ * Link to manage students page
  */
-function AddStudentButton({ onClick }: AddStudentButtonProps) {
+function ManageStudentsLink() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   return (
-    <button
-      type="button"
-      data-action="add-student"
-      onClick={onClick}
+    <a
+      href="/students"
+      data-action="manage-students"
       className={css({
         ...centerStack,
         justifyContent: 'center',
@@ -132,6 +125,7 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
         cursor: 'pointer',
         minWidth: '100px',
         minHeight: '140px',
+        textDecoration: 'none',
         _hover: {
           borderColor: 'blue.400',
           backgroundColor: themed('info', isDark),
@@ -140,7 +134,7 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
     >
       <span
         className={css({
-          fontSize: '2rem',
+          fontSize: '1.5rem',
           color: themed('textSubtle', isDark),
         })}
       >
@@ -150,19 +144,18 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
         className={css({
           ...textSm,
           color: themed('textMuted', isDark),
+          textAlign: 'center',
         })}
       >
-        Add New
+        Manage Students
       </span>
-    </button>
+    </a>
   )
 }
 
 interface StudentSelectorProps {
   students: StudentWithProgress[]
-  selectedStudent?: StudentWithProgress
   onSelectStudent: (student: StudentWithProgress) => void
-  onAddStudent: () => void
   title?: string
 }
 
@@ -170,14 +163,12 @@ interface StudentSelectorProps {
  * StudentSelector - Select which student is practicing today
  *
  * Displays all available students (players) with their current
- * curriculum level and progress. Parent/teacher selects a student
- * and hands the computer to the child.
+ * curriculum level and progress. Clicking a student navigates
+ * to their practice page at /practice/[studentId].
  */
 export function StudentSelector({
   students,
-  selectedStudent,
   onSelectStudent,
-  onAddStudent,
   title = 'Who is practicing today?',
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
@@ -212,43 +203,11 @@ export function StudentSelector({
         })}
       >
         {students.map((student) => (
-          <StudentCard
-            key={student.id}
-            student={student}
-            isSelected={selectedStudent?.id === student.id}
-            onSelect={onSelectStudent}
-          />
+          <StudentCard key={student.id} student={student} onSelect={onSelectStudent} />
         ))}
 
-        <AddStudentButton onClick={onAddStudent} />
+        <ManageStudentsLink />
       </div>
-
-      {/* Selected student action */}
-      {selectedStudent && (
-        <div
-          className={css({
-            marginTop: '1rem',
-            textAlign: 'center',
-          })}
-        >
-          <p
-            className={css({
-              ...textBase,
-              color: themed('textMuted', isDark),
-              marginBottom: '1rem',
-            })}
-          >
-            Selected:{' '}
-            <strong className={css({ color: themed('text', isDark) })}>
-              {selectedStudent.name}
-            </strong>{' '}
-            {selectedStudent.emoji}
-          </p>
-          <button type="button" data-action="start-practice" className={css(primaryButtonStyles())}>
-            Start Practice →
-          </button>
-        </div>
-      )}
     </div>
   )
 }

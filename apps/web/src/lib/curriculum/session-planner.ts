@@ -14,7 +14,7 @@
  */
 
 import { createId } from '@paralleldrive/cuid2'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import {
@@ -37,6 +37,7 @@ import {
   getPhaseDisplayInfo,
   getPhaseSkillConstraints,
 } from './definitions'
+import { generateProblemFromConstraints } from './problem-generator'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 
 // ============================================================================
@@ -50,7 +51,23 @@ export interface GenerateSessionPlanOptions {
 }
 
 /**
+ * Error thrown when a player already has an active session
+ */
+export class ActiveSessionExistsError extends Error {
+  code = 'ACTIVE_SESSION_EXISTS' as const
+  existingSession: SessionPlan
+
+  constructor(existingSession: SessionPlan) {
+    super('An active session already exists for this player')
+    this.name = 'ActiveSessionExistsError'
+    this.existingSession = existingSession
+  }
+}
+
+/**
  * Generate a three-part session plan for a student
+ *
+ * @throws {ActiveSessionExistsError} If the player already has an active session that hasn't timed out
  */
 export async function generateSessionPlan(
   options: GenerateSessionPlanOptions
@@ -58,6 +75,21 @@ export async function generateSessionPlan(
   const { playerId, durationMinutes, config: configOverrides } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
+
+  // Check for existing active session (one active session per kid rule)
+  const existingActive = await getActiveSessionPlan(playerId)
+  if (existingActive) {
+    const sessionAgeMs = Date.now() - new Date(existingActive.createdAt).getTime()
+    const timeoutMs = config.sessionTimeoutHours * 60 * 60 * 1000
+
+    if (sessionAgeMs > timeoutMs) {
+      // Session has timed out - auto-abandon it
+      await abandonSessionPlan(existingActive.id)
+    } else {
+      // Session is still active - throw error with session data
+      throw new ActiveSessionExistsError(existingActive)
+    }
+  }
 
   // 1. Load student state
   const curriculum = await getPlayerCurriculum(playerId)
@@ -203,12 +235,18 @@ function buildSessionPart(
   // Shuffle to interleave purposes
   const shuffledSlots = intelligentShuffle(slots)
 
+  // Generate problems for each slot (persisted in DB for resume capability)
+  const slotsWithProblems = shuffledSlots.map((slot) => ({
+    ...slot,
+    problem: generateProblemFromConstraints(slot.constraints),
+  }))
+
   return {
     partNumber,
     type,
     format: type === 'linear' ? 'linear' : 'vertical',
     useAbacus: type === 'abacus',
-    slots: shuffledSlots,
+    slots: slotsWithProblems,
     estimatedMinutes: Math.round(partDurationMinutes),
   }
 }
@@ -228,16 +266,52 @@ export async function getSessionPlan(planId: string): Promise<SessionPlan | null
 }
 
 /**
+ * Check if a session plan has pre-generated problems for all slots
+ * Old sessions created before problem pre-generation was added will fail this check
+ */
+function sessionHasPreGeneratedProblems(plan: SessionPlan): boolean {
+  for (const part of plan.parts) {
+    for (const slot of part.slots) {
+      if (!slot.problem) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+/**
  * Get active session plan for a player (in_progress status)
+ * Returns the most recent in_progress session if multiple exist
+ * Auto-abandons sessions that are missing pre-generated problems (legacy data)
  */
 export async function getActiveSessionPlan(playerId: string): Promise<SessionPlan | null> {
+  // Find any session that's not completed or abandoned
+  // This includes: draft, approved, in_progress
   const result = await db.query.sessionPlans.findFirst({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      eq(schema.sessionPlans.status, 'in_progress')
+      inArray(schema.sessionPlans.status, ['draft', 'approved', 'in_progress'])
     ),
+    orderBy: (plans, { desc }) => [desc(plans.createdAt)],
   })
-  return result ?? null
+
+  if (!result) {
+    return null
+  }
+
+  // Validate session has pre-generated problems
+  // Old sessions may not have them - auto-abandon those
+  if (!sessionHasPreGeneratedProblems(result)) {
+    console.warn(
+      `[getActiveSessionPlan] Session ${result.id} missing pre-generated problems, auto-abandoning`
+    )
+    await abandonSessionPlan(result.id)
+    // Recursively check for another active session
+    return getActiveSessionPlan(playerId)
+  }
+
+  return result
 }
 
 /**
@@ -396,16 +470,23 @@ function createSlot(
   purpose: ProblemSlot['purpose'],
   baseConstraints: ReturnType<typeof getPhaseSkillConstraints>
 ): ProblemSlot {
+  const constraints = {
+    requiredSkills: baseConstraints.requiredSkills,
+    targetSkills: baseConstraints.targetSkills,
+    forbiddenSkills: baseConstraints.forbiddenSkills,
+    termCount: { min: 3, max: 6 },
+    digitRange: { min: 1, max: 2 },
+  }
+
+  // Pre-generate the problem so it's persisted with the plan
+  // This ensures page reloads show the same problem
+  const problem = generateProblemFromConstraints(constraints)
+
   return {
     index,
     purpose,
-    constraints: {
-      requiredSkills: baseConstraints.requiredSkills,
-      targetSkills: baseConstraints.targetSkills,
-      forbiddenSkills: baseConstraints.forbiddenSkills,
-      termCount: { min: 3, max: 6 },
-      digitRange: { min: 1, max: 2 },
-    },
+    constraints,
+    problem,
   }
 }
 

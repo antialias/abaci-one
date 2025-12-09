@@ -1,4 +1,5 @@
 import { type DefaultOptions, QueryClient } from '@tanstack/react-query'
+import { cache } from 'react'
 
 const queryConfig: DefaultOptions = {
   queries: {
@@ -20,6 +21,27 @@ export function createQueryClient() {
     defaultOptions: queryConfig,
   })
 }
+
+/**
+ * Server-side query client, memoized per-request via React cache().
+ * Use this in Server Components for SSR data prefetching.
+ *
+ * @example
+ * ```tsx
+ * // In a Server Component
+ * const queryClient = getQueryClient()
+ * await queryClient.prefetchQuery({
+ *   queryKey: ['user', id],
+ *   queryFn: () => getUser(id),
+ * })
+ * return (
+ *   <HydrationBoundary state={dehydrate(queryClient)}>
+ *     <ClientComponent />
+ *   </HydrationBoundary>
+ * )
+ * ```
+ */
+export const getQueryClient = cache(() => createQueryClient())
 
 /**
  * Helper function to construct API URLs with the /api prefix.
