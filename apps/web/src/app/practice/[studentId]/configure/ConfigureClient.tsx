@@ -59,7 +59,7 @@ export function ConfigureClient({ studentId, playerName }: ConfigureClientProps)
       {
         onSuccess: () => {
           // Redirect to main practice page - view will derive from session data
-          router.push(`/practice/${studentId}`)
+          router.push(`/practice/${studentId}`, { scroll: false })
         },
         onError: (err) => {
           // If an active session already exists, use it and redirect
@@ -67,7 +67,7 @@ export function ConfigureClient({ studentId, playerName }: ConfigureClientProps)
             // Update the cache with the existing plan so the practice page has it
             queryClient.setQueryData(sessionPlanKeys.active(studentId), err.existingPlan)
             // Redirect to practice page
-            router.push(`/practice/${studentId}`)
+            router.push(`/practice/${studentId}`, { scroll: false })
           }
         },
       }
@@ -76,7 +76,7 @@ export function ConfigureClient({ studentId, playerName }: ConfigureClientProps)
 
   const handleCancel = useCallback(() => {
     generatePlan.reset()
-    router.push(`/practice/${studentId}`)
+    router.push(`/practice/${studentId}`, { scroll: false })
   }, [studentId, generatePlan, router])
 
   return (

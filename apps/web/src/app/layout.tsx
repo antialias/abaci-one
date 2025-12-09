@@ -68,6 +68,11 @@ export const metadata: Metadata = {
     title: 'Abaci.One',
   },
 
+  // Modern web app capable meta tag (non-Apple browsers)
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
+
   // Category
   category: 'education',
 }

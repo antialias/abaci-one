@@ -154,7 +154,7 @@ export function StudentPracticeClient({
 
   // Handle continue practice - navigate to configuration page
   const handleContinuePractice = useCallback(() => {
-    router.push(`/practice/${studentId}/configure`)
+    router.push(`/practice/${studentId}/configure`, { scroll: false })
   }, [studentId, router])
 
   // Handle resuming an existing session
@@ -187,7 +187,7 @@ export function StudentPracticeClient({
       {
         onSuccess: () => {
           // Navigate to configure page for a fresh start
-          router.push(`/practice/${studentId}/configure`)
+          router.push(`/practice/${studentId}/configure`, { scroll: false })
         },
       }
     )
@@ -220,12 +220,12 @@ export function StudentPracticeClient({
         { playerId: studentId, planId: currentPlan.id },
         {
           onSuccess: () => {
-            router.push(`/practice/${studentId}/configure`)
+            router.push(`/practice/${studentId}/configure`, { scroll: false })
           },
         }
       )
     } else {
-      router.push(`/practice/${studentId}/configure`)
+      router.push(`/practice/${studentId}/configure`, { scroll: false })
     }
   }, [studentId, currentPlan, abandonSession, router])
 
@@ -275,7 +275,7 @@ export function StudentPracticeClient({
     endEarly.reset()
     abandonSession.reset()
     // Navigate to configure page for new session
-    router.push(`/practice/${studentId}/configure`)
+    router.push(`/practice/${studentId}/configure`, { scroll: false })
   }, [
     generatePlan,
     approvePlan,
@@ -314,7 +314,7 @@ export function StudentPracticeClient({
 
   // Handle opening placement test - navigate to placement test route
   const handleRunPlacementTest = useCallback(() => {
-    router.push(`/practice/${studentId}/placement-test`)
+    router.push(`/practice/${studentId}/placement-test`, { scroll: false })
   }, [studentId, router])
 
   // Handle opening manual skill selector

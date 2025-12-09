@@ -53,6 +53,7 @@ export default function StudentNotFound() {
           </p>
           <Link
             href="/practice"
+            scroll={false}
             className={css({
               display: 'inline-block',
               padding: '0.75rem 2rem',

@@ -29,13 +29,13 @@ export function PlacementTestClient({ studentId, playerName }: PlacementTestClie
       // TODO: Save results to curriculum via API
       console.log('Placement test complete:', results)
       // Return to main practice page
-      router.push(`/practice/${studentId}`)
+      router.push(`/practice/${studentId}`, { scroll: false })
     },
     [studentId, router]
   )
 
   const handleCancel = useCallback(() => {
-    router.push(`/practice/${studentId}`)
+    router.push(`/practice/${studentId}`, { scroll: false })
   }, [studentId, router])
 
   return (

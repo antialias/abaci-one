@@ -38,7 +38,7 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
   // Handle student selection - navigate to student's practice page
   const handleSelectStudent = useCallback(
     (student: StudentWithProgress) => {
-      router.push(`/practice/${student.id}`)
+      router.push(`/practice/${student.id}`, { scroll: false })
     },
     [router]
   )
