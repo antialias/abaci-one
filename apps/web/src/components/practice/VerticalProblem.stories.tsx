@@ -364,7 +364,7 @@ function TermsPlayground() {
       ? {
           terms,
           answer: correctAnswer,
-          skillsUsed: [],
+          skillsRequired: [],
         }
       : null
 
@@ -386,7 +386,7 @@ function TermsPlayground() {
     const newAnswer = newTerms.reduce((sum, t) => sum + t, 0)
     if (newTerms.length > 0) {
       interaction.loadProblem(
-        { terms: newTerms, answer: newAnswer, skillsUsed: [] },
+        { terms: newTerms, answer: newAnswer, skillsRequired: [] },
         0,
         problemKey + 1
       )
@@ -421,7 +421,11 @@ function TermsPlayground() {
 
   const handleReset = () => {
     if (terms.length > 0) {
-      interaction.loadProblem({ terms, answer: correctAnswer, skillsUsed: [] }, 0, problemKey + 1)
+      interaction.loadProblem(
+        { terms, answer: correctAnswer, skillsRequired: [] },
+        0,
+        problemKey + 1
+      )
       setProblemKey((k) => k + 1)
     }
   }
@@ -531,8 +535,7 @@ function TermsPlayground() {
                     interaction.ambiguousHelpTermIndex === i + 1 ? 'yellow.200' : 'blue.100',
                   padding: '0.125rem 0.375rem',
                   borderRadius: '4px',
-                  border:
-                    interaction.ambiguousHelpTermIndex === i + 1 ? '2px solid' : '1px solid',
+                  border: interaction.ambiguousHelpTermIndex === i + 1 ? '2px solid' : '1px solid',
                   borderColor:
                     interaction.ambiguousHelpTermIndex === i + 1 ? 'yellow.500' : 'transparent',
                 })}
@@ -654,7 +657,9 @@ function TermsPlayground() {
       >
         <strong>How to test help detection:</strong>
         <ul className={css({ marginTop: '0.5rem', paddingLeft: '1.25rem' })}>
-          <li>Type a prefix sum value (e.g., "100" for the first term) to trigger disambiguation</li>
+          <li>
+            Type a prefix sum value (e.g., "100" for the first term) to trigger disambiguation
+          </li>
           <li>Wait 4 seconds for auto-help, or keep typing to continue to final answer</li>
           <li>
             Type with leading zero (e.g., "0100" or "063") to <em>immediately</em> request help

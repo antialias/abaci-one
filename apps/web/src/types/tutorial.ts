@@ -89,6 +89,14 @@ export interface SkillSet {
     heavenBeadSubtraction: boolean // Can remove heaven bead (5)
     simpleCombinationsSub: boolean // Can do 6-9 subtraction without complements
   }
+
+  // Advanced operations involving multiple place values
+  advanced: {
+    /** Carry cascades across 2+ columns (e.g., 999 + 1 = 1000) */
+    cascadingCarry: boolean
+    /** Borrow cascades across 2+ columns (e.g., 1000 - 1 = 999) */
+    cascadingBorrow: boolean
+  }
 }
 
 export interface PracticeStep {
@@ -168,6 +176,10 @@ export function createEmptySkillSet(): SkillSet {
       '-2=+8-10': false,
       '-1=+9-10': false,
     },
+    advanced: {
+      cascadingCarry: false,
+      cascadingBorrow: false,
+    },
   }
 }
 
@@ -214,6 +226,10 @@ export function createBasicSkillSet(): SkillSet {
       '-3=+7-10': false,
       '-2=+8-10': false,
       '-1=+9-10': false,
+    },
+    advanced: {
+      cascadingCarry: false,
+      cascadingBorrow: false,
     },
   }
 }

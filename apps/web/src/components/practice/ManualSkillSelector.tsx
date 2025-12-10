@@ -67,6 +67,13 @@ const SKILL_CATEGORIES = {
       '-1=+9-10': '-1 = +9 - 10',
     },
   },
+  advanced: {
+    name: 'Advanced Multi-Column Operations',
+    skills: {
+      cascadingCarry: 'Cascading Carry (e.g., 999 + 1 = 1000)',
+      cascadingBorrow: 'Cascading Borrow (e.g., 1000 - 1 = 999)',
+    },
+  },
 } as const
 
 type CategoryKey = keyof typeof SKILL_CATEGORIES

@@ -23,7 +23,7 @@ interface VerticalProblemProps {
   needHelpTermIndex?: number
   /** Rejected digit to show as red X (null = no rejection) */
   rejectedDigit?: string | null
-  /** Help overlay to render adjacent to the current help term (positioned above the term row) */
+  /** Help overlay to render in place of answer boxes when in help mode */
   helpOverlay?: ReactNode
 }
 
@@ -132,6 +132,8 @@ export function VerticalProblem({
         const isCurrentHelp = index === currentHelpTermIndex
         // Check if this term row should show "need help?" prompt (ambiguous case)
         const showNeedHelp = index === needHelpTermIndex && !isCurrentHelp
+        // Check if this term is already included in the prefix sum (when in help mode)
+        const isInPrefixSum = currentHelpTermIndex !== undefined && index < currentHelpTermIndex
 
         return (
           <div
@@ -144,6 +146,8 @@ export function VerticalProblem({
               gap: '2px',
               position: 'relative',
               transition: 'all 0.2s ease',
+              // Dim terms already in prefix sum when in help mode
+              opacity: isInPrefixSum ? 0.4 : 1,
             })}
           >
             {/* "Need help?" prompt for ambiguous prefix case */}
@@ -190,9 +194,9 @@ export function VerticalProblem({
                 data-element="current-arrow"
                 className={css({
                   position: 'absolute',
-                  left: '-1.5rem',
+                  left: '-2.2rem',
                   color: isDark ? 'purple.300' : 'purple.600',
-                  fontSize: '0.875rem',
+                  fontSize: '1.75rem',
                 })}
               >
                 →
@@ -238,24 +242,6 @@ export function VerticalProblem({
                 {digit}
               </div>
             ))}
-
-            {/* Help overlay - positioned above this term row, translated up by its height */}
-            {isCurrentHelp && helpOverlay && (
-              <div
-                data-section="term-help"
-                data-help-term-index={index}
-                className={css({
-                  position: 'absolute',
-                  // Position at bottom of this row, then translate up by 100% to sit above it
-                  bottom: '100%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  zIndex: 10,
-                })}
-              >
-                {helpOverlay}
-              </div>
-            )}
           </div>
         )
       })}
@@ -272,133 +258,150 @@ export function VerticalProblem({
         })}
       />
 
-      {/* Answer row */}
-      <div
-        data-element="answer-row"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2px',
-          position: 'relative',
-        })}
-      >
-        {/* Equals column */}
+      {/* Answer row - shows help abacus when in help mode, otherwise answer cells */}
+      {currentHelpTermIndex !== undefined && helpOverlay ? (
+        // Help mode: show the help abacus in place of answer boxes
         <div
-          data-element="equals"
+          data-element="help-area"
+          data-help-term-index={currentHelpTermIndex}
           className={css({
-            width: cellWidth,
-            height: cellHeight,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: isDark ? 'gray.400' : 'gray.500',
+            padding: '0.5rem 0',
           })}
         >
-          =
+          {helpOverlay}
         </div>
+      ) : (
+        // Normal mode: show answer digit cells
+        <div
+          data-element="answer-row"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            position: 'relative',
+          })}
+        >
+          {/* Equals column */}
+          <div
+            data-element="equals"
+            className={css({
+              width: cellWidth,
+              height: cellHeight,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
+            =
+          </div>
 
-        {/* Answer digit cells - show maxDigits cells total */}
-        {Array(maxDigits)
-          .fill(null)
-          .map((_, index) => {
-            // Determine what to show in this cell
-            const displayValue =
-              isCompleted && isIncorrect ? correctAnswer?.toString() || '' : userAnswer
-            const paddedValue = displayValue.padStart(maxDigits, '')
-            const digit = paddedValue[index] || ''
-            const isEmpty = digit === ''
+          {/* Answer digit cells - show maxDigits cells total */}
+          {Array(maxDigits)
+            .fill(null)
+            .map((_, index) => {
+              // Determine what to show in this cell
+              const displayValue =
+                isCompleted && isIncorrect ? correctAnswer?.toString() || '' : userAnswer
+              const paddedValue = displayValue.padStart(maxDigits, '')
+              const digit = paddedValue[index] || ''
+              const isEmpty = digit === ''
 
-            // Check if this is the cell where a rejected digit should show
-            // Digits are entered left-to-right, filling from left side of the answer area
-            // So the next digit position is right after the current answer length
-            const nextDigitIndex = userAnswer.length
-            const isRejectedCell = rejectedDigit && isEmpty && index === nextDigitIndex
+              // Check if this is the cell where a rejected digit should show
+              // Digits are entered left-to-right, filling from left side of the answer area
+              // So the next digit position is right after the current answer length
+              const nextDigitIndex = userAnswer.length
+              const isRejectedCell = rejectedDigit && isEmpty && index === nextDigitIndex
 
-            return (
-              <div
-                key={index}
-                data-element={
-                  isRejectedCell ? 'rejected-cell' : isEmpty ? 'empty-cell' : 'answer-cell'
-                }
-                className={css({
-                  width: cellWidth,
-                  height: cellHeight,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  backgroundColor: isRejectedCell
-                    ? isDark
-                      ? 'red.900'
-                      : 'red.100'
-                    : isCompleted
-                      ? isCorrect
-                        ? isDark
-                          ? 'green.800'
-                          : 'green.100'
+              return (
+                <div
+                  key={index}
+                  data-element={
+                    isRejectedCell ? 'rejected-cell' : isEmpty ? 'empty-cell' : 'answer-cell'
+                  }
+                  className={css({
+                    width: cellWidth,
+                    height: cellHeight,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    backgroundColor: isRejectedCell
+                      ? isDark
+                        ? 'red.900'
+                        : 'red.100'
+                      : isCompleted
+                        ? isCorrect
+                          ? isDark
+                            ? 'green.800'
+                            : 'green.100'
+                          : isDark
+                            ? 'red.800'
+                            : 'red.100'
                         : isDark
-                          ? 'red.800'
-                          : 'red.100'
-                      : isDark
-                        ? 'gray.700'
-                        : 'white',
-                  borderRadius: '4px',
-                  border: isEmpty && !isCompleted && !isRejectedCell ? '1px dashed' : '1px solid',
-                  borderColor: isRejectedCell
-                    ? isDark
-                      ? 'red.500'
-                      : 'red.400'
-                    : isCompleted
-                      ? isCorrect
-                        ? isDark
-                          ? 'green.600'
-                          : 'green.300'
-                        : isDark
-                          ? 'red.600'
-                          : 'red.300'
-                      : isEmpty
-                        ? isFocused
-                          ? 'blue.400'
+                          ? 'gray.700'
+                          : 'white',
+                    borderRadius: '4px',
+                    border: isEmpty && !isCompleted && !isRejectedCell ? '1px dashed' : '1px solid',
+                    borderColor: isRejectedCell
+                      ? isDark
+                        ? 'red.500'
+                        : 'red.400'
+                      : isCompleted
+                        ? isCorrect
+                          ? isDark
+                            ? 'green.600'
+                            : 'green.300'
+                          : isDark
+                            ? 'red.600'
+                            : 'red.300'
+                        : isEmpty
+                          ? isFocused
+                            ? 'blue.400'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.300'
                           : isDark
                             ? 'gray.600'
-                            : 'gray.300'
+                            : 'gray.300',
+                    transition: 'all 0.15s ease-out',
+                    color: isCompleted
+                      ? isCorrect
+                        ? isDark
+                          ? 'green.200'
+                          : 'green.700'
                         : isDark
-                          ? 'gray.600'
-                          : 'gray.300',
-                  transition: 'all 0.15s ease-out',
-                  color: isCompleted
-                    ? isCorrect
-                      ? isDark
-                        ? 'green.200'
-                        : 'green.700'
+                          ? 'red.200'
+                          : 'red.700'
                       : isDark
-                        ? 'red.200'
-                        : 'red.700'
-                    : isDark
-                      ? 'gray.200'
-                      : 'gray.800',
-                  // Shake animation for rejected cell
-                  ...(isRejectedCell && {
-                    animation: 'shake 0.3s ease-out',
-                  }),
-                })}
-              >
-                {isRejectedCell ? (
-                  <span
-                    className={css({
-                      color: isDark ? 'red.400' : 'red.600',
-                      fontWeight: 'bold',
-                    })}
-                  >
-                    ✕
-                  </span>
-                ) : (
-                  digit
-                )}
-              </div>
-            )
-          })}
-      </div>
+                        ? 'gray.200'
+                        : 'gray.800',
+                    // Shake animation for rejected cell
+                    ...(isRejectedCell && {
+                      animation: 'shake 0.3s ease-out',
+                    }),
+                  })}
+                >
+                  {isRejectedCell ? (
+                    <span
+                      className={css({
+                        color: isDark ? 'red.400' : 'red.600',
+                        fontWeight: 'bold',
+                      })}
+                    >
+                      ✕
+                    </span>
+                  ) : (
+                    digit
+                  )}
+                </div>
+              )
+            })}
+        </div>
+      )}
 
       {/* Show user's incorrect answer below correct answer */}
       {isCompleted && isIncorrect && (

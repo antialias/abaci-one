@@ -150,6 +150,7 @@ function generateStepExplanation(
 
 /**
  * Analyzes skills needed for a single addition step: currentValue + term = newValue
+ * Also detects cascading carries (when a carry propagates across 2+ columns).
  */
 function analyzeStepSkills(currentValue: number, term: number, newValue: number): string[] {
   const skills: string[] = []
@@ -161,16 +162,40 @@ function analyzeStepSkills(currentValue: number, term: number, newValue: number)
 
   const maxColumns = Math.max(currentDigits.length, termDigits.length, newDigits.length)
 
+  // Track carries for cascading detection
+  let carryIn = 0
+  let consecutiveCarries = 0
+  let maxConsecutiveCarries = 0
+
   for (let column = 0; column < maxColumns; column++) {
     const currentDigit = currentDigits[column] || 0
     const termDigit = termDigits[column] || 0
     const newDigit = newDigits[column] || 0
 
-    if (termDigit === 0) continue // No addition in this column
+    // Check if this column produces a carry (including any carry-in from previous column)
+    const sumInColumn = currentDigit + termDigit + carryIn
+    const producesCarry = sumInColumn >= 10
+
+    if (producesCarry) {
+      consecutiveCarries++
+      maxConsecutiveCarries = Math.max(maxConsecutiveCarries, consecutiveCarries)
+      carryIn = 1
+    } else {
+      // Reset consecutive carries when a column doesn't produce a carry
+      consecutiveCarries = 0
+      carryIn = 0
+    }
+
+    if (termDigit === 0 && carryIn === 0) continue // No addition in this column (and no carry to process)
 
     // Analyze what happens in this column
     const columnSkills = analyzeColumnAddition(currentDigit, termDigit, newDigit, column)
     skills.push(...columnSkills)
+  }
+
+  // If we had 2+ consecutive carries, this is a cascading carry
+  if (maxConsecutiveCarries >= 2) {
+    skills.push('advanced.cascadingCarry')
   }
 
   return skills
@@ -332,7 +357,8 @@ export function analyzeColumnSubtraction(
 
 /**
  * Analyzes skills needed for a single subtraction step: currentValue - term = newValue
- * Works column by column from right to left, tracking borrows
+ * Works column by column from right to left, tracking borrows.
+ * Also detects cascading borrows (when a borrow propagates across 2+ columns).
  */
 export function analyzeSubtractionStepSkills(
   currentValue: number,
@@ -349,6 +375,9 @@ export function analyzeSubtractionStepSkills(
 
   // Track borrows as we work from right to left
   let pendingBorrow = false
+
+  // Track consecutive borrows for cascading detection
+  let consecutiveBorrows = 0
 
   for (let column = 0; column < maxColumns; column++) {
     let currentDigit = currentDigits[column] || 0
@@ -367,7 +396,11 @@ export function analyzeSubtractionStepSkills(
 
     if (needsBorrow) {
       pendingBorrow = true
+      consecutiveBorrows++
       // After borrowing, we effectively have currentDigit + 10
+    } else {
+      // Reset consecutive borrows when a column doesn't need to borrow
+      consecutiveBorrows = 0
     }
 
     // Analyze skills needed for this column
@@ -377,6 +410,11 @@ export function analyzeSubtractionStepSkills(
       needsBorrow
     )
     skills.push(...columnSkills)
+  }
+
+  // If we had 2+ consecutive borrows, this is a cascading borrow
+  if (consecutiveBorrows >= 2) {
+    skills.push('advanced.cascadingBorrow')
   }
 
   return [...new Set(skills)] // Remove duplicates
@@ -411,6 +449,8 @@ function isSkillEnabled(skillPath: string, skillSet: SkillSet | Partial<SkillSet
     return skillSet.fiveComplementsSub[skill as keyof typeof skillSet.fiveComplementsSub] || false
   } else if (category === 'tenComplementsSub' && skillSet.tenComplementsSub) {
     return skillSet.tenComplementsSub[skill as keyof typeof skillSet.tenComplementsSub] || false
+  } else if (category === 'advanced' && skillSet.advanced) {
+    return skillSet.advanced[skill as keyof typeof skillSet.advanced] || false
   }
   return false
 }
@@ -452,7 +492,8 @@ export function problemMatchesSkills(
       Object.values(targetSkills.fiveComplements || {}).some(Boolean) ||
       Object.values(targetSkills.tenComplements || {}).some(Boolean) ||
       Object.values(targetSkills.fiveComplementsSub || {}).some(Boolean) ||
-      Object.values(targetSkills.tenComplementsSub || {}).some(Boolean)
+      Object.values(targetSkills.tenComplementsSub || {}).some(Boolean) ||
+      Object.values(targetSkills.advanced || {}).some(Boolean)
 
     if (hasAnyTargetSkill && !hasTargetSkill) return false
   }
@@ -777,6 +818,19 @@ function generateSequentialExplanation(terms: number[], sum: number, skills: str
     const complements = skills.filter((skill) => skill.startsWith('tenComplementsSub.'))
     explanations.push(
       `Apply ten complements (subtraction/borrowing): ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+    )
+  }
+
+  // Advanced skill explanations
+  if (skills.includes('advanced.cascadingCarry')) {
+    explanations.push(
+      'This problem involves cascading carry (carry propagates across 2+ place values).'
+    )
+  }
+
+  if (skills.includes('advanced.cascadingBorrow')) {
+    explanations.push(
+      'This problem involves cascading borrow (borrow propagates across 2+ place values).'
     )
   }
 

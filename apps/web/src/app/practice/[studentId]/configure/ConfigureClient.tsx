@@ -94,6 +94,7 @@ const SKILL_CATEGORY_NAMES: Record<string, string> = {
   fiveComplementsSub: '5-Complements (Sub)',
   tenComplements: '10-Complements',
   tenComplementsSub: '10-Complements (Sub)',
+  advanced: 'Advanced',
 }
 
 /**
