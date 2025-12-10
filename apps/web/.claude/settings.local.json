@@ -134,11 +134,14 @@
       "Bash(mcp__sqlite__describe_table:*)",
       "Bash(ls:*)",
       "Bash(mcp__sqlite__list_tables:*)",
-      "Bash(mcp__sqlite__read_query:*)"
+      "Bash(mcp__sqlite__read_query:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

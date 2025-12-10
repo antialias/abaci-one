@@ -7,6 +7,8 @@ export interface GeneratedProblem {
   requiredSkills: string[]
   difficulty: 'easy' | 'medium' | 'hard'
   explanation?: string
+  /** Step-by-step trace from the generator showing skills used at each step */
+  generationTrace?: GenerationTrace
 }
 
 export interface ProblemConstraints {
@@ -18,22 +20,132 @@ export interface ProblemConstraints {
 }
 
 /**
- * Analyzes which skills are required during the sequential addition process
- * This simulates adding each term one by one to the abacus
+ * Analyzes which skills are required during sequential computation.
+ * Handles both addition (positive terms) and subtraction (negative terms).
+ * This simulates computing each term one by one on the abacus.
  */
 export function analyzeRequiredSkills(terms: number[], _finalSum: number): string[] {
   const skills: string[] = []
   let currentValue = 0
 
-  // Simulate adding each term sequentially
+  // Simulate computing each term sequentially
   for (const term of terms) {
-    const newValue = currentValue + term
-    const requiredSkillsForStep = analyzeStepSkills(currentValue, term, newValue)
-    skills.push(...requiredSkillsForStep)
-    currentValue = newValue
+    if (term >= 0) {
+      // Addition
+      const newValue = currentValue + term
+      const requiredSkillsForStep = analyzeStepSkills(currentValue, term, newValue)
+      skills.push(...requiredSkillsForStep)
+      currentValue = newValue
+    } else {
+      // Subtraction (term is negative, so we subtract its absolute value)
+      const absTerm = Math.abs(term)
+      const newValue = currentValue - absTerm
+      const requiredSkillsForStep = analyzeSubtractionStepSkills(currentValue, absTerm, newValue)
+      skills.push(...requiredSkillsForStep)
+      currentValue = newValue
+    }
   }
 
   return [...new Set(skills)] // Remove duplicates
+}
+
+/**
+ * A single step in the generation trace
+ */
+export interface GenerationTraceStep {
+  stepNumber: number
+  operation: string // e.g., "0 + 3 = 3" or "3 + 4 = 7"
+  accumulatedBefore: number
+  termAdded: number
+  accumulatedAfter: number
+  skillsUsed: string[]
+  explanation: string
+}
+
+/**
+ * Full generation trace for a problem
+ */
+export interface GenerationTrace {
+  terms: number[]
+  answer: number
+  steps: GenerationTraceStep[]
+  allSkills: string[]
+}
+
+/**
+ * Generates a human-readable explanation for a single step
+ */
+function generateStepExplanation(
+  before: number,
+  term: number,
+  after: number,
+  skills: string[],
+  isSubtraction: boolean = false
+): string {
+  if (skills.length === 0) {
+    return isSubtraction
+      ? `Subtract ${term} directly (no skill needed)`
+      : `Add ${term} directly (no skill needed)`
+  }
+
+  const explanations: string[] = []
+
+  for (const skill of skills) {
+    // Addition skills
+    if (skill === 'basic.directAddition') {
+      explanations.push(`direct addition of ${term}`)
+    } else if (skill === 'basic.heavenBead') {
+      explanations.push('use heaven bead (5)')
+    } else if (skill === 'basic.simpleCombinations') {
+      explanations.push('simple combination (5+n)')
+    } else if (skill.startsWith('fiveComplements.')) {
+      // e.g., "fiveComplements.4=5-1" -> "+4 = +5-1"
+      const match = skill.match(/fiveComplements\.(\d)=5-(\d)/)
+      if (match) {
+        explanations.push(`five complement: +${match[1]} = +5-${match[2]}`)
+      }
+    } else if (skill.startsWith('tenComplements.')) {
+      // e.g., "tenComplements.9=10-1" -> "+9 = +10-1"
+      const match = skill.match(/tenComplements\.(\d)=10-(\d)/)
+      if (match) {
+        explanations.push(`ten complement: +${match[1]} = +10-${match[2]} (carry)`)
+      }
+    }
+    // Subtraction skills
+    else if (skill === 'basic.directSubtraction') {
+      explanations.push(`direct subtraction of ${term}`)
+    } else if (skill === 'basic.heavenBeadSubtraction') {
+      explanations.push('remove heaven bead (5)')
+    } else if (skill === 'basic.simpleCombinationsSub') {
+      explanations.push('simple subtraction combination')
+    } else if (skill.startsWith('fiveComplementsSub.')) {
+      // e.g., "fiveComplementsSub.-4=-5+1" -> "-4 = -5+1"
+      const match = skill.match(/fiveComplementsSub\.-(\d)=-5\+(\d)/)
+      if (match) {
+        explanations.push(`five complement: -${match[1]} = -5+${match[2]}`)
+      }
+    } else if (skill.startsWith('tenComplementsSub.')) {
+      // e.g., "tenComplementsSub.-9=+1-10" -> "-9 = +1-10"
+      const match = skill.match(/tenComplementsSub\.-(\d)=\+(\d)-10/)
+      if (match) {
+        explanations.push(`ten complement: -${match[1]} = +${match[2]}-10 (borrow)`)
+      }
+    }
+  }
+
+  const beforeOnes = before % 10
+  const termOnes = term % 10
+  const op = isSubtraction ? '-' : '+'
+  const resultOnes = isSubtraction ? (before - term) % 10 : (before + term) % 10
+  const carryBorrow = isSubtraction
+    ? beforeOnes < termOnes
+      ? ' (borrow)'
+      : ''
+    : before + term >= 10
+      ? ' (carry)'
+      : ''
+
+  return `${before} ${op} ${term}: ones column ${beforeOnes}${op}${termOnes}=${resultOnes}${carryBorrow} → ${explanations.join(', ')}`
 }
 
 /**
@@ -362,8 +474,8 @@ export function generateSingleProblem(
     // Generate random number of terms (3 to 5 as specified)
     const termCount = Math.floor(Math.random() * 3) + 3 // 3-5 terms
 
-    // Generate the sequence of numbers to add
-    const terms = generateSequence(
+    // Generate the sequence of numbers to add (now returns trace with provenance)
+    const sequenceResult = generateSequence(
       constraints,
       termCount,
       requiredSkills,
@@ -371,16 +483,17 @@ export function generateSingleProblem(
       forbiddenSkills
     )
 
-    if (!terms) continue // Failed to generate valid sequence
+    if (!sequenceResult) continue // Failed to generate valid sequence
 
-    const sum = terms.reduce((acc, term) => acc + term, 0)
+    const { terms, trace } = sequenceResult
+    const sum = trace.answer
 
     // Check sum constraints
     if (constraints.maxSum && sum > constraints.maxSum) continue
     if (constraints.minSum && sum < constraints.minSum) continue
 
-    // Analyze what skills this sequential addition requires
-    const problemSkills = analyzeRequiredSkills(terms, sum)
+    // Use skills from the trace (provenance from the generator itself)
+    const problemSkills = trace.allSkills
 
     // Determine difficulty based on skills required
     let difficulty: 'easy' | 'medium' | 'hard' = 'easy'
@@ -397,6 +510,7 @@ export function generateSingleProblem(
       requiredSkills: problemSkills,
       difficulty,
       explanation: generateSequentialExplanation(terms, sum, problemSkills),
+      generationTrace: trace, // Include provenance trace
     }
 
     // Check if problem matches skill requirements
@@ -408,8 +522,29 @@ export function generateSingleProblem(
   return null // Failed to generate a suitable problem
 }
 
+/** Result from generating a sequence, includes provenance trace */
+interface SequenceResult {
+  terms: number[]
+  trace: GenerationTrace
+}
+
 /**
- * Generates a sequence of numbers that can be added using only the specified skills
+ * Checks if any subtraction skills are enabled in a skill set
+ */
+function hasSubtractionSkills(skillSet: SkillSet): boolean {
+  return (
+    skillSet.basic.directSubtraction ||
+    skillSet.basic.heavenBeadSubtraction ||
+    skillSet.basic.simpleCombinationsSub ||
+    Object.values(skillSet.fiveComplementsSub).some(Boolean) ||
+    Object.values(skillSet.tenComplementsSub).some(Boolean)
+  )
+}
+
+/**
+ * Generates a sequence of numbers that can be computed using only the specified skills.
+ * Supports both addition and subtraction operations.
+ * Also builds a trace showing what skills were computed at each step.
  */
 function generateSequence(
   constraints: ProblemConstraints,
@@ -417,49 +552,100 @@ function generateSequence(
   requiredSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>
-): number[] | null {
+): SequenceResult | null {
   const terms: number[] = []
+  const steps: GenerationTraceStep[] = []
   let currentValue = 0
 
+  // Check if we can use subtraction
+  const canSubtract = hasSubtractionSkills(requiredSkills)
+
   for (let i = 0; i < termCount; i++) {
-    // Try to find a valid next term
-    const validTerm = findValidNextTerm(
+    // Try to find a valid next term (returns term + skills it computed)
+    // For first term, always add (can't subtract from 0)
+    const allowSubtraction = canSubtract && i > 0 && currentValue > 0
+    const result = findValidNextTermWithTrace(
       currentValue,
       constraints,
       requiredSkills,
       targetSkills,
       forbiddenSkills,
-      i === termCount - 1 // isLastTerm
+      i === termCount - 1, // isLastTerm
+      allowSubtraction
     )
 
-    if (validTerm === null) return null // Couldn't find valid term
+    if (result === null) return null // Couldn't find valid term
 
-    terms.push(validTerm)
-    currentValue += validTerm
+    const { term, skillsUsed, isSubtraction } = result
+    const newValue = isSubtraction ? currentValue - term : currentValue + term
+
+    // Build trace step with the skills the generator computed
+    const explanation = generateStepExplanation(
+      currentValue,
+      term,
+      newValue,
+      skillsUsed,
+      isSubtraction
+    )
+    const operation = isSubtraction
+      ? `${currentValue} - ${term} = ${newValue}`
+      : `${currentValue} + ${term} = ${newValue}`
+
+    steps.push({
+      stepNumber: i + 1,
+      operation,
+      accumulatedBefore: currentValue,
+      termAdded: isSubtraction ? -term : term,
+      accumulatedAfter: newValue,
+      skillsUsed,
+      explanation,
+    })
+
+    // Store the signed term for the problem
+    terms.push(isSubtraction ? -term : term)
+    currentValue = newValue
   }
 
-  return terms
+  return {
+    terms,
+    trace: {
+      terms,
+      answer: currentValue,
+      steps,
+      allSkills: [...new Set(steps.flatMap((s) => s.skillsUsed))],
+    },
+  }
+}
+
+/** Result from findValidNextTermWithTrace */
+interface TermWithSkills {
+  term: number
+  skillsUsed: string[]
+  isSubtraction: boolean
 }
 
 /**
- * Finds a valid next term in the sequence
+ * Finds a valid next term in the sequence and returns both the term and
+ * the skills that were computed for it (provenance).
+ * Supports both addition and subtraction operations.
  */
-function findValidNextTerm(
+function findValidNextTermWithTrace(
   currentValue: number,
   constraints: ProblemConstraints,
   requiredSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
-  isLastTerm: boolean = false
-): number | null {
+  isLastTerm: boolean = false,
+  allowSubtraction: boolean = false
+): TermWithSkills | null {
   const { min, max } = constraints.numberRange
-  const candidates: number[] = []
+  const candidates: TermWithSkills[] = []
 
-  // Try each possible term value
+  // Try each possible ADDITION term value
   for (let term = min; term <= max; term++) {
     const newValue = currentValue + term
 
-    // Check if this addition step is valid
+    // Check if this addition step is valid - THIS is the provenance computation
     const stepSkills = analyzeStepSkills(currentValue, term, newValue)
 
     // Check if the step uses only allowed skills (and no forbidden skills)
@@ -474,7 +660,35 @@ function findValidNextTerm(
     })
 
     if (usesValidSkills) {
-      candidates.push(term)
+      candidates.push({ term, skillsUsed: stepSkills, isSubtraction: false })
+    }
+  }
+
+  // Try each possible SUBTRACTION term value (if allowed)
+  if (allowSubtraction) {
+    for (let term = min; term <= max; term++) {
+      const newValue = currentValue - term
+
+      // Skip if result would be negative
+      if (newValue < 0) continue
+
+      // Check if this subtraction step is valid
+      const stepSkills = analyzeSubtractionStepSkills(currentValue, term, newValue)
+
+      // Check if the step uses only allowed skills (and no forbidden skills)
+      const usesValidSkills = stepSkills.every((skillPath) => {
+        // Must use only required skills
+        if (!isSkillEnabled(skillPath, requiredSkills)) return false
+
+        // Must not use forbidden skills
+        if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
+
+        return true
+      })
+
+      if (usesValidSkills) {
+        candidates.push({ term, skillsUsed: stepSkills, isSubtraction: true })
+      }
     }
   }
 
@@ -482,12 +696,9 @@ function findValidNextTerm(
 
   // If we have target skills and this is not the last term, try to pick a term that uses target skills
   if (targetSkills && !isLastTerm) {
-    const targetCandidates = candidates.filter((term) => {
-      const newValue = currentValue + term
-      const stepSkills = analyzeStepSkills(currentValue, term, newValue)
-
-      return stepSkills.some((skillPath) => isSkillEnabled(skillPath, targetSkills))
-    })
+    const targetCandidates = candidates.filter((candidate) =>
+      candidate.skillsUsed.some((skillPath) => isSkillEnabled(skillPath, targetSkills))
+    )
 
     if (targetCandidates.length > 0) {
       return targetCandidates[Math.floor(Math.random() * targetCandidates.length)]
@@ -499,17 +710,23 @@ function findValidNextTerm(
 }
 
 /**
- * Generates an explanation for how to solve the sequential addition problem
+ * Generates an explanation for how to solve the sequential problem (addition and/or subtraction)
  */
 function generateSequentialExplanation(terms: number[], sum: number, skills: string[]): string {
   const explanations: string[] = []
 
+  // Check if problem has mixed operations
+  const hasSubtraction = terms.some((t) => t < 0)
+
   // Create vertical display format for explanation
-  const verticalDisplay = `${terms.map((term) => `  ${term}`).join('\n')}\n---\n  ${sum}`
+  const verticalDisplay = `${terms.map((term) => `  ${term >= 0 ? '+' : ''}${term}`).join('\n')}\n---\n  ${sum}`
 
-  explanations.push(`Calculate this problem by adding each number in sequence:\n${verticalDisplay}`)
+  const actionWord = hasSubtraction ? 'computing' : 'adding'
+  explanations.push(
+    `Calculate this problem by ${actionWord} each number in sequence:\n${verticalDisplay}`
+  )
 
-  // Skill-specific explanations
+  // Skill-specific explanations - Addition
   if (skills.includes('basic.directAddition')) {
     explanations.push('Use direct addition for numbers 1-4.')
   }
@@ -522,17 +739,44 @@ function generateSequentialExplanation(terms: number[], sum: number, skills: str
     explanations.push('Use combinations of heaven and earth beads for 6-9.')
   }
 
-  if (skills.some((skill) => skill.startsWith('fiveComplements'))) {
-    const complements = skills.filter((skill) => skill.startsWith('fiveComplements'))
+  if (skills.some((skill) => skill.startsWith('fiveComplements.'))) {
+    const complements = skills.filter((skill) => skill.startsWith('fiveComplements.'))
     explanations.push(
-      `Apply five complements: ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+      `Apply five complements (addition): ${complements.map((s) => s.split('.')[1]).join(', ')}.`
     )
   }
 
-  if (skills.some((skill) => skill.startsWith('tenComplements'))) {
-    const complements = skills.filter((skill) => skill.startsWith('tenComplements'))
+  if (skills.some((skill) => skill.startsWith('tenComplements.'))) {
+    const complements = skills.filter((skill) => skill.startsWith('tenComplements.'))
     explanations.push(
-      `Apply ten complements: ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+      `Apply ten complements (addition): ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+    )
+  }
+
+  // Skill-specific explanations - Subtraction
+  if (skills.includes('basic.directSubtraction')) {
+    explanations.push('Use direct subtraction for numbers 1-4.')
+  }
+
+  if (skills.includes('basic.heavenBeadSubtraction')) {
+    explanations.push('Remove the heaven bead when subtracting 5.')
+  }
+
+  if (skills.includes('basic.simpleCombinationsSub')) {
+    explanations.push('Use subtraction combinations for 6-9.')
+  }
+
+  if (skills.some((skill) => skill.startsWith('fiveComplementsSub.'))) {
+    const complements = skills.filter((skill) => skill.startsWith('fiveComplementsSub.'))
+    explanations.push(
+      `Apply five complements (subtraction): ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+    )
+  }
+
+  if (skills.some((skill) => skill.startsWith('tenComplementsSub.'))) {
+    const complements = skills.filter((skill) => skill.startsWith('tenComplementsSub.'))
+    explanations.push(
+      `Apply ten complements (subtraction/borrowing): ${complements.map((s) => s.split('.')[1]).join(', ')}.`
     )
   }
 
