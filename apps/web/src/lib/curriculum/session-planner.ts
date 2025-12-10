@@ -208,7 +208,7 @@ function buildSessionPart(
 
   // Focus slots: current phase, primary skill
   for (let i = 0; i < focusCount; i++) {
-    slots.push(createSlot(slots.length, 'focus', phaseConstraints))
+    slots.push(createSlot(slots.length, 'focus', phaseConstraints, type))
   }
 
   // Reinforce slots: struggling skills get extra practice
@@ -218,7 +218,8 @@ function buildSessionPart(
       createSlot(
         slots.length,
         'reinforce',
-        skill ? buildConstraintsForSkill(skill) : phaseConstraints
+        skill ? buildConstraintsForSkill(skill) : phaseConstraints,
+        type
       )
     )
   }
@@ -227,13 +228,18 @@ function buildSessionPart(
   for (let i = 0; i < reviewCount; i++) {
     const skill = needsReview[i % Math.max(1, needsReview.length)]
     slots.push(
-      createSlot(slots.length, 'review', skill ? buildConstraintsForSkill(skill) : phaseConstraints)
+      createSlot(
+        slots.length,
+        'review',
+        skill ? buildConstraintsForSkill(skill) : phaseConstraints,
+        type
+      )
     )
   }
 
   // Challenge slots: use same mastered skills constraints (all problems should use student's skills)
   for (let i = 0; i < challengeCount; i++) {
-    slots.push(createSlot(slots.length, 'challenge', phaseConstraints))
+    slots.push(createSlot(slots.length, 'challenge', phaseConstraints, type))
   }
 
   // Shuffle to interleave purposes
@@ -487,16 +493,33 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
 // Helper Functions
 // ============================================================================
 
+/**
+ * Get term count constraints based on part type
+ *
+ * - abacus: Full term count (3-6 terms)
+ * - visualization: 75% of abacus (easier since no physical abacus) - rounds to 2-4 terms
+ * - linear: Same as abacus (full difficulty)
+ */
+function getTermCountForPartType(partType: SessionPartType): { min: number; max: number } {
+  if (partType === 'visualization') {
+    // 75% of abacus term count (3*0.75=2.25→2, 6*0.75=4.5→4)
+    return { min: 2, max: 4 }
+  }
+  // abacus and linear use full term count
+  return { min: 3, max: 6 }
+}
+
 function createSlot(
   index: number,
   purpose: ProblemSlot['purpose'],
-  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>
+  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
+  partType: SessionPartType
 ): ProblemSlot {
   const constraints = {
     requiredSkills: baseConstraints.requiredSkills,
     targetSkills: baseConstraints.targetSkills,
     forbiddenSkills: baseConstraints.forbiddenSkills,
-    termCount: { min: 3, max: 6 },
+    termCount: getTermCountForPartType(partType),
     digitRange: { min: 1, max: 2 },
   }
 
