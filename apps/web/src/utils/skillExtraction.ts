@@ -60,91 +60,155 @@ function extractSkillsFromSegment(segment: PedagogicalSegment): ExtractedSkill[]
   const primaryRule = plan[0]?.rule
   if (!primaryRule) return skills
 
+  // Detect subtraction by checking segment ID suffix or step operations
+  // Subtraction segments have IDs ending in '-sub'
+  const isSubtraction = segment.id.endsWith('-sub')
+
   switch (primaryRule) {
     case 'Direct':
       // Direct addition/subtraction - check what type
-      if (digit <= 4) {
-        skills.push({
-          skillId: 'basic.directAddition',
-          rule: 'Direct',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
-      } else if (digit === 5) {
-        skills.push({
-          skillId: 'basic.heavenBead',
-          rule: 'Direct',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
+      if (isSubtraction) {
+        if (digit <= 4) {
+          skills.push({
+            skillId: 'basic.directSubtraction',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        } else if (digit === 5) {
+          skills.push({
+            skillId: 'basic.heavenBeadSubtraction',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        } else {
+          // 6-9 without complements means simple combinations
+          skills.push({
+            skillId: 'basic.simpleCombinationsSub',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
       } else {
-        // 6-9 without complements means simple combinations
-        skills.push({
-          skillId: 'basic.simpleCombinations',
-          rule: 'Direct',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
+        if (digit <= 4) {
+          skills.push({
+            skillId: 'basic.directAddition',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        } else if (digit === 5) {
+          skills.push({
+            skillId: 'basic.heavenBead',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        } else {
+          // 6-9 without complements means simple combinations
+          skills.push({
+            skillId: 'basic.simpleCombinations',
+            rule: 'Direct',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
       }
       break
 
     case 'FiveComplement': {
-      // Five's complement: +d = +5 - (5-d)
-      // The skill key format is "d=5-(5-d)" which simplifies to the digit pattern
-      const fiveComplementKey = getFiveComplementKey(digit)
-      if (fiveComplementKey) {
-        skills.push({
-          skillId: `fiveComplements.${fiveComplementKey}`,
-          rule: 'FiveComplement',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
+      if (isSubtraction) {
+        // Five's complement subtraction: -d = -5 + (5-d)
+        const fiveComplementSubKey = getFiveComplementSubKey(digit)
+        if (fiveComplementSubKey) {
+          skills.push({
+            skillId: `fiveComplementsSub.${fiveComplementSubKey}`,
+            rule: 'FiveComplement',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
+      } else {
+        // Five's complement addition: +d = +5 - (5-d)
+        const fiveComplementKey = getFiveComplementKey(digit)
+        if (fiveComplementKey) {
+          skills.push({
+            skillId: `fiveComplements.${fiveComplementKey}`,
+            rule: 'FiveComplement',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
       }
       break
     }
 
     case 'TenComplement': {
-      // Ten's complement: +d = +10 - (10-d)
-      const tenComplementKey = getTenComplementKey(digit)
-      if (tenComplementKey) {
-        skills.push({
-          skillId: `tenComplements.${tenComplementKey}`,
-          rule: 'TenComplement',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
+      if (isSubtraction) {
+        // Ten's complement subtraction (borrow): -d = +(10-d) - 10
+        const tenComplementSubKey = getTenComplementSubKey(digit)
+        if (tenComplementSubKey) {
+          skills.push({
+            skillId: `tenComplementsSub.${tenComplementSubKey}`,
+            rule: 'TenComplement',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
+      } else {
+        // Ten's complement addition: +d = +10 - (10-d)
+        const tenComplementKey = getTenComplementKey(digit)
+        if (tenComplementKey) {
+          skills.push({
+            skillId: `tenComplements.${tenComplementKey}`,
+            rule: 'TenComplement',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
       }
       break
     }
 
     case 'Cascade': {
-      // Cascade is triggered by TenComplement with consecutive 9s
-      // The underlying skill is still TenComplement
-      const cascadeKey = getTenComplementKey(digit)
-      if (cascadeKey) {
-        skills.push({
-          skillId: `tenComplements.${cascadeKey}`,
-          rule: 'Cascade',
-          place,
-          digit,
-          segmentId: segment.id,
-        })
+      // Cascade is triggered by TenComplement with consecutive 9s/0s
+      // The underlying skill is still TenComplement (addition) or TenComplementSub (subtraction)
+      if (isSubtraction) {
+        const cascadeSubKey = getTenComplementSubKey(digit)
+        if (cascadeSubKey) {
+          skills.push({
+            skillId: `tenComplementsSub.${cascadeSubKey}`,
+            rule: 'Cascade',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
+      } else {
+        const cascadeKey = getTenComplementKey(digit)
+        if (cascadeKey) {
+          skills.push({
+            skillId: `tenComplements.${cascadeKey}`,
+            rule: 'Cascade',
+            place,
+            digit,
+            segmentId: segment.id,
+          })
+        }
       }
       break
-    }
-  }
-
-  // Check for additional rules in the plan (e.g., TenComplement + Cascade)
-  if (plan.length > 1) {
-    for (let i = 1; i < plan.length; i++) {
-      const additionalRule = plan[i]
-      if (additionalRule.rule === 'Cascade') {
-      }
     }
   }
 
@@ -182,6 +246,41 @@ function getTenComplementKey(digit: number): string | null {
     3: '3=10-7',
     2: '2=10-8',
     1: '1=10-9',
+  }
+  return mapping[digit] ?? null
+}
+
+/**
+ * Map a digit to its five's complement subtraction skill key
+ * Five's complement subtraction: -d = -5 + (5-d)
+ * -4 = -5 + 1, -3 = -5 + 2, -2 = -5 + 3, -1 = -5 + 4
+ */
+function getFiveComplementSubKey(digit: number): string | null {
+  const mapping: Record<number, string> = {
+    4: '-4=-5+1',
+    3: '-3=-5+2',
+    2: '-2=-5+3',
+    1: '-1=-5+4',
+  }
+  return mapping[digit] ?? null
+}
+
+/**
+ * Map a digit to its ten's complement subtraction skill key
+ * Ten's complement subtraction (borrow): -d = +(10-d) - 10
+ * -9 = +1 - 10, -8 = +2 - 10, etc.
+ */
+function getTenComplementSubKey(digit: number): string | null {
+  const mapping: Record<number, string> = {
+    9: '-9=+1-10',
+    8: '-8=+2-10',
+    7: '-7=+3-10',
+    6: '-6=+4-10',
+    5: '-5=+5-10',
+    4: '-4=+6-10',
+    3: '-3=+7-10',
+    2: '-2=+8-10',
+    1: '-1=+9-10',
   }
   return mapping[digit] ?? null
 }

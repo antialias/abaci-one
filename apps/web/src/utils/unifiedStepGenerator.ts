@@ -277,58 +277,101 @@ function generateSegmentReadable(
   // Pull first available provenance from this segment's steps
   const provenance = stepIndices.map((i) => steps[i]?.provenance).find(Boolean)
 
+  // Detect if this is a subtraction segment (negative rhs in provenance)
+  const isSubtraction = provenance?.rhs !== undefined && provenance.rhs < 0
+
   // Helper numbers
   const s5 = 5 - digit
   const s10 = 10 - digit
   const nextPlaceName = getPlaceName(place + 1)
 
   // Title is short + kid-friendly
-  const title =
-    rule === 'Direct'
-      ? `Add ${digit} — ${placeName}`
-      : rule === 'FiveComplement'
-        ? `Make 5 — ${placeName}`
-        : rule === 'TenComplement'
-          ? hasCascade
-            ? `Make 10 (carry) — ${placeName}`
-            : `Make 10 — ${placeName}`
-          : rule === 'Cascade'
-            ? `Carry ripple — ${placeName}`
-            : `Strategy — ${placeName}`
+  let title: string
+  if (isSubtraction) {
+    title =
+      rule === 'Direct'
+        ? `Subtract ${digit} — ${placeName}`
+        : rule === 'FiveComplement'
+          ? `Break 5 — ${placeName}`
+          : rule === 'TenComplement'
+            ? hasCascade
+              ? `Borrow (cascade) — ${placeName}`
+              : `Borrow 10 — ${placeName}`
+            : rule === 'Cascade'
+              ? `Borrow ripple — ${placeName}`
+              : `Strategy — ${placeName}`
+  } else {
+    title =
+      rule === 'Direct'
+        ? `Add ${digit} — ${placeName}`
+        : rule === 'FiveComplement'
+          ? `Make 5 — ${placeName}`
+          : rule === 'TenComplement'
+            ? hasCascade
+              ? `Make 10 (carry) — ${placeName}`
+              : `Make 10 — ${placeName}`
+            : rule === 'Cascade'
+              ? `Carry ripple — ${placeName}`
+              : `Strategy — ${placeName}`
+  }
 
   // Minimal chips (0–2), provenance first if present
   const chips: Array<{ label: string; value: string }> = []
   if (provenance) {
     chips.push({
-      label: 'From addend',
+      label: isSubtraction ? 'From subtrahend' : 'From addend',
       value: `${provenance.rhsDigit} ${provenance.rhsPlaceName}`,
     })
   }
   chips.push({ label: 'Rod shows', value: `${currentDigit}` })
 
-  // Carry path (kept terse)
+  // Carry/borrow path (kept terse)
   let carryPath: string | undefined
   if (rule === 'TenComplement') {
-    if (hasCascade) {
-      const nextPlace = place + 1
-      const nextVal =
-        (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
-      if (nextVal === 9) {
-        // Find highest non‑9 to name the landing place
-        const maxPlace = Math.max(0, ...Object.keys(startState).map(Number)) + 2
-        let k = nextPlace + 1
-        for (; k <= maxPlace; k++) {
-          const v = (startState[k]?.heavenActive ? 5 : 0) + (startState[k]?.earthActive || 0)
-          if (v !== 9) break
+    if (isSubtraction) {
+      // Borrow path for subtraction
+      if (hasCascade) {
+        const nextPlace = place + 1
+        const nextVal =
+          (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
+        if (nextVal === 0) {
+          // Find highest non-0 to name the borrowing source
+          const maxPlace = Math.max(0, ...Object.keys(startState).map(Number)) + 2
+          let k = nextPlace + 1
+          for (; k <= maxPlace; k++) {
+            const v = (startState[k]?.heavenActive ? 5 : 0) + (startState[k]?.earthActive || 0)
+            if (v !== 0) break
+          }
+          const toName = getPlaceName(k)
+          carryPath = `${getPlaceName(nextPlace)} is 0 ⇒ borrow from ${toName}; fill 9s`
+        } else {
+          carryPath = `Borrow from ${nextPlaceName}`
         }
-        const landingIsNewHighest = k > maxPlace
-        const toName = landingIsNewHighest ? 'next higher place' : getPlaceName(k)
-        carryPath = `${getPlaceName(nextPlace)} is 9 ⇒ ${toName} +1; clear 9s`
+      } else {
+        carryPath = `Borrow from ${nextPlaceName}`
+      }
+    } else {
+      // Carry path for addition
+      if (hasCascade) {
+        const nextPlace = place + 1
+        const nextVal =
+          (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
+        if (nextVal === 9) {
+          const maxPlace = Math.max(0, ...Object.keys(startState).map(Number)) + 2
+          let k = nextPlace + 1
+          for (; k <= maxPlace; k++) {
+            const v = (startState[k]?.heavenActive ? 5 : 0) + (startState[k]?.earthActive || 0)
+            if (v !== 9) break
+          }
+          const landingIsNewHighest = k > maxPlace
+          const toName = landingIsNewHighest ? 'next higher place' : getPlaceName(k)
+          carryPath = `${getPlaceName(nextPlace)} is 9 ⇒ ${toName} +1; clear 9s`
+        } else {
+          carryPath = `${nextPlaceName} +1`
+        }
       } else {
         carryPath = `${nextPlaceName} +1`
       }
-    } else {
-      carryPath = `${nextPlaceName} +1`
     }
   }
 
@@ -339,57 +382,118 @@ function generateSegmentReadable(
 
   // Semantic, 1–2 sentence summary
   let summary = ''
-  if (rule === 'Direct') {
-    if (digit <= 4) {
-      summary = `Add ${digit} to the ${placeName}. It fits here, so just move ${digit} lower bead${digit > 1 ? 's' : ''}.`
+  if (isSubtraction) {
+    // Subtraction summaries
+    if (rule === 'Direct') {
+      if (digit <= 4) {
+        summary = `Subtract ${digit} from the ${placeName}. You have enough beads, so just remove ${digit} lower bead${digit > 1 ? 's' : ''}.`
+      } else if (digit === 5) {
+        summary = `Subtract ${digit} from the ${placeName}. Just lower the heaven bead.`
+      } else {
+        const rest = digit - 5
+        summary = `Subtract ${digit} from the ${placeName}: lower the heaven bead (−5) and remove ${rest} earth bead${rest > 1 ? 's' : ''}.`
+      }
+    } else if (rule === 'FiveComplement') {
+      summary = `Subtract ${digit} from the ${placeName}, but there aren't enough lower beads. Use 5's friend: lower the heaven bead (−5) and add ${s5} — that's −5 + ${s5}.`
+    } else if (rule === 'TenComplement') {
+      if (hasCascade) {
+        summary = `Subtract ${digit} from the ${placeName}, but you only have ${currentDigit}. Borrow from a higher place; because the next rod is 0, the borrow cascades, then add ${s10} here (that's −10 + ${s10}).`
+      } else {
+        summary = `Subtract ${digit} from the ${placeName}, but you only have ${currentDigit}. Borrow 10 from ${nextPlaceName} and add ${s10} here (that's −10 + ${s10}).`
+      }
     } else {
-      const rest = digit - 5
-      summary = `Add ${digit} to the ${placeName} using the heaven bead: +5${rest ? ` + ${rest}` : ''}. No carry needed.`
-    }
-  } else if (rule === 'FiveComplement') {
-    summary = `Add ${digit} to the ${placeName}, but there isn't room for that many lower beads. Use 5's friend: press the heaven bead (5) and lift ${s5} — that's +5 − ${s5}.`
-  } else if (rule === 'TenComplement') {
-    if (hasCascade) {
-      summary = `Add ${digit} to the ${placeName} to make 10. Carry to ${nextPlaceName}; because the next rod is 9, the carry ripples up, then take ${s10} here (that's +10 − ${s10}).`
-    } else {
-      summary = `Add ${digit} to the ${placeName} to make 10: carry 1 to ${nextPlaceName} and take ${s10} here (that's +10 − ${s10}).`
+      summary = `Apply the strategy on the ${placeName}.`
     }
   } else {
-    summary = `Apply the strategy on the ${placeName}.`
+    // Addition summaries (existing)
+    if (rule === 'Direct') {
+      if (digit <= 4) {
+        summary = `Add ${digit} to the ${placeName}. It fits here, so just move ${digit} lower bead${digit > 1 ? 's' : ''}.`
+      } else {
+        const rest = digit - 5
+        summary = `Add ${digit} to the ${placeName} using the heaven bead: +5${rest ? ` + ${rest}` : ''}. No carry needed.`
+      }
+    } else if (rule === 'FiveComplement') {
+      summary = `Add ${digit} to the ${placeName}, but there isn't room for that many lower beads. Use 5's friend: press the heaven bead (5) and lift ${s5} — that's +5 − ${s5}.`
+    } else if (rule === 'TenComplement') {
+      if (hasCascade) {
+        summary = `Add ${digit} to the ${placeName} to make 10. Carry to ${nextPlaceName}; because the next rod is 9, the carry ripples up, then take ${s10} here (that's +10 − ${s10}).`
+      } else {
+        summary = `Add ${digit} to the ${placeName} to make 10: carry 1 to ${nextPlaceName} and take ${s10} here (that's +10 − ${s10}).`
+      }
+    } else {
+      summary = `Apply the strategy on the ${placeName}.`
+    }
   }
 
   // Short subtitle (optional, reused from your rule badges)
-  const subtitle =
-    rule === 'Direct'
-      ? digit <= 4
-        ? 'Simple move'
-        : 'Heaven bead helps'
-      : rule === 'FiveComplement'
-        ? "Using 5's friend"
-        : rule === 'TenComplement'
-          ? "Using 10's friend"
-          : undefined
+  let subtitle: string | undefined
+  if (isSubtraction) {
+    subtitle =
+      rule === 'Direct'
+        ? digit <= 4
+          ? 'Simple removal'
+          : 'Heaven bead helps'
+        : rule === 'FiveComplement'
+          ? "Using 5's friend"
+          : rule === 'TenComplement'
+            ? 'Borrowing'
+            : undefined
+  } else {
+    subtitle =
+      rule === 'Direct'
+        ? digit <= 4
+          ? 'Simple move'
+          : 'Heaven bead helps'
+        : rule === 'FiveComplement'
+          ? "Using 5's friend"
+          : rule === 'TenComplement'
+            ? "Using 10's friend"
+            : undefined
+  }
 
   // Tiny, dev-only validation of the summary against the selected rule
   const issues: string[] = []
   const guards = plan.flatMap((p) => p.conditions)
-  if (rule === 'FiveComplement' && !guards.some((g) => /L\s*\+\s*d.*>\s*4/.test(g))) {
-    issues.push('FiveComplement summary emitted but guard L+d>4 not present')
-  }
-  if (rule === 'TenComplement' && !guards.some((g) => /a\s*\+\s*d.*(≥|>=)\s*10/.test(g))) {
-    issues.push('TenComplement summary emitted but guard a+d≥10 not present')
-  }
-  if (rule === 'Direct' && !guards.some((g) => /a\s*\+\s*d.*(≤|<=)\s*9/.test(g))) {
-    issues.push('Direct summary emitted but guard a+d≤9 not present')
+  if (isSubtraction) {
+    // Subtraction validation
+    if (rule === 'FiveComplement' && !guards.some((g) => /L\s*<\s*d/.test(g))) {
+      issues.push('FiveComplement (sub) summary emitted but guard L < d not present')
+    }
+    if (rule === 'TenComplement' && !guards.some((g) => /a.*<.*d/.test(g))) {
+      issues.push('TenComplement (sub) summary emitted but guard a < d not present')
+    }
+    if (rule === 'Direct' && !guards.some((g) => /a.*>=.*d/.test(g))) {
+      issues.push('Direct (sub) summary emitted but guard a >= d not present')
+    }
+  } else {
+    // Addition validation
+    if (rule === 'FiveComplement' && !guards.some((g) => /L\s*\+\s*d.*>\s*4/.test(g))) {
+      issues.push('FiveComplement summary emitted but guard L+d>4 not present')
+    }
+    if (rule === 'TenComplement' && !guards.some((g) => /a\s*\+\s*d.*(≥|>=)\s*10/.test(g))) {
+      issues.push('TenComplement summary emitted but guard a+d≥10 not present')
+    }
+    if (rule === 'Direct' && !guards.some((g) => /a\s*\+\s*d.*(≤|<=)\s*9/.test(g))) {
+      issues.push('Direct summary emitted but guard a+d≤9 not present')
+    }
   }
   const validation = { ok: issues.length === 0, issues }
 
   // Minimal "show the math" for students who want it
   const showMathLines: string[] = []
-  if (rule === 'FiveComplement') {
-    showMathLines.push(`+5 − ${s5} = +${digit} (at this rod)`)
-  } else if (rule === 'TenComplement') {
-    showMathLines.push(`+10 − ${s10} = +${digit} (with a carry)`)
+  if (isSubtraction) {
+    if (rule === 'FiveComplement') {
+      showMathLines.push(`−5 + ${s5} = −${digit} (at this rod)`)
+    } else if (rule === 'TenComplement') {
+      showMathLines.push(`−10 + ${s10} = −${digit} (with a borrow)`)
+    }
+  } else {
+    if (rule === 'FiveComplement') {
+      showMathLines.push(`+5 − ${s5} = +${digit} (at this rod)`)
+    } else if (rule === 'TenComplement') {
+      showMathLines.push(`+10 − ${s10} = +${digit} (with a carry)`)
+    }
   }
 
   return {
@@ -703,8 +807,7 @@ function generateDecompositionTerms(
   const addend = targetValue - startValue
   if (addend === 0) return { terms: [], segmentsPlan: [], decompositionSteps: [] }
   if (addend < 0) {
-    // TODO: Handle subtraction in separate sprint
-    throw new Error('Subtraction not implemented yet')
+    return generateSubtractionDecompositionTerms(startValue, targetValue, toState)
   }
 
   // Convert to abacus state representation with correct dimensions
@@ -1114,6 +1217,543 @@ function generateCascadeComplementSteps(
   return steps
 }
 
+// =============================================================================
+// SUBTRACTION IMPLEMENTATION
+// =============================================================================
+
+/**
+ * Generate decomposition terms for subtraction operations.
+ * Process subtrahend left-to-right (highest to lowest place), same as addition.
+ */
+function generateSubtractionDecompositionTerms(
+  startValue: number,
+  targetValue: number,
+  toState: (n: number) => AbacusState
+): {
+  terms: string[]
+  segmentsPlan: SegmentDraft[]
+  decompositionSteps: DecompositionStep[]
+} {
+  const subtrahend = startValue - targetValue // positive number to subtract
+  if (subtrahend <= 0) return { terms: [], segmentsPlan: [], decompositionSteps: [] }
+
+  let currentState = toState(startValue)
+  let currentValue = startValue
+  const steps: DecompositionStep[] = []
+  const segmentsPlan: SegmentDraft[] = []
+
+  // Process subtrahend digit by digit from left to right (highest to lowest place)
+  const subtrahendStr = subtrahend.toString()
+  const subtrahendLength = subtrahendStr.length
+
+  for (let digitIndex = 0; digitIndex < subtrahendLength; digitIndex++) {
+    const digit = parseInt(subtrahendStr[digitIndex], 10)
+    const placeValue = subtrahendLength - 1 - digitIndex
+
+    if (digit === 0) continue // Skip zeros
+
+    const currentDigitAtPlace = getDigitAtPlace(currentValue, placeValue)
+    const startStepCount = steps.length
+
+    // Create base provenance for this digit (negative RHS value for subtraction)
+    const baseProvenance: TermProvenance = {
+      rhs: -subtrahend, // Negative to indicate subtraction
+      rhsDigit: digit,
+      rhsPlace: placeValue,
+      rhsPlaceName: getPlaceName(placeValue),
+      rhsDigitIndex: digitIndex,
+      rhsValue: -(digit * 10 ** placeValue), // Negative value
+    }
+
+    // Apply the subtraction algorithm decision tree
+    const stepResult = processSubtractionDigitAtPlace(
+      digit,
+      placeValue,
+      currentDigitAtPlace,
+      currentState,
+      currentValue,
+      toState,
+      baseProvenance
+    )
+
+    const segmentId = `place-${placeValue}-digit-${digit}-sub`
+    const segmentStartValue = currentValue
+    const segmentStartState = { ...currentState }
+    const placeStart = segmentStartState[placeValue] ?? {
+      heavenActive: false,
+      earthActive: 0,
+    }
+    const L = placeStart.earthActive
+    const U: 0 | 1 = placeStart.heavenActive ? 1 : 0
+
+    steps.push(...stepResult.steps)
+    currentValue = stepResult.newValue
+    currentState = stepResult.newState
+
+    const endStepCount = steps.length
+    const stepIndices = Array.from(
+      { length: endStepCount - startStepCount },
+      (_, i) => startStepCount + i
+    )
+
+    if (stepIndices.length === 0) continue
+
+    // Determine pedagogy for subtraction
+    const plan = determineSubtractionSegmentDecisions(
+      digit,
+      placeValue,
+      currentDigitAtPlace,
+      stepResult.steps
+    )
+    const goal = inferSubtractionGoal({
+      id: segmentId,
+      place: placeValue,
+      digit,
+      a: currentDigitAtPlace,
+      L,
+      U,
+      plan,
+      goal: '',
+      stepIndices,
+      termIndices: stepIndices,
+      startValue: segmentStartValue,
+      startState: segmentStartState,
+      endValue: currentValue,
+      endState: { ...currentState },
+    })
+
+    const segment: SegmentDraft = {
+      id: segmentId,
+      place: placeValue,
+      digit,
+      a: currentDigitAtPlace,
+      L,
+      U,
+      plan,
+      goal,
+      stepIndices,
+      termIndices: stepIndices,
+      startValue: segmentStartValue,
+      startState: segmentStartState,
+      endValue: currentValue,
+      endState: { ...currentState },
+    }
+
+    segmentsPlan.push(segment)
+  }
+
+  const terms = steps.map((step) => step.operation)
+  return { terms, segmentsPlan, decompositionSteps: steps }
+}
+
+/**
+ * Process a single digit subtraction at a specific place value.
+ * Decision tree:
+ *   a >= d: Can subtract without borrowing
+ *     - Direct if enough beads available
+ *     - Five's complement if heaven bead is active but not enough earth beads
+ *   a < d: Need to borrow from higher place
+ *     - Simple borrow if next place > 0
+ *     - Cascade borrow if next place = 0
+ */
+function processSubtractionDigitAtPlace(
+  digit: number,
+  placeValue: number,
+  currentDigitAtPlace: number,
+  currentState: AbacusState,
+  currentValue: number,
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
+): { steps: DecompositionStep[]; newValue: number; newState: AbacusState } {
+  const a = currentDigitAtPlace
+  const d = digit
+
+  if (a >= d) {
+    // Can subtract without borrowing
+    return processDirectSubtraction(d, placeValue, currentState, toState, baseProvenance)
+  } else {
+    // Need to borrow from higher place
+    return processTensBorrow(d, placeValue, currentState, currentValue, toState, baseProvenance)
+  }
+}
+
+/**
+ * Handle direct subtraction at a place value (a >= d, no borrow needed).
+ * Cases:
+ *   - d <= 4 and L >= d: Remove earth beads directly
+ *   - d <= 4 and L < d but U = 1: Five's complement (-5 + (5-d))
+ *   - d = 5 and U = 1: Deactivate heaven bead
+ *   - d >= 6 and U = 1: Deactivate heaven + remove (d-5) earth beads
+ */
+function processDirectSubtraction(
+  digit: number,
+  placeValue: number,
+  currentState: AbacusState,
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
+): { steps: DecompositionStep[]; newValue: number; newState: AbacusState } {
+  const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
+  const L = placeState.earthActive
+  const U = placeState.heavenActive
+  const steps: DecompositionStep[] = []
+  const newState = { ...currentState }
+
+  if (digit <= 4) {
+    if (L >= digit) {
+      // Direct: Remove earth beads
+      const subtractValue = digit * 10 ** placeValue
+      steps.push({
+        operation: `-${subtractValue}`,
+        description: `Remove ${digit} earth bead${digit > 1 ? 's' : ''} at ${getPlaceName(placeValue)}`,
+        targetValue: 0,
+        provenance: {
+          ...baseProvenance,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: -subtractValue,
+        },
+      })
+      newState[placeValue] = { ...placeState, earthActive: L - digit }
+    } else if (U) {
+      // Five's complement: -d = -5 + (5-d)
+      const complement = 5 - digit
+      const groupId = `5comp-sub-${baseProvenance.rhsPlace}-${baseProvenance.rhsDigit}`
+      const fiveValue = 5 * 10 ** placeValue
+      const addValue = complement * 10 ** placeValue
+
+      steps.push({
+        operation: `-${fiveValue}`,
+        description: `Deactivate heaven bead at ${getPlaceName(placeValue)}`,
+        targetValue: 0,
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: -fiveValue,
+        },
+      })
+
+      steps.push({
+        operation: `${addValue}`,
+        description: `Add ${complement} earth bead${complement > 1 ? 's' : ''} at ${getPlaceName(placeValue)}`,
+        targetValue: 0,
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: addValue,
+        },
+      })
+
+      newState[placeValue] = { heavenActive: false, earthActive: L + complement }
+    }
+  } else if (digit === 5) {
+    // Deactivate heaven bead
+    const subtractValue = 5 * 10 ** placeValue
+    steps.push({
+      operation: `-${subtractValue}`,
+      description: `Deactivate heaven bead at ${getPlaceName(placeValue)}`,
+      targetValue: 0,
+      provenance: {
+        ...baseProvenance,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: -subtractValue,
+      },
+    })
+    newState[placeValue] = { ...placeState, heavenActive: false }
+  } else {
+    // d >= 6: Deactivate heaven + remove (d-5) earth beads
+    const earthToRemove = digit - 5
+    const fiveValue = 5 * 10 ** placeValue
+    const earthValue = earthToRemove * 10 ** placeValue
+
+    steps.push({
+      operation: `-${fiveValue}`,
+      description: `Deactivate heaven bead at ${getPlaceName(placeValue)}`,
+      targetValue: 0,
+      provenance: {
+        ...baseProvenance,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: -fiveValue,
+      },
+    })
+
+    steps.push({
+      operation: `-${earthValue}`,
+      description: `Remove ${earthToRemove} earth bead${earthToRemove > 1 ? 's' : ''} at ${getPlaceName(placeValue)}`,
+      targetValue: 0,
+      provenance: {
+        ...baseProvenance,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: -earthValue,
+      },
+    })
+
+    newState[placeValue] = { heavenActive: false, earthActive: L - earthToRemove }
+  }
+
+  const currentValue = abacusStateToNumber(currentState)
+  const newValue = abacusStateToNumber(newState)
+
+  return { steps, newValue, newState: toState(newValue) }
+}
+
+/**
+ * Handle ten's borrow when a < d.
+ * Borrow 10 from next higher place, then subtract.
+ * If next place is 0, cascade the borrow.
+ */
+function processTensBorrow(
+  digit: number,
+  placeValue: number,
+  currentState: AbacusState,
+  currentValue: number,
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
+): { steps: DecompositionStep[]; newValue: number; newState: AbacusState } {
+  const steps: DecompositionStep[] = []
+  const complementToAdd = 10 - digit // What we add after borrowing 10
+
+  // Check if this requires cascading (next place is 0)
+  const nextPlaceDigit = getDigitAtPlace(currentValue, placeValue + 1)
+  const requiresCascading = nextPlaceDigit === 0
+
+  const groupId = `10borrow-${baseProvenance.rhsPlace}-${baseProvenance.rhsDigit}`
+
+  if (requiresCascading) {
+    // Generate cascading borrow steps
+    const cascadeSteps = generateCascadeBorrowSteps(
+      currentValue,
+      placeValue,
+      complementToAdd,
+      baseProvenance,
+      groupId
+    )
+    steps.push(...cascadeSteps)
+  } else {
+    // Simple borrow: -10 from next place, + complement at current place
+    const borrowValue = 10 ** (placeValue + 1)
+    const addValue = complementToAdd * 10 ** placeValue
+
+    steps.push({
+      operation: `-${borrowValue}`,
+      description: `Borrow from ${getPlaceName(placeValue + 1)}`,
+      targetValue: 0,
+      provenance: {
+        ...baseProvenance,
+        groupId,
+        termPlace: placeValue + 1,
+        termPlaceName: getPlaceName(placeValue + 1),
+        termValue: -borrowValue,
+      },
+    })
+
+    steps.push({
+      operation: `${addValue}`,
+      description: `Add ${complementToAdd} to ${getPlaceName(placeValue)} (ten's complement)`,
+      targetValue: 0,
+      provenance: {
+        ...baseProvenance,
+        groupId,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: addValue,
+      },
+    })
+  }
+
+  // Calculate new value: subtract digit at this place
+  const newValue = currentValue - digit * 10 ** placeValue
+
+  return {
+    steps,
+    newValue,
+    newState: toState(newValue),
+  }
+}
+
+/**
+ * Generate cascade borrow steps when borrowing through zeros.
+ * Find first non-zero higher place, subtract there, fill 9s in between.
+ */
+function generateCascadeBorrowSteps(
+  currentValue: number,
+  startPlace: number,
+  complementToAdd: number,
+  baseProvenance: TermProvenance,
+  groupId: string
+): DecompositionStep[] {
+  const steps: DecompositionStep[] = []
+
+  // Find first non-zero place to borrow from
+  let borrowPlace = startPlace + 1
+  const maxCheck = Math.max(1, Math.floor(Math.log10(Math.max(1, currentValue))) + 1) + 2
+  while (getDigitAtPlace(currentValue, borrowPlace) === 0 && borrowPlace <= maxCheck) {
+    borrowPlace += 1
+  }
+
+  // Subtract from the highest non-zero place
+  const borrowValue = 10 ** borrowPlace
+  steps.push({
+    operation: `-${borrowValue}`,
+    description: `Borrow from ${getPlaceName(borrowPlace)} (cascade)`,
+    targetValue: 0,
+    provenance: {
+      ...baseProvenance,
+      groupId,
+      termPlace: borrowPlace,
+      termPlaceName: getPlaceName(borrowPlace),
+      termValue: -borrowValue,
+    },
+  })
+
+  // Fill all zeros between borrowPlace and startPlace+1 with 9s
+  for (let fillPlace = borrowPlace - 1; fillPlace > startPlace; fillPlace--) {
+    const digitAtFillPlace = getDigitAtPlace(currentValue, fillPlace)
+    if (digitAtFillPlace === 0) {
+      const fillValue = 9 * 10 ** fillPlace
+      steps.push({
+        operation: `${fillValue}`,
+        description: `Fill ${getPlaceName(fillPlace)} with 9 (cascade)`,
+        targetValue: 0,
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: fillPlace,
+          termPlaceName: getPlaceName(fillPlace),
+          termValue: fillValue,
+        },
+      })
+    }
+  }
+
+  // Add complement at the original place
+  const addValue = complementToAdd * 10 ** startPlace
+  steps.push({
+    operation: `${addValue}`,
+    description: `Add ${complementToAdd} to ${getPlaceName(startPlace)} (ten's complement)`,
+    targetValue: 0,
+    provenance: {
+      ...baseProvenance,
+      groupId,
+      termPlace: startPlace,
+      termPlaceName: getPlaceName(startPlace),
+      termValue: addValue,
+    },
+  })
+
+  return steps
+}
+
+/**
+ * Determine segment decisions for subtraction operations.
+ */
+function determineSubtractionSegmentDecisions(
+  digit: number,
+  place: number,
+  currentDigit: number,
+  steps: DecompositionStep[]
+): SegmentDecision[] {
+  // Check if this is a borrow operation (has positive terms after negative)
+  const hasNegativeTen = steps.some(
+    (s) => s.operation.startsWith('-') && isPowerOfTenGE10(Math.abs(parseInt(s.operation, 10)))
+  )
+  const hasPositiveAfterNegative =
+    steps.some((s) => !s.operation.startsWith('-')) &&
+    steps.some((s) => s.operation.startsWith('-'))
+
+  // Check for five's complement pattern: -5 followed by positive
+  const hasFiveSub = steps.some((s) => {
+    const val = parseInt(s.operation, 10)
+    return val < 0 && Math.abs(val) === 5 * 10 ** place
+  })
+  const hasPositiveAtPlace = steps.some((s) => {
+    const val = parseInt(s.operation, 10)
+    return val > 0 && val < 10 ** (place + 1) && val >= 10 ** place
+  })
+
+  if (currentDigit >= digit) {
+    // No borrow needed
+    if (hasFiveSub && hasPositiveAtPlace) {
+      // Five's complement subtraction: -5 + n
+      return [
+        {
+          rule: 'FiveComplement',
+          conditions: [`a=${currentDigit} >= d=${digit}`, `L < d, U=1`],
+          explanation: [
+            'Not enough earth beads to remove directly.',
+            `Use -5 + ${5 - digit}; the heaven bead provides the 5.`,
+          ],
+        },
+      ]
+    }
+    return [
+      {
+        rule: 'Direct',
+        conditions: [`a=${currentDigit} >= d=${digit}`],
+        explanation: ['Can subtract directly without borrowing.'],
+      },
+    ]
+  }
+
+  // Need to borrow
+  const hasCascade = steps.length > 2 && steps.some((s) => s.description?.includes('cascade'))
+
+  if (hasCascade) {
+    return [
+      {
+        rule: 'TenComplement',
+        conditions: [`a=${currentDigit} < d=${digit}`, `next place = 0`],
+        explanation: ['Need to borrow, but next place is 0.', 'Cascade borrow through zeros.'],
+      },
+      {
+        rule: 'Cascade',
+        conditions: ['zeros in borrowing path'],
+        explanation: ['Fill intermediate zeros with 9s.'],
+      },
+    ]
+  }
+
+  return [
+    {
+      rule: 'TenComplement',
+      conditions: [`a=${currentDigit} < d=${digit}`],
+      explanation: [
+        'Need to borrow from next higher place.',
+        `Use -10 + ${10 - digit} to subtract ${digit}.`,
+      ],
+    },
+  ]
+}
+
+/**
+ * Infer a human-readable goal for subtraction segments.
+ */
+function inferSubtractionGoal(seg: SegmentDraft): string {
+  const placeName = getPlaceName(seg.place)
+  switch (seg.plan[0]?.rule) {
+    case 'Direct':
+      return `Subtract ${seg.digit} from ${placeName} directly`
+    case 'FiveComplement':
+      return `Subtract ${seg.digit} from ${placeName} using 5's complement`
+    case 'TenComplement':
+      return `Subtract ${seg.digit} from ${placeName} with a borrow`
+    case 'Cascade':
+      return `Borrow through ${placeName}+ from nearest non-zero place`
+    default:
+      return `Subtract at ${placeName}`
+  }
+}
+
+// =============================================================================
+// END SUBTRACTION IMPLEMENTATION
+// =============================================================================
+
 /**
  * Generate English instruction from mathematical term
  */
@@ -1491,6 +2131,7 @@ export function buildFullDecompositionWithPositions(
   termPositions: Array<{ startIndex: number; endIndex: number }>
 } {
   const difference = targetValue - startValue
+  const isSubtraction = difference < 0
 
   // Handle zero difference special case
   if (difference === 0) {
@@ -1501,6 +2142,8 @@ export function buildFullDecompositionWithPositions(
   }
 
   // Group consecutive complement terms into segments
+  // For subtraction: group negative term followed by positive(s) as complement
+  // For addition: group positive term followed by negative(s) as complement
   const segments: Array<{
     terms: string[]
     isComplement: boolean
@@ -1510,28 +2153,51 @@ export function buildFullDecompositionWithPositions(
   while (i < terms.length) {
     const currentTerm = terms[i]
 
-    // Check if this starts a complement sequence (positive term followed by negative(s))
-    if (i + 1 < terms.length && !currentTerm.startsWith('-') && terms[i + 1].startsWith('-')) {
-      // Collect all consecutive negative terms after this positive term
-      const complementTerms = [currentTerm]
-      let j = i + 1
-      while (j < terms.length && terms[j].startsWith('-')) {
-        complementTerms.push(terms[j])
-        j++
-      }
+    if (isSubtraction) {
+      // Subtraction: complement is negative followed by positive(s)
+      // e.g., "-5" followed by "1" for five's complement subtraction
+      if (i + 1 < terms.length && currentTerm.startsWith('-') && !terms[i + 1].startsWith('-')) {
+        const complementTerms = [currentTerm]
+        let j = i + 1
+        while (j < terms.length && !terms[j].startsWith('-')) {
+          complementTerms.push(terms[j])
+          j++
+        }
 
-      segments.push({
-        terms: complementTerms,
-        isComplement: true,
-      })
-      i = j // Jump past all consumed terms
+        segments.push({
+          terms: complementTerms,
+          isComplement: true,
+        })
+        i = j
+      } else {
+        segments.push({
+          terms: [currentTerm],
+          isComplement: false,
+        })
+        i++
+      }
     } else {
-      // Single term (not part of complement)
-      segments.push({
-        terms: [currentTerm],
-        isComplement: false,
-      })
-      i++
+      // Addition: complement is positive followed by negative(s)
+      if (i + 1 < terms.length && !currentTerm.startsWith('-') && terms[i + 1].startsWith('-')) {
+        const complementTerms = [currentTerm]
+        let j = i + 1
+        while (j < terms.length && terms[j].startsWith('-')) {
+          complementTerms.push(terms[j])
+          j++
+        }
+
+        segments.push({
+          terms: complementTerms,
+          isComplement: true,
+        })
+        i = j
+      } else {
+        segments.push({
+          terms: [currentTerm],
+          isComplement: false,
+        })
+        i++
+      }
     }
   }
 
@@ -1541,24 +2207,43 @@ export function buildFullDecompositionWithPositions(
 
   segments.forEach((segment, segmentIndex) => {
     if (segment.isComplement) {
-      // Format as parenthesized complement: (10 - 3) or (1000 - 900 - 90 - 2)
-      const positiveStr = segment.terms[0]
-      const negativeStrs = segment.terms.slice(1).map((t) => t.substring(1)) // Remove - signs
+      if (isSubtraction) {
+        // Subtraction complement: (-5 + 1) format
+        const negativeStr = segment.terms[0].substring(1) // Remove '-' sign
+        const positiveStrs = segment.terms.slice(1)
 
-      const segmentStr = `(${positiveStr} - ${negativeStrs.join(' - ')})`
+        const segmentStr = `(-${negativeStr} + ${positiveStrs.join(' + ')})`
 
-      if (segmentIndex === 0) {
-        termString = segmentStr
+        if (segmentIndex === 0) {
+          termString = segmentStr
+        } else {
+          termString += ` + ${segmentStr}`
+        }
       } else {
-        termString += ` + ${segmentStr}`
+        // Addition complement: (10 - 3) format
+        const positiveStr = segment.terms[0]
+        const negativeStrs = segment.terms.slice(1).map((t) => t.substring(1))
+
+        const segmentStr = `(${positiveStr} - ${negativeStrs.join(' - ')})`
+
+        if (segmentIndex === 0) {
+          termString = segmentStr
+        } else {
+          termString += ` + ${segmentStr}`
+        }
       }
     } else {
       // Single term
       const term = segment.terms[0]
       if (segmentIndex === 0) {
-        termString = term
+        if (isSubtraction && term.startsWith('-')) {
+          // First term in subtraction is negative, wrap in parens
+          termString = `(${term})`
+        } else {
+          termString = term
+        }
       } else if (term.startsWith('-')) {
-        termString += ` ${term}` // Keep negative sign
+        termString += ` + (${term})` // Wrap negative terms for subtraction
       } else {
         termString += ` + ${term}`
       }
@@ -1566,7 +2251,13 @@ export function buildFullDecompositionWithPositions(
   })
 
   // Build full decomposition
-  const leftSide = `${startValue} + ${difference} = ${startValue} + `
+  let leftSide: string
+  if (isSubtraction) {
+    // Format: "startValue - |difference| = startValue + "
+    leftSide = `${startValue} - ${Math.abs(difference)} = ${startValue} + `
+  } else {
+    leftSide = `${startValue} + ${difference} = ${startValue} + `
+  }
   const rightSide = ` = ${targetValue}`
   const fullDecomposition = leftSide + termString + rightSide
 
@@ -1584,28 +2275,54 @@ export function buildFullDecompositionWithPositions(
       // Position within parenthesized complement
       currentPos += 1 // Skip opening '('
 
-      segment.terms.forEach((term, termInSegmentIndex) => {
-        const startIndex = currentPos
+      if (isSubtraction) {
+        // Subtraction complement: (-5 + 1)
+        segment.terms.forEach((term, termInSegmentIndex) => {
+          if (termInSegmentIndex === 0) {
+            // Negative term - position on number part (skip -)
+            currentPos += 1 // Skip '-'
+            const numberStr = term.substring(1)
+            termPositions[segmentTermIndex] = {
+              startIndex: currentPos,
+              endIndex: currentPos + numberStr.length,
+            }
+            currentPos += numberStr.length
+          } else {
+            // Positive term
+            currentPos += 3 // Skip ' + '
+            termPositions[segmentTermIndex] = {
+              startIndex: currentPos,
+              endIndex: currentPos + term.length,
+            }
+            currentPos += term.length
+          }
+          segmentTermIndex++
+        })
+      } else {
+        // Addition complement: (10 - 3)
+        segment.terms.forEach((term, termInSegmentIndex) => {
+          const startIndex = currentPos
 
-        if (termInSegmentIndex === 0) {
-          // Positive term
-          termPositions[segmentTermIndex] = {
-            startIndex,
-            endIndex: startIndex + term.length,
+          if (termInSegmentIndex === 0) {
+            // Positive term
+            termPositions[segmentTermIndex] = {
+              startIndex,
+              endIndex: startIndex + term.length,
+            }
+            currentPos += term.length
+          } else {
+            // Negative term (but we position on just the number part)
+            currentPos += 3 // Skip ' - '
+            const numberStr = term.substring(1) // Remove '-'
+            termPositions[segmentTermIndex] = {
+              startIndex: currentPos,
+              endIndex: currentPos + numberStr.length,
+            }
+            currentPos += numberStr.length
           }
-          currentPos += term.length
-        } else {
-          // Negative term (but we position on just the number part)
-          currentPos += 3 // Skip ' - '
-          const numberStr = term.substring(1) // Remove '-'
-          termPositions[segmentTermIndex] = {
-            startIndex: currentPos,
-            endIndex: currentPos + numberStr.length,
-          }
-          currentPos += numberStr.length
-        }
-        segmentTermIndex++
-      })
+          segmentTermIndex++
+        })
+      }
 
       currentPos += 1 // Skip closing ')'
     } else {
@@ -1613,18 +2330,37 @@ export function buildFullDecompositionWithPositions(
       const term = segment.terms[0]
 
       if (segmentIndex > 0) {
-        if (term.startsWith('-')) {
-          currentPos += 1 // Skip ' ' before negative
-        } else {
-          currentPos += 3 // Skip ' + '
-        }
+        currentPos += 3 // Skip ' + '
       }
 
-      const isNegative = term.startsWith('-')
-      const startIndex = isNegative ? currentPos + 1 : currentPos // skip the '−' for mapping
-      const endIndex = isNegative ? startIndex + (term.length - 1) : startIndex + term.length
-      termPositions[segmentTermIndex] = { startIndex, endIndex }
-      currentPos += term.length // actual text includes the '−'
+      if (isSubtraction && term.startsWith('-')) {
+        // Wrapped negative: (−5)
+        currentPos += 1 // Skip '('
+        currentPos += 1 // Skip '−'
+        const numberStr = term.substring(1)
+        termPositions[segmentTermIndex] = {
+          startIndex: currentPos,
+          endIndex: currentPos + numberStr.length,
+        }
+        currentPos += numberStr.length
+        currentPos += 1 // Skip ')'
+      } else if (term.startsWith('-')) {
+        // Unwrapped negative (shouldn't happen often)
+        currentPos += 1 // Skip '−'
+        const numberStr = term.substring(1)
+        termPositions[segmentTermIndex] = {
+          startIndex: currentPos,
+          endIndex: currentPos + numberStr.length,
+        }
+        currentPos += numberStr.length
+      } else {
+        // Positive term
+        termPositions[segmentTermIndex] = {
+          startIndex: currentPos,
+          endIndex: currentPos + term.length,
+        }
+        currentPos += term.length
+      }
       segmentTermIndex++
     }
   })
