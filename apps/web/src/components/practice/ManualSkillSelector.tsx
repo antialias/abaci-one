@@ -2,7 +2,7 @@
 
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
@@ -191,6 +191,13 @@ export function ManualSkillSelector({
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set(currentMasteredSkills))
   const [isSaving, setIsSaving] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
+
+  // Sync selected skills when modal opens with new data
+  useEffect(() => {
+    if (open) {
+      setSelectedSkills(new Set(currentMasteredSkills))
+    }
+  }, [open, currentMasteredSkills])
 
   const handlePresetChange = (presetKey: string) => {
     if (presetKey === '') {

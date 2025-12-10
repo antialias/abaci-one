@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 
 interface SessionSummaryProps {
@@ -401,9 +401,89 @@ export function SessionSummary({
         </div>
       )}
 
-      {/* Problem review (collapsed by default) */}
+      {/* Problem review - answered problems with results (collapsed by default) */}
+      {results.length > 0 && (
+        <details
+          data-section="problem-review"
+          className={css({
+            padding: '1rem',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          <summary
+            className={css({
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.300' : 'gray.700',
+              cursor: 'pointer',
+              _hover: {
+                color: isDark ? 'gray.100' : 'gray.900',
+              },
+            })}
+          >
+            Review Answered Problems ({totalProblems})
+          </summary>
+
+          <div
+            className={css({
+              marginTop: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+            })}
+          >
+            {results.map((result, index) => (
+              <div
+                key={index}
+                data-element="problem-review-item"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.5rem',
+                  backgroundColor: isDark
+                    ? result.isCorrect
+                      ? 'green.900'
+                      : 'red.900'
+                    : result.isCorrect
+                      ? 'green.50'
+                      : 'red.50',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.200' : 'inherit',
+                })}
+              >
+                <span>{result.isCorrect ? '✓' : '✗'}</span>
+                <span
+                  className={css({
+                    flex: 1,
+                    fontFamily: 'monospace',
+                  })}
+                >
+                  {formatProblem(result.problem.terms)} = {result.problem.answer}
+                </span>
+                {!result.isCorrect && (
+                  <span
+                    className={css({
+                      color: isDark ? 'red.400' : 'red.600',
+                      textDecoration: 'line-through',
+                    })}
+                  >
+                    {result.studentAnswer}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* View all planned problems - shows full problem set by part (for teachers) */}
       <details
-        data-section="problem-review"
+        data-section="all-planned-problems"
         className={css({
           padding: '1rem',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
@@ -423,7 +503,7 @@ export function SessionSummary({
             },
           })}
         >
-          Review All Problems ({totalProblems})
+          View All Planned Problems ({getTotalPlannedProblems(plan.parts)})
         </summary>
 
         <div
@@ -431,49 +511,173 @@ export function SessionSummary({
             marginTop: '1rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.5rem',
+            gap: '1.5rem',
           })}
         >
-          {results.map((result, index) => (
-            <div
-              key={index}
-              data-element="problem-review-item"
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem',
-                backgroundColor: isDark
-                  ? result.isCorrect
-                    ? 'green.900'
-                    : 'red.900'
-                  : result.isCorrect
-                    ? 'green.50'
-                    : 'red.50',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.200' : 'inherit',
-              })}
-            >
-              <span>{result.isCorrect ? '✓' : '✗'}</span>
-              <span
+          {plan.parts.map((part) => (
+            <div key={part.partNumber} data-element="part-section">
+              <h4
                 className={css({
-                  flex: 1,
-                  fontFamily: 'monospace',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                  marginBottom: '0.5rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                 })}
               >
-                {formatProblem(result.problem.terms)} = {result.problem.answer}
-              </span>
-              {!result.isCorrect && (
+                Part {part.partNumber}: {getPartTypeName(part.type)}
                 <span
                   className={css({
-                    color: isDark ? 'red.400' : 'red.600',
-                    textDecoration: 'line-through',
+                    fontWeight: 'normal',
+                    marginLeft: '0.5rem',
+                    textTransform: 'none',
                   })}
                 >
-                  {result.studentAnswer}
+                  ({part.slots.length} problems)
                 </span>
-              )}
+              </h4>
+
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.375rem',
+                })}
+              >
+                {part.slots.map((slot) => {
+                  // Find if this slot has been answered
+                  const result = results.find(
+                    (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
+                  )
+                  const problem = result?.problem ?? slot.problem
+
+                  return (
+                    <div
+                      key={slot.index}
+                      data-element="planned-problem-item"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.375rem 0.5rem',
+                        backgroundColor: result
+                          ? isDark
+                            ? result.isCorrect
+                              ? 'green.900'
+                              : 'red.900'
+                            : result.isCorrect
+                              ? 'green.50'
+                              : 'red.50'
+                          : isDark
+                            ? 'gray.700'
+                            : 'white',
+                        borderRadius: '6px',
+                        fontSize: '0.8125rem',
+                        color: isDark ? 'gray.200' : 'inherit',
+                      })}
+                    >
+                      {/* Status indicator */}
+                      <span
+                        className={css({
+                          width: '1.25rem',
+                          textAlign: 'center',
+                        })}
+                      >
+                        {result ? (result.isCorrect ? '✓' : '✗') : '○'}
+                      </span>
+
+                      {/* Problem number */}
+                      <span
+                        className={css({
+                          color: isDark ? 'gray.500' : 'gray.400',
+                          fontSize: '0.75rem',
+                          minWidth: '1.5rem',
+                        })}
+                      >
+                        #{slot.index + 1}
+                      </span>
+
+                      {/* Problem content */}
+                      {problem ? (
+                        <span
+                          className={css({
+                            flex: 1,
+                            fontFamily: 'monospace',
+                          })}
+                        >
+                          {formatProblem(problem.terms)} = {problem.answer}
+                        </span>
+                      ) : (
+                        <span
+                          className={css({
+                            flex: 1,
+                            fontStyle: 'italic',
+                            color: isDark ? 'gray.500' : 'gray.400',
+                          })}
+                        >
+                          (not yet generated)
+                        </span>
+                      )}
+
+                      {/* Purpose tag */}
+                      <span
+                        className={css({
+                          fontSize: '0.625rem',
+                          padding: '0.125rem 0.375rem',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          backgroundColor: isDark
+                            ? slot.purpose === 'focus'
+                              ? 'blue.900'
+                              : slot.purpose === 'reinforce'
+                                ? 'purple.900'
+                                : slot.purpose === 'challenge'
+                                  ? 'orange.900'
+                                  : 'gray.700'
+                            : slot.purpose === 'focus'
+                              ? 'blue.100'
+                              : slot.purpose === 'reinforce'
+                                ? 'purple.100'
+                                : slot.purpose === 'challenge'
+                                  ? 'orange.100'
+                                  : 'gray.100',
+                          color: isDark
+                            ? slot.purpose === 'focus'
+                              ? 'blue.300'
+                              : slot.purpose === 'reinforce'
+                                ? 'purple.300'
+                                : slot.purpose === 'challenge'
+                                  ? 'orange.300'
+                                  : 'gray.400'
+                            : slot.purpose === 'focus'
+                              ? 'blue.700'
+                              : slot.purpose === 'reinforce'
+                                ? 'purple.700'
+                                : slot.purpose === 'challenge'
+                                  ? 'orange.700'
+                                  : 'gray.600',
+                        })}
+                      >
+                        {slot.purpose}
+                      </span>
+
+                      {/* Wrong answer (if incorrect) */}
+                      {result && !result.isCorrect && (
+                        <span
+                          className={css({
+                            color: isDark ? 'red.400' : 'red.600',
+                            textDecoration: 'line-through',
+                            fontSize: '0.75rem',
+                          })}
+                        >
+                          {result.studentAnswer}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ))}
         </div>
@@ -590,6 +794,23 @@ function getPerformanceMessage(accuracy: number): string {
   if (accuracy >= 0.7) return "Good effort! You're getting stronger!"
   if (accuracy >= 0.6) return 'Nice try! Practice makes perfect!'
   return "Keep practicing! You'll get better with each session!"
+}
+
+function getTotalPlannedProblems(parts: SessionPart[]): number {
+  return parts.reduce((sum, part) => sum + part.slots.length, 0)
+}
+
+function getPartTypeName(type: SessionPart['type']): string {
+  switch (type) {
+    case 'abacus':
+      return 'Use Abacus'
+    case 'visualization':
+      return 'Mental Math (Visualization)'
+    case 'linear':
+      return 'Mental Math (Linear)'
+    default:
+      return type
+  }
 }
 
 export default SessionSummary

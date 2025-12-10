@@ -35,7 +35,7 @@ import {
   type CurriculumPhase,
   getPhase,
   getPhaseDisplayInfo,
-  getPhaseSkillConstraints,
+  type getPhaseSkillConstraints,
 } from './definitions'
 import { generateProblemFromConstraints } from './problem-generator'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
@@ -104,12 +104,15 @@ export async function generateSessionPlan(
   const avgTimeSeconds =
     calculateAvgTimePerProblem(recentSessions) || config.defaultSecondsPerProblem
 
-  // 3. Categorize skills by need
-  const phaseConstraints = getPhaseSkillConstraints(currentPhaseId)
-  const struggling = findStrugglingSkills(skillMastery, phaseConstraints)
+  // 3. Build skill constraints from the student's ACTUAL mastered skills
+  const masteredSkills = skillMastery.filter((s) => s.masteryLevel === 'mastered')
+  const masteredSkillConstraints = buildConstraintsFromMasteredSkills(masteredSkills)
+
+  // Categorize skills for review/reinforcement purposes
+  const struggling = findStrugglingSkills(skillMastery)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
-  // 4. Build three parts
+  // 4. Build three parts using STUDENT'S MASTERED SKILLS
   const parts: SessionPart[] = [
     buildSessionPart(
       1,
@@ -117,7 +120,7 @@ export async function generateSessionPlan(
       durationMinutes,
       avgTimeSeconds,
       config,
-      phaseConstraints,
+      masteredSkillConstraints,
       struggling,
       needsReview,
       currentPhase
@@ -128,7 +131,7 @@ export async function generateSessionPlan(
       durationMinutes,
       avgTimeSeconds,
       config,
-      phaseConstraints,
+      masteredSkillConstraints,
       struggling,
       needsReview,
       currentPhase
@@ -139,7 +142,7 @@ export async function generateSessionPlan(
       durationMinutes,
       avgTimeSeconds,
       config,
-      phaseConstraints,
+      masteredSkillConstraints,
       struggling,
       needsReview,
       currentPhase
@@ -227,9 +230,9 @@ function buildSessionPart(
     )
   }
 
-  // Challenge slots: slightly harder or mixed
+  // Challenge slots: use same mastered skills constraints (all problems should use student's skills)
   for (let i = 0; i < challengeCount; i++) {
-    slots.push(createSlot(slots.length, 'challenge', buildChallengeConstraints(currentPhase)))
+    slots.push(createSlot(slots.length, 'challenge', phaseConstraints))
   }
 
   // Shuffle to interleave purposes
@@ -520,10 +523,7 @@ function calculateAvgTimePerProblem(
   return Math.round(weightedSum / totalProblems / 1000) // Convert ms to seconds
 }
 
-function findStrugglingSkills(
-  mastery: PlayerSkillMastery[],
-  _phaseConstraints: ReturnType<typeof getPhaseSkillConstraints>
-): PlayerSkillMastery[] {
+function findStrugglingSkills(mastery: PlayerSkillMastery[]): PlayerSkillMastery[] {
   return mastery.filter((s) => {
     if (s.attempts < 5) return false // Not enough data
     const accuracy = s.correct / s.attempts
@@ -552,6 +552,44 @@ function findSkillsNeedingReview(
   })
 }
 
+/**
+ * Build skill constraints from the student's actual mastered skills
+ *
+ * This creates constraints where:
+ * - requiredSkills: all mastered skills (problems may ONLY use these skills)
+ * - targetSkills: all mastered skills (prefer to use these skills)
+ * - forbiddenSkills: empty (don't exclude anything explicitly)
+ *
+ * The problem generator filters candidates to only allow requiredSkills,
+ * then preferentially selects candidates that use targetSkills.
+ */
+function buildConstraintsFromMasteredSkills(
+  masteredSkills: PlayerSkillMastery[]
+): ReturnType<typeof getPhaseSkillConstraints> {
+  const skills: Record<string, Record<string, boolean>> = {}
+
+  for (const skill of masteredSkills) {
+    // Parse skill ID format: "category.skillKey" like "fiveComplements.4=5-1" or "basic.+3"
+    const [category, skillKey] = skill.skillId.split('.')
+
+    if (category && skillKey) {
+      if (!skills[category]) {
+        skills[category] = {}
+      }
+      skills[category][skillKey] = true
+    }
+  }
+
+  // Both required and target use the same skills:
+  // - requiredSkills: only these skills may be used (acts as filter)
+  // - targetSkills: prefer to use these skills (acts as preference)
+  return {
+    requiredSkills: skills,
+    targetSkills: skills,
+    forbiddenSkills: {},
+  } as ReturnType<typeof getPhaseSkillConstraints>
+}
+
 function buildConstraintsForSkill(
   skill: PlayerSkillMastery
 ): ReturnType<typeof getPhaseSkillConstraints> {
@@ -571,22 +609,6 @@ function buildConstraintsForSkill(
   }
 
   return constraints as ReturnType<typeof getPhaseSkillConstraints>
-}
-
-function buildChallengeConstraints(
-  phase: CurriculumPhase | undefined
-): ReturnType<typeof getPhaseSkillConstraints> {
-  if (!phase) {
-    return {
-      requiredSkills: {},
-      targetSkills: {},
-      forbiddenSkills: {},
-    } as ReturnType<typeof getPhaseSkillConstraints>
-  }
-
-  // For challenge, we use the same phase but with potentially harder settings
-  const constraints = getPhaseSkillConstraints(phase.id)
-  return constraints
 }
 
 /**

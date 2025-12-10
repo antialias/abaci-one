@@ -158,11 +158,25 @@ export function DashboardClient({
   }, [])
 
   // Handle saving manual skill selections
-  const handleSaveManualSkills = useCallback(async (masteredSkillIds: string[]): Promise<void> => {
-    // TODO: Save skills to curriculum via API
-    console.log('Manual skills saved:', masteredSkillIds)
-    setShowManualSkillModal(false)
-  }, [])
+  const handleSaveManualSkills = useCallback(
+    async (masteredSkillIds: string[]): Promise<void> => {
+      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masteredSkillIds }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save skills')
+      }
+
+      // Reload the page to show updated skills
+      router.refresh()
+      setShowManualSkillModal(false)
+    },
+    [studentId, router]
+  )
 
   // Handle opening offline session form
   const handleRecordOfflinePractice = useCallback(() => {
@@ -246,6 +260,9 @@ export function DashboardClient({
           open={showManualSkillModal}
           onClose={() => setShowManualSkillModal(false)}
           onSave={handleSaveManualSkills}
+          currentMasteredSkills={skills
+            .filter((s) => s.masteryLevel === 'mastered')
+            .map((s) => s.skillId)}
         />
 
         {/* Offline Session Form Modal */}

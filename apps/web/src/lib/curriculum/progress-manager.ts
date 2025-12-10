@@ -127,6 +127,66 @@ export async function getSkillsByMasteryLevel(
 }
 
 /**
+ * Set skills as mastered directly (manual teacher override)
+ * This is used for onboarding when a teacher knows which skills a student has already mastered.
+ * Skills not in the masteredSkillIds list will be set to 'learning' (or created as such).
+ *
+ * @param playerId - The player to update
+ * @param masteredSkillIds - Array of skill IDs to mark as mastered
+ * @returns All skill mastery records for the player after update
+ */
+export async function setMasteredSkills(
+  playerId: string,
+  masteredSkillIds: string[]
+): Promise<PlayerSkillMastery[]> {
+  const now = new Date()
+  const masteredSet = new Set(masteredSkillIds)
+
+  // Get all existing skills for this player
+  const existingSkills = await getAllSkillMastery(playerId)
+  const existingSkillIds = new Set(existingSkills.map((s) => s.skillId))
+
+  // Update existing skills
+  for (const skill of existingSkills) {
+    const shouldBeMastered = masteredSet.has(skill.skillId)
+    const newLevel = shouldBeMastered ? 'mastered' : 'learning'
+
+    // Only update if the level changed
+    if (skill.masteryLevel !== newLevel) {
+      await db
+        .update(schema.playerSkillMastery)
+        .set({
+          masteryLevel: newLevel,
+          // If marking as mastered, set reasonable stats
+          attempts: shouldBeMastered ? Math.max(skill.attempts, 10) : skill.attempts,
+          correct: shouldBeMastered ? Math.max(skill.correct, 10) : skill.correct,
+          consecutiveCorrect: shouldBeMastered ? 5 : 0,
+          updatedAt: now,
+        })
+        .where(eq(schema.playerSkillMastery.id, skill.id))
+    }
+  }
+
+  // Create new skills that don't exist yet
+  for (const skillId of masteredSkillIds) {
+    if (!existingSkillIds.has(skillId)) {
+      const newRecord: NewPlayerSkillMastery = {
+        playerId,
+        skillId,
+        attempts: 10,
+        correct: 10,
+        consecutiveCorrect: 5,
+        masteryLevel: 'mastered',
+        lastPracticedAt: now,
+      }
+      await db.insert(schema.playerSkillMastery).values(newRecord)
+    }
+  }
+
+  return getAllSkillMastery(playerId)
+}
+
+/**
  * Record a skill attempt (correct or incorrect)
  * Updates the skill mastery record and recalculates mastery level
  */

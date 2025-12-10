@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getPhaseDisplayInfo } from '@/lib/curriculum/definitions'
 import {
   getActiveSessionPlan,
+  getAllSkillMastery,
   getPlayer,
   getPlayerCurriculum,
   getRecentSessions,
@@ -31,12 +32,13 @@ interface ConfigurePageProps {
 export default async function ConfigurePage({ params }: ConfigurePageProps) {
   const { studentId } = await params
 
-  // Fetch player, curriculum, sessions, and active session in parallel
-  const [player, activeSession, curriculum, recentSessions] = await Promise.all([
+  // Fetch player, curriculum, sessions, skills, and active session in parallel
+  const [player, activeSession, curriculum, recentSessions, skills] = await Promise.all([
     getPlayer(studentId),
     getActiveSessionPlan(studentId),
     getPlayerCurriculum(studentId),
     getRecentSessions(studentId, 10),
+    getAllSkillMastery(studentId),
   ])
 
   // 404 if player doesn't exist
@@ -63,6 +65,9 @@ export default async function ConfigurePage({ params }: ConfigurePageProps) {
     avgSecondsPerProblem = Math.round(weightedSum / totalProblems / 1000)
   }
 
+  // Get mastered skills for display
+  const masteredSkills = skills.filter((s) => s.masteryLevel === 'mastered').map((s) => s.skillId)
+
   return (
     <ConfigureClient
       studentId={studentId}
@@ -70,6 +75,7 @@ export default async function ConfigurePage({ params }: ConfigurePageProps) {
       existingPlan={activeSession}
       focusDescription={phaseInfo.phaseName}
       avgSecondsPerProblem={avgSecondsPerProblem}
+      masteredSkillIds={masteredSkills}
     />
   )
 }

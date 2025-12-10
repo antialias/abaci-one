@@ -34,6 +34,8 @@ interface ConfigureClientProps {
   focusDescription: string
   /** Average seconds per problem based on student's history */
   avgSecondsPerProblem: number
+  /** List of mastered skill IDs that will be used in problem generation */
+  masteredSkillIds: string[]
 }
 
 /**
@@ -81,6 +83,36 @@ function getPartTypeColors(
         ? { bg: 'orange.900', border: 'orange.700', text: 'orange.200' }
         : { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
   }
+}
+
+/**
+ * Skill category display names
+ */
+const SKILL_CATEGORY_NAMES: Record<string, string> = {
+  basic: 'Basic',
+  fiveComplements: '5-Complements',
+  fiveComplementsSub: '5-Complements (Sub)',
+  tenComplements: '10-Complements',
+  tenComplementsSub: '10-Complements (Sub)',
+}
+
+/**
+ * Group and format skill IDs for display
+ */
+function groupSkillsByCategory(skillIds: string[]): Map<string, string[]> {
+  const grouped = new Map<string, string[]>()
+
+  for (const skillId of skillIds) {
+    const [category, ...rest] = skillId.split('.')
+    const skillName = rest.join('.')
+
+    if (!grouped.has(category)) {
+      grouped.set(category, [])
+    }
+    grouped.get(category)!.push(skillName)
+  }
+
+  return grouped
 }
 
 /**
@@ -144,6 +176,7 @@ export function ConfigureClient({
   existingPlan,
   focusDescription,
   avgSecondsPerProblem,
+  masteredSkillIds,
 }: ConfigureClientProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -595,6 +628,91 @@ export function ConfigureClient({
                   </div>
                 </div>
               </div>
+
+              {/* Mastered Skills Summary (collapsible) */}
+              <details
+                data-section="skills-summary"
+                className={css({
+                  marginTop: '1rem',
+                  borderTop: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  paddingTop: '1rem',
+                })}
+              >
+                <summary
+                  className={css({
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    _hover: { color: isDark ? 'gray.300' : 'gray.600' },
+                  })}
+                >
+                  Mastered Skills ({masteredSkillIds.length})
+                </summary>
+
+                <div className={css({ marginTop: '0.75rem' })}>
+                  {masteredSkillIds.length === 0 ? (
+                    <p
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.500' : 'gray.400',
+                        fontStyle: 'italic',
+                      })}
+                    >
+                      No skills marked as mastered yet. Go to Dashboard to set skills.
+                    </p>
+                  ) : (
+                    <div
+                      className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}
+                    >
+                      {Array.from(groupSkillsByCategory(masteredSkillIds)).map(
+                        ([category, skills]) => (
+                          <div key={category}>
+                            <div
+                              className={css({
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                color: isDark ? 'gray.300' : 'gray.600',
+                                marginBottom: '0.25rem',
+                              })}
+                            >
+                              {SKILL_CATEGORY_NAMES[category] || category}
+                            </div>
+                            <div
+                              className={css({
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.25rem',
+                              })}
+                            >
+                              {skills.map((skill) => (
+                                <span
+                                  key={skill}
+                                  className={css({
+                                    fontSize: '0.6875rem',
+                                    padding: '0.125rem 0.375rem',
+                                    borderRadius: '4px',
+                                    backgroundColor: isDark ? 'green.900' : 'green.100',
+                                    color: isDark ? 'green.300' : 'green.700',
+                                  })}
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           </div>
 
