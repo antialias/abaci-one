@@ -351,8 +351,8 @@ export function ConfigureClient({
               >
                 How long today?
               </label>
-              <div className={css({ display: 'flex', gap: '0.5rem' })}>
-                {[5, 10, 15, 20].map((mins) => (
+              <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+                {[5, 10, 15, 20, 30, 45].map((mins) => (
                   <button
                     key={mins}
                     type="button"
