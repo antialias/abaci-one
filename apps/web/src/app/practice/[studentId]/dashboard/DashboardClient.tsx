@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
+  type ActiveSessionState,
   type CurrentPhaseInfo,
   ProgressDashboard,
   type SkillProgress,
@@ -19,6 +20,7 @@ import type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
+import type { SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../../../styled-system/css'
 
 interface DashboardClientProps {
@@ -27,6 +29,8 @@ interface DashboardClientProps {
   curriculum: PlayerCurriculum | null
   skills: PlayerSkillMastery[]
   recentSessions: PracticeSession[]
+  activeSession: SessionPlan | null
+  currentMasteredSkillIds: string[]
 }
 
 // Mock curriculum phase data (until we integrate with actual curriculum)
@@ -83,14 +87,18 @@ function formatSkillName(skillId: string): string {
  * Dashboard Client Component
  *
  * Shows the student's progress dashboard.
- * "Continue Practice" navigates to /configure to set up a new session.
+ * "Start Practice" navigates to /configure to set up a new session.
+ * "Resume Practice" continues an existing active session.
  */
+
 export function DashboardClient({
   studentId,
   player,
   curriculum,
   skills,
   recentSessions,
+  activeSession,
+  currentMasteredSkillIds,
 }: DashboardClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
@@ -99,6 +107,28 @@ export function DashboardClient({
   // Modal states for onboarding features
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
   const [showOfflineSessionModal, setShowOfflineSessionModal] = useState(false)
+  const [isStartingOver, setIsStartingOver] = useState(false)
+
+  // Build ActiveSessionState for ProgressDashboard
+  const activeSessionState: ActiveSessionState | null = activeSession
+    ? (() => {
+        const sessionSkillIds = activeSession.masteredSkillIds || []
+        const sessionSet = new Set(sessionSkillIds)
+        const currentSet = new Set(currentMasteredSkillIds)
+        const skillsAdded = currentMasteredSkillIds.filter((id) => !sessionSet.has(id)).length
+        const skillsRemoved = sessionSkillIds.filter((id) => !currentSet.has(id)).length
+
+        return {
+          id: activeSession.id,
+          status: activeSession.status as 'draft' | 'approved' | 'in_progress',
+          completedCount: activeSession.results.length,
+          totalCount: activeSession.summary.totalProblemCount,
+          hasSkillMismatch: skillsAdded > 0 || skillsRemoved > 0,
+          skillsAdded,
+          skillsRemoved,
+        }
+      })()
+    : null
 
   // Build the student object
   const selectedStudent: StudentWithProgress = {
@@ -131,8 +161,8 @@ export function DashboardClient({
     consecutiveCorrect: s.consecutiveCorrect,
   }))
 
-  // Handle continue practice - navigate to configuration page
-  const handleContinuePractice = useCallback(() => {
+  // Handle start practice - navigate to configuration page
+  const handleStartPractice = useCallback(() => {
     router.push(`/practice/${studentId}/configure`, { scroll: false })
   }, [studentId, router])
 
@@ -193,6 +223,30 @@ export function DashboardClient({
     []
   )
 
+  // Handle starting over (abandon current session and create new one)
+  const handleStartOver = useCallback(async () => {
+    if (!activeSession) return
+    setIsStartingOver(true)
+    try {
+      // First abandon the old session
+      await fetch(`/api/curriculum/${studentId}/sessions/plans/${activeSession.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'abandon' }),
+      })
+      // Navigate to configure to create a new one
+      router.push(`/practice/${studentId}/configure`)
+    } catch (error) {
+      console.error('Failed to start over:', error)
+      setIsStartingOver(false)
+    }
+  }, [activeSession, studentId, router])
+
+  // Handle resuming the current session
+  const handleResumeSession = useCallback(() => {
+    router.push(`/practice/${studentId}/session`)
+  }, [studentId, router])
+
   return (
     <PageWithNav>
       <main
@@ -239,12 +293,16 @@ export function DashboardClient({
             </p>
           </header>
 
-          {/* Progress Dashboard */}
+          {/* Progress Dashboard - unified session-aware component */}
           <ProgressDashboard
             student={selectedStudent}
             currentPhase={currentPhase}
             recentSkills={recentSkillsDisplay}
-            onContinuePractice={handleContinuePractice}
+            activeSession={activeSessionState}
+            onStartPractice={handleStartPractice}
+            onResumePractice={handleResumeSession}
+            onStartOver={handleStartOver}
+            isStartingOver={isStartingOver}
             onViewFullProgress={handleViewFullProgress}
             onGenerateWorksheet={handleGenerateWorksheet}
             onRunPlacementTest={handleRunPlacementTest}

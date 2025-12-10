@@ -14,7 +14,7 @@
  */
 
 import { createId } from '@paralleldrive/cuid2'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import {
@@ -164,6 +164,7 @@ export async function generateSessionPlan(
     avgTimePerProblemSeconds: avgTimeSeconds,
     parts,
     summary,
+    masteredSkillIds: masteredSkills.map((s) => s.skillId),
     status: 'draft',
     currentPartIndex: 0,
     currentSlotIndex: 0,
@@ -291,10 +292,13 @@ function sessionHasPreGeneratedProblems(plan: SessionPlan): boolean {
 export async function getActiveSessionPlan(playerId: string): Promise<SessionPlan | null> {
   // Find any session that's not completed or abandoned
   // This includes: draft, approved, in_progress
+  // IMPORTANT: Also check completedAt IS NULL to handle inconsistent data
+  // where status may be in_progress but completedAt is set
   const result = await db.query.sessionPlans.findFirst({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      inArray(schema.sessionPlans.status, ['draft', 'approved', 'in_progress'])
+      inArray(schema.sessionPlans.status, ['draft', 'approved', 'in_progress']),
+      isNull(schema.sessionPlans.completedAt)
     ),
     orderBy: (plans, { desc }) => [desc(plans.createdAt)],
   })

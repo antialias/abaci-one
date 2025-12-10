@@ -206,6 +206,12 @@ export const sessionPlans = sqliteTable(
     /** Human-readable summary */
     summary: text('summary', { mode: 'json' }).notNull().$type<SessionSummary>(),
 
+    /** Skill IDs that were mastered when this session was generated (for mismatch detection) */
+    masteredSkillIds: text('mastered_skill_ids', { mode: 'json' })
+      .notNull()
+      .default('[]')
+      .$type<string[]>(),
+
     // ---- Session State ----
 
     /** Current status */

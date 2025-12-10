@@ -36,13 +36,42 @@ export interface CurrentPhaseInfo {
   totalSkills: number
 }
 
+/**
+ * Active session state for unified display
+ */
+export interface ActiveSessionState {
+  /** Session ID */
+  id: string
+  /** Current status */
+  status: 'draft' | 'approved' | 'in_progress'
+  /** Problems completed so far */
+  completedCount: number
+  /** Total problems in session */
+  totalCount: number
+  /** Whether skills have changed since session was created */
+  hasSkillMismatch: boolean
+  /** Number of skills added since session creation */
+  skillsAdded: number
+  /** Number of skills removed since session creation */
+  skillsRemoved: number
+}
+
 interface ProgressDashboardProps {
   student: StudentWithProgress
   currentPhase: CurrentPhaseInfo
   recentSkills?: SkillProgress[]
   /** Skills that need extra practice (used heavy help recently) */
   focusAreas?: SkillProgress[]
-  onContinuePractice: () => void
+  /** Active session state (if any) */
+  activeSession?: ActiveSessionState | null
+  /** Callback when no active session - start new practice */
+  onStartPractice: () => void
+  /** Callback when active session - resume it */
+  onResumePractice?: () => void
+  /** Callback to start over (abandon old session, start fresh) */
+  onStartOver?: () => void
+  /** Loading state for start over action */
+  isStartingOver?: boolean
   onViewFullProgress: () => void
   onGenerateWorksheet: () => void
   /** Callback to run placement test */
@@ -90,7 +119,11 @@ export function ProgressDashboard({
   currentPhase,
   recentSkills = [],
   focusAreas = [],
-  onContinuePractice,
+  activeSession,
+  onStartPractice,
+  onResumePractice,
+  onStartOver,
+  isStartingOver = false,
   onViewFullProgress,
   onGenerateWorksheet,
   onRunPlacementTest,
@@ -106,6 +139,9 @@ export function ProgressDashboard({
     currentPhase.totalSkills > 0
       ? Math.round((currentPhase.masteredSkills / currentPhase.totalSkills) * 100)
       : 0
+
+  // Determine if we have an active session
+  const hasActiveSession = !!activeSession
 
   return (
     <div
@@ -249,89 +285,177 @@ export function ProgressDashboard({
         >
           {currentPhase.description}
         </p>
+
+        {/* Skill mismatch warning - inline in level card */}
+        {hasActiveSession && activeSession.hasSkillMismatch && (
+          <div
+            data-element="skill-mismatch-warning"
+            className={css({
+              marginTop: '1rem',
+              padding: '0.5rem 0.75rem',
+              backgroundColor: isDark ? 'orange.900/50' : 'orange.50',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'orange.700' : 'orange.200',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'orange.300' : 'orange.700',
+              })}
+            >
+              Skills changed since session was created
+              {activeSession.skillsAdded > 0 && ` (+${activeSession.skillsAdded} new)`}
+              {activeSession.skillsRemoved > 0 && ` (-${activeSession.skillsRemoved} removed)`}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Action buttons */}
+      {/* Primary action - session-aware */}
       <div
         className={css({
           display: 'flex',
           flexDirection: 'column',
+          gap: '0.5rem',
+          width: '100%',
+        })}
+      >
+        {hasActiveSession ? (
+          <>
+            {/* Resume button with progress indicator */}
+            <button
+              type="button"
+              data-action="resume-practice"
+              onClick={onResumePractice}
+              className={css({
+                padding: '1rem',
+                fontSize: '1.125rem',
+                fontWeight: 'bold',
+                color: 'white',
+                backgroundColor: 'green.500',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                _hover: {
+                  backgroundColor: 'green.600',
+                },
+              })}
+            >
+              Resume Practice →
+            </button>
+            {/* Session progress info */}
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                textAlign: 'center',
+              })}
+            >
+              {activeSession.completedCount} of {activeSession.totalCount} problems done
+            </p>
+            {/* Secondary session action */}
+            <button
+              type="button"
+              data-action="start-over"
+              onClick={onStartOver}
+              disabled={isStartingOver}
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                background: 'none',
+                border: 'none',
+                cursor: isStartingOver ? 'wait' : 'pointer',
+                opacity: isStartingOver ? 0.7 : 1,
+                textDecoration: 'underline',
+                marginTop: '0.25rem',
+                _hover: {
+                  color: isDark ? 'gray.200' : 'gray.700',
+                },
+              })}
+            >
+              {isStartingOver ? 'Starting over...' : 'Start over'}
+            </button>
+          </>
+        ) : (
+          /* Start new practice button */
+          <button
+            type="button"
+            data-action="start-practice"
+            onClick={onStartPractice}
+            className={css({
+              padding: '1rem',
+              fontSize: '1.125rem',
+              fontWeight: 'bold',
+              color: 'white',
+              backgroundColor: 'blue.500',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease',
+              _hover: {
+                backgroundColor: 'blue.600',
+              },
+            })}
+          >
+            Start Practice →
+          </button>
+        )}
+      </div>
+
+      {/* Secondary action buttons */}
+      <div
+        className={css({
+          display: 'flex',
           gap: '0.75rem',
           width: '100%',
         })}
       >
         <button
           type="button"
-          data-action="continue-practice"
-          onClick={onContinuePractice}
+          data-action="view-progress"
+          onClick={onViewFullProgress}
           className={css({
-            padding: '1rem',
-            fontSize: '1.125rem',
-            fontWeight: 'bold',
-            color: 'white',
-            backgroundColor: 'blue.500',
+            flex: 1,
+            padding: '0.75rem',
+            fontSize: '1rem',
+            color: isDark ? 'gray.200' : 'gray.700',
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
             borderRadius: '8px',
             border: 'none',
             cursor: 'pointer',
             transition: 'background-color 0.2s ease',
             _hover: {
-              backgroundColor: 'blue.600',
+              backgroundColor: isDark ? 'gray.600' : 'gray.200',
             },
           })}
         >
-          Continue Practice →
+          View Progress
         </button>
 
-        <div
+        <button
+          type="button"
+          data-action="generate-worksheet"
+          onClick={onGenerateWorksheet}
           className={css({
-            display: 'flex',
-            gap: '0.75rem',
+            flex: 1,
+            padding: '0.75rem',
+            fontSize: '1rem',
+            color: isDark ? 'gray.200' : 'gray.700',
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease',
+            _hover: {
+              backgroundColor: isDark ? 'gray.600' : 'gray.200',
+            },
           })}
         >
-          <button
-            type="button"
-            data-action="view-progress"
-            onClick={onViewFullProgress}
-            className={css({
-              flex: 1,
-              padding: '0.75rem',
-              fontSize: '1rem',
-              color: isDark ? 'gray.200' : 'gray.700',
-              backgroundColor: isDark ? 'gray.700' : 'gray.100',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease',
-              _hover: {
-                backgroundColor: isDark ? 'gray.600' : 'gray.200',
-              },
-            })}
-          >
-            View Progress
-          </button>
-
-          <button
-            type="button"
-            data-action="generate-worksheet"
-            onClick={onGenerateWorksheet}
-            className={css({
-              flex: 1,
-              padding: '0.75rem',
-              fontSize: '1rem',
-              color: isDark ? 'gray.200' : 'gray.700',
-              backgroundColor: isDark ? 'gray.700' : 'gray.100',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease',
-              _hover: {
-                backgroundColor: isDark ? 'gray.600' : 'gray.200',
-              },
-            })}
-          >
-            Worksheet
-          </button>
-        </div>
+          Worksheet
+        </button>
       </div>
 
       {/* Focus Areas - Skills needing extra practice */}

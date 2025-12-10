@@ -97,7 +97,7 @@ const sampleRecentSkills: SkillProgress[] = [
 ]
 
 const handlers = {
-  onContinuePractice: () => alert('Continue Practice clicked!'),
+  onStartPractice: () => alert('Start Practice clicked!'),
   onViewFullProgress: () => alert('View Full Progress clicked!'),
   onGenerateWorksheet: () => alert('Generate Worksheet clicked!'),
   onChangeStudent: () => alert('Change Student clicked!'),
@@ -274,6 +274,60 @@ export const WithFocusAreas: Story = {
         ]}
         onClearReinforcement={(skillId) => alert(`Clear reinforcement for ${skillId}`)}
         onClearAllReinforcement={() => alert('Clear all reinforcement')}
+        {...handlers}
+      />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * With Active Session - shows resume button instead of start
+ */
+export const WithActiveSession: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        currentPhase={intermediatePhase}
+        recentSkills={sampleRecentSkills}
+        activeSession={{
+          id: 'session-123',
+          status: 'in_progress',
+          completedCount: 12,
+          totalCount: 30,
+          hasSkillMismatch: false,
+          skillsAdded: 0,
+          skillsRemoved: 0,
+        }}
+        onResumePractice={() => alert('Resume Practice clicked!')}
+        onStartOver={() => alert('Start over clicked!')}
+        {...handlers}
+      />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * With Active Session and Skill Mismatch - shows warning
+ */
+export const WithActiveSessionMismatch: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        currentPhase={intermediatePhase}
+        recentSkills={sampleRecentSkills}
+        activeSession={{
+          id: 'session-123',
+          status: 'in_progress',
+          completedCount: 5,
+          totalCount: 30,
+          hasSkillMismatch: true,
+          skillsAdded: 2,
+          skillsRemoved: 1,
+        }}
+        onResumePractice={() => alert('Resume Practice clicked!')}
+        onStartOver={() => alert('Start over clicked!')}
         {...handlers}
       />
     </DashboardWrapper>
