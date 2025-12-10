@@ -51,9 +51,18 @@ export function VerticalProblem({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  // Calculate all possible prefix sums (intermediate values when entering answer step-by-step)
+  const prefixSums = terms.reduce((acc, term, i) => {
+    const prev = i === 0 ? 0 : acc[i - 1]
+    acc.push(prev + term)
+    return acc
+  }, [] as number[])
+
   // Calculate max digits needed for alignment
+  // Include prefix sums so kids can enter intermediate values during step-by-step solving
   const maxDigits = Math.max(
     ...terms.map((t) => Math.abs(t).toString().length),
+    ...prefixSums.map((s) => Math.abs(s).toString().length),
     userAnswer.length || 1,
     correctAnswer?.toString().length || 1
   )
