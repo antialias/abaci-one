@@ -55,26 +55,24 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
   }
 }
 
-// Fun phrases for auto-pause (when taking too long on a problem)
+// Fun phrases for auto-pause (system noticed they're taking a while)
 const AUTO_PAUSE_PHRASES = [
+  'We pressed paws! 🙏',
   "This one's a thinker!",
-  'Taking your time? Smart!',
-  'Deep thoughts happening...',
+  'Deep thoughts detected!',
   'Brain at work!',
   'Thinking cap on!',
-  'Processing...',
-  'Working it out!',
+  'Taking your time? Smart!',
 ]
 
-// Fun phrases for manual pause (user chose to take a break)
+// Fun phrases for manual pause (kid chose to take a break)
 const MANUAL_PAUSE_PHRASES = [
-  'We pressed paws! 🙏',
+  'You pressed paws! 🙏',
   'Break time!',
   'Taking five!',
   'Quick breather!',
-  'Stretch break!',
-  'Recharging...',
-  'Be right back!',
+  'Good call!',
+  'Smart break!',
 ]
 
 // Intl formatters for duration display
