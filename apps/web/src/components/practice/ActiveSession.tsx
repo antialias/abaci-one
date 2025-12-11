@@ -13,6 +13,11 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 
+import type { AutoPauseStats, PauseInfo } from './SessionPausedModal'
+
+// Re-export types for consumers
+export type { AutoPauseStats, PauseInfo }
+
 // ============================================================================
 // Auto-pause threshold calculation
 // ============================================================================
@@ -48,23 +53,35 @@ function calculateResponseTimeStats(results: SlotResult[]): {
 }
 
 /**
- * Calculate the auto-pause threshold based on response time statistics.
- * Returns mean + 2 standard deviations if we have enough data,
- * otherwise returns the default timeout (5 minutes).
+ * Calculate the auto-pause threshold and full stats for display.
  */
-function calculateAutoPauseThreshold(results: SlotResult[]): number {
-  const stats = calculateResponseTimeStats(results)
+function calculateAutoPauseInfo(results: SlotResult[]): {
+  threshold: number
+  stats: AutoPauseStats
+} {
+  const { mean, stdDev, count } = calculateResponseTimeStats(results)
+  const usedStatistics = count >= MIN_SAMPLES_FOR_STATISTICS
 
-  if (stats.count < MIN_SAMPLES_FOR_STATISTICS) {
-    return DEFAULT_PAUSE_TIMEOUT_MS
+  let threshold: number
+  if (usedStatistics) {
+    // Use mean + 2 standard deviations
+    threshold = mean + 2 * stdDev
+    // Clamp between 30 seconds and 5 minutes
+    threshold = Math.max(30_000, Math.min(threshold, DEFAULT_PAUSE_TIMEOUT_MS))
+  } else {
+    threshold = DEFAULT_PAUSE_TIMEOUT_MS
   }
 
-  // Use mean + 2 standard deviations
-  const threshold = stats.mean + 2 * stats.stdDev
-
-  // Ensure threshold is at least 30 seconds (to avoid too-aggressive pausing)
-  // and at most 5 minutes (reasonable upper bound)
-  return Math.max(30_000, Math.min(threshold, DEFAULT_PAUSE_TIMEOUT_MS))
+  return {
+    threshold,
+    stats: {
+      meanMs: mean,
+      stdDevMs: stdDev,
+      thresholdMs: threshold,
+      sampleCount: count,
+      usedStatistics,
+    },
+  }
 }
 
 import { css } from '../../../styled-system/css'
@@ -86,8 +103,8 @@ interface ActiveSessionProps {
   onAnswer: (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => Promise<void>
   /** Called when session is ended early */
   onEndEarly: (reason?: string) => void
-  /** Called when session is paused */
-  onPause?: () => void
+  /** Called when session is paused (with info about why) */
+  onPause?: (pauseInfo: PauseInfo) => void
   /** Called when session is resumed */
   onResume?: () => void
   /** Called when session completes */
@@ -692,35 +709,48 @@ export function ActiveSession({
       return
     }
 
-    // Don't auto-pause if already paused
-    if (isPaused) return
+    // Don't auto-pause if already paused or no attempt yet
+    if (isPaused || !attempt) return
 
-    // Calculate the threshold from historical results
-    const threshold = calculateAutoPauseThreshold(plan.results)
+    // Calculate the threshold and stats from historical results
+    const { threshold, stats } = calculateAutoPauseInfo(plan.results)
 
     // Calculate remaining time until auto-pause
     const elapsedMs = Date.now() - attempt.startTime
     const remainingMs = threshold - elapsedMs
 
+    // Create pause info for auto-timeout
+    const pauseInfo: PauseInfo = {
+      pausedAt: new Date(),
+      reason: 'auto-timeout',
+      autoPauseStats: stats,
+    }
+
     // If already over threshold, pause immediately
     if (remainingMs <= 0) {
       pause()
-      onPause?.()
+      onPause?.(pauseInfo)
       return
     }
 
     // Set timeout to trigger pause when threshold is reached
     const timeoutId = setTimeout(() => {
+      // Update pausedAt to actual pause time
+      pauseInfo.pausedAt = new Date()
       pause()
-      onPause?.()
+      onPause?.(pauseInfo)
     }, remainingMs)
 
     return () => clearTimeout(timeoutId)
   }, [phase.phase, isPaused, attempt?.startTime, plan.results, pause, onPause])
 
   const handlePause = useCallback(() => {
+    const pauseInfo: PauseInfo = {
+      pausedAt: new Date(),
+      reason: 'manual',
+    }
     pause()
-    onPause?.()
+    onPause?.(pauseInfo)
   }, [pause, onPause])
 
   const handleResume = useCallback(() => {

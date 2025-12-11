@@ -9,6 +9,7 @@ import {
   PracticeSubNav,
   type SessionHudData,
   SessionPausedModal,
+  type PauseInfo,
 } from '@/components/practice'
 import type { Player } from '@/db/schema/players'
 import type { SessionHealth, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
@@ -39,6 +40,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // Track pause state locally (controlled by callbacks from ActiveSession)
   // Never auto-pause - session continues where it left off on load/reload
   const [isPaused, setIsPaused] = useState(false)
+  // Track pause info for displaying details in the modal
+  const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -66,12 +69,14 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   }, [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex])
 
   // Pause/resume handlers
-  const handlePause = useCallback(() => {
+  const handlePause = useCallback((info: PauseInfo) => {
+    setPauseInfo(info)
     setIsPaused(true)
   }, [])
 
   const handleResume = useCallback(() => {
     setIsPaused(false)
+    setPauseInfo(undefined)
   }, [])
 
   // Handle recording an answer
@@ -129,7 +134,11 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               accuracy: sessionHealth.accuracy,
             }
           : undefined,
-        onPause: handlePause,
+        onPause: () =>
+          handlePause({
+            pausedAt: new Date(),
+            reason: 'manual',
+          }),
         onResume: handleResume,
         onEndEarly: () => handleEndEarly('Session ended'),
       }
@@ -165,6 +174,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         isOpen={isPaused}
         student={player}
         session={currentPlan}
+        pauseInfo={pauseInfo}
         onResume={handleResume}
         onEndSession={() => handleEndEarly('Session ended by user')}
       />

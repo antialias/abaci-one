@@ -1,8 +1,37 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+
+/**
+ * Statistics about response times used for auto-pause threshold
+ */
+export interface AutoPauseStats {
+  /** Mean response time in milliseconds */
+  meanMs: number
+  /** Standard deviation of response times in milliseconds */
+  stdDevMs: number
+  /** Calculated threshold (mean + 2*stdDev) in milliseconds */
+  thresholdMs: number
+  /** Number of samples used to calculate stats */
+  sampleCount: number
+  /** Whether statistical calculation was used (vs default timeout) */
+  usedStatistics: boolean
+}
+
+/**
+ * Information about why and when the session was paused
+ */
+export interface PauseInfo {
+  /** When the pause occurred */
+  pausedAt: Date
+  /** Why the session was paused */
+  reason: 'manual' | 'auto-timeout'
+  /** Auto-pause statistics (only present for auto-timeout) */
+  autoPauseStats?: AutoPauseStats
+}
 
 function getPartTypeLabel(type: SessionPart['type']): string {
   switch (type) {
@@ -26,6 +55,32 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
   }
 }
 
+/**
+ * Format milliseconds as a human-readable duration
+ */
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60
+    return `${hours}h ${remainingMinutes}m`
+  }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60
+    return `${minutes}m ${remainingSeconds}s`
+  }
+  return `${seconds}s`
+}
+
+/**
+ * Format milliseconds as seconds with one decimal place
+ */
+function formatSeconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
 export interface SessionPausedModalProps {
   /** Whether the modal is visible */
   isOpen: boolean
@@ -37,6 +92,8 @@ export interface SessionPausedModalProps {
   }
   /** Current session plan (for progress info) */
   session: SessionPlan
+  /** Information about the pause (optional for backwards compatibility) */
+  pauseInfo?: PauseInfo
   /** Called when user clicks Resume */
   onResume: () => void
   /** Called when user clicks End Session */
@@ -56,11 +113,32 @@ export function SessionPausedModal({
   isOpen,
   student,
   session,
+  pauseInfo,
   onResume,
   onEndSession,
 }: SessionPausedModalProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Live-updating pause duration
+  const [pauseDuration, setPauseDuration] = useState(0)
+
+  useEffect(() => {
+    if (!isOpen || !pauseInfo?.pausedAt) {
+      setPauseDuration(0)
+      return
+    }
+
+    // Update immediately
+    setPauseDuration(Date.now() - pauseInfo.pausedAt.getTime())
+
+    // Update every second
+    const interval = setInterval(() => {
+      setPauseDuration(Date.now() - pauseInfo.pausedAt.getTime())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isOpen, pauseInfo?.pausedAt])
 
   if (!isOpen) return null
 
@@ -71,6 +149,11 @@ export function SessionPausedModal({
     totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0
 
   const currentPart = session.parts[session.currentPartIndex]
+
+  // Format pause time
+  const pauseTimeStr = pauseInfo?.pausedAt
+    ? pauseInfo.pausedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null
 
   return (
     <div
@@ -163,6 +246,119 @@ export function SessionPausedModal({
             Take a break, {student.name}! Tap Resume when ready.
           </p>
         </div>
+
+        {/* Pause details */}
+        {pauseInfo && (
+          <div
+            data-element="pause-details"
+            className={css({
+              width: '100%',
+              padding: '1rem',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            })}
+          >
+            {/* Pause timing */}
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                })}
+              >
+                Paused at {pauseTimeStr}
+              </span>
+              <span
+                className={css({
+                  fontSize: '0.9375rem',
+                  fontWeight: 'bold',
+                  fontFamily: 'monospace',
+                  color: isDark ? 'blue.300' : 'blue.600',
+                })}
+              >
+                {formatDuration(pauseDuration)}
+              </span>
+            </div>
+
+            {/* Auto-pause reason */}
+            {pauseInfo.reason === 'auto-timeout' && (
+              <div
+                data-element="auto-pause-reason"
+                className={css({
+                  padding: '0.75rem',
+                  backgroundColor: isDark ? 'yellow.900' : 'yellow.50',
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'yellow.700' : 'yellow.200',
+                })}
+              >
+                <p
+                  className={css({
+                    fontSize: '0.8125rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'yellow.300' : 'yellow.700',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  Auto-paused: Taking longer than usual
+                </p>
+                {pauseInfo.autoPauseStats && (
+                  <div
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.300' : 'gray.600',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem',
+                    })}
+                  >
+                    {pauseInfo.autoPauseStats.usedStatistics ? (
+                      <>
+                        <p>
+                          Based on {pauseInfo.autoPauseStats.sampleCount} problems: avg{' '}
+                          {formatSeconds(pauseInfo.autoPauseStats.meanMs)} ±{' '}
+                          {formatSeconds(pauseInfo.autoPauseStats.stdDevMs)}
+                        </p>
+                        <p>
+                          Timeout threshold: {formatSeconds(pauseInfo.autoPauseStats.thresholdMs)}{' '}
+                          (avg + 2×std dev)
+                        </p>
+                      </>
+                    ) : (
+                      <p>
+                        Using default {formatSeconds(pauseInfo.autoPauseStats.thresholdMs)} timeout
+                        (need {5 - pauseInfo.autoPauseStats.sampleCount} more problems for
+                        personalized timing)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Manual pause */}
+            {pauseInfo.reason === 'manual' && (
+              <p
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                Session paused manually
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Progress summary */}
         <div className={css({ width: '100%', textAlign: 'center' })}>
