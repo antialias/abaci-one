@@ -26,10 +26,15 @@ interface NumericKeypadProps {
  */
 function getPortraitStyles(isDark: boolean): string {
   return `
+    .keypad-portrait {
+      width: 100%;
+    }
     .keypad-portrait .simple-keyboard {
       background: ${isDark ? '#1a1a1a' : '#f5f5f5'};
       padding: 4px 2px;
       border-radius: 0;
+      width: 100%;
+      max-width: none;
     }
     .keypad-portrait .hg-row {
       display: flex;
