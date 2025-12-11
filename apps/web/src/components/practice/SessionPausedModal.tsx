@@ -255,6 +255,8 @@ export function SessionPausedModal({
 
   // Live-updating pause duration
   const [pauseDuration, setPauseDuration] = useState(0)
+  // Toggle for showing stats details
+  const [showStats, setShowStats] = useState(false)
 
   useEffect(() => {
     if (!isOpen || !pauseInfo?.pausedAt) {
@@ -430,72 +432,68 @@ export function SessionPausedModal({
             data-element="rhythm-explanation"
             className={css({
               width: '100%',
-              padding: '1rem',
-              backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-              borderRadius: '12px',
-              border: '1px solid',
-              borderColor: isDark ? 'blue.700' : 'blue.200',
             })}
           >
-            {/* We know their rhythm */}
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.75rem',
-              })}
-            >
-              <span className={css({ fontSize: '1.25rem' })}>🎵</span>
-              <span
-                className={css({
-                  fontSize: '0.875rem',
-                  fontWeight: 'bold',
-                  color: isDark ? 'blue.200' : 'blue.700',
-                })}
-              >
-                We Know Your Rhythm!
-              </span>
-            </div>
-
+            {/* Main explanation text */}
             <p
               className={css({
                 fontSize: '0.8125rem',
-                color: isDark ? 'gray.300' : 'gray.700',
-                marginBottom: '0.75rem',
+                color: isDark ? 'gray.300' : 'gray.600',
                 lineHeight: '1.5',
+                textAlign: 'center',
+                marginBottom: '0.5rem',
               })}
             >
-              We watched you solve{' '}
-              <strong className={css({ color: isDark ? 'green.300' : 'green.600' })}>
-                {stats.sampleCount} problems
-              </strong>{' '}
-              and learned your speed! Usually you take{' '}
-              <strong className={css({ color: isDark ? 'blue.300' : 'blue.600' })}>
-                {formatSecondsFriendly(stats.meanMs)}
-              </strong>
-              .
+              Usually you take {formatSecondsFriendly(stats.meanMs)}. This one took longer, so we
+              paused to check in.{' '}
+              <button
+                type="button"
+                onClick={() => setShowStats(!showStats)}
+                className={css({
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  fontSize: '0.75rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  _hover: {
+                    color: isDark ? 'gray.400' : 'gray.500',
+                  },
+                })}
+              >
+                {showStats ? 'hide' : 'really?'}
+              </button>
             </p>
 
-            {/* Speed visualization */}
-            <SpeedMeter
-              meanMs={stats.meanMs}
-              stdDevMs={stats.stdDevMs}
-              thresholdMs={stats.thresholdMs}
-              isDark={isDark}
-            />
-
-            <p
-              className={css({
-                fontSize: '0.75rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-                marginTop: '0.75rem',
-                fontStyle: 'italic',
-              })}
-            >
-              The blue bar shows your usual range. This problem took longer, so we paused to check
-              in!
-            </p>
+            {/* Collapsible stats visualization */}
+            {showStats && (
+              <div
+                className={css({
+                  padding: '0.75rem',
+                  backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
+                  borderRadius: '8px',
+                  marginTop: '0.5rem',
+                })}
+              >
+                <SpeedMeter
+                  meanMs={stats.meanMs}
+                  stdDevMs={stats.stdDevMs}
+                  thresholdMs={stats.thresholdMs}
+                  isDark={isDark}
+                />
+                <p
+                  className={css({
+                    fontSize: '0.6875rem',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                    marginTop: '0.5rem',
+                    textAlign: 'center',
+                  })}
+                >
+                  The blue bar shows your usual range.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -606,7 +604,7 @@ export function SessionPausedModal({
           className={css({
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.5rem',
+            gap: '0.75rem',
             width: '100%',
           })}
         >
@@ -615,30 +613,31 @@ export function SessionPausedModal({
             data-action="resume"
             onClick={onResume}
             className={css({
-              padding: '1rem',
-              fontSize: '1.125rem',
+              padding: '1.25rem',
+              fontSize: '1.25rem',
               fontWeight: 'bold',
               color: 'white',
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              borderRadius: '12px',
-              border: 'none',
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              borderRadius: '16px',
+              border: '3px solid',
+              borderColor: '#14532d',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
               transition: 'all 0.15s ease',
-              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+              boxShadow: '0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
               _hover: {
                 transform: 'translateY(-2px)',
-                boxShadow: '0 6px 16px rgba(34, 197, 94, 0.4)',
+                boxShadow: '0 8px 24px rgba(22, 163, 74, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)',
               },
               _active: {
                 transform: 'translateY(0)',
               },
             })}
           >
-            <span>▶️</span>
             <span>Keep Going!</span>
           </button>
 
@@ -647,21 +646,25 @@ export function SessionPausedModal({
             data-action="end-session"
             onClick={onEndSession}
             className={css({
-              padding: '0.625rem',
-              fontSize: '0.8125rem',
-              color: isDark ? 'gray.400' : 'gray.500',
+              padding: '0.5rem',
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.500' : 'gray.400',
               backgroundColor: 'transparent',
-              borderRadius: '8px',
+              borderRadius: '6px',
               border: 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem',
               _hover: {
-                color: isDark ? 'red.300' : 'red.600',
-                backgroundColor: isDark ? 'red.900/30' : 'red.50',
+                color: isDark ? 'gray.400' : 'gray.500',
               },
             })}
           >
-            End Session Early
+            <span className={css({ fontSize: '0.875rem' })}>🛑</span>
+            <span>end session</span>
           </button>
         </div>
       </div>
