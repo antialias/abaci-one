@@ -1,7 +1,14 @@
 'use client'
 
 import type React from 'react'
-import { createContext, useContext, useState, useCallback } from 'react'
+import {
+  createContext,
+  type MutableRefObject,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from 'react'
 
 /**
  * Configuration for a docked abacus
@@ -32,6 +39,21 @@ export interface DockConfig {
   onValueChange?: (newValue: number) => void
 }
 
+/**
+ * Animation state for dock transitions
+ */
+export interface DockAnimationState {
+  phase: 'docking' | 'undocking'
+  /** Viewport rect of the starting position */
+  fromRect: { x: number; y: number; width: number; height: number }
+  /** Viewport rect of the target position */
+  toRect: { x: number; y: number; width: number; height: number }
+  /** Scale of the abacus at start */
+  fromScale: number
+  /** Scale of the abacus at end */
+  toScale: number
+}
+
 interface MyAbacusContextValue {
   isOpen: boolean
   open: () => void
@@ -57,6 +79,18 @@ interface MyAbacusContextValue {
   dockInto: () => void
   /** Undock the abacus (return to button mode) */
   undock: () => void
+  /** Current dock animation state (null when not animating) */
+  dockAnimationState: DockAnimationState | null
+  /** Ref to the button element for measuring position */
+  buttonRef: MutableRefObject<HTMLDivElement | null>
+  /** Start the docking animation (called internally by MyAbacus when it measures rects) */
+  startDockAnimation: (animState: DockAnimationState) => void
+  /** Complete the docking animation (switches to docked state) */
+  completeDockAnimation: () => void
+  /** Start the undocking animation (called internally by MyAbacus when it measures rects) */
+  startUndockAnimation: (animState: DockAnimationState) => void
+  /** Complete the undocking animation (switches to button state) */
+  completeUndockAnimation: () => void
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
@@ -67,6 +101,8 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const [showInGame, setShowInGame] = useState(false)
   const [dock, setDock] = useState<DockConfig | null>(null)
   const [isDockedByUser, setIsDockedByUser] = useState(false)
+  const [dockAnimationState, setDockAnimationState] = useState<DockAnimationState | null>(null)
+  const buttonRef = useRef<HTMLDivElement | null>(null)
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
@@ -107,6 +143,26 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     setIsDockedByUser(false)
   }, [])
 
+  // Animation callbacks
+  const startDockAnimation = useCallback((animState: DockAnimationState) => {
+    setDockAnimationState(animState)
+  }, [])
+
+  const completeDockAnimation = useCallback(() => {
+    setDockAnimationState(null)
+    setIsDockedByUser(true)
+    setIsOpen(false)
+  }, [])
+
+  const startUndockAnimation = useCallback((animState: DockAnimationState) => {
+    setDockAnimationState(animState)
+    setIsDockedByUser(false) // Remove from portal immediately so we can animate the overlay
+  }, [])
+
+  const completeUndockAnimation = useCallback(() => {
+    setDockAnimationState(null)
+  }, [])
+
   return (
     <MyAbacusContext.Provider
       value={{
@@ -125,6 +181,12 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         isDockedByUser,
         dockInto,
         undock,
+        dockAnimationState,
+        buttonRef,
+        startDockAnimation,
+        completeDockAnimation,
+        startUndockAnimation,
+        completeUndockAnimation,
       }}
     >
       {children}

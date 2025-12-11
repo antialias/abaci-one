@@ -1,17 +1,33 @@
 'use client'
 
-import { useContext, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { animated, useSpring } from '@react-spring/web'
+import { ABACUS_THEMES, AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { usePathname } from 'next/navigation'
-import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-react'
-import { css } from '../../styled-system/css'
-import { useMyAbacus } from '@/contexts/MyAbacusContext'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
+import { type DockAnimationState, useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { css } from '../../styled-system/css'
 
 export function MyAbacus() {
-  const { isOpen, close, toggle, isHidden, showInGame, dock, isDockedByUser, dockInto, undock } =
-    useMyAbacus()
+  const {
+    isOpen,
+    close,
+    toggle,
+    isHidden,
+    showInGame,
+    dock,
+    isDockedByUser,
+    dockInto,
+    undock,
+    dockAnimationState,
+    buttonRef,
+    startDockAnimation,
+    completeDockAnimation,
+    startUndockAnimation,
+    completeUndockAnimation,
+  } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
   const { resolvedTheme } = useTheme()
@@ -19,6 +35,9 @@ export function MyAbacus() {
 
   // Track dock container size for auto-scaling
   const [dockSize, setDockSize] = useState<{ width: number; height: number } | null>(null)
+
+  // Local ref for the button container (we'll connect this to context's buttonRef)
+  const localButtonRef = useRef<HTMLDivElement>(null)
 
   // Sync with hero context if on home page
   const homeHeroContext = useContext(HomeHeroContext)
@@ -118,13 +137,165 @@ export function MyAbacus() {
 
   const dockedScale = calculateDockedScale()
 
+  // Sync local button ref with context's buttonRef
+  useEffect(() => {
+    if (buttonRef && localButtonRef.current) {
+      buttonRef.current = localButtonRef.current
+    }
+    return () => {
+      if (buttonRef) {
+        buttonRef.current = null
+      }
+    }
+  }, [buttonRef])
+
+  // Spring animation for dock transitions
+  // We animate: x, y, width, height, scale, opacity, borderRadius, chromeOpacity
+  // chromeOpacity controls the button "chrome" (border, background, shadow) - fades out when docking
+  const [springStyles, springApi] = useSpring(() => ({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    scale: 1,
+    opacity: 1,
+    borderRadius: 16,
+    chromeOpacity: 1, // 1 = full button styling, 0 = no border/bg/shadow (docked look)
+    config: { tension: 200, friction: 24 },
+  }))
+
+  // Start dock animation when dockAnimationState changes
+  useEffect(() => {
+    if (!dockAnimationState) return
+
+    const { phase, fromRect, toRect, fromScale, toScale } = dockAnimationState
+
+    // Set initial position
+    // chromeOpacity: 1 = button look (border/bg/shadow), 0 = docked look (clean)
+    springApi.set({
+      x: fromRect.x,
+      y: fromRect.y,
+      width: fromRect.width,
+      height: fromRect.height,
+      scale: fromScale,
+      opacity: 1,
+      borderRadius: phase === 'docking' ? 16 : 8,
+      chromeOpacity: phase === 'docking' ? 1 : 0, // Start with button look when docking, clean when undocking
+    })
+
+    // Animate to target position
+    springApi.start({
+      x: toRect.x,
+      y: toRect.y,
+      width: toRect.width,
+      height: toRect.height,
+      scale: toScale,
+      opacity: 1,
+      borderRadius: phase === 'docking' ? 8 : 16,
+      chromeOpacity: phase === 'docking' ? 0 : 1, // Fade out chrome when docking, fade in when undocking
+      config: { tension: 180, friction: 22 },
+      onRest: () => {
+        if (phase === 'docking') {
+          completeDockAnimation()
+        } else {
+          completeUndockAnimation()
+        }
+      },
+    })
+  }, [dockAnimationState, springApi, completeDockAnimation, completeUndockAnimation])
+
+  // Handler to initiate dock animation
+  const handleDockClick = useCallback(() => {
+    if (!dock?.element || !localButtonRef.current) {
+      // Fallback to instant dock if we can't measure
+      dockInto()
+      return
+    }
+
+    // Measure positions
+    const buttonRect = localButtonRef.current.getBoundingClientRect()
+    const dockRect = dock.element.getBoundingClientRect()
+
+    // Calculate scales - button shows at 0.35 scale, dock uses dockedScale
+    const buttonScale = 0.35
+    const targetScale = dockedScale
+
+    const animState: DockAnimationState = {
+      phase: 'docking',
+      fromRect: {
+        x: buttonRect.x,
+        y: buttonRect.y,
+        width: buttonRect.width,
+        height: buttonRect.height,
+      },
+      toRect: {
+        x: dockRect.x,
+        y: dockRect.y,
+        width: dockRect.width,
+        height: dockRect.height,
+      },
+      fromScale: buttonScale,
+      toScale: targetScale,
+    }
+
+    startDockAnimation(animState)
+  }, [dock, dockInto, dockedScale, startDockAnimation])
+
+  // Handler to initiate undock animation
+  const handleUndockClick = useCallback(() => {
+    if (!dock?.element) {
+      // Fallback to instant undock if we can't measure dock position
+      undock()
+      return
+    }
+
+    // Measure dock position (source)
+    const dockRect = dock.element.getBoundingClientRect()
+
+    // Calculate target button position (we don't need the ref - button has known fixed position)
+    // Button is fixed at bottom-right with some margin
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const buttonSize = viewportWidth >= 768 ? 100 : 80
+    const margin = viewportWidth >= 768 ? 24 : 16
+    const buttonX = viewportWidth - buttonSize - margin
+    const buttonY = viewportHeight - buttonSize - margin
+
+    const buttonScale = 0.35
+    const dockScale = dockedScale
+
+    const animState: DockAnimationState = {
+      phase: 'undocking',
+      fromRect: {
+        x: dockRect.x,
+        y: dockRect.y,
+        width: dockRect.width,
+        height: dockRect.height,
+      },
+      toRect: {
+        x: buttonX,
+        y: buttonY,
+        width: buttonSize,
+        height: buttonSize,
+      },
+      fromScale: dockScale,
+      toScale: buttonScale,
+    }
+
+    startUndockAnimation(animState)
+  }, [dock, undock, dockedScale, startUndockAnimation])
+
+  // Check if we're currently animating
+  const isAnimating = dockAnimationState !== null
+
   // Hide completely when:
   // 1. isHidden is true (e.g., virtual keyboard is shown on non-game pages)
   // 2. On a game route and the game hasn't opted in to show it
   // 3. NOT docked (docked abacus should always show)
+  // 4. NOT animating (animation layer should show)
   // Still allow open state to work (user explicitly opened it)
   // NOTE: This must come after all hooks to follow React's rules of hooks
-  if (!isOpen && !isDocked && (isHidden || (isOnGameRoute && !showInGame))) {
+  if (!isOpen && !isDocked && !isAnimating && (isHidden || (isOnGameRoute && !showInGame))) {
     return null
   }
 
@@ -207,7 +378,7 @@ export function MyAbacus() {
               data-action="undock-abacus"
               onClick={(e) => {
                 e.stopPropagation()
-                undock()
+                handleUndockClick()
               }}
               title="Undock abacus"
               style={{
@@ -286,12 +457,13 @@ export function MyAbacus() {
         )}
 
       {/* Non-docked modes: hero, button, open */}
-      {!isDocked && (
+      {!isDocked && !isAnimating && (
         <div
+          ref={localButtonRef}
           data-component="my-abacus"
           data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
           data-dockable={isDockable ? 'true' : undefined}
-          onClick={isOpen || isHeroMode ? undefined : isDockable ? dockInto : toggle}
+          onClick={isOpen || isHeroMode ? undefined : isDockable ? handleDockClick : toggle}
           className={css({
             position: isHeroMode ? 'absolute' : 'fixed',
             zIndex: 102,
@@ -414,6 +586,66 @@ export function MyAbacus() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Animation layer - fixed position overlay during dock/undock transitions */}
+      {isAnimating && dockAnimationState && (
+        <animated.div
+          data-component="my-abacus-animation-layer"
+          data-animation-phase={dockAnimationState.phase}
+          style={{
+            position: 'fixed',
+            left: springStyles.x,
+            top: springStyles.y,
+            width: springStyles.width,
+            height: springStyles.height,
+            zIndex: 103,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            // Animate background opacity based on chromeOpacity
+            backgroundColor: springStyles.chromeOpacity.to((o) =>
+              isDark ? `rgba(0, 0, 0, ${0.7 * o})` : `rgba(255, 255, 255, ${0.9 * o})`
+            ),
+            backdropFilter: springStyles.chromeOpacity.to((o) => `blur(${8 * o}px)`),
+            WebkitBackdropFilter: springStyles.chromeOpacity.to((o) => `blur(${8 * o}px)`),
+            // Animate border opacity
+            border: springStyles.chromeOpacity.to((o) =>
+              isDark
+                ? `3px solid rgba(251, 191, 36, ${0.5 * o})`
+                : `3px solid rgba(251, 191, 36, ${0.6 * o})`
+            ),
+            // Animate shadow opacity
+            boxShadow: springStyles.chromeOpacity.to((o) =>
+              isDark
+                ? `0 8px 32px rgba(251, 191, 36, ${0.4 * o})`
+                : `0 8px 32px rgba(251, 191, 36, ${0.5 * o})`
+            ),
+            borderRadius: springStyles.borderRadius,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Inner container with scale transform */}
+          <animated.div
+            style={{
+              transform: springStyles.scale.to((s) => `scale(${s})`),
+              transformOrigin: 'center center',
+              filter: 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.2))',
+            }}
+          >
+            <AbacusReact
+              key="animating"
+              value={dock?.value ?? abacusValue}
+              columns={dock?.columns ?? 5}
+              beadShape={appConfig.beadShape}
+              showNumbers={false}
+              interactive={false}
+              animated={false}
+              customStyles={trophyStyles}
+            />
+          </animated.div>
+        </animated.div>
       )}
 
       {/* Keyframes for animations */}
