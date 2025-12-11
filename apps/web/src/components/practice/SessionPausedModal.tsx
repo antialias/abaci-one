@@ -445,37 +445,72 @@ export function SessionPausedModal({
               })}
             >
               Usually you take {formatSecondsFriendly(stats.meanMs)}. This one took longer, so we
-              paused to check in.{' '}
-              <button
-                type="button"
-                onClick={() => setShowStats(!showStats)}
-                className={css({
-                  color: isDark ? 'gray.500' : 'gray.400',
-                  fontSize: '0.75rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  _hover: {
-                    color: isDark ? 'gray.400' : 'gray.500',
-                  },
-                })}
-              >
-                {showStats ? 'hide' : 'really?'}
-              </button>
+              paused to check in.
+              {!showStats && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowStats(true)}
+                    className={css({
+                      color: isDark ? 'gray.500' : 'gray.400',
+                      fontSize: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      padding: 0,
+                      _hover: {
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      },
+                    })}
+                  >
+                    really?
+                  </button>
+                </>
+              )}
             </p>
 
             {/* Collapsible stats visualization */}
             {showStats && (
               <div
                 className={css({
+                  position: 'relative',
                   padding: '0.75rem',
                   backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
                   borderRadius: '8px',
                   marginTop: '0.5rem',
                 })}
               >
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => setShowStats(false)}
+                  className={css({
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    width: '20px',
+                    height: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                    fontSize: '0.875rem',
+                    lineHeight: 1,
+                    borderRadius: '4px',
+                    _hover: {
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                    },
+                  })}
+                  aria-label="Close stats"
+                >
+                  ×
+                </button>
                 <SpeedMeter
                   meanMs={stats.meanMs}
                   stdDevMs={stats.stdDevMs}
