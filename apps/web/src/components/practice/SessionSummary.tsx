@@ -20,6 +20,33 @@ interface SkillBreakdown {
   accuracy: number
 }
 
+interface SkillCategoryGroup {
+  categoryId: string
+  categoryName: string
+  skills: SkillBreakdown[]
+  /** Aggregate stats for the category */
+  correct: number
+  total: number
+  accuracy: number
+}
+
+/** Ordered list of skill categories (pedagogical progression) */
+const SKILL_CATEGORY_ORDER = [
+  'basic',
+  'fiveComplements',
+  'tenComplements',
+  'fiveComplementsSub',
+  'tenComplementsSub',
+] as const
+
+const SKILL_CATEGORY_NAMES: Record<string, string> = {
+  basic: 'Basic Operations',
+  fiveComplements: '5-Complements (Addition)',
+  tenComplements: '10-Complements (Addition)',
+  fiveComplementsSub: '5-Complements (Subtraction)',
+  tenComplementsSub: '10-Complements (Subtraction)',
+}
+
 /**
  * SessionSummary - Shows results after completing a practice session
  *
@@ -53,8 +80,8 @@ export function SessionSummary({
   const sessionDurationMinutes =
     startedAtMs && completedAtMs ? (completedAtMs - startedAtMs) / 1000 / 60 : 0
 
-  // Calculate skill breakdown
-  const skillBreakdown = calculateSkillBreakdown(results)
+  // Calculate skill breakdown grouped by category
+  const skillCategories = calculateSkillBreakdownByCategory(results)
 
   // Determine overall performance message
   const performanceMessage = getPerformanceMessage(accuracy)
@@ -297,8 +324,8 @@ export function SessionSummary({
         </div>
       </div>
 
-      {/* Skill breakdown */}
-      {skillBreakdown.length > 0 && (
+      {/* Skill breakdown by category */}
+      {skillCategories.length > 0 && (
         <div
           data-section="skill-breakdown"
           className={css({
@@ -323,167 +350,185 @@ export function SessionSummary({
             className={css({
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.75rem',
+              gap: '1.25rem',
             })}
           >
-            {skillBreakdown.map((skill) => (
-              <div
-                key={skill.skillId}
-                data-element="skill-row"
+            {skillCategories.map((category) => (
+              <details
+                key={category.categoryId}
+                data-element="skill-category"
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
+                  '& > summary': {
+                    listStyle: 'none',
+                    cursor: 'pointer',
+                    '&::-webkit-details-marker': { display: 'none' },
+                  },
                 })}
               >
-                <div
+                {/* Category header with aggregate stats (clickable summary) */}
+                <summary
                   className={css({
-                    flex: 1,
-                    fontSize: '0.875rem',
-                    color: isDark ? 'gray.300' : 'gray.700',
-                  })}
-                >
-                  {formatSkillName(skill.skillId)}
-                </div>
-                <div
-                  className={css({
-                    width: '120px',
-                    height: '8px',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                    borderRadius: '4px',
-                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    paddingBottom: '0.375rem',
+                    borderBottom: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.750' : 'gray.50',
+                    },
                   })}
                 >
                   <div
                     className={css({
-                      height: '100%',
-                      backgroundColor: isDark
-                        ? skill.accuracy >= 0.8
+                      flex: 1,
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      color: isDark ? 'gray.200' : 'gray.800',
+                    })}
+                  >
+                    {category.categoryName}
+                  </div>
+                  <div
+                    className={css({
+                      width: '80px',
+                      height: '6px',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      borderRadius: '3px',
+                      overflow: 'hidden',
+                    })}
+                  >
+                    <div
+                      className={css({
+                        height: '100%',
+                        backgroundColor: isDark
+                          ? category.accuracy >= 0.8
+                            ? 'green.400'
+                            : category.accuracy >= 0.6
+                              ? 'yellow.400'
+                              : 'red.400'
+                          : category.accuracy >= 0.8
+                            ? 'green.500'
+                            : category.accuracy >= 0.6
+                              ? 'yellow.500'
+                              : 'red.500',
+                        borderRadius: '3px',
+                      })}
+                      style={{ width: `${category.accuracy * 100}%` }}
+                    />
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      color: isDark
+                        ? category.accuracy >= 0.8
                           ? 'green.400'
-                          : skill.accuracy >= 0.6
+                          : category.accuracy >= 0.6
                             ? 'yellow.400'
                             : 'red.400'
-                        : skill.accuracy >= 0.8
-                          ? 'green.500'
-                          : skill.accuracy >= 0.6
-                            ? 'yellow.500'
-                            : 'red.500',
-                      borderRadius: '4px',
-                      transition: 'width 0.5s ease',
+                        : category.accuracy >= 0.8
+                          ? 'green.600'
+                          : category.accuracy >= 0.6
+                            ? 'yellow.600'
+                            : 'red.600',
+                      minWidth: '36px',
+                      textAlign: 'right',
                     })}
-                    style={{ width: `${skill.accuracy * 100}%` }}
-                  />
-                </div>
+                  >
+                    {category.correct}/{category.total}
+                  </div>
+                </summary>
+
+                {/* Individual skills within category (expanded content) */}
                 <div
                   className={css({
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    color: isDark
-                      ? skill.accuracy >= 0.8
-                        ? 'green.400'
-                        : skill.accuracy >= 0.6
-                          ? 'yellow.400'
-                          : 'red.400'
-                      : skill.accuracy >= 0.8
-                        ? 'green.600'
-                        : skill.accuracy >= 0.6
-                          ? 'yellow.600'
-                          : 'red.600',
-                    minWidth: '40px',
-                    textAlign: 'right',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.375rem',
+                    paddingLeft: '0.75rem',
+                    paddingTop: '0.5rem',
                   })}
                 >
-                  {skill.correct}/{skill.total}
+                  {category.skills.map((skill) => (
+                    <div
+                      key={skill.skillId}
+                      data-element="skill-row"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      })}
+                    >
+                      <div
+                        className={css({
+                          flex: 1,
+                          fontSize: '0.8125rem',
+                          color: isDark ? 'gray.400' : 'gray.600',
+                        })}
+                      >
+                        {formatSkillValue(skill.skillId)}
+                      </div>
+                      <div
+                        className={css({
+                          width: '60px',
+                          height: '4px',
+                          backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                          borderRadius: '2px',
+                          overflow: 'hidden',
+                        })}
+                      >
+                        <div
+                          className={css({
+                            height: '100%',
+                            backgroundColor: isDark
+                              ? skill.accuracy >= 0.8
+                                ? 'green.400'
+                                : skill.accuracy >= 0.6
+                                  ? 'yellow.400'
+                                  : 'red.400'
+                              : skill.accuracy >= 0.8
+                                ? 'green.500'
+                                : skill.accuracy >= 0.6
+                                  ? 'yellow.500'
+                                  : 'red.500',
+                            borderRadius: '2px',
+                          })}
+                          style={{ width: `${skill.accuracy * 100}%` }}
+                        />
+                      </div>
+                      <div
+                        className={css({
+                          fontSize: '0.6875rem',
+                          color: isDark
+                            ? skill.accuracy >= 0.8
+                              ? 'green.400'
+                              : skill.accuracy >= 0.6
+                                ? 'yellow.400'
+                                : 'red.400'
+                            : skill.accuracy >= 0.8
+                              ? 'green.600'
+                              : skill.accuracy >= 0.6
+                                ? 'yellow.600'
+                                : 'red.600',
+                          minWidth: '28px',
+                          textAlign: 'right',
+                        })}
+                      >
+                        {skill.correct}/{skill.total}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              </details>
             ))}
           </div>
         </div>
       )}
 
-      {/* Problem review - answered problems with results (collapsed by default) */}
-      {results.length > 0 && (
-        <details
-          data-section="problem-review"
-          className={css({
-            padding: '1rem',
-            backgroundColor: isDark ? 'gray.800' : 'gray.50',
-            borderRadius: '12px',
-            border: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-          })}
-        >
-          <summary
-            className={css({
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.300' : 'gray.700',
-              cursor: 'pointer',
-              _hover: {
-                color: isDark ? 'gray.100' : 'gray.900',
-              },
-            })}
-          >
-            Review Answered Problems ({totalProblems})
-          </summary>
-
-          <div
-            className={css({
-              marginTop: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-            })}
-          >
-            {results.map((result, index) => (
-              <div
-                key={index}
-                data-element="problem-review-item"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.5rem',
-                  backgroundColor: isDark
-                    ? result.isCorrect
-                      ? 'green.900'
-                      : 'red.900'
-                    : result.isCorrect
-                      ? 'green.50'
-                      : 'red.50',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.200' : 'inherit',
-                })}
-              >
-                <span>{result.isCorrect ? '✓' : '✗'}</span>
-                <span
-                  className={css({
-                    flex: 1,
-                    fontFamily: 'monospace',
-                  })}
-                >
-                  {formatProblem(result.problem.terms)} = {result.problem.answer}
-                </span>
-                {!result.isCorrect && (
-                  <span
-                    className={css({
-                      color: isDark ? 'red.400' : 'red.600',
-                      textDecoration: 'line-through',
-                    })}
-                  >
-                    {result.studentAnswer}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {/* View all planned problems - shows full problem set by part (for teachers) */}
-      <details
-        data-section="all-planned-problems"
+      {/* Problems by part - always visible */}
+      <div
+        data-section="problems-by-part"
         className={css({
           padding: '1rem',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
@@ -492,23 +537,8 @@ export function SessionSummary({
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        <summary
-          className={css({
-            fontSize: '0.875rem',
-            fontWeight: 'bold',
-            color: isDark ? 'gray.300' : 'gray.700',
-            cursor: 'pointer',
-            _hover: {
-              color: isDark ? 'gray.100' : 'gray.900',
-            },
-          })}
-        >
-          View All Planned Problems ({getTotalPlannedProblems(plan.parts)})
-        </summary>
-
         <div
           className={css({
-            marginTop: '1rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '1.5rem',
@@ -538,150 +568,156 @@ export function SessionSummary({
                 </span>
               </h4>
 
-              <div
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.375rem',
-                })}
-              >
-                {part.slots.map((slot) => {
-                  // Find if this slot has been answered
-                  const result = results.find(
-                    (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
-                  )
-                  const problem = result?.problem ?? slot.problem
+              {/* Vertical parts: grid layout for compact problem cards */}
+              {isVerticalPart(part.type) ? (
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                  })}
+                >
+                  {part.slots.map((slot) => {
+                    const result = results.find(
+                      (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
+                    )
+                    const problem = result?.problem ?? slot.problem
 
-                  return (
-                    <div
-                      key={slot.index}
-                      data-element="planned-problem-item"
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.375rem 0.5rem',
-                        backgroundColor: result
-                          ? isDark
-                            ? result.isCorrect
-                              ? 'green.900'
-                              : 'red.900'
-                            : result.isCorrect
-                              ? 'green.50'
-                              : 'red.50'
-                          : isDark
-                            ? 'gray.700'
-                            : 'white',
-                        borderRadius: '6px',
-                        fontSize: '0.8125rem',
-                        color: isDark ? 'gray.200' : 'inherit',
-                      })}
-                    >
-                      {/* Status indicator */}
-                      <span
+                    return (
+                      <div
+                        key={slot.index}
+                        data-element="vertical-problem-item"
                         className={css({
-                          width: '1.25rem',
-                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.5rem',
+                          backgroundColor: result
+                            ? isDark
+                              ? result.isCorrect
+                                ? 'green.900'
+                                : 'red.900'
+                              : result.isCorrect
+                                ? 'green.50'
+                                : 'red.50'
+                            : isDark
+                              ? 'gray.700'
+                              : 'white',
+                          borderRadius: '6px',
+                          minWidth: '3.5rem',
                         })}
                       >
-                        {result ? (result.isCorrect ? '✓' : '✗') : '○'}
-                      </span>
-
-                      {/* Problem number */}
-                      <span
-                        className={css({
-                          color: isDark ? 'gray.500' : 'gray.400',
-                          fontSize: '0.75rem',
-                          minWidth: '1.5rem',
-                        })}
-                      >
-                        #{slot.index + 1}
-                      </span>
-
-                      {/* Problem content */}
-                      {problem ? (
+                        {/* Status indicator */}
                         <span
                           className={css({
-                            flex: 1,
-                            fontFamily: 'monospace',
-                          })}
-                        >
-                          {formatProblem(problem.terms)} = {problem.answer}
-                        </span>
-                      ) : (
-                        <span
-                          className={css({
-                            flex: 1,
-                            fontStyle: 'italic',
-                            color: isDark ? 'gray.500' : 'gray.400',
-                          })}
-                        >
-                          (not yet generated)
-                        </span>
-                      )}
-
-                      {/* Purpose tag */}
-                      <span
-                        className={css({
-                          fontSize: '0.625rem',
-                          padding: '0.125rem 0.375rem',
-                          borderRadius: '4px',
-                          textTransform: 'uppercase',
-                          backgroundColor: isDark
-                            ? slot.purpose === 'focus'
-                              ? 'blue.900'
-                              : slot.purpose === 'reinforce'
-                                ? 'purple.900'
-                                : slot.purpose === 'challenge'
-                                  ? 'orange.900'
-                                  : 'gray.700'
-                            : slot.purpose === 'focus'
-                              ? 'blue.100'
-                              : slot.purpose === 'reinforce'
-                                ? 'purple.100'
-                                : slot.purpose === 'challenge'
-                                  ? 'orange.100'
-                                  : 'gray.100',
-                          color: isDark
-                            ? slot.purpose === 'focus'
-                              ? 'blue.300'
-                              : slot.purpose === 'reinforce'
-                                ? 'purple.300'
-                                : slot.purpose === 'challenge'
-                                  ? 'orange.300'
-                                  : 'gray.400'
-                            : slot.purpose === 'focus'
-                              ? 'blue.700'
-                              : slot.purpose === 'reinforce'
-                                ? 'purple.700'
-                                : slot.purpose === 'challenge'
-                                  ? 'orange.700'
-                                  : 'gray.600',
-                        })}
-                      >
-                        {slot.purpose}
-                      </span>
-
-                      {/* Wrong answer (if incorrect) */}
-                      {result && !result.isCorrect && (
-                        <span
-                          className={css({
-                            color: isDark ? 'red.400' : 'red.600',
-                            textDecoration: 'line-through',
                             fontSize: '0.75rem',
                           })}
                         >
-                          {result.studentAnswer}
+                          {result ? (result.isCorrect ? '✓' : '✗') : '○'}
                         </span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+
+                        {/* Problem display */}
+                        {problem ? (
+                          <CompactVerticalProblem
+                            terms={problem.terms}
+                            answer={problem.answer}
+                            studentAnswer={result?.studentAnswer}
+                            isCorrect={result?.isCorrect}
+                            isDark={isDark}
+                          />
+                        ) : (
+                          <span
+                            className={css({
+                              fontSize: '0.625rem',
+                              fontStyle: 'italic',
+                              color: isDark ? 'gray.500' : 'gray.400',
+                            })}
+                          >
+                            ?
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                /* Linear parts: list layout for horizontal equations */
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.375rem',
+                  })}
+                >
+                  {part.slots.map((slot) => {
+                    const result = results.find(
+                      (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
+                    )
+                    const problem = result?.problem ?? slot.problem
+
+                    return (
+                      <div
+                        key={slot.index}
+                        data-element="linear-problem-item"
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.375rem 0.5rem',
+                          backgroundColor: result
+                            ? isDark
+                              ? result.isCorrect
+                                ? 'green.900'
+                                : 'red.900'
+                              : result.isCorrect
+                                ? 'green.50'
+                                : 'red.50'
+                            : isDark
+                              ? 'gray.700'
+                              : 'white',
+                          borderRadius: '6px',
+                        })}
+                      >
+                        {/* Status indicator */}
+                        <span
+                          className={css({
+                            width: '1.25rem',
+                            textAlign: 'center',
+                          })}
+                        >
+                          {result ? (result.isCorrect ? '✓' : '✗') : '○'}
+                        </span>
+
+                        {/* Problem content */}
+                        {problem ? (
+                          <CompactLinearProblem
+                            terms={problem.terms}
+                            answer={problem.answer}
+                            studentAnswer={result?.studentAnswer}
+                            isCorrect={result?.isCorrect}
+                            isDark={isDark}
+                          />
+                        ) : (
+                          <span
+                            className={css({
+                              flex: 1,
+                              fontStyle: 'italic',
+                              color: isDark ? 'gray.500' : 'gray.400',
+                            })}
+                          >
+                            (not yet generated)
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>
-      </details>
+      </div>
 
       {/* Action buttons */}
       <div
@@ -738,7 +774,8 @@ export function SessionSummary({
   )
 }
 
-function calculateSkillBreakdown(results: SlotResult[]): SkillBreakdown[] {
+function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategoryGroup[] {
+  // First, collect all skills with their stats
   const skillMap = new Map<string, { correct: number; total: number }>()
 
   for (const result of results) {
@@ -750,41 +787,73 @@ function calculateSkillBreakdown(results: SlotResult[]): SkillBreakdown[] {
     }
   }
 
-  return Array.from(skillMap.entries())
-    .map(([skillId, stats]) => ({
+  // Group skills by category
+  const categoryMap = new Map<
+    string,
+    { skills: SkillBreakdown[]; correct: number; total: number }
+  >()
+
+  for (const [skillId, stats] of skillMap.entries()) {
+    const categoryId = skillId.split('.')[0] || 'other'
+    const current = categoryMap.get(categoryId) || { skills: [], correct: 0, total: 0 }
+
+    current.skills.push({
       skillId,
       ...stats,
-      accuracy: stats.correct / stats.total,
-    }))
-    .sort((a, b) => b.total - a.total)
+      accuracy: stats.total > 0 ? stats.correct / stats.total : 0,
+    })
+    current.correct += stats.correct
+    current.total += stats.total
+
+    categoryMap.set(categoryId, current)
+  }
+
+  // Sort categories by pedagogical order, then build result
+  const result: SkillCategoryGroup[] = []
+
+  for (const categoryId of SKILL_CATEGORY_ORDER) {
+    const categoryData = categoryMap.get(categoryId)
+    if (categoryData && categoryData.skills.length > 0) {
+      // Sort skills within category by total count (most practiced first)
+      categoryData.skills.sort((a, b) => b.total - a.total)
+
+      result.push({
+        categoryId,
+        categoryName: SKILL_CATEGORY_NAMES[categoryId] || categoryId,
+        skills: categoryData.skills,
+        correct: categoryData.correct,
+        total: categoryData.total,
+        accuracy: categoryData.total > 0 ? categoryData.correct / categoryData.total : 0,
+      })
+    }
+  }
+
+  // Add any categories not in the predefined order (shouldn't happen, but just in case)
+  for (const [categoryId, categoryData] of categoryMap.entries()) {
+    if (!SKILL_CATEGORY_ORDER.includes(categoryId as (typeof SKILL_CATEGORY_ORDER)[number])) {
+      categoryData.skills.sort((a, b) => b.total - a.total)
+
+      result.push({
+        categoryId,
+        categoryName: SKILL_CATEGORY_NAMES[categoryId] || categoryId,
+        skills: categoryData.skills,
+        correct: categoryData.correct,
+        total: categoryData.total,
+        accuracy: categoryData.total > 0 ? categoryData.correct / categoryData.total : 0,
+      })
+    }
+  }
+
+  return result
 }
 
-function formatSkillName(skillId: string): string {
-  // Convert skill IDs like "fiveComplements.4=5-1" to readable names
+/** Format just the skill value part (e.g., "4=5-1" from "fiveComplements.4=5-1") */
+function formatSkillValue(skillId: string): string {
   const parts = skillId.split('.')
   if (parts.length === 2) {
-    const [category, skill] = parts
-    const categoryName =
-      {
-        fiveComplements: '5-Complements',
-        tenComplements: '10-Complements',
-        directAddition: 'Direct Addition',
-        directSubtraction: 'Direct Subtraction',
-        basic: 'Basic',
-      }[category] || category
-
-    return `${categoryName}: ${skill}`
+    return parts[1]
   }
   return skillId
-}
-
-function formatProblem(terms: number[]): string {
-  return terms
-    .map((t, i) => {
-      if (i === 0) return t.toString()
-      return t < 0 ? ` - ${Math.abs(t)}` : ` + ${t}`
-    })
-    .join('')
 }
 
 function getPerformanceMessage(accuracy: number): string {
@@ -796,21 +865,206 @@ function getPerformanceMessage(accuracy: number): string {
   return "Keep practicing! You'll get better with each session!"
 }
 
-function getTotalPlannedProblems(parts: SessionPart[]): number {
-  return parts.reduce((sum, part) => sum + part.slots.length, 0)
-}
-
 function getPartTypeName(type: SessionPart['type']): string {
   switch (type) {
     case 'abacus':
-      return 'Use Abacus'
+      return 'Abacus'
     case 'visualization':
-      return 'Mental Math (Visualization)'
+      return 'Visualize'
     case 'linear':
-      return 'Mental Math (Linear)'
+      return 'Mental Math'
     default:
       return type
   }
+}
+
+/** Check if part type uses vertical layout (abacus/visualization) vs linear */
+function isVerticalPart(type: SessionPart['type']): boolean {
+  return type === 'abacus' || type === 'visualization'
+}
+
+/**
+ * Compact vertical problem display for review
+ * Shows terms stacked with answer below, like a mini workbook problem
+ */
+function CompactVerticalProblem({
+  terms,
+  answer,
+  studentAnswer,
+  isCorrect,
+  isDark,
+}: {
+  terms: number[]
+  answer: number
+  studentAnswer?: number
+  isCorrect?: boolean
+  isDark: boolean
+}) {
+  // Calculate max digits for alignment
+  const maxDigits = Math.max(
+    ...terms.map((t) => Math.abs(t).toString().length),
+    answer.toString().length
+  )
+
+  return (
+    <div
+      data-element="compact-vertical-problem"
+      className={css({
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        fontFamily: 'monospace',
+        fontSize: '0.75rem',
+        lineHeight: 1.2,
+      })}
+    >
+      {terms.map((term, i) => {
+        const isNegative = term < 0
+        const absValue = Math.abs(term)
+        const digits = absValue.toString()
+        const padding = maxDigits - digits.length
+
+        return (
+          <div
+            key={i}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+            })}
+          >
+            {/* Sign: show − for negative terms, + for additions after first (but usually omit +) */}
+            <span
+              className={css({
+                width: '0.75em',
+                textAlign: 'center',
+                color: isDark ? 'gray.500' : 'gray.400',
+              })}
+            >
+              {i === 0 ? '' : isNegative ? '−' : ''}
+            </span>
+            {/* Padding for alignment */}
+            {padding > 0 && (
+              <span className={css({ visibility: 'hidden' })}>{' '.repeat(padding)}</span>
+            )}
+            <span className={css({ color: isDark ? 'gray.300' : 'gray.700' })}>{digits}</span>
+          </div>
+        )
+      })}
+      {/* Answer line */}
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          borderTop: '1px solid',
+          borderColor: isDark ? 'gray.600' : 'gray.300',
+          paddingTop: '0.125rem',
+          marginTop: '0.125rem',
+        })}
+      >
+        <span className={css({ width: '0.75em' })} />
+        <span
+          className={css({
+            color:
+              isCorrect === undefined
+                ? isDark
+                  ? 'gray.400'
+                  : 'gray.600'
+                : isCorrect
+                  ? isDark
+                    ? 'green.400'
+                    : 'green.600'
+                  : isDark
+                    ? 'red.400'
+                    : 'red.600',
+            fontWeight: 'bold',
+          })}
+        >
+          {answer}
+        </span>
+        {/* Show wrong answer if incorrect */}
+        {isCorrect === false && studentAnswer !== undefined && (
+          <span
+            className={css({
+              marginLeft: '0.25rem',
+              color: isDark ? 'red.400' : 'red.500',
+              textDecoration: 'line-through',
+              fontSize: '0.625rem',
+            })}
+          >
+            {studentAnswer}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Compact linear problem display for review
+ * Shows equation in horizontal format: "5 + 3 - 2 = 6"
+ */
+function CompactLinearProblem({
+  terms,
+  answer,
+  studentAnswer,
+  isCorrect,
+  isDark,
+}: {
+  terms: number[]
+  answer: number
+  studentAnswer?: number
+  isCorrect?: boolean
+  isDark: boolean
+}) {
+  const equation = terms
+    .map((term, i) => {
+      if (i === 0) return String(term)
+      return term < 0 ? ` − ${Math.abs(term)}` : ` + ${term}`
+    })
+    .join('')
+
+  return (
+    <span
+      data-element="compact-linear-problem"
+      className={css({
+        fontFamily: 'monospace',
+        fontSize: '0.8125rem',
+      })}
+    >
+      <span className={css({ color: isDark ? 'gray.300' : 'gray.700' })}>{equation} = </span>
+      <span
+        className={css({
+          color:
+            isCorrect === undefined
+              ? isDark
+                ? 'gray.400'
+                : 'gray.600'
+              : isCorrect
+                ? isDark
+                  ? 'green.400'
+                  : 'green.600'
+                : isDark
+                  ? 'red.400'
+                  : 'red.600',
+          fontWeight: 'bold',
+        })}
+      >
+        {answer}
+      </span>
+      {/* Show wrong answer if incorrect */}
+      {isCorrect === false && studentAnswer !== undefined && (
+        <span
+          className={css({
+            marginLeft: '0.375rem',
+            color: isDark ? 'red.400' : 'red.500',
+            textDecoration: 'line-through',
+          })}
+        >
+          {studentAnswer}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export default SessionSummary
