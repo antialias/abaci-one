@@ -40,6 +40,14 @@ function getPortraitStyles(isDark: boolean): string {
       .keypad-landscape-container {
         display: block;
       }
+      /* Push main content away from landscape keypad */
+      body {
+        padding-right: 100px !important;
+      }
+      /* Also handle common layout containers */
+      nav, header, [data-component="active-session"] {
+        margin-right: 100px;
+      }
     }
     /* On larger landscape screens, keep portrait bar at bottom */
     @media (orientation: landscape) and (min-height: 501px) {
@@ -48,6 +56,12 @@ function getPortraitStyles(isDark: boolean): string {
       }
       .keypad-landscape-container {
         display: none;
+      }
+    }
+    /* Add bottom padding for portrait keypad */
+    @media (orientation: portrait) {
+      body {
+        padding-bottom: 48px !important;
       }
     }
     .keypad-portrait {
