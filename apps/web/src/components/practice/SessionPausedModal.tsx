@@ -647,31 +647,24 @@ export function SessionPausedModal({
             type="button"
             data-action="resume"
             onClick={onResume}
-            className={css({
+            style={{
               padding: '1.25rem',
               fontSize: '1.25rem',
               fontWeight: 'bold',
-              color: 'white',
-              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              color: '#ffffff',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
               borderRadius: '16px',
-              border: '3px solid',
-              borderColor: '#14532d',
+              border: '3px solid #15803d',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
               transition: 'all 0.15s ease',
-              boxShadow: '0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
+              boxShadow: '0 6px 20px rgba(22, 163, 74, 0.5)',
               textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-              _hover: {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 8px 24px rgba(22, 163, 74, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)',
-              },
-              _active: {
-                transform: 'translateY(0)',
-              },
-            })}
+              width: '100%',
+            }}
           >
             <span>Keep Going!</span>
           </button>
