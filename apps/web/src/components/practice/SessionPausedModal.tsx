@@ -56,29 +56,195 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
 }
 
 /**
- * Format milliseconds as a human-readable duration
+ * Format milliseconds as a human-readable duration for kids
  */
-function formatDuration(ms: number): string {
+function formatDurationFriendly(ms: number): string {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
 
   if (hours > 0) {
     const remainingMinutes = minutes % 60
+    if (remainingMinutes === 0) {
+      return hours === 1 ? '1 hour' : `${hours} hours`
+    }
     return `${hours}h ${remainingMinutes}m`
   }
   if (minutes > 0) {
     const remainingSeconds = seconds % 60
+    if (remainingSeconds === 0) {
+      return minutes === 1 ? '1 minute' : `${minutes} minutes`
+    }
     return `${minutes}m ${remainingSeconds}s`
   }
-  return `${seconds}s`
+  return seconds === 1 ? '1 second' : `${seconds} seconds`
 }
 
 /**
- * Format milliseconds as seconds with one decimal place
+ * Format seconds in a kid-friendly way
  */
-function formatSeconds(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`
+function formatSecondsFriendly(ms: number): string {
+  const seconds = ms / 1000
+  if (seconds < 1) return 'less than a second'
+  if (seconds < 2) return 'about 1 second'
+  if (seconds < 10) return `about ${Math.round(seconds)} seconds`
+  return `about ${Math.round(seconds)} seconds`
+}
+
+/**
+ * Sample dots visualization - shows the problems used to learn the rhythm
+ */
+function SampleDots({ count, needed, isDark }: { count: number; needed: number; isDark: boolean }) {
+  const total = Math.max(count, needed)
+  const dots = []
+
+  for (let i = 0; i < total; i++) {
+    const isFilled = i < count
+    dots.push(
+      <div
+        key={i}
+        className={css({
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          backgroundColor: isFilled
+            ? isDark
+              ? 'green.400'
+              : 'green.500'
+            : isDark
+              ? 'gray.600'
+              : 'gray.300',
+          transition: 'all 0.3s ease',
+        })}
+        title={isFilled ? `Problem ${i + 1}` : 'Not yet solved'}
+      />
+    )
+  }
+
+  return (
+    <div
+      data-element="sample-dots"
+      className={css({
+        display: 'flex',
+        gap: '6px',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+      })}
+    >
+      {dots}
+    </div>
+  )
+}
+
+/**
+ * Speed visualization - shows average speed vs variation
+ */
+function SpeedMeter({
+  meanMs,
+  stdDevMs,
+  thresholdMs,
+  isDark,
+}: {
+  meanMs: number
+  stdDevMs: number
+  thresholdMs: number
+  isDark: boolean
+}) {
+  // Normalize values for display (0-100 scale based on threshold)
+  const meanPercent = Math.min(100, (meanMs / thresholdMs) * 100)
+  const variationPercent = Math.min(50, (stdDevMs / thresholdMs) * 100)
+
+  return (
+    <div
+      data-element="speed-meter"
+      className={css({
+        width: '100%',
+        padding: '0.75rem',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        borderRadius: '8px',
+      })}
+    >
+      {/* Speed bar container */}
+      <div
+        className={css({
+          position: 'relative',
+          height: '24px',
+          backgroundColor: isDark ? 'gray.700' : 'gray.200',
+          borderRadius: '12px',
+          overflow: 'visible',
+        })}
+      >
+        {/* Variation range (the "wiggle room") */}
+        <div
+          className={css({
+            position: 'absolute',
+            height: '100%',
+            backgroundColor: isDark ? 'blue.800' : 'blue.100',
+            borderRadius: '12px',
+            transition: 'all 0.5s ease',
+          })}
+          style={{
+            left: `${Math.max(0, meanPercent - variationPercent)}%`,
+            width: `${variationPercent * 2}%`,
+          }}
+        />
+
+        {/* Average marker */}
+        <div
+          className={css({
+            position: 'absolute',
+            top: '-4px',
+            width: '8px',
+            height: '32px',
+            backgroundColor: isDark ? 'blue.400' : 'blue.500',
+            borderRadius: '4px',
+            transition: 'all 0.5s ease',
+            zIndex: 1,
+          })}
+          style={{
+            left: `calc(${meanPercent}% - 4px)`,
+          }}
+        />
+
+        {/* Threshold marker */}
+        <div
+          className={css({
+            position: 'absolute',
+            top: '0',
+            width: '3px',
+            height: '100%',
+            backgroundColor: isDark ? 'yellow.500' : 'yellow.600',
+            borderRadius: '2px',
+          })}
+          style={{
+            left: 'calc(100% - 2px)',
+          }}
+        />
+      </div>
+
+      {/* Labels */}
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: '0.5rem',
+          fontSize: '0.6875rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        <span>Fast</span>
+        <span
+          className={css({
+            color: isDark ? 'blue.300' : 'blue.600',
+            fontWeight: 'bold',
+          })}
+        >
+          Your usual speed
+        </span>
+        <span>Pause</span>
+      </div>
+    </div>
+  )
 }
 
 export interface SessionPausedModalProps {
@@ -103,11 +269,9 @@ export interface SessionPausedModalProps {
 /**
  * Session Paused Modal
  *
- * A unified modal shown when:
- * 1. User pauses an active session (via the HUD controls)
- * 2. User navigates back to a paused session
- *
- * Shows progress info and options to resume or end the session.
+ * A kid-friendly modal shown when a session is paused.
+ * Features educational explanations of statistics concepts
+ * like averages and variation in an approachable way.
  */
 export function SessionPausedModal({
   isOpen,
@@ -150,10 +314,9 @@ export function SessionPausedModal({
 
   const currentPart = session.parts[session.currentPartIndex]
 
-  // Format pause time
-  const pauseTimeStr = pauseInfo?.pausedAt
-    ? pauseInfo.pausedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    : null
+  // Determine greeting based on pause reason
+  const isAutoTimeout = pauseInfo?.reason === 'auto-timeout'
+  const stats = pauseInfo?.autoPauseStats
 
   return (
     <div
@@ -165,17 +328,14 @@ export function SessionPausedModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.6)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
         padding: '1rem',
       })}
-      onClick={(e) => {
-        // Don't close on backdrop click - must use buttons
-        e.stopPropagation()
-      }}
+      onClick={(e) => e.stopPropagation()}
     >
       <div
         data-element="modal-content"
@@ -183,212 +343,339 @@ export function SessionPausedModal({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '1.5rem',
-          padding: '2rem',
-          maxWidth: '420px',
+          gap: '1.25rem',
+          padding: '1.5rem',
+          maxWidth: '380px',
           width: '100%',
           backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '16px',
+          borderRadius: '20px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         })}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Paused indicator */}
-        <div
-          className={css({
-            fontSize: '3rem',
-          })}
-        >
-          ⏸️
-        </div>
-
-        {/* Avatar and greeting */}
+        {/* Hero section with avatar */}
         <div
           className={css({
             display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
             flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.75rem',
           })}
         >
+          {/* Thinking character */}
           <div
-            data-element="student-avatar"
             className={css({
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '2rem',
+              position: 'relative',
             })}
-            style={{ backgroundColor: student.color }}
           >
-            {student.emoji}
+            <div
+              data-element="student-avatar"
+              className={css({
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              })}
+              style={{ backgroundColor: student.color }}
+            >
+              {student.emoji}
+            </div>
+            {/* Thought bubble */}
+            <div
+              className={css({
+                position: 'absolute',
+                top: '-8px',
+                right: '-12px',
+                fontSize: '1.5rem',
+              })}
+            >
+              {isAutoTimeout ? '🤔' : '☕'}
+            </div>
           </div>
-          <h2
-            className={css({
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.100' : 'gray.800',
-              textAlign: 'center',
-            })}
-          >
-            Session Paused
-          </h2>
-          <p
-            className={css({
-              fontSize: '0.9375rem',
-              color: isDark ? 'gray.400' : 'gray.600',
-              textAlign: 'center',
-            })}
-          >
-            Take a break, {student.name}! Tap Resume when ready.
-          </p>
+
+          {/* Greeting - contextual based on reason */}
+          <div className={css({ textAlign: 'center' })}>
+            <h2
+              className={css({
+                fontSize: '1.375rem',
+                fontWeight: 'bold',
+                color: isDark ? 'gray.100' : 'gray.800',
+                marginBottom: '0.25rem',
+              })}
+            >
+              {isAutoTimeout ? 'Taking a Thinking Break!' : 'Break Time!'}
+            </h2>
+            <p
+              className={css({
+                fontSize: '0.9375rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
+              {isAutoTimeout
+                ? `This one's a thinker, ${student.name}!`
+                : `Nice pause, ${student.name}!`}
+            </p>
+          </div>
         </div>
 
-        {/* Pause details */}
+        {/* Break timer - make it feel positive */}
         {pauseInfo && (
           <div
-            data-element="pause-details"
+            data-element="break-timer"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              borderRadius: '20px',
+            })}
+          >
+            <span className={css({ fontSize: '1rem' })}>⏱️</span>
+            <span
+              className={css({
+                fontSize: '0.9375rem',
+                color: isDark ? 'gray.300' : 'gray.600',
+              })}
+            >
+              Resting for{' '}
+              <strong
+                className={css({
+                  color: isDark ? 'blue.300' : 'blue.600',
+                  fontFamily: 'monospace',
+                })}
+              >
+                {formatDurationFriendly(pauseDuration)}
+              </strong>
+            </span>
+          </div>
+        )}
+
+        {/* Auto-pause explanation - educational and friendly */}
+        {isAutoTimeout && stats && (
+          <div
+            data-element="rhythm-explanation"
             className={css({
               width: '100%',
               padding: '1rem',
-              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
               borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
+              border: '1px solid',
+              borderColor: isDark ? 'blue.700' : 'blue.200',
             })}
           >
-            {/* Pause timing */}
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              })}
-            >
-              <span
-                className={css({
-                  fontSize: '0.8125rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                })}
-              >
-                Paused at {pauseTimeStr}
-              </span>
-              <span
-                className={css({
-                  fontSize: '0.9375rem',
-                  fontWeight: 'bold',
-                  fontFamily: 'monospace',
-                  color: isDark ? 'blue.300' : 'blue.600',
-                })}
-              >
-                {formatDuration(pauseDuration)}
-              </span>
-            </div>
+            {stats.usedStatistics ? (
+              <>
+                {/* We know their rhythm */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  <span className={css({ fontSize: '1.25rem' })}>🎵</span>
+                  <span
+                    className={css({
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      color: isDark ? 'blue.200' : 'blue.700',
+                    })}
+                  >
+                    We Know Your Rhythm!
+                  </span>
+                </div>
 
-            {/* Auto-pause reason */}
-            {pauseInfo.reason === 'auto-timeout' && (
-              <div
-                data-element="auto-pause-reason"
-                className={css({
-                  padding: '0.75rem',
-                  backgroundColor: isDark ? 'yellow.900' : 'yellow.50',
-                  borderRadius: '8px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'yellow.700' : 'yellow.200',
-                })}
-              >
                 <p
                   className={css({
                     fontSize: '0.8125rem',
-                    fontWeight: 'bold',
-                    color: isDark ? 'yellow.300' : 'yellow.700',
-                    marginBottom: '0.5rem',
+                    color: isDark ? 'gray.300' : 'gray.700',
+                    marginBottom: '0.75rem',
+                    lineHeight: '1.5',
                   })}
                 >
-                  Auto-paused: Taking longer than usual
+                  We watched you solve{' '}
+                  <strong className={css({ color: isDark ? 'green.300' : 'green.600' })}>
+                    {stats.sampleCount} problems
+                  </strong>{' '}
+                  and learned your speed! Usually you take{' '}
+                  <strong className={css({ color: isDark ? 'blue.300' : 'blue.600' })}>
+                    {formatSecondsFriendly(stats.meanMs)}
+                  </strong>
+                  .
                 </p>
-                {pauseInfo.autoPauseStats && (
-                  <div
+
+                {/* Speed visualization */}
+                <SpeedMeter
+                  meanMs={stats.meanMs}
+                  stdDevMs={stats.stdDevMs}
+                  thresholdMs={stats.thresholdMs}
+                  isDark={isDark}
+                />
+
+                <p
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    marginTop: '0.75rem',
+                    fontStyle: 'italic',
+                  })}
+                >
+                  The blue bar shows your usual range. This problem took longer, so we paused to
+                  check in!
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Still learning their rhythm */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  <span className={css({ fontSize: '1.25rem' })}>📊</span>
+                  <span
                     className={css({
-                      fontSize: '0.75rem',
-                      color: isDark ? 'gray.300' : 'gray.600',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      color: isDark ? 'blue.200' : 'blue.700',
                     })}
                   >
-                    {pauseInfo.autoPauseStats.usedStatistics ? (
-                      <>
-                        <p>
-                          Based on {pauseInfo.autoPauseStats.sampleCount} problems: avg{' '}
-                          {formatSeconds(pauseInfo.autoPauseStats.meanMs)} ±{' '}
-                          {formatSeconds(pauseInfo.autoPauseStats.stdDevMs)}
-                        </p>
-                        <p>
-                          Timeout threshold: {formatSeconds(pauseInfo.autoPauseStats.thresholdMs)}{' '}
-                          (avg + 2×std dev)
-                        </p>
-                      </>
-                    ) : (
-                      <p>
-                        Using default {formatSeconds(pauseInfo.autoPauseStats.thresholdMs)} timeout
-                        (need {5 - pauseInfo.autoPauseStats.sampleCount} more problems for
-                        personalized timing)
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                    Learning Your Rhythm...
+                  </span>
+                </div>
 
-            {/* Manual pause */}
-            {pauseInfo.reason === 'manual' && (
-              <p
-                className={css({
-                  fontSize: '0.8125rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  fontStyle: 'italic',
-                })}
-              >
-                Session paused manually
-              </p>
+                <p
+                  className={css({
+                    fontSize: '0.8125rem',
+                    color: isDark ? 'gray.300' : 'gray.700',
+                    marginBottom: '0.75rem',
+                    lineHeight: '1.5',
+                  })}
+                >
+                  We need to watch you solve a few problems to learn how fast you usually go!
+                </p>
+
+                {/* Sample dots showing progress */}
+                <div className={css({ marginBottom: '0.75rem' })}>
+                  <p
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      marginBottom: '0.5rem',
+                      textAlign: 'center',
+                    })}
+                  >
+                    Problems solved: {stats.sampleCount} of 5 needed
+                  </p>
+                  <SampleDots count={stats.sampleCount} needed={5} isDark={isDark} />
+                </div>
+
+                <p
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'yellow.300' : 'yellow.700',
+                    textAlign: 'center',
+                    fontWeight: '500',
+                  })}
+                >
+                  {5 - stats.sampleCount} more problem{5 - stats.sampleCount !== 1 ? 's' : ''} until
+                  we know your rhythm!
+                </p>
+              </>
             )}
           </div>
         )}
 
-        {/* Progress summary */}
-        <div className={css({ width: '100%', textAlign: 'center' })}>
-          <p
+        {/* Manual pause - simple and encouraging */}
+        {pauseInfo?.reason === 'manual' && (
+          <div
             className={css({
-              fontSize: '1rem',
-              color: isDark ? 'gray.300' : 'gray.600',
-              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              backgroundColor: isDark ? 'green.900/50' : 'green.50',
+              borderRadius: '12px',
+              border: '1px solid',
+              borderColor: isDark ? 'green.700' : 'green.200',
             })}
           >
-            Problem <strong>{completedProblems + 1}</strong> of <strong>{totalProblems}</strong>
-          </p>
+            <span className={css({ fontSize: '1.25rem' })}>✨</span>
+            <p
+              className={css({
+                fontSize: '0.8125rem',
+                color: isDark ? 'green.200' : 'green.700',
+              })}
+            >
+              Smart thinking to take a break when you need one!
+            </p>
+          </div>
+        )}
 
-          {/* Progress bar */}
+        {/* Progress summary - celebratory */}
+        <div
+          className={css({
+            width: '100%',
+            padding: '0.75rem',
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
+            borderRadius: '12px',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.5rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.8125rem',
+                color: isDark ? 'gray.300' : 'gray.600',
+              })}
+            >
+              Progress
+            </span>
+            <span
+              className={css({
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+                color: isDark ? 'green.300' : 'green.600',
+              })}
+            >
+              {completedProblems} of {totalProblems} done!
+            </span>
+          </div>
+
+          {/* Progress bar with sparkle */}
           <div
             data-element="progress-bar"
             className={css({
+              position: 'relative',
               width: '100%',
-              height: '10px',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              borderRadius: '5px',
+              height: '12px',
+              backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              borderRadius: '6px',
               overflow: 'hidden',
-              marginBottom: '0.75rem',
             })}
           >
             <div
               className={css({
                 height: '100%',
-                backgroundColor: isDark ? 'green.400' : 'green.500',
-                borderRadius: '5px',
+                background: isDark
+                  ? 'linear-gradient(90deg, #22c55e, #4ade80)'
+                  : 'linear-gradient(90deg, #16a34a, #22c55e)',
+                borderRadius: '6px',
                 transition: 'width 0.3s ease',
               })}
               style={{ width: `${progressPercent}%` }}
@@ -399,12 +686,13 @@ export function SessionPausedModal({
           {currentPart && (
             <p
               className={css({
-                fontSize: '0.8125rem',
+                fontSize: '0.75rem',
                 color: isDark ? 'gray.400' : 'gray.500',
+                marginTop: '0.5rem',
+                textAlign: 'center',
               })}
             >
-              {getPartTypeEmoji(currentPart.type)} Part {session.currentPartIndex + 1}:{' '}
-              {getPartTypeLabel(currentPart.type)}
+              {getPartTypeEmoji(currentPart.type)} {getPartTypeLabel(currentPart.type)}
             </p>
           )}
         </div>
@@ -414,9 +702,8 @@ export function SessionPausedModal({
           className={css({
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.75rem',
+            gap: '0.5rem',
             width: '100%',
-            marginTop: '0.5rem',
           })}
         >
           <button
@@ -428,8 +715,8 @@ export function SessionPausedModal({
               fontSize: '1.125rem',
               fontWeight: 'bold',
               color: 'white',
-              backgroundColor: 'green.500',
-              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              borderRadius: '12px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
@@ -437,17 +724,18 @@ export function SessionPausedModal({
               justifyContent: 'center',
               gap: '0.5rem',
               transition: 'all 0.15s ease',
+              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
               _hover: {
-                backgroundColor: 'green.400',
-                transform: 'translateY(-1px)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 16px rgba(34, 197, 94, 0.4)',
               },
               _active: {
                 transform: 'translateY(0)',
               },
             })}
           >
-            <span>▶</span>
-            <span>Resume</span>
+            <span>▶️</span>
+            <span>Keep Going!</span>
           </button>
 
           <button
@@ -455,19 +743,17 @@ export function SessionPausedModal({
             data-action="end-session"
             onClick={onEndSession}
             className={css({
-              padding: '0.75rem',
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.300' : 'gray.600',
+              padding: '0.625rem',
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.500',
               backgroundColor: 'transparent',
               borderRadius: '8px',
-              border: '1px solid',
-              borderColor: isDark ? 'gray.600' : 'gray.300',
+              border: 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
               _hover: {
-                backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                borderColor: isDark ? 'red.700' : 'red.300',
                 color: isDark ? 'red.300' : 'red.600',
+                backgroundColor: isDark ? 'red.900/30' : 'red.50',
               },
             })}
           >
