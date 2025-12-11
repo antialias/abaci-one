@@ -26,6 +26,20 @@ interface NumericKeypadProps {
  */
 function getPortraitStyles(isDark: boolean): string {
   return `
+    .keypad-portrait-container {
+      display: block;
+    }
+    .keypad-landscape-container {
+      display: none;
+    }
+    @media (orientation: landscape) {
+      .keypad-portrait-container {
+        display: none;
+      }
+      .keypad-landscape-container {
+        display: block;
+      }
+    }
     .keypad-portrait {
       width: 100%;
     }
@@ -203,7 +217,7 @@ export function NumericKeypad({
       <div
         data-component="numeric-keypad"
         data-layout="portrait"
-        className={css({
+        className={`keypad-portrait-container ${css({
           position: 'fixed',
           bottom: 0,
           left: 0,
@@ -213,10 +227,7 @@ export function NumericKeypad({
           pointerEvents: disabled ? 'none' : 'auto',
           borderTop: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.300',
-          '@media (orientation: landscape)': {
-            display: 'none',
-          },
-        })}
+        })}`}
       >
         <div className="keypad-portrait">
           <Keyboard
@@ -238,22 +249,18 @@ export function NumericKeypad({
       <div
         data-component="numeric-keypad"
         data-layout="landscape"
-        className={css({
+        className={`keypad-landscape-container ${css({
           position: 'fixed',
           top: 0,
           right: 0,
           bottom: 0,
           width: '100px',
           zIndex: 1000,
-          display: 'none',
           opacity: disabled ? 0.5 : 1,
           pointerEvents: disabled ? 'none' : 'auto',
           borderLeft: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.300',
-          '@media (orientation: landscape)': {
-            display: 'block',
-          },
-        })}
+        })}`}
       >
         <div className="keypad-landscape" style={{ height: '100%' }}>
           <Keyboard
