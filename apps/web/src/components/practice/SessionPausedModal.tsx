@@ -65,7 +65,7 @@ const AUTO_PAUSE_PHRASES = [
   'Thinking cap on!',
   'Processing...',
   'Working it out!',
-  'Press paws! 🙏',
+  'We pressed paws! 🙏',
 ]
 
 // Intl formatters for duration display
