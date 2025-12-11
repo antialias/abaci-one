@@ -32,12 +32,22 @@ function getPortraitStyles(isDark: boolean): string {
     .keypad-landscape-container {
       display: none;
     }
-    @media (orientation: landscape) {
+    /* Only show landscape keypad on small screens (phones) */
+    @media (orientation: landscape) and (max-height: 500px) {
       .keypad-portrait-container {
         display: none;
       }
       .keypad-landscape-container {
         display: block;
+      }
+    }
+    /* On larger landscape screens, keep portrait bar at bottom */
+    @media (orientation: landscape) and (min-height: 501px) {
+      .keypad-portrait-container {
+        display: block;
+      }
+      .keypad-landscape-container {
+        display: none;
       }
     }
     .keypad-portrait {
