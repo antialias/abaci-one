@@ -368,63 +368,38 @@ export function SessionPausedModal({
             </div>
           </div>
 
-          {/* Greeting - contextual based on reason */}
+          {/* Greeting with integrated timer */}
           <div className={css({ textAlign: 'center' })}>
             <h2
               className={css({
-                fontSize: '1.375rem',
+                fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: isDark ? 'gray.100' : 'gray.800',
-                marginBottom: '0.25rem',
               })}
             >
-              {isAutoTimeout ? 'Taking a Thinking Break!' : 'Break Time!'}
+              {isAutoTimeout ? "This one's a thinker!" : 'Break Time!'}
             </h2>
-            <p
-              className={css({
-                fontSize: '0.9375rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-              })}
-            >
-              {isAutoTimeout
-                ? `This one's a thinker, ${student.name}!`
-                : `Nice pause, ${student.name}!`}
-            </p>
-          </div>
-        </div>
-
-        {/* Break timer - make it feel positive */}
-        {pauseInfo && (
-          <div
-            data-element="break-timer"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              backgroundColor: isDark ? 'gray.700' : 'gray.100',
-              borderRadius: '20px',
-            })}
-          >
-            <span className={css({ fontSize: '1rem' })}>⏱️</span>
-            <span
-              className={css({
-                fontSize: '0.9375rem',
-                color: isDark ? 'gray.300' : 'gray.600',
-              })}
-            >
-              Resting for{' '}
-              <strong
+            {pauseInfo && (
+              <p
                 className={css({
-                  color: isDark ? 'blue.300' : 'blue.600',
-                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginTop: '0.25rem',
                 })}
               >
-                {formatDurationFriendly(pauseDuration)}
-              </strong>
-            </span>
+                ⏱️{' '}
+                <span
+                  className={css({
+                    fontFamily: 'monospace',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                  })}
+                >
+                  {formatDurationFriendly(pauseDuration)}
+                </span>
+              </p>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Auto-pause explanation - only shown when we have enough data */}
         {isAutoTimeout && stats?.usedStatistics && (
