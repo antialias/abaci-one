@@ -640,7 +640,7 @@ export function SessionPausedModal({
               width: '100%',
             }}
           >
-            <span>Keep Going!</span>
+            <span>▶️ Keep Going!</span>
           </button>
 
           <button
