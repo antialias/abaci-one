@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
@@ -54,6 +54,18 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
       return '💭'
   }
 }
+
+// Fun phrases for auto-pause
+const AUTO_PAUSE_PHRASES = [
+  "This one's a thinker!",
+  'Taking your time? Smart!',
+  'Deep thoughts happening...',
+  'Brain at work!',
+  'No rush!',
+  'Thinking cap on!',
+  'Processing...',
+  'Working it out!',
+]
 
 // Intl formatters for duration display
 const secondsFormatter = new Intl.NumberFormat('en', {
@@ -258,6 +270,13 @@ export function SessionPausedModal({
   // Toggle for showing stats details
   const [showStats, setShowStats] = useState(false)
 
+  // Pick a random phrase once per pause (stable while modal is open)
+  const autoPausePhrase = useMemo(
+    () => AUTO_PAUSE_PHRASES[Math.floor(Math.random() * AUTO_PAUSE_PHRASES.length)],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pauseInfo?.pausedAt?.getTime()]
+  )
+
   useEffect(() => {
     if (!isOpen || !pauseInfo?.pausedAt) {
       setPauseDuration(0)
@@ -324,74 +343,60 @@ export function SessionPausedModal({
         })}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Hero section with avatar */}
+        {/* Hero section with avatar and title */}
         <div
           className={css({
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
             gap: '0.75rem',
           })}
         >
-          {/* Thinking character */}
+          {/* Student avatar */}
           <div
+            data-element="student-avatar"
             className={css({
-              position: 'relative',
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              flexShrink: 0,
             })}
+            style={{ backgroundColor: student.color }}
           >
-            <div
-              data-element="student-avatar"
-              className={css({
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2.5rem',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              })}
-              style={{ backgroundColor: student.color }}
-            >
-              {student.emoji}
-            </div>
-            {/* Thought bubble */}
-            <div
-              className={css({
-                position: 'absolute',
-                top: '-8px',
-                right: '-12px',
-                fontSize: '1.5rem',
-              })}
-            >
-              {isAutoTimeout ? '🤔' : '☕'}
-            </div>
+            {student.emoji}
           </div>
 
-          {/* Greeting with integrated timer */}
-          <div className={css({ textAlign: 'center' })}>
+          {/* Title with emoji and timer */}
+          <div>
             <h2
               className={css({
-                fontSize: '1.25rem',
+                fontSize: '1.125rem',
                 fontWeight: 'bold',
                 color: isDark ? 'gray.100' : 'gray.800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
               })}
             >
-              {isAutoTimeout ? "This one's a thinker!" : 'Break Time!'}
+              <span>{isAutoTimeout ? '🤔' : '☕'}</span>
+              <span>{isAutoTimeout ? autoPausePhrase : 'Break Time!'}</span>
             </h2>
             {pauseInfo && (
               <p
                 className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginTop: '0.25rem',
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  marginTop: '0.125rem',
                 })}
               >
                 ⏱️{' '}
                 <span
                   className={css({
                     fontFamily: 'monospace',
-                    color: isDark ? 'gray.300' : 'gray.600',
                   })}
                 >
                   {formatDurationFriendly(pauseDuration)}
