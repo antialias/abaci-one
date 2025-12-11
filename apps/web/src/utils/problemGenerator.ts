@@ -367,6 +367,9 @@ function generateSequence(
   // Check if we can use subtraction
   const canSubtract = hasSubtractionSkills(requiredSkills)
 
+  // Track previous term for no-immediate-inverse rule
+  let previousTerm: PreviousTerm | undefined
+
   for (let i = 0; i < termCount; i++) {
     // Try to find a valid next term (returns term + skills it computed)
     // For first term, always add (can't subtract from 0)
@@ -379,12 +382,16 @@ function generateSequence(
       forbiddenSkills,
       i === termCount - 1, // isLastTerm
       allowSubtraction,
-      costCalculator
+      costCalculator,
+      previousTerm // Pass previous term to avoid immediate inverses
     )
 
     if (result === null) return null // Couldn't find valid term
 
     const { term, skillsUsed, isSubtraction, complexityCost } = result
+
+    // Update previous term for next iteration
+    previousTerm = { term, isSubtraction }
     const newValue = isSubtraction ? currentValue - term : currentValue + term
 
     // Build trace step with the skills the generator computed
@@ -427,6 +434,12 @@ function generateSequence(
   }
 }
 
+/** Info about the previous term for inverse checking */
+interface PreviousTerm {
+  term: number
+  isSubtraction: boolean
+}
+
 /** Result from findValidNextTermWithTrace */
 interface TermWithSkills {
   term: number
@@ -449,7 +462,8 @@ function findValidNextTermWithTrace(
   forbiddenSkills?: Partial<SkillSet>,
   isLastTerm: boolean = false,
   allowSubtraction: boolean = false,
-  costCalculator?: SkillCostCalculator
+  costCalculator?: SkillCostCalculator,
+  previousTerm?: PreviousTerm
 ): TermWithSkills | null {
   const { min, max } = constraints.numberRange
   const candidates: TermWithSkills[] = []
@@ -529,6 +543,27 @@ function findValidNextTermWithTrace(
         isSubtraction: true,
         complexityCost: termCost,
       })
+    }
+  }
+
+  // Filter out immediate inverses of the previous term
+  // e.g., if previous was +5, don't allow -5; if previous was -3, don't allow +3
+  if (previousTerm) {
+    const filteredCandidates = candidates.filter((candidate) => {
+      // Check if this candidate is the exact inverse of the previous term
+      if (
+        candidate.term === previousTerm.term &&
+        candidate.isSubtraction !== previousTerm.isSubtraction
+      ) {
+        return false // Skip: this would undo what we just did
+      }
+      return true
+    })
+
+    // Only use filtered list if it's not empty (fallback to original if all were filtered)
+    if (filteredCandidates.length > 0) {
+      candidates.length = 0
+      candidates.push(...filteredCandidates)
     }
   }
 

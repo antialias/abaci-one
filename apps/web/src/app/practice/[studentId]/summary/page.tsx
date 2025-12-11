@@ -44,5 +44,15 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
   // Priority: show in-progress session (partial results) > completed session > null
   const sessionToShow = activeSession?.startedAt ? activeSession : completedSession
 
-  return <SummaryClient studentId={studentId} player={player} session={sessionToShow} />
+  // Calculate average seconds per problem from the session
+  const avgSecondsPerProblem = sessionToShow?.avgTimePerProblemSeconds ?? 40
+
+  return (
+    <SummaryClient
+      studentId={studentId}
+      player={player}
+      session={sessionToShow}
+      avgSecondsPerProblem={avgSecondsPerProblem}
+    />
+  )
 }

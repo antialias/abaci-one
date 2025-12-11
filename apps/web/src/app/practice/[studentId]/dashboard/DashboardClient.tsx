@@ -6,8 +6,10 @@ import { PageWithNav } from '@/components/PageWithNav'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
+  PracticeSubNav,
   ProgressDashboard,
   type SkillProgress,
+  StartPracticeModal,
   type StudentWithProgress,
 } from '@/components/practice'
 import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
@@ -107,6 +109,7 @@ export function DashboardClient({
   // Modal states for onboarding features
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
   const [showOfflineSessionModal, setShowOfflineSessionModal] = useState(false)
+  const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [isStartingOver, setIsStartingOver] = useState(false)
 
   // Build ActiveSessionState for ProgressDashboard
@@ -161,10 +164,19 @@ export function DashboardClient({
     consecutiveCorrect: s.consecutiveCorrect,
   }))
 
-  // Handle start practice - navigate to configuration page
+  // Calculate average seconds per problem from recent sessions, or use default
+  const avgSecondsPerProblem = (() => {
+    if (recentSessions.length === 0) return 40 // Default 40 seconds per problem
+    const totalTime = recentSessions.reduce((sum, s) => sum + (s.totalTimeMs || 0), 0)
+    const totalProblems = recentSessions.reduce((sum, s) => sum + s.problemsAttempted, 0)
+    if (totalProblems === 0) return 40
+    return Math.round(totalTime / 1000 / totalProblems)
+  })()
+
+  // Handle start practice - show the modal
   const handleStartPractice = useCallback(() => {
-    router.push(`/practice/${studentId}/configure`, { scroll: false })
-  }, [studentId, router])
+    setShowStartPracticeModal(true)
+  }, [])
 
   // Handle view full progress (not yet implemented)
   const handleViewFullProgress = useCallback(() => {
@@ -249,12 +261,19 @@ export function DashboardClient({
 
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation */}
+      <PracticeSubNav
+        student={selectedStudent}
+        pageContext="dashboard"
+        onStartPractice={handleStartPractice}
+      />
+
       <main
         data-component="practice-dashboard-page"
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '2rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',
@@ -266,33 +285,6 @@ export function DashboardClient({
             margin: '0 auto',
           })}
         >
-          {/* Header */}
-          <header
-            className={css({
-              textAlign: 'center',
-              marginBottom: '2rem',
-            })}
-          >
-            <h1
-              className={css({
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: isDark ? 'white' : 'gray.800',
-                marginBottom: '0.5rem',
-              })}
-            >
-              Daily Practice
-            </h1>
-            <p
-              className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-              })}
-            >
-              Build your soroban skills one step at a time
-            </p>
-          </header>
-
           {/* Progress Dashboard - unified session-aware component */}
           <ProgressDashboard
             student={selectedStudent}
@@ -332,6 +324,19 @@ export function DashboardClient({
           onSubmit={handleSubmitOfflineSession}
         />
       </main>
+
+      {/* Start Practice Modal */}
+      {showStartPracticeModal && (
+        <StartPracticeModal
+          studentId={studentId}
+          studentName={player.name}
+          focusDescription={currentPhase.phaseName}
+          avgSecondsPerProblem={avgSecondsPerProblem}
+          existingPlan={activeSession}
+          onClose={() => setShowStartPracticeModal(false)}
+          onStarted={() => setShowStartPracticeModal(false)}
+        />
+      )}
     </PageWithNav>
   )
 }

@@ -1,9 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { SessionSummary } from '@/components/practice'
+import { PracticeSubNav, SessionSummary, StartPracticeModal } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
@@ -13,6 +13,8 @@ interface SummaryClientProps {
   studentId: string
   player: Player
   session: SessionPlan | null
+  /** Average seconds per problem from recent sessions */
+  avgSecondsPerProblem?: number
 }
 
 /**
@@ -24,22 +26,24 @@ interface SummaryClientProps {
  * - Completed session: shows full results
  * - No session: shows empty state
  */
-export function SummaryClient({ studentId, player, session }: SummaryClientProps) {
+export function SummaryClient({
+  studentId,
+  player,
+  session,
+  avgSecondsPerProblem = 40,
+}: SummaryClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
+
   const isInProgress = session?.startedAt && !session?.completedAt
 
-  // Handle practice again - navigate to configure page for new session
+  // Handle practice again - show the start practice modal
   const handlePracticeAgain = useCallback(() => {
-    router.push(`/practice/${studentId}/configure`, { scroll: false })
-  }, [studentId, router])
-
-  // Handle back to dashboard
-  const handleBackToDashboard = useCallback(() => {
-    router.push(`/practice/${studentId}/dashboard`, { scroll: false })
-  }, [studentId, router])
+    setShowStartPracticeModal(true)
+  }, [])
 
   // Determine header text based on session state
   const headerTitle = isInProgress
@@ -56,12 +60,15 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
 
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation */}
+      <PracticeSubNav student={player} pageContext="summary" />
+
       <main
         data-component="practice-summary-page"
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '2rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',
@@ -82,7 +89,7 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
           >
             <h1
               className={css({
-                fontSize: '2rem',
+                fontSize: '1.5rem',
                 fontWeight: 'bold',
                 color: isDark ? 'white' : 'gray.800',
                 marginBottom: '0.5rem',
@@ -92,7 +99,7 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
             </h1>
             <p
               className={css({
-                fontSize: '1rem',
+                fontSize: '0.875rem',
                 color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
@@ -106,7 +113,6 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
               plan={session}
               studentName={player.name}
               onPracticeAgain={handlePracticeAgain}
-              onBackToDashboard={handleBackToDashboard}
             />
           ) : (
             <div
@@ -149,6 +155,19 @@ export function SummaryClient({ studentId, player, session }: SummaryClientProps
           )}
         </div>
       </main>
+
+      {/* Start Practice Modal */}
+      {showStartPracticeModal && (
+        <StartPracticeModal
+          studentId={studentId}
+          studentName={player.name}
+          focusDescription="Continue practicing"
+          avgSecondsPerProblem={avgSecondsPerProblem}
+          existingPlan={null}
+          onClose={() => setShowStartPracticeModal(false)}
+          onStarted={() => setShowStartPracticeModal(false)}
+        />
+      )}
     </PageWithNav>
   )
 }

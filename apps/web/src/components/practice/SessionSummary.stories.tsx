@@ -213,7 +213,6 @@ function createCompletedSessionPlan(config: {
 
 const handlers = {
   onPracticeAgain: () => alert('Practice Again clicked!'),
-  onBackToDashboard: () => alert('Back to Dashboard clicked!'),
 }
 
 /**

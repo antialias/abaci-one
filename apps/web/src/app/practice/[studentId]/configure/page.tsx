@@ -1,13 +1,4 @@
-import { notFound } from 'next/navigation'
-import { getPhaseDisplayInfo } from '@/lib/curriculum/definitions'
-import {
-  getActiveSessionPlan,
-  getAllSkillMastery,
-  getPlayer,
-  getPlayerCurriculum,
-  getRecentSessions,
-} from '@/lib/curriculum/server'
-import { ConfigureClient } from './ConfigureClient'
+import { redirect } from 'next/navigation'
 
 // Disable caching - session data should be fresh
 export const dynamic = 'force-dynamic'
@@ -17,65 +8,16 @@ interface ConfigurePageProps {
 }
 
 /**
- * Configure Practice Session Page - Server Component
+ * Configure Practice Session Page - DEPRECATED
  *
- * Shows a unified session configuration page with live preview:
- * - Duration selector that updates the preview in real-time
- * - Live preview showing estimated problems, session structure, and problem breakdown
- * - Single "Let's Go!" button that generates + starts the session
+ * This page now redirects to the dashboard. The session configuration
+ * modal is accessible from the dashboard via the "Start Practice" button.
  *
- * This page is always accessible regardless of session state.
- * Parents/teachers can configure the next session while a session is in progress.
- *
- * URL: /practice/[studentId]/configure
+ * URL: /practice/[studentId]/configure → redirects to /practice/[studentId]/dashboard
  */
 export default async function ConfigurePage({ params }: ConfigurePageProps) {
   const { studentId } = await params
 
-  // Fetch player, curriculum, sessions, skills, and active session in parallel
-  const [player, activeSession, curriculum, recentSessions, skills] = await Promise.all([
-    getPlayer(studentId),
-    getActiveSessionPlan(studentId),
-    getPlayerCurriculum(studentId),
-    getRecentSessions(studentId, 10),
-    getAllSkillMastery(studentId),
-  ])
-
-  // 404 if player doesn't exist
-  if (!player) {
-    notFound()
-  }
-
-  // Get phase display info for the focus description
-  const currentPhaseId = curriculum?.currentPhaseId || 'L1.add.+1.direct'
-  const phaseInfo = getPhaseDisplayInfo(currentPhaseId)
-
-  // Calculate average time per problem from recent sessions (or use default)
-  const DEFAULT_SECONDS_PER_PROBLEM = 45
-  const validSessions = recentSessions.filter(
-    (s) => s.averageTimeMs !== null && s.problemsAttempted > 0
-  )
-  let avgSecondsPerProblem = DEFAULT_SECONDS_PER_PROBLEM
-  if (validSessions.length > 0) {
-    const totalProblems = validSessions.reduce((sum, s) => sum + s.problemsAttempted, 0)
-    const weightedSum = validSessions.reduce(
-      (sum, s) => sum + s.averageTimeMs! * s.problemsAttempted,
-      0
-    )
-    avgSecondsPerProblem = Math.round(weightedSum / totalProblems / 1000)
-  }
-
-  // Get mastered skills for display
-  const masteredSkills = skills.filter((s) => s.masteryLevel === 'mastered').map((s) => s.skillId)
-
-  return (
-    <ConfigureClient
-      studentId={studentId}
-      playerName={player.name}
-      existingPlan={activeSession}
-      focusDescription={phaseInfo.phaseName}
-      avgSecondsPerProblem={avgSecondsPerProblem}
-      masteredSkillIds={masteredSkills}
-    />
-  )
+  // Redirect to dashboard - the StartPracticeModal is now accessible from there
+  redirect(`/practice/${studentId}/dashboard`)
 }

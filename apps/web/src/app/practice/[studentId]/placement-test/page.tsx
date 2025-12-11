@@ -24,5 +24,5 @@ export default async function PlacementTestPage({ params }: PlacementTestPagePro
     notFound()
   }
 
-  return <PlacementTestClient studentId={studentId} playerName={player.name} />
+  return <PlacementTestClient studentId={studentId} player={player} />
 }

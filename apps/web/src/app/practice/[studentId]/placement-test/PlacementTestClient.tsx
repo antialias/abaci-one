@@ -3,11 +3,13 @@
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import { PracticeSubNav } from '@/components/practice'
 import { PlacementTest } from '@/components/practice/PlacementTest'
+import type { Player } from '@/db/schema/players'
 
 interface PlacementTestClientProps {
   studentId: string
-  playerName: string
+  player: Player
 }
 
 /**
@@ -16,7 +18,7 @@ interface PlacementTestClientProps {
  * Wraps the PlacementTest component and handles navigation
  * on completion or cancellation.
  */
-export function PlacementTestClient({ studentId, playerName }: PlacementTestClientProps) {
+export function PlacementTestClient({ studentId, player }: PlacementTestClientProps) {
   const router = useRouter()
 
   const handleComplete = useCallback(
@@ -40,8 +42,11 @@ export function PlacementTestClient({ studentId, playerName }: PlacementTestClie
 
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation */}
+      <PracticeSubNav student={player} pageContext="placement-test" />
+
       <PlacementTest
-        studentName={playerName}
+        studentName={player.name}
         playerId={studentId}
         onComplete={handleComplete}
         onCancel={handleCancel}

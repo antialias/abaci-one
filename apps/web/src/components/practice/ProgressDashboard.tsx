@@ -150,58 +150,37 @@ export function ProgressDashboard({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '2rem',
-        padding: '2rem',
+        gap: '1.5rem',
+        padding: '1.5rem',
         maxWidth: '600px',
         margin: '0 auto',
       })}
     >
-      {/* Header with greeting */}
+      {/* Page header */}
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
+          textAlign: 'center',
+          marginBottom: '0.5rem',
         })}
       >
-        <div
+        <h1
           className={css({
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '3rem',
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.100' : 'gray.800',
+            marginBottom: '0.25rem',
           })}
-          style={{ backgroundColor: student.color }}
         >
-          {student.emoji}
-        </div>
-        <div>
-          <h1
-            className={css({
-              fontSize: '1.75rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.100' : 'gray.800',
-            })}
-          >
-            Hi {student.name}!
-          </h1>
-          <a
-            href="/students"
-            className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'blue.400' : 'blue.500',
-              textDecoration: 'none',
-              _hover: {
-                textDecoration: 'underline',
-              },
-            })}
-          >
-            Manage students
-          </a>
-        </div>
+          Daily Practice
+        </h1>
+        <p
+          className={css({
+            fontSize: '0.875rem',
+            color: isDark ? 'gray.400' : 'gray.600',
+          })}
+        >
+          Build your soroban skills one step at a time
+        </p>
       </div>
 
       {/* Current level card */}
@@ -313,97 +292,72 @@ export function ProgressDashboard({
         )}
       </div>
 
-      {/* Primary action - session-aware */}
-      <div
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          width: '100%',
-        })}
-      >
-        {hasActiveSession ? (
-          <>
-            {/* Resume button with progress indicator */}
-            <button
-              type="button"
-              data-action="resume-practice"
-              onClick={onResumePractice}
-              className={css({
-                padding: '1rem',
-                fontSize: '1.125rem',
-                fontWeight: 'bold',
-                color: 'white',
-                backgroundColor: 'green.500',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s ease',
-                _hover: {
-                  backgroundColor: 'green.600',
-                },
-              })}
-            >
-              Resume Practice →
-            </button>
-            {/* Session progress info */}
-            <p
-              className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-                textAlign: 'center',
-              })}
-            >
-              {activeSession.completedCount} of {activeSession.totalCount} problems done
-            </p>
-            {/* Secondary session action */}
-            <button
-              type="button"
-              data-action="start-over"
-              onClick={onStartOver}
-              disabled={isStartingOver}
-              className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-                background: 'none',
-                border: 'none',
-                cursor: isStartingOver ? 'wait' : 'pointer',
-                opacity: isStartingOver ? 0.7 : 1,
-                textDecoration: 'underline',
-                marginTop: '0.25rem',
-                _hover: {
-                  color: isDark ? 'gray.200' : 'gray.700',
-                },
-              })}
-            >
-              {isStartingOver ? 'Starting over...' : 'Start over'}
-            </button>
-          </>
-        ) : (
-          /* Start new practice button */
+      {/* Primary action - only shown when there's an active session */}
+      {hasActiveSession && (
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            width: '100%',
+          })}
+        >
+          {/* Resume button with progress indicator */}
           <button
             type="button"
-            data-action="start-practice"
-            onClick={onStartPractice}
+            data-action="resume-practice"
+            onClick={onResumePractice}
             className={css({
               padding: '1rem',
               fontSize: '1.125rem',
               fontWeight: 'bold',
               color: 'white',
-              backgroundColor: 'blue.500',
+              backgroundColor: 'green.500',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
               _hover: {
-                backgroundColor: 'blue.600',
+                backgroundColor: 'green.600',
               },
             })}
           >
-            Start Practice →
+            Resume Practice →
           </button>
-        )}
-      </div>
+          {/* Session progress info */}
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              textAlign: 'center',
+            })}
+          >
+            {activeSession.completedCount} of {activeSession.totalCount} problems done
+          </p>
+          {/* Secondary session action */}
+          <button
+            type="button"
+            data-action="start-over"
+            onClick={onStartOver}
+            disabled={isStartingOver}
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              background: 'none',
+              border: 'none',
+              cursor: isStartingOver ? 'wait' : 'pointer',
+              opacity: isStartingOver ? 0.7 : 1,
+              textDecoration: 'underline',
+              marginTop: '0.25rem',
+              _hover: {
+                color: isDark ? 'gray.200' : 'gray.700',
+              },
+            })}
+          >
+            {isStartingOver ? 'Starting over...' : 'Start over'}
+          </button>
+        </div>
+      )}
 
       {/* Secondary action buttons */}
       <div

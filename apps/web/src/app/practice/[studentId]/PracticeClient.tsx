@@ -1,11 +1,17 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { ActiveSession, PracticeErrorBoundary } from '@/components/practice'
+import {
+  ActiveSession,
+  PracticeErrorBoundary,
+  PracticeSubNav,
+  type SessionHudData,
+  SessionPausedModal,
+} from '@/components/practice'
 import type { Player } from '@/db/schema/players'
-import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionHealth, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import {
   useActiveSessionPlan,
   useEndSessionEarly,
@@ -30,6 +36,10 @@ interface PracticeClientProps {
 export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
   const router = useRouter()
 
+  // Track pause state locally (controlled by callbacks from ActiveSession)
+  // Start paused if returning to an existing session (has completed problems)
+  const [isPaused, setIsPaused] = useState(() => initialSession.results.length > 0)
+
   // Session plan mutations
   const recordResult = useRecordSlotResult()
   const endEarly = useEndSessionEarly()
@@ -39,6 +49,30 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Current plan - mutations take priority, then fetched/cached data
   const currentPlan = endEarly.data ?? recordResult.data ?? fetchedPlan ?? initialSession
+
+  // Compute HUD data from current plan
+  const currentPart = currentPlan.parts[currentPlan.currentPartIndex] as SessionPart | undefined
+  const sessionHealth = currentPlan.sessionHealth as SessionHealth | null
+
+  // Calculate totals
+  const { totalProblems, completedProblems } = useMemo(() => {
+    const total = currentPlan.parts.reduce((sum, part) => sum + part.slots.length, 0)
+    let completed = 0
+    for (let i = 0; i < currentPlan.currentPartIndex; i++) {
+      completed += currentPlan.parts[i].slots.length
+    }
+    completed += currentPlan.currentSlotIndex
+    return { totalProblems: total, completedProblems: completed }
+  }, [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex])
+
+  // Pause/resume handlers
+  const handlePause = useCallback(() => {
+    setIsPaused(true)
+  }, [])
+
+  const handleResume = useCallback(() => {
+    setIsPaused(false)
+  }, [])
 
   // Handle recording an answer
   const handleAnswer = useCallback(
@@ -77,13 +111,39 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     router.push(`/practice/${studentId}/summary`, { scroll: false })
   }, [studentId, router])
 
+  // Build session HUD data for PracticeSubNav
+  const sessionHud: SessionHudData | undefined = currentPart
+    ? {
+        isPaused,
+        currentPart: {
+          type: currentPart.type,
+          partNumber: currentPart.partNumber,
+          totalSlots: currentPart.slots.length,
+        },
+        currentSlotIndex: currentPlan.currentSlotIndex,
+        completedProblems,
+        totalProblems,
+        sessionHealth: sessionHealth
+          ? {
+              overall: sessionHealth.overall,
+              accuracy: sessionHealth.accuracy,
+            }
+          : undefined,
+        onPause: handlePause,
+        onResume: handleResume,
+        onEndEarly: () => handleEndEarly('Session ended'),
+      }
+    : undefined
+
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation with Session HUD */}
+      <PracticeSubNav student={player} pageContext="session" sessionHud={sessionHud} />
+
       <main
         data-component="practice-page"
         className={css({
-          minHeight: 'calc(100vh - 80px)', // Full height minus nav
-          marginTop: '80px', // Push below nav
+          minHeight: 'calc(100vh - 140px)', // Full height minus nav and sub-nav
         })}
       >
         <PracticeErrorBoundary studentName={player.name}>
@@ -92,10 +152,22 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             studentName={player.name}
             onAnswer={handleAnswer}
             onEndEarly={handleEndEarly}
+            onPause={handlePause}
+            onResume={handleResume}
             onComplete={handleSessionComplete}
+            hideHud={true}
           />
         </PracticeErrorBoundary>
       </main>
+
+      {/* Session Paused Modal - shown when paused */}
+      <SessionPausedModal
+        isOpen={isPaused}
+        student={player}
+        session={currentPlan}
+        onResume={handleResume}
+        onEndSession={() => handleEndEarly('Session ended by user')}
+      />
     </PageWithNav>
   )
 }

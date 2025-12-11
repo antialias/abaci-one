@@ -9,8 +9,6 @@ interface SessionSummaryProps {
   studentName: string
   /** Called when user wants to practice again */
   onPracticeAgain: () => void
-  /** Called when user wants to go back to dashboard */
-  onBackToDashboard: () => void
 }
 
 interface SkillBreakdown {
@@ -57,12 +55,7 @@ const SKILL_CATEGORY_NAMES: Record<string, string> = {
  * - Encouragement messages
  * - Next steps suggestions
  */
-export function SessionSummary({
-  plan,
-  studentName,
-  onPracticeAgain,
-  onBackToDashboard,
-}: SessionSummaryProps) {
+export function SessionSummary({ plan, studentName, onPracticeAgain }: SessionSummaryProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const results = plan.results as SlotResult[]
@@ -748,26 +741,6 @@ export function SessionSummary({
           })}
         >
           Practice Again
-        </button>
-
-        <button
-          type="button"
-          data-action="back-to-dashboard"
-          onClick={onBackToDashboard}
-          className={css({
-            padding: '0.75rem',
-            fontSize: '1rem',
-            color: isDark ? 'gray.300' : 'gray.600',
-            backgroundColor: isDark ? 'gray.700' : 'gray.100',
-            borderRadius: '12px',
-            border: 'none',
-            cursor: 'pointer',
-            _hover: {
-              backgroundColor: isDark ? 'gray.600' : 'gray.200',
-            },
-          })}
-        >
-          Back to Dashboard
         </button>
       </div>
     </div>

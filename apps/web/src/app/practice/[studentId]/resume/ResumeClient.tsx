@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { ContinueSessionCard } from '@/components/practice'
+import { ContinueSessionCard, PracticeSubNav } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
@@ -53,12 +53,15 @@ export function ResumeClient({ studentId, player, initialSession }: ResumeClient
 
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation */}
+      <PracticeSubNav student={player} pageContext="resume" />
+
       <main
         data-component="resume-practice-page"
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '2rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',
@@ -79,21 +82,21 @@ export function ResumeClient({ studentId, player, initialSession }: ResumeClient
           >
             <h1
               className={css({
-                fontSize: '2rem',
+                fontSize: '1.5rem',
                 fontWeight: 'bold',
                 color: isDark ? 'white' : 'gray.800',
-                marginBottom: '0.5rem',
+                marginBottom: '0.25rem',
               })}
             >
-              Daily Practice
+              Welcome Back!
             </h1>
             <p
               className={css({
-                fontSize: '1rem',
+                fontSize: '0.875rem',
                 color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
-              Build your soroban skills one step at a time
+              Continue where you left off
             </p>
           </header>
 

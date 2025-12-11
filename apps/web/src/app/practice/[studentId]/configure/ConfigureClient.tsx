@@ -4,7 +4,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import { PracticeSubNav } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
+import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
 import {
@@ -27,7 +29,7 @@ const PURPOSE_WEIGHTS = {
 
 interface ConfigureClientProps {
   studentId: string
-  playerName: string
+  player: Player
   /** If there's an existing draft plan, pass it here */
   existingPlan?: SessionPlan | null
   /** Current phase focus description from curriculum */
@@ -210,7 +212,7 @@ function calculateEstimates(
  */
 export function ConfigureClient({
   studentId,
-  playerName,
+  player,
   existingPlan,
   focusDescription,
   avgSecondsPerProblem,
@@ -337,18 +339,17 @@ export function ConfigureClient({
     router,
   ])
 
-  const handleCancel = useCallback(() => {
-    router.push(`/practice/${studentId}/dashboard`, { scroll: false })
-  }, [studentId, router])
-
   return (
     <PageWithNav>
+      {/* Practice Sub-Navigation */}
+      <PracticeSubNav student={player} pageContext="configure" />
+
       <main
         data-component="configure-practice-page"
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '1rem',
           paddingRight: '1rem',
           paddingBottom: '2rem',
@@ -373,7 +374,7 @@ export function ConfigureClient({
                 marginBottom: '0.25rem',
               })}
             >
-              {playerName}'s Practice
+              Configure Session
             </h1>
             <p
               className={css({
@@ -949,28 +950,6 @@ export function ConfigureClient({
               })}
             >
               {isStarting ? 'Starting...' : "Let's Go!"}
-            </button>
-
-            <button
-              type="button"
-              data-action="cancel"
-              onClick={handleCancel}
-              disabled={isStarting}
-              className={css({
-                padding: '0.75rem',
-                fontSize: '1rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-                backgroundColor: 'transparent',
-                borderRadius: '10px',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                cursor: isStarting ? 'not-allowed' : 'pointer',
-                opacity: isStarting ? 0.6 : 1,
-                transition: 'all 0.15s ease',
-                _hover: { backgroundColor: isDark ? 'gray.800' : 'gray.50' },
-              })}
-            >
-              Back to Dashboard
             </button>
           </div>
         </div>
