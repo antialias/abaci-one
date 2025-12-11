@@ -135,7 +135,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        {/* Time and problem count */}
+        {/* Time and focus */}
         <div
           className={css({
             display: 'flex',
@@ -156,14 +156,6 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               })}
             >
               ~{summary.estimatedMinutes} min
-            </div>
-            <div
-              className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-              })}
-            >
-              {summary.totalProblemCount} problems
             </div>
           </div>
           <div

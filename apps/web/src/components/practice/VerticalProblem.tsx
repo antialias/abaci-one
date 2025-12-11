@@ -34,6 +34,8 @@ interface VerticalProblemProps {
   helpOverlayTransitionMs?: number
   /** Called when help overlay transition completes (useful for clearing answer after fade-in) */
   onHelpOverlayTransitionEnd?: () => void
+  /** Whether the answer row is fading out (for dream sequence after help mode) */
+  answerFadingOut?: boolean
   /** Generation trace with per-term skills and complexity (for debug overlay) */
   generationTrace?: GenerationTrace
   /** Complexity budget constraint (for debug overlay) */
@@ -63,6 +65,7 @@ export function VerticalProblem({
   helpOverlayVisible = false,
   helpOverlayTransitionMs = 1000,
   onHelpOverlayTransitionEnd,
+  answerFadingOut = false,
   generationTrace,
   complexityBudget,
 }: VerticalProblemProps) {
@@ -372,7 +375,11 @@ export function VerticalProblem({
             })}
             onTransitionEnd={(e) => {
               // Only fire for opacity transition on this element, and only when becoming visible
-              if (e.propertyName === 'opacity' && e.target === e.currentTarget && helpOverlayVisible) {
+              if (
+                e.propertyName === 'opacity' &&
+                e.target === e.currentTarget &&
+                helpOverlayVisible
+              ) {
                 onHelpOverlayTransitionEnd?.()
               }
             }}
@@ -384,6 +391,7 @@ export function VerticalProblem({
         {/* Answer row layer - fades out when help mode active (inverse opacity) */}
         <div
           data-element="answer-row"
+          data-fading-out={answerFadingOut ? 'true' : undefined}
           className={css({
             display: 'flex',
             alignItems: 'center',
@@ -392,9 +400,11 @@ export function VerticalProblem({
             top: helpOverlay ? 0 : undefined,
             left: helpOverlay ? 0 : undefined,
             right: helpOverlay ? 0 : undefined,
-            // Fade out when help mode active (inverse of help overlay)
-            transition: `opacity ${helpOverlayTransitionMs}ms ease-out`,
-            opacity: helpOverlayVisible ? 0 : 1,
+            // Fade out when help mode active (inverse of help overlay) OR when answer is fading out
+            transition: answerFadingOut
+              ? 'opacity 300ms ease-out'
+              : `opacity ${helpOverlayTransitionMs}ms ease-out`,
+            opacity: helpOverlayVisible || answerFadingOut ? 0 : 1,
             pointerEvents: helpOverlayVisible ? 'none' : 'auto',
           })}
         >

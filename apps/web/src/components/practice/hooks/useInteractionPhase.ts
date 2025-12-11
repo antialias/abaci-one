@@ -369,6 +369,8 @@ export interface UseInteractionPhaseReturn {
   exitHelpMode: () => void
   /** Clear the current answer (used after help overlay transition completes) */
   clearAnswer: () => void
+  /** Set the answer to a specific value (used when showing target reached value) */
+  setAnswer: (value: string) => void
   /** Submit answer (inputting/helpMode → submitting) */
   startSubmit: () => void
   /** Handle submit result (submitting → showingFeedback) */
@@ -767,6 +769,17 @@ export function useInteractionPhase(
     })
   }, [])
 
+  const setAnswer = useCallback((value: string) => {
+    setPhase((prev) => {
+      if (prev.phase !== 'helpMode' && prev.phase !== 'inputting') return prev
+      const updatedAttempt = { ...prev.attempt, userAnswer: value }
+      if (prev.phase === 'helpMode') {
+        return { phase: 'helpMode', attempt: updatedAttempt, helpContext: prev.helpContext }
+      }
+      return { phase: 'inputting', attempt: updatedAttempt }
+    })
+  }, [])
+
   const startSubmit = useCallback(() => {
     setPhase((prev) => {
       // Allow submitting from inputting, awaitingDisambiguation, or helpMode
@@ -868,6 +881,7 @@ export function useInteractionPhase(
     enterHelpMode,
     exitHelpMode,
     clearAnswer,
+    setAnswer,
     startSubmit,
     completeSubmit,
     startTransition,

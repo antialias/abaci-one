@@ -199,7 +199,7 @@ export function analyzeStepSkills(currentValue: number, term: number, newValue: 
 /**
  * Analyzes skills needed for addition in a single column
  */
-function analyzeColumnAddition(
+export function analyzeColumnAddition(
   currentDigit: number,
   termDigit: number,
   _resultDigit: number,
@@ -221,10 +221,17 @@ function analyzeColumnAddition(
         skills.push('basic.heavenBead')
       }
     } else if (currentDigit + termDigit > 5 && currentDigit + termDigit <= 9) {
-      // Results in 6-9: use five complement + simple combination
-      skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
-      skills.push('basic.heavenBead')
-      skills.push('basic.simpleCombinations')
+      // Results in 6-9
+      // If heaven bead already active (currentDigit >= 5), just add earth beads directly
+      if (currentDigit >= 5) {
+        skills.push('basic.heavenBead')
+        skills.push('basic.simpleCombinations')
+      } else {
+        // Heaven bead NOT active - need five complement to bring it down
+        skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
+        skills.push('basic.heavenBead')
+        skills.push('basic.simpleCombinations')
+      }
     } else if (currentDigit + termDigit >= 10) {
       // Ten complement needed
       const complement = 10 - termDigit
@@ -323,18 +330,18 @@ export function analyzeColumnSubtraction(
 
     if (tenComplement >= 1 && tenComplement <= 4) {
       // Adding 1-4 to currentDigit
-      if (currentDigit + tenComplement <= 4) {
-        // Direct addition of complement
-        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
-      } else if (currentDigit + tenComplement >= 5 && afterAddition <= 9) {
-        // Adding complement crosses 5 boundary - need five complement for the addition part
-        // Combined technique: use five complement to add the ten complement
-        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
-        skills.push(`fiveComplements.${tenComplement}=5-${5 - tenComplement}`)
-      } else {
-        // Simple ten complement
-        skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+      skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
+
+      if (currentDigit + tenComplement >= 5 && afterAddition <= 9) {
+        // Adding complement crosses 5 boundary
+        if (currentDigit < 5) {
+          // Heaven bead NOT active - need five complement for the addition part
+          // Combined technique: use five complement to add the ten complement
+          skills.push(`fiveComplements.${tenComplement}=5-${5 - tenComplement}`)
+        }
+        // If currentDigit >= 5, heaven bead already active - just add earth beads directly
       }
+      // If result <= 4, just direct addition of earth beads
     } else if (tenComplement === 5) {
       // -5 = +5-10
       skills.push(`tenComplementsSub.-5=+5-10`)

@@ -237,6 +237,7 @@ export function ActiveSession({
     enterHelpMode,
     exitHelpMode,
     clearAnswer,
+    setAnswer,
     startSubmit,
     completeSubmit,
     startTransition,
@@ -253,12 +254,15 @@ export function ActiveSession({
   // These reset when entering a new help session (helpContext changes)
   const [helpAbacusDismissed, setHelpAbacusDismissed] = useState(false)
   const [helpPanelDismissed, setHelpPanelDismissed] = useState(false)
+  // Track when answer is fading out (for dream sequence)
+  const [answerFadingOut, setAnswerFadingOut] = useState(false)
 
   // Reset dismissed states when help context changes (new help session)
   useEffect(() => {
     if (helpContext) {
       setHelpAbacusDismissed(false)
       setHelpPanelDismissed(false)
+      setAnswerFadingOut(false)
     }
   }, [helpContext])
 
@@ -390,12 +394,32 @@ export function ActiveSession({
   }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode])
 
   // Handle when student reaches target value on help abacus
+  // Sequence: show target value → dismiss abacus → show value in answer boxes → fade to empty → exit
   const handleTargetReached = useCallback(() => {
-    if (phase.phase !== 'helpMode') return
+    if (phase.phase !== 'helpMode' || !helpContext) return
+
+    // Step 1: Set the answer to the target value (shows in answer boxes behind abacus)
+    setAnswer(String(helpContext.targetValue))
+
+    // Step 2: After a brief moment, dismiss the help abacus to reveal the answer
     setTimeout(() => {
-      exitHelpMode()
-    }, 800)
-  }, [phase.phase, exitHelpMode])
+      setHelpAbacusDismissed(true)
+
+      // Step 3: After abacus fades out (300ms), answer boxes are visible with target value
+      // Wait 1 second to let user see the result
+      setTimeout(() => {
+        // Step 4: Start fading out the answer
+        setAnswerFadingOut(true)
+
+        // Step 5: After fade-out completes (300ms), clear and exit
+        setTimeout(() => {
+          clearAnswer()
+          setAnswerFadingOut(false)
+          exitHelpMode()
+        }, 300) // Match fade-out duration
+      }, 1000) // Show target value in answer boxes for 1 second
+    }, 600) // Brief pause to see success state on abacus
+  }, [phase.phase, helpContext, setAnswer, clearAnswer, exitHelpMode])
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
@@ -971,6 +995,7 @@ export function ActiveSession({
                   helpOverlayVisible={showHelpOverlay && !helpAbacusDismissed}
                   helpOverlayTransitionMs={helpAbacusDismissed ? 300 : 1000}
                   onHelpOverlayTransitionEnd={clearAnswer}
+                  answerFadingOut={answerFadingOut}
                   generationTrace={attempt.problem.generationTrace}
                   complexityBudget={currentSlot?.constraints?.maxComplexityBudgetPerTerm}
                 />

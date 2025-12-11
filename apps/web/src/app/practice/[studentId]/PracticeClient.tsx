@@ -82,8 +82,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       <main
         data-component="practice-page"
         className={css({
-          minHeight: '100vh',
-          paddingTop: '80px', // Nav height only, no extra padding for practice
+          minHeight: 'calc(100vh - 80px)', // Full height minus nav
+          marginTop: '80px', // Push below nav
         })}
       >
         <PracticeErrorBoundary studentName={player.name}>
