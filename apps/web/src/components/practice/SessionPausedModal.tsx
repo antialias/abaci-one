@@ -139,9 +139,14 @@ function SpeedMeter({
   thresholdMs: number
   isDark: boolean
 }) {
-  // Normalize values for display (0-100 scale based on threshold)
-  const meanPercent = Math.min(100, (meanMs / thresholdMs) * 100)
-  const variationPercent = Math.min(50, (stdDevMs / thresholdMs) * 100)
+  // Scale so the mean is around 50% and threshold is at 100%
+  // This ensures the visualization is always meaningful regardless of absolute values
+  const scaleMax = thresholdMs
+  const meanPercent = Math.min(95, Math.max(5, (meanMs / scaleMax) * 100))
+
+  // Variation should be visible but proportional - minimum 8% width for visibility
+  const rawVariationPercent = (stdDevMs / scaleMax) * 100
+  const variationPercent = Math.max(8, Math.min(40, rawVariationPercent))
 
   return (
     <div
