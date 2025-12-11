@@ -256,7 +256,7 @@ export function DashboardClient({
 
   // Handle resuming the current session
   const handleResumeSession = useCallback(() => {
-    router.push(`/practice/${studentId}/session`)
+    router.push(`/practice/${studentId}`)
   }, [studentId, router])
 
   return (
