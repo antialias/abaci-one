@@ -11,16 +11,29 @@
 import type { GeneratedProblem, ProblemConstraints } from '@/db/schema/session-plans'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
-  analyzeRequiredSkills,
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblem,
 } from '@/utils/problemGenerator'
+
+/**
+ * Error thrown when problem generation fails
+ */
+export class ProblemGenerationError extends Error {
+  constructor(
+    message: string,
+    public readonly constraints: ProblemConstraints
+  ) {
+    super(message)
+    this.name = 'ProblemGenerationError'
+  }
+}
 
 /**
  * Generate a problem from slot constraints using the skill-based algorithm.
  *
  * @param constraints - The constraints for problem generation (skills, digit range, term count)
  * @returns A generated problem with terms, answer, and skills required
+ * @throws {ProblemGenerationError} If the generator fails to produce a valid problem
  */
 export function generateProblemFromConstraints(constraints: ProblemConstraints): GeneratedProblem {
   const baseSkillSet = createBasicSkillSet()
@@ -71,18 +84,11 @@ export function generateProblemFromConstraints(constraints: ProblemConstraints):
     }
   }
 
-  // Fallback: generate a simple random problem if skill-based generation fails
-  const termCount = constraints.termCount?.min || 3
-  const terms: number[] = []
-  for (let i = 0; i < termCount; i++) {
-    terms.push(Math.floor(Math.random() * Math.min(maxValue, 9)) + 1)
-  }
-  const answer = terms.reduce((sum, t) => sum + t, 0)
-  const skillsRequired = analyzeRequiredSkills(terms, answer)
-
-  return {
-    terms,
-    answer,
-    skillsRequired,
-  }
+  // No fallback - surface the error so it can be addressed
+  throw new ProblemGenerationError(
+    `Failed to generate problem with constraints: termCount=${constraints.termCount?.min}-${constraints.termCount?.max}, ` +
+      `digitRange=${constraints.digitRange?.min}-${constraints.digitRange?.max}, ` +
+      `requiredSkills=${Object.keys(constraints.requiredSkills || {}).length} categories`,
+    constraints
+  )
 }
