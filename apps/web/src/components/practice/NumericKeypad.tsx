@@ -76,10 +76,6 @@ function getPortraitStyles(isDark: boolean): string {
       background: #16a34a;
       color: white;
     }
-    .keypad-portrait .hg-button[data-skbtn="{empty}"] {
-      visibility: hidden;
-      pointer-events: none;
-    }
   `
 }
 
@@ -141,10 +137,6 @@ function getLandscapeStyles(isDark: boolean): string {
       background: #16a34a;
       color: white;
     }
-    .keypad-landscape .hg-button[data-skbtn="{empty}"] {
-      visibility: hidden;
-      pointer-events: none;
-    }
   `
 }
 
@@ -168,24 +160,23 @@ export function NumericKeypad({
   const portraitKeyboardRef = useRef<any>(null)
   const landscapeKeyboardRef = useRef<any>(null)
 
-  // Portrait layout: single row
+  // Portrait layout: single row (no empty spacer - buttons flex to fill)
   const portraitLayout = {
     default: showSubmitButton
       ? ['1 2 3 4 5 6 7 8 9 0 {bksp} {enter}']
-      : ['1 2 3 4 5 6 7 8 9 0 {bksp} {empty}'],
+      : ['1 2 3 4 5 6 7 8 9 0 {bksp}'],
   }
 
-  // Landscape layout: 6 rows, 2 columns
+  // Landscape layout: 6 rows, 2 columns (backspace spans full width when no submit)
   const landscapeLayout = {
     default: showSubmitButton
       ? ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp} {enter}']
-      : ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp} {empty}'],
+      : ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp}'],
   }
 
   const display = {
     '{bksp}': '⌫',
     '{enter}': '✓',
-    '{empty}': '',
   }
 
   const handleKeyPress = useCallback(
