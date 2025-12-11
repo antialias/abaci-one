@@ -55,40 +55,54 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
   }
 }
 
+// Intl formatters for duration display
+const secondsFormatter = new Intl.NumberFormat('en', {
+  style: 'unit',
+  unit: 'second',
+  unitDisplay: 'long',
+})
+const minutesFormatter = new Intl.NumberFormat('en', {
+  style: 'unit',
+  unit: 'minute',
+  unitDisplay: 'long',
+})
+const hoursFormatter = new Intl.NumberFormat('en', {
+  style: 'unit',
+  unit: 'hour',
+  unitDisplay: 'long',
+})
+
 /**
- * Format milliseconds as a human-readable duration for kids
+ * Format milliseconds as a human-readable duration using Intl.NumberFormat
  */
 function formatDurationFriendly(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
 
   if (hours > 0) {
-    const remainingMinutes = minutes % 60
-    if (remainingMinutes === 0) {
-      return hours === 1 ? '1 hour' : `${hours} hours`
+    if (minutes === 0) {
+      return hoursFormatter.format(hours)
     }
-    return `${hours}h ${remainingMinutes}m`
+    return `${hours}h ${minutes}m`
   }
   if (minutes > 0) {
-    const remainingSeconds = seconds % 60
-    if (remainingSeconds === 0) {
-      return minutes === 1 ? '1 minute' : `${minutes} minutes`
+    if (seconds === 0) {
+      return minutesFormatter.format(minutes)
     }
-    return `${minutes}m ${remainingSeconds}s`
+    return `${minutes}m ${seconds}s`
   }
-  return seconds === 1 ? '1 second' : `${seconds} seconds`
+  return secondsFormatter.format(seconds)
 }
 
 /**
- * Format seconds in a kid-friendly way
+ * Format milliseconds as approximate seconds using Intl.NumberFormat
  */
 function formatSecondsFriendly(ms: number): string {
   const seconds = ms / 1000
   if (seconds < 1) return 'less than a second'
-  if (seconds < 2) return 'about 1 second'
-  if (seconds < 10) return `about ${Math.round(seconds)} seconds`
-  return `about ${Math.round(seconds)} seconds`
+  return `about ${secondsFormatter.format(Math.round(seconds))}`
 }
 
 /**
