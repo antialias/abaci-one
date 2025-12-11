@@ -3,6 +3,7 @@
 import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
   ProblemSlot,
@@ -198,6 +199,9 @@ export function ActiveSession({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  // Check if abacus is docked (to force show submit button)
+  const { isDockedByUser } = useMyAbacus()
+
   // Sound effects
   const { playSound } = usePracticeSoundEffects()
 
@@ -288,10 +292,12 @@ export function ActiveSession({
   }))
 
   // Spring for submit button entrance animation
+  // Show submit button when: manual submit is required OR abacus is docked (user needs way to submit)
+  const showSubmitButton = attempt?.manualSubmitRequired || isDockedByUser
   const submitButtonSpring = useSpring({
-    transform: attempt?.manualSubmitRequired ? 'translateY(0px)' : 'translateY(60px)',
-    opacity: attempt?.manualSubmitRequired ? 1 : 0,
-    scale: attempt?.manualSubmitRequired ? 1 : 0.8,
+    transform: showSubmitButton ? 'translateY(0px)' : 'translateY(60px)',
+    opacity: showSubmitButton ? 1 : 0,
+    scale: showSubmitButton ? 1 : 0.8,
     config: { tension: 280, friction: 14 },
   })
 
@@ -391,7 +397,11 @@ export function ActiveSession({
   // Auto-trigger help when an unambiguous prefix sum is detected
   // The awaitingDisambiguation phase handles the timer and auto-transitions to helpMode when it expires
   // This effect only handles the inputting phase case for unambiguous matches
+  // DISABLED when abacus is docked - user controls when to submit, help triggers on submit if needed
   useEffect(() => {
+    // Skip auto-help when abacus is docked - user has manual control
+    if (isDockedByUser) return
+
     // Only handle unambiguous prefix matches in inputting phase
     // Ambiguous cases are handled by awaitingDisambiguation phase, which auto-transitions to helpMode
     if (phase.phase !== 'inputting') return
@@ -403,7 +413,7 @@ export function ActiveSession({
         enterHelpMode(newConfirmedCount)
       }
     }
-  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode])
+  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode, isDockedByUser])
 
   // Handle when student reaches target value on help abacus
   // Sequence: show target value → dismiss abacus → show value in answer boxes → fade to empty → exit
@@ -457,6 +467,21 @@ export function ActiveSession({
     const attemptData = phase.attempt
     const answerNum = parseInt(attemptData.userAnswer, 10)
     if (Number.isNaN(answerNum)) return
+
+    // When abacus is docked and not already in help mode, check if answer is a prefix sum
+    // If so, trigger help mode instead of submitting (mimic auto-help behavior on submit)
+    if (isDockedByUser && phase.phase !== 'helpMode') {
+      // Check if the answer matches a prefix sum (but not the final answer)
+      const prefixIndex = prefixSums.indexOf(answerNum)
+      if (prefixIndex >= 0 && prefixIndex < prefixSums.length - 1) {
+        // Answer matches a prefix sum - enter help mode instead of submitting
+        const newConfirmedCount = prefixIndex + 1
+        if (newConfirmedCount < attemptData.problem.terms.length) {
+          enterHelpMode(newConfirmedCount)
+          return
+        }
+      }
+    }
 
     // Transition to submitting phase
     startSubmit()
@@ -512,10 +537,14 @@ export function ActiveSession({
     onAnswer,
     currentSlotIndex,
     currentPart,
+    currentPartIndex,
     startSubmit,
     completeSubmit,
     startTransition,
     clearToLoading,
+    isDockedByUser,
+    prefixSums,
+    enterHelpMode,
   ])
 
   // Auto-submit when correct answer is entered
@@ -1160,8 +1189,7 @@ export function ActiveSession({
                   </DecompositionProvider>
                 </div>
               )}
-
-              {/* Abacus dock - positioned to the right of the problem when in abacus mode and not in help mode */}
+              {/* Abacus dock - positioned absolutely so it doesn't affect problem centering */}
               {currentPart.type === 'abacus' && !showHelpOverlay && (
                 <AbacusDock
                   id="practice-abacus"
@@ -1169,22 +1197,14 @@ export function ActiveSession({
                   interactive={true}
                   showNumbers={false}
                   animated={true}
+                  scaleFactor={2.5}
                   onValueChange={handleAbacusDockValueChange}
                   className={css({
                     position: 'absolute',
                     left: '100%',
-                    top: 0,
-                    bottom: 0,
-                    marginLeft: '1rem',
-                    width: '120px',
-                    '@media (min-width: 768px)': {
-                      marginLeft: '1.5rem',
-                      width: '150px',
-                    },
-                    '@media (min-width: 1024px)': {
-                      marginLeft: '2rem',
-                      width: '180px',
-                    },
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    marginLeft: '1.5rem',
                   })}
                 />
               )}
@@ -1226,9 +1246,9 @@ export function ActiveSession({
             <animated.button
               type="button"
               data-action="submit"
-              data-visible={attempt.manualSubmitRequired}
+              data-visible={showSubmitButton}
               onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting || !attempt.manualSubmitRequired}
+              disabled={!canSubmit || isSubmitting || !showSubmitButton}
               style={submitButtonSpring}
               className={css({
                 padding: '0.75rem 2rem',
@@ -1236,16 +1256,12 @@ export function ActiveSession({
                 fontWeight: 'bold',
                 borderRadius: '8px',
                 border: 'none',
-                cursor: !canSubmit || !attempt.manualSubmitRequired ? 'not-allowed' : 'pointer',
+                cursor: !canSubmit || !showSubmitButton ? 'not-allowed' : 'pointer',
                 backgroundColor: canSubmit ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
                 color: !canSubmit ? (isDark ? 'gray.400' : 'gray.500') : 'white',
                 _hover: {
                   backgroundColor:
-                    canSubmit && attempt.manualSubmitRequired
-                      ? 'blue.600'
-                      : isDark
-                        ? 'gray.600'
-                        : 'gray.300',
+                    canSubmit && showSubmitButton ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
                 },
               })}
             >
@@ -1261,7 +1277,7 @@ export function ActiveSession({
               onSubmit={handleSubmit}
               disabled={isSubmitting}
               currentValue={attempt.userAnswer}
-              showSubmitButton={attempt.manualSubmitRequired}
+              showSubmitButton={showSubmitButton}
             />
           )}
         </div>

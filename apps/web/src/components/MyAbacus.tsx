@@ -4,11 +4,58 @@ import { animated, useSpring } from '@react-spring/web'
 import { ABACUS_THEMES, AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { usePathname } from 'next/navigation'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
 import { type DockAnimationState, useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../styled-system/css'
+
+/**
+ * Measure the size and position an AbacusReact will have when rendered into a dock element.
+ * Temporarily renders an invisible abacus directly into the dock to get accurate positioning
+ * (important for absolutely positioned docks where transforms depend on content size).
+ */
+function measureDockedAbacus(
+  dockElement: HTMLElement,
+  columns: number,
+  scaleFactor: number | undefined,
+  customStyles: typeof ABACUS_THEMES.light
+): { x: number; y: number; width: number; height: number } {
+  // Create a temporary wrapper that matches how we render the docked abacus
+  const measureWrapper = document.createElement('div')
+  measureWrapper.style.visibility = 'hidden'
+  measureWrapper.style.pointerEvents = 'none'
+
+  // Insert directly into the dock element so it gets proper size/position
+  dockElement.appendChild(measureWrapper)
+
+  // Create a React root and render the abacus synchronously
+  const root = createRoot(measureWrapper)
+  flushSync(() => {
+    root.render(
+      <AbacusReact
+        value={0}
+        columns={columns}
+        scaleFactor={scaleFactor}
+        showNumbers={false}
+        interactive={false}
+        animated={false}
+        customStyles={customStyles}
+      />
+    )
+  })
+
+  // Measure the rendered size and position (dock element now has content, so transforms apply correctly)
+  const rect = measureWrapper.getBoundingClientRect()
+  const result = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+
+  // Clean up
+  root.unmount()
+  dockElement.removeChild(measureWrapper)
+
+  return result
+}
 
 export function MyAbacus() {
   const {
@@ -33,9 +80,6 @@ export function MyAbacus() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Track dock container size for auto-scaling
-  const [dockSize, setDockSize] = useState<{ width: number; height: number } | null>(null)
-
   // Local ref for the button container (we'll connect this to context's buttonRef)
   const localButtonRef = useRef<HTMLDivElement>(null)
 
@@ -44,29 +88,6 @@ export function MyAbacus() {
   const [localAbacusValue, setLocalAbacusValue] = useState(1234)
   const abacusValue = homeHeroContext?.abacusValue ?? localAbacusValue
   const setAbacusValue = homeHeroContext?.setAbacusValue ?? setLocalAbacusValue
-
-  // Observe dock container size changes
-  useEffect(() => {
-    if (!dock?.element) {
-      setDockSize(null)
-      return
-    }
-
-    const element = dock.element
-    const updateSize = () => {
-      const rect = element.getBoundingClientRect()
-      setDockSize({ width: rect.width, height: rect.height })
-    }
-
-    // Initial size
-    updateSize()
-
-    // Watch for size changes
-    const resizeObserver = new ResizeObserver(updateSize)
-    resizeObserver.observe(element)
-
-    return () => resizeObserver.disconnect()
-  }, [dock?.element])
 
   // Determine display mode - only hero mode on actual home page
   const isOnHomePage =
@@ -117,25 +138,6 @@ export function MyAbacus() {
   // Detect if we're on a game route (arcade games hide the abacus by default)
   // This matches /arcade, /arcade/*, and /arcade-rooms/*
   const isOnGameRoute = pathname?.startsWith('/arcade')
-
-  // Calculate scale factor for docked mode
-  // Base abacus dimensions are approximately 120px wide per column, 200px tall
-  const calculateDockedScale = () => {
-    if (!dockSize || !dock) return 1
-    if (dock.scaleFactor) return dock.scaleFactor
-
-    const columns = dock.columns ?? 5
-    // Approximate base dimensions of AbacusReact at scale 1
-    const baseWidth = columns * 24 + 20 // ~24px per column + padding
-    const baseHeight = 55 // approximate height
-
-    const scaleX = dockSize.width / baseWidth
-    const scaleY = dockSize.height / baseHeight
-    // Use the smaller scale to fit within container, with some padding
-    return Math.min(scaleX, scaleY) * 0.85
-  }
-
-  const dockedScale = calculateDockedScale()
 
   // Sync local button ref with context's buttonRef
   useEffect(() => {
@@ -212,13 +214,21 @@ export function MyAbacus() {
       return
     }
 
-    // Measure positions
+    // Measure the button's current position
     const buttonRect = localButtonRef.current.getBoundingClientRect()
-    const dockRect = dock.element.getBoundingClientRect()
 
-    // Calculate scales - button shows at 0.35 scale, dock uses dockedScale
+    // Measure where the docked abacus will appear (renders temporarily to get accurate position)
+    const dockColumns = dock.columns ?? 5
+    const targetRect = measureDockedAbacus(
+      dock.element,
+      dockColumns,
+      dock.scaleFactor,
+      structuralStyles
+    )
+
+    // Calculate scales - button shows at 0.35 scale, dock uses scaleFactor directly
     const buttonScale = 0.35
-    const targetScale = dockedScale
+    const targetScale = dock.scaleFactor ?? 1
 
     const animState: DockAnimationState = {
       phase: 'docking',
@@ -228,18 +238,13 @@ export function MyAbacus() {
         width: buttonRect.width,
         height: buttonRect.height,
       },
-      toRect: {
-        x: dockRect.x,
-        y: dockRect.y,
-        width: dockRect.width,
-        height: dockRect.height,
-      },
+      toRect: targetRect,
       fromScale: buttonScale,
       toScale: targetScale,
     }
 
     startDockAnimation(animState)
-  }, [dock, dockInto, dockedScale, startDockAnimation])
+  }, [dock, dockInto, structuralStyles, startDockAnimation])
 
   // Handler to initiate undock animation
   const handleUndockClick = useCallback(() => {
@@ -249,8 +254,24 @@ export function MyAbacus() {
       return
     }
 
-    // Measure dock position (source)
-    const dockRect = dock.element.getBoundingClientRect()
+    // The abacus is currently docked - find the actual rendered abacus element
+    const dockedAbacus = dock.element.querySelector('[data-element="abacus-display"]')
+    let sourceRect: { x: number; y: number; width: number; height: number }
+
+    if (dockedAbacus) {
+      // Measure the actual docked abacus position
+      const rect = dockedAbacus.getBoundingClientRect()
+      sourceRect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+    } else {
+      // Fallback: measure what it would be
+      const dockColumns = dock.columns ?? 5
+      sourceRect = measureDockedAbacus(
+        dock.element,
+        dockColumns,
+        dock.scaleFactor,
+        structuralStyles
+      )
+    }
 
     // Calculate target button position (we don't need the ref - button has known fixed position)
     // Button is fixed at bottom-right with some margin
@@ -262,16 +283,11 @@ export function MyAbacus() {
     const buttonY = viewportHeight - buttonSize - margin
 
     const buttonScale = 0.35
-    const dockScale = dockedScale
+    const dockScale = dock.scaleFactor ?? 1
 
     const animState: DockAnimationState = {
       phase: 'undocking',
-      fromRect: {
-        x: dockRect.x,
-        y: dockRect.y,
-        width: dockRect.width,
-        height: dockRect.height,
-      },
+      fromRect: sourceRect,
       toRect: {
         x: buttonX,
         y: buttonY,
@@ -283,7 +299,7 @@ export function MyAbacus() {
     }
 
     startUndockAnimation(animState)
-  }, [dock, undock, dockedScale, startUndockAnimation])
+  }, [dock, undock, structuralStyles, startUndockAnimation])
 
   // Check if we're currently animating
   const isAnimating = dockAnimationState !== null
@@ -365,8 +381,6 @@ export function MyAbacus() {
             data-mode="docked"
             data-dock-id={dock.id}
             className={css({
-              width: '100%',
-              height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -414,10 +428,7 @@ export function MyAbacus() {
             </button>
             <div
               data-element="abacus-display"
-              style={{ transform: `scale(${dockedScale})` }}
               className={css({
-                transformOrigin: 'center center',
-                transition: 'transform 0.3s ease',
                 filter: 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.2))',
               })}
             >
@@ -426,6 +437,7 @@ export function MyAbacus() {
                 value={dock.value ?? abacusValue}
                 defaultValue={dock.defaultValue}
                 columns={dock.columns ?? 5}
+                scaleFactor={dock.scaleFactor}
                 beadShape={appConfig.beadShape}
                 showNumbers={dock.showNumbers ?? true}
                 interactive={dock.interactive ?? true}
