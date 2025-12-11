@@ -135,6 +135,70 @@ export function MyAbacus() {
   const structuralStyles = ABACUS_THEMES.light
   const trophyStyles = ABACUS_THEMES.trophy
 
+  // Helper to calculate effective scale factor based on container dimensions
+  // Can be called synchronously (for animations) or in effects (for re-rendering)
+  const calculateEffectiveScaleFactor = useCallback(
+    (dockElement: HTMLElement, columns: number, explicitScaleFactor?: number): number => {
+      // If explicit scaleFactor provided, use it
+      if (explicitScaleFactor !== undefined) {
+        return explicitScaleFactor
+      }
+
+      const containerHeight = dockElement.offsetHeight
+      const containerWidth = dockElement.offsetWidth
+
+      if (containerHeight <= 0 || containerWidth <= 0) {
+        return 1 // Default to scale 1 if container has no size
+      }
+
+      // Measure abacus at scale=1 to get base dimensions
+      const baseRect = measureDockedAbacus(dockElement, columns, 1, structuralStyles)
+
+      if (baseRect.height <= 0) {
+        return 1
+      }
+
+      // Calculate scale to fit container, constrained by both width and height
+      const scaleByHeight = containerHeight / baseRect.height
+      const scaleByWidth = containerWidth / baseRect.width
+      const fittingScale = Math.min(scaleByHeight, scaleByWidth)
+
+      // Round to 2 decimal places for stability
+      return Math.round(fittingScale * 100) / 100
+    },
+    [structuralStyles]
+  )
+
+  // Auto-calculate scaleFactor when dock doesn't specify one
+  // Based on container dimensions - scale abacus to fit height while maintaining aspect
+  const [autoScaleFactor, setAutoScaleFactor] = useState<number | undefined>(undefined)
+
+  // Measure dock container and calculate appropriate scaleFactor
+  useEffect(() => {
+    if (!dock?.element || dock.scaleFactor !== undefined) {
+      // If dock specifies scaleFactor, don't auto-calculate
+      setAutoScaleFactor(undefined)
+      return
+    }
+
+    const calculateScale = () => {
+      const scale = calculateEffectiveScaleFactor(dock.element, dock.columns ?? 5)
+      setAutoScaleFactor(scale)
+    }
+
+    // Initial calculation
+    calculateScale()
+
+    // Recalculate on resize
+    const observer = new ResizeObserver(() => calculateScale())
+    observer.observe(dock.element)
+
+    return () => observer.disconnect()
+  }, [dock?.element, dock?.scaleFactor, dock?.columns, calculateEffectiveScaleFactor])
+
+  // Effective scaleFactor: explicit > auto-calculated > undefined (AbacusReact default)
+  const effectiveScaleFactor = dock?.scaleFactor ?? autoScaleFactor
+
   // Detect if we're on a game route (arcade games hide the abacus by default)
   // This matches /arcade, /arcade/*, and /arcade-rooms/*
   const isOnGameRoute = pathname?.startsWith('/arcade')
@@ -217,18 +281,15 @@ export function MyAbacus() {
     // Measure the button's current position
     const buttonRect = localButtonRef.current.getBoundingClientRect()
 
-    // Measure where the docked abacus will appear (renders temporarily to get accurate position)
+    // Calculate the effective scale for the dock (auto-calculates if not explicit)
     const dockColumns = dock.columns ?? 5
-    const targetRect = measureDockedAbacus(
-      dock.element,
-      dockColumns,
-      dock.scaleFactor,
-      structuralStyles
-    )
+    const targetScale = calculateEffectiveScaleFactor(dock.element, dockColumns, dock.scaleFactor)
 
-    // Calculate scales - button shows at 0.35 scale, dock uses scaleFactor directly
+    // Measure where the docked abacus will appear (renders temporarily to get accurate position)
+    const targetRect = measureDockedAbacus(dock.element, dockColumns, targetScale, structuralStyles)
+
+    // Calculate scales - button shows at 0.35 scale
     const buttonScale = 0.35
-    const targetScale = dock.scaleFactor ?? 1
 
     const animState: DockAnimationState = {
       phase: 'docking',
@@ -244,7 +305,7 @@ export function MyAbacus() {
     }
 
     startDockAnimation(animState)
-  }, [dock, dockInto, structuralStyles, startDockAnimation])
+  }, [dock, dockInto, structuralStyles, startDockAnimation, calculateEffectiveScaleFactor])
 
   // Handler to initiate undock animation
   const handleUndockClick = useCallback(() => {
@@ -253,6 +314,10 @@ export function MyAbacus() {
       undock()
       return
     }
+
+    // Calculate the effective scale for the dock (same as what's currently displayed)
+    const dockColumns = dock.columns ?? 5
+    const dockScale = calculateEffectiveScaleFactor(dock.element, dockColumns, dock.scaleFactor)
 
     // The abacus is currently docked - find the actual rendered abacus element
     const dockedAbacus = dock.element.querySelector('[data-element="abacus-display"]')
@@ -264,13 +329,7 @@ export function MyAbacus() {
       sourceRect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     } else {
       // Fallback: measure what it would be
-      const dockColumns = dock.columns ?? 5
-      sourceRect = measureDockedAbacus(
-        dock.element,
-        dockColumns,
-        dock.scaleFactor,
-        structuralStyles
-      )
+      sourceRect = measureDockedAbacus(dock.element, dockColumns, dockScale, structuralStyles)
     }
 
     // Calculate target button position (we don't need the ref - button has known fixed position)
@@ -283,7 +342,6 @@ export function MyAbacus() {
     const buttonY = viewportHeight - buttonSize - margin
 
     const buttonScale = 0.35
-    const dockScale = dock.scaleFactor ?? 1
 
     const animState: DockAnimationState = {
       phase: 'undocking',
@@ -299,7 +357,7 @@ export function MyAbacus() {
     }
 
     startUndockAnimation(animState)
-  }, [dock, undock, structuralStyles, startUndockAnimation])
+  }, [dock, undock, structuralStyles, startUndockAnimation, calculateEffectiveScaleFactor])
 
   // Check if we're currently animating
   const isAnimating = dockAnimationState !== null
@@ -437,7 +495,7 @@ export function MyAbacus() {
                 value={dock.value ?? abacusValue}
                 defaultValue={dock.defaultValue}
                 columns={dock.columns ?? 5}
-                scaleFactor={dock.scaleFactor}
+                scaleFactor={effectiveScaleFactor}
                 beadShape={appConfig.beadShape}
                 showNumbers={dock.showNumbers ?? true}
                 interactive={dock.interactive ?? true}

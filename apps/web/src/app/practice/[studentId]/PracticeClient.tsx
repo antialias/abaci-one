@@ -37,8 +37,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const router = useRouter()
 
   // Track pause state locally (controlled by callbacks from ActiveSession)
-  // Start paused if returning to an existing session (has completed problems)
-  const [isPaused, setIsPaused] = useState(() => initialSession.results.length > 0)
+  // Never auto-pause - session continues where it left off on load/reload
+  const [isPaused, setIsPaused] = useState(false)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()

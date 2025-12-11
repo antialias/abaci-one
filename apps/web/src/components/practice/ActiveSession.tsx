@@ -12,6 +12,61 @@ import type {
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
+
+// ============================================================================
+// Auto-pause threshold calculation
+// ============================================================================
+
+const DEFAULT_PAUSE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes default
+const MIN_SAMPLES_FOR_STATISTICS = 5 // Minimum problems needed for statistical calculation
+
+/**
+ * Calculate mean and standard deviation of response times
+ */
+function calculateResponseTimeStats(results: SlotResult[]): {
+  mean: number
+  stdDev: number
+  count: number
+} {
+  if (results.length === 0) {
+    return { mean: 0, stdDev: 0, count: 0 }
+  }
+
+  const times = results.map((r) => r.responseTimeMs)
+  const count = times.length
+  const mean = times.reduce((sum, t) => sum + t, 0) / count
+
+  if (count < 2) {
+    return { mean, stdDev: 0, count }
+  }
+
+  const squaredDiffs = times.map((t) => (t - mean) ** 2)
+  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / (count - 1) // Sample std dev
+  const stdDev = Math.sqrt(variance)
+
+  return { mean, stdDev, count }
+}
+
+/**
+ * Calculate the auto-pause threshold based on response time statistics.
+ * Returns mean + 2 standard deviations if we have enough data,
+ * otherwise returns the default timeout (5 minutes).
+ */
+function calculateAutoPauseThreshold(results: SlotResult[]): number {
+  const stats = calculateResponseTimeStats(results)
+
+  if (stats.count < MIN_SAMPLES_FOR_STATISTICS) {
+    return DEFAULT_PAUSE_TIMEOUT_MS
+  }
+
+  // Use mean + 2 standard deviations
+  const threshold = stats.mean + 2 * stats.stdDev
+
+  // Ensure threshold is at least 30 seconds (to avoid too-aggressive pausing)
+  // and at most 5 minutes (reasonable upper bound)
+  return Math.max(30_000, Math.min(threshold, DEFAULT_PAUSE_TIMEOUT_MS))
+}
+
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
@@ -274,9 +329,37 @@ export function ActiveSession({
     }
   }, [helpContext])
 
+  // Exit help mode when both help elements are dismissed
+  useEffect(() => {
+    if (showHelpOverlay && helpAbacusDismissed && helpPanelDismissed) {
+      exitHelpMode()
+    }
+  }, [showHelpOverlay, helpAbacusDismissed, helpPanelDismissed, exitHelpMode])
+
   // Refs for measuring problem widths during animation
   const outgoingRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLDivElement>(null)
+
+  // Track problem container height for AbacusDock sizing
+  const [problemHeight, setProblemHeight] = useState<number | null>(null)
+
+  // Measure problem container height with ResizeObserver
+  useEffect(() => {
+    const element = activeRef.current
+    if (!element) return
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setProblemHeight(entry.contentRect.height)
+      }
+    })
+
+    observer.observe(element)
+    // Initial measurement
+    setProblemHeight(element.offsetHeight)
+
+    return () => observer.disconnect()
+  }, [])
 
   // Track if we need to apply centering offset (set true when transition starts)
   const needsCenteringOffsetRef = useRef(false)
@@ -595,6 +678,45 @@ export function ActiveSession({
     showHelpOverlay,
     exitHelpMode,
   ])
+
+  // Auto-pause when user takes too long on a problem
+  // Uses mean + 2 standard deviations of response times if we have enough data,
+  // otherwise defaults to 5 minutes
+  useEffect(() => {
+    // Only run auto-pause when actively inputting
+    if (
+      phase.phase !== 'inputting' &&
+      phase.phase !== 'awaitingDisambiguation' &&
+      phase.phase !== 'helpMode'
+    ) {
+      return
+    }
+
+    // Don't auto-pause if already paused
+    if (isPaused) return
+
+    // Calculate the threshold from historical results
+    const threshold = calculateAutoPauseThreshold(plan.results)
+
+    // Calculate remaining time until auto-pause
+    const elapsedMs = Date.now() - attempt.startTime
+    const remainingMs = threshold - elapsedMs
+
+    // If already over threshold, pause immediately
+    if (remainingMs <= 0) {
+      pause()
+      onPause?.()
+      return
+    }
+
+    // Set timeout to trigger pause when threshold is reached
+    const timeoutId = setTimeout(() => {
+      pause()
+      onPause?.()
+    }, remainingMs)
+
+    return () => clearTimeout(timeoutId)
+  }, [phase.phase, isPaused, attempt?.startTime, plan.results, pause, onPause])
 
   const handlePause = useCallback(() => {
     pause()
@@ -1190,22 +1312,23 @@ export function ActiveSession({
                 </div>
               )}
               {/* Abacus dock - positioned absolutely so it doesn't affect problem centering */}
-              {currentPart.type === 'abacus' && !showHelpOverlay && (
+              {/* Width 100% matches problem width, height matches problem height */}
+              {currentPart.type === 'abacus' && !showHelpOverlay && problemHeight && (
                 <AbacusDock
                   id="practice-abacus"
                   columns={String(Math.abs(attempt.problem.answer)).length}
                   interactive={true}
                   showNumbers={false}
                   animated={true}
-                  scaleFactor={2.5}
                   onValueChange={handleAbacusDockValueChange}
                   className={css({
                     position: 'absolute',
                     left: '100%',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    top: 0,
+                    width: '100%',
                     marginLeft: '1.5rem',
                   })}
+                  style={{ height: problemHeight }}
                 />
               )}
             </animated.div>
