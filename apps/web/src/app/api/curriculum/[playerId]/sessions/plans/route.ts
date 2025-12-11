@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import {
   ActiveSessionExistsError,
+  type EnabledParts,
   type GenerateSessionPlanOptions,
   generateSessionPlan,
   getActiveSessionPlan,
@@ -43,12 +44,16 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
 /**
  * POST /api/curriculum/[playerId]/sessions/plans
- * Generate a new three-part session plan
+ * Generate a new session plan
  *
  * Body:
  * - durationMinutes: number (required) - Total session duration
+ * - abacusTermCount?: { min: number, max: number } - Term count for abacus part
+ *   (visualization auto-calculates as 75% of abacus)
+ * - enabledParts?: { abacus: boolean, visualization: boolean, linear: boolean } - Which parts to include
+ *   (default: all enabled)
  *
- * The plan will automatically include all three parts:
+ * The plan will include the selected parts:
  * - Part 1: Abacus (use physical abacus, vertical format)
  * - Part 2: Visualization (mental math, vertical format)
  * - Part 3: Linear (mental math, sentence format)
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json()
-    const { durationMinutes } = body
+    const { durationMinutes, abacusTermCount, enabledParts } = body
 
     if (!durationMinutes || typeof durationMinutes !== 'number') {
       return NextResponse.json(
@@ -67,9 +72,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // Validate enabledParts if provided
+    if (enabledParts) {
+      const validParts = ['abacus', 'visualization', 'linear']
+      const enabledCount = validParts.filter((p) => enabledParts[p] === true).length
+      if (enabledCount === 0) {
+        return NextResponse.json({ error: 'At least one part must be enabled' }, { status: 400 })
+      }
+    }
+
     const options: GenerateSessionPlanOptions = {
       playerId,
       durationMinutes,
+      // Pass enabled parts
+      enabledParts: enabledParts as EnabledParts | undefined,
+      // Pass config overrides if abacusTermCount is specified
+      ...(abacusTermCount && {
+        config: {
+          abacusTermCount,
+        },
+      }),
     }
 
     const plan = await generateSessionPlan(options)

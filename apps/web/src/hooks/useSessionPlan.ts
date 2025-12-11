@@ -30,17 +30,32 @@ export class ActiveSessionExistsClientError extends Error {
   }
 }
 
+/**
+ * Which session parts to include
+ */
+interface EnabledParts {
+  abacus: boolean
+  visualization: boolean
+  linear: boolean
+}
+
 async function generateSessionPlan({
   playerId,
   durationMinutes,
+  abacusTermCount,
+  enabledParts,
 }: {
   playerId: string
   durationMinutes: number
+  /** Max terms per problem for abacus part (visualization auto-calculates as 75%) */
+  abacusTermCount?: { min: number; max: number }
+  /** Which parts to include (default: all enabled) */
+  enabledParts?: EnabledParts
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ durationMinutes }),
+    body: JSON.stringify({ durationMinutes, abacusTermCount, enabledParts }),
   })
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

@@ -54,6 +54,43 @@ export interface ProblemConstraints {
   digitRange?: { min: number; max: number }
   termCount?: { min: number; max: number }
   operator?: 'addition' | 'subtraction' | 'mixed'
+
+  /**
+   * Maximum complexity budget per term.
+   *
+   * Each term's skills are costed using the SkillCostCalculator,
+   * which factors in both base skill complexity and student mastery.
+   *
+   * If set, terms with total cost > budget are rejected during generation.
+   */
+  maxComplexityBudgetPerTerm?: number
+}
+
+/**
+ * A single step in the generation trace
+ */
+export interface GenerationTraceStep {
+  stepNumber: number
+  operation: string // e.g., "0 + 3 = 3" or "3 + 4 = 7"
+  accumulatedBefore: number
+  termAdded: number
+  accumulatedAfter: number
+  skillsUsed: string[]
+  explanation: string
+  /** Complexity cost for this term (if budget system was used) */
+  complexityCost?: number
+}
+
+/**
+ * Full generation trace for a problem
+ */
+export interface GenerationTrace {
+  terms: number[]
+  answer: number
+  steps: GenerationTraceStep[]
+  allSkills: string[]
+  /** Budget constraint used during generation (if any) */
+  budgetConstraint?: number
 }
 
 export interface GeneratedProblem {
@@ -63,6 +100,8 @@ export interface GeneratedProblem {
   answer: number
   /** Skills this problem exercises */
   skillsRequired: string[]
+  /** Generation trace with per-step skills and costs */
+  generationTrace?: GenerationTrace
 }
 
 /**
@@ -399,6 +438,15 @@ export const DEFAULT_PLAN_CONFIG = {
     linear: 0.2,
   },
 
+  /** Term count range for abacus part (how many numbers per problem) */
+  abacusTermCount: { min: 3, max: 6 },
+
+  /** Term count range for visualization part (defaults to 75% of abacus) */
+  visualizationTermCount: null as { min: number; max: number } | null,
+
+  /** Term count range for linear part (same as abacus by default) */
+  linearTermCount: null as { min: number; max: number } | null,
+
   /** Default seconds per problem if no history */
   defaultSecondsPerProblem: 45,
 
@@ -410,6 +458,17 @@ export const DEFAULT_PLAN_CONFIG = {
 
   /** Session timeout in hours - sessions older than this are auto-abandoned on next access */
   sessionTimeoutHours: 24,
-} as const
+
+  /**
+   * Complexity budget per term for each part type.
+   * null = no limit (unlimited)
+   *
+   * These are evaluated against student-aware costs:
+   *   termCost = Σ(baseCost × masteryMultiplier)
+   */
+  abacusComplexityBudget: null as number | null,
+  visualizationComplexityBudget: 3 as number | null,
+  linearComplexityBudget: null as number | null,
+}
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG

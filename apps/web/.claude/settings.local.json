@@ -135,13 +135,19 @@
       "Bash(ls:*)",
       "Bash(mcp__sqlite__list_tables:*)",
       "Bash(mcp__sqlite__read_query:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(xargs basename:*)",
+      "Bash(apps/web/src/app/practice/[studentId]/configure/ConfigureClient.tsx )",
+      "Bash(apps/web/src/components/practice/ManualSkillSelector.tsx )",
+      "Bash(apps/web/src/components/practice/VerticalProblem.tsx )",
+      "Bash(apps/web/src/components/practice/VerticalProblem.stories.tsx )",
+      "Bash(apps/web/src/types/tutorial.ts )",
+      "Bash(apps/web/src/utils/problemGenerator.ts )",
+      "Bash(apps/web/src/utils/__tests__/cascadingRegrouping.test.ts)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

@@ -1,4 +1,9 @@
+import type { GenerationTrace, GenerationTraceStep } from '@/db/schema/session-plans'
 import type { PracticeStep, SkillSet } from '../types/tutorial'
+import type { SkillCostCalculator } from './skillComplexity'
+
+// Re-export trace types for consumers that import from this file
+export type { GenerationTrace, GenerationTraceStep }
 
 export interface GeneratedProblem {
   id: string
@@ -15,8 +20,18 @@ export interface ProblemConstraints {
   numberRange: { min: number; max: number }
   maxSum?: number
   minSum?: number
+  minTerms?: number
   maxTerms: number
   problemCount: number
+  /**
+   * Maximum complexity budget per term.
+   *
+   * Each term's skills are costed using the SkillCostCalculator,
+   * which factors in both base skill complexity and student mastery.
+   *
+   * If set, terms with total cost > budget are rejected during generation.
+   */
+  maxComplexityBudgetPerTerm?: number
 }
 
 /**
@@ -49,28 +64,8 @@ export function analyzeRequiredSkills(terms: number[], _finalSum: number): strin
   return [...new Set(skills)] // Remove duplicates
 }
 
-/**
- * A single step in the generation trace
- */
-export interface GenerationTraceStep {
-  stepNumber: number
-  operation: string // e.g., "0 + 3 = 3" or "3 + 4 = 7"
-  accumulatedBefore: number
-  termAdded: number
-  accumulatedAfter: number
-  skillsUsed: string[]
-  explanation: string
-}
-
-/**
- * Full generation trace for a problem
- */
-export interface GenerationTrace {
-  terms: number[]
-  answer: number
-  steps: GenerationTraceStep[]
-  allSkills: string[]
-}
+// GenerationTrace and GenerationTraceStep are imported from @/db/schema/session-plans
+// and re-exported above for backward compatibility
 
 /**
  * Generates a human-readable explanation for a single step
@@ -152,7 +147,7 @@ function generateStepExplanation(
  * Analyzes skills needed for a single addition step: currentValue + term = newValue
  * Also detects cascading carries (when a carry propagates across 2+ columns).
  */
-function analyzeStepSkills(currentValue: number, term: number, newValue: number): string[] {
+export function analyzeStepSkills(currentValue: number, term: number, newValue: number): string[] {
   const skills: string[] = []
 
   // Work column by column from right to left
@@ -502,26 +497,68 @@ export function problemMatchesSkills(
 }
 
 /**
+ * Options for generating a single problem
+ */
+export interface GenerateProblemOptions {
+  constraints: ProblemConstraints
+  requiredSkills: SkillSet
+  targetSkills?: Partial<SkillSet>
+  forbiddenSkills?: Partial<SkillSet>
+  /** Student-aware cost calculator for budget enforcement */
+  costCalculator?: SkillCostCalculator
+  /** Number of attempts before giving up (default: 100) */
+  attempts?: number
+}
+
+/**
  * Generates a single sequential addition problem that matches the given constraints and skills
  */
 export function generateSingleProblem(
-  constraints: ProblemConstraints,
-  requiredSkills: SkillSet,
+  constraintsOrOptions: ProblemConstraints | GenerateProblemOptions,
+  requiredSkills?: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
   attempts: number = 100
 ): GeneratedProblem | null {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    // Generate random number of terms (3 to 5 as specified)
-    const termCount = Math.floor(Math.random() * 3) + 3 // 3-5 terms
+  // Support both old and new API
+  let constraints: ProblemConstraints
+  let _requiredSkills: SkillSet
+  let _targetSkills: Partial<SkillSet> | undefined
+  let _forbiddenSkills: Partial<SkillSet> | undefined
+  let _attempts: number
+  let costCalculator: SkillCostCalculator | undefined
+
+  if ('constraints' in constraintsOrOptions) {
+    // New options-based API
+    constraints = constraintsOrOptions.constraints
+    _requiredSkills = constraintsOrOptions.requiredSkills
+    _targetSkills = constraintsOrOptions.targetSkills
+    _forbiddenSkills = constraintsOrOptions.forbiddenSkills
+    _attempts = constraintsOrOptions.attempts ?? 100
+    costCalculator = constraintsOrOptions.costCalculator
+  } else {
+    // Old positional API (backward compatibility)
+    constraints = constraintsOrOptions
+    _requiredSkills = requiredSkills!
+    _targetSkills = targetSkills
+    _forbiddenSkills = forbiddenSkills
+    _attempts = attempts
+  }
+
+  for (let attempt = 0; attempt < _attempts; attempt++) {
+    // Generate random number of terms within the specified range
+    const minTerms = constraints.minTerms ?? 3
+    const maxTerms = constraints.maxTerms
+    const termCount = Math.floor(Math.random() * (maxTerms - minTerms + 1)) + minTerms
 
     // Generate the sequence of numbers to add (now returns trace with provenance)
     const sequenceResult = generateSequence(
       constraints,
       termCount,
-      requiredSkills,
-      targetSkills,
-      forbiddenSkills
+      _requiredSkills,
+      _targetSkills,
+      _forbiddenSkills,
+      costCalculator
     )
 
     if (!sequenceResult) continue // Failed to generate valid sequence
@@ -555,7 +592,7 @@ export function generateSingleProblem(
     }
 
     // Check if problem matches skill requirements
-    if (problemMatchesSkills(problem, requiredSkills, targetSkills, forbiddenSkills)) {
+    if (problemMatchesSkills(problem, _requiredSkills, _targetSkills, _forbiddenSkills)) {
       return problem
     }
   }
@@ -592,7 +629,8 @@ function generateSequence(
   termCount: number,
   requiredSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
-  forbiddenSkills?: Partial<SkillSet>
+  forbiddenSkills?: Partial<SkillSet>,
+  costCalculator?: SkillCostCalculator
 ): SequenceResult | null {
   const terms: number[] = []
   const steps: GenerationTraceStep[] = []
@@ -612,12 +650,13 @@ function generateSequence(
       targetSkills,
       forbiddenSkills,
       i === termCount - 1, // isLastTerm
-      allowSubtraction
+      allowSubtraction,
+      costCalculator
     )
 
     if (result === null) return null // Couldn't find valid term
 
-    const { term, skillsUsed, isSubtraction } = result
+    const { term, skillsUsed, isSubtraction, complexityCost } = result
     const newValue = isSubtraction ? currentValue - term : currentValue + term
 
     // Build trace step with the skills the generator computed
@@ -640,6 +679,7 @@ function generateSequence(
       accumulatedAfter: newValue,
       skillsUsed,
       explanation,
+      complexityCost,
     })
 
     // Store the signed term for the problem
@@ -654,6 +694,7 @@ function generateSequence(
       answer: currentValue,
       steps,
       allSkills: [...new Set(steps.flatMap((s) => s.skillsUsed))],
+      budgetConstraint: constraints.maxComplexityBudgetPerTerm,
     },
   }
 }
@@ -663,6 +704,8 @@ interface TermWithSkills {
   term: number
   skillsUsed: string[]
   isSubtraction: boolean
+  /** Complexity cost (if calculator was provided) */
+  complexityCost?: number
 }
 
 /**
@@ -677,10 +720,12 @@ function findValidNextTermWithTrace(
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
   isLastTerm: boolean = false,
-  allowSubtraction: boolean = false
+  allowSubtraction: boolean = false,
+  costCalculator?: SkillCostCalculator
 ): TermWithSkills | null {
   const { min, max } = constraints.numberRange
   const candidates: TermWithSkills[] = []
+  const maxBudget = constraints.maxComplexityBudgetPerTerm
 
   // Try each possible ADDITION term value
   for (let term = min; term <= max; term++) {
@@ -700,9 +745,22 @@ function findValidNextTermWithTrace(
       return true
     })
 
-    if (usesValidSkills) {
-      candidates.push({ term, skillsUsed: stepSkills, isSubtraction: false })
+    if (!usesValidSkills) continue
+
+    // Calculate complexity cost (if calculator provided)
+    const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
+
+    // Check complexity budget (if calculator and budget are provided)
+    if (maxBudget !== undefined && termCost !== undefined) {
+      if (termCost > maxBudget) continue // Skip - too complex for this student
     }
+
+    candidates.push({
+      term,
+      skillsUsed: stepSkills,
+      isSubtraction: false,
+      complexityCost: termCost,
+    })
   }
 
   // Try each possible SUBTRACTION term value (if allowed)
@@ -727,9 +785,22 @@ function findValidNextTermWithTrace(
         return true
       })
 
-      if (usesValidSkills) {
-        candidates.push({ term, skillsUsed: stepSkills, isSubtraction: true })
+      if (!usesValidSkills) continue
+
+      // Calculate complexity cost (if calculator provided)
+      const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
+
+      // Check complexity budget (if calculator and budget are provided)
+      if (maxBudget !== undefined && termCost !== undefined) {
+        if (termCost > maxBudget) continue // Skip - too complex for this student
       }
+
+      candidates.push({
+        term,
+        skillsUsed: stepSkills,
+        isSubtraction: true,
+        complexityCost: termCost,
+      })
     }
   }
 

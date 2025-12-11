@@ -39,6 +39,10 @@ export function ProblemDebugPanel({
   const [copied, setCopied] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
+  // Get trace data directly from the problem generator
+  const trace = problem.generationTrace
+  const budgetConstraint = trace?.budgetConstraint ?? slot.constraints?.maxComplexityBudgetPerTerm
+
   const debugData = {
     problem: {
       terms: problem.terms,
@@ -61,6 +65,16 @@ export function ProblemDebugPanel({
     state: {
       userInput,
       phaseName,
+    },
+    complexity: {
+      budgetConstraint: budgetConstraint ?? 'none',
+      termAnalysis:
+        trace?.steps.map((step) => ({
+          term: step.termAdded,
+          skills: step.skillsUsed,
+          cost: step.complexityCost,
+        })) ?? [],
+      hasTrace: !!trace,
     },
   }
 
@@ -187,6 +201,91 @@ export function ProblemDebugPanel({
             <div className={css({ color: '#a3a3a3', marginTop: '4px' })}>
               Phase: {phaseName} | Input: "{userInput}"
             </div>
+          </div>
+
+          {/* Complexity Budget Info */}
+          <div
+            data-element="complexity-breakdown"
+            className={css({
+              marginBottom: '12px',
+              padding: '8px',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              borderRadius: '4px',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+            })}
+          >
+            <div
+              className={css({
+                color: '#a78bfa',
+                fontWeight: 'bold',
+                marginBottom: '6px',
+                display: 'flex',
+                justifyContent: 'space-between',
+              })}
+            >
+              <span>Complexity Budget</span>
+              {budgetConstraint !== undefined ? (
+                <span className={css({ color: '#fbbf24' })}>max {budgetConstraint}/term</span>
+              ) : (
+                <span className={css({ color: '#6b7280' })}>no limit</span>
+              )}
+            </div>
+            {trace ? (
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '4px' })}>
+                {trace.steps.map((step, i) => {
+                  const cost = step.complexityCost
+                  const isOverBudget =
+                    budgetConstraint !== undefined && cost !== undefined && cost > budgetConstraint
+                  return (
+                    <div
+                      key={i}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '10px',
+                      })}
+                    >
+                      <span
+                        className={css({
+                          color: '#d1d5db',
+                          minWidth: '45px',
+                        })}
+                      >
+                        {step.termAdded >= 0
+                          ? `+ ${step.termAdded}`
+                          : `- ${Math.abs(step.termAdded)}`}
+                      </span>
+                      <span
+                        className={css({
+                          color: isOverBudget ? '#f87171' : '#4ade80',
+                          fontWeight: 'bold',
+                          minWidth: '35px',
+                        })}
+                      >
+                        {cost !== undefined ? `${cost}` : '—'}
+                      </span>
+                      <span
+                        className={css({
+                          color: '#9ca3af',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flex: 1,
+                        })}
+                        title={step.skillsUsed.join(', ')}
+                      >
+                        {step.skillsUsed.length > 0 ? step.skillsUsed.join(', ') : '(none)'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={css({ color: '#f87171', fontSize: '10px' })}>
+                No generation trace available
+              </div>
+            )}
           </div>
 
           {/* Full JSON */}

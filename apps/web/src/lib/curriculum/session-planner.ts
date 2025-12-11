@@ -44,10 +44,21 @@ import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './pr
 // Plan Generation
 // ============================================================================
 
+/**
+ * Which session parts to include in the generated plan
+ */
+export interface EnabledParts {
+  abacus: boolean
+  visualization: boolean
+  linear: boolean
+}
+
 export interface GenerateSessionPlanOptions {
   playerId: string
   durationMinutes: number
   config?: Partial<PlanGenerationConfig>
+  /** Which parts to include (default: all enabled) */
+  enabledParts?: EnabledParts
 }
 
 /**
@@ -72,9 +83,16 @@ export class ActiveSessionExistsError extends Error {
 export async function generateSessionPlan(
   options: GenerateSessionPlanOptions
 ): Promise<SessionPlan> {
-  const { playerId, durationMinutes, config: configOverrides } = options
+  const { playerId, durationMinutes, config: configOverrides, enabledParts } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
+
+  // Default: all parts enabled
+  const partsToInclude: EnabledParts = enabledParts ?? {
+    abacus: true,
+    visualization: true,
+    linear: true,
+  }
 
   // Check for existing active session (one active session per kid rule)
   const existingActive = await getActiveSessionPlan(playerId)
@@ -112,42 +130,38 @@ export async function generateSessionPlan(
   const struggling = findStrugglingSkills(skillMastery)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
-  // 4. Build three parts using STUDENT'S MASTERED SKILLS
-  const parts: SessionPart[] = [
-    buildSessionPart(
-      1,
-      'abacus',
-      durationMinutes,
-      avgTimeSeconds,
-      config,
-      masteredSkillConstraints,
-      struggling,
-      needsReview,
-      currentPhase
-    ),
-    buildSessionPart(
-      2,
-      'visualization',
-      durationMinutes,
-      avgTimeSeconds,
-      config,
-      masteredSkillConstraints,
-      struggling,
-      needsReview,
-      currentPhase
-    ),
-    buildSessionPart(
-      3,
-      'linear',
-      durationMinutes,
-      avgTimeSeconds,
-      config,
-      masteredSkillConstraints,
-      struggling,
-      needsReview,
-      currentPhase
-    ),
-  ]
+  // 4. Build parts using STUDENT'S MASTERED SKILLS (only enabled parts)
+  // Normalize part time weights based on which parts are enabled
+  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter(
+    (type) => partsToInclude[type]
+  )
+  const totalEnabledWeight = enabledPartTypes.reduce(
+    (sum, type) => sum + config.partTimeWeights[type],
+    0
+  )
+
+  // Build only enabled parts with normalized time weights
+  const parts: SessionPart[] = []
+  let partNumber = 1 as 1 | 2 | 3
+
+  for (const partType of enabledPartTypes) {
+    const normalizedWeight = config.partTimeWeights[partType] / totalEnabledWeight
+    parts.push(
+      buildSessionPart(
+        partNumber,
+        partType,
+        durationMinutes,
+        avgTimeSeconds,
+        { ...config, partTimeWeights: { ...config.partTimeWeights, [partType]: normalizedWeight } },
+        masteredSkillConstraints,
+        struggling,
+        needsReview,
+        currentPhase,
+        normalizedWeight
+      )
+    )
+    partNumber = (partNumber + 1) as 1 | 2 | 3
+  }
 
   // 5. Build summary
   const summary = buildSummary(parts, currentPhase, durationMinutes)
@@ -190,10 +204,11 @@ function buildSessionPart(
   phaseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
   struggling: PlayerSkillMastery[],
   needsReview: PlayerSkillMastery[],
-  currentPhase: CurriculumPhase | undefined
+  currentPhase: CurriculumPhase | undefined,
+  normalizedWeight?: number
 ): SessionPart {
-  // Get time allocation for this part
-  const partWeight = config.partTimeWeights[type]
+  // Get time allocation for this part (use normalized weight if provided)
+  const partWeight = normalizedWeight ?? config.partTimeWeights[type]
   const partDurationMinutes = totalDurationMinutes * partWeight
   const partProblemCount = Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
 
@@ -208,7 +223,7 @@ function buildSessionPart(
 
   // Focus slots: current phase, primary skill
   for (let i = 0; i < focusCount; i++) {
-    slots.push(createSlot(slots.length, 'focus', phaseConstraints, type))
+    slots.push(createSlot(slots.length, 'focus', phaseConstraints, type, config))
   }
 
   // Reinforce slots: struggling skills get extra practice
@@ -219,7 +234,8 @@ function buildSessionPart(
         slots.length,
         'reinforce',
         skill ? buildConstraintsForSkill(skill) : phaseConstraints,
-        type
+        type,
+        config
       )
     )
   }
@@ -232,14 +248,15 @@ function buildSessionPart(
         slots.length,
         'review',
         skill ? buildConstraintsForSkill(skill) : phaseConstraints,
-        type
+        type,
+        config
       )
     )
   }
 
   // Challenge slots: use same mastered skills constraints (all problems should use student's skills)
   for (let i = 0; i < challengeCount; i++) {
-    slots.push(createSlot(slots.length, 'challenge', phaseConstraints, type))
+    slots.push(createSlot(slots.length, 'challenge', phaseConstraints, type, config))
   }
 
   // Shuffle to interleave purposes
@@ -494,33 +511,76 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
 // ============================================================================
 
 /**
- * Get term count constraints based on part type
+ * Get term count constraints based on part type and config
  *
- * - abacus: Full term count (3-6 terms)
- * - visualization: 75% of abacus (easier since no physical abacus) - rounds to 2-4 terms
- * - linear: Same as abacus (full difficulty)
+ * - abacus: Uses config.abacusTermCount
+ * - visualization: Uses config.visualizationTermCount, or 75% of abacus if null
+ * - linear: Uses config.linearTermCount, or same as abacus if null
  */
-function getTermCountForPartType(partType: SessionPartType): { min: number; max: number } {
-  if (partType === 'visualization') {
-    // 75% of abacus term count (3*0.75=2.25→2, 6*0.75=4.5→4)
-    return { min: 2, max: 4 }
+function getTermCountForPartType(
+  partType: SessionPartType,
+  config: PlanGenerationConfig
+): { min: number; max: number } {
+  const abacusTerms = config.abacusTermCount
+
+  if (partType === 'abacus') {
+    return abacusTerms
   }
-  // abacus and linear use full term count
-  return { min: 3, max: 6 }
+
+  if (partType === 'visualization') {
+    // Use explicit config if set, otherwise 75% of abacus
+    if (config.visualizationTermCount) {
+      return config.visualizationTermCount
+    }
+    return {
+      min: Math.max(2, Math.round(abacusTerms.min * 0.75)),
+      max: Math.max(2, Math.round(abacusTerms.max * 0.75)),
+    }
+  }
+
+  // linear: use explicit config if set, otherwise same as abacus
+  if (config.linearTermCount) {
+    return config.linearTermCount
+  }
+  return abacusTerms
+}
+
+/**
+ * Get the complexity budget for a part type from config
+ * Returns undefined if no budget limit (unlimited)
+ */
+function getComplexityBudgetForPartType(
+  partType: SessionPartType,
+  config: PlanGenerationConfig
+): number | undefined {
+  if (partType === 'abacus') {
+    return config.abacusComplexityBudget ?? undefined
+  }
+  if (partType === 'visualization') {
+    return config.visualizationComplexityBudget ?? undefined
+  }
+  // linear
+  return config.linearComplexityBudget ?? undefined
 }
 
 function createSlot(
   index: number,
   purpose: ProblemSlot['purpose'],
   baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
-  partType: SessionPartType
+  partType: SessionPartType,
+  config: PlanGenerationConfig
 ): ProblemSlot {
+  // Get complexity budget for this part type
+  const maxComplexityBudgetPerTerm = getComplexityBudgetForPartType(partType, config)
+
   const constraints = {
     requiredSkills: baseConstraints.requiredSkills,
     targetSkills: baseConstraints.targetSkills,
     forbiddenSkills: baseConstraints.forbiddenSkills,
-    termCount: getTermCountForPartType(partType),
+    termCount: getTermCountForPartType(partType, config),
     digitRange: { min: 1, max: 2 },
+    // Add complexity budget constraint for visualization mode
+    ...(maxComplexityBudgetPerTerm !== undefined && { maxComplexityBudgetPerTerm }),
   }
 
   // Pre-generate the problem so it's persisted with the plan

@@ -50,6 +50,7 @@ export function generateProblemFromConstraints(constraints: ProblemConstraints):
 
   const generatorConstraints: GeneratorConstraints = {
     numberRange: { min: 1, max: maxValue },
+    minTerms: constraints.termCount?.min || 3,
     maxTerms: constraints.termCount?.max || 5,
     problemCount: 1,
   }
@@ -66,6 +67,7 @@ export function generateProblemFromConstraints(constraints: ProblemConstraints):
       terms: generatedProblem.terms,
       answer: generatedProblem.answer,
       skillsRequired: generatedProblem.requiredSkills,
+      generationTrace: generatedProblem.generationTrace,
     }
   }
 

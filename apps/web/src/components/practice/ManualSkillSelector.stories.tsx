@@ -161,3 +161,40 @@ export const AllSkillsMastered: Story = {
 export const NewStudent: Story = {
   render: () => <InteractiveDemo studentName="New Learner" currentMasteredSkills={[]} />,
 }
+
+/**
+ * This story highlights the complexity badges feature.
+ * Each skill has a badge indicating its base complexity:
+ * - 1★ (green): Simple single-concept operations
+ * - 2★ (orange): Cross-column operations (ten complements)
+ * - 3★ (red): Cascading multi-column operations
+ *
+ * The badges help teachers understand the inherent difficulty of each skill.
+ */
+export const ComplexityBadgesHighlight: Story = {
+  render: () => (
+    <InteractiveDemo
+      studentName="Demo Student"
+      currentMasteredSkills={[
+        // Show variety of complexity levels
+        'basic.directAddition', // 1★
+        'tenComplements.9=10-1', // 2★
+        'advanced.cascadingCarry', // 3★
+      ]}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Demonstrates the complexity badges that appear next to each skill:
+- **1★ Simple** (green): Basic operations like direct addition, heaven bead, and five complements
+- **2★ Cross-column** (orange): Ten complement operations that involve carrying/borrowing
+- **3★ Cascading** (red): Advanced operations like cascading carry (999+1=1000)
+
+The complexity legend at the top explains what each badge means.
+        `,
+      },
+    },
+  },
+}

@@ -117,41 +117,78 @@ function groupSkillsByCategory(skillIds: string[]): Map<string, string[]> {
 }
 
 /**
- * Calculate estimated session breakdown based on duration
+ * Enabled parts configuration
  */
-function calculateEstimates(durationMinutes: number, avgSecondsPerProblem: number) {
+type EnabledParts = {
+  abacus: boolean
+  visualization: boolean
+  linear: boolean
+}
+
+/**
+ * Calculate estimated session breakdown based on duration and enabled parts
+ */
+function calculateEstimates(
+  durationMinutes: number,
+  avgSecondsPerProblem: number,
+  enabledParts: EnabledParts
+) {
+  // Filter to only enabled parts and recalculate weights
+  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter(
+    (type) => enabledParts[type]
+  )
+
+  // If no parts enabled, return zeros
+  if (enabledPartTypes.length === 0) {
+    return {
+      totalProblems: 0,
+      parts: [
+        { type: 'abacus' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
+        { type: 'visualization' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
+        { type: 'linear' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
+      ],
+      purposes: { focus: 0, reinforce: 0, review: 0, challenge: 0 },
+    }
+  }
+
+  // Calculate total weight of enabled parts
+  const totalEnabledWeight = enabledPartTypes.reduce(
+    (sum, type) => sum + PART_TIME_WEIGHTS[type],
+    0
+  )
+
   const totalProblems = Math.max(3, Math.floor((durationMinutes * 60) / avgSecondsPerProblem))
 
-  // Calculate problems per part based on weights
-  const parts = [
-    {
-      type: 'abacus' as const,
-      weight: PART_TIME_WEIGHTS.abacus,
-      minutes: Math.round(durationMinutes * PART_TIME_WEIGHTS.abacus),
-      problems: Math.max(2, Math.round(totalProblems * PART_TIME_WEIGHTS.abacus)),
-    },
-    {
-      type: 'visualization' as const,
-      weight: PART_TIME_WEIGHTS.visualization,
-      minutes: Math.round(durationMinutes * PART_TIME_WEIGHTS.visualization),
-      problems: Math.max(1, Math.round(totalProblems * PART_TIME_WEIGHTS.visualization)),
-    },
-    {
-      type: 'linear' as const,
-      weight: PART_TIME_WEIGHTS.linear,
-      minutes: Math.round(durationMinutes * PART_TIME_WEIGHTS.linear),
-      problems: Math.max(1, Math.round(totalProblems * PART_TIME_WEIGHTS.linear)),
-    },
-  ]
+  // Calculate problems per part based on normalized weights
+  const parts = (['abacus', 'visualization', 'linear'] as const).map((type) => {
+    const enabled = enabledParts[type]
+    if (!enabled) {
+      return { type, weight: 0, minutes: 0, problems: 0, enabled: false }
+    }
+    const normalizedWeight = PART_TIME_WEIGHTS[type] / totalEnabledWeight
+    return {
+      type,
+      weight: normalizedWeight,
+      minutes: Math.round(durationMinutes * normalizedWeight),
+      problems: Math.max(1, Math.round(totalProblems * normalizedWeight)),
+      enabled: true,
+    }
+  })
+
+  // Recalculate actual total problems from enabled parts
+  const actualTotalProblems = parts.reduce((sum, p) => sum + p.problems, 0)
 
   // Calculate purpose breakdown
-  const focusCount = Math.round(totalProblems * PURPOSE_WEIGHTS.focus)
-  const reinforceCount = Math.round(totalProblems * PURPOSE_WEIGHTS.reinforce)
-  const reviewCount = Math.round(totalProblems * PURPOSE_WEIGHTS.review)
-  const challengeCount = Math.max(0, totalProblems - focusCount - reinforceCount - reviewCount)
+  const focusCount = Math.round(actualTotalProblems * PURPOSE_WEIGHTS.focus)
+  const reinforceCount = Math.round(actualTotalProblems * PURPOSE_WEIGHTS.reinforce)
+  const reviewCount = Math.round(actualTotalProblems * PURPOSE_WEIGHTS.review)
+  const challengeCount = Math.max(
+    0,
+    actualTotalProblems - focusCount - reinforceCount - reviewCount
+  )
 
   return {
-    totalProblems,
+    totalProblems: actualTotalProblems,
     parts,
     purposes: {
       focus: focusCount,
@@ -187,10 +224,35 @@ export function ConfigureClient({
   // Duration state - use existing plan's duration if available
   const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
 
-  // Calculate live estimates based on current duration selection
+  // Term count state - max terms per problem for abacus part
+  const [abacusMaxTerms, setAbacusMaxTerms] = useState(DEFAULT_PLAN_CONFIG.abacusTermCount.max)
+
+  // Enabled parts state - which session parts to include
+  const [enabledParts, setEnabledParts] = useState<EnabledParts>({
+    abacus: true,
+    visualization: true,
+    linear: true,
+  })
+
+  // Toggle a part on/off
+  const togglePart = useCallback((partType: keyof EnabledParts) => {
+    setEnabledParts((prev) => {
+      // Don't allow disabling the last enabled part
+      const enabledCount = Object.values(prev).filter(Boolean).length
+      if (enabledCount === 1 && prev[partType]) {
+        return prev
+      }
+      return { ...prev, [partType]: !prev[partType] }
+    })
+  }, [])
+
+  // Calculate visualization max terms (75% of abacus)
+  const visualizationMaxTerms = Math.max(2, Math.round(abacusMaxTerms * 0.75))
+
+  // Calculate live estimates based on current duration and enabled parts
   const estimates = useMemo(
-    () => calculateEstimates(durationMinutes, avgSecondsPerProblem),
-    [durationMinutes, avgSecondsPerProblem]
+    () => calculateEstimates(durationMinutes, avgSecondsPerProblem, enabledParts),
+    [durationMinutes, avgSecondsPerProblem, enabledParts]
   )
 
   const generatePlan = useGenerateSessionPlan()
@@ -231,6 +293,8 @@ export function ConfigureClient({
           plan = await generatePlan.mutateAsync({
             playerId: studentId,
             durationMinutes,
+            abacusTermCount: { min: 3, max: abacusMaxTerms },
+            enabledParts,
           })
         } catch (err) {
           if (err instanceof ActiveSessionExistsClientError) {
@@ -263,6 +327,8 @@ export function ConfigureClient({
   }, [
     studentId,
     durationMinutes,
+    abacusMaxTerms,
+    enabledParts,
     existingPlan,
     generatePlan,
     approvePlan,
@@ -387,6 +453,71 @@ export function ConfigureClient({
               </div>
             </div>
 
+            {/* Terms per Problem Selector */}
+            <div
+              className={css({
+                padding: '1.25rem',
+                borderBottom: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+              })}
+            >
+              <label
+                className={css({
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.75rem',
+                })}
+              >
+                Numbers per problem (max)
+              </label>
+              <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+                {[3, 4, 5, 6, 7, 8].map((terms) => (
+                  <button
+                    key={terms}
+                    type="button"
+                    data-setting={`terms-${terms}`}
+                    onClick={() => setAbacusMaxTerms(terms)}
+                    disabled={isStarting}
+                    className={css({
+                      flex: 1,
+                      padding: '0.75rem 0.5rem',
+                      fontSize: '1.125rem',
+                      fontWeight: 'bold',
+                      color: abacusMaxTerms === terms ? 'white' : isDark ? 'gray.300' : 'gray.700',
+                      backgroundColor:
+                        abacusMaxTerms === terms ? 'blue.500' : isDark ? 'gray.700' : 'gray.100',
+                      borderRadius: '10px',
+                      border: '2px solid',
+                      borderColor: abacusMaxTerms === terms ? 'blue.500' : 'transparent',
+                      cursor: isStarting ? 'not-allowed' : 'pointer',
+                      opacity: isStarting ? 0.6 : 1,
+                      transition: 'all 0.15s ease',
+                      _hover: {
+                        backgroundColor:
+                          abacusMaxTerms === terms ? 'blue.600' : isDark ? 'gray.600' : 'gray.200',
+                      },
+                    })}
+                  >
+                    {terms}
+                  </button>
+                ))}
+              </div>
+              <div
+                className={css({
+                  marginTop: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: isDark ? 'gray.500' : 'gray.500',
+                })}
+              >
+                🧮 Abacus: up to {abacusMaxTerms} numbers &nbsp;•&nbsp; 🧠 Visualize: up to{' '}
+                {visualizationMaxTerms} numbers (75%)
+              </div>
+            </div>
+
             {/* Live Preview - Summary */}
             <div
               data-section="session-preview"
@@ -435,26 +566,42 @@ export function ConfigureClient({
                     marginBottom: '0.5rem',
                   })}
                 >
-                  Session Structure
+                  Session Structure{' '}
+                  <span className={css({ fontWeight: 'normal', textTransform: 'none' })}>
+                    (tap to toggle)
+                  </span>
                 </h3>
                 <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
                   {PART_INFO.map((partInfo, index) => {
                     const partEstimate = estimates.parts[index]
+                    const isEnabled = enabledParts[partInfo.type]
                     const colors = getPartTypeColors(partInfo.type, isDark)
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={partInfo.type}
                         data-element="part-preview"
                         data-part={index + 1}
+                        data-enabled={isEnabled}
+                        onClick={() => togglePart(partInfo.type)}
+                        disabled={isStarting}
                         className={css({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.75rem',
                           padding: '0.625rem 0.75rem',
                           borderRadius: '10px',
-                          backgroundColor: colors.bg,
-                          border: '1px solid',
-                          borderColor: colors.border,
+                          backgroundColor: isEnabled ? colors.bg : isDark ? 'gray.800' : 'gray.100',
+                          border: '2px solid',
+                          borderColor: isEnabled ? colors.border : isDark ? 'gray.700' : 'gray.300',
+                          opacity: isEnabled ? 1 : 0.5,
+                          cursor: isStarting ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left',
+                          width: '100%',
+                          _hover: {
+                            borderColor: isEnabled ? colors.text : isDark ? 'gray.500' : 'gray.400',
+                          },
                         })}
                       >
                         <span className={css({ fontSize: '1.25rem' })}>{partInfo.emoji}</span>
@@ -463,25 +610,45 @@ export function ConfigureClient({
                             className={css({
                               fontWeight: 'bold',
                               fontSize: '0.875rem',
-                              color: colors.text,
+                              color: isEnabled ? colors.text : isDark ? 'gray.500' : 'gray.400',
                             })}
                           >
-                            Part {index + 1}: {partInfo.label}
+                            {partInfo.label}
+                          </div>
+                          <div
+                            className={css({
+                              fontSize: '0.6875rem',
+                              color: isEnabled
+                                ? isDark
+                                  ? 'gray.400'
+                                  : 'gray.500'
+                                : isDark
+                                  ? 'gray.600'
+                                  : 'gray.400',
+                            })}
+                          >
+                            {partInfo.description}
                           </div>
                         </div>
                         <div
                           className={css({
                             textAlign: 'right',
                             fontSize: '0.75rem',
-                            color: colors.text,
+                            color: isEnabled ? colors.text : isDark ? 'gray.600' : 'gray.400',
                           })}
                         >
-                          <div className={css({ fontWeight: 'bold' })}>
-                            {partEstimate.problems} problems
-                          </div>
-                          <div>~{partEstimate.minutes} min</div>
+                          {isEnabled ? (
+                            <>
+                              <div className={css({ fontWeight: 'bold' })}>
+                                {partEstimate.problems} problems
+                              </div>
+                              <div>~{partEstimate.minutes} min</div>
+                            </>
+                          ) : (
+                            <div className={css({ fontStyle: 'italic' })}>skipped</div>
+                          )}
                         </div>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>

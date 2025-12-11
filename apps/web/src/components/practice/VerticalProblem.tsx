@@ -2,6 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
+import type { GenerationTrace } from '@/db/schema/session-plans'
+import { getBaseComplexity } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
 interface VerticalProblemProps {
@@ -25,6 +28,10 @@ interface VerticalProblemProps {
   rejectedDigit?: string | null
   /** Help overlay to render in place of answer boxes when in help mode */
   helpOverlay?: ReactNode
+  /** Generation trace with per-term skills and complexity (for debug overlay) */
+  generationTrace?: GenerationTrace
+  /** Complexity budget constraint (for debug overlay) */
+  complexityBudget?: number
 }
 
 /**
@@ -47,9 +54,15 @@ export function VerticalProblem({
   needHelpTermIndex,
   rejectedDigit = null,
   helpOverlay,
+  generationTrace,
+  complexityBudget,
 }: VerticalProblemProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
+
+  // Get the trace step for a given term index (for debug overlay)
+  const getTraceStep = (index: number) => generationTrace?.steps[index]
 
   // Calculate all possible prefix sums (intermediate values when entering answer step-by-step)
   const prefixSums = terms.reduce((acc, term, i) => {
@@ -242,6 +255,73 @@ export function VerticalProblem({
                 {digit}
               </div>
             ))}
+
+            {/* Debug overlay: show skills and complexity for this term */}
+            {isVisualDebugEnabled &&
+              (() => {
+                const traceStep = getTraceStep(index)
+                if (!traceStep) return null
+
+                const cost = traceStep.complexityCost
+                const isOverBudget =
+                  complexityBudget !== undefined && cost !== undefined && cost > complexityBudget
+                const skills = traceStep.skillsUsed
+
+                // Calculate base cost sum for comparison (without mastery multipliers)
+                const baseCostSum = skills.reduce((sum, s) => sum + getBaseComplexity(s), 0)
+
+                return (
+                  <div
+                    data-element="term-debug-overlay"
+                    className={css({
+                      position: 'absolute',
+                      left: '100%',
+                      marginLeft: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.25rem 0.5rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                      borderRadius: '4px',
+                      fontSize: '0.625rem',
+                      fontFamily: 'monospace',
+                      fontWeight: 'normal',
+                      whiteSpace: 'nowrap',
+                      zIndex: 100,
+                    })}
+                  >
+                    {/* Total complexity cost badge */}
+                    <span
+                      className={css({
+                        padding: '0.125rem 0.375rem',
+                        borderRadius: '4px',
+                        fontWeight: 'bold',
+                        backgroundColor: isOverBudget
+                          ? 'rgba(248, 113, 113, 0.3)'
+                          : 'rgba(74, 222, 128, 0.3)',
+                        color: isOverBudget ? '#f87171' : '#4ade80',
+                        border: '1px solid',
+                        borderColor: isOverBudget ? '#f87171' : '#4ade80',
+                      })}
+                    >
+                      {cost !== undefined ? cost : baseCostSum}
+                    </span>
+
+                    {/* Skills list with individual base costs */}
+                    <span className={css({ color: '#9ca3af' })}>
+                      {skills.length > 0
+                        ? skills
+                            .map((s) => {
+                              const baseCost = getBaseComplexity(s)
+                              const shortName = s.split('.').pop()
+                              return `${shortName}(${baseCost})`
+                            })
+                            .join(', ')
+                        : '(none)'}
+                    </span>
+                  </div>
+                )
+              })()}
           </div>
         )
       })}

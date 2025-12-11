@@ -863,6 +863,7 @@ export function ActiveSession({
                   isCompleted={true}
                   correctAnswer={outgoingAttempt.problem.answer}
                   size="large"
+                  generationTrace={outgoingAttempt.problem.generationTrace}
                 />
                 {/* Feedback stays with outgoing problem */}
                 <div
@@ -926,6 +927,8 @@ export function ActiveSession({
                       />
                     ) : undefined
                   }
+                  generationTrace={attempt.problem.generationTrace}
+                  complexityBudget={currentSlot?.constraints?.maxComplexityBudgetPerTerm}
                 />
               ) : (
                 <LinearProblem

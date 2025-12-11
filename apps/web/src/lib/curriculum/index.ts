@@ -58,6 +58,7 @@ export {
   abandonSessionPlan,
   approveSessionPlan,
   completeSessionPlanEarly,
+  type EnabledParts,
   type GenerateSessionPlanOptions,
   generateSessionPlan,
   getActiveSessionPlan,

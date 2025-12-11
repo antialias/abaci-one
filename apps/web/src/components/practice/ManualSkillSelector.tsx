@@ -4,6 +4,7 @@ import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -77,6 +78,136 @@ const SKILL_CATEGORIES = {
 } as const
 
 type CategoryKey = keyof typeof SKILL_CATEGORIES
+
+/**
+ * ComplexityBadge - Shows the base complexity cost for a skill
+ *
+ * Base costs represent intrinsic mechanical complexity:
+ * - 0★ Trivial: Basic bead movements, no mental calculation
+ * - 1★ Simple: Single complement (one mental substitution)
+ * - 2★ Cross-column: Operations that cross column boundaries (ten complements)
+ * - 3★ Cascading: Multi-column cascading operations (advanced)
+ */
+function ComplexityBadge({ skillId, isDark }: { skillId: string; isDark: boolean }) {
+  const baseCost = BASE_SKILL_COMPLEXITY[skillId] ?? 1
+
+  // No badge for zero-cost (trivial) skills
+  if (baseCost === 0) {
+    return null
+  }
+
+  const styles: Record<number, { bg: string; text: string; label: string }> = {
+    1: {
+      bg: isDark ? 'green.900' : 'green.100',
+      text: isDark ? 'green.300' : 'green.700',
+      label: '1★',
+    },
+    2: {
+      bg: isDark ? 'orange.900' : 'orange.100',
+      text: isDark ? 'orange.300' : 'orange.700',
+      label: '2★',
+    },
+    3: {
+      bg: isDark ? 'red.900' : 'red.100',
+      text: isDark ? 'red.300' : 'red.700',
+      label: '3★',
+    },
+  }
+
+  const style = styles[baseCost] ?? styles[1]
+
+  return (
+    <span
+      data-element="complexity-badge"
+      data-complexity={baseCost}
+      title={`Base complexity: ${baseCost}`}
+      className={css({
+        fontSize: '10px',
+        fontWeight: 'bold',
+        px: '1.5',
+        py: '0.5',
+        borderRadius: 'sm',
+        bg: style.bg,
+        color: style.text,
+        whiteSpace: 'nowrap',
+      })}
+    >
+      {style.label}
+    </span>
+  )
+}
+
+/**
+ * ComplexityLegend - Shows explanation of complexity badges
+ */
+function ComplexityLegend({ isDark }: { isDark: boolean }) {
+  return (
+    <div
+      data-element="complexity-legend"
+      className={css({
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '3',
+        fontSize: 'xs',
+        color: isDark ? 'gray.400' : 'gray.600',
+        p: '2',
+        bg: isDark ? 'gray.750' : 'gray.50',
+        borderRadius: 'md',
+        mb: '3',
+      })}
+    >
+      <span className={css({ fontWeight: 'medium' })}>Complexity:</span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            fontSize: '10px',
+            fontWeight: 'bold',
+            px: '1.5',
+            py: '0.5',
+            borderRadius: 'sm',
+            bg: isDark ? 'green.900' : 'green.100',
+            color: isDark ? 'green.300' : 'green.700',
+          })}
+        >
+          1★
+        </span>
+        Simple
+      </span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            fontSize: '10px',
+            fontWeight: 'bold',
+            px: '1.5',
+            py: '0.5',
+            borderRadius: 'sm',
+            bg: isDark ? 'orange.900' : 'orange.100',
+            color: isDark ? 'orange.300' : 'orange.700',
+          })}
+        >
+          2★
+        </span>
+        Cross-column
+      </span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            fontSize: '10px',
+            fontWeight: 'bold',
+            px: '1.5',
+            py: '0.5',
+            borderRadius: 'sm',
+            bg: isDark ? 'red.900' : 'red.100',
+            color: isDark ? 'red.300' : 'red.700',
+          })}
+        >
+          3★
+        </span>
+        Cascading
+      </span>
+    </div>
+  )
+}
 
 /**
  * Book preset mappings (SAI Abacus Mind Math levels)
@@ -403,6 +534,9 @@ export function ManualSkillSelector({
             </button>
           </div>
 
+          {/* Complexity Legend */}
+          <ComplexityLegend isDark={isDark} />
+
           {/* Skills Accordion */}
           <Accordion.Root
             type="multiple"
@@ -547,6 +681,7 @@ export function ManualSkillSelector({
                                 cursor: 'pointer',
                               })}
                             />
+                            <ComplexityBadge skillId={skillId} isDark={isDark} />
                             <span
                               className={css({
                                 fontSize: 'sm',
@@ -558,6 +693,7 @@ export function ManualSkillSelector({
                                     ? 'gray.300'
                                     : 'gray.700',
                                 fontWeight: isSelected ? 'medium' : 'normal',
+                                flex: 1,
                               })}
                             >
                               {skillName}
