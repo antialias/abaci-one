@@ -28,6 +28,12 @@ interface VerticalProblemProps {
   rejectedDigit?: string | null
   /** Help overlay to render in place of answer boxes when in help mode */
   helpOverlay?: ReactNode
+  /** Whether the help overlay should be visible (controls opacity for crossfade) */
+  helpOverlayVisible?: boolean
+  /** Duration for help overlay transition in ms (default 1000 for enter, use 300 for dismiss) */
+  helpOverlayTransitionMs?: number
+  /** Called when help overlay transition completes (useful for clearing answer after fade-in) */
+  onHelpOverlayTransitionEnd?: () => void
   /** Generation trace with per-term skills and complexity (for debug overlay) */
   generationTrace?: GenerationTrace
   /** Complexity budget constraint (for debug overlay) */
@@ -54,6 +60,9 @@ export function VerticalProblem({
   needHelpTermIndex,
   rejectedDigit = null,
   helpOverlay,
+  helpOverlayVisible = false,
+  helpOverlayTransitionMs = 1000,
+  onHelpOverlayTransitionEnd,
   generationTrace,
   complexityBudget,
 }: VerticalProblemProps) {
@@ -338,30 +347,55 @@ export function VerticalProblem({
         })}
       />
 
-      {/* Answer row - shows help abacus when in help mode, otherwise answer cells */}
-      {currentHelpTermIndex !== undefined && helpOverlay ? (
-        // Help mode: show the help abacus in place of answer boxes
-        <div
-          data-element="help-area"
-          data-help-term-index={currentHelpTermIndex}
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0.5rem 0',
-          })}
-        >
-          {helpOverlay}
-        </div>
-      ) : (
-        // Normal mode: show answer digit cells
+      {/* Answer row container - both help overlay and answer cells rendered for crossfade */}
+      <div
+        data-element="answer-area-container"
+        className={css({
+          position: 'relative',
+          minHeight: '50px', // Ensure container has height for absolute positioning
+        })}
+      >
+        {/* Help overlay layer - fades in when in help mode */}
+        {helpOverlay && (
+          <div
+            data-element="help-area"
+            data-help-term-index={currentHelpTermIndex}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.5rem 0',
+              // Fade in when help mode active
+              transition: `opacity ${helpOverlayTransitionMs}ms ease-out`,
+              opacity: helpOverlayVisible ? 1 : 0,
+              pointerEvents: helpOverlayVisible ? 'auto' : 'none',
+            })}
+            onTransitionEnd={(e) => {
+              // Only fire for opacity transition on this element, and only when becoming visible
+              if (e.propertyName === 'opacity' && e.target === e.currentTarget && helpOverlayVisible) {
+                onHelpOverlayTransitionEnd?.()
+              }
+            }}
+          >
+            {helpOverlay}
+          </div>
+        )}
+
+        {/* Answer row layer - fades out when help mode active (inverse opacity) */}
         <div
           data-element="answer-row"
           className={css({
             display: 'flex',
             alignItems: 'center',
             gap: '2px',
-            position: 'relative',
+            position: helpOverlay ? 'absolute' : 'relative',
+            top: helpOverlay ? 0 : undefined,
+            left: helpOverlay ? 0 : undefined,
+            right: helpOverlay ? 0 : undefined,
+            // Fade out when help mode active (inverse of help overlay)
+            transition: `opacity ${helpOverlayTransitionMs}ms ease-out`,
+            opacity: helpOverlayVisible ? 0 : 1,
+            pointerEvents: helpOverlayVisible ? 'none' : 'auto',
           })}
         >
           {/* Equals column */}
@@ -481,7 +515,7 @@ export function VerticalProblem({
               )
             })}
         </div>
-      )}
+      </div>
 
       {/* Show user's incorrect answer below correct answer */}
       {isCompleted && isIncorrect && (

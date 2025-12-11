@@ -1,7 +1,7 @@
 'use client'
 
 import { animated, useSpring } from '@react-spring/web'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
@@ -236,6 +236,7 @@ export function ActiveSession({
     handleBackspace,
     enterHelpMode,
     exitHelpMode,
+    clearAnswer,
     startSubmit,
     completeSubmit,
     startTransition,
@@ -247,6 +248,19 @@ export function ActiveSession({
     initialProblem,
     onManualSubmitRequired: () => playSound('womp_womp'),
   })
+
+  // Track which help elements have been individually dismissed
+  // These reset when entering a new help session (helpContext changes)
+  const [helpAbacusDismissed, setHelpAbacusDismissed] = useState(false)
+  const [helpPanelDismissed, setHelpPanelDismissed] = useState(false)
+
+  // Reset dismissed states when help context changes (new help session)
+  useEffect(() => {
+    if (helpContext) {
+      setHelpAbacusDismissed(false)
+      setHelpPanelDismissed(false)
+    }
+  }, [helpContext])
 
   // Refs for measuring problem widths during animation
   const outgoingRef = useRef<HTMLDivElement>(null)
@@ -471,10 +485,24 @@ export function ActiveSession({
     if (!hasPhysicalKeyboard || !canAcceptInput) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape or Delete/Backspace exits help mode when in help mode
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        if (showHelpOverlay) {
+          exitHelpMode()
+        }
+        return
+      }
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault()
-        handleBackspace()
-      } else if (e.key === 'Enter') {
+        if (showHelpOverlay) {
+          exitHelpMode()
+        } else {
+          handleBackspace()
+        }
+        return
+      }
+      if (e.key === 'Enter') {
         e.preventDefault()
         handleSubmit()
       } else if (/^[0-9]$/.test(e.key)) {
@@ -484,7 +512,15 @@ export function ActiveSession({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasPhysicalKeyboard, canAcceptInput, handleSubmit, handleDigit, handleBackspace])
+  }, [
+    hasPhysicalKeyboard,
+    canAcceptInput,
+    handleSubmit,
+    handleDigit,
+    handleBackspace,
+    showHelpOverlay,
+    exitHelpMode,
+  ])
 
   const handlePause = useCallback(() => {
     pause()
@@ -559,7 +595,6 @@ export function ActiveSession({
         padding: '1rem',
         maxWidth: '600px',
         margin: '0 auto',
-        minHeight: '100vh',
       })}
     >
       {/* Practice Session HUD - Control bar with session info and tape-deck controls */}
@@ -914,6 +949,7 @@ export function ActiveSession({
                   }
                   rejectedDigit={attempt.rejectedDigit}
                   helpOverlay={
+                    // Always render overlay when in help mode (for exit transition)
                     showHelpOverlay && helpContext ? (
                       <PracticeHelpOverlay
                         currentValue={helpContext.currentValue}
@@ -924,9 +960,17 @@ export function ActiveSession({
                             .length
                         )}
                         onTargetReached={handleTargetReached}
+                        onDismiss={() => {
+                          setHelpAbacusDismissed(true)
+                          clearAnswer()
+                        }}
+                        visible={!helpAbacusDismissed}
                       />
                     ) : undefined
                   }
+                  helpOverlayVisible={showHelpOverlay && !helpAbacusDismissed}
+                  helpOverlayTransitionMs={helpAbacusDismissed ? 300 : 1000}
+                  onHelpOverlayTransitionEnd={clearAnswer}
                   generationTrace={attempt.problem.generationTrace}
                   complexityBudget={currentSlot?.constraints?.maxComplexityBudgetPerTerm}
                 />
@@ -947,7 +991,7 @@ export function ActiveSession({
               )}
 
               {/* Help panel - absolutely positioned to the right of the problem */}
-              {showHelpOverlay && helpContext && (
+              {showHelpOverlay && helpContext && !helpPanelDismissed && (
                 <div
                   data-element="help-panel"
                   className={css({
@@ -967,6 +1011,39 @@ export function ActiveSession({
                     maxWidth: '280px',
                   })}
                 >
+                  {/* Close button for help panel */}
+                  <button
+                    type="button"
+                    data-action="close-help-panel"
+                    onClick={() => setHelpPanelDismissed(true)}
+                    className={css({
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      width: '24px',
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      border: '2px solid',
+                      borderColor: isDark ? 'gray.600' : 'gray.300',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      zIndex: 10,
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                      },
+                    })}
+                    aria-label="Close help panel"
+                  >
+                    ×
+                  </button>
+
                   {/* Coach hint */}
                   {(() => {
                     const hint = generateCoachHint(

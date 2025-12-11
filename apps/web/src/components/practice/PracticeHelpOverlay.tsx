@@ -14,6 +14,7 @@
 
 import type { AbacusOverlay, StepBeadHighlight } from '@soroban/abacus-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { css } from '../../../styled-system/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { getHelpTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'
@@ -33,8 +34,12 @@ export interface PracticeHelpOverlayProps {
   onTargetReached?: () => void
   /** Called when abacus value changes */
   onValueChange?: (value: number) => void
+  /** Called when user dismisses the help abacus */
+  onDismiss?: () => void
   /** Whether to show debug timing */
   debugTiming?: boolean
+  /** Whether the overlay is visible (false = being dismissed, suppress tooltip) */
+  visible?: boolean
 }
 
 /**
@@ -54,7 +59,9 @@ export function PracticeHelpOverlay({
   columns = 3,
   onTargetReached,
   onValueChange,
+  onDismiss,
   debugTiming,
+  visible = true,
 }: PracticeHelpOverlayProps) {
   const { resolvedTheme } = useTheme()
   const theme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -187,6 +194,9 @@ export function PracticeHelpOverlay({
 
   // Create tooltip overlay for HelpAbacus using shared BeadTooltipContent
   const tooltipOverlay: AbacusOverlay | undefined = useMemo(() => {
+    // Suppress tooltip when overlay is being dismissed (visible=false)
+    if (!visible) return undefined
+
     // Show tooltip in bead-tooltip phase with instructions, or when celebrating
     const showCelebration = isAtTarget
     const showInstructions =
@@ -222,6 +232,7 @@ export function PracticeHelpOverlay({
       visible: true,
     }
   }, [
+    visible,
     tooltipPositioning,
     isAtTarget,
     currentPhase,
@@ -268,11 +279,16 @@ export function PracticeHelpOverlay({
     setBeadHighlights(highlights)
   }, [])
 
+  const isDark = theme === 'dark'
+
   return (
     <div
       data-component="practice-help-overlay"
       data-phase={currentPhase}
       data-at-target={isAtTarget}
+      className={css({
+        position: 'relative',
+      })}
     >
       {/* Interactive abacus with bead arrows - just the abacus, no extra UI */}
       <HelpAbacus
@@ -289,6 +305,41 @@ export function PracticeHelpOverlay({
         showValueLabels={false}
         showTargetReached={false}
       />
+
+      {/* Dismiss button - small X in top-right corner */}
+      {onDismiss && (
+        <button
+          type="button"
+          data-action="dismiss-help-abacus"
+          onClick={onDismiss}
+          className={css({
+            position: 'absolute',
+            top: '-8px',
+            right: '-8px',
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.400' : 'gray.500',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
+            border: '2px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            zIndex: 10,
+            _hover: {
+              backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              color: isDark ? 'gray.200' : 'gray.700',
+            },
+          })}
+          aria-label="Dismiss help abacus"
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 }

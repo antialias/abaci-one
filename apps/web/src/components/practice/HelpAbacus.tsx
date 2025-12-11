@@ -198,10 +198,9 @@ export function HelpAbacus({
         flexDirection: 'column',
         alignItems: 'center',
         gap: '0.75rem',
-        // Animation properties
-        transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+        // Animation properties - fade only, no transform (crossfade handled by parent)
+        transition: 'opacity 1s ease-out',
         opacity: shouldHide ? 0 : 1,
-        transform: shouldHide ? 'translateY(-10px)' : 'translateY(0)',
         // Disable interaction when hidden/transitioning
         pointerEvents: shouldHide ? 'none' : 'auto',
       })}

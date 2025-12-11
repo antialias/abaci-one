@@ -367,6 +367,8 @@ export interface UseInteractionPhaseReturn {
   enterHelpMode: (termIndex: number) => void
   /** Exit help mode (helpMode → inputting) */
   exitHelpMode: () => void
+  /** Clear the current answer (used after help overlay transition completes) */
+  clearAnswer: () => void
   /** Submit answer (inputting/helpMode → submitting) */
   startSubmit: () => void
   /** Handle submit result (submitting → showingFeedback) */
@@ -478,19 +480,21 @@ export function useInteractionPhase(
 
     if (elapsed >= AMBIGUOUS_HELP_DELAY_MS) {
       // Timer already elapsed - transition to help mode immediately
+      // Keep userAnswer during transition so it shows in answer boxes while fading out
       const helpContext = computeHelpContext(phase.attempt.problem.terms, ctx.helpTermIndex)
-      setPhase({ phase: 'helpMode', attempt: { ...phase.attempt, userAnswer: '' }, helpContext })
+      setPhase({ phase: 'helpMode', attempt: phase.attempt, helpContext })
     } else {
       // Set timer for remaining time
       const remaining = AMBIGUOUS_HELP_DELAY_MS - elapsed
       disambiguationTimerRef.current = setTimeout(() => {
         setPhase((prev) => {
           if (prev.phase !== 'awaitingDisambiguation') return prev
+          // Keep userAnswer during transition so it shows in answer boxes while fading out
           const helpContext = computeHelpContext(
             prev.attempt.problem.terms,
             prev.disambiguationContext.helpTermIndex
           )
-          return { phase: 'helpMode', attempt: { ...prev.attempt, userAnswer: '' }, helpContext }
+          return { phase: 'helpMode', attempt: prev.attempt, helpContext }
         })
       }, remaining)
     }
@@ -600,6 +604,16 @@ export function useInteractionPhase(
           return prev
         }
 
+        // If in help mode, exit help mode and start fresh with the new digit
+        if (prev.phase === 'helpMode') {
+          const freshAttempt = {
+            ...prev.attempt,
+            userAnswer: digit,
+            rejectedDigit: null,
+          }
+          return { phase: 'inputting', attempt: freshAttempt }
+        }
+
         const attempt = prev.attempt
         const sums = computePrefixSums(attempt.problem.terms)
 
@@ -631,13 +645,14 @@ export function useInteractionPhase(
           ) {
             // Unambiguous intermediate prefix match (e.g., "03" for prefix sum 3)
             // Immediately enter help mode
+            // Keep userAnswer during transition so it shows in answer boxes while fading out
             const helpContext = computeHelpContext(
               attempt.problem.terms,
               newPrefixMatch.helpTermIndex
             )
             return {
               phase: 'helpMode',
-              attempt: { ...updatedAttempt, userAnswer: '' },
+              attempt: updatedAttempt,
               helpContext,
             }
           } else {
@@ -730,9 +745,9 @@ export function useInteractionPhase(
         return prev
       }
 
+      // Keep userAnswer during transition so it shows in answer boxes while fading out
       const helpContext = computeHelpContext(prev.attempt.problem.terms, termIndex)
-      const updatedAttempt = { ...prev.attempt, userAnswer: '' }
-      return { phase: 'helpMode', attempt: updatedAttempt, helpContext }
+      return { phase: 'helpMode', attempt: prev.attempt, helpContext }
     })
   }, [])
 
@@ -741,6 +756,14 @@ export function useInteractionPhase(
       if (prev.phase !== 'helpMode') return prev
       const updatedAttempt = { ...prev.attempt, userAnswer: '' }
       return { phase: 'inputting', attempt: updatedAttempt }
+    })
+  }, [])
+
+  const clearAnswer = useCallback(() => {
+    setPhase((prev) => {
+      if (prev.phase !== 'helpMode') return prev
+      const updatedAttempt = { ...prev.attempt, userAnswer: '' }
+      return { phase: 'helpMode', attempt: updatedAttempt, helpContext: prev.helpContext }
     })
   }, [])
 
@@ -844,6 +867,7 @@ export function useInteractionPhase(
     handleBackspace,
     enterHelpMode,
     exitHelpMode,
+    clearAnswer,
     startSubmit,
     completeSubmit,
     startTransition,
