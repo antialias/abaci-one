@@ -106,51 +106,6 @@ function formatSecondsFriendly(ms: number): string {
 }
 
 /**
- * Sample dots visualization - shows the problems used to learn the rhythm
- */
-function SampleDots({ count, needed, isDark }: { count: number; needed: number; isDark: boolean }) {
-  const total = Math.max(count, needed)
-  const dots = []
-
-  for (let i = 0; i < total; i++) {
-    const isFilled = i < count
-    dots.push(
-      <div
-        key={i}
-        className={css({
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          backgroundColor: isFilled
-            ? isDark
-              ? 'green.400'
-              : 'green.500'
-            : isDark
-              ? 'gray.600'
-              : 'gray.300',
-          transition: 'all 0.3s ease',
-        })}
-        title={isFilled ? `Problem ${i + 1}` : 'Not yet solved'}
-      />
-    )
-  }
-
-  return (
-    <div
-      data-element="sample-dots"
-      className={css({
-        display: 'flex',
-        gap: '6px',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-      })}
-    >
-      {dots}
-    </div>
-  )
-}
-
-/**
  * Speed visualization - shows average speed vs variation
  */
 function SpeedMeter({
@@ -469,8 +424,8 @@ export function SessionPausedModal({
           </div>
         )}
 
-        {/* Auto-pause explanation - educational and friendly */}
-        {isAutoTimeout && stats && (
+        {/* Auto-pause explanation - only shown when we have enough data */}
+        {isAutoTimeout && stats?.usedStatistics && (
           <div
             data-element="rhythm-explanation"
             className={css({
@@ -482,130 +437,65 @@ export function SessionPausedModal({
               borderColor: isDark ? 'blue.700' : 'blue.200',
             })}
           >
-            {stats.usedStatistics ? (
-              <>
-                {/* We know their rhythm */}
-                <div
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem',
-                  })}
-                >
-                  <span className={css({ fontSize: '1.25rem' })}>🎵</span>
-                  <span
-                    className={css({
-                      fontSize: '0.875rem',
-                      fontWeight: 'bold',
-                      color: isDark ? 'blue.200' : 'blue.700',
-                    })}
-                  >
-                    We Know Your Rhythm!
-                  </span>
-                </div>
+            {/* We know their rhythm */}
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.75rem',
+              })}
+            >
+              <span className={css({ fontSize: '1.25rem' })}>🎵</span>
+              <span
+                className={css({
+                  fontSize: '0.875rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'blue.200' : 'blue.700',
+                })}
+              >
+                We Know Your Rhythm!
+              </span>
+            </div>
 
-                <p
-                  className={css({
-                    fontSize: '0.8125rem',
-                    color: isDark ? 'gray.300' : 'gray.700',
-                    marginBottom: '0.75rem',
-                    lineHeight: '1.5',
-                  })}
-                >
-                  We watched you solve{' '}
-                  <strong className={css({ color: isDark ? 'green.300' : 'green.600' })}>
-                    {stats.sampleCount} problems
-                  </strong>{' '}
-                  and learned your speed! Usually you take{' '}
-                  <strong className={css({ color: isDark ? 'blue.300' : 'blue.600' })}>
-                    {formatSecondsFriendly(stats.meanMs)}
-                  </strong>
-                  .
-                </p>
+            <p
+              className={css({
+                fontSize: '0.8125rem',
+                color: isDark ? 'gray.300' : 'gray.700',
+                marginBottom: '0.75rem',
+                lineHeight: '1.5',
+              })}
+            >
+              We watched you solve{' '}
+              <strong className={css({ color: isDark ? 'green.300' : 'green.600' })}>
+                {stats.sampleCount} problems
+              </strong>{' '}
+              and learned your speed! Usually you take{' '}
+              <strong className={css({ color: isDark ? 'blue.300' : 'blue.600' })}>
+                {formatSecondsFriendly(stats.meanMs)}
+              </strong>
+              .
+            </p>
 
-                {/* Speed visualization */}
-                <SpeedMeter
-                  meanMs={stats.meanMs}
-                  stdDevMs={stats.stdDevMs}
-                  thresholdMs={stats.thresholdMs}
-                  isDark={isDark}
-                />
+            {/* Speed visualization */}
+            <SpeedMeter
+              meanMs={stats.meanMs}
+              stdDevMs={stats.stdDevMs}
+              thresholdMs={stats.thresholdMs}
+              isDark={isDark}
+            />
 
-                <p
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    marginTop: '0.75rem',
-                    fontStyle: 'italic',
-                  })}
-                >
-                  The blue bar shows your usual range. This problem took longer, so we paused to
-                  check in!
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Still learning their rhythm */}
-                <div
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem',
-                  })}
-                >
-                  <span className={css({ fontSize: '1.25rem' })}>📊</span>
-                  <span
-                    className={css({
-                      fontSize: '0.875rem',
-                      fontWeight: 'bold',
-                      color: isDark ? 'blue.200' : 'blue.700',
-                    })}
-                  >
-                    Learning Your Rhythm...
-                  </span>
-                </div>
-
-                <p
-                  className={css({
-                    fontSize: '0.8125rem',
-                    color: isDark ? 'gray.300' : 'gray.700',
-                    marginBottom: '0.75rem',
-                    lineHeight: '1.5',
-                  })}
-                >
-                  We need to watch you solve a few problems to learn how fast you usually go!
-                </p>
-
-                {/* Sample dots showing progress */}
-                <div className={css({ marginBottom: '0.75rem' })}>
-                  <p
-                    className={css({
-                      fontSize: '0.75rem',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                      marginBottom: '0.5rem',
-                      textAlign: 'center',
-                    })}
-                  >
-                    Problems solved: {stats.sampleCount} of 5 needed
-                  </p>
-                  <SampleDots count={stats.sampleCount} needed={5} isDark={isDark} />
-                </div>
-
-                <p
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'yellow.300' : 'yellow.700',
-                    textAlign: 'center',
-                    fontWeight: '500',
-                  })}
-                >
-                  {5 - stats.sampleCount} more problem{5 - stats.sampleCount !== 1 ? 's' : ''} until
-                  we know your rhythm!
-                </p>
-              </>
-            )}
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginTop: '0.75rem',
+                fontStyle: 'italic',
+              })}
+            >
+              The blue bar shows your usual range. This problem took longer, so we paused to check
+              in!
+            </p>
           </div>
         )}
 
