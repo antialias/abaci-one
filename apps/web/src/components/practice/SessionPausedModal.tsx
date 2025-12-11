@@ -55,17 +55,26 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
   }
 }
 
-// Fun phrases for auto-pause
+// Fun phrases for auto-pause (when taking too long on a problem)
 const AUTO_PAUSE_PHRASES = [
   "This one's a thinker!",
   'Taking your time? Smart!',
   'Deep thoughts happening...',
   'Brain at work!',
-  'No rush!',
   'Thinking cap on!',
   'Processing...',
   'Working it out!',
+]
+
+// Fun phrases for manual pause (user chose to take a break)
+const MANUAL_PAUSE_PHRASES = [
   'We pressed paws! 🙏',
+  'Break time!',
+  'Taking five!',
+  'Quick breather!',
+  'Stretch break!',
+  'Recharging...',
+  'Be right back!',
 ]
 
 // Intl formatters for duration display
@@ -272,11 +281,11 @@ export function SessionPausedModal({
   const [showStats, setShowStats] = useState(false)
 
   // Pick a random phrase once per pause (stable while modal is open)
-  const autoPausePhrase = useMemo(
-    () => AUTO_PAUSE_PHRASES[Math.floor(Math.random() * AUTO_PAUSE_PHRASES.length)],
+  const pausePhrase = useMemo(() => {
+    const phrases = pauseInfo?.reason === 'auto-timeout' ? AUTO_PAUSE_PHRASES : MANUAL_PAUSE_PHRASES
+    return phrases[Math.floor(Math.random() * phrases.length)]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pauseInfo?.pausedAt?.getTime()]
-  )
+  }, [pauseInfo?.pausedAt?.getTime(), pauseInfo?.reason])
 
   useEffect(() => {
     if (!isOpen || !pauseInfo?.pausedAt) {
@@ -384,7 +393,7 @@ export function SessionPausedModal({
               })}
             >
               <span>{isAutoTimeout ? '🤔' : '☕'}</span>
-              <span>{isAutoTimeout ? autoPausePhrase : 'Break Time!'}</span>
+              <span>{pausePhrase}</span>
             </h2>
             {pauseInfo && (
               <p
