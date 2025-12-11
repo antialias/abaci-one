@@ -1,9 +1,41 @@
 /**
  * Utility functions for working with abacus states and calculations
  * These help convert between numbers and bead positions, calculate diffs, etc.
+ *
+ * NOTE: This file imports ONLY from types.ts (no React dependencies)
+ * so it can be safely used in server components via the /static export.
  */
 
-import type { ValidPlaceValues, BeadHighlight } from "./AbacusReact";
+import type {
+  ValidPlaceValues,
+  BeadState,
+  AbacusState,
+  PlaceValueBasedBead,
+  BeadDiffResult,
+  BeadDiffOutput,
+  AbacusLayoutDimensions,
+  BeadPositionConfig,
+  ColumnStateForPositioning,
+  CropPadding,
+  BoundingBox,
+  CropResult,
+} from "./types";
+
+// Re-export types from types.ts for convenience
+export type {
+  ValidPlaceValues,
+  BeadState,
+  AbacusState,
+  PlaceValueBasedBead,
+  BeadDiffResult,
+  BeadDiffOutput,
+  AbacusLayoutDimensions,
+  BeadPositionConfig,
+  ColumnStateForPositioning,
+  CropPadding,
+  BoundingBox,
+  CropResult,
+} from "./types";
 
 /**
  * Calculate the actual rendered dimensions of a bead based on its shape
@@ -37,21 +69,7 @@ export function calculateBeadDimensions(
   }
 }
 
-/**
- * Represents the state of beads in a single column
- */
-export interface BeadState {
-  heavenActive: boolean;
-  earthActive: number; // 0-4
-}
-
-/**
- * Represents the complete state of an abacus
- * Key is the place value (0 = ones, 1 = tens, etc.)
- */
-export interface AbacusState {
-  [placeValue: number]: BeadState;
-}
+// BeadState and AbacusState are now defined in types.ts and re-exported above
 
 /**
  * Convert a number to abacus state representation
@@ -97,14 +115,7 @@ export function abacusStateToNumber(state: AbacusState): number {
   return total;
 }
 
-/**
- * Bead highlight with place value (internal type for calculations)
- */
-export interface PlaceValueBasedBead {
-  placeValue: ValidPlaceValues;
-  beadType: "heaven" | "earth";
-  position?: 0 | 1 | 2 | 3;
-}
+// PlaceValueBasedBead is now defined in types.ts and re-exported above
 
 /**
  * Calculate which beads need to change between two abacus states
@@ -165,26 +176,7 @@ export function calculateBeadChanges(
   return { additions, removals, placeValue: mainPlaceValue };
 }
 
-/**
- * Result of a bead diff calculation
- */
-export interface BeadDiffResult {
-  placeValue: ValidPlaceValues;
-  beadType: "heaven" | "earth";
-  position?: number;
-  direction: "activate" | "deactivate";
-  order: number; // Order of operations for animations
-}
-
-/**
- * Output of calculateBeadDiff function
- */
-export interface BeadDiffOutput {
-  changes: BeadDiffResult[];
-  highlights: PlaceValueBasedBead[];
-  hasChanges: boolean;
-  summary: string;
-}
+// BeadDiffResult and BeadDiffOutput are now defined in types.ts and re-exported above
 
 /**
  * Calculate the diff between two abacus states
@@ -415,40 +407,7 @@ function getPlaceName(place: number): string {
   }
 }
 
-/**
- * Complete layout dimensions for abacus rendering
- * Used by both static and dynamic rendering to ensure identical layouts
- */
-export interface AbacusLayoutDimensions {
-  // SVG canvas size
-  width: number;
-  height: number;
-
-  // Bead and spacing
-  beadSize: number;
-  rodSpacing: number; // Same as columnSpacing
-  rodWidth: number;
-  barThickness: number;
-
-  // Gaps and positioning
-  heavenEarthGap: number; // Gap between heaven and earth sections (where bar sits)
-  activeGap: number; // Gap between active beads and reckoning bar
-  inactiveGap: number; // Gap between inactive beads and active beads/bar
-  adjacentSpacing: number; // Minimal spacing for adjacent beads of same type
-
-  // Key Y positions (absolute coordinates)
-  barY: number; // Y position of reckoning bar
-  heavenY: number; // Y position where inactive heaven beads rest
-  earthY: number; // Y position where inactive earth beads rest
-
-  // Padding and extras
-  padding: number;
-  labelHeight: number;
-  numbersHeight: number;
-
-  // Derived values
-  totalColumns: number;
-}
+// AbacusLayoutDimensions is now defined in types.ts and re-exported above
 
 /**
  * Calculate standard layout dimensions for abacus rendering
@@ -545,24 +504,7 @@ export function calculateAbacusDimensions({
   return { width: dims.width, height: dims.height };
 }
 
-/**
- * Simplified bead config for position calculation
- * (Compatible with BeadConfig from AbacusReact)
- */
-export interface BeadPositionConfig {
-  type: "heaven" | "earth";
-  active: boolean;
-  position: number; // 0 for heaven, 0-3 for earth
-  placeValue: number;
-}
-
-/**
- * Column state needed for earth bead positioning
- * (Required to calculate inactive earth bead positions correctly)
- */
-export interface ColumnStateForPositioning {
-  earthActive: number; // Number of active earth beads (0-4)
-}
+// BeadPositionConfig and ColumnStateForPositioning are now defined in types.ts and re-exported above
 
 /**
  * Calculate the x,y position for a bead based on standard layout dimensions
@@ -653,36 +595,7 @@ export function calculateBeadPosition(
   }
 }
 
-/**
- * Padding configuration for cropping
- */
-export interface CropPadding {
-  top?: number;
-  bottom?: number;
-  left?: number;
-  right?: number;
-}
-
-/**
- * Bounding box for crop area
- */
-export interface BoundingBox {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  width: number;
-  height: number;
-}
-
-/**
- * Complete crop calculation result
- */
-export interface CropResult extends BoundingBox {
-  viewBox: string; // SVG viewBox attribute value
-  scaledWidth: number; // Width after scaling to fit target
-  scaledHeight: number; // Height after scaling to fit target
-}
+// CropPadding, BoundingBox, and CropResult are now defined in types.ts and re-exported above
 
 /**
  * Calculate bounding box around active beads for a given value

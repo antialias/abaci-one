@@ -46,7 +46,89 @@ export function extractSkillsFromSequence(sequence: UnifiedInstructionSequence):
     skills.push(...extractedSkills)
   }
 
+  // Post-process: detect cascading carries/borrows from consecutive ten complements
+  // This catches cases where the unified step generator processes each place independently
+  // but the pattern across adjacent places indicates cascading
+  const cascadingSkills = detectCascadingFromTenComplements(skills)
+  skills.push(...cascadingSkills)
+
   return skills
+}
+
+/**
+ * Detect cascading carry/borrow from consecutive ten complement operations
+ *
+ * When 2+ consecutive place values all use ten complements, this indicates
+ * a cascading carry (addition) or cascading borrow (subtraction).
+ *
+ * Example: 1000 - 999 = 1
+ * - Place 2 (hundreds): TenComplement subtraction
+ * - Place 1 (tens): TenComplement subtraction
+ * - Place 0 (ones): TenComplement subtraction
+ * All 3 are consecutive ten complements = cascading borrow
+ */
+function detectCascadingFromTenComplements(skills: ExtractedSkill[]): ExtractedSkill[] {
+  const cascadingSkills: ExtractedSkill[] = []
+
+  // Already has cascading skills? Don't add duplicates
+  if (skills.some((s) => s.skillId.startsWith('advanced.cascading'))) {
+    return cascadingSkills
+  }
+
+  // Group ten complement skills by whether they're subtraction or addition
+  const tenComplementAdditions = skills.filter(
+    (s) => s.rule === 'TenComplement' && s.skillId.startsWith('tenComplements.')
+  )
+  const tenComplementSubtractions = skills.filter(
+    (s) => s.rule === 'TenComplement' && s.skillId.startsWith('tenComplementsSub.')
+  )
+
+  // Check for cascading carry (addition)
+  if (hasConsecutivePlaceValues(tenComplementAdditions)) {
+    // Find a representative skill to copy segment info from
+    const representative = tenComplementAdditions[0]
+    cascadingSkills.push({
+      skillId: 'advanced.cascadingCarry',
+      rule: 'Cascade',
+      place: representative.place,
+      digit: representative.digit,
+      segmentId: representative.segmentId,
+    })
+  }
+
+  // Check for cascading borrow (subtraction)
+  if (hasConsecutivePlaceValues(tenComplementSubtractions)) {
+    // Find a representative skill to copy segment info from
+    const representative = tenComplementSubtractions[0]
+    cascadingSkills.push({
+      skillId: 'advanced.cascadingBorrow',
+      rule: 'Cascade',
+      place: representative.place,
+      digit: representative.digit,
+      segmentId: representative.segmentId,
+    })
+  }
+
+  return cascadingSkills
+}
+
+/**
+ * Check if skills span 2+ consecutive place values
+ */
+function hasConsecutivePlaceValues(skills: ExtractedSkill[]): boolean {
+  if (skills.length < 2) return false
+
+  // Get unique place values and sort them
+  const places = [...new Set(skills.map((s) => s.place))].sort((a, b) => a - b)
+
+  // Check for at least 2 consecutive places
+  for (let i = 0; i < places.length - 1; i++) {
+    if (places[i + 1] === places[i] + 1) {
+      return true // Found 2 consecutive places
+    }
+  }
+
+  return false
 }
 
 /**
@@ -63,6 +145,9 @@ function extractSkillsFromSegment(segment: PedagogicalSegment): ExtractedSkill[]
   // Detect subtraction by checking segment ID suffix or step operations
   // Subtraction segments have IDs ending in '-sub'
   const isSubtraction = segment.id.endsWith('-sub')
+
+  // Check if any rule in the plan is 'Cascade' - this indicates cascading carries/borrows
+  const hasCascade = plan.some((p) => p.rule === 'Cascade')
 
   switch (primaryRule) {
     case 'Direct':
@@ -185,6 +270,7 @@ function extractSkillsFromSegment(segment: PedagogicalSegment): ExtractedSkill[]
     case 'Cascade': {
       // Cascade is triggered by TenComplement with consecutive 9s/0s
       // The underlying skill is still TenComplement (addition) or TenComplementSub (subtraction)
+      // Also emit the advanced.cascading* skill to track this pattern
       if (isSubtraction) {
         const cascadeSubKey = getTenComplementSubKey(digit)
         if (cascadeSubKey) {
@@ -196,6 +282,14 @@ function extractSkillsFromSegment(segment: PedagogicalSegment): ExtractedSkill[]
             segmentId: segment.id,
           })
         }
+        // Also emit cascading borrow skill
+        skills.push({
+          skillId: 'advanced.cascadingBorrow',
+          rule: 'Cascade',
+          place,
+          digit,
+          segmentId: segment.id,
+        })
       } else {
         const cascadeKey = getTenComplementKey(digit)
         if (cascadeKey) {
@@ -207,8 +301,39 @@ function extractSkillsFromSegment(segment: PedagogicalSegment): ExtractedSkill[]
             segmentId: segment.id,
           })
         }
+        // Also emit cascading carry skill
+        skills.push({
+          skillId: 'advanced.cascadingCarry',
+          rule: 'Cascade',
+          place,
+          digit,
+          segmentId: segment.id,
+        })
       }
       break
+    }
+  }
+
+  // If any rule in the plan was 'Cascade' but we didn't already emit a cascading skill
+  // (e.g., when primaryRule is 'TenComplement' but plan also contains 'Cascade'),
+  // emit the cascading skill now
+  if (hasCascade && primaryRule !== 'Cascade') {
+    if (isSubtraction) {
+      skills.push({
+        skillId: 'advanced.cascadingBorrow',
+        rule: 'Cascade',
+        place,
+        digit,
+        segmentId: segment.id,
+      })
+    } else {
+      skills.push({
+        skillId: 'advanced.cascadingCarry',
+        rule: 'Cascade',
+        place,
+        digit,
+        segmentId: segment.id,
+      })
     }
   }
 

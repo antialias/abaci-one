@@ -1,6 +1,12 @@
 import type { GenerationTrace, GenerationTraceStep } from '@/db/schema/session-plans'
 import type { PracticeStep, SkillSet } from '../types/tutorial'
 import type { SkillCostCalculator } from './skillComplexity'
+import {
+  extractSkillsFromProblem,
+  extractSkillsFromSequence,
+  flattenProblemSkills,
+} from './skillExtraction'
+import { generateUnifiedInstructionSequence } from './unifiedStepGenerator'
 
 // Re-export trace types for consumers that import from this file
 export type { GenerationTrace, GenerationTraceStep }
@@ -36,32 +42,18 @@ export interface ProblemConstraints {
 
 /**
  * Analyzes which skills are required during sequential computation.
- * Handles both addition (positive terms) and subtraction (negative terms).
- * This simulates computing each term one by one on the abacus.
+ * Uses the unified step generator's actual abacus simulation to determine skills,
+ * ensuring consistency with the tutorial/help system.
+ *
+ * @param terms - Array of terms (positive for addition, negative for subtraction)
+ * @param _finalSum - Final sum (unused, kept for API compatibility)
+ * @returns Array of unique skill identifiers required for this problem
  */
 export function analyzeRequiredSkills(terms: number[], _finalSum: number): string[] {
-  const skills: string[] = []
-  let currentValue = 0
-
-  // Simulate computing each term sequentially
-  for (const term of terms) {
-    if (term >= 0) {
-      // Addition
-      const newValue = currentValue + term
-      const requiredSkillsForStep = analyzeStepSkills(currentValue, term, newValue)
-      skills.push(...requiredSkillsForStep)
-      currentValue = newValue
-    } else {
-      // Subtraction (term is negative, so we subtract its absolute value)
-      const absTerm = Math.abs(term)
-      const newValue = currentValue - absTerm
-      const requiredSkillsForStep = analyzeSubtractionStepSkills(currentValue, absTerm, newValue)
-      skills.push(...requiredSkillsForStep)
-      currentValue = newValue
-    }
-  }
-
-  return [...new Set(skills)] // Remove duplicates
+  // Use the unified step generator to extract skills via actual abacus simulation
+  const skillsByTerm = extractSkillsFromProblem(terms, generateUnifiedInstructionSequence)
+  const allSkills = flattenProblemSkills(skillsByTerm)
+  return [...new Set(allSkills.map((s) => s.skillId))]
 }
 
 // GenerationTrace and GenerationTraceStep are imported from @/db/schema/session-plans
@@ -144,296 +136,25 @@ function generateStepExplanation(
 }
 
 /**
- * Analyzes skills needed for a single addition step: currentValue + term = newValue
- * Also detects cascading carries (when a carry propagates across 2+ columns).
- */
-export function analyzeStepSkills(currentValue: number, term: number, newValue: number): string[] {
-  const skills: string[] = []
-
-  // Work column by column from right to left
-  const currentDigits = getDigits(currentValue)
-  const termDigits = getDigits(term)
-  const newDigits = getDigits(newValue)
-
-  const maxColumns = Math.max(currentDigits.length, termDigits.length, newDigits.length)
-
-  // Track carries for cascading detection
-  let carryIn = 0
-  let consecutiveCarries = 0
-  let maxConsecutiveCarries = 0
-
-  for (let column = 0; column < maxColumns; column++) {
-    const currentDigit = currentDigits[column] || 0
-    const termDigit = termDigits[column] || 0
-    const newDigit = newDigits[column] || 0
-
-    // Check if this column produces a carry (including any carry-in from previous column)
-    const sumInColumn = currentDigit + termDigit + carryIn
-    const producesCarry = sumInColumn >= 10
-
-    if (producesCarry) {
-      consecutiveCarries++
-      maxConsecutiveCarries = Math.max(maxConsecutiveCarries, consecutiveCarries)
-      carryIn = 1
-    } else {
-      // Reset consecutive carries when a column doesn't produce a carry
-      consecutiveCarries = 0
-      carryIn = 0
-    }
-
-    if (termDigit === 0 && carryIn === 0) continue // No addition in this column (and no carry to process)
-
-    // Analyze what happens in this column
-    const columnSkills = analyzeColumnAddition(currentDigit, termDigit, newDigit, column)
-    skills.push(...columnSkills)
-  }
-
-  // If we had 2+ consecutive carries, this is a cascading carry
-  if (maxConsecutiveCarries >= 2) {
-    skills.push('advanced.cascadingCarry')
-  }
-
-  return skills
-}
-
-/**
- * Analyzes skills needed for addition in a single column
- */
-export function analyzeColumnAddition(
-  currentDigit: number,
-  termDigit: number,
-  _resultDigit: number,
-  _column: number
-): string[] {
-  const skills: string[] = []
-
-  // Direct addition (1-4)
-  if (termDigit >= 1 && termDigit <= 4) {
-    if (currentDigit + termDigit <= 4) {
-      skills.push('basic.directAddition')
-    } else if (currentDigit + termDigit === 5) {
-      // Adding to make exactly 5 - could be direct or complement
-      if (currentDigit === 0) {
-        skills.push('basic.heavenBead') // Direct 5
-      } else {
-        // Five complement: need to use 5 - complement
-        skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
-        skills.push('basic.heavenBead')
-      }
-    } else if (currentDigit + termDigit > 5 && currentDigit + termDigit <= 9) {
-      // Results in 6-9
-      // If heaven bead already active (currentDigit >= 5), just add earth beads directly
-      if (currentDigit >= 5) {
-        skills.push('basic.heavenBead')
-        skills.push('basic.simpleCombinations')
-      } else {
-        // Heaven bead NOT active - need five complement to bring it down
-        skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
-        skills.push('basic.heavenBead')
-        skills.push('basic.simpleCombinations')
-      }
-    } else if (currentDigit + termDigit >= 10) {
-      // Ten complement needed
-      const complement = 10 - termDigit
-      skills.push(`tenComplements.${termDigit}=10-${complement}`)
-    }
-  }
-
-  // Direct heaven bead (5)
-  else if (termDigit === 5) {
-    if (currentDigit === 0) {
-      skills.push('basic.heavenBead')
-    } else if (currentDigit + 5 <= 9) {
-      skills.push('basic.heavenBead')
-      skills.push('basic.simpleCombinations')
-    } else {
-      // Ten complement
-      skills.push(`tenComplements.5=10-5`)
-    }
-  }
-
-  // Simple combinations (6-9)
-  else if (termDigit >= 6 && termDigit <= 9) {
-    if (currentDigit === 0) {
-      skills.push('basic.heavenBead')
-      skills.push('basic.simpleCombinations')
-    } else if (currentDigit + termDigit <= 9) {
-      skills.push('basic.heavenBead')
-      skills.push('basic.simpleCombinations')
-    } else {
-      // Ten complement
-      const complement = 10 - termDigit
-      skills.push(`tenComplements.${termDigit}=10-${complement}`)
-    }
-  }
-
-  return skills
-}
-
-/**
- * Analyzes skills needed for subtraction in a single column
+ * Analyzes skills needed for a single step: currentValue + term = newValue
+ * Uses the unified step generator's actual abacus simulation to determine skills.
  *
- * Subtraction techniques on soroban:
- * 1. Direct subtraction: Remove earth beads directly (when currentDigit >= termDigit)
- * 2. Five complement: -n = -5+(5-n), e.g., -4 = -5+1 (when need to use heaven bead)
- * 3. Ten complement: -n = +(10-n)-10, e.g., -9 = +1-10 (when need to borrow from next column)
- * 4. Combined: Need both five and ten complements for some cases
- *
- * @param currentDigit - Current value in this column (0-9)
- * @param termDigit - Amount to subtract (1-9)
- * @param needsBorrow - Whether this subtraction requires borrowing from the next column
- * @returns Array of skill strings required for this operation
+ * @param currentValue - Current abacus value
+ * @param term - Term to add (positive) or subtract (negative)
+ * @param _newValue - Expected result (unused, kept for API compatibility)
+ * @returns Array of unique skill identifiers required for this step
  */
-export function analyzeColumnSubtraction(
-  currentDigit: number,
-  termDigit: number,
-  needsBorrow: boolean
-): string[] {
-  const skills: string[] = []
+export function analyzeStepSkills(currentValue: number, term: number, _newValue: number): string[] {
+  const targetValue = currentValue + term
 
-  // Case 1: Direct subtraction possible (no borrow needed)
-  if (!needsBorrow && currentDigit >= termDigit) {
-    if (termDigit >= 1 && termDigit <= 4) {
-      // Check if we can subtract directly from earth beads
-      const earthBeads = currentDigit % 5 // 0-4
-      if (earthBeads >= termDigit) {
-        skills.push('basic.directSubtraction')
-      } else {
-        // Need to use five complement: -n = -5+(5-n)
-        // Example: 7-4=3 → have 5+2, subtract 5 add 1 → 3
-        const fiveComplement = 5 - termDigit
-        skills.push(`fiveComplementsSub.-${termDigit}=-5+${fiveComplement}`)
-        skills.push('basic.heavenBeadSubtraction')
-      }
-    } else if (termDigit === 5) {
-      // Direct heaven bead removal
-      if (currentDigit >= 5) {
-        skills.push('basic.heavenBeadSubtraction')
-      }
-      // If currentDigit < 5, this shouldn't happen without borrowing
-    } else if (termDigit >= 6 && termDigit <= 9) {
-      // Subtracting 6-9 directly (when currentDigit >= termDigit)
-      // Need to remove heaven bead and some earth beads
-      skills.push('basic.heavenBeadSubtraction')
-      skills.push('basic.simpleCombinationsSub')
-    }
+  try {
+    const sequence = generateUnifiedInstructionSequence(currentValue, targetValue)
+    const skills = extractSkillsFromSequence(sequence)
+    return [...new Set(skills.map((s) => s.skillId))]
+  } catch {
+    // If sequence generation fails, return empty skills
+    return []
   }
-
-  // Case 2: Borrowing required (currentDigit < termDigit)
-  else if (needsBorrow) {
-    // Ten complement for subtraction: -n = +(10-n)-10
-    const tenComplement = 10 - termDigit
-
-    // Check if adding the ten complement requires a five complement
-    // We're adding (10-termDigit) to currentDigit
-    const afterAddition = currentDigit + tenComplement
-
-    if (tenComplement >= 1 && tenComplement <= 4) {
-      // Adding 1-4 to currentDigit
-      skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
-
-      if (currentDigit + tenComplement >= 5 && afterAddition <= 9) {
-        // Adding complement crosses 5 boundary
-        if (currentDigit < 5) {
-          // Heaven bead NOT active - need five complement for the addition part
-          // Combined technique: use five complement to add the ten complement
-          skills.push(`fiveComplements.${tenComplement}=5-${5 - tenComplement}`)
-        }
-        // If currentDigit >= 5, heaven bead already active - just add earth beads directly
-      }
-      // If result <= 4, just direct addition of earth beads
-    } else if (tenComplement === 5) {
-      // -5 = +5-10
-      skills.push(`tenComplementsSub.-5=+5-10`)
-      skills.push('basic.heavenBead')
-    } else if (tenComplement >= 6 && tenComplement <= 9) {
-      // Adding 6-9 as the complement
-      skills.push(`tenComplementsSub.-${termDigit}=+${tenComplement}-10`)
-      skills.push('basic.heavenBead')
-      skills.push('basic.simpleCombinations')
-    }
-  }
-
-  return skills
-}
-
-/**
- * Analyzes skills needed for a single subtraction step: currentValue - term = newValue
- * Works column by column from right to left, tracking borrows.
- * Also detects cascading borrows (when a borrow propagates across 2+ columns).
- */
-export function analyzeSubtractionStepSkills(
-  currentValue: number,
-  term: number,
-  newValue: number
-): string[] {
-  const skills: string[] = []
-
-  const currentDigits = getDigits(currentValue)
-  const termDigits = getDigits(term)
-  const newDigits = getDigits(newValue)
-
-  const maxColumns = Math.max(currentDigits.length, termDigits.length, newDigits.length)
-
-  // Track borrows as we work from right to left
-  let pendingBorrow = false
-
-  // Track consecutive borrows for cascading detection
-  let consecutiveBorrows = 0
-
-  for (let column = 0; column < maxColumns; column++) {
-    let currentDigit = currentDigits[column] || 0
-    const termDigit = termDigits[column] || 0
-
-    // Apply pending borrow from previous column
-    if (pendingBorrow) {
-      currentDigit -= 1
-      pendingBorrow = false
-    }
-
-    if (termDigit === 0 && currentDigit >= 0) continue // No subtraction needed
-
-    // Check if we need to borrow for this column
-    const needsBorrow = currentDigit < termDigit
-
-    if (needsBorrow) {
-      pendingBorrow = true
-      consecutiveBorrows++
-      // After borrowing, we effectively have currentDigit + 10
-    } else {
-      // Reset consecutive borrows when a column doesn't need to borrow
-      consecutiveBorrows = 0
-    }
-
-    // Analyze skills needed for this column
-    const columnSkills = analyzeColumnSubtraction(
-      needsBorrow ? currentDigit + 10 : currentDigit,
-      termDigit,
-      needsBorrow
-    )
-    skills.push(...columnSkills)
-  }
-
-  // If we had 2+ consecutive borrows, this is a cascading borrow
-  if (consecutiveBorrows >= 2) {
-    skills.push('advanced.cascadingBorrow')
-  }
-
-  return [...new Set(skills)] // Remove duplicates
-}
-
-/**
- * Converts a number to array of digits (ones, tens, hundreds, etc.)
- */
-function getDigits(num: number): number[] {
-  if (num === 0) return [0]
-
-  const digits: number[] = []
-  while (num > 0) {
-    digits.push(num % 10)
-    num = Math.floor(num / 10)
-  }
-  return digits
 }
 
 /**
@@ -778,8 +499,8 @@ function findValidNextTermWithTrace(
       // Skip if result would be negative
       if (newValue < 0) continue
 
-      // Check if this subtraction step is valid
-      const stepSkills = analyzeSubtractionStepSkills(currentValue, term, newValue)
+      // Check if this subtraction step is valid - use negative term for subtraction
+      const stepSkills = analyzeStepSkills(currentValue, -term, newValue)
 
       // Check if the step uses only allowed skills (and no forbidden skills)
       const usesValidSkills = stepSkills.every((skillPath) => {

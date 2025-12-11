@@ -17,6 +17,11 @@
       "require": "./dist/static.cjs.js"
     }
   },
+  "typesVersions": {
+    "*": {
+      "static": ["./dist/static.d.ts"]
+    }
+  },
   "files": [
     "dist/**/*",
     "src/**/*",

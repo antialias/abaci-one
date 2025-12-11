@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeRequiredSkills, analyzeSubtractionStepSkills } from '../problemGenerator'
+import { analyzeRequiredSkills, analyzeStepSkills } from '../problemGenerator'
 
 describe('cascading regrouping detection', () => {
   describe('cascading carry (addition)', () => {
@@ -58,48 +58,49 @@ describe('cascading regrouping detection', () => {
     it('detects cascading borrow when 1000 - 1 = 999', () => {
       // Subtracting 1 from 1000: ones column 0-1 needs to borrow from tens,
       // tens column is 0 so borrows from hundreds, hundreds is 0 so borrows from thousands
-      const skills = analyzeSubtractionStepSkills(1000, 1, 999)
+      // Use analyzeStepSkills with negative term for subtraction
+      const skills = analyzeStepSkills(1000, -1, 999)
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
     it('detects cascading borrow when 100 - 1 = 99', () => {
       // 0-1 borrows from tens, tens is 0 so borrows from hundreds
-      const skills = analyzeSubtractionStepSkills(100, 1, 99)
+      const skills = analyzeStepSkills(100, -1, 99)
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
     it('does NOT detect cascading borrow for 90 - 1 = 89', () => {
       // 0-1 borrows from tens, tens has 9 (no cascade needed)
-      const skills = analyzeSubtractionStepSkills(90, 1, 89)
+      const skills = analyzeStepSkills(90, -1, 89)
       expect(skills).not.toContain('advanced.cascadingBorrow')
     })
 
     it('does NOT detect cascading borrow for 20 - 1 = 19', () => {
       // Single borrow from tens column which has 2
-      const skills = analyzeSubtractionStepSkills(20, 1, 19)
+      const skills = analyzeStepSkills(20, -1, 19)
       expect(skills).not.toContain('advanced.cascadingBorrow')
     })
 
     it('does NOT detect cascading borrow for simple subtraction 8 - 3 = 5', () => {
-      const skills = analyzeSubtractionStepSkills(8, 3, 5)
+      const skills = analyzeStepSkills(8, -3, 5)
       expect(skills).not.toContain('advanced.cascadingBorrow')
     })
 
     it('detects cascading borrow for 200 - 1 = 199', () => {
       // 0-1 borrows from tens (0), tens borrows from hundreds
-      const skills = analyzeSubtractionStepSkills(200, 1, 199)
+      const skills = analyzeStepSkills(200, -1, 199)
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
     it('detects cascading borrow for 10000 - 1 = 9999', () => {
       // Four consecutive borrows
-      const skills = analyzeSubtractionStepSkills(10000, 1, 9999)
+      const skills = analyzeStepSkills(10000, -1, 9999)
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
     it('detects cascading borrow for 300 - 5 = 295', () => {
       // 0-5 borrows from tens (0), tens borrows from hundreds
-      const skills = analyzeSubtractionStepSkills(300, 5, 295)
+      const skills = analyzeStepSkills(300, -5, 295)
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
@@ -111,13 +112,12 @@ describe('cascading regrouping detection', () => {
   })
 
   describe('edge cases', () => {
-    it('handles 1000 - 999 = 1 (no cascade - single borrow per column)', () => {
-      // Each column may borrow but they don't cascade consecutively
-      const skills = analyzeSubtractionStepSkills(1000, 999, 1)
-      // This is actually more complex - let's check what happens
-      // 0-9 borrows, 0-9 borrows (but 0-1=9 from the borrow), etc.
-      // This might still be considered cascading since multiple borrows happen
-      // The key is consecutive columns needing to borrow
+    it('handles 1000 - 999 = 1 (cascading borrow through multiple zeros)', () => {
+      // 1000 - 999 = 1 requires borrowing through multiple columns
+      // Ones: 0-9 borrows from tens, tens is 0 so borrows from hundreds, hundreds is 0 so borrows from thousands
+      // This IS a cascading borrow pattern
+      const skills = analyzeStepSkills(1000, -999, 1)
+      expect(skills).toContain('tenComplementsSub.-9=+1-10')
       expect(skills).toContain('advanced.cascadingBorrow')
     })
 
@@ -129,7 +129,7 @@ describe('cascading regrouping detection', () => {
 
     it('does not count single borrows as cascading', () => {
       // 50 - 5 = 45 - single borrow needed
-      const skills = analyzeSubtractionStepSkills(50, 5, 45)
+      const skills = analyzeStepSkills(50, -5, 45)
       expect(skills).not.toContain('advanced.cascadingBorrow')
     })
 

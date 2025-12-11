@@ -91,30 +91,34 @@ describe('Problem Generator Budget Integration', () => {
     it('should have low cost for effortless skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
+          'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryLevel: 'effortless' },
         },
       }
       const calculator = createSkillCostCalculator(history)
 
-      // 0 + 3 = 3 (direct addition)
-      const skills = analyzeStepSkills(0, 3, 3)
+      // 3 + 4 = 7 (five complement: +5 -1)
+      const skills = analyzeStepSkills(3, 4, 7)
       const cost = calculator.calculateTermCost(skills)
 
+      // fiveComplements.4=5-1 has base cost 1, effortless multiplier 1
+      // Note: may also include basic.heavenBead (base 0) and basic.simpleCombinations (base 0)
       expect(cost).toBe(1) // base 1 × effortless 1 = 1
     })
 
     it('should have high cost for learning skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'learning' },
+          'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryLevel: 'learning' },
         },
       }
       const calculator = createSkillCostCalculator(history)
 
-      // Same operation: 0 + 3 = 3
-      const skills = analyzeStepSkills(0, 3, 3)
+      // Same operation: 3 + 4 = 7 (five complement)
+      const skills = analyzeStepSkills(3, 4, 7)
       const cost = calculator.calculateTermCost(skills)
 
+      // fiveComplements.4=5-1 has base cost 1, learning multiplier 4
+      // Note: basic.heavenBead and basic.simpleCombinations have base 0
       expect(cost).toBe(4) // base 1 × learning 4 = 4
     })
 

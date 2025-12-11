@@ -1,17 +1,17 @@
 // Automatic instruction generator for abacus tutorial steps
-// Re-exports core types and functions from abacus-react
+// Re-exports core types and functions from abacus-react/static (server-safe)
 
-export type { ValidPlaceValues } from '@soroban/abacus-react'
+export type { ValidPlaceValues } from '@soroban/abacus-react/static'
 export {
   type BeadState,
   type AbacusState,
   type PlaceValueBasedBead as BeadHighlight,
   numberToAbacusState,
   calculateBeadChanges,
-} from '@soroban/abacus-react'
+} from '@soroban/abacus-react/static'
 
-import type { ValidPlaceValues, PlaceValueBasedBead } from '@soroban/abacus-react'
-import { numberToAbacusState, calculateBeadChanges } from '@soroban/abacus-react'
+import type { ValidPlaceValues, PlaceValueBasedBead } from '@soroban/abacus-react/static'
+import { numberToAbacusState, calculateBeadChanges } from '@soroban/abacus-react/static'
 
 // Type alias for internal use
 type BeadHighlight = PlaceValueBasedBead

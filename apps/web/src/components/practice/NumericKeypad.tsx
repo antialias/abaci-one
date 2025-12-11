@@ -22,93 +22,165 @@ interface NumericKeypadProps {
 }
 
 /**
- * Generate CSS variables for keyboard theming
- * Uses Panda CSS tokens converted to CSS custom properties
+ * Generate CSS for portrait keyboard (single row at bottom)
  */
-function getKeyboardThemeStyles(isDark: boolean): string {
+function getPortraitStyles(isDark: boolean): string {
   return `
-    .practice-numeric-keyboard .simple-keyboard {
-      background: var(--colors-${isDark ? 'gray-800' : 'gray-50'});
-      border-radius: 12px;
-      padding: 8px;
-      border: 1px solid var(--colors-${isDark ? 'gray-700' : 'gray-200'});
+    .keypad-portrait .simple-keyboard {
+      background: ${isDark ? '#1a1a1a' : '#f5f5f5'};
+      padding: 4px 2px;
+      border-radius: 0;
     }
-    .practice-numeric-keyboard .hg-button {
-      height: 56px;
-      border-radius: 8px;
-      background: var(--colors-${isDark ? 'gray-700' : 'white'});
-      color: var(--colors-${isDark ? 'gray-100' : 'gray-800'});
-      border: 1px solid var(--colors-${isDark ? 'gray-600' : 'gray-200'});
-      font-size: 24px;
-      font-weight: 600;
-      box-shadow: ${isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
-      transition: all 0.1s ease;
+    .keypad-portrait .hg-row {
+      display: flex;
+      margin: 0;
+    }
+    .keypad-portrait .hg-button {
+      height: 40px;
       flex: 1;
-      margin: 3px;
+      margin: 0 1px;
+      border-radius: 6px;
+      background: ${isDark ? '#374151' : '#ffffff'};
+      color: ${isDark ? '#f3f4f6' : '#1f2937'};
+      border: 1px solid ${isDark ? '#4b5563' : '#d1d5db'};
+      font-size: 18px;
+      font-weight: 600;
+      box-shadow: ${isDark ? '0 2px 0 #1f2937' : '0 2px 0 #9ca3af'};
     }
-    .practice-numeric-keyboard .hg-button:active {
-      background: var(--colors-blue-500);
+    .keypad-portrait .hg-button:active {
+      background: #3b82f6;
       color: white;
-      transform: scale(0.95);
+      box-shadow: none;
+      transform: translateY(2px);
     }
-    .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"] {
-      background: var(--colors-${isDark ? 'red-900' : 'red-100'});
-      color: var(--colors-${isDark ? 'red-300' : 'red-600'});
-      border-color: var(--colors-${isDark ? 'red-800' : 'red-200'});
+    .keypad-portrait .hg-button[data-skbtn="{bksp}"] {
+      background: ${isDark ? '#7f1d1d' : '#fee2e2'};
+      color: ${isDark ? '#fca5a5' : '#dc2626'};
+      border-color: ${isDark ? '#991b1b' : '#fecaca'};
     }
-    .practice-numeric-keyboard .hg-button[data-skbtn="{bksp}"]:active {
-      background: var(--colors-red-600);
+    .keypad-portrait .hg-button[data-skbtn="{bksp}"]:active {
+      background: #dc2626;
       color: white;
     }
-    .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"] {
-      background: var(--colors-${isDark ? 'green-900' : 'green-100'});
-      color: var(--colors-${isDark ? 'green-300' : 'green-600'});
-      border-color: var(--colors-${isDark ? 'green-800' : 'green-200'});
+    .keypad-portrait .hg-button[data-skbtn="{enter}"] {
+      background: ${isDark ? '#14532d' : '#dcfce7'};
+      color: ${isDark ? '#86efac' : '#16a34a'};
+      border-color: ${isDark ? '#166534' : '#bbf7d0'};
     }
-    .practice-numeric-keyboard .hg-button[data-skbtn="{enter}"]:active {
-      background: var(--colors-green-600);
+    .keypad-portrait .hg-button[data-skbtn="{enter}"]:active {
+      background: #16a34a;
       color: white;
     }
-    .practice-numeric-keyboard .hg-button[data-skbtn="{empty}"] {
+    .keypad-portrait .hg-button[data-skbtn="{empty}"] {
       visibility: hidden;
       pointer-events: none;
-    }
-    .practice-numeric-keyboard .hg-row {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 2px;
     }
   `
 }
 
 /**
- * Numeric keypad for mobile input during practice sessions.
- * Uses react-simple-keyboard for touch-friendly digit entry.
+ * Generate CSS for landscape keyboard (two columns on right)
+ */
+function getLandscapeStyles(isDark: boolean): string {
+  return `
+    .keypad-landscape .simple-keyboard {
+      background: ${isDark ? '#1a1a1a' : '#f5f5f5'};
+      padding: 4px;
+      border-radius: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .keypad-landscape .hg-rows {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .keypad-landscape .hg-row {
+      display: flex;
+      flex: 1;
+      margin: 0;
+    }
+    .keypad-landscape .hg-button {
+      flex: 1;
+      margin: 2px;
+      border-radius: 6px;
+      background: ${isDark ? '#374151' : '#ffffff'};
+      color: ${isDark ? '#f3f4f6' : '#1f2937'};
+      border: 1px solid ${isDark ? '#4b5563' : '#d1d5db'};
+      font-size: 18px;
+      font-weight: 600;
+      box-shadow: ${isDark ? '0 2px 0 #1f2937' : '0 2px 0 #9ca3af'};
+    }
+    .keypad-landscape .hg-button:active {
+      background: #3b82f6;
+      color: white;
+      box-shadow: none;
+      transform: translateY(2px);
+    }
+    .keypad-landscape .hg-button[data-skbtn="{bksp}"] {
+      background: ${isDark ? '#7f1d1d' : '#fee2e2'};
+      color: ${isDark ? '#fca5a5' : '#dc2626'};
+      border-color: ${isDark ? '#991b1b' : '#fecaca'};
+    }
+    .keypad-landscape .hg-button[data-skbtn="{bksp}"]:active {
+      background: #dc2626;
+      color: white;
+    }
+    .keypad-landscape .hg-button[data-skbtn="{enter}"] {
+      background: ${isDark ? '#14532d' : '#dcfce7'};
+      color: ${isDark ? '#86efac' : '#16a34a'};
+      border-color: ${isDark ? '#166534' : '#bbf7d0'};
+    }
+    .keypad-landscape .hg-button[data-skbtn="{enter}"]:active {
+      background: #16a34a;
+      color: white;
+    }
+    .keypad-landscape .hg-button[data-skbtn="{empty}"] {
+      visibility: hidden;
+      pointer-events: none;
+    }
+  `
+}
+
+/**
+ * Responsive numeric keypad for mobile input during practice sessions.
+ * Fixed position for maximum screen efficiency.
+ *
+ * Layout adapts to device orientation:
+ * - Portrait: Single row fixed to bottom, edge-to-edge
+ * - Landscape: Two columns fixed to right side, top-to-bottom
  */
 export function NumericKeypad({
   onDigit,
   onBackspace,
   onSubmit,
   disabled = false,
-  currentValue = '',
   showSubmitButton = true,
 }: NumericKeypadProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const keyboardRef = useRef<any>(null)
+  const portraitKeyboardRef = useRef<any>(null)
+  const landscapeKeyboardRef = useRef<any>(null)
 
-  // Numeric layout - conditionally include submit button
-  // When submit is hidden, we use a spacer {empty} to maintain grid alignment
-  const layout = {
+  // Portrait layout: single row
+  const portraitLayout = {
     default: showSubmitButton
-      ? ['1 2 3', '4 5 6', '7 8 9', '{bksp} 0 {enter}']
-      : ['1 2 3', '4 5 6', '7 8 9', '{bksp} 0 {empty}'],
+      ? ['1 2 3 4 5 6 7 8 9 0 {bksp} {enter}']
+      : ['1 2 3 4 5 6 7 8 9 0 {bksp} {empty}'],
+  }
+
+  // Landscape layout: 6 rows, 2 columns
+  const landscapeLayout = {
+    default: showSubmitButton
+      ? ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp} {enter}']
+      : ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp} {empty}'],
   }
 
   const display = {
-    '{bksp}': '\u232B', // Unicode backspace symbol
-    '{enter}': '\u2713', // Unicode checkmark
-    '{empty}': '', // Empty spacer
+    '{bksp}': '⌫',
+    '{enter}': '✓',
+    '{empty}': '',
   }
 
   const handleKeyPress = useCallback(
@@ -127,32 +199,82 @@ export function NumericKeypad({
   )
 
   return (
-    <div
-      data-component="numeric-keypad"
-      className={css({
-        width: '100%',
-        maxWidth: '320px',
-        margin: '0 auto',
-        opacity: disabled ? 0.5 : 1,
-        pointerEvents: disabled ? 'none' : 'auto',
-      })}
-    >
-      <style>{getKeyboardThemeStyles(isDark)}</style>
-      <div className="practice-numeric-keyboard">
-        <Keyboard
-          keyboardRef={(r) => (keyboardRef.current = r)}
-          layout={layout}
-          display={display}
-          onKeyPress={handleKeyPress}
-          theme="hg-theme-default simple-keyboard"
-          physicalKeyboardHighlight={false}
-          physicalKeyboardHighlightPress={false}
-          disableButtonHold={true}
-          stopMouseDownPropagation={true}
-          stopMouseUpPropagation={true}
-        />
+    <>
+      <style>{getPortraitStyles(isDark)}</style>
+      <style>{getLandscapeStyles(isDark)}</style>
+
+      {/* Portrait mode: single row fixed to bottom */}
+      <div
+        data-component="numeric-keypad"
+        data-layout="portrait"
+        className={css({
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          opacity: disabled ? 0.5 : 1,
+          pointerEvents: disabled ? 'none' : 'auto',
+          borderTop: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.300',
+          '@media (orientation: landscape)': {
+            display: 'none',
+          },
+        })}
+      >
+        <div className="keypad-portrait">
+          <Keyboard
+            keyboardRef={(r) => (portraitKeyboardRef.current = r)}
+            layout={portraitLayout}
+            display={display}
+            onKeyPress={handleKeyPress}
+            theme="hg-theme-default simple-keyboard"
+            physicalKeyboardHighlight={false}
+            physicalKeyboardHighlightPress={false}
+            disableButtonHold={true}
+            stopMouseDownPropagation={true}
+            stopMouseUpPropagation={true}
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Landscape mode: two columns fixed to right side */}
+      <div
+        data-component="numeric-keypad"
+        data-layout="landscape"
+        className={css({
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '100px',
+          zIndex: 1000,
+          display: 'none',
+          opacity: disabled ? 0.5 : 1,
+          pointerEvents: disabled ? 'none' : 'auto',
+          borderLeft: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.300',
+          '@media (orientation: landscape)': {
+            display: 'block',
+          },
+        })}
+      >
+        <div className="keypad-landscape" style={{ height: '100%' }}>
+          <Keyboard
+            keyboardRef={(r) => (landscapeKeyboardRef.current = r)}
+            layout={landscapeLayout}
+            display={display}
+            onKeyPress={handleKeyPress}
+            theme="hg-theme-default simple-keyboard"
+            physicalKeyboardHighlight={false}
+            physicalKeyboardHighlightPress={false}
+            disableButtonHold={true}
+            stopMouseDownPropagation={true}
+            stopMouseUpPropagation={true}
+          />
+        </div>
+      </div>
+    </>
   )
 }
 

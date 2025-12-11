@@ -334,6 +334,14 @@ export function ActiveSession({
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
+  // Track if keypad was ever shown - once shown, keep it visible
+  // This prevents the keypad from disappearing if user uses physical keyboard
+  const keypadWasShownRef = useRef(false)
+  if (hasPhysicalKeyboard === false) {
+    keypadWasShownRef.current = true
+  }
+  const showOnScreenKeypad = hasPhysicalKeyboard === false || keypadWasShownRef.current
+
   // Get current part and slot from plan
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
@@ -1202,7 +1210,7 @@ export function ActiveSession({
           </div>
 
           {/* On-screen keypad for mobile */}
-          {hasPhysicalKeyboard === false && (
+          {showOnScreenKeypad && (
             <NumericKeypad
               onDigit={handleDigit}
               onBackspace={handleBackspace}
