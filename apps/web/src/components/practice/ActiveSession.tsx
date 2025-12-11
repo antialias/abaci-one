@@ -12,6 +12,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
@@ -431,6 +432,15 @@ export function ActiveSession({
       }, 1000) // Show target value in answer boxes for 1 second
     }, 600) // Brief pause to see success state on abacus
   }, [phase.phase, helpContext, setAnswer, clearAnswer, exitHelpMode])
+
+  // Handle value change from the docked abacus
+  const handleAbacusDockValueChange = useCallback(
+    (newValue: number) => {
+      // When the abacus shows the correct answer, set it and auto-submit will trigger
+      setAnswer(String(newValue))
+    },
+    [setAnswer]
+  )
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
@@ -1149,6 +1159,34 @@ export function ActiveSession({
                     />
                   </DecompositionProvider>
                 </div>
+              )}
+
+              {/* Abacus dock - positioned to the right of the problem when in abacus mode and not in help mode */}
+              {currentPart.type === 'abacus' && !showHelpOverlay && (
+                <AbacusDock
+                  id="practice-abacus"
+                  columns={String(Math.abs(attempt.problem.answer)).length}
+                  interactive={true}
+                  showNumbers={false}
+                  animated={true}
+                  onValueChange={handleAbacusDockValueChange}
+                  className={css({
+                    position: 'absolute',
+                    left: '100%',
+                    top: 0,
+                    bottom: 0,
+                    marginLeft: '1rem',
+                    width: '120px',
+                    '@media (min-width: 768px)': {
+                      marginLeft: '1.5rem',
+                      width: '150px',
+                    },
+                    '@media (min-width: 1024px)': {
+                      marginLeft: '2rem',
+                      width: '180px',
+                    },
+                  })}
+                />
               )}
             </animated.div>
           </animated.div>

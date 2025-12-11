@@ -614,7 +614,8 @@ export function StartPracticeModal({
                                   top: '-8px',
                                   right: '-8px',
                                   minWidth: '22px',
-                                  height: '22px',
+                                  minHeight: '22px',
+                                  aspectRatio: '1 / 1',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -622,8 +623,8 @@ export function StartPracticeModal({
                                   fontWeight: 'bold',
                                   color: 'white',
                                   backgroundColor: 'green.500',
-                                  borderRadius: '11px',
-                                  padding: '0 6px',
+                                  borderRadius: '50%',
+                                  padding: '2px',
                                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                                 })}
                               >
