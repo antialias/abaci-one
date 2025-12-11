@@ -532,32 +532,6 @@ export function SessionPausedModal({
           </div>
         )}
 
-        {/* Manual pause - simple and encouraging */}
-        {pauseInfo?.reason === 'manual' && (
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1rem',
-              backgroundColor: isDark ? 'green.900/50' : 'green.50',
-              borderRadius: '12px',
-              border: '1px solid',
-              borderColor: isDark ? 'green.700' : 'green.200',
-            })}
-          >
-            <span className={css({ fontSize: '1.25rem' })}>✨</span>
-            <p
-              className={css({
-                fontSize: '0.8125rem',
-                color: isDark ? 'green.200' : 'green.700',
-              })}
-            >
-              Smart thinking to take a break when you need one!
-            </p>
-          </div>
-        )}
-
         {/* Progress summary - celebratory */}
         <div
           className={css({
