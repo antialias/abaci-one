@@ -559,25 +559,25 @@ export function SessionPausedModal({
           {/* Progress bar with sparkle */}
           <div
             data-element="progress-bar"
-            className={css({
+            style={{
               position: 'relative',
               width: '100%',
               height: '12px',
-              backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? '#4b5563' : '#d1d5db',
               borderRadius: '6px',
               overflow: 'hidden',
-            })}
+            }}
           >
             <div
-              className={css({
+              style={{
                 height: '100%',
+                width: `${progressPercent}%`,
                 background: isDark
                   ? 'linear-gradient(90deg, #22c55e, #4ade80)'
                   : 'linear-gradient(90deg, #16a34a, #22c55e)',
                 borderRadius: '6px',
                 transition: 'width 0.3s ease',
-              })}
-              style={{ width: `${progressPercent}%` }}
+              }}
             />
           </div>
 
