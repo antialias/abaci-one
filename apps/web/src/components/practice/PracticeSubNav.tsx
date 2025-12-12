@@ -1,8 +1,25 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { SpeedMeter } from './SpeedMeter'
+
+/**
+ * Timing data for the current problem attempt
+ */
+export interface TimingData {
+  /** When the current attempt started */
+  startTime: number
+  /** Accumulated pause time in ms */
+  accumulatedPauseMs: number
+  /** Session results so far (for calculating averages) */
+  results: SlotResult[]
+  /** Session parts (to map result partNumber to part type) */
+  parts: SessionPart[]
+}
 
 /**
  * Session HUD data for active practice sessions
@@ -27,6 +44,8 @@ export interface SessionHudData {
     overall: 'good' | 'warning' | 'struggling'
     accuracy: number
   }
+  /** Timing data for current problem (optional) */
+  timing?: TimingData
   /** Callbacks for transport controls */
   onPause: () => void
   onResume: () => void
@@ -93,6 +112,50 @@ function getHealthColor(overall: 'good' | 'warning' | 'struggling'): string {
   }
 }
 
+// Minimum samples needed for statistical display
+const MIN_SAMPLES_FOR_STATS = 3
+
+/**
+ * Calculate mean and standard deviation of response times
+ */
+function calculateStats(times: number[]): {
+  mean: number
+  stdDev: number
+  count: number
+} {
+  if (times.length === 0) {
+    return { mean: 0, stdDev: 0, count: 0 }
+  }
+
+  const count = times.length
+  const mean = times.reduce((sum, t) => sum + t, 0) / count
+
+  if (count < 2) {
+    return { mean, stdDev: 0, count }
+  }
+
+  const squaredDiffs = times.map((t) => (t - mean) ** 2)
+  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / (count - 1)
+  const stdDev = Math.sqrt(variance)
+
+  return { mean, stdDev, count }
+}
+
+/**
+ * Format seconds as a compact time string
+ */
+function formatTimeCompact(ms: number): string {
+  if (ms < 0) return '0s'
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  if (minutes > 0) {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
+}
+
 /**
  * Practice Sub-Navigation Bar
  *
@@ -113,6 +176,49 @@ export function PracticeSubNav({
 
   const isOnDashboard = pageContext === 'dashboard'
 
+  // Live-updating current problem timer
+  const [currentElapsedMs, setCurrentElapsedMs] = useState(0)
+
+  // Update current timer every 100ms when timing data is available
+  useEffect(() => {
+    if (!sessionHud?.timing || sessionHud.isPaused) {
+      return
+    }
+
+    const { startTime, accumulatedPauseMs } = sessionHud.timing
+    const updateTimer = () => {
+      const elapsed = Date.now() - startTime - accumulatedPauseMs
+      setCurrentElapsedMs(Math.max(0, elapsed))
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 100)
+    return () => clearInterval(interval)
+  }, [sessionHud?.timing?.startTime, sessionHud?.timing?.accumulatedPauseMs, sessionHud?.isPaused])
+
+  // Calculate timing stats from results - filtered by current part type
+  const timingStats = sessionHud?.timing
+    ? (() => {
+        const currentPartType = sessionHud.currentPart.type
+        const { results, parts } = sessionHud.timing
+
+        // Map each result to its part type and filter for current type only
+        const timesForCurrentType = results
+          .filter((r) => {
+            const partIndex = parts.findIndex((p) => p.partNumber === r.partNumber)
+            return partIndex >= 0 && parts[partIndex].type === currentPartType
+          })
+          .map((r) => r.responseTimeMs)
+
+        const stats = calculateStats(timesForCurrentType)
+        const hasEnoughData = stats.count >= MIN_SAMPLES_FOR_STATS
+        const threshold = hasEnoughData
+          ? Math.max(30_000, Math.min(stats.mean + 2 * stats.stdDev, 5 * 60 * 1000))
+          : 60_000
+        return { ...stats, hasEnoughData, threshold, partType: currentPartType }
+      })()
+    : null
+
   return (
     <nav
       data-component="practice-sub-nav"
@@ -125,8 +231,8 @@ export function PracticeSubNav({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '1rem',
-        padding: '0.75rem 1.5rem',
+        gap: { base: '0.5rem', md: '1rem' },
+        padding: { base: '0.5rem 0.75rem', md: '0.75rem 1.5rem' },
         backgroundColor: isDark ? 'gray.900' : 'gray.100',
         borderBottom: '1px solid',
         borderColor: isDark ? 'gray.800' : 'gray.200',
@@ -170,10 +276,10 @@ export function PracticeSubNav({
         >
           {student.emoji}
         </div>
-        {/* Name + context */}
+        {/* Name + context - hidden on mobile during session */}
         <div
           className={css({
-            display: 'flex',
+            display: sessionHud ? { base: 'none', sm: 'flex' } : 'flex',
             flexDirection: 'column',
             gap: '0',
             minWidth: 0,
@@ -215,7 +321,7 @@ export function PracticeSubNav({
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
+            gap: { base: '0.375rem', md: '0.75rem' },
           })}
         >
           {/* Transport controls */}
@@ -233,12 +339,12 @@ export function PracticeSubNav({
               data-action={sessionHud.isPaused ? 'resume' : 'pause'}
               onClick={sessionHud.isPaused ? sessionHud.onResume : sessionHud.onPause}
               className={css({
-                width: '36px',
-                height: '36px',
+                width: { base: '32px', md: '36px' },
+                height: { base: '32px', md: '36px' },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.125rem',
+                fontSize: { base: '1rem', md: '1.125rem' },
                 color: 'white',
                 backgroundColor: sessionHud.isPaused ? 'green.500' : 'gray.600',
                 borderRadius: '6px',
@@ -265,12 +371,12 @@ export function PracticeSubNav({
               data-action="end-early"
               onClick={sessionHud.onEndEarly}
               className={css({
-                width: '36px',
-                height: '36px',
+                width: { base: '32px', md: '36px' },
+                height: { base: '32px', md: '36px' },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.125rem',
+                fontSize: { base: '1rem', md: '1.125rem' },
                 color: 'red.300',
                 backgroundColor: 'gray.600',
                 borderRadius: '6px',
@@ -320,11 +426,14 @@ export function PracticeSubNav({
                   gap: '0.375rem',
                 })}
               >
-                <span className={css({ fontSize: '1.125rem', lineHeight: 1 })}>
+                <span
+                  className={css({ fontSize: { base: '1rem', md: '1.125rem' }, lineHeight: 1 })}
+                >
                   {getPartTypeEmoji(sessionHud.currentPart.type)}
                 </span>
                 <span
                   className={css({
+                    display: { base: 'none', sm: 'inline' },
                     fontSize: '0.875rem',
                     fontWeight: '600',
                     color: isDark ? 'gray.100' : 'gray.700',
@@ -337,7 +446,7 @@ export function PracticeSubNav({
               {/* "X left" on right */}
               <span
                 className={css({
-                  fontSize: '0.875rem',
+                  fontSize: { base: '0.75rem', md: '0.875rem' },
                   fontWeight: '600',
                   color: isDark ? 'gray.300' : 'gray.600',
                 })}
@@ -350,9 +459,9 @@ export function PracticeSubNav({
             <div
               className={css({
                 width: '100%',
-                height: '16px',
+                height: { base: '12px', md: '16px' },
                 backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                borderRadius: '8px',
+                borderRadius: { base: '6px', md: '8px' },
                 overflow: 'hidden',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
               })}
@@ -361,7 +470,7 @@ export function PracticeSubNav({
                 className={css({
                   height: '100%',
                   backgroundColor: 'green.500',
-                  borderRadius: '8px',
+                  borderRadius: { base: '6px', md: '8px' },
                   transition: 'width 0.3s ease',
                   boxShadow: '0 2px 4px rgba(34, 197, 94, 0.3)',
                 })}
@@ -372,26 +481,97 @@ export function PracticeSubNav({
             </div>
           </div>
 
-          {/* Health indicator */}
+          {/* Timing display */}
+          {sessionHud.timing && timingStats && (
+            <div
+              data-element="timing-display"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
+                padding: { base: '0.125rem 0.375rem', md: '0.25rem 0.5rem' },
+                backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                borderRadius: { base: '6px', md: '8px' },
+                flexShrink: 0,
+                minWidth: { base: '60px', md: '100px' },
+              })}
+            >
+              {/* Current timer */}
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.125rem',
+                })}
+              >
+                <span
+                  className={css({ fontSize: '0.625rem', display: { base: 'none', sm: 'inline' } })}
+                >
+                  ⏱️
+                </span>
+                <span
+                  className={css({
+                    fontFamily: 'monospace',
+                    fontSize: { base: '0.875rem', md: '1rem' },
+                    fontWeight: 'bold',
+                    color:
+                      currentElapsedMs > timingStats.threshold
+                        ? isDark
+                          ? 'red.400'
+                          : 'red.500'
+                        : currentElapsedMs > timingStats.mean + timingStats.stdDev
+                          ? isDark
+                            ? 'yellow.400'
+                            : 'yellow.600'
+                          : isDark
+                            ? 'green.400'
+                            : 'green.600',
+                  })}
+                >
+                  {formatTimeCompact(currentElapsedMs)}
+                </span>
+              </div>
+
+              {/* Mini speed meter - hidden on very small screens */}
+              {timingStats.hasEnoughData && (
+                <div className={css({ display: { base: 'none', sm: 'block' } })}>
+                  <SpeedMeter
+                    meanMs={timingStats.mean}
+                    stdDevMs={timingStats.stdDev}
+                    thresholdMs={timingStats.threshold}
+                    currentTimeMs={currentElapsedMs}
+                    isDark={isDark}
+                    compact={true}
+                    averageLabel=""
+                    fastLabel=""
+                    slowLabel=""
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Health indicator - hidden on very small screens */}
           {sessionHud.sessionHealth && (
             <div
               data-element="session-health"
               className={css({
-                display: 'flex',
+                display: { base: 'none', sm: 'flex' },
                 alignItems: 'center',
-                gap: '0.25rem',
-                padding: '0.375rem 0.5rem',
+                gap: '0.125rem',
+                padding: { base: '0.25rem 0.375rem', md: '0.375rem 0.5rem' },
                 backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                borderRadius: '8px',
+                borderRadius: { base: '6px', md: '8px' },
                 flexShrink: 0,
               })}
             >
-              <span className={css({ fontSize: '1rem' })}>
+              <span className={css({ fontSize: { base: '0.875rem', md: '1rem' } })}>
                 {getHealthEmoji(sessionHud.sessionHealth.overall)}
               </span>
               <span
                 className={css({
-                  fontSize: '0.875rem',
+                  fontSize: { base: '0.75rem', md: '0.875rem' },
                   fontWeight: 'bold',
                 })}
                 style={{

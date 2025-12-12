@@ -9,6 +9,7 @@
  */
 
 export { ActiveSession } from './ActiveSession'
+export type { AttemptTimingData } from './ActiveSession'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
 export { useHasPhysicalKeyboard, useIsTouchDevice } from './hooks/useDeviceDetection'

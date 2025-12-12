@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
+  type AttemptTimingData,
   PracticeErrorBoundary,
   PracticeSubNav,
   type SessionHudData,
@@ -42,6 +43,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [isPaused, setIsPaused] = useState(false)
   // Track pause info for displaying details in the modal
   const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
+  // Track timing data from ActiveSession for the sub-nav HUD
+  const [timingData, setTimingData] = useState<AttemptTimingData | null>(null)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -134,6 +137,15 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               accuracy: sessionHealth.accuracy,
             }
           : undefined,
+        // Pass timing data for the current problem
+        timing: timingData
+          ? {
+              startTime: timingData.startTime,
+              accumulatedPauseMs: timingData.accumulatedPauseMs,
+              results: currentPlan.results,
+              parts: currentPlan.parts,
+            }
+          : undefined,
         onPause: () =>
           handlePause({
             pausedAt: new Date(),
@@ -164,6 +176,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onPause={handlePause}
             onResume={handleResume}
             onComplete={handleSessionComplete}
+            onTimingUpdate={setTimingData}
             hideHud={true}
           />
         </PracticeErrorBoundary>

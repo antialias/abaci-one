@@ -93,9 +93,18 @@ import { useInteractionPhase } from './hooks/useInteractionPhase'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
-import { PracticeTimingDisplay } from './PracticeTimingDisplay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
+
+/**
+ * Timing data for the current problem attempt
+ */
+export interface AttemptTimingData {
+  /** When the current attempt started */
+  startTime: number
+  /** Accumulated pause time in ms */
+  accumulatedPauseMs: number
+}
 
 interface ActiveSessionProps {
   plan: SessionPlan
@@ -112,6 +121,8 @@ interface ActiveSessionProps {
   onComplete: () => void
   /** Hide the built-in HUD (when using external HUD in PracticeSubNav) */
   hideHud?: boolean
+  /** Called with timing data when it changes (for external timing display) */
+  onTimingUpdate?: (timing: AttemptTimingData | null) => void
 }
 
 /**
@@ -268,6 +279,7 @@ export function ActiveSession({
   onResume,
   onComplete,
   hideHud = false,
+  onTimingUpdate,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -330,6 +342,20 @@ export function ActiveSession({
     initialProblem,
     onManualSubmitRequired: () => playSound('womp_womp'),
   })
+
+  // Notify parent of timing data changes for external timing display
+  useEffect(() => {
+    if (onTimingUpdate) {
+      if (attempt) {
+        onTimingUpdate({
+          startTime: attempt.startTime,
+          accumulatedPauseMs: attempt.accumulatedPauseMs,
+        })
+      } else {
+        onTimingUpdate(null)
+      }
+    }
+  }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
 
   // Track which help elements have been individually dismissed
   // These reset when entering a new help session (helpContext changes)
@@ -1037,20 +1063,6 @@ export function ActiveSession({
             )}
           </div>
         </div>
-      )}
-
-      {/* Timing Display - shows current problem timer, average, and per-part-type breakdown */}
-      {/* Always shown regardless of hideHud - timing info is always useful */}
-      {attempt && (
-        <PracticeTimingDisplay
-          results={plan.results}
-          parts={plan.parts}
-          attemptStartTime={attempt.startTime}
-          accumulatedPauseMs={attempt.accumulatedPauseMs}
-          isPaused={isPaused}
-          currentPartType={currentPart.type}
-          isDark={isDark}
-        />
       )}
 
       {/* Problem display */}
