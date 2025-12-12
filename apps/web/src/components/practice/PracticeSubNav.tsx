@@ -346,14 +346,22 @@ export function PracticeSubNav({
                 justifyContent: 'center',
                 fontSize: { base: '1rem', md: '1.125rem' },
                 color: 'white',
-                backgroundColor: sessionHud.isPaused ? 'green.500' : 'gray.600',
+                backgroundColor: sessionHud.isPaused
+                  ? 'green.500'
+                  : isDark
+                    ? 'gray.600'
+                    : 'gray.500',
                 borderRadius: '6px',
                 border: '2px solid',
-                borderColor: sessionHud.isPaused ? 'green.400' : 'gray.500',
+                borderColor: sessionHud.isPaused ? 'green.400' : isDark ? 'gray.500' : 'gray.400',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 _hover: {
-                  backgroundColor: sessionHud.isPaused ? 'green.400' : 'gray.500',
+                  backgroundColor: sessionHud.isPaused
+                    ? 'green.400'
+                    : isDark
+                      ? 'gray.500'
+                      : 'gray.400',
                   transform: 'scale(1.05)',
                 },
                 _active: {
@@ -377,17 +385,17 @@ export function PracticeSubNav({
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: { base: '1rem', md: '1.125rem' },
-                color: 'red.300',
-                backgroundColor: 'gray.600',
+                color: isDark ? 'red.400' : 'red.500',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
                 borderRadius: '6px',
                 border: '2px solid',
-                borderColor: 'gray.500',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 _hover: {
-                  backgroundColor: 'red.900',
-                  borderColor: 'red.700',
-                  color: 'red.200',
+                  backgroundColor: isDark ? 'red.900' : 'red.100',
+                  borderColor: isDark ? 'red.700' : 'red.300',
+                  color: isDark ? 'red.300' : 'red.600',
                   transform: 'scale(1.05)',
                 },
                 _active: {
