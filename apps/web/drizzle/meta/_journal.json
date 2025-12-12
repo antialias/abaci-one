@@ -204,6 +204,13 @@
       "when": 1765331044112,
       "tag": "0028_medical_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1765496987070,
+      "tag": "0029_first_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

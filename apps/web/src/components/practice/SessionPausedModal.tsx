@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { SpeedMeter } from './SpeedMeter'
 
 /**
  * Statistics about response times used for auto-pause threshold
@@ -123,122 +124,6 @@ function formatSecondsFriendly(ms: number): string {
   const seconds = ms / 1000
   if (seconds < 1) return 'less than a second'
   return `about ${secondsFormatter.format(Math.round(seconds))}`
-}
-
-/**
- * Speed visualization - shows average speed vs variation
- */
-function SpeedMeter({
-  meanMs,
-  stdDevMs,
-  thresholdMs,
-  isDark,
-}: {
-  meanMs: number
-  stdDevMs: number
-  thresholdMs: number
-  isDark: boolean
-}) {
-  // Scale so the mean is around 50% and threshold is at 100%
-  // This ensures the visualization is always meaningful regardless of absolute values
-  const scaleMax = thresholdMs
-  const meanPercent = Math.min(95, Math.max(5, (meanMs / scaleMax) * 100))
-
-  // Variation should be visible but proportional - minimum 8% width for visibility
-  const rawVariationPercent = (stdDevMs / scaleMax) * 100
-  const variationPercent = Math.max(8, Math.min(40, rawVariationPercent))
-
-  return (
-    <div
-      data-element="speed-meter"
-      className={css({
-        width: '100%',
-        padding: '0.75rem',
-        backgroundColor: isDark ? 'gray.800' : 'white',
-        borderRadius: '8px',
-      })}
-    >
-      {/* Speed bar container */}
-      <div
-        className={css({
-          position: 'relative',
-          height: '24px',
-          backgroundColor: isDark ? 'gray.700' : 'gray.200',
-          borderRadius: '12px',
-          overflow: 'visible',
-        })}
-      >
-        {/* Variation range (the "wiggle room") */}
-        <div
-          className={css({
-            position: 'absolute',
-            height: '100%',
-            backgroundColor: isDark ? 'blue.800' : 'blue.100',
-            borderRadius: '12px',
-            transition: 'all 0.5s ease',
-          })}
-          style={{
-            left: `${Math.max(0, meanPercent - variationPercent)}%`,
-            width: `${variationPercent * 2}%`,
-          }}
-        />
-
-        {/* Average marker */}
-        <div
-          className={css({
-            position: 'absolute',
-            top: '-4px',
-            width: '8px',
-            height: '32px',
-            backgroundColor: isDark ? 'blue.400' : 'blue.500',
-            borderRadius: '4px',
-            transition: 'all 0.5s ease',
-            zIndex: 1,
-          })}
-          style={{
-            left: `calc(${meanPercent}% - 4px)`,
-          }}
-        />
-
-        {/* Threshold marker */}
-        <div
-          className={css({
-            position: 'absolute',
-            top: '0',
-            width: '3px',
-            height: '100%',
-            backgroundColor: isDark ? 'yellow.500' : 'yellow.600',
-            borderRadius: '2px',
-          })}
-          style={{
-            left: 'calc(100% - 2px)',
-          }}
-        />
-      </div>
-
-      {/* Labels */}
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: '0.5rem',
-          fontSize: '0.6875rem',
-          color: isDark ? 'gray.400' : 'gray.500',
-        })}
-      >
-        <span>Fast</span>
-        <span
-          className={css({
-            color: isDark ? 'blue.300' : 'blue.600',
-            fontWeight: 'bold',
-          })}
-        >
-          Your usual speed
-        </span>
-        <span>Pause</span>
-      </div>
-    </div>
-  )
 }
 
 export interface SessionPausedModalProps {

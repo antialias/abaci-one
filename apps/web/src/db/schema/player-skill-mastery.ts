@@ -100,6 +100,20 @@ export const playerSkillMastery = sqliteTable(
      * Resets to 0 when reinforcement is cleared or when help level 2+ is used
      */
     reinforcementStreak: integer('reinforcement_streak').notNull().default(0),
+
+    // ---- Response Time Tracking (for skill-level performance analysis) ----
+
+    /**
+     * Total response time in milliseconds across all attempts
+     * Used with responseTimeCount to calculate average: totalResponseTimeMs / responseTimeCount
+     */
+    totalResponseTimeMs: integer('total_response_time_ms').notNull().default(0),
+
+    /**
+     * Number of attempts with recorded response times
+     * May differ from `attempts` if some early data didn't track time
+     */
+    responseTimeCount: integer('response_time_count').notNull().default(0),
   },
   (table) => ({
     /** Index for fast lookups by playerId */

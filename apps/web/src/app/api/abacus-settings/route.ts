@@ -41,7 +41,14 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+
+    // Handle empty or invalid JSON body gracefully
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 })
+    }
 
     // Security: Strip userId from request body - it must come from session only
     const { userId: _, ...updates } = body

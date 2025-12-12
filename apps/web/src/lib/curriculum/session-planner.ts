@@ -38,7 +38,12 @@ import {
   type getPhaseSkillConstraints,
 } from './definitions'
 import { generateProblemFromConstraints } from './problem-generator'
-import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
+import {
+  getAllSkillMastery,
+  getPlayerCurriculum,
+  getRecentSessions,
+  recordSkillAttemptsWithHelp,
+} from './progress-manager'
 
 // ============================================================================
 // Plan Generation
@@ -451,6 +456,21 @@ export async function recordSlotResult(
     })
     .where(eq(schema.sessionPlans.id, planId))
     .returning()
+
+  // Update global skill mastery with response time data
+  // This builds the per-kid stats for identifying strengths/weaknesses
+  if (result.skillsExercised && result.skillsExercised.length > 0) {
+    const skillResults = result.skillsExercised.map((skillId) => ({
+      skillId,
+      isCorrect: result.isCorrect,
+    }))
+    await recordSkillAttemptsWithHelp(
+      plan.playerId,
+      skillResults,
+      result.helpLevelUsed,
+      result.responseTimeMs
+    )
+  }
 
   return updated
 }

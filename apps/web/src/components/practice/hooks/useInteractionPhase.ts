@@ -20,6 +20,8 @@ export interface AttemptInput {
   partIndex: number
   /** When the attempt started */
   startTime: number
+  /** Accumulated time spent paused (ms) - subtract from elapsed time for actual response time */
+  accumulatedPauseMs: number
   /** User's current answer input */
   userAnswer: string
   /** Number of times user used backspace or had digits rejected */
@@ -94,6 +96,8 @@ export type InteractionPhase =
   | {
       phase: 'paused'
       resumePhase: ActivePhase
+      /** When the pause started (used to calculate pause duration on resume) */
+      pauseStartedAt: number
     }
 
 /** Threshold for correction count before requiring manual submit */
@@ -124,7 +128,7 @@ export function transformActivePhase(
   if (phase.phase === 'paused') {
     const newResumePhase = transform(phase.resumePhase)
     if (newResumePhase === null) return phase
-    return { phase: 'paused', resumePhase: newResumePhase }
+    return { phase: 'paused', resumePhase: newResumePhase, pauseStartedAt: phase.pauseStartedAt }
   }
   const newPhase = transform(phase)
   return newPhase === null ? phase : newPhase
@@ -143,6 +147,7 @@ export function createAttemptInput(
     slotIndex,
     partIndex,
     startTime: Date.now(),
+    accumulatedPauseMs: 0,
     userAnswer: '',
     correctionCount: 0,
     manualSubmitRequired: false,
@@ -841,14 +846,47 @@ export function useInteractionPhase(
     setPhase((prev) => {
       if (prev.phase === 'paused' || prev.phase === 'loading' || prev.phase === 'complete')
         return prev
-      return { phase: 'paused', resumePhase: prev }
+      return { phase: 'paused', resumePhase: prev, pauseStartedAt: Date.now() }
     })
   }, [])
 
   const resume = useCallback(() => {
     setPhase((prev) => {
       if (prev.phase !== 'paused') return prev
-      return prev.resumePhase
+
+      // Calculate how long we were paused
+      const pauseDuration = Date.now() - prev.pauseStartedAt
+
+      // Helper to add pause duration to an attempt
+      const addPauseDuration = (attempt: AttemptInput): AttemptInput => ({
+        ...attempt,
+        accumulatedPauseMs: attempt.accumulatedPauseMs + pauseDuration,
+      })
+
+      // Update the attempt inside the resume phase to track accumulated pause time
+      const resumePhase = prev.resumePhase
+      switch (resumePhase.phase) {
+        case 'inputting':
+          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+        case 'awaitingDisambiguation':
+          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+        case 'helpMode':
+          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+        case 'submitting':
+          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+        case 'showingFeedback':
+          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+        case 'transitioning':
+          // Update both outgoing (for accuracy of recorded time) and incoming
+          return {
+            ...resumePhase,
+            incoming: addPauseDuration(resumePhase.incoming),
+          }
+        case 'loading':
+        case 'complete':
+          // No attempt to update
+          return resumePhase
+      }
     })
   }, [])
 

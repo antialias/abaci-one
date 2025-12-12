@@ -93,6 +93,7 @@ import { useInteractionPhase } from './hooks/useInteractionPhase'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
+import { PracticeTimingDisplay } from './PracticeTimingDisplay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
 
@@ -586,7 +587,8 @@ export function ActiveSession({
     // Transition to submitting phase
     startSubmit()
 
-    const responseTimeMs = Date.now() - attemptData.startTime
+    // Subtract accumulated pause time to get actual response time
+    const responseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
     const isCorrect = answerNum === attemptData.problem.answer
 
     // Record the result
@@ -715,8 +717,8 @@ export function ActiveSession({
     // Calculate the threshold and stats from historical results
     const { threshold, stats } = calculateAutoPauseInfo(plan.results)
 
-    // Calculate remaining time until auto-pause
-    const elapsedMs = Date.now() - attempt.startTime
+    // Calculate remaining time until auto-pause (using actual working time, not total elapsed)
+    const elapsedMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
     const remainingMs = threshold - elapsedMs
 
     // Create pause info for auto-timeout
@@ -742,7 +744,15 @@ export function ActiveSession({
     }, remainingMs)
 
     return () => clearTimeout(timeoutId)
-  }, [phase.phase, isPaused, attempt?.startTime, plan.results, pause, onPause])
+  }, [
+    phase.phase,
+    isPaused,
+    attempt?.startTime,
+    attempt?.accumulatedPauseMs,
+    plan.results,
+    pause,
+    onPause,
+  ])
 
   const handlePause = useCallback(() => {
     const pauseInfo: PauseInfo = {
@@ -1027,6 +1037,20 @@ export function ActiveSession({
             )}
           </div>
         </div>
+      )}
+
+      {/* Timing Display - shows current problem timer, average, and per-part-type breakdown */}
+      {/* Always shown regardless of hideHud - timing info is always useful */}
+      {attempt && (
+        <PracticeTimingDisplay
+          results={plan.results}
+          parts={plan.parts}
+          attemptStartTime={attempt.startTime}
+          accumulatedPauseMs={attempt.accumulatedPauseMs}
+          isPaused={isPaused}
+          currentPartType={currentPart.type}
+          isDark={isDark}
+        />
       )}
 
       {/* Problem display */}

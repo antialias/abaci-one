@@ -236,7 +236,7 @@ export async function recordSkillAttempt(
 }
 
 /**
- * Record a skill attempt with help level tracking
+ * Record a skill attempt with help level tracking and response time
  * Applies credit multipliers based on help used and manages reinforcement
  *
  * Credit multipliers:
@@ -248,12 +248,17 @@ export async function recordSkillAttempt(
  * - If help level >= threshold, mark skill as needing reinforcement
  * - If correct answer without heavy help, increment reinforcement streak
  * - After N consecutive correct answers, clear reinforcement flag
+ *
+ * Response time tracking:
+ * - Accumulates total response time for calculating per-skill averages
+ * - Only recorded if responseTimeMs is provided (> 0)
  */
 export async function recordSkillAttemptWithHelp(
   playerId: string,
   skillId: string,
   isCorrect: boolean,
-  helpLevel: HelpLevel
+  helpLevel: HelpLevel,
+  responseTimeMs?: number
 ): Promise<PlayerSkillMastery> {
   const existing = await getSkillMastery(playerId, skillId)
   const now = new Date()
@@ -302,6 +307,15 @@ export async function recordSkillAttemptWithHelp(
       reinforcementStreak = 0
     }
 
+    // Calculate response time updates (only if provided)
+    const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
+    const newTotalResponseTimeMs = hasResponseTime
+      ? existing.totalResponseTimeMs + responseTimeMs
+      : existing.totalResponseTimeMs
+    const newResponseTimeCount = hasResponseTime
+      ? existing.responseTimeCount + 1
+      : existing.responseTimeCount
+
     await db
       .update(schema.playerSkillMastery)
       .set({
@@ -314,11 +328,16 @@ export async function recordSkillAttemptWithHelp(
         needsReinforcement,
         lastHelpLevel: helpLevel,
         reinforcementStreak,
+        totalResponseTimeMs: newTotalResponseTimeMs,
+        responseTimeCount: newResponseTimeCount,
       })
       .where(eq(schema.playerSkillMastery.id, existing.id))
 
     return (await getSkillMastery(playerId, skillId))!
   }
+
+  // Calculate response time for new record (only if provided)
+  const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
 
   // Create new record with help tracking
   const newRecord: NewPlayerSkillMastery = {
@@ -332,6 +351,8 @@ export async function recordSkillAttemptWithHelp(
     needsReinforcement: isHeavyHelp,
     lastHelpLevel: helpLevel,
     reinforcementStreak: 0,
+    totalResponseTimeMs: hasResponseTime ? responseTimeMs : 0,
+    responseTimeCount: hasResponseTime ? 1 : 0,
   }
 
   await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -340,16 +361,24 @@ export async function recordSkillAttemptWithHelp(
 
 /**
  * Record multiple skill attempts with help tracking (for batch updates after a problem)
+ * Response time is shared across all skills since they come from the same problem
  */
 export async function recordSkillAttemptsWithHelp(
   playerId: string,
   skillResults: Array<{ skillId: string; isCorrect: boolean }>,
-  helpLevel: HelpLevel
+  helpLevel: HelpLevel,
+  responseTimeMs?: number
 ): Promise<PlayerSkillMastery[]> {
   const results: PlayerSkillMastery[] = []
 
   for (const { skillId, isCorrect } of skillResults) {
-    const result = await recordSkillAttemptWithHelp(playerId, skillId, isCorrect, helpLevel)
+    const result = await recordSkillAttemptWithHelp(
+      playerId,
+      skillId,
+      isCorrect,
+      helpLevel,
+      responseTimeMs
+    )
     results.push(result)
   }
 
@@ -609,5 +638,152 @@ export async function initializeStudent(playerId: string): Promise<PlayerCurricu
     currentLevel: 1,
     currentPhaseId: 'L1.add.+1.direct',
     visualizationMode: false,
+  })
+}
+
+// ============================================================================
+// SKILL PERFORMANCE ANALYSIS
+// ============================================================================
+
+/**
+ * Skill performance data with calculated averages
+ */
+export interface SkillPerformance {
+  skillId: string
+  masteryLevel: MasteryLevel
+  attempts: number
+  accuracy: number // 0-1
+  avgResponseTimeMs: number | null // null if no timing data
+  responseTimeCount: number
+}
+
+/**
+ * Analysis of a player's skill strengths and weaknesses
+ */
+export interface SkillPerformanceAnalysis {
+  /** All skills with performance data */
+  skills: SkillPerformance[]
+  /** Overall average response time (ms) across all skills with timing data */
+  overallAvgResponseTimeMs: number | null
+  /** Skills where student is significantly faster than average (excelling) */
+  fastSkills: SkillPerformance[]
+  /** Skills where student is significantly slower than average (struggling) */
+  slowSkills: SkillPerformance[]
+  /** Skills with low accuracy that may need intervention */
+  lowAccuracySkills: SkillPerformance[]
+  /** Skills needing reinforcement (from help system) */
+  reinforcementSkills: SkillPerformance[]
+}
+
+/**
+ * Thresholds for performance analysis
+ */
+const PERFORMANCE_THRESHOLDS = {
+  /** Speed deviation threshold (percentage faster/slower than average to flag) */
+  speedDeviationPercent: 0.3, // 30% faster/slower
+  /** Minimum accuracy to not flag as low */
+  minAccuracyThreshold: 0.7, // 70%
+  /** Minimum responses needed for timing analysis */
+  minResponsesForTiming: 3,
+} as const
+
+/**
+ * Analyze a player's skill performance to identify strengths and weaknesses
+ * Uses response time data to find skills where the student excels vs struggles
+ */
+export async function analyzeSkillPerformance(playerId: string): Promise<SkillPerformanceAnalysis> {
+  const allSkills = await getAllSkillMastery(playerId)
+
+  // Calculate performance data for each skill
+  const skills: SkillPerformance[] = allSkills.map((s) => ({
+    skillId: s.skillId,
+    masteryLevel: s.masteryLevel as MasteryLevel,
+    attempts: s.attempts,
+    accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
+    avgResponseTimeMs:
+      s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
+    responseTimeCount: s.responseTimeCount,
+  }))
+
+  // Calculate overall average response time (only from skills with sufficient data)
+  const skillsWithTiming = skills.filter(
+    (s) =>
+      s.avgResponseTimeMs !== null &&
+      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming
+  )
+  const overallAvgResponseTimeMs =
+    skillsWithTiming.length > 0
+      ? Math.round(
+          skillsWithTiming.reduce((sum, s) => sum + (s.avgResponseTimeMs ?? 0), 0) /
+            skillsWithTiming.length
+        )
+      : null
+
+  // Identify fast skills (significantly faster than average)
+  const fastSkills =
+    overallAvgResponseTimeMs !== null
+      ? skillsWithTiming.filter(
+          (s) =>
+            s.avgResponseTimeMs !== null &&
+            s.avgResponseTimeMs <
+              overallAvgResponseTimeMs * (1 - PERFORMANCE_THRESHOLDS.speedDeviationPercent)
+        )
+      : []
+
+  // Identify slow skills (significantly slower than average)
+  const slowSkills =
+    overallAvgResponseTimeMs !== null
+      ? skillsWithTiming.filter(
+          (s) =>
+            s.avgResponseTimeMs !== null &&
+            s.avgResponseTimeMs >
+              overallAvgResponseTimeMs * (1 + PERFORMANCE_THRESHOLDS.speedDeviationPercent)
+        )
+      : []
+
+  // Identify low accuracy skills
+  const lowAccuracySkills = skills.filter(
+    (s) =>
+      s.attempts >= PERFORMANCE_THRESHOLDS.minResponsesForTiming &&
+      s.accuracy < PERFORMANCE_THRESHOLDS.minAccuracyThreshold
+  )
+
+  // Get skills needing reinforcement
+  const reinforcementRecords = await getSkillsNeedingReinforcement(playerId)
+  const reinforcementSkillIds = new Set(reinforcementRecords.map((r) => r.skillId))
+  const reinforcementSkills = skills.filter((s) => reinforcementSkillIds.has(s.skillId))
+
+  return {
+    skills,
+    overallAvgResponseTimeMs,
+    fastSkills,
+    slowSkills,
+    lowAccuracySkills,
+    reinforcementSkills,
+  }
+}
+
+/**
+ * Get skills ranked by response time (slowest first)
+ * Useful for identifying skills that need practice
+ */
+export async function getSkillsByResponseTime(
+  playerId: string,
+  order: 'slowest' | 'fastest' = 'slowest'
+): Promise<SkillPerformance[]> {
+  const analysis = await analyzeSkillPerformance(playerId)
+
+  // Filter to only skills with timing data
+  const skillsWithTiming = analysis.skills.filter(
+    (s) =>
+      s.avgResponseTimeMs !== null &&
+      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming
+  )
+
+  // Sort by response time
+  return skillsWithTiming.sort((a, b) => {
+    const timeA = a.avgResponseTimeMs ?? 0
+    const timeB = b.avgResponseTimeMs ?? 0
+    return order === 'slowest' ? timeB - timeA : timeA - timeB
   })
 }

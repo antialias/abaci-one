@@ -8,6 +8,7 @@ import {
   type CurrentPhaseInfo,
   PracticeSubNav,
   ProgressDashboard,
+  SkillPerformanceReports,
   type SkillProgress,
   StartPracticeModal,
   type StudentWithProgress,
@@ -301,6 +302,11 @@ export function DashboardClient({
             onSetSkillsManually={handleSetSkillsManually}
             onRecordOfflinePractice={handleRecordOfflinePractice}
           />
+
+          {/* Skill Performance Reports - shows response time analysis */}
+          <div className={css({ marginTop: '24px' })}>
+            <SkillPerformanceReports playerId={studentId} isDark={isDark} />
+          </div>
         </div>
 
         {/* Manual Skill Selector Modal */}
