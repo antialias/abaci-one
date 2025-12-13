@@ -107,6 +107,16 @@ export interface AttemptTimingData {
   accumulatedPauseMs: number
 }
 
+/**
+ * Imperative handle for controlling the session from parent
+ */
+export interface ActiveSessionHandle {
+  /** Resume the session (call this when external resume trigger occurs) */
+  resume: () => void
+  /** Pause the session (call this when external pause trigger occurs) */
+  pause: () => void
+}
+
 interface ActiveSessionProps {
   plan: SessionPlan
   studentName: string
@@ -124,6 +134,8 @@ interface ActiveSessionProps {
   hideHud?: boolean
   /** Called with timing data when it changes (for external timing display) */
   onTimingUpdate?: (timing: AttemptTimingData | null) => void
+  /** Ref to get imperative handle for controlling the session */
+  sessionRef?: React.MutableRefObject<ActiveSessionHandle | null>
 }
 
 /**
@@ -582,6 +594,7 @@ export function ActiveSession({
   onComplete,
   hideHud = false,
   onTimingUpdate,
+  sessionRef,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -1095,6 +1108,25 @@ export function ActiveSession({
     resume()
     onResume?.()
   }, [resume, onResume])
+
+  // Expose imperative handle for parent to control pause/resume
+  // This is needed because the modal is rendered in the parent and needs
+  // to trigger the internal resume() when dismissed
+  // IMPORTANT: We expose the raw `resume`/`pause` functions, NOT `handleResume`/`handlePause`
+  // which would call `onResume`/`onPause` callbacks and cause an infinite loop
+  useEffect(() => {
+    if (sessionRef) {
+      sessionRef.current = {
+        resume,
+        pause,
+      }
+    }
+    return () => {
+      if (sessionRef) {
+        sessionRef.current = null
+      }
+    }
+  }, [sessionRef, resume, pause])
 
   const getHealthColor = (health: SessionHealth['overall']) => {
     switch (health) {

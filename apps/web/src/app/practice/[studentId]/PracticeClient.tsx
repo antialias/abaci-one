@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
+  type ActiveSessionHandle,
   type AttemptTimingData,
   PracticeErrorBoundary,
   PracticeSubNav,
@@ -37,6 +38,11 @@ interface PracticeClientProps {
  */
 export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
   const router = useRouter()
+
+  // Ref to control ActiveSession's pause/resume imperatively
+  // This is needed because the modal is rendered here but needs to trigger
+  // ActiveSession's internal resume() when dismissed
+  const sessionRef = useRef<ActiveSessionHandle | null>(null)
 
   // Track pause state locally (controlled by callbacks from ActiveSession)
   // Never auto-pause - session continues where it left off on load/reload
@@ -78,6 +84,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   }, [])
 
   const handleResume = useCallback(() => {
+    // IMPORTANT: Must call sessionRef.current?.resume() to actually resume
+    // ActiveSession's internal state. Just setting isPaused=false only hides
+    // the modal but leaves input blocked.
+    sessionRef.current?.resume()
     setIsPaused(false)
     setPauseInfo(undefined)
   }, [])
@@ -178,6 +188,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onComplete={handleSessionComplete}
             onTimingUpdate={setTimingData}
             hideHud={true}
+            sessionRef={sessionRef}
           />
         </PracticeErrorBoundary>
       </main>
