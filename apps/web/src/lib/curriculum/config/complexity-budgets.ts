@@ -80,16 +80,6 @@ export const PURPOSE_COMPLEXITY_BOUNDS: Record<
 }
 
 /**
- * @deprecated Use PURPOSE_COMPLEXITY_BOUNDS instead.
- * Legacy per-part-type budgets (no purpose distinction).
- */
-export const LEGACY_PART_BUDGETS: Record<SessionPartType, number | null> = {
-  abacus: null, // unlimited
-  visualization: 3,
-  linear: null, // unlimited
-}
-
-/**
  * Get complexity bounds for a specific purpose and part type.
  */
 export function getComplexityBounds(

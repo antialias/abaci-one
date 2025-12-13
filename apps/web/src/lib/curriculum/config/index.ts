@@ -36,7 +36,6 @@ export {
 export {
   DEFAULT_COMPLEXITY_BUDGETS,
   getComplexityBounds,
-  LEGACY_PART_BUDGETS,
   PURPOSE_COMPLEXITY_BOUNDS,
   type PurposeComplexityBounds,
 } from './complexity-budgets'
