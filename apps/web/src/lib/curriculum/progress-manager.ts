@@ -294,11 +294,27 @@ export async function recordSkillAttemptWithHelp(
   helpLevel: HelpLevel,
   responseTimeMs?: number
 ): Promise<PlayerSkillMastery> {
-  const existing = await getSkillMastery(playerId, skillId)
+  console.log(
+    `[recordSkillAttemptWithHelp] Starting: playerId=${playerId}, skillId=${skillId}, isCorrect=${isCorrect}, helpLevel=${helpLevel}, responseTimeMs=${responseTimeMs}`
+  )
+
+  let existing
+  try {
+    existing = await getSkillMastery(playerId, skillId)
+    console.log(`[recordSkillAttemptWithHelp] getSkillMastery returned: ${existing ? 'found' : 'null'}`)
+  } catch (e) {
+    console.error(`[recordSkillAttemptWithHelp] getSkillMastery FAILED:`, e)
+    throw e
+  }
+
   const now = new Date()
 
   // Calculate effective credit based on help level
+  console.log(
+    `[recordSkillAttemptWithHelp] REINFORCEMENT_CONFIG.creditMultipliers=${JSON.stringify(REINFORCEMENT_CONFIG?.creditMultipliers)}, helpLevel=${helpLevel}`
+  )
   const creditMultiplier = REINFORCEMENT_CONFIG.creditMultipliers[helpLevel]
+  console.log(`[recordSkillAttemptWithHelp] creditMultiplier=${creditMultiplier}`)
 
   // Determine if this help level triggers reinforcement tracking
   const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold
@@ -348,22 +364,30 @@ export async function recordSkillAttemptWithHelp(
       ? existing.responseTimeCount + 1
       : existing.responseTimeCount
 
-    await db
-      .update(schema.playerSkillMastery)
-      .set({
-        attempts: newAttempts,
-        correct: newCorrect,
-        consecutiveCorrect: newConsecutive,
-        lastPracticedAt: now,
-        updatedAt: now,
-        needsReinforcement,
-        lastHelpLevel: helpLevel,
-        reinforcementStreak,
-        totalResponseTimeMs: newTotalResponseTimeMs,
-        responseTimeCount: newResponseTimeCount,
-      })
-      .where(eq(schema.playerSkillMastery.id, existing.id))
+    console.log(`[recordSkillAttemptWithHelp] Updating existing record id=${existing.id}`)
+    try {
+      await db
+        .update(schema.playerSkillMastery)
+        .set({
+          attempts: newAttempts,
+          correct: newCorrect,
+          consecutiveCorrect: newConsecutive,
+          lastPracticedAt: now,
+          updatedAt: now,
+          needsReinforcement,
+          lastHelpLevel: helpLevel,
+          reinforcementStreak,
+          totalResponseTimeMs: newTotalResponseTimeMs,
+          responseTimeCount: newResponseTimeCount,
+        })
+        .where(eq(schema.playerSkillMastery.id, existing.id))
+      console.log(`[recordSkillAttemptWithHelp] Update succeeded`)
+    } catch (e) {
+      console.error(`[recordSkillAttemptWithHelp] Update FAILED:`, e)
+      throw e
+    }
 
+    console.log(`[recordSkillAttemptWithHelp] Fetching updated record`)
     return (await getSkillMastery(playerId, skillId))!
   }
 
@@ -386,7 +410,16 @@ export async function recordSkillAttemptWithHelp(
     responseTimeCount: hasResponseTime ? 1 : 0,
   }
 
-  await db.insert(schema.playerSkillMastery).values(newRecord)
+  console.log(`[recordSkillAttemptWithHelp] Inserting new record for skillId=${skillId}`)
+  try {
+    await db.insert(schema.playerSkillMastery).values(newRecord)
+    console.log(`[recordSkillAttemptWithHelp] Insert succeeded`)
+  } catch (e) {
+    console.error(`[recordSkillAttemptWithHelp] Insert FAILED:`, e)
+    throw e
+  }
+
+  console.log(`[recordSkillAttemptWithHelp] Fetching new record`)
   return (await getSkillMastery(playerId, skillId))!
 }
 
