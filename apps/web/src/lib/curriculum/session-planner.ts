@@ -503,6 +503,19 @@ export async function recordSlotResult(
   const plan = await getSessionPlan(planId)
   if (!plan) throw new Error(`Plan not found: ${planId}`)
 
+  // Defensive check: ensure parts array exists and is valid
+  if (!plan.parts || !Array.isArray(plan.parts)) {
+    throw new Error(
+      `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`
+    )
+  }
+
+  if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
+    throw new Error(
+      `Plan ${planId} has invalid currentPartIndex: ${plan.currentPartIndex} (parts.length: ${plan.parts.length})`
+    )
+  }
+
   const currentPart = plan.parts[plan.currentPartIndex]
   if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
 
@@ -544,6 +557,13 @@ export async function recordSlotResult(
     })
     .where(eq(schema.sessionPlans.id, planId))
     .returning()
+
+  // Defensive check: ensure update succeeded
+  if (!updated) {
+    throw new Error(
+      `Failed to update plan ${planId}: no rows returned (may have been deleted during update)`
+    )
+  }
 
   // Update global skill mastery with response time data
   // This builds the per-kid stats for identifying strengths/weaknesses
