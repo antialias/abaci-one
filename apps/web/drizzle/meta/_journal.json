@@ -225,6 +225,13 @@
       "when": 1765586735162,
       "tag": "0031_boring_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1765594487576,
+      "tag": "0032_drop_mastery_level_column",
+      "breakpoints": true
     }
   ]
 }

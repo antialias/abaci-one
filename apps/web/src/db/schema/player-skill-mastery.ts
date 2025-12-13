@@ -1,6 +1,11 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+// Import tunable constants from centralized config
+import { FLUENCY_RECENCY, FLUENCY_THRESHOLDS, REINFORCEMENT_CONFIG } from '@/lib/curriculum/config'
 import { players } from './players'
+
+// Re-export for backwards compatibility
+export { REINFORCEMENT_CONFIG }
 
 /**
  * Fluency state - computed from practice history, NOT stored in database
@@ -10,11 +15,6 @@ import { players } from './players'
  * - rusty: was fluent but >30 days since practice
  */
 export type FluencyState = 'practicing' | 'effortless' | 'fluent' | 'rusty'
-
-/**
- * @deprecated Use FluencyState instead. Kept for backwards compatibility during migration.
- */
-export type MasteryLevel = 'learning' | 'practicing' | 'mastered'
 
 /**
  * Player skill mastery table - tracks per-skill progress for each player
@@ -58,15 +58,6 @@ export const playerSkillMastery = sqliteTable(
      * Used for mastery determination
      */
     consecutiveCorrect: integer('consecutive_correct').notNull().default(0),
-
-    /**
-     * @deprecated Use isPracticing instead. Kept for backwards compatibility during migration.
-     */
-    masteryLevel: text('mastery_level', {
-      enum: ['learning', 'practicing', 'mastered'],
-    })
-      .notNull()
-      .default('learning'),
 
     /**
      * Whether this skill is in the student's active practice rotation.
@@ -144,66 +135,16 @@ export type NewPlayerSkillMastery = typeof playerSkillMastery.$inferInsert
 /**
  * Fluency configuration constants
  * Used to determine if a student has achieved fluency in a skill
+ *
+ * Composed from centralized config values.
+ * See @/lib/curriculum/config/fluency-thresholds.ts for tuning.
  */
 export const FLUENCY_CONFIG = {
-  /** Number of consecutive correct answers required for fluency */
-  consecutiveForFluency: 5,
-
-  /** Minimum total attempts before fluency can be achieved */
-  minimumAttempts: 10,
-
-  /** Minimum accuracy (correct/attempts) for fluency */
-  accuracyThreshold: 0.85,
-
-  /** Days since last practice to be considered "effortless" */
-  effortlessDays: 14,
-
-  /** Days since last practice to be considered "fluent" (vs "rusty") */
-  fluentDays: 30,
+  ...FLUENCY_THRESHOLDS,
+  ...FLUENCY_RECENCY,
 } as const
 
-/**
- * @deprecated Use FLUENCY_CONFIG instead. Kept for backwards compatibility.
- */
-export const MASTERY_CONFIG = {
-  consecutiveForMastery: FLUENCY_CONFIG.consecutiveForFluency,
-  minimumAttempts: FLUENCY_CONFIG.minimumAttempts,
-  accuracyThreshold: FLUENCY_CONFIG.accuracyThreshold,
-  minimumForPracticing: 5,
-} as const
-
-/**
- * Reinforcement configuration constants
- */
-export const REINFORCEMENT_CONFIG = {
-  /**
-   * Help level threshold that triggers reinforcement flag
-   * Level 2+ (decomposition or bead arrows) indicates the student needed significant help
-   */
-  helpLevelThreshold: 2,
-
-  /**
-   * Number of consecutive correct answers without heavy help to clear reinforcement
-   */
-  streakToClear: 3,
-
-  /**
-   * Maximum help level that still counts toward clearing reinforcement
-   * Level 1 (hints) is OK, but Level 2+ resets the streak
-   */
-  maxHelpLevelToCount: 1,
-
-  /**
-   * Mastery credit multipliers based on help level
-   * Used when updating skill mastery after a correct answer
-   */
-  creditMultipliers: {
-    0: 1.0, // No help: full credit
-    1: 1.0, // Hint only: full credit
-    2: 0.5, // Decomposition: half credit
-    3: 0.25, // Bead arrows: quarter credit
-  } as Record<0 | 1 | 2 | 3, number>,
-} as const
+// REINFORCEMENT_CONFIG imported from @/lib/curriculum/config and re-exported above
 
 /**
  * Check if a student has achieved fluency in a skill based on their practice history.
@@ -253,29 +194,4 @@ export function calculateFluencyState(
   }
 
   return 'rusty'
-}
-
-/**
- * @deprecated Use calculateFluencyState instead. Kept for backwards compatibility during migration.
- */
-export function calculateMasteryLevel(
-  attempts: number,
-  correct: number,
-  consecutiveCorrect: number
-): MasteryLevel {
-  const accuracy = attempts > 0 ? correct / attempts : 0
-
-  if (
-    consecutiveCorrect >= MASTERY_CONFIG.consecutiveForMastery &&
-    attempts >= MASTERY_CONFIG.minimumAttempts &&
-    accuracy >= MASTERY_CONFIG.accuracyThreshold
-  ) {
-    return 'mastered'
-  }
-
-  if (attempts >= MASTERY_CONFIG.minimumForPracticing) {
-    return 'practicing'
-  }
-
-  return 'learning'
 }

@@ -43,7 +43,6 @@ export {
   getRecentSessions,
   getSessionsForPhase,
   getSkillMastery,
-  getSkillsByMasteryLevel,
   initializeStudent,
   recordSkillAttempt,
   recordSkillAttempts,

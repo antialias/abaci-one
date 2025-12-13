@@ -4,9 +4,7 @@ import {
   MASTERY_MULTIPLIERS,
   getBaseComplexity,
   createSkillCostCalculator,
-  buildStudentSkillHistory,
   buildStudentSkillHistoryFromRecords,
-  dbMasteryToState,
   computeMasteryState,
   type StudentSkillHistory,
   type DbSkillRecord,
@@ -195,35 +193,6 @@ describe('computeMasteryState (new isPracticing model)', () => {
   })
 })
 
-describe('dbMasteryToState (deprecated - old 3-state model)', () => {
-  it('should map learning to not_practicing', () => {
-    expect(dbMasteryToState('learning')).toBe('not_practicing')
-  })
-
-  it('should map practicing to practicing', () => {
-    expect(dbMasteryToState('practicing')).toBe('practicing')
-  })
-
-  it('should map mastered to effortless when recently practiced', () => {
-    expect(dbMasteryToState('mastered', 5)).toBe('effortless')
-    expect(dbMasteryToState('mastered', 14)).toBe('effortless')
-  })
-
-  it('should map mastered to fluent when practiced 14-30 days ago', () => {
-    expect(dbMasteryToState('mastered', 15)).toBe('fluent')
-    expect(dbMasteryToState('mastered', 30)).toBe('fluent')
-  })
-
-  it('should map mastered to rusty when not practiced for >30 days', () => {
-    expect(dbMasteryToState('mastered', 31)).toBe('rusty')
-    expect(dbMasteryToState('mastered', 90)).toBe('rusty')
-  })
-
-  it('should default to fluent when no days provided', () => {
-    expect(dbMasteryToState('mastered')).toBe('fluent')
-  })
-})
-
 describe('buildStudentSkillHistoryFromRecords (new isPracticing model)', () => {
   it('should build history from database records', () => {
     const referenceDate = new Date('2024-03-01')
@@ -267,50 +236,5 @@ describe('buildStudentSkillHistoryFromRecords (new isPracticing model)', () => {
   it('should handle empty records', () => {
     const history = buildStudentSkillHistoryFromRecords([])
     expect(history.skills).toEqual({})
-  })
-})
-
-describe('buildStudentSkillHistory (deprecated - old masteryLevel model)', () => {
-  it('should build history from database records', () => {
-    const records = [
-      {
-        skillId: 'basic.directAddition',
-        masteryLevel: 'mastered' as const,
-        lastPracticedAt: new Date('2024-01-01'),
-      },
-      {
-        skillId: 'tenComplements.9=10-1',
-        masteryLevel: 'practicing' as const,
-        lastPracticedAt: null,
-      },
-    ]
-
-    const referenceDate = new Date('2024-03-01') // 60 days later
-    const history = buildStudentSkillHistory(records, referenceDate)
-
-    expect(history.skills['basic.directAddition'].masteryState).toBe('rusty')
-    expect(history.skills['tenComplements.9=10-1'].masteryState).toBe('practicing')
-  })
-
-  it('should handle empty records', () => {
-    const history = buildStudentSkillHistory([])
-    expect(history.skills).toEqual({})
-  })
-
-  it('should use current date as default reference', () => {
-    const recentDate = new Date()
-    recentDate.setDate(recentDate.getDate() - 5) // 5 days ago
-
-    const records = [
-      {
-        skillId: 'basic.directAddition',
-        masteryLevel: 'mastered' as const,
-        lastPracticedAt: recentDate,
-      },
-    ]
-
-    const history = buildStudentSkillHistory(records)
-    // 5 days ago = effortless (< 14 days)
-    expect(history.skills['basic.directAddition'].masteryState).toBe('effortless')
   })
 })

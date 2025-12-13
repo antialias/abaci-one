@@ -8,9 +8,7 @@ import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import {
   calculateFluencyState,
-  calculateMasteryLevel,
   type FluencyState,
-  type MasteryLevel,
   type NewPlayerSkillMastery,
   type PlayerSkillMastery,
   REINFORCEMENT_CONFIG,
@@ -126,22 +124,6 @@ export async function getPracticingSkills(playerId: string): Promise<PlayerSkill
 }
 
 /**
- * @deprecated Use getPracticingSkills instead. Kept for backwards compatibility.
- */
-export async function getSkillsByMasteryLevel(
-  playerId: string,
-  level: MasteryLevel
-): Promise<PlayerSkillMastery[]> {
-  return db.query.playerSkillMastery.findMany({
-    where: and(
-      eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.masteryLevel, level)
-    ),
-    orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
-  })
-}
-
-/**
  * Set which skills are in a player's active practice rotation (teacher checkbox UI)
  * Skills in the list will have isPracticing=true, others isPracticing=false.
  *
@@ -170,8 +152,6 @@ export async function setPracticingSkills(
         .update(schema.playerSkillMastery)
         .set({
           isPracticing: shouldBePracticing,
-          // Keep masteryLevel in sync for backwards compat during migration
-          masteryLevel: shouldBePracticing ? 'mastered' : 'learning',
           updatedAt: now,
         })
         .where(eq(schema.playerSkillMastery.id, skill.id))
@@ -187,7 +167,6 @@ export async function setPracticingSkills(
         attempts: 0,
         correct: 0,
         consecutiveCorrect: 0,
-        masteryLevel: 'mastered', // backwards compat
         isPracticing: true,
         lastPracticedAt: now,
       }
@@ -260,7 +239,6 @@ export async function recordSkillAttempt(
     const newAttempts = existing.attempts + 1
     const newCorrect = existing.correct + (isCorrect ? 1 : 0)
     const newConsecutive = isCorrect ? existing.consecutiveCorrect + 1 : 0
-    const newMasteryLevel = calculateMasteryLevel(newAttempts, newCorrect, newConsecutive)
 
     await db
       .update(schema.playerSkillMastery)
@@ -268,7 +246,6 @@ export async function recordSkillAttempt(
         attempts: newAttempts,
         correct: newCorrect,
         consecutiveCorrect: newConsecutive,
-        masteryLevel: newMasteryLevel,
         lastPracticedAt: now,
         updatedAt: now,
       })
@@ -284,7 +261,6 @@ export async function recordSkillAttempt(
     attempts: 1,
     correct: isCorrect ? 1 : 0,
     consecutiveCorrect: isCorrect ? 1 : 0,
-    masteryLevel: 'learning', // backwards compat
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
   }
@@ -341,8 +317,6 @@ export async function recordSkillAttemptWithHelp(
     const newConsecutive =
       isCorrect && !isHeavyHelp ? existing.consecutiveCorrect + 1 : isCorrect ? 1 : 0
 
-    const newMasteryLevel = calculateMasteryLevel(newAttempts, newCorrect, newConsecutive)
-
     // Reinforcement tracking
     let needsReinforcement = existing.needsReinforcement
     let reinforcementStreak = existing.reinforcementStreak
@@ -380,7 +354,6 @@ export async function recordSkillAttemptWithHelp(
         attempts: newAttempts,
         correct: newCorrect,
         consecutiveCorrect: newConsecutive,
-        masteryLevel: newMasteryLevel,
         lastPracticedAt: now,
         updatedAt: now,
         needsReinforcement,
@@ -404,7 +377,6 @@ export async function recordSkillAttemptWithHelp(
     attempts: 1,
     correct: isCorrect && creditMultiplier >= 0.5 ? 1 : 0,
     consecutiveCorrect: isCorrect && !isHeavyHelp ? 1 : 0,
-    masteryLevel: 'learning', // backwards compat
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
     needsReinforcement: isHeavyHelp,
@@ -735,8 +707,6 @@ export interface SkillPerformance {
   accuracy: number // 0-1
   avgResponseTimeMs: number | null // null if no timing data
   responseTimeCount: number
-  /** @deprecated Use fluencyState instead */
-  masteryLevel: MasteryLevel
 }
 
 /**
@@ -798,8 +768,6 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
       avgResponseTimeMs:
         s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
       responseTimeCount: s.responseTimeCount,
-      // Backwards compat
-      masteryLevel: s.masteryLevel as MasteryLevel,
     }
   })
 
