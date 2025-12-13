@@ -29,8 +29,8 @@ export const PURPOSE_WEIGHTS = {
   reinforce: 0.2,
   /** Spaced repetition of mastered skills */
   review: 0.15,
-  /** Legacy weight - challenge allocation now uses challengeRatioByPartType */
-  challenge: 0.05,
+  // Note: Challenge slots are allocated using CHALLENGE_RATIO_BY_PART_TYPE (per part type),
+  // not a fixed weight. See session-planner.ts for the allocation logic.
 } as const
 
 /**

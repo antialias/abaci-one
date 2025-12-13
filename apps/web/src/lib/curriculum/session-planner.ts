@@ -549,9 +549,7 @@ export async function recordSlotResult(
 
   // Defensive check: ensure results array exists
   if (!plan.results || !Array.isArray(plan.results)) {
-    throw new Error(
-      `Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`
-    )
+    throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
   }
 
   console.log(`[recordSlotResult] Creating newResult for plan ${planId}`)
@@ -593,7 +591,9 @@ export async function recordSlotResult(
   let updatedHealth
   try {
     updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
-    console.log(`[recordSlotResult] calculateSessionHealth succeeded: ${JSON.stringify(updatedHealth)}`)
+    console.log(
+      `[recordSlotResult] calculateSessionHealth succeeded: ${JSON.stringify(updatedHealth)}`
+    )
   } catch (healthError) {
     console.error(`[recordSlotResult] calculateSessionHealth FAILED:`, healthError)
     throw healthError

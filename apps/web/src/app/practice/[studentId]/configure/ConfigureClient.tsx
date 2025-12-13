@@ -24,7 +24,8 @@ const PURPOSE_WEIGHTS = {
   focus: DEFAULT_PLAN_CONFIG.focusWeight,
   reinforce: DEFAULT_PLAN_CONFIG.reinforceWeight,
   review: DEFAULT_PLAN_CONFIG.reviewWeight,
-  challenge: DEFAULT_PLAN_CONFIG.challengeWeight,
+  // Note: Challenge slots are calculated as remainder after focus/reinforce/review
+  // and use CHALLENGE_RATIO_BY_PART_TYPE in the actual session planner
 }
 
 interface ConfigureClientProps {

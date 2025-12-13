@@ -5,6 +5,8 @@
  * fluency in a skill and how fluency decays over time.
  */
 
+console.log('[fluency-thresholds.ts] MODULE LOADING...')
+
 // =============================================================================
 // Fluency Achievement Thresholds
 // =============================================================================
@@ -80,21 +82,23 @@ export const REINFORCEMENT_CONFIG = {
 
   /**
    * Mastery credit multipliers based on help level.
-   * Full credit only given for unassisted correct answers.
+   * Used when updating skill mastery after a correct answer.
    *
    * - 0 (no help): 1.0 = full credit
-   * - 1 (hint): 0.8 = 80% credit
-   * - 2 (decomposition): 0.5 = 50% credit
-   * - 3 (bead arrows): 0.3 = 30% credit
+   * - 1 (hint): 1.0 = full credit (hints don't reduce credit)
+   * - 2 (decomposition): 0.5 = half credit
+   * - 3 (bead arrows): 0.25 = quarter credit
    */
-  masteryCreditByHelpLevel: {
+  creditMultipliers: {
     0: 1.0,
-    1: 0.8,
+    1: 1.0,
     2: 0.5,
-    3: 0.3,
-  } as Record<number, number>,
+    3: 0.25,
+  } as Record<0 | 1 | 2 | 3, number>,
 } as const
 
 export type FluencyThresholds = typeof FLUENCY_THRESHOLDS
 export type FluencyRecency = typeof FLUENCY_RECENCY
 export type ReinforcementConfig = typeof REINFORCEMENT_CONFIG
+
+console.log('[fluency-thresholds.ts] MODULE LOADED - REINFORCEMENT_CONFIG:', JSON.stringify(REINFORCEMENT_CONFIG, null, 2))

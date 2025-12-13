@@ -2,6 +2,15 @@ import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { SkillSet } from '@/types/tutorial'
 import { players } from './players'
+import {
+  DEFAULT_SECONDS_PER_PROBLEM,
+  PART_TIME_WEIGHTS,
+  PURPOSE_COMPLEXITY_BOUNDS,
+  PURPOSE_WEIGHTS,
+  REVIEW_INTERVAL_DAYS,
+  SESSION_TIMEOUT_HOURS,
+  TERM_COUNT_RANGES,
+} from '@/lib/curriculum/config'
 
 // ============================================================================
 // Types for JSON fields
@@ -451,98 +460,33 @@ export function calculateSessionHealth(plan: SessionPlan, elapsedTimeMs: number)
 }
 
 /**
- * Default configuration for plan generation
+ * Default configuration for plan generation.
+ *
+ * All values are imported from @/lib/curriculum/config for centralized tuning.
+ * Edit those config files to change these defaults.
  */
 export const DEFAULT_PLAN_CONFIG = {
-  /** Distribution weights for slot purposes (should sum to 1.0) */
-  focusWeight: 0.6,
-  reinforceWeight: 0.2,
-  reviewWeight: 0.15,
-  challengeWeight: 0.05,
+  // Slot purpose distribution (from config/slot-distribution.ts)
+  // Note: Challenge slots use CHALLENGE_RATIO_BY_PART_TYPE instead of a fixed weight
+  focusWeight: PURPOSE_WEIGHTS.focus,
+  reinforceWeight: PURPOSE_WEIGHTS.reinforce,
+  reviewWeight: PURPOSE_WEIGHTS.review,
 
-  /** Distribution weights for session parts (should sum to 1.0)
-   * Part 1 (abacus): 50% - This is where new skills are built
-   * Part 2 (visualization): 30% - Mental math with visualization
-   * Part 3 (linear): 20% - Mental math in sentence format
-   */
-  partTimeWeights: {
-    abacus: 0.5,
-    visualization: 0.3,
-    linear: 0.2,
-  },
+  // Session part time distribution (from config/slot-distribution.ts)
+  partTimeWeights: PART_TIME_WEIGHTS,
 
-  /** Term count range for abacus part (how many numbers per problem) */
-  abacusTermCount: { min: 3, max: 6 },
+  // Term count ranges (from config/slot-distribution.ts)
+  abacusTermCount: TERM_COUNT_RANGES.abacus,
+  visualizationTermCount: TERM_COUNT_RANGES.visualization,
+  linearTermCount: TERM_COUNT_RANGES.linear,
 
-  /** Term count range for visualization part (defaults to 75% of abacus) */
-  visualizationTermCount: null as { min: number; max: number } | null,
+  // Timing (from config/session-timing.ts)
+  defaultSecondsPerProblem: DEFAULT_SECONDS_PER_PROBLEM,
+  reviewIntervalDays: REVIEW_INTERVAL_DAYS,
+  sessionTimeoutHours: SESSION_TIMEOUT_HOURS,
 
-  /** Term count range for linear part (same as abacus by default) */
-  linearTermCount: null as { min: number; max: number } | null,
-
-  /** Default seconds per problem if no history */
-  defaultSecondsPerProblem: 45,
-
-  /** Spaced repetition intervals */
-  reviewIntervalDays: {
-    mastered: 7,
-    practicing: 3,
-  },
-
-  /** Session timeout in hours - sessions older than this are auto-abandoned on next access */
-  sessionTimeoutHours: 24,
-
-  /**
-   * Complexity budget per term for each part type.
-   * null = no limit (unlimited)
-   *
-   * These are evaluated against student-aware costs:
-   *   termCost = Σ(baseCost × masteryMultiplier)
-   *
-   * @deprecated Use purposeComplexityBounds instead for per-purpose control
-   */
-  abacusComplexityBudget: null as number | null,
-  visualizationComplexityBudget: 3 as number | null,
-  linearComplexityBudget: null as number | null,
-
-  /**
-   * Complexity bounds per purpose type, per part type.
-   *
-   * Each purpose can have different min/max complexity requirements.
-   * null = no constraint (falls back to part-type defaults above)
-   *
-   * Evaluated against student-aware costs:
-   *   termCost = Σ(baseCost × masteryMultiplier)
-   *
-   * Example bounds:
-   *   min: 1 = every term must use at least one five-complement
-   *   max: 3 = no term can exceed cost 3 (cap for visualization)
-   */
-  purposeComplexityBounds: {
-    focus: {
-      abacus: { min: null, max: null },
-      visualization: { min: null, max: 3 },
-      linear: { min: null, max: null },
-    },
-    reinforce: {
-      abacus: { min: null, max: null },
-      visualization: { min: null, max: 3 },
-      linear: { min: null, max: null },
-    },
-    review: {
-      abacus: { min: null, max: null },
-      visualization: { min: null, max: 3 },
-      linear: { min: null, max: null },
-    },
-    challenge: {
-      abacus: { min: 1, max: null },
-      visualization: { min: 1, max: null },
-      linear: { min: 1, max: null },
-    },
-  } as Record<
-    'focus' | 'reinforce' | 'review' | 'challenge',
-    Record<'abacus' | 'visualization' | 'linear', { min: number | null; max: number | null }>
-  >,
+  // Per-purpose complexity bounds (from config/complexity-budgets.ts)
+  purposeComplexityBounds: PURPOSE_COMPLEXITY_BOUNDS,
 }
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG

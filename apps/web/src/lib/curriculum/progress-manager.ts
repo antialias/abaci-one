@@ -15,6 +15,14 @@ import {
 // Import directly from source to avoid circular dependency issues with re-exports
 import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config/fluency-thresholds'
 import type { NewPracticeSession, PracticeSession } from '@/db/schema/practice-sessions'
+
+// Debug: Log the imported config at module load time
+console.log('[progress-manager.ts] MODULE LOAD - REINFORCEMENT_CONFIG debug:', {
+  exists: typeof REINFORCEMENT_CONFIG !== 'undefined',
+  type: typeof REINFORCEMENT_CONFIG,
+  keys: REINFORCEMENT_CONFIG ? Object.keys(REINFORCEMENT_CONFIG) : 'N/A',
+  fullObject: JSON.stringify(REINFORCEMENT_CONFIG, null, 2),
+})
 import type { HelpLevel } from '@/db/schema/session-plans'
 
 // ============================================================================
