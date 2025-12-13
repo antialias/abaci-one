@@ -13,10 +13,19 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 
-import type { AutoPauseStats, PauseInfo } from './SessionPausedModal'
+import { SessionPausedModal, type AutoPauseStats, type PauseInfo } from './SessionPausedModal'
 
 // Re-export types for consumers
 export type { AutoPauseStats, PauseInfo }
+
+/**
+ * Student info needed for the pause modal
+ */
+export interface StudentInfo {
+  name: string
+  emoji: string
+  color: string
+}
 
 // ============================================================================
 // Auto-pause threshold calculation
@@ -107,26 +116,17 @@ export interface AttemptTimingData {
   accumulatedPauseMs: number
 }
 
-/**
- * Imperative handle for controlling the session from parent
- */
-export interface ActiveSessionHandle {
-  /** Resume the session (call this when external resume trigger occurs) */
-  resume: () => void
-  /** Pause the session (call this when external pause trigger occurs) */
-  pause: () => void
-}
-
 interface ActiveSessionProps {
   plan: SessionPlan
-  studentName: string
+  /** Student info for display in pause modal */
+  student: StudentInfo
   /** Called when a problem is answered */
   onAnswer: (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => Promise<void>
   /** Called when session is ended early */
   onEndEarly: (reason?: string) => void
-  /** Called when session is paused (with info about why) */
+  /** Called when session is paused (with info about why) - for external HUD updates */
   onPause?: (pauseInfo: PauseInfo) => void
-  /** Called when session is resumed */
+  /** Called when session is resumed - for external HUD updates */
   onResume?: () => void
   /** Called when session completes */
   onComplete: () => void
@@ -134,8 +134,6 @@ interface ActiveSessionProps {
   hideHud?: boolean
   /** Called with timing data when it changes (for external timing display) */
   onTimingUpdate?: (timing: AttemptTimingData | null) => void
-  /** Ref to get imperative handle for controlling the session */
-  sessionRef?: React.MutableRefObject<ActiveSessionHandle | null>
 }
 
 /**
@@ -586,7 +584,7 @@ function LinearProblem({
  */
 export function ActiveSession({
   plan,
-  studentName,
+  student,
   onAnswer,
   onEndEarly,
   onPause,
@@ -594,7 +592,6 @@ export function ActiveSession({
   onComplete,
   hideHud = false,
   onTimingUpdate,
-  sessionRef,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -678,6 +675,12 @@ export function ActiveSession({
   const [helpPanelDismissed, setHelpPanelDismissed] = useState(false)
   // Track when answer is fading out (for dream sequence)
   const [answerFadingOut, setAnswerFadingOut] = useState(false)
+
+  // Track pause info for displaying in the modal (single source of truth)
+  const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
+
+  // Track last resume time to reset auto-pause timer after resuming
+  const lastResumeTimeRef = useRef<number>(0)
 
   // Reset dismissed states when help context changes (new help session)
   useEffect(() => {
@@ -1058,12 +1061,14 @@ export function ActiveSession({
     // Calculate the threshold and stats from historical results
     const { threshold, stats } = calculateAutoPauseInfo(plan.results)
 
-    // Calculate remaining time until auto-pause (using actual working time, not total elapsed)
-    const elapsedMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
+    // Calculate remaining time until auto-pause
+    // After resume, use the resume time as effective start (resets the auto-pause timer)
+    const effectiveStartTime = Math.max(attempt.startTime, lastResumeTimeRef.current)
+    const elapsedMs = Date.now() - effectiveStartTime
     const remainingMs = threshold - elapsedMs
 
     // Create pause info for auto-timeout
-    const pauseInfo: PauseInfo = {
+    const autoPauseInfo: PauseInfo = {
       pausedAt: new Date(),
       reason: 'auto-timeout',
       autoPauseStats: stats,
@@ -1071,17 +1076,19 @@ export function ActiveSession({
 
     // If already over threshold, pause immediately
     if (remainingMs <= 0) {
+      setPauseInfo(autoPauseInfo)
       pause()
-      onPause?.(pauseInfo)
+      onPause?.(autoPauseInfo)
       return
     }
 
     // Set timeout to trigger pause when threshold is reached
     const timeoutId = setTimeout(() => {
       // Update pausedAt to actual pause time
-      pauseInfo.pausedAt = new Date()
+      autoPauseInfo.pausedAt = new Date()
+      setPauseInfo(autoPauseInfo)
       pause()
-      onPause?.(pauseInfo)
+      onPause?.(autoPauseInfo)
     }, remainingMs)
 
     return () => clearTimeout(timeoutId)
@@ -1095,38 +1102,25 @@ export function ActiveSession({
     onPause,
   ])
 
-  const handlePause = useCallback(() => {
-    const pauseInfo: PauseInfo = {
-      pausedAt: new Date(),
-      reason: 'manual',
-    }
-    pause()
-    onPause?.(pauseInfo)
-  }, [pause, onPause])
+  const handlePause = useCallback(
+    (info?: PauseInfo) => {
+      const newPauseInfo: PauseInfo = info ?? {
+        pausedAt: new Date(),
+        reason: 'manual',
+      }
+      setPauseInfo(newPauseInfo)
+      pause()
+      onPause?.(newPauseInfo)
+    },
+    [pause, onPause]
+  )
 
   const handleResume = useCallback(() => {
+    setPauseInfo(undefined)
+    lastResumeTimeRef.current = Date.now() // Reset auto-pause timer
     resume()
     onResume?.()
   }, [resume, onResume])
-
-  // Expose imperative handle for parent to control pause/resume
-  // This is needed because the modal is rendered in the parent and needs
-  // to trigger the internal resume() when dismissed
-  // IMPORTANT: We expose the raw `resume`/`pause` functions, NOT `handleResume`/`handlePause`
-  // which would call `onResume`/`onPause` callbacks and cause an infinite loop
-  useEffect(() => {
-    if (sessionRef) {
-      sessionRef.current = {
-        resume,
-        pause,
-      }
-    }
-    return () => {
-      if (sessionRef) {
-        sessionRef.current = null
-      }
-    }
-  }, [sessionRef, resume, pause])
 
   const getHealthColor = (health: SessionHealth['overall']) => {
     switch (health) {
@@ -1220,7 +1214,7 @@ export function ActiveSession({
             <button
               type="button"
               data-action={isPaused ? 'resume' : 'pause'}
-              onClick={isPaused ? handleResume : handlePause}
+              onClick={isPaused ? handleResume : () => handlePause()}
               className={css({
                 width: '48px',
                 height: '48px',
@@ -1836,6 +1830,16 @@ export function ActiveSession({
           phaseName={phase.phase}
         />
       )}
+
+      {/* Session Paused Modal - rendered here as single source of truth */}
+      <SessionPausedModal
+        isOpen={isPaused}
+        student={student}
+        session={plan}
+        pauseInfo={pauseInfo}
+        onResume={handleResume}
+        onEndSession={() => onEndEarly('Session ended by user')}
+      />
     </div>
   )
 }

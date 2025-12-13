@@ -1,17 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
-  type ActiveSessionHandle,
   type AttemptTimingData,
   PracticeErrorBoundary,
   PracticeSubNav,
   type SessionHudData,
-  SessionPausedModal,
-  type PauseInfo,
 } from '@/components/practice'
 import type { Player } from '@/db/schema/players'
 import type { SessionHealth, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
@@ -39,16 +36,8 @@ interface PracticeClientProps {
 export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
   const router = useRouter()
 
-  // Ref to control ActiveSession's pause/resume imperatively
-  // This is needed because the modal is rendered here but needs to trigger
-  // ActiveSession's internal resume() when dismissed
-  const sessionRef = useRef<ActiveSessionHandle | null>(null)
-
-  // Track pause state locally (controlled by callbacks from ActiveSession)
-  // Never auto-pause - session continues where it left off on load/reload
+  // Track pause state for HUD display (ActiveSession owns the modal and actual pause logic)
   const [isPaused, setIsPaused] = useState(false)
-  // Track pause info for displaying details in the modal
-  const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
   // Track timing data from ActiveSession for the sub-nav HUD
   const [timingData, setTimingData] = useState<AttemptTimingData | null>(null)
 
@@ -77,19 +66,13 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     return { totalProblems: total, completedProblems: completed }
   }, [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex])
 
-  // Pause/resume handlers
-  const handlePause = useCallback((info: PauseInfo) => {
-    setPauseInfo(info)
+  // Pause/resume handlers - just update HUD state (ActiveSession owns the modal)
+  const handlePause = useCallback(() => {
     setIsPaused(true)
   }, [])
 
   const handleResume = useCallback(() => {
-    // IMPORTANT: Must call sessionRef.current?.resume() to actually resume
-    // ActiveSession's internal state. Just setting isPaused=false only hides
-    // the modal but leaves input blocked.
-    sessionRef.current?.resume()
     setIsPaused(false)
-    setPauseInfo(undefined)
   }, [])
 
   // Handle recording an answer
@@ -156,11 +139,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               parts: currentPlan.parts,
             }
           : undefined,
-        onPause: () =>
-          handlePause({
-            pausedAt: new Date(),
-            reason: 'manual',
-          }),
+        onPause: handlePause,
         onResume: handleResume,
         onEndEarly: () => handleEndEarly('Session ended'),
       }
@@ -180,7 +159,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         <PracticeErrorBoundary studentName={player.name}>
           <ActiveSession
             plan={currentPlan}
-            studentName={player.name}
+            student={{ name: player.name, emoji: player.emoji, color: player.color }}
             onAnswer={handleAnswer}
             onEndEarly={handleEndEarly}
             onPause={handlePause}
@@ -188,20 +167,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onComplete={handleSessionComplete}
             onTimingUpdate={setTimingData}
             hideHud={true}
-            sessionRef={sessionRef}
           />
         </PracticeErrorBoundary>
       </main>
-
-      {/* Session Paused Modal - shown when paused */}
-      <SessionPausedModal
-        isOpen={isPaused}
-        student={player}
-        session={currentPlan}
-        pauseInfo={pauseInfo}
-        onResume={handleResume}
-        onEndSession={() => handleEndEarly('Session ended by user')}
-      />
     </PageWithNav>
   )
 }

@@ -16,7 +16,20 @@ import {
   generateSingleProblem,
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
-import { ActiveSession } from './ActiveSession'
+import { ActiveSession, type StudentInfo } from './ActiveSession'
+
+/**
+ * Create a mock student for stories
+ */
+function createMockStudent(name: string): StudentInfo {
+  const students: Record<string, StudentInfo> = {
+    Sonia: { name: 'Sonia', emoji: '🌟', color: 'purple' },
+    Marcus: { name: 'Marcus', emoji: '🚀', color: 'blue' },
+    Luna: { name: 'Luna', emoji: '🌙', color: 'indigo' },
+    Kai: { name: 'Kai', emoji: '🌊', color: 'cyan' },
+  }
+  return students[name] ?? { name, emoji: '🎓', color: 'gray' }
+}
 
 const meta: Meta<typeof ActiveSession> = {
   title: 'Practice/ActiveSession',
@@ -241,7 +254,7 @@ export const Part1Abacus: Story = {
           currentPartIndex: 0,
           currentSlotIndex: 0,
         })}
-        studentName="Sonia"
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -257,7 +270,7 @@ export const Part2Visualization: Story = {
           currentPartIndex: 1,
           currentSlotIndex: 0,
         })}
-        studentName="Marcus"
+        student={createMockStudent('Marcus')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -273,7 +286,7 @@ export const Part3Linear: Story = {
           currentPartIndex: 2,
           currentSlotIndex: 0,
         })}
-        studentName="Luna"
+        student={createMockStudent('Luna')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -296,7 +309,7 @@ export const WithHealthIndicator: Story = {
             avgResponseTimeMs: 3500,
           },
         })}
-        studentName="Sonia"
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -319,7 +332,7 @@ export const Struggling: Story = {
             avgResponseTimeMs: 8500,
           },
         })}
-        studentName="Kai"
+        student={createMockStudent('Kai')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -342,7 +355,7 @@ export const Warning: Story = {
             avgResponseTimeMs: 5000,
           },
         })}
-        studentName="Luna"
+        student={createMockStudent('Luna')}
         {...defaultHandlers}
       />
     </SessionWrapper>
@@ -414,7 +427,7 @@ function InteractiveSessionDemo() {
     <SessionWrapper>
       <ActiveSession
         plan={plan}
-        studentName="Interactive Demo"
+        student={createMockStudent('Interactive Demo')}
         onAnswer={handleAnswer}
         onEndEarly={(reason) => alert(`Ended: ${reason}`)}
         onComplete={handleComplete}
@@ -444,7 +457,7 @@ export const MidSession: Story = {
             avgResponseTimeMs: 4200,
           },
         })}
-        studentName="Sonia"
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
