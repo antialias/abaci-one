@@ -10,7 +10,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import type { MasteryLevel } from '@/db/schema/player-skill-mastery'
+import type { FluencyState, MasteryLevel } from '@/db/schema/player-skill-mastery'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
 
@@ -34,8 +34,13 @@ export interface SkillMasteryData {
   attempts: number
   correct: number
   consecutiveCorrect: number
-  masteryLevel: MasteryLevel
+  /** Whether this skill is in the student's active practice rotation */
+  isPracticing: boolean
   lastPracticedAt: Date | null
+  /**
+   * @deprecated Use isPracticing instead. Kept for backwards compatibility.
+   */
+  masteryLevel: MasteryLevel
 }
 
 export interface PracticeSessionData {

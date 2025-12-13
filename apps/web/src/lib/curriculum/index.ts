@@ -55,6 +55,7 @@ export {
 // Session planning
 export {
   ActiveSessionExistsError,
+  NoSkillsEnabledError,
   abandonSessionPlan,
   approveSessionPlan,
   completeSessionPlanEarly,

@@ -189,6 +189,7 @@ function createMockSessionPlanWithProblems(config: {
     avgTimePerProblemSeconds: 40,
     parts,
     summary,
+    masteredSkillIds: ['basic.+1', 'basic.+2', 'basic.+3', 'fiveComplements.4=5-1'],
     status: 'in_progress',
     currentPartIndex: config.currentPartIndex ?? 0,
     currentSlotIndex: config.currentSlotIndex ?? 0,

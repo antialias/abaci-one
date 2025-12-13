@@ -38,6 +38,13 @@ export interface ProblemConstraints {
    * If set, terms with total cost > budget are rejected during generation.
    */
   maxComplexityBudgetPerTerm?: number
+  /**
+   * Minimum complexity budget per term.
+   *
+   * If set, terms with total cost < budget are rejected during generation.
+   * This ensures every term exercises real skills (no trivial direct additions).
+   */
+  minComplexityBudgetPerTerm?: number
 }
 
 /**
@@ -422,6 +429,9 @@ function generateSequence(
     currentValue = newValue
   }
 
+  // Calculate total complexity cost from all steps
+  const totalComplexityCost = steps.reduce((sum, step) => sum + (step.complexityCost ?? 0), 0)
+
   return {
     terms,
     trace: {
@@ -430,6 +440,8 @@ function generateSequence(
       steps,
       allSkills: [...new Set(steps.flatMap((s) => s.skillsUsed))],
       budgetConstraint: constraints.maxComplexityBudgetPerTerm,
+      minBudgetConstraint: constraints.minComplexityBudgetPerTerm,
+      totalComplexityCost: totalComplexityCost > 0 ? totalComplexityCost : undefined,
     },
   }
 }
@@ -468,6 +480,7 @@ function findValidNextTermWithTrace(
   const { min, max } = constraints.numberRange
   const candidates: TermWithSkills[] = []
   const maxBudget = constraints.maxComplexityBudgetPerTerm
+  const minBudget = constraints.minComplexityBudgetPerTerm
 
   // Try each possible ADDITION term value
   for (let term = min; term <= max; term++) {
@@ -493,8 +506,11 @@ function findValidNextTermWithTrace(
     const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
 
     // Check complexity budget (if calculator and budget are provided)
-    if (maxBudget !== undefined && termCost !== undefined) {
-      if (termCost > maxBudget) continue // Skip - too complex for this student
+    if (termCost !== undefined) {
+      if (maxBudget !== undefined && termCost > maxBudget) continue // Skip - too complex for this student
+      // Skip min budget check for first term (starting from 0) - basic skills always have cost 0
+      // and we can't avoid using basic skills when adding to 0
+      if (minBudget !== undefined && currentValue > 0 && termCost < minBudget) continue // Skip - too easy for this purpose
     }
 
     candidates.push({
@@ -533,8 +549,10 @@ function findValidNextTermWithTrace(
       const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
 
       // Check complexity budget (if calculator and budget are provided)
-      if (maxBudget !== undefined && termCost !== undefined) {
-        if (termCost > maxBudget) continue // Skip - too complex for this student
+      if (termCost !== undefined) {
+        if (maxBudget !== undefined && termCost > maxBudget) continue // Skip - too complex for this student
+        // Note: subtraction is only allowed when currentValue > 0, but apply same pattern for consistency
+        if (minBudget !== undefined && currentValue > 0 && termCost < minBudget) continue // Skip - too easy for this purpose
       }
 
       candidates.push({

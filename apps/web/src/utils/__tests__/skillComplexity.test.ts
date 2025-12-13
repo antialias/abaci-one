@@ -5,8 +5,11 @@ import {
   getBaseComplexity,
   createSkillCostCalculator,
   buildStudentSkillHistory,
+  buildStudentSkillHistoryFromRecords,
   dbMasteryToState,
+  computeMasteryState,
   type StudentSkillHistory,
+  type DbSkillRecord,
 } from '../skillComplexity'
 
 describe('BASE_SKILL_COMPLEXITY', () => {
@@ -14,13 +17,16 @@ describe('BASE_SKILL_COMPLEXITY', () => {
     expect(Object.keys(BASE_SKILL_COMPLEXITY).length).toBe(34)
   })
 
-  it('should have base cost 1 for basic and five complement skills', () => {
-    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(1)
-    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(1)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(1)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(1)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(1)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(1)
+  it('should have base cost 0 for basic skills', () => {
+    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(0)
+    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(0)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(0)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(0)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(0)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(0)
+  })
+
+  it('should have base cost 1 for five complement skills', () => {
     expect(BASE_SKILL_COMPLEXITY['fiveComplements.4=5-1']).toBe(1)
     expect(BASE_SKILL_COMPLEXITY['fiveComplements.3=5-2']).toBe(1)
     expect(BASE_SKILL_COMPLEXITY['fiveComplements.2=5-3']).toBe(1)
@@ -62,14 +68,16 @@ describe('MASTERY_MULTIPLIERS', () => {
   it('should have correct multipliers', () => {
     expect(MASTERY_MULTIPLIERS.effortless).toBe(1)
     expect(MASTERY_MULTIPLIERS.fluent).toBe(2)
+    expect(MASTERY_MULTIPLIERS.rusty).toBe(3)
     expect(MASTERY_MULTIPLIERS.practicing).toBe(3)
-    expect(MASTERY_MULTIPLIERS.learning).toBe(4)
+    expect(MASTERY_MULTIPLIERS.not_practicing).toBe(4)
   })
 })
 
 describe('getBaseComplexity', () => {
   it('should return base complexity for known skills', () => {
-    expect(getBaseComplexity('basic.directAddition')).toBe(1)
+    expect(getBaseComplexity('basic.directAddition')).toBe(0)
+    expect(getBaseComplexity('fiveComplements.4=5-1')).toBe(1)
     expect(getBaseComplexity('tenComplements.9=10-1')).toBe(2)
     expect(getBaseComplexity('advanced.cascadingCarry')).toBe(3)
   })
@@ -80,45 +88,48 @@ describe('getBaseComplexity', () => {
 })
 
 describe('createSkillCostCalculator', () => {
-  it('should calculate cost based on mastery level', () => {
+  it('should calculate cost based on mastery state', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'learning' },
+        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'tenComplements.9=10-1': {
+          skillId: 'tenComplements.9=10-1',
+          masteryState: 'not_practicing',
+        },
       },
     }
 
     const calculator = createSkillCostCalculator(history)
 
-    // directAddition: base 1 × effortless 1 = 1
-    expect(calculator.calculateSkillCost('basic.directAddition')).toBe(1)
+    // fiveComplement: base 1 × effortless 1 = 1
+    expect(calculator.calculateSkillCost('fiveComplements.4=5-1')).toBe(1)
 
-    // tenComplement: base 2 × learning 4 = 8
+    // tenComplement: base 2 × not_practicing 4 = 8
     expect(calculator.calculateSkillCost('tenComplements.9=10-1')).toBe(8)
   })
 
-  it('should treat unknown skills as learning', () => {
+  it('should treat unknown skills as not_practicing', () => {
     const history: StudentSkillHistory = { skills: {} }
     const calculator = createSkillCostCalculator(history)
 
-    // Unknown skill: base 1 × learning 4 = 4
-    expect(calculator.calculateSkillCost('basic.directAddition')).toBe(4)
+    // Unknown skill with base 1: base 1 × not_practicing 4 = 4
+    expect(calculator.calculateSkillCost('fiveComplements.4=5-1')).toBe(4)
   })
 
   it('should calculate term cost as sum of skill costs', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryLevel: 'fluent' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'practicing' },
+        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'fiveComplements.3=5-2': { skillId: 'fiveComplements.3=5-2', masteryState: 'fluent' },
+        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'practicing' },
       },
     }
 
     const calculator = createSkillCostCalculator(history)
 
     const termCost = calculator.calculateTermCost([
-      'basic.directAddition', // 1 × 1 = 1
-      'fiveComplements.4=5-1', // 1 × 2 = 2
+      'fiveComplements.4=5-1', // 1 × 1 = 1
+      'fiveComplements.3=5-2', // 1 × 2 = 2
       'tenComplements.9=10-1', // 2 × 3 = 6
     ])
 
@@ -134,36 +145,78 @@ describe('createSkillCostCalculator', () => {
   it('should return correct mastery state via getMasteryState', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'practicing' },
+        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'practicing' },
       },
     }
 
     const calculator = createSkillCostCalculator(history)
 
-    expect(calculator.getMasteryState('basic.directAddition')).toBe('effortless')
+    expect(calculator.getMasteryState('fiveComplements.4=5-1')).toBe('effortless')
     expect(calculator.getMasteryState('tenComplements.9=10-1')).toBe('practicing')
-    expect(calculator.getMasteryState('unknown.skill')).toBe('learning')
+    expect(calculator.getMasteryState('unknown.skill')).toBe('not_practicing')
   })
 })
 
-describe('dbMasteryToState', () => {
-  it('should map learning to learning', () => {
-    expect(dbMasteryToState('learning')).toBe('learning')
+describe('computeMasteryState (new isPracticing model)', () => {
+  it('should return not_practicing when isPracticing is false', () => {
+    expect(computeMasteryState(false, 0, 0, 0, undefined)).toBe('not_practicing')
+    expect(computeMasteryState(false, 100, 100, 100, 5)).toBe('not_practicing')
+  })
+
+  it('should return practicing when fluency criteria not met', () => {
+    // Not enough attempts
+    expect(computeMasteryState(true, 5, 5, 5, 5)).toBe('practicing')
+    // Not enough consecutive correct
+    expect(computeMasteryState(true, 10, 9, 3, 5)).toBe('practicing')
+    // Accuracy too low
+    expect(computeMasteryState(true, 10, 7, 5, 5)).toBe('practicing')
+  })
+
+  it('should return effortless when fluent and recently practiced', () => {
+    // 10 attempts, 90% accuracy, 5 consecutive, practiced 5 days ago
+    expect(computeMasteryState(true, 10, 9, 5, 5)).toBe('effortless')
+    expect(computeMasteryState(true, 10, 9, 5, 14)).toBe('effortless')
+  })
+
+  it('should return fluent when fluent and practiced 14-30 days ago', () => {
+    expect(computeMasteryState(true, 10, 9, 5, 15)).toBe('fluent')
+    expect(computeMasteryState(true, 10, 9, 5, 30)).toBe('fluent')
+  })
+
+  it('should return rusty when fluent but practiced >30 days ago', () => {
+    expect(computeMasteryState(true, 10, 9, 5, 31)).toBe('rusty')
+    expect(computeMasteryState(true, 10, 9, 5, 90)).toBe('rusty')
+  })
+
+  it('should return fluent when fluent but never practiced (no date)', () => {
+    // This handles skills marked as practicing via teacher but never practiced in app
+    expect(computeMasteryState(true, 10, 9, 5, undefined)).toBe('fluent')
+  })
+})
+
+describe('dbMasteryToState (deprecated - old 3-state model)', () => {
+  it('should map learning to not_practicing', () => {
+    expect(dbMasteryToState('learning')).toBe('not_practicing')
   })
 
   it('should map practicing to practicing', () => {
     expect(dbMasteryToState('practicing')).toBe('practicing')
   })
 
-  it('should map recently mastered to fluent', () => {
-    expect(dbMasteryToState('mastered', 10)).toBe('fluent')
+  it('should map mastered to effortless when recently practiced', () => {
+    expect(dbMasteryToState('mastered', 5)).toBe('effortless')
+    expect(dbMasteryToState('mastered', 14)).toBe('effortless')
+  })
+
+  it('should map mastered to fluent when practiced 14-30 days ago', () => {
+    expect(dbMasteryToState('mastered', 15)).toBe('fluent')
     expect(dbMasteryToState('mastered', 30)).toBe('fluent')
   })
 
-  it('should map long-ago mastered to effortless', () => {
-    expect(dbMasteryToState('mastered', 31)).toBe('effortless')
-    expect(dbMasteryToState('mastered', 90)).toBe('effortless')
+  it('should map mastered to rusty when not practiced for >30 days', () => {
+    expect(dbMasteryToState('mastered', 31)).toBe('rusty')
+    expect(dbMasteryToState('mastered', 90)).toBe('rusty')
   })
 
   it('should default to fluent when no days provided', () => {
@@ -171,7 +224,53 @@ describe('dbMasteryToState', () => {
   })
 })
 
-describe('buildStudentSkillHistory', () => {
+describe('buildStudentSkillHistoryFromRecords (new isPracticing model)', () => {
+  it('should build history from database records', () => {
+    const referenceDate = new Date('2024-03-01')
+    const records: DbSkillRecord[] = [
+      {
+        skillId: 'fiveComplements.4=5-1',
+        isPracticing: true,
+        attempts: 10,
+        correct: 9,
+        consecutiveCorrect: 5,
+        lastPracticedAt: new Date('2024-02-25'), // 5 days ago
+      },
+      {
+        skillId: 'tenComplements.9=10-1',
+        isPracticing: true,
+        attempts: 5,
+        correct: 4,
+        consecutiveCorrect: 2,
+        lastPracticedAt: null,
+      },
+      {
+        skillId: 'basic.directAddition',
+        isPracticing: false,
+        attempts: 0,
+        correct: 0,
+        consecutiveCorrect: 0,
+        lastPracticedAt: null,
+      },
+    ]
+
+    const history = buildStudentSkillHistoryFromRecords(records, referenceDate)
+
+    // Fluent + 5 days ago = effortless
+    expect(history.skills['fiveComplements.4=5-1'].masteryState).toBe('effortless')
+    // Not fluent yet = practicing
+    expect(history.skills['tenComplements.9=10-1'].masteryState).toBe('practicing')
+    // Not in practice rotation = not_practicing
+    expect(history.skills['basic.directAddition'].masteryState).toBe('not_practicing')
+  })
+
+  it('should handle empty records', () => {
+    const history = buildStudentSkillHistoryFromRecords([])
+    expect(history.skills).toEqual({})
+  })
+})
+
+describe('buildStudentSkillHistory (deprecated - old masteryLevel model)', () => {
   it('should build history from database records', () => {
     const records = [
       {
@@ -189,8 +288,8 @@ describe('buildStudentSkillHistory', () => {
     const referenceDate = new Date('2024-03-01') // 60 days later
     const history = buildStudentSkillHistory(records, referenceDate)
 
-    expect(history.skills['basic.directAddition'].masteryLevel).toBe('effortless')
-    expect(history.skills['tenComplements.9=10-1'].masteryLevel).toBe('practicing')
+    expect(history.skills['basic.directAddition'].masteryState).toBe('rusty')
+    expect(history.skills['tenComplements.9=10-1'].masteryState).toBe('practicing')
   })
 
   it('should handle empty records', () => {
@@ -211,7 +310,7 @@ describe('buildStudentSkillHistory', () => {
     ]
 
     const history = buildStudentSkillHistory(records)
-    // 5 days ago = fluent (< 30 days)
-    expect(history.skills['basic.directAddition'].masteryLevel).toBe('fluent')
+    // 5 days ago = effortless (< 14 days)
+    expect(history.skills['basic.directAddition'].masteryState).toBe('effortless')
   })
 })

@@ -9,6 +9,7 @@ import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
 import {
   ActiveSessionExistsClientError,
+  NoSkillsEnabledClientError,
   sessionPlanKeys,
   useApproveSessionPlan,
   useGenerateSessionPlan,
@@ -138,10 +139,18 @@ export function StartPracticeModal({
   const startPlan = useStartSessionPlan()
 
   const isStarting = generatePlan.isPending || approvePlan.isPending || startPlan.isPending
-  const hasError =
-    (generatePlan.error && !(generatePlan.error instanceof ActiveSessionExistsClientError)) ||
-    approvePlan.error ||
-    startPlan.error
+
+  // Check for errors (excluding recoverable ActiveSessionExistsClientError)
+  const displayError = (() => {
+    if (generatePlan.error && !(generatePlan.error instanceof ActiveSessionExistsClientError)) {
+      return generatePlan.error
+    }
+    if (approvePlan.error) return approvePlan.error
+    if (startPlan.error) return startPlan.error
+    return null
+  })()
+
+  const isNoSkillsError = displayError instanceof NoSkillsEnabledClientError
 
   const handleStart = useCallback(async () => {
     generatePlan.reset()
@@ -721,7 +730,7 @@ export function StartPracticeModal({
             </div>
 
             {/* Error display */}
-            {hasError && (
+            {displayError && (
               <div
                 className={css({
                   marginBottom: '1rem',
@@ -730,16 +739,48 @@ export function StartPracticeModal({
                   textAlign: 'center',
                 })}
                 style={{
-                  background: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
-                  border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.15)'}`,
+                  background: isNoSkillsError
+                    ? isDark
+                      ? 'rgba(251, 191, 36, 0.12)'
+                      : 'rgba(251, 191, 36, 0.08)'
+                    : isDark
+                      ? 'rgba(239, 68, 68, 0.12)'
+                      : 'rgba(239, 68, 68, 0.08)',
+                  border: `1px solid ${
+                    isNoSkillsError
+                      ? isDark
+                        ? 'rgba(251, 191, 36, 0.25)'
+                        : 'rgba(251, 191, 36, 0.15)'
+                      : isDark
+                        ? 'rgba(239, 68, 68, 0.25)'
+                        : 'rgba(239, 68, 68, 0.15)'
+                  }`,
                 }}
               >
-                <p
-                  className={css({ fontSize: '0.875rem' })}
-                  style={{ color: isDark ? '#fca5a5' : '#dc2626' }}
-                >
-                  Something went wrong. Please try again.
-                </p>
+                {isNoSkillsError ? (
+                  <>
+                    <p
+                      className={css({ fontSize: '0.875rem', marginBottom: '0.5rem' })}
+                      style={{ color: isDark ? '#fcd34d' : '#b45309' }}
+                    >
+                      ⚠️ No skills enabled
+                    </p>
+                    <p
+                      className={css({ fontSize: '0.75rem' })}
+                      style={{ color: isDark ? '#d4d4d4' : '#525252' }}
+                    >
+                      Please enable at least one skill in the skill selector before starting a
+                      session.
+                    </p>
+                  </>
+                ) : (
+                  <p
+                    className={css({ fontSize: '0.875rem' })}
+                    style={{ color: isDark ? '#fca5a5' : '#dc2626' }}
+                  >
+                    {displayError.message || 'Something went wrong. Please try again.'}
+                  </p>
+                )}
               </div>
             )}
 

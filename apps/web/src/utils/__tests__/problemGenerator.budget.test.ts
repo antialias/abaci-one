@@ -91,7 +91,7 @@ describe('Problem Generator Budget Integration', () => {
     it('should have low cost for effortless skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryLevel: 'effortless' },
+          'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
         },
       }
       const calculator = createSkillCostCalculator(history)
@@ -105,10 +105,13 @@ describe('Problem Generator Budget Integration', () => {
       expect(cost).toBe(1) // base 1 × effortless 1 = 1
     })
 
-    it('should have high cost for learning skills', () => {
+    it('should have high cost for not_practicing skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryLevel: 'learning' },
+          'fiveComplements.4=5-1': {
+            skillId: 'fiveComplements.4=5-1',
+            masteryState: 'not_practicing',
+          },
         },
       }
       const calculator = createSkillCostCalculator(history)
@@ -117,15 +120,15 @@ describe('Problem Generator Budget Integration', () => {
       const skills = analyzeStepSkills(3, 4, 7)
       const cost = calculator.calculateTermCost(skills)
 
-      // fiveComplements.4=5-1 has base cost 1, learning multiplier 4
+      // fiveComplements.4=5-1 has base cost 1, not_practicing multiplier 4
       // Note: basic.heavenBead and basic.simpleCombinations have base 0
-      expect(cost).toBe(4) // base 1 × learning 4 = 4
+      expect(cost).toBe(4) // base 1 × not_practicing 4 = 4
     })
 
     it('should have higher cost for ten complement than basic skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'effortless' },
+          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'effortless' },
         },
       }
       const calculator = createSkillCostCalculator(history)
@@ -150,7 +153,7 @@ describe('Problem Generator Budget Integration', () => {
       // Expert: ten complement effortless
       const expertHistory: StudentSkillHistory = {
         skills: {
-          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'effortless' },
+          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'effortless' },
         },
       }
       const expertCalc = createSkillCostCalculator(expertHistory)
@@ -169,8 +172,8 @@ describe('Problem Generator Budget Integration', () => {
     it('expert can fit complex terms in tight budget', () => {
       const expertHistory: StudentSkillHistory = {
         skills: {
-          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'effortless' },
-          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryLevel: 'effortless' },
+          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'effortless' },
+          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryState: 'effortless' },
         },
       }
       const calculator = createSkillCostCalculator(expertHistory)
@@ -198,14 +201,14 @@ describe('Problem Generator Budget Integration', () => {
     const fullSkillSet = createFullSkillSet()
 
     it('should respect budget constraint when generating problems', () => {
-      // Create a calculator where ten complements are expensive (learning)
+      // Create a calculator where ten complements are expensive (not_practicing)
       const beginnerHistory: StudentSkillHistory = {
         skills: {
-          'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
-          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryLevel: 'effortless' },
+          'basic.directAddition': { skillId: 'basic.directAddition', masteryState: 'effortless' },
+          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryState: 'effortless' },
           'basic.simpleCombinations': {
             skillId: 'basic.simpleCombinations',
-            masteryLevel: 'effortless',
+            masteryState: 'effortless',
           },
         },
       }
@@ -238,14 +241,14 @@ describe('Problem Generator Budget Integration', () => {
       // Expert history - all skills effortless
       const expertHistory: StudentSkillHistory = {
         skills: {
-          'basic.directAddition': { skillId: 'basic.directAddition', masteryLevel: 'effortless' },
-          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryLevel: 'effortless' },
+          'basic.directAddition': { skillId: 'basic.directAddition', masteryState: 'effortless' },
+          'basic.heavenBead': { skillId: 'basic.heavenBead', masteryState: 'effortless' },
           'basic.simpleCombinations': {
             skillId: 'basic.simpleCombinations',
-            masteryLevel: 'effortless',
+            masteryState: 'effortless',
           },
-          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryLevel: 'effortless' },
-          'tenComplements.8=10-2': { skillId: 'tenComplements.8=10-2', masteryLevel: 'effortless' },
+          'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'effortless' },
+          'tenComplements.8=10-2': { skillId: 'tenComplements.8=10-2', masteryState: 'effortless' },
         },
       }
       const calculator = createSkillCostCalculator(expertHistory)

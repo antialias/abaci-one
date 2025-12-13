@@ -31,6 +31,16 @@ export class ActiveSessionExistsClientError extends Error {
 }
 
 /**
+ * Error thrown when trying to generate a plan but no skills are enabled.
+ */
+export class NoSkillsEnabledClientError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NoSkillsEnabledClientError'
+  }
+}
+
+/**
  * Which session parts to include
  */
 interface EnabledParts {
@@ -67,6 +77,11 @@ async function generateSessionPlan({
       errorData.existingPlan
     ) {
       throw new ActiveSessionExistsClientError(errorData.existingPlan)
+    }
+
+    // Handle 400 - no skills enabled
+    if (res.status === 400 && errorData.code === 'NO_SKILLS_ENABLED') {
+      throw new NoSkillsEnabledClientError(errorData.error)
     }
 
     throw new Error(errorData.error || 'Failed to generate session plan')

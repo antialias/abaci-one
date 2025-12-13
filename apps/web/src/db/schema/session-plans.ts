@@ -45,6 +45,11 @@ export interface ProblemSlot {
   constraints: ProblemConstraints
   /** Generated problem (filled when slot is reached) */
   problem?: GeneratedProblem
+  /** Complexity bounds that were applied during generation */
+  complexityBounds?: {
+    min?: number
+    max?: number
+  }
 }
 
 export interface ProblemConstraints {
@@ -64,6 +69,16 @@ export interface ProblemConstraints {
    * If set, terms with total cost > budget are rejected during generation.
    */
   maxComplexityBudgetPerTerm?: number
+
+  /**
+   * Minimum complexity budget per term.
+   *
+   * If set, terms with total cost < budget are rejected during generation.
+   * This ensures every term exercises real skills (no trivial direct additions).
+   *
+   * Example: min=1 requires at least one five-complement per term.
+   */
+  minComplexityBudgetPerTerm?: number
 }
 
 /**
@@ -82,6 +97,18 @@ export interface GenerationTraceStep {
 }
 
 /**
+ * Skill mastery context for a single skill - captured at generation time
+ */
+export interface SkillMasteryDisplay {
+  /** Mastery level at generation time */
+  masteryLevel: 'effortless' | 'fluent' | 'rusty' | 'practicing' | 'learning'
+  /** Base complexity cost (intrinsic to skill) */
+  baseCost: number
+  /** Effective cost for this student (baseCost × masteryMultiplier) */
+  effectiveCost: number
+}
+
+/**
  * Full generation trace for a problem
  */
 export interface GenerationTrace {
@@ -89,8 +116,14 @@ export interface GenerationTrace {
   answer: number
   steps: GenerationTraceStep[]
   allSkills: string[]
-  /** Budget constraint used during generation (if any) */
+  /** Max budget constraint used during generation (if any) */
   budgetConstraint?: number
+  /** Min budget constraint used during generation (if any) */
+  minBudgetConstraint?: number
+  /** Total complexity cost across all terms */
+  totalComplexityCost?: number
+  /** Per-skill mastery context at generation time (for UI display) */
+  skillMasteryContext?: Record<string, SkillMasteryDisplay>
 }
 
 export interface GeneratedProblem {
@@ -465,10 +498,51 @@ export const DEFAULT_PLAN_CONFIG = {
    *
    * These are evaluated against student-aware costs:
    *   termCost = Σ(baseCost × masteryMultiplier)
+   *
+   * @deprecated Use purposeComplexityBounds instead for per-purpose control
    */
   abacusComplexityBudget: null as number | null,
   visualizationComplexityBudget: 3 as number | null,
   linearComplexityBudget: null as number | null,
+
+  /**
+   * Complexity bounds per purpose type, per part type.
+   *
+   * Each purpose can have different min/max complexity requirements.
+   * null = no constraint (falls back to part-type defaults above)
+   *
+   * Evaluated against student-aware costs:
+   *   termCost = Σ(baseCost × masteryMultiplier)
+   *
+   * Example bounds:
+   *   min: 1 = every term must use at least one five-complement
+   *   max: 3 = no term can exceed cost 3 (cap for visualization)
+   */
+  purposeComplexityBounds: {
+    focus: {
+      abacus: { min: null, max: null },
+      visualization: { min: null, max: 3 },
+      linear: { min: null, max: null },
+    },
+    reinforce: {
+      abacus: { min: null, max: null },
+      visualization: { min: null, max: 3 },
+      linear: { min: null, max: null },
+    },
+    review: {
+      abacus: { min: null, max: null },
+      visualization: { min: null, max: 3 },
+      linear: { min: null, max: null },
+    },
+    challenge: {
+      abacus: { min: 1, max: null },
+      visualization: { min: 1, max: null },
+      linear: { min: 1, max: null },
+    },
+  } as Record<
+    'focus' | 'reinforce' | 'review' | 'challenge',
+    Record<'abacus' | 'visualization' | 'linear', { min: number | null; max: number | null }>
+  >,
 }
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG

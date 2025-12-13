@@ -44,6 +44,13 @@ import {
   getRecentSessions,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
+import {
+  buildStudentSkillHistoryFromRecords,
+  calculateMaxSkillCost,
+  createSkillCostCalculator,
+  type SkillCostCalculator,
+} from '@/utils/skillComplexity'
+import { CHALLENGE_RATIO_BY_PART_TYPE } from './config'
 
 // ============================================================================
 // Plan Generation
@@ -81,9 +88,25 @@ export class ActiveSessionExistsError extends Error {
 }
 
 /**
+ * Error thrown when trying to generate a session for a student with no skills enabled
+ */
+export class NoSkillsEnabledError extends Error {
+  code = 'NO_SKILLS_ENABLED' as const
+
+  constructor() {
+    super(
+      'Cannot generate a practice session: no skills are enabled for this student. ' +
+        'Please enable at least one skill in the skill selector before starting a session.'
+    )
+    this.name = 'NoSkillsEnabledError'
+  }
+}
+
+/**
  * Generate a three-part session plan for a student
  *
  * @throws {ActiveSessionExistsError} If the player already has an active session that hasn't timed out
+ * @throws {NoSkillsEnabledError} If the player has no skills enabled for practice
  */
 export async function generateSessionPlan(
   options: GenerateSessionPlanOptions
@@ -119,6 +142,15 @@ export async function generateSessionPlan(
   const skillMastery = await getAllSkillMastery(playerId)
   const recentSessions = await getRecentSessions(playerId, 10)
 
+  // Build student-aware cost calculator for complexity budgeting
+  const studentHistory = buildStudentSkillHistoryFromRecords(skillMastery)
+  const costCalculator = createSkillCostCalculator(studentHistory)
+
+  // Calculate max skill cost for dynamic visualization budget
+  // This ensures the student's most expensive skill can appear in visualization
+  const practicingSkillIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
+  const studentMaxSkillCost = calculateMaxSkillCost(costCalculator, practicingSkillIds)
+
   // Get current phase
   const currentPhaseId = curriculum?.currentPhaseId || 'L1.add.+1.direct'
   const currentPhase = getPhase(currentPhaseId)
@@ -127,9 +159,15 @@ export async function generateSessionPlan(
   const avgTimeSeconds =
     calculateAvgTimePerProblem(recentSessions) || config.defaultSecondsPerProblem
 
-  // 3. Build skill constraints from the student's ACTUAL mastered skills
-  const masteredSkills = skillMastery.filter((s) => s.masteryLevel === 'mastered')
-  const masteredSkillConstraints = buildConstraintsFromMasteredSkills(masteredSkills)
+  // 3. Build skill constraints from the student's ACTUAL practicing skills
+  const practicingSkills = skillMastery.filter((s) => s.isPracticing)
+
+  // Cannot generate a session without any skills enabled
+  if (practicingSkills.length === 0) {
+    throw new NoSkillsEnabledError()
+  }
+
+  const practicingSkillConstraints = buildConstraintsFromPracticingSkills(practicingSkills)
 
   // Categorize skills for review/reinforcement purposes
   const struggling = findStrugglingSkills(skillMastery)
@@ -158,11 +196,13 @@ export async function generateSessionPlan(
         durationMinutes,
         avgTimeSeconds,
         { ...config, partTimeWeights: { ...config.partTimeWeights, [partType]: normalizedWeight } },
-        masteredSkillConstraints,
+        practicingSkillConstraints,
         struggling,
         needsReview,
         currentPhase,
-        normalizedWeight
+        normalizedWeight,
+        costCalculator,
+        studentMaxSkillCost
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -183,7 +223,7 @@ export async function generateSessionPlan(
     avgTimePerProblemSeconds: avgTimeSeconds,
     parts,
     summary,
-    masteredSkillIds: masteredSkills.map((s) => s.skillId),
+    masteredSkillIds: practicingSkills.map((s) => s.skillId),
     status: 'draft',
     currentPartIndex: 0,
     currentSlotIndex: 0,
@@ -210,25 +250,59 @@ function buildSessionPart(
   struggling: PlayerSkillMastery[],
   needsReview: PlayerSkillMastery[],
   currentPhase: CurriculumPhase | undefined,
-  normalizedWeight?: number
+  normalizedWeight?: number,
+  costCalculator?: SkillCostCalculator,
+  studentMaxSkillCost?: number
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
   const partDurationMinutes = totalDurationMinutes * partWeight
   const partProblemCount = Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
 
-  // Calculate slot distribution
-  const focusCount = Math.round(partProblemCount * config.focusWeight)
-  const reinforceCount = Math.round(partProblemCount * config.reinforceWeight)
-  const reviewCount = Math.round(partProblemCount * config.reviewWeight)
-  const challengeCount = Math.max(0, partProblemCount - focusCount - reinforceCount - reviewCount)
+  // Calculate slot distribution with part-type-specific challenge ratios
+  // (See config/slot-distribution.ts for rationale)
+  //
+  // IMPORTANT: Challenge slots require min complexity budget of 1.
+  // Basic skills have cost 0, so students with ONLY basic skills can't generate challenge problems.
+  // Skip challenge slots for these students and give them more focus/reinforce/review instead.
+  const challengeMinBudget = config.purposeComplexityBounds.challenge[type].min ?? 0
+  const canDoChallenge =
+    studentMaxSkillCost !== undefined && studentMaxSkillCost >= challengeMinBudget
+
+  const challengeRatio = canDoChallenge ? CHALLENGE_RATIO_BY_PART_TYPE[type] : 0
+  const minChallengeCount = canDoChallenge
+    ? Math.max(1, Math.round(partProblemCount * challengeRatio))
+    : 0
+  const availableForOthers = partProblemCount - minChallengeCount
+
+  const focusCount = Math.round(availableForOthers * config.focusWeight)
+  const reinforceCount = Math.round(availableForOthers * config.reinforceWeight)
+  const reviewCount = Math.round(availableForOthers * config.reviewWeight)
+  // Challenge gets the remainder, but at least minChallengeCount (or 0 if can't do challenge)
+  const challengeCount = canDoChallenge
+    ? Math.max(minChallengeCount, partProblemCount - focusCount - reinforceCount - reviewCount)
+    : 0
+  // If no challenge, distribute remainder to focus
+  const adjustedFocusCount =
+    focusCount + (canDoChallenge ? 0 : partProblemCount - focusCount - reinforceCount - reviewCount)
 
   // Build slots
   const slots: ProblemSlot[] = []
 
   // Focus slots: current phase, primary skill
-  for (let i = 0; i < focusCount; i++) {
-    slots.push(createSlot(slots.length, 'focus', phaseConstraints, type, config))
+  // Uses adjustedFocusCount which includes redistributed challenge slots for basic-skill-only students
+  for (let i = 0; i < adjustedFocusCount; i++) {
+    slots.push(
+      createSlot(
+        slots.length,
+        'focus',
+        phaseConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Reinforce slots: struggling skills get extra practice
@@ -240,7 +314,9 @@ function buildSessionPart(
         'reinforce',
         skill ? buildConstraintsForSkill(skill) : phaseConstraints,
         type,
-        config
+        config,
+        costCalculator,
+        studentMaxSkillCost
       )
     )
   }
@@ -254,14 +330,26 @@ function buildSessionPart(
         'review',
         skill ? buildConstraintsForSkill(skill) : phaseConstraints,
         type,
-        config
+        config,
+        costCalculator,
+        studentMaxSkillCost
       )
     )
   }
 
   // Challenge slots: use same mastered skills constraints (all problems should use student's skills)
   for (let i = 0; i < challengeCount; i++) {
-    slots.push(createSlot(slots.length, 'challenge', phaseConstraints, type, config))
+    slots.push(
+      createSlot(
+        slots.length,
+        'challenge',
+        phaseConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Shuffle to interleave purposes
@@ -270,7 +358,7 @@ function buildSessionPart(
   // Generate problems for each slot (persisted in DB for resume capability)
   const slotsWithProblems = shuffledSlots.map((slot) => ({
     ...slot,
-    problem: generateProblemFromConstraints(slot.constraints),
+    problem: generateProblemFromConstraints(slot.constraints, costCalculator),
   }))
 
   return {
@@ -566,21 +654,55 @@ function getTermCountForPartType(
 }
 
 /**
- * Get the complexity budget for a part type from config
- * Returns undefined if no budget limit (unlimited)
+ * Get complexity bounds (min/max) for a specific purpose and part type.
+ *
+ * For visualization mode, the max budget is dynamically calculated to ensure
+ * the student's current learning skills can appear. This prevents the static
+ * max from blocking skills the student is supposed to be practicing.
+ *
+ * @param purpose - The slot purpose (focus, reinforce, review, challenge)
+ * @param partType - The part type (abacus, visualization, linear)
+ * @param config - Plan generation config with default bounds
+ * @param studentMaxSkillCost - The max effective cost for any skill the student has
+ *                              (includes mastery multiplier). Used to set dynamic
+ *                              visualization budget.
  */
-function getComplexityBudgetForPartType(
+function getComplexityBoundsForSlot(
+  purpose: ProblemSlot['purpose'],
   partType: SessionPartType,
-  config: PlanGenerationConfig
-): number | undefined {
-  if (partType === 'abacus') {
-    return config.abacusComplexityBudget ?? undefined
+  config: PlanGenerationConfig,
+  studentMaxSkillCost?: number
+): { min?: number; max?: number } {
+  const purposeBounds = config.purposeComplexityBounds?.[purpose]
+  if (!purposeBounds) {
+    return {}
   }
-  if (partType === 'visualization') {
-    return config.visualizationComplexityBudget ?? undefined
+
+  const partBounds = purposeBounds[partType]
+  if (!partBounds) {
+    return {}
   }
-  // linear
-  return config.linearComplexityBudget ?? undefined
+
+  let maxBudget = partBounds.max ?? undefined
+
+  // For visualization mode with non-challenge purposes, use dynamic max budget
+  // This ensures skills the student is learning can appear in visualization
+  if (
+    partType === 'visualization' &&
+    purpose !== 'challenge' &&
+    studentMaxSkillCost !== undefined
+  ) {
+    // Use the higher of: static config max, or student's max skill cost
+    // This allows learning skills to surface while still respecting config if higher
+    if (maxBudget === undefined || studentMaxSkillCost > maxBudget) {
+      maxBudget = studentMaxSkillCost
+    }
+  }
+
+  return {
+    min: partBounds.min ?? undefined,
+    max: maxBudget,
+  }
 }
 
 function createSlot(
@@ -588,10 +710,18 @@ function createSlot(
   purpose: ProblemSlot['purpose'],
   baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
   partType: SessionPartType,
-  config: PlanGenerationConfig
+  config: PlanGenerationConfig,
+  costCalculator?: SkillCostCalculator,
+  studentMaxSkillCost?: number
 ): ProblemSlot {
-  // Get complexity budget for this part type
-  const maxComplexityBudgetPerTerm = getComplexityBudgetForPartType(partType, config)
+  // Get complexity bounds for this purpose + part type combination
+  // Pass studentMaxSkillCost for dynamic visualization budget
+  const complexityBounds = getComplexityBoundsForSlot(
+    purpose,
+    partType,
+    config,
+    studentMaxSkillCost
+  )
 
   const constraints = {
     requiredSkills: baseConstraints.requiredSkills,
@@ -599,19 +729,21 @@ function createSlot(
     forbiddenSkills: baseConstraints.forbiddenSkills,
     termCount: getTermCountForPartType(partType, config),
     digitRange: { min: 1, max: 2 },
-    // Add complexity budget constraint for visualization mode
-    ...(maxComplexityBudgetPerTerm !== undefined && { maxComplexityBudgetPerTerm }),
+    // Add complexity budget constraints based on purpose
+    ...(complexityBounds.min !== undefined && { minComplexityBudgetPerTerm: complexityBounds.min }),
+    ...(complexityBounds.max !== undefined && { maxComplexityBudgetPerTerm: complexityBounds.max }),
   }
 
   // Pre-generate the problem so it's persisted with the plan
   // This ensures page reloads show the same problem
-  const problem = generateProblemFromConstraints(constraints)
+  const problem = generateProblemFromConstraints(constraints, costCalculator)
 
   return {
     index,
     purpose,
     constraints,
     problem,
+    complexityBounds,
   }
 }
 
@@ -644,18 +776,15 @@ function findSkillsNeedingReview(
 ): PlayerSkillMastery[] {
   const now = Date.now()
   return mastery.filter((s) => {
+    // Only consider skills that are being practiced
+    if (!s.isPracticing) return false
     if (!s.lastPracticedAt) return false
 
     const daysSinceLastPractice =
       (now - new Date(s.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24)
 
-    if (s.masteryLevel === 'mastered') {
-      return daysSinceLastPractice > intervals.mastered
-    }
-    if (s.masteryLevel === 'practicing') {
-      return daysSinceLastPractice > intervals.practicing
-    }
-    return false
+    // Use the mastered interval for practicing skills (they're all "practicing" now)
+    return daysSinceLastPractice > intervals.mastered
   })
 }
 
@@ -663,19 +792,19 @@ function findSkillsNeedingReview(
  * Build skill constraints from the student's actual mastered skills
  *
  * This creates constraints where:
- * - requiredSkills: all mastered skills (problems may ONLY use these skills)
- * - targetSkills: all mastered skills (prefer to use these skills)
+ * - requiredSkills: all practicing skills (problems may ONLY use these skills)
+ * - targetSkills: all practicing skills (prefer to use these skills)
  * - forbiddenSkills: empty (don't exclude anything explicitly)
  *
  * The problem generator filters candidates to only allow requiredSkills,
  * then preferentially selects candidates that use targetSkills.
  */
-function buildConstraintsFromMasteredSkills(
-  masteredSkills: PlayerSkillMastery[]
+function buildConstraintsFromPracticingSkills(
+  practicingSkills: PlayerSkillMastery[]
 ): ReturnType<typeof getPhaseSkillConstraints> {
   const skills: Record<string, Record<string, boolean>> = {}
 
-  for (const skill of masteredSkills) {
+  for (const skill of practicingSkills) {
     // Parse skill ID format: "category.skillKey" like "fiveComplements.4=5-1" or "basic.+3"
     const [category, skillKey] = skill.skillId.split('.')
 

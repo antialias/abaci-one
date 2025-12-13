@@ -211,6 +211,20 @@
       "when": 1765496987070,
       "tag": "0029_first_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1765586703691,
+      "tag": "0030_tan_jean_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1765586735162,
+      "tag": "0031_boring_namora",
+      "breakpoints": true
     }
   ]
 }

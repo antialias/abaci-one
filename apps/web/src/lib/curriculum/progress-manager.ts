@@ -7,7 +7,9 @@ import { and, desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import {
+  calculateFluencyState,
   calculateMasteryLevel,
+  type FluencyState,
   type MasteryLevel,
   type NewPlayerSkillMastery,
   type PlayerSkillMastery,
@@ -111,7 +113,20 @@ export async function getAllSkillMastery(playerId: string): Promise<PlayerSkillM
 }
 
 /**
- * Get skill mastery filtered by mastery level
+ * Get all skills in a player's active practice rotation
+ */
+export async function getPracticingSkills(playerId: string): Promise<PlayerSkillMastery[]> {
+  return db.query.playerSkillMastery.findMany({
+    where: and(
+      eq(schema.playerSkillMastery.playerId, playerId),
+      eq(schema.playerSkillMastery.isPracticing, true)
+    ),
+    orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
+  })
+}
+
+/**
+ * @deprecated Use getPracticingSkills instead. Kept for backwards compatibility.
  */
 export async function getSkillsByMasteryLevel(
   playerId: string,
@@ -127,20 +142,19 @@ export async function getSkillsByMasteryLevel(
 }
 
 /**
- * Set skills as mastered directly (manual teacher override)
- * This is used for onboarding when a teacher knows which skills a student has already mastered.
- * Skills not in the masteredSkillIds list will be set to 'learning' (or created as such).
+ * Set which skills are in a player's active practice rotation (teacher checkbox UI)
+ * Skills in the list will have isPracticing=true, others isPracticing=false.
  *
  * @param playerId - The player to update
- * @param masteredSkillIds - Array of skill IDs to mark as mastered
+ * @param practicingSkillIds - Array of skill IDs to mark as practicing
  * @returns All skill mastery records for the player after update
  */
-export async function setMasteredSkills(
+export async function setPracticingSkills(
   playerId: string,
-  masteredSkillIds: string[]
+  practicingSkillIds: string[]
 ): Promise<PlayerSkillMastery[]> {
   const now = new Date()
-  const masteredSet = new Set(masteredSkillIds)
+  const practicingSet = new Set(practicingSkillIds)
 
   // Get all existing skills for this player
   const existingSkills = await getAllSkillMastery(playerId)
@@ -148,19 +162,16 @@ export async function setMasteredSkills(
 
   // Update existing skills
   for (const skill of existingSkills) {
-    const shouldBeMastered = masteredSet.has(skill.skillId)
-    const newLevel = shouldBeMastered ? 'mastered' : 'learning'
+    const shouldBePracticing = practicingSet.has(skill.skillId)
 
-    // Only update if the level changed
-    if (skill.masteryLevel !== newLevel) {
+    // Only update if isPracticing changed
+    if (skill.isPracticing !== shouldBePracticing) {
       await db
         .update(schema.playerSkillMastery)
         .set({
-          masteryLevel: newLevel,
-          // If marking as mastered, set reasonable stats
-          attempts: shouldBeMastered ? Math.max(skill.attempts, 10) : skill.attempts,
-          correct: shouldBeMastered ? Math.max(skill.correct, 10) : skill.correct,
-          consecutiveCorrect: shouldBeMastered ? 5 : 0,
+          isPracticing: shouldBePracticing,
+          // Keep masteryLevel in sync for backwards compat during migration
+          masteryLevel: shouldBePracticing ? 'mastered' : 'learning',
           updatedAt: now,
         })
         .where(eq(schema.playerSkillMastery.id, skill.id))
@@ -168,15 +179,16 @@ export async function setMasteredSkills(
   }
 
   // Create new skills that don't exist yet
-  for (const skillId of masteredSkillIds) {
+  for (const skillId of practicingSkillIds) {
     if (!existingSkillIds.has(skillId)) {
       const newRecord: NewPlayerSkillMastery = {
         playerId,
         skillId,
-        attempts: 10,
-        correct: 10,
-        consecutiveCorrect: 5,
-        masteryLevel: 'mastered',
+        attempts: 0,
+        correct: 0,
+        consecutiveCorrect: 0,
+        masteryLevel: 'mastered', // backwards compat
+        isPracticing: true,
         lastPracticedAt: now,
       }
       await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -184,6 +196,51 @@ export async function setMasteredSkills(
   }
 
   return getAllSkillMastery(playerId)
+}
+
+/**
+ * @deprecated Use setPracticingSkills instead. Kept for backwards compatibility.
+ */
+export async function setMasteredSkills(
+  playerId: string,
+  masteredSkillIds: string[]
+): Promise<PlayerSkillMastery[]> {
+  return setPracticingSkills(playerId, masteredSkillIds)
+}
+
+/**
+ * Refresh skill recency by updating lastPracticedAt to now
+ *
+ * Use this when a teacher wants to mark a skill as "recently practiced"
+ * (e.g., student did offline workbooks). This updates the recency state
+ * from "rusty" to "fluent" without changing mastery statistics.
+ *
+ * @param playerId - The player's ID
+ * @param skillId - The skill to refresh
+ * @returns Updated skill mastery record, or null if skill not found
+ */
+export async function refreshSkillRecency(
+  playerId: string,
+  skillId: string
+): Promise<PlayerSkillMastery | null> {
+  const existing = await getSkillMastery(playerId, skillId)
+
+  if (!existing) {
+    return null
+  }
+
+  const now = new Date()
+
+  const [updated] = await db
+    .update(schema.playerSkillMastery)
+    .set({
+      lastPracticedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(schema.playerSkillMastery.id, existing.id))
+    .returning()
+
+  return updated
 }
 
 /**
@@ -220,14 +277,15 @@ export async function recordSkillAttempt(
     return (await getSkillMastery(playerId, skillId))!
   }
 
-  // Create new record
+  // Create new record - if we're recording an attempt, this skill is being practiced
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
     attempts: 1,
     correct: isCorrect ? 1 : 0,
     consecutiveCorrect: isCorrect ? 1 : 0,
-    masteryLevel: 'learning',
+    masteryLevel: 'learning', // backwards compat
+    isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
   }
 
@@ -339,14 +397,15 @@ export async function recordSkillAttemptWithHelp(
   // Calculate response time for new record (only if provided)
   const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
 
-  // Create new record with help tracking
+  // Create new record with help tracking - skill is being practiced
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
     attempts: 1,
     correct: isCorrect && creditMultiplier >= 0.5 ? 1 : 0,
     consecutiveCorrect: isCorrect && !isHeavyHelp ? 1 : 0,
-    masteryLevel: 'learning',
+    masteryLevel: 'learning', // backwards compat
+    isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
     needsReinforcement: isHeavyHelp,
     lastHelpLevel: helpLevel,
@@ -451,9 +510,9 @@ export async function recordSkillAttempts(
 }
 
 /**
- * Calculate overall mastery percentage for a set of skills
+ * Calculate what percentage of given skills are being practiced
  */
-export async function calculateMasteryPercent(
+export async function calculatePracticingPercent(
   playerId: string,
   skillIds: string[]
 ): Promise<number> {
@@ -462,9 +521,19 @@ export async function calculateMasteryPercent(
   const masteryRecords = await getAllSkillMastery(playerId)
   const relevantRecords = masteryRecords.filter((r) => skillIds.includes(r.skillId))
 
-  const masteredCount = relevantRecords.filter((r) => r.masteryLevel === 'mastered').length
+  const practicingCount = relevantRecords.filter((r) => r.isPracticing).length
 
-  return Math.round((masteredCount / skillIds.length) * 100)
+  return Math.round((practicingCount / skillIds.length) * 100)
+}
+
+/**
+ * @deprecated Use calculatePracticingPercent instead.
+ */
+export async function calculateMasteryPercent(
+  playerId: string,
+  skillIds: string[]
+): Promise<number> {
+  return calculatePracticingPercent(playerId, skillIds)
 }
 
 // ============================================================================
@@ -592,12 +661,20 @@ export async function getSessionsForPhase(
 export interface PlayerProgressSummary {
   curriculum: PlayerCurriculum | null
   totalSkills: number
-  masteredSkills: number
-  practicingSkills: number
-  learningSkills: number
-  masteryPercent: number
+  /** Number of skills with isPracticing=true */
+  practicingSkillCount: number
+  /** Percentage of skills being practiced */
+  practicingPercent: number
   recentSessions: PracticeSession[]
   recentSkills: PlayerSkillMastery[]
+  /** @deprecated Use practicingSkillCount instead */
+  masteredSkills: number
+  /** @deprecated No longer used - was always 0 */
+  practicingSkills: number
+  /** @deprecated No longer used */
+  learningSkills: number
+  /** @deprecated Use practicingPercent instead */
+  masteryPercent: number
 }
 
 export async function getPlayerProgressSummary(playerId: string): Promise<PlayerProgressSummary> {
@@ -607,12 +684,11 @@ export async function getPlayerProgressSummary(playerId: string): Promise<Player
     getRecentSessions(playerId, 5),
   ])
 
-  const masteredSkills = allSkills.filter((s) => s.masteryLevel === 'mastered').length
-  const practicingSkills = allSkills.filter((s) => s.masteryLevel === 'practicing').length
-  const learningSkills = allSkills.filter((s) => s.masteryLevel === 'learning').length
+  const practicingSkillCount = allSkills.filter((s) => s.isPracticing).length
   const totalSkills = allSkills.length
 
-  const masteryPercent = totalSkills > 0 ? Math.round((masteredSkills / totalSkills) * 100) : 0
+  const practicingPercent =
+    totalSkills > 0 ? Math.round((practicingSkillCount / totalSkills) * 100) : 0
 
   // Get 5 most recently practiced skills
   const recentSkills = allSkills.slice(0, 5)
@@ -620,12 +696,15 @@ export async function getPlayerProgressSummary(playerId: string): Promise<Player
   return {
     curriculum,
     totalSkills,
-    masteredSkills,
-    practicingSkills,
-    learningSkills,
-    masteryPercent,
+    practicingSkillCount,
+    practicingPercent,
     recentSessions,
     recentSkills,
+    // Backwards compat - deprecated fields
+    masteredSkills: practicingSkillCount,
+    practicingSkills: 0,
+    learningSkills: totalSkills - practicingSkillCount,
+    masteryPercent: practicingPercent,
   }
 }
 
@@ -650,11 +729,14 @@ export async function initializeStudent(playerId: string): Promise<PlayerCurricu
  */
 export interface SkillPerformance {
   skillId: string
-  masteryLevel: MasteryLevel
+  isPracticing: boolean
+  fluencyState: FluencyState
   attempts: number
   accuracy: number // 0-1
   avgResponseTimeMs: number | null // null if no timing data
   responseTimeCount: number
+  /** @deprecated Use fluencyState instead */
+  masteryLevel: MasteryLevel
 }
 
 /**
@@ -693,17 +775,33 @@ const PERFORMANCE_THRESHOLDS = {
  */
 export async function analyzeSkillPerformance(playerId: string): Promise<SkillPerformanceAnalysis> {
   const allSkills = await getAllSkillMastery(playerId)
+  const now = new Date()
 
   // Calculate performance data for each skill
-  const skills: SkillPerformance[] = allSkills.map((s) => ({
-    skillId: s.skillId,
-    masteryLevel: s.masteryLevel as MasteryLevel,
-    attempts: s.attempts,
-    accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
-    avgResponseTimeMs:
-      s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
-    responseTimeCount: s.responseTimeCount,
-  }))
+  const skills: SkillPerformance[] = allSkills.map((s) => {
+    // Calculate days since last practice
+    const daysSincePractice = s.lastPracticedAt
+      ? Math.floor((now.getTime() - new Date(s.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24))
+      : undefined
+
+    // Compute fluency state
+    const fluencyState = s.isPracticing
+      ? calculateFluencyState(s.attempts, s.correct, s.consecutiveCorrect, daysSincePractice)
+      : ('practicing' as FluencyState) // Non-practicing skills default to 'practicing' state
+
+    return {
+      skillId: s.skillId,
+      isPracticing: s.isPracticing,
+      fluencyState,
+      attempts: s.attempts,
+      accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
+      avgResponseTimeMs:
+        s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
+      responseTimeCount: s.responseTimeCount,
+      // Backwards compat
+      masteryLevel: s.masteryLevel as MasteryLevel,
+    }
+  })
 
   // Calculate overall average response time (only from skills with sufficient data)
   const skillsWithTiming = skills.filter(

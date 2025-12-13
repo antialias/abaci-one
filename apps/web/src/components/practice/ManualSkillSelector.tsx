@@ -4,7 +4,13 @@ import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
+import { FLUENCY_CONFIG, type FluencyState } from '@/db/schema/player-skill-mastery'
+import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import {
+  BASE_SKILL_COMPLEXITY,
+  computeMasteryState,
+  type MasteryState,
+} from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -210,6 +216,97 @@ function ComplexityLegend({ isDark }: { isDark: boolean }) {
 }
 
 /**
+ * FluencyStateBadge - Shows the recency-based fluency state for a skill
+ *
+ * For practicing skills, shows how fluent they are:
+ * - effortless: Fluent + recently practiced (within 14 days) - automatic recall
+ * - fluent: Fluent + practiced 14-30 days ago - solid but warming up
+ * - rusty: Fluent but >30 days since practice - needs rebuilding
+ * - practicing: In rotation but not yet fluent
+ */
+function FluencyStateBadge({
+  fluencyState,
+  isDark,
+  compact = false,
+}: {
+  fluencyState: FluencyState
+  isDark: boolean
+  compact?: boolean
+}) {
+  // Show badges for all fluency states
+  const styles: Record<FluencyState, { bg: string; text: string; label: string; icon: string }> = {
+    effortless: {
+      bg: isDark ? 'green.900' : 'green.100',
+      text: isDark ? 'green.300' : 'green.700',
+      label: 'Effortless',
+      icon: '✓',
+    },
+    fluent: {
+      bg: isDark ? 'blue.900' : 'blue.100',
+      text: isDark ? 'blue.300' : 'blue.700',
+      label: 'Fluent',
+      icon: '○',
+    },
+    rusty: {
+      bg: isDark ? 'amber.900' : 'amber.100',
+      text: isDark ? 'amber.300' : 'amber.700',
+      label: 'Rusty',
+      icon: '⚠',
+    },
+    practicing: {
+      bg: isDark ? 'purple.900' : 'purple.100',
+      text: isDark ? 'purple.300' : 'purple.700',
+      label: 'Practicing',
+      icon: '◐',
+    },
+  }
+
+  const style = styles[fluencyState]
+  if (!style) return null
+
+  return (
+    <span
+      data-element="fluency-state-badge"
+      data-state={fluencyState}
+      title={
+        fluencyState === 'effortless'
+          ? `Fluent + recently practiced (within ${FLUENCY_CONFIG.effortlessDays} days)`
+          : fluencyState === 'fluent'
+            ? `Fluent, practiced ${FLUENCY_CONFIG.effortlessDays}-${FLUENCY_CONFIG.fluentDays} days ago`
+            : fluencyState === 'rusty'
+              ? `Fluent but not practiced for ${FLUENCY_CONFIG.fluentDays}+ days`
+              : 'In practice rotation, building fluency'
+      }
+      className={css({
+        fontSize: compact ? '9px' : '10px',
+        fontWeight: 'medium',
+        px: compact ? '1' : '1.5',
+        py: '0.5',
+        borderRadius: 'sm',
+        bg: style.bg,
+        color: style.text,
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '1',
+      })}
+    >
+      <span>{style.icon}</span>
+      {!compact && <span>{style.label}</span>}
+    </span>
+  )
+}
+
+/**
+ * Calculate days since a date
+ */
+function daysSince(date: Date | null | undefined): number | undefined {
+  if (!date) return undefined
+  const now = new Date()
+  return Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+/**
  * Book preset mappings (SAI Abacus Mind Math levels)
  */
 const BOOK_PRESETS = {
@@ -302,10 +399,14 @@ export interface ManualSkillSelectorProps {
   studentName: string
   /** Student ID for saving */
   playerId: string
-  /** Currently mastered skill IDs */
+  /** Currently mastered skill IDs (deprecated, use skillMasteryData instead) */
   currentMasteredSkills?: string[]
+  /** Full skill mastery data including lastPracticedAt for recency display */
+  skillMasteryData?: PlayerSkillMastery[]
   /** Callback when save is clicked */
   onSave: (masteredSkillIds: string[]) => Promise<void>
+  /** Callback to refresh a skill's lastPracticedAt (marks as recently practiced) */
+  onRefreshSkill?: (skillId: string) => Promise<void>
 }
 
 /**
@@ -322,13 +423,56 @@ export function ManualSkillSelector({
   studentName,
   playerId,
   currentMasteredSkills = [],
+  skillMasteryData = [],
   onSave,
+  onRefreshSkill,
 }: ManualSkillSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set(currentMasteredSkills))
   const [isSaving, setIsSaving] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState<string | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
+
+  // Build a map from skill ID to mastery data for quick lookup
+  const skillMasteryMap = new Map(skillMasteryData.map((s) => [s.skillId, s]))
+
+  /**
+   * Get the fluency state for a skill (effortless/fluent/rusty/practicing)
+   * Returns undefined if the skill is not in the practice rotation
+   */
+  const getFluencyStateForSkill = (skillId: string): FluencyState | undefined => {
+    const mastery = skillMasteryMap.get(skillId)
+    if (!mastery || !mastery.isPracticing) return undefined
+    const days = daysSince(mastery.lastPracticedAt)
+    const state = computeMasteryState(
+      mastery.isPracticing,
+      mastery.attempts,
+      mastery.correct,
+      mastery.consecutiveCorrect,
+      days
+    )
+    // computeMasteryState returns MasteryState which includes 'not_practicing'
+    // But we already checked isPracticing, so we know it's a FluencyState
+    return state as FluencyState
+  }
+
+  /**
+   * Handle refreshing a skill (sets lastPracticedAt to today)
+   */
+  const handleRefreshSkill = async (skillId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Don't toggle the checkbox
+    if (!onRefreshSkill || isRefreshing) return
+
+    setIsRefreshing(skillId)
+    try {
+      await onRefreshSkill(skillId)
+    } catch (error) {
+      console.error('Failed to refresh skill:', error)
+    } finally {
+      setIsRefreshing(null)
+    }
+  }
 
   // Sync selected skills when modal opens with new data
   useEffect(() => {
@@ -657,6 +801,10 @@ export function ManualSkillSelector({
                       {Object.entries(category.skills).map(([skillKey, skillName]) => {
                         const skillId = `${categoryKey}.${skillKey}`
                         const isSelected = selectedSkills.has(skillId)
+                        const fluencyState = getFluencyStateForSkill(skillId)
+                        const isRustyOrOlder =
+                          fluencyState === 'rusty' || (isSelected && !skillMasteryMap.has(skillId))
+                        const showRefreshButton = isSelected && onRefreshSkill && isRustyOrOlder
 
                         return (
                           <label
@@ -698,19 +846,50 @@ export function ManualSkillSelector({
                             >
                               {skillName}
                             </span>
-                            {isSelected && (
+                            {/* Show fluency state badge for practicing skills */}
+                            {isSelected && fluencyState && (
+                              <FluencyStateBadge fluencyState={fluencyState} isDark={isDark} />
+                            )}
+                            {/* Show "Mastered" if selected but no mastery data (newly added) */}
+                            {isSelected && !skillMasteryMap.has(skillId) && (
                               <span
                                 className={css({
                                   fontSize: 'xs',
-                                  color: isDark ? 'green.300' : 'green.600',
-                                  bg: isDark ? 'green.900' : 'green.50',
+                                  color: isDark ? 'gray.400' : 'gray.500',
+                                  bg: isDark ? 'gray.700' : 'gray.100',
                                   px: '2',
                                   py: '0.5',
                                   borderRadius: 'full',
                                 })}
                               >
-                                Mastered
+                                New
                               </span>
+                            )}
+                            {/* Refresh button for rusty skills */}
+                            {showRefreshButton && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleRefreshSkill(skillId, e)}
+                                disabled={isRefreshing === skillId}
+                                title="Mark as recently practiced (sets to Fluent)"
+                                data-action="refresh-skill"
+                                className={css({
+                                  fontSize: '10px',
+                                  fontWeight: 'medium',
+                                  px: '2',
+                                  py: '1',
+                                  border: '1px solid',
+                                  borderColor: isDark ? 'blue.700' : 'blue.300',
+                                  borderRadius: 'md',
+                                  bg: isDark ? 'blue.900' : 'blue.50',
+                                  color: isDark ? 'blue.300' : 'blue.700',
+                                  cursor: 'pointer',
+                                  _hover: { bg: isDark ? 'blue.800' : 'blue.100' },
+                                  _disabled: { opacity: 0.5, cursor: 'wait' },
+                                })}
+                              >
+                                {isRefreshing === skillId ? '...' : '↻ Refresh'}
+                              </button>
                             )}
                           </label>
                         )

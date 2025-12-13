@@ -14,6 +14,7 @@ import {
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblem,
 } from '@/utils/problemGenerator'
+import type { SkillCostCalculator } from '@/utils/skillComplexity'
 
 /**
  * Error thrown when problem generation fails
@@ -32,10 +33,14 @@ export class ProblemGenerationError extends Error {
  * Generate a problem from slot constraints using the skill-based algorithm.
  *
  * @param constraints - The constraints for problem generation (skills, digit range, term count)
+ * @param costCalculator - Optional student-aware calculator for complexity budget enforcement
  * @returns A generated problem with terms, answer, and skills required
  * @throws {ProblemGenerationError} If the generator fails to produce a valid problem
  */
-export function generateProblemFromConstraints(constraints: ProblemConstraints): GeneratedProblem {
+export function generateProblemFromConstraints(
+  constraints: ProblemConstraints,
+  costCalculator?: SkillCostCalculator
+): GeneratedProblem {
   const baseSkillSet = createBasicSkillSet()
 
   const requiredSkills: SkillSet = {
@@ -56,6 +61,10 @@ export function generateProblemFromConstraints(constraints: ProblemConstraints):
       ...baseSkillSet.tenComplementsSub,
       ...constraints.requiredSkills?.tenComplementsSub,
     },
+    advanced: {
+      ...baseSkillSet.advanced,
+      ...constraints.requiredSkills?.advanced,
+    },
   }
 
   const maxDigits = constraints.digitRange?.max || 1
@@ -66,14 +75,17 @@ export function generateProblemFromConstraints(constraints: ProblemConstraints):
     minTerms: constraints.termCount?.min || 3,
     maxTerms: constraints.termCount?.max || 5,
     problemCount: 1,
+    minComplexityBudgetPerTerm: constraints.minComplexityBudgetPerTerm,
+    maxComplexityBudgetPerTerm: constraints.maxComplexityBudgetPerTerm,
   }
 
-  const generatedProblem = generateSingleProblem(
-    generatorConstraints,
+  const generatedProblem = generateSingleProblem({
+    constraints: generatorConstraints,
     requiredSkills,
-    constraints.targetSkills,
-    constraints.forbiddenSkills
-  )
+    targetSkills: constraints.targetSkills,
+    forbiddenSkills: constraints.forbiddenSkills,
+    costCalculator,
+  })
 
   if (generatedProblem) {
     return {

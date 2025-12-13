@@ -87,6 +87,7 @@ function calculateAutoPauseInfo(results: SlotResult[]): {
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
+import { Tooltip, TooltipProvider } from '../ui/Tooltip'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { useInteractionPhase } from './hooks/useInteractionPhase'
@@ -150,6 +151,307 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
       return '🧠'
     case 'linear':
       return '💭'
+  }
+}
+
+/**
+ * Extract the primary skill from constraints for display
+ */
+function extractTargetSkillName(slot: ProblemSlot): string | null {
+  const targetSkills = slot.constraints?.targetSkills
+  if (!targetSkills) return null
+
+  // Look for specific skill in targetSkills
+  for (const [category, skills] of Object.entries(targetSkills)) {
+    if (skills && typeof skills === 'object') {
+      const skillKeys = Object.keys(skills)
+      if (skillKeys.length === 1) {
+        // Single skill - this is a targeted reinforce/review
+        return formatSkillName(category, skillKeys[0])
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Format a skill ID into a human-readable name
+ */
+function formatSkillName(category: string, skillKey: string): string {
+  // Categories: basic, fiveComplements, tenComplements
+  if (category === 'basic') {
+    // Format "+3" or "-5" into "add 3" or "subtract 5"
+    if (skillKey.startsWith('+')) {
+      return `add ${skillKey.slice(1)}`
+    }
+    if (skillKey.startsWith('-')) {
+      return `subtract ${skillKey.slice(1)}`
+    }
+    return skillKey
+  }
+
+  if (category === 'fiveComplements') {
+    // Format "4=5-1" into "5-complement for 4"
+    const match = skillKey.match(/^(\d+)=/)
+    if (match) {
+      return `5-complement for ${match[1]}`
+    }
+    return skillKey
+  }
+
+  if (category === 'tenComplements') {
+    // Format "9=10-1" into "10-complement for 9"
+    const match = skillKey.match(/^(\d+)=/)
+    if (match) {
+      return `10-complement for ${match[1]}`
+    }
+    return skillKey
+  }
+
+  return `${category}: ${skillKey}`
+}
+
+/**
+ * Complexity section for purpose tooltip - shows complexity bounds and actual costs
+ */
+function ComplexitySection({
+  slot,
+  showBounds = true,
+}: {
+  slot: ProblemSlot
+  showBounds?: boolean
+}) {
+  const trace = slot.problem?.generationTrace
+  const bounds = slot.complexityBounds
+  const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
+  const hasCost = trace?.totalComplexityCost !== undefined
+
+  // Don't render anything if no complexity data
+  if (!hasBounds && !hasCost) {
+    return null
+  }
+
+  const sectionStyles = {
+    container: css({
+      marginTop: '0.5rem',
+      padding: '0.5rem',
+      backgroundColor: 'gray.800',
+      borderRadius: '6px',
+      fontSize: '0.8125rem',
+    }),
+    header: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.25rem',
+      color: 'gray.400',
+      fontWeight: '500',
+      marginBottom: '0.375rem',
+    }),
+    row: css({
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      color: 'gray.300',
+      paddingY: '0.125rem',
+    }),
+    value: css({
+      fontFamily: 'mono',
+      color: 'white',
+    }),
+    boundsLabel: css({
+      color: 'gray.500',
+      fontSize: '0.75rem',
+    }),
+  }
+
+  // Format bounds string
+  let boundsText = ''
+  if (bounds?.min !== undefined && bounds?.max !== undefined) {
+    boundsText = `${bounds.min} – ${bounds.max}`
+  } else if (bounds?.min !== undefined) {
+    boundsText = `≥${bounds.min}`
+  } else if (bounds?.max !== undefined) {
+    boundsText = `≤${bounds.max}`
+  }
+
+  return (
+    <div className={sectionStyles.container} data-element="complexity-section">
+      <div className={sectionStyles.header}>
+        <span>📊</span>
+        <span>Complexity</span>
+      </div>
+      {showBounds && hasBounds && (
+        <div className={sectionStyles.row}>
+          <span className={sectionStyles.boundsLabel}>Required range:</span>
+          <span className={sectionStyles.value}>{boundsText}</span>
+        </div>
+      )}
+      {hasCost && (
+        <div className={sectionStyles.row}>
+          <span>Total cost:</span>
+          <span className={sectionStyles.value}>{trace.totalComplexityCost}</span>
+        </div>
+      )}
+      {trace?.steps && trace.steps.length > 0 && (
+        <div className={sectionStyles.row}>
+          <span>Per term (avg):</span>
+          <span className={sectionStyles.value}>
+            {(trace.totalComplexityCost! / trace.steps.length).toFixed(1)}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Purpose tooltip content - rich explanatory content for each purpose
+ */
+function PurposeTooltipContent({ slot }: { slot: ProblemSlot }) {
+  const skillName = extractTargetSkillName(slot)
+
+  const tooltipStyles = {
+    container: css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.5rem',
+    }),
+    header: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      fontWeight: 'bold',
+      fontSize: '0.9375rem',
+    }),
+    emoji: css({
+      fontSize: '1.125rem',
+    }),
+    description: css({
+      color: 'gray.300',
+      lineHeight: '1.5',
+    }),
+    detail: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.375rem',
+      padding: '0.375rem 0.5rem',
+      backgroundColor: 'gray.800',
+      borderRadius: '6px',
+      fontSize: '0.8125rem',
+    }),
+    detailLabel: css({
+      color: 'gray.400',
+      fontWeight: '500',
+    }),
+    detailValue: css({
+      color: 'white',
+      fontFamily: 'mono',
+    }),
+    percentage: css({
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.125rem 0.375rem',
+      backgroundColor: 'orange.900',
+      color: 'orange.200',
+      borderRadius: '4px',
+      fontSize: '0.75rem',
+      fontWeight: 'bold',
+    }),
+  }
+
+  switch (slot.purpose) {
+    case 'focus':
+      return (
+        <div className={tooltipStyles.container}>
+          <div className={tooltipStyles.header}>
+            <span className={tooltipStyles.emoji}>🎯</span>
+            <span>Focus Practice</span>
+          </div>
+          <p className={tooltipStyles.description}>
+            Building mastery of your current curriculum skills. These problems are at the heart of
+            what you&apos;re learning right now.
+          </p>
+          <div className={tooltipStyles.detail}>
+            <span className={tooltipStyles.detailLabel}>Distribution:</span>
+            <span className={tooltipStyles.detailValue}>60% of session</span>
+          </div>
+          <ComplexitySection slot={slot} />
+        </div>
+      )
+
+    case 'reinforce':
+      return (
+        <div className={tooltipStyles.container}>
+          <div className={tooltipStyles.header}>
+            <span className={tooltipStyles.emoji}>💪</span>
+            <span>Reinforcement</span>
+          </div>
+          <p className={tooltipStyles.description}>
+            Extra practice for skills that need more work. These problems target areas where
+            accuracy has been below 70%.
+          </p>
+          {skillName && (
+            <div className={tooltipStyles.detail}>
+              <span className={tooltipStyles.detailLabel}>Targeting:</span>
+              <span className={tooltipStyles.detailValue}>{skillName}</span>
+            </div>
+          )}
+          <div className={tooltipStyles.detail}>
+            <span className={tooltipStyles.detailLabel}>Threshold:</span>
+            <span className={tooltipStyles.percentage}>&lt;70% accuracy</span>
+          </div>
+          <ComplexitySection slot={slot} />
+        </div>
+      )
+
+    case 'review':
+      return (
+        <div className={tooltipStyles.container}>
+          <div className={tooltipStyles.header}>
+            <span className={tooltipStyles.emoji}>🔄</span>
+            <span>Spaced Review</span>
+          </div>
+          <p className={tooltipStyles.description}>
+            Keeping mastered skills fresh through spaced repetition. Regular review prevents
+            forgetting and strengthens long-term memory.
+          </p>
+          {skillName && (
+            <div className={tooltipStyles.detail}>
+              <span className={tooltipStyles.detailLabel}>Reviewing:</span>
+              <span className={tooltipStyles.detailValue}>{skillName}</span>
+            </div>
+          )}
+          <div className={tooltipStyles.detail}>
+            <span className={tooltipStyles.detailLabel}>Schedule:</span>
+            <span className={tooltipStyles.detailValue}>
+              Mastered: 14 days • Practicing: 7 days
+            </span>
+          </div>
+          <ComplexitySection slot={slot} />
+        </div>
+      )
+
+    case 'challenge':
+      return (
+        <div className={tooltipStyles.container}>
+          <div className={tooltipStyles.header}>
+            <span className={tooltipStyles.emoji}>⭐</span>
+            <span>Challenge</span>
+          </div>
+          <p className={tooltipStyles.description}>
+            Harder problems that require complement techniques for every term. These push your
+            skills and build deeper fluency.
+          </p>
+          <div className={tooltipStyles.detail}>
+            <span className={tooltipStyles.detailLabel}>Requirement:</span>
+            <span className={tooltipStyles.detailValue}>Every term uses complements</span>
+          </div>
+          <ComplexitySection slot={slot} />
+        </div>
+      )
+
+    default:
+      return null
   }
 }
 
@@ -1082,51 +1384,69 @@ export function ActiveSession({
           boxShadow: 'md',
         })}
       >
-        {/* Purpose badge */}
-        <div
-          data-element="problem-purpose"
-          className={css({
-            padding: '0.25rem 0.75rem',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            backgroundColor:
-              currentSlot?.purpose === 'focus'
-                ? isDark
-                  ? 'blue.900'
-                  : 'blue.100'
-                : currentSlot?.purpose === 'reinforce'
-                  ? isDark
-                    ? 'orange.900'
-                    : 'orange.100'
-                  : currentSlot?.purpose === 'review'
-                    ? isDark
-                      ? 'green.900'
-                      : 'green.100'
-                    : isDark
-                      ? 'purple.900'
-                      : 'purple.100',
-            color:
-              currentSlot?.purpose === 'focus'
-                ? isDark
-                  ? 'blue.200'
-                  : 'blue.700'
-                : currentSlot?.purpose === 'reinforce'
-                  ? isDark
-                    ? 'orange.200'
-                    : 'orange.700'
-                  : currentSlot?.purpose === 'review'
-                    ? isDark
-                      ? 'green.200'
-                      : 'green.700'
-                    : isDark
-                      ? 'purple.200'
-                      : 'purple.700',
-          })}
-        >
-          {currentSlot?.purpose}
-        </div>
+        {/* Purpose badge with tooltip */}
+        {currentSlot && (
+          <TooltipProvider>
+            <Tooltip
+              content={<PurposeTooltipContent slot={currentSlot} />}
+              side="bottom"
+              delayDuration={300}
+            >
+              <div
+                data-element="problem-purpose"
+                data-purpose={currentSlot.purpose}
+                className={css({
+                  position: 'relative',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '20px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  cursor: 'help',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  _hover: {
+                    transform: 'scale(1.05)',
+                    boxShadow: 'sm',
+                  },
+                  backgroundColor:
+                    currentSlot.purpose === 'focus'
+                      ? isDark
+                        ? 'blue.900'
+                        : 'blue.100'
+                      : currentSlot.purpose === 'reinforce'
+                        ? isDark
+                          ? 'orange.900'
+                          : 'orange.100'
+                        : currentSlot.purpose === 'review'
+                          ? isDark
+                            ? 'green.900'
+                            : 'green.100'
+                          : isDark
+                            ? 'purple.900'
+                            : 'purple.100',
+                  color:
+                    currentSlot.purpose === 'focus'
+                      ? isDark
+                        ? 'blue.200'
+                        : 'blue.700'
+                      : currentSlot.purpose === 'reinforce'
+                        ? isDark
+                          ? 'orange.200'
+                          : 'orange.700'
+                        : currentSlot.purpose === 'review'
+                          ? isDark
+                            ? 'green.200'
+                            : 'green.700'
+                          : isDark
+                            ? 'purple.200'
+                            : 'purple.700',
+                })}
+              >
+                {currentSlot.purpose}
+              </div>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* Problem display - centered, with help panel positioned outside */}
         <div

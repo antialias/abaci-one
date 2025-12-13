@@ -221,6 +221,26 @@ export function DashboardClient({
     [studentId, router]
   )
 
+  // Handle refreshing a skill's recency (sets lastPracticedAt to today)
+  const handleRefreshSkill = useCallback(
+    async (skillId: string): Promise<void> => {
+      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to refresh skill')
+      }
+
+      // Reload to show updated mastery state
+      router.refresh()
+    },
+    [studentId, router]
+  )
+
   // Handle opening offline session form
   const handleRecordOfflinePractice = useCallback(() => {
     setShowOfflineSessionModal(true)
@@ -316,9 +336,11 @@ export function DashboardClient({
           open={showManualSkillModal}
           onClose={() => setShowManualSkillModal(false)}
           onSave={handleSaveManualSkills}
+          onRefreshSkill={handleRefreshSkill}
           currentMasteredSkills={skills
             .filter((s) => s.masteryLevel === 'mastered')
             .map((s) => s.skillId)}
+          skillMasteryData={skills}
         />
 
         {/* Offline Session Form Modal */}

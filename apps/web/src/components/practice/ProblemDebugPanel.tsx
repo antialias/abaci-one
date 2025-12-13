@@ -41,7 +41,9 @@ export function ProblemDebugPanel({
 
   // Get trace data directly from the problem generator
   const trace = problem.generationTrace
-  const budgetConstraint = trace?.budgetConstraint ?? slot.constraints?.maxComplexityBudgetPerTerm
+  const maxBudget = trace?.budgetConstraint ?? slot.constraints?.maxComplexityBudgetPerTerm
+  const minBudget = trace?.minBudgetConstraint ?? slot.constraints?.minComplexityBudgetPerTerm
+  const totalCost = trace?.totalComplexityCost
 
   const debugData = {
     problem: {
@@ -67,12 +69,16 @@ export function ProblemDebugPanel({
       phaseName,
     },
     complexity: {
-      budgetConstraint: budgetConstraint ?? 'none',
+      maxBudget: maxBudget ?? 'none',
+      minBudget: minBudget ?? 'none',
+      totalCost: totalCost ?? 'unknown',
       termAnalysis:
-        trace?.steps.map((step) => ({
+        trace?.steps.map((step, i) => ({
           term: step.termAdded,
           skills: step.skillsUsed,
           cost: step.complexityCost,
+          // First term (i=0) is exempt from min budget when starting from 0
+          exemptFromMin: i === 0,
         })) ?? [],
       hasTrace: !!trace,
     },
@@ -219,23 +225,56 @@ export function ProblemDebugPanel({
                 color: '#a78bfa',
                 fontWeight: 'bold',
                 marginBottom: '6px',
-                display: 'flex',
-                justifyContent: 'space-between',
               })}
             >
-              <span>Complexity Budget</span>
-              {budgetConstraint !== undefined ? (
-                <span className={css({ color: '#fbbf24' })}>max {budgetConstraint}/term</span>
-              ) : (
-                <span className={css({ color: '#6b7280' })}>no limit</span>
-              )}
+              <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+                <span>Complexity Budget</span>
+                {totalCost !== undefined && (
+                  <span className={css({ color: '#4ade80' })}>total: {totalCost}</span>
+                )}
+              </div>
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: '12px',
+                  fontSize: '10px',
+                  marginTop: '4px',
+                  fontWeight: 'normal',
+                })}
+              >
+                {minBudget !== undefined ? (
+                  <span className={css({ color: '#f472b6' })}>
+                    min {minBudget}/term{' '}
+                    <span className={css({ color: '#6b7280' })}>(1st exempt)</span>
+                  </span>
+                ) : (
+                  <span className={css({ color: '#6b7280' })}>no min</span>
+                )}
+                {maxBudget !== undefined ? (
+                  <span className={css({ color: '#fbbf24' })}>max {maxBudget}/term</span>
+                ) : (
+                  <span className={css({ color: '#6b7280' })}>no max</span>
+                )}
+              </div>
             </div>
             {trace ? (
               <div className={css({ display: 'flex', flexDirection: 'column', gap: '4px' })}>
                 {trace.steps.map((step, i) => {
                   const cost = step.complexityCost
+                  const isFirstTerm = i === 0
                   const isOverBudget =
-                    budgetConstraint !== undefined && cost !== undefined && cost > budgetConstraint
+                    maxBudget !== undefined && cost !== undefined && cost > maxBudget
+                  const isUnderBudget =
+                    minBudget !== undefined &&
+                    cost !== undefined &&
+                    cost < minBudget &&
+                    !isFirstTerm
+                  // First term is exempt from min budget (basic skills have cost 0)
+                  const isExemptFromMin = isFirstTerm && minBudget !== undefined
+
+                  // Color: red if over, yellow if under (and not exempt), green otherwise
+                  const costColor = isOverBudget ? '#f87171' : isUnderBudget ? '#fbbf24' : '#4ade80'
+
                   return (
                     <div
                       key={i}
@@ -258,12 +297,16 @@ export function ProblemDebugPanel({
                       </span>
                       <span
                         className={css({
-                          color: isOverBudget ? '#f87171' : '#4ade80',
+                          color: costColor,
                           fontWeight: 'bold',
                           minWidth: '35px',
                         })}
+                        title={isExemptFromMin ? 'First term exempt from min budget' : undefined}
                       >
                         {cost !== undefined ? `${cost}` : '—'}
+                        {isExemptFromMin && cost !== undefined && cost < minBudget && (
+                          <span className={css({ color: '#6b7280', fontSize: '8px' })}>*</span>
+                        )}
                       </span>
                       <span
                         className={css({

@@ -3,10 +3,16 @@ import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqli
 import { players } from './players'
 
 /**
- * Mastery level enum values
- * - learning: Just started, fewer than 5 attempts
- * - practicing: 5+ attempts, working toward mastery
- * - mastered: Achieved mastery criteria (consecutive correct + accuracy)
+ * Fluency state - computed from practice history, NOT stored in database
+ * - practicing: isPracticing=true but hasn't achieved fluency criteria yet
+ * - effortless: fluent + practiced within 14 days
+ * - fluent: high accuracy (85%+), 5+ consecutive correct, practiced within 30 days
+ * - rusty: was fluent but >30 days since practice
+ */
+export type FluencyState = 'practicing' | 'effortless' | 'fluent' | 'rusty'
+
+/**
+ * @deprecated Use FluencyState instead. Kept for backwards compatibility during migration.
  */
 export type MasteryLevel = 'learning' | 'practicing' | 'mastered'
 
@@ -54,16 +60,21 @@ export const playerSkillMastery = sqliteTable(
     consecutiveCorrect: integer('consecutive_correct').notNull().default(0),
 
     /**
-     * Current mastery level for this skill
-     * - 'learning': < 5 attempts
-     * - 'practicing': >= 5 attempts, not yet mastered
-     * - 'mastered': >= 10 attempts, >= 5 consecutive correct, >= 85% accuracy
+     * @deprecated Use isPracticing instead. Kept for backwards compatibility during migration.
      */
     masteryLevel: text('mastery_level', {
       enum: ['learning', 'practicing', 'mastered'],
     })
       .notNull()
       .default('learning'),
+
+    /**
+     * Whether this skill is in the student's active practice rotation.
+     * Set by teacher via ManualSkillSelector checkbox.
+     * Fluency state (effortless/fluent/rusty/practicing) is computed from
+     * attempts, correct, consecutiveCorrect, and lastPracticedAt.
+     */
+    isPracticing: integer('is_practicing', { mode: 'boolean' }).notNull().default(false),
 
     /** When this skill was last practiced */
     lastPracticedAt: integer('last_practiced_at', { mode: 'timestamp' }),
@@ -131,19 +142,33 @@ export type PlayerSkillMastery = typeof playerSkillMastery.$inferSelect
 export type NewPlayerSkillMastery = typeof playerSkillMastery.$inferInsert
 
 /**
- * Mastery configuration constants
+ * Fluency configuration constants
+ * Used to determine if a student has achieved fluency in a skill
  */
-export const MASTERY_CONFIG = {
-  /** Number of consecutive correct answers required for mastery */
-  consecutiveForMastery: 5,
+export const FLUENCY_CONFIG = {
+  /** Number of consecutive correct answers required for fluency */
+  consecutiveForFluency: 5,
 
-  /** Minimum total attempts before mastery can be achieved */
+  /** Minimum total attempts before fluency can be achieved */
   minimumAttempts: 10,
 
-  /** Minimum accuracy (correct/attempts) for mastery */
+  /** Minimum accuracy (correct/attempts) for fluency */
   accuracyThreshold: 0.85,
 
-  /** Minimum attempts to transition from 'learning' to 'practicing' */
+  /** Days since last practice to be considered "effortless" */
+  effortlessDays: 14,
+
+  /** Days since last practice to be considered "fluent" (vs "rusty") */
+  fluentDays: 30,
+} as const
+
+/**
+ * @deprecated Use FLUENCY_CONFIG instead. Kept for backwards compatibility.
+ */
+export const MASTERY_CONFIG = {
+  consecutiveForMastery: FLUENCY_CONFIG.consecutiveForFluency,
+  minimumAttempts: FLUENCY_CONFIG.minimumAttempts,
+  accuracyThreshold: FLUENCY_CONFIG.accuracyThreshold,
   minimumForPracticing: 5,
 } as const
 
@@ -181,7 +206,57 @@ export const REINFORCEMENT_CONFIG = {
 } as const
 
 /**
- * Calculate the mastery level based on current stats
+ * Check if a student has achieved fluency in a skill based on their practice history.
+ * Fluency = high accuracy + consistent performance (consecutive correct answers)
+ */
+export function hasFluency(attempts: number, correct: number, consecutiveCorrect: number): boolean {
+  const accuracy = attempts > 0 ? correct / attempts : 0
+  return (
+    consecutiveCorrect >= FLUENCY_CONFIG.consecutiveForFluency &&
+    attempts >= FLUENCY_CONFIG.minimumAttempts &&
+    accuracy >= FLUENCY_CONFIG.accuracyThreshold
+  )
+}
+
+/**
+ * Calculate the fluency state for a skill based on practice history and recency.
+ * Only call this for skills where isPracticing=true.
+ *
+ * @param attempts - Total number of attempts
+ * @param correct - Number of correct answers
+ * @param consecutiveCorrect - Current consecutive correct streak
+ * @param daysSinceLastPractice - Days since lastPracticedAt (undefined if never practiced)
+ * @returns FluencyState: 'practicing' | 'effortless' | 'fluent' | 'rusty'
+ */
+export function calculateFluencyState(
+  attempts: number,
+  correct: number,
+  consecutiveCorrect: number,
+  daysSinceLastPractice?: number
+): FluencyState {
+  // Not yet fluent - still practicing
+  if (!hasFluency(attempts, correct, consecutiveCorrect)) {
+    return 'practicing'
+  }
+
+  // Fluent - now check recency
+  if (daysSinceLastPractice === undefined) {
+    return 'fluent' // Never practiced = assume fluent (teacher marked it)
+  }
+
+  if (daysSinceLastPractice <= FLUENCY_CONFIG.effortlessDays) {
+    return 'effortless'
+  }
+
+  if (daysSinceLastPractice <= FLUENCY_CONFIG.fluentDays) {
+    return 'fluent'
+  }
+
+  return 'rusty'
+}
+
+/**
+ * @deprecated Use calculateFluencyState instead. Kept for backwards compatibility during migration.
  */
 export function calculateMasteryLevel(
   attempts: number,

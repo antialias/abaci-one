@@ -6,6 +6,7 @@ import {
   type GenerateSessionPlanOptions,
   generateSessionPlan,
   getActiveSessionPlan,
+  NoSkillsEnabledError,
 } from '@/lib/curriculum'
 
 interface RouteParams {
@@ -106,6 +107,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           existingPlan: serializePlan(error.existingSession),
         },
         { status: 409 }
+      )
+    }
+
+    // Handle no skills enabled
+    if (error instanceof NoSkillsEnabledError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'NO_SKILLS_ENABLED',
+        },
+        { status: 400 }
       )
     }
 
