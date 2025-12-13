@@ -5,8 +5,6 @@
  * fluency in a skill and how fluency decays over time.
  */
 
-console.log('[fluency-thresholds.ts] MODULE LOADING...')
-
 // =============================================================================
 // Fluency Achievement Thresholds
 // =============================================================================
@@ -100,5 +98,3 @@ export const REINFORCEMENT_CONFIG = {
 export type FluencyThresholds = typeof FLUENCY_THRESHOLDS
 export type FluencyRecency = typeof FLUENCY_RECENCY
 export type ReinforcementConfig = typeof REINFORCEMENT_CONFIG
-
-console.log('[fluency-thresholds.ts] MODULE LOADED - REINFORCEMENT_CONFIG:', JSON.stringify(REINFORCEMENT_CONFIG, null, 2))

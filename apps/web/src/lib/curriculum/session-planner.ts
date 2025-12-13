@@ -500,9 +500,6 @@ export async function recordSlotResult(
   planId: string,
   result: Omit<SlotResult, 'timestamp' | 'partNumber'>
 ): Promise<SessionPlan> {
-  // Log entry for debugging production issues
-  console.log(`[recordSlotResult] Starting for plan ${planId}`)
-
   let plan: SessionPlan | null
   try {
     plan = await getSessionPlan(planId)
@@ -514,11 +511,6 @@ export async function recordSlotResult(
   }
 
   if (!plan) throw new Error(`Plan not found: ${planId}`)
-
-  // Log plan state for debugging
-  console.log(
-    `[recordSlotResult] Plan ${planId}: status=${plan.status}, partIndex=${plan.currentPartIndex}, slotIndex=${plan.currentSlotIndex}, parts=${plan.parts ? 'defined' : 'undefined'}, results=${plan.results ? `array(${plan.results.length})` : 'undefined'}`
-  )
 
   // Defensive check: ensure parts array exists and is valid
   if (!plan.parts || !Array.isArray(plan.parts)) {
@@ -552,19 +544,13 @@ export async function recordSlotResult(
     throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
   }
 
-  console.log(`[recordSlotResult] Creating newResult for plan ${planId}`)
-
   const newResult: SlotResult = {
     ...result,
     partNumber: currentPart.partNumber,
     timestamp: new Date(),
   }
 
-  console.log(`[recordSlotResult] newResult created, spreading results array`)
-
   const updatedResults = [...plan.results, newResult]
-
-  console.log(`[recordSlotResult] updatedResults length: ${updatedResults.length}`)
 
   // Advance to next slot, possibly moving to next part
   let nextPartIndex = plan.currentPartIndex
@@ -579,27 +565,9 @@ export async function recordSlotResult(
   // Check if the entire session is complete
   const isComplete = nextPartIndex >= plan.parts.length
 
-  console.log(
-    `[recordSlotResult] Next indices: part=${nextPartIndex}, slot=${nextSlotIndex}, isComplete=${isComplete}`
-  )
-
   // Calculate elapsed time since start
   const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
-
-  console.log(`[recordSlotResult] Calling calculateSessionHealth, elapsedMs=${elapsedMs}`)
-
-  let updatedHealth
-  try {
-    updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
-    console.log(
-      `[recordSlotResult] calculateSessionHealth succeeded: ${JSON.stringify(updatedHealth)}`
-    )
-  } catch (healthError) {
-    console.error(`[recordSlotResult] calculateSessionHealth FAILED:`, healthError)
-    throw healthError
-  }
-
-  console.log(`[recordSlotResult] Starting Drizzle update for plan ${planId}`)
+  const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
 
   let dbResult
   try {
@@ -615,7 +583,6 @@ export async function recordSlotResult(
       })
       .where(eq(schema.sessionPlans.id, planId))
       .returning()
-    console.log(`[recordSlotResult] Drizzle update returned, result length: ${dbResult?.length}`)
   } catch (dbError) {
     console.error(`[recordSlotResult] Drizzle update FAILED:`, dbError)
     throw dbError
@@ -629,8 +596,6 @@ export async function recordSlotResult(
       `Failed to update plan ${planId}: no rows returned (may have been deleted during update)`
     )
   }
-
-  console.log(`[recordSlotResult] Plan ${planId} updated successfully, recording skill attempts`)
 
   // Update global skill mastery with response time data
   // This builds the per-kid stats for identifying strengths/weaknesses
@@ -646,14 +611,12 @@ export async function recordSlotResult(
         result.helpLevelUsed,
         result.responseTimeMs
       )
-      console.log(`[recordSlotResult] Skill attempts recorded successfully`)
     } catch (skillError) {
       console.error(`[recordSlotResult] recordSkillAttemptsWithHelp FAILED:`, skillError)
       throw skillError
     }
   }
 
-  console.log(`[recordSlotResult] Returning updated plan ${planId}`)
   return updated
 }
 
