@@ -500,14 +500,35 @@ export async function recordSlotResult(
   planId: string,
   result: Omit<SlotResult, 'timestamp' | 'partNumber'>
 ): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId)
+  // Log entry for debugging production issues
+  console.log(`[recordSlotResult] Starting for plan ${planId}`)
+
+  let plan: SessionPlan | null
+  try {
+    plan = await getSessionPlan(planId)
+  } catch (error) {
+    console.error(`[recordSlotResult] Failed to get plan ${planId}:`, error)
+    throw new Error(
+      `Failed to retrieve plan ${planId}: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+
   if (!plan) throw new Error(`Plan not found: ${planId}`)
+
+  // Log plan state for debugging
+  console.log(
+    `[recordSlotResult] Plan ${planId}: status=${plan.status}, partIndex=${plan.currentPartIndex}, slotIndex=${plan.currentSlotIndex}, parts=${plan.parts ? 'defined' : 'undefined'}, results=${plan.results ? `array(${plan.results.length})` : 'undefined'}`
+  )
 
   // Defensive check: ensure parts array exists and is valid
   if (!plan.parts || !Array.isArray(plan.parts)) {
     throw new Error(
       `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`
     )
+  }
+
+  if (plan.parts.length === 0) {
+    throw new Error(`Plan ${planId} has empty parts array`)
   }
 
   if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
@@ -518,6 +539,20 @@ export async function recordSlotResult(
 
   const currentPart = plan.parts[plan.currentPartIndex]
   if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
+
+  // Defensive check: ensure slots array exists
+  if (!currentPart.slots || !Array.isArray(currentPart.slots)) {
+    throw new Error(
+      `Plan ${planId} part ${plan.currentPartIndex} has invalid slots: ${typeof currentPart.slots}`
+    )
+  }
+
+  // Defensive check: ensure results array exists
+  if (!plan.results || !Array.isArray(plan.results)) {
+    throw new Error(
+      `Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`
+    )
+  }
 
   const newResult: SlotResult = {
     ...result,
