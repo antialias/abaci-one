@@ -11,8 +11,9 @@ import {
   type FluencyState,
   type NewPlayerSkillMastery,
   type PlayerSkillMastery,
-  REINFORCEMENT_CONFIG,
 } from '@/db/schema/player-skill-mastery'
+// Import directly from source to avoid circular dependency issues with re-exports
+import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config/fluency-thresholds'
 import type { NewPracticeSession, PracticeSession } from '@/db/schema/practice-sessions'
 import type { HelpLevel } from '@/db/schema/session-plans'
 

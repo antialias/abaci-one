@@ -1,11 +1,8 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 // Import tunable constants from centralized config
-import { FLUENCY_RECENCY, FLUENCY_THRESHOLDS, REINFORCEMENT_CONFIG } from '@/lib/curriculum/config'
+import { FLUENCY_RECENCY, FLUENCY_THRESHOLDS } from '@/lib/curriculum/config'
 import { players } from './players'
-
-// Re-export for backwards compatibility
-export { REINFORCEMENT_CONFIG }
 
 /**
  * Fluency state - computed from practice history, NOT stored in database
@@ -144,7 +141,6 @@ export const FLUENCY_CONFIG = {
   ...FLUENCY_RECENCY,
 } as const
 
-// REINFORCEMENT_CONFIG imported from @/lib/curriculum/config and re-exported above
 
 /**
  * Check if a student has achieved fluency in a skill based on their practice history.
