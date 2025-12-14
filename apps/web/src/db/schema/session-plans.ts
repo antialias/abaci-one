@@ -1,7 +1,5 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import type { SkillSet } from '@/types/tutorial'
-import { players } from './players'
 import {
   DEFAULT_SECONDS_PER_PROBLEM,
   PART_TIME_WEIGHTS,
@@ -11,6 +9,8 @@ import {
   SESSION_TIMEOUT_HOURS,
   TERM_COUNT_RANGES,
 } from '@/lib/curriculum/config'
+import type { SkillSet } from '@/types/tutorial'
+import { players } from './players'
 
 // ============================================================================
 // Types for JSON fields
@@ -106,12 +106,13 @@ export interface GenerationTraceStep {
 }
 
 /**
- * Skill mastery context for a single skill - captured at generation time
+ * Skill mastery context for a single skill - captured at generation time.
+ * This matches the MasteryState type from @/lib/curriculum/config/skill-costs.ts
  */
 export interface SkillMasteryDisplay {
-  /** Mastery level at generation time */
-  masteryLevel: 'effortless' | 'fluent' | 'rusty' | 'practicing' | 'learning'
-  /** Base complexity cost (intrinsic to skill) */
+  /** Mastery state at generation time (matches MasteryState) */
+  masteryState: 'effortless' | 'fluent' | 'rusty' | 'practicing' | 'not_practicing'
+  /** Base complexity cost (intrinsic to skill, 0-3) */
   baseCost: number
   /** Effective cost for this student (baseCost × masteryMultiplier) */
   effectiveCost: number

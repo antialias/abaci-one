@@ -179,7 +179,6 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             isBrowseMode={isBrowseMode}
             browseIndex={browseIndex}
             onBrowseIndexChange={setBrowseIndex}
-            onExitBrowse={() => setIsBrowseMode(false)}
           />
         </PracticeErrorBoundary>
       </main>

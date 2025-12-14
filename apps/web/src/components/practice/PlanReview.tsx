@@ -10,6 +10,7 @@ import type {
 } from '@/db/schema/session-plans'
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
+import { SessionOverview } from './SessionOverview'
 
 interface PlanReviewProps {
   plan: SessionPlan
@@ -72,6 +73,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [showConfig, setShowConfig] = useState(false)
+  const [showFullProblems, setShowFullProblems] = useState(false)
 
   const summary = plan.summary as SessionSummary
   const parts = plan.parts as SessionPart[]
@@ -482,6 +484,46 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
               </details>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Full Problems Toggle */}
+      <button
+        type="button"
+        data-action="toggle-full-problems"
+        onClick={() => setShowFullProblems(!showFullProblems)}
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.5rem 1rem',
+          fontSize: '0.875rem',
+          color: isDark ? 'gray.400' : 'gray.600',
+          backgroundColor: 'transparent',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.600' : 'gray.300',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          _hover: {
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
+          },
+        })}
+      >
+        <span>{showFullProblems ? '▼' : '▶'}</span>
+        Full Problem Details (Skills + Costs)
+      </button>
+
+      {/* Full Problems Panel */}
+      {showFullProblems && (
+        <div
+          data-section="full-problems"
+          className={css({
+            width: '100%',
+            maxWidth: '100%',
+            overflow: 'auto',
+          })}
+        >
+          <SessionOverview plan={plan} studentName={studentName} />
         </div>
       )}
 

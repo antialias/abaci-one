@@ -141,7 +141,6 @@ export const FLUENCY_CONFIG = {
   ...FLUENCY_RECENCY,
 } as const
 
-
 /**
  * Check if a student has achieved fluency in a skill based on their practice history.
  * Fluency = high accuracy + consistent performance (consecutive correct answers)

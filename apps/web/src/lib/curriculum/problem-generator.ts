@@ -11,8 +11,9 @@
 import type { GeneratedProblem, ProblemConstraints } from '@/db/schema/session-plans'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
+  type GenerationDiagnostics,
   type ProblemConstraints as GeneratorConstraints,
-  generateSingleProblem,
+  generateSingleProblemWithDiagnostics,
 } from '@/utils/problemGenerator'
 import type { SkillCostCalculator } from '@/utils/skillComplexity'
 
@@ -22,11 +23,56 @@ import type { SkillCostCalculator } from '@/utils/skillComplexity'
 export class ProblemGenerationError extends Error {
   constructor(
     message: string,
-    public readonly constraints: ProblemConstraints
+    public readonly constraints: ProblemConstraints,
+    public readonly diagnostics?: GenerationDiagnostics
   ) {
     super(message)
     this.name = 'ProblemGenerationError'
   }
+}
+
+/**
+ * Format diagnostics into an actionable error message
+ */
+function formatDiagnosticsMessage(diagnostics: GenerationDiagnostics): string {
+  const lines: string[] = []
+
+  // Identify the main failure mode
+  if (diagnostics.sequenceFailures === diagnostics.totalAttempts) {
+    lines.push('CAUSE: All attempts failed during sequence generation.')
+    lines.push(
+      'This means no valid sequence of terms could be built with the given skill/budget constraints.'
+    )
+    if (diagnostics.enabledRequiredSkills.length === 0) {
+      lines.push('FIX: No required skills are enabled - enable at least some basic skills.')
+    } else {
+      lines.push(`Enabled skills: ${diagnostics.enabledRequiredSkills.slice(0, 5).join(', ')}...`)
+    }
+  } else if (diagnostics.skillMatchFailures > 0) {
+    lines.push(
+      `CAUSE: ${diagnostics.skillMatchFailures}/${diagnostics.totalAttempts} attempts generated problems but they didn't match skill requirements.`
+    )
+    if (diagnostics.lastGeneratedSkills) {
+      lines.push(`Last problem used skills: ${diagnostics.lastGeneratedSkills.join(', ')}`)
+    }
+    if (diagnostics.enabledTargetSkills.length > 0) {
+      lines.push(
+        `Target skills required: ${diagnostics.enabledTargetSkills.slice(0, 5).join(', ')}`
+      )
+      lines.push('FIX: Generated problems may not naturally use the target skills.')
+    }
+  } else if (diagnostics.sumConstraintFailures > 0) {
+    lines.push(`CAUSE: ${diagnostics.sumConstraintFailures} attempts failed sum constraints.`)
+    lines.push('FIX: Adjust min/max sum constraints or number range.')
+  }
+
+  // Add stats
+  lines.push('')
+  lines.push(
+    `Stats: ${diagnostics.totalAttempts} attempts = ${diagnostics.sequenceFailures} seq failures + ${diagnostics.sumConstraintFailures} sum failures + ${diagnostics.skillMatchFailures} skill failures`
+  )
+
+  return lines.join('\n')
 }
 
 /**
@@ -79,7 +125,7 @@ export function generateProblemFromConstraints(
     maxComplexityBudgetPerTerm: constraints.maxComplexityBudgetPerTerm,
   }
 
-  const generatedProblem = generateSingleProblem({
+  const { problem: generatedProblem, diagnostics } = generateSingleProblemWithDiagnostics({
     constraints: generatorConstraints,
     requiredSkills,
     targetSkills: constraints.targetSkills,
@@ -96,11 +142,15 @@ export function generateProblemFromConstraints(
     }
   }
 
-  // No fallback - surface the error so it can be addressed
-  throw new ProblemGenerationError(
-    `Failed to generate problem with constraints: termCount=${constraints.termCount?.min}-${constraints.termCount?.max}, ` +
-      `digitRange=${constraints.digitRange?.min}-${constraints.digitRange?.max}, ` +
-      `requiredSkills=${Object.keys(constraints.requiredSkills || {}).length} categories`,
-    constraints
-  )
+  // Build actionable error message
+  const basicInfo =
+    `Failed to generate problem with constraints:\n` +
+    `  termCount: ${constraints.termCount?.min}-${constraints.termCount?.max}\n` +
+    `  digitRange: ${constraints.digitRange?.min}-${constraints.digitRange?.max}\n` +
+    `  minComplexityBudget: ${constraints.minComplexityBudgetPerTerm ?? 'none'}\n` +
+    `  maxComplexityBudget: ${constraints.maxComplexityBudgetPerTerm ?? 'none'}\n`
+
+  const diagnosticsMessage = formatDiagnosticsMessage(diagnostics)
+
+  throw new ProblemGenerationError(`${basicInfo}\n${diagnosticsMessage}`, constraints, diagnostics)
 }

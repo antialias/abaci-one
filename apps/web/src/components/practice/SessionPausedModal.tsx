@@ -4,35 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { SpeedMeter } from './SpeedMeter'
 
-/**
- * Statistics about response times used for auto-pause threshold
- */
-export interface AutoPauseStats {
-  /** Mean response time in milliseconds */
-  meanMs: number
-  /** Standard deviation of response times in milliseconds */
-  stdDevMs: number
-  /** Calculated threshold (mean + 2*stdDev) in milliseconds */
-  thresholdMs: number
-  /** Number of samples used to calculate stats */
-  sampleCount: number
-  /** Whether statistical calculation was used (vs default timeout) */
-  usedStatistics: boolean
-}
-
-/**
- * Information about why and when the session was paused
- */
-export interface PauseInfo {
-  /** When the pause occurred */
-  pausedAt: Date
-  /** Why the session was paused */
-  reason: 'manual' | 'auto-timeout'
-  /** Auto-pause statistics (only present for auto-timeout) */
-  autoPauseStats?: AutoPauseStats
-}
+// Re-export types for backwards compatibility
+export type { AutoPauseStats, PauseInfo }
 
 function getPartTypeLabel(type: SessionPart['type']): string {
   switch (type) {

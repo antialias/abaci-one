@@ -1,12 +1,13 @@
 'use client'
 
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { SessionMoodIndicator } from './SessionMoodIndicator'
 import { SessionProgressIndicator } from './SessionProgressIndicator'
-import { SpeedMeter } from './SpeedMeter'
 
 /**
  * Timing data for the current problem attempt
@@ -80,50 +81,6 @@ interface PracticeSubNavProps {
   onStartPractice?: () => void
 }
 
-function getPartTypeEmoji(type: 'abacus' | 'visualization' | 'linear'): string {
-  switch (type) {
-    case 'abacus':
-      return '🧮'
-    case 'visualization':
-      return '🧠'
-    case 'linear':
-      return '💭'
-  }
-}
-
-function getPartTypeLabel(type: 'abacus' | 'visualization' | 'linear'): string {
-  switch (type) {
-    case 'abacus':
-      return 'Use Abacus'
-    case 'visualization':
-      return 'Visualization'
-    case 'linear':
-      return 'Mental Math'
-  }
-}
-
-function getHealthEmoji(overall: 'good' | 'warning' | 'struggling'): string {
-  switch (overall) {
-    case 'good':
-      return '🟢'
-    case 'warning':
-      return '🟡'
-    case 'struggling':
-      return '🔴'
-  }
-}
-
-function getHealthColor(overall: 'good' | 'warning' | 'struggling'): string {
-  switch (overall) {
-    case 'good':
-      return 'green.500'
-    case 'warning':
-      return 'yellow.500'
-    case 'struggling':
-      return 'red.500'
-  }
-}
-
 // Minimum samples needed for statistical display
 const MIN_SAMPLES_FOR_STATS = 3
 
@@ -151,21 +108,6 @@ function calculateStats(times: number[]): {
   const stdDev = Math.sqrt(variance)
 
   return { mean, stdDev, count }
-}
-
-/**
- * Format seconds as a compact time string
- */
-function formatTimeCompact(ms: number): string {
-  if (ms < 0) return '0s'
-  const totalSeconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-
-  if (minutes > 0) {
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-  return `${seconds}s`
 }
 
 /**
@@ -230,6 +172,12 @@ export function PracticeSubNav({
         return { ...stats, hasEnoughData, threshold, partType: currentPartType }
       })()
     : null
+
+  // Extract recent correctness results for mood indicator (last N)
+  const recentResults = useMemo(() => {
+    if (!sessionHud?.results) return []
+    return sessionHud.results.slice(-10).map((r) => r.isCorrect)
+  }, [sessionHud?.results])
 
   return (
     <nav
@@ -336,140 +284,179 @@ export function PracticeSubNav({
             gap: { base: '0.375rem', md: '0.75rem' },
           })}
         >
-          {/* Transport controls */}
-          <div
-            data-element="transport-controls"
-            className={css({
-              display: 'flex',
-              gap: '0.25rem',
-              flexShrink: 0,
-            })}
-          >
-            {/* Pause/Play button */}
-            <button
-              type="button"
-              data-action={sessionHud.isPaused ? 'resume' : 'pause'}
-              onClick={sessionHud.isPaused ? sessionHud.onResume : sessionHud.onPause}
-              className={css({
-                width: { base: '32px', md: '36px' },
-                height: { base: '32px', md: '36px' },
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: { base: '1rem', md: '1.125rem' },
-                color: 'white',
-                backgroundColor: sessionHud.isPaused
-                  ? 'green.500'
-                  : isDark
-                    ? 'gray.600'
-                    : 'gray.500',
-                borderRadius: '6px',
-                border: '2px solid',
-                borderColor: sessionHud.isPaused ? 'green.400' : isDark ? 'gray.500' : 'gray.400',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: sessionHud.isPaused
-                    ? 'green.400'
-                    : isDark
-                      ? 'gray.500'
-                      : 'gray.400',
-                  transform: 'scale(1.05)',
-                },
-                _active: {
-                  transform: 'scale(0.95)',
-                },
-              })}
-              aria-label={sessionHud.isPaused ? 'Resume session' : 'Pause session'}
-            >
-              {sessionHud.isPaused ? '▶' : '⏸'}
-            </button>
+          {/* Transport controls dropdown */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                data-element="transport-controls"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.375rem 0.625rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '500',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.600' : 'gray.50',
+                    borderColor: isDark ? 'gray.500' : 'gray.400',
+                  },
+                  _active: {
+                    backgroundColor: isDark ? 'gray.650' : 'gray.100',
+                  },
+                })}
+                aria-label="Session controls"
+              >
+                {/* Status indicator dot */}
+                <span
+                  className={css({
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: sessionHud.isBrowseMode
+                      ? 'blue.500'
+                      : sessionHud.isPaused
+                        ? 'yellow.500'
+                        : 'green.500',
+                  })}
+                />
+                <span>
+                  {sessionHud.isBrowseMode
+                    ? 'Browse'
+                    : sessionHud.isPaused
+                      ? 'Paused'
+                      : 'Active'}
+                </span>
+                <span
+                  className={css({
+                    fontSize: '0.5rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    marginLeft: '0.125rem',
+                  })}
+                >
+                  ▼
+                </span>
+              </button>
+            </DropdownMenu.Trigger>
 
-            {/* Stop button */}
-            <button
-              type="button"
-              data-action="end-early"
-              onClick={sessionHud.onEndEarly}
-              className={css({
-                width: { base: '32px', md: '36px' },
-                height: { base: '32px', md: '36px' },
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: { base: '1rem', md: '1.125rem' },
-                color: isDark ? 'red.400' : 'red.500',
-                backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                borderRadius: '6px',
-                border: '2px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isDark ? 'red.900' : 'red.100',
-                  borderColor: isDark ? 'red.700' : 'red.300',
-                  color: isDark ? 'red.300' : 'red.600',
-                  transform: 'scale(1.05)',
-                },
-                _active: {
-                  transform: 'scale(0.95)',
-                },
-              })}
-              aria-label="End session"
-            >
-              ⏹
-            </button>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className={css({
+                  minWidth: '160px',
+                  backgroundColor: isDark ? 'gray.800' : 'white',
+                  borderRadius: '8px',
+                  padding: '0.375rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  zIndex: 1000,
+                })}
+                sideOffset={5}
+              >
+                {/* Play/Pause item */}
+                <DropdownMenu.Item
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                    },
+                    _focus: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                    },
+                  })}
+                  onSelect={sessionHud.isPaused ? sessionHud.onResume : sessionHud.onPause}
+                >
+                  <span>{sessionHud.isPaused ? '▶' : '⏸'}</span>
+                  <span>{sessionHud.isPaused ? 'Resume' : 'Pause'}</span>
+                </DropdownMenu.Item>
 
-            {/* Browse mode toggle button */}
-            <button
-              type="button"
-              data-action="toggle-browse"
-              data-active={sessionHud.isBrowseMode}
-              onClick={sessionHud.onToggleBrowse}
-              className={css({
-                width: { base: '32px', md: '36px' },
-                height: { base: '32px', md: '36px' },
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: { base: '1rem', md: '1.125rem' },
-                color: sessionHud.isBrowseMode ? 'white' : isDark ? 'blue.400' : 'blue.500',
-                backgroundColor: sessionHud.isBrowseMode
-                  ? 'blue.500'
-                  : isDark
-                    ? 'gray.700'
-                    : 'gray.200',
-                borderRadius: '6px',
-                border: '2px solid',
-                borderColor: sessionHud.isBrowseMode
-                  ? 'blue.400'
-                  : isDark
-                    ? 'gray.600'
-                    : 'gray.300',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: sessionHud.isBrowseMode
-                    ? 'blue.600'
-                    : isDark
-                      ? 'blue.900'
-                      : 'blue.100',
-                  borderColor: sessionHud.isBrowseMode
-                    ? 'blue.500'
-                    : isDark
-                      ? 'blue.700'
-                      : 'blue.300',
-                  transform: 'scale(1.05)',
-                },
-                _active: {
-                  transform: 'scale(0.95)',
-                },
-              })}
-              aria-label={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Browse all problems'}
-              title={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Browse all problems'}
-            >
-              🔢
-            </button>
-          </div>
+                {/* Browse mode item */}
+                <DropdownMenu.Item
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    color: sessionHud.isBrowseMode
+                      ? isDark
+                        ? 'blue.300'
+                        : 'blue.600'
+                      : isDark
+                        ? 'gray.100'
+                        : 'gray.900',
+                    backgroundColor: sessionHud.isBrowseMode
+                      ? isDark
+                        ? 'blue.900/50'
+                        : 'blue.50'
+                      : 'transparent',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                    },
+                    _focus: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                    },
+                  })}
+                  onSelect={sessionHud.onToggleBrowse}
+                >
+                  <span>🔢</span>
+                  <span>{sessionHud.isBrowseMode ? 'Exit Browse' : 'Browse'}</span>
+                </DropdownMenu.Item>
+
+                <DropdownMenu.Separator
+                  className={css({
+                    height: '1px',
+                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                    margin: '0.375rem 0',
+                  })}
+                />
+
+                {/* End session item */}
+                <DropdownMenu.Item
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    color: isDark ? 'red.400' : 'red.600',
+                    _hover: {
+                      backgroundColor: isDark ? 'red.900/50' : 'red.50',
+                    },
+                    _focus: {
+                      backgroundColor: isDark ? 'red.900/50' : 'red.50',
+                    },
+                  })}
+                  onSelect={sessionHud.onEndEarly}
+                >
+                  <span>⏹</span>
+                  <span>End Session</span>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
 
           {/* Session Progress Indicator - discrete problem slots */}
           <div
@@ -492,103 +479,22 @@ export function PracticeSubNav({
             />
           </div>
 
-          {/* Timing display */}
-          {sessionHud.timing && timingStats && (
-            <div
-              data-element="timing-display"
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.125rem',
-                padding: { base: '0.125rem 0.375rem', md: '0.25rem 0.5rem' },
-                backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                borderRadius: { base: '6px', md: '8px' },
-                flexShrink: 0,
-                minWidth: { base: '60px', md: '100px' },
-              })}
-            >
-              {/* Current timer */}
-              <div
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.125rem',
-                })}
-              >
-                <span
-                  className={css({ fontSize: '0.625rem', display: { base: 'none', sm: 'inline' } })}
-                >
-                  ⏱️
-                </span>
-                <span
-                  className={css({
-                    fontFamily: 'monospace',
-                    fontSize: { base: '0.875rem', md: '1rem' },
-                    fontWeight: 'bold',
-                    color:
-                      currentElapsedMs > timingStats.threshold
-                        ? isDark
-                          ? 'red.400'
-                          : 'red.500'
-                        : currentElapsedMs > timingStats.mean + timingStats.stdDev
-                          ? isDark
-                            ? 'yellow.400'
-                            : 'yellow.600'
-                          : isDark
-                            ? 'green.400'
-                            : 'green.600',
-                  })}
-                >
-                  {formatTimeCompact(currentElapsedMs)}
-                </span>
-              </div>
-
-              {/* Mini speed meter - hidden on very small screens */}
-              {timingStats.hasEnoughData && (
-                <div className={css({ display: { base: 'none', sm: 'block' } })}>
-                  <SpeedMeter
-                    meanMs={timingStats.mean}
-                    stdDevMs={timingStats.stdDev}
-                    thresholdMs={timingStats.threshold}
-                    currentTimeMs={currentElapsedMs}
-                    isDark={isDark}
-                    compact={true}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Health indicator - hidden on very small screens */}
-          {sessionHud.sessionHealth && (
-            <div
-              data-element="session-health"
-              className={css({
-                display: { base: 'none', sm: 'flex' },
-                alignItems: 'center',
-                gap: '0.125rem',
-                padding: { base: '0.25rem 0.375rem', md: '0.375rem 0.5rem' },
-                backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                borderRadius: { base: '6px', md: '8px' },
-                flexShrink: 0,
-              })}
-            >
-              <span className={css({ fontSize: { base: '0.875rem', md: '1rem' } })}>
-                {getHealthEmoji(sessionHud.sessionHealth.overall)}
-              </span>
-              <span
-                className={css({
-                  fontSize: { base: '0.75rem', md: '0.875rem' },
-                  fontWeight: 'bold',
-                })}
-                style={{
-                  color: `var(--colors-${getHealthColor(sessionHud.sessionHealth.overall).replace('.', '-')})`,
-                }}
-              >
-                {Math.round(sessionHud.sessionHealth.accuracy * 100)}%
-              </span>
-            </div>
+          {/* Session Mood Indicator - unified timing + health display */}
+          {timingStats && (
+            <SessionMoodIndicator
+              currentElapsedMs={currentElapsedMs}
+              meanMs={timingStats.mean}
+              stdDevMs={timingStats.stdDev}
+              thresholdMs={timingStats.threshold}
+              hasEnoughData={timingStats.hasEnoughData}
+              problemsRemaining={sessionHud.totalProblems - sessionHud.completedProblems}
+              totalProblems={sessionHud.totalProblems}
+              recentResults={recentResults}
+              accuracy={sessionHud.sessionHealth?.accuracy ?? 1}
+              healthStatus={sessionHud.sessionHealth?.overall ?? 'good'}
+              isPaused={sessionHud.isPaused}
+              isDark={isDark}
+            />
           )}
         </div>
       )}

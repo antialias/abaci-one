@@ -33,8 +33,6 @@ export interface SessionProgressIndicatorProps {
   isBrowseMode: boolean
   /** Callback when clicking a problem in browse mode */
   onNavigate?: (linearIndex: number) => void
-  /** Average response time in ms (for time estimate) */
-  averageResponseTimeMs?: number
   /** Dark mode */
   isDark: boolean
   /** Compact mode for smaller screens */
@@ -72,17 +70,6 @@ function getSlotResult(
   slotIndex: number
 ): SlotResult | undefined {
   return results.find((r) => r.partNumber === partNumber && r.slotIndex === slotIndex)
-}
-
-/**
- * Format time as "X min" or "X sec"
- */
-function formatTimeEstimate(ms: number): string {
-  if (ms < 60000) {
-    return `${Math.round(ms / 1000)}s`
-  }
-  const minutes = Math.round(ms / 60000)
-  return `~${minutes} min`
 }
 
 /**
@@ -322,7 +309,6 @@ export function SessionProgressIndicator({
   currentSlotIndex,
   isBrowseMode,
   onNavigate,
-  averageResponseTimeMs,
   isDark,
   compact = false,
 }: SessionProgressIndicatorProps) {
@@ -334,23 +320,6 @@ export function SessionProgressIndicator({
     }
     return index + currentSlotIndex
   }, [parts, currentPartIndex, currentSlotIndex])
-
-  // Calculate totals
-  const { totalProblems, completedProblems, remainingProblems } = useMemo(() => {
-    const total = parts.reduce((sum, part) => sum + part.slots.length, 0)
-    const completed = results.length
-    return {
-      totalProblems: total,
-      completedProblems: completed,
-      remainingProblems: total - completed,
-    }
-  }, [parts, results])
-
-  // Time estimate
-  const timeEstimate = useMemo(() => {
-    if (!averageResponseTimeMs || remainingProblems === 0) return null
-    return averageResponseTimeMs * remainingProblems
-  }, [averageResponseTimeMs, remainingProblems])
 
   // Track linear offset for each part
   let linearOffset = 0
@@ -440,45 +409,6 @@ export function SessionProgressIndicator({
             </div>
           )
         })}
-      </div>
-
-      {/* Summary stats */}
-      <div
-        data-element="summary"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          flexShrink: 0,
-          paddingLeft: '0.5rem',
-          borderLeft: '1px solid',
-          borderColor: isDark ? 'gray.600' : 'gray.300',
-        })}
-      >
-        {/* Progress count */}
-        <span
-          className={css({
-            fontSize: compact ? '0.6875rem' : '0.75rem',
-            fontWeight: 'bold',
-            color: isDark ? 'gray.300' : 'gray.600',
-            whiteSpace: 'nowrap',
-          })}
-        >
-          {completedProblems}/{totalProblems}
-        </span>
-
-        {/* Time estimate */}
-        {timeEstimate && !isBrowseMode && (
-          <span
-            className={css({
-              fontSize: compact ? '0.625rem' : '0.6875rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-              whiteSpace: 'nowrap',
-            })}
-          >
-            {formatTimeEstimate(timeEstimate)}
-          </span>
-        )}
       </div>
     </div>
   )

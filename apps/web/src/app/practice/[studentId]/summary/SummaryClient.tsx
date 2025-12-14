@@ -3,7 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { PracticeSubNav, SessionSummary, StartPracticeModal } from '@/components/practice'
+import {
+  PracticeSubNav,
+  SessionOverview,
+  SessionSummary,
+  StartPracticeModal,
+} from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
@@ -37,6 +42,7 @@ export function SummaryClient({
   const isDark = resolvedTheme === 'dark'
 
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
+  const [viewMode, setViewMode] = useState<'summary' | 'debug'>('summary')
 
   const isInProgress = session?.startedAt && !session?.completedAt
 
@@ -107,13 +113,75 @@ export function SummaryClient({
             </p>
           </header>
 
-          {/* Session Summary or Empty State */}
+          {/* View Mode Toggle (only show when there's a session) */}
+          {session && (
+            <div
+              data-element="view-mode-toggle"
+              className={css({
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                marginBottom: '1.5rem',
+              })}
+            >
+              <button
+                type="button"
+                data-action="view-summary"
+                onClick={() => setViewMode('summary')}
+                className={css({
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: viewMode === 'summary' ? 'bold' : 'normal',
+                  color: viewMode === 'summary' ? 'white' : isDark ? 'gray.300' : 'gray.600',
+                  backgroundColor:
+                    viewMode === 'summary' ? 'blue.500' : isDark ? 'gray.700' : 'gray.200',
+                  borderRadius: '6px 0 0 6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: {
+                    backgroundColor:
+                      viewMode === 'summary' ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                  },
+                })}
+              >
+                Summary
+              </button>
+              <button
+                type="button"
+                data-action="view-debug"
+                onClick={() => setViewMode('debug')}
+                className={css({
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: viewMode === 'debug' ? 'bold' : 'normal',
+                  color: viewMode === 'debug' ? 'white' : isDark ? 'gray.300' : 'gray.600',
+                  backgroundColor:
+                    viewMode === 'debug' ? 'blue.500' : isDark ? 'gray.700' : 'gray.200',
+                  borderRadius: '0 6px 6px 0',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: {
+                    backgroundColor:
+                      viewMode === 'debug' ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                  },
+                })}
+              >
+                Debug View
+              </button>
+            </div>
+          )}
+
+          {/* Session Summary/Overview or Empty State */}
           {session ? (
-            <SessionSummary
-              plan={session}
-              studentName={player.name}
-              onPracticeAgain={handlePracticeAgain}
-            />
+            viewMode === 'summary' ? (
+              <SessionSummary
+                plan={session}
+                studentName={player.name}
+                onPracticeAgain={handlePracticeAgain}
+              />
+            ) : (
+              <SessionOverview plan={session} studentName={player.name} />
+            )
           ) : (
             <div
               className={css({

@@ -74,8 +74,6 @@ interface ActiveSessionProps {
   browseIndex?: number
   /** Called when browse index changes (for external navigation from progress indicator) */
   onBrowseIndexChange?: (index: number) => void
-  /** Called when user wants to exit browse mode and return to practice */
-  onExitBrowse?: () => void
 }
 
 /**
@@ -508,7 +506,6 @@ export function ActiveSession({
   isBrowseMode: isBrowseModeProp = false,
   browseIndex: browseIndexProp,
   onBrowseIndexChange,
-  onExitBrowse,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -1132,7 +1129,6 @@ export function ActiveSession({
         plan={plan}
         browseIndex={browseIndex}
         currentPracticeIndex={currentPracticeLinearIndex}
-        onExitBrowse={onExitBrowse}
       />
     )
   }
