@@ -9,12 +9,13 @@
 
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
 import { DetailedProblemCard } from './DetailedProblemCard'
+import { PracticePreview } from './PracticePreview'
 
 /**
  * Flattened problem item with all context needed for display
@@ -72,8 +73,6 @@ export interface BrowseModeViewProps {
   browseIndex: number
   /** The actual current practice problem index (to highlight) */
   currentPracticeIndex: number
-  /** Called when user wants to exit browse mode and practice the current problem */
-  onExitBrowse?: () => void
 }
 
 /**
@@ -87,14 +86,12 @@ function getResultForProblem(
   return results.find((r) => r.partNumber === partNumber && r.slotIndex === slotIndex)
 }
 
-export function BrowseModeView({
-  plan,
-  browseIndex,
-  currentPracticeIndex,
-  onExitBrowse,
-}: BrowseModeViewProps) {
+export function BrowseModeView({ plan, browseIndex, currentPracticeIndex }: BrowseModeViewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Practice preview mode - when true, show interactive practice interface
+  const [isPracticing, setIsPracticing] = useState(false)
 
   // Build linear problem list
   const linearProblems = useMemo(() => buildLinearProblemList(plan.parts), [plan.parts])
@@ -181,71 +178,116 @@ export function BrowseModeView({
         problemNumber={browseIndex + 1}
       />
 
-      {/* Action Button */}
+      {/* Action Button - Toggle practice mode */}
       <div
         data-element="browse-action"
         className={css({
           display: 'flex',
           justifyContent: 'center',
+          gap: '0.75rem',
           padding: '0.5rem 0',
         })}
       >
-        {isCurrentPractice && onExitBrowse && (
-          <button
-            type="button"
-            data-action="practice-this-problem"
-            onClick={onExitBrowse}
-            className={css({
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: isDark ? 'green.600' : 'green.500',
-              color: 'white',
-              transition: 'all 0.15s ease',
-              _hover: {
-                backgroundColor: isDark ? 'green.500' : 'green.600',
-                transform: 'scale(1.02)',
-              },
-              _active: {
-                transform: 'scale(0.98)',
-              },
-            })}
-          >
-            Practice This Problem
-          </button>
-        )}
-        {isCompleted && (
-          <div
-            data-status="completed"
-            className={css({
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              borderRadius: '6px',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              color: isDark ? 'gray.400' : 'gray.600',
-            })}
-          >
-            This problem was already completed
-          </div>
-        )}
-        {isUpcoming && (
-          <div
-            data-status="upcoming"
-            className={css({
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              borderRadius: '6px',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              color: isDark ? 'gray.400' : 'gray.600',
-            })}
-          >
-            This problem hasn't been reached yet
-          </div>
-        )}
+        <button
+          type="button"
+          data-action={isPracticing ? 'close-practice' : 'practice-this-problem'}
+          onClick={() => setIsPracticing((prev) => !prev)}
+          className={css({
+            padding: '0.75rem 1.5rem',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            borderRadius: '8px',
+            border: isPracticing ? '2px solid' : 'none',
+            borderColor: isPracticing ? (isDark ? 'gray.500' : 'gray.400') : undefined,
+            cursor: 'pointer',
+            backgroundColor: isPracticing ? 'transparent' : isDark ? 'green.600' : 'green.500',
+            color: isPracticing ? (isDark ? 'gray.300' : 'gray.600') : 'white',
+            transition: 'all 0.15s ease',
+            _hover: {
+              backgroundColor: isPracticing
+                ? isDark
+                  ? 'gray.700'
+                  : 'gray.100'
+                : isDark
+                  ? 'green.500'
+                  : 'green.600',
+              transform: 'scale(1.02)',
+            },
+            _active: {
+              transform: 'scale(0.98)',
+            },
+          })}
+        >
+          {isPracticing ? 'Close Practice Panel' : 'Practice This Problem'}
+        </button>
       </div>
+
+      {/* Inline Practice Preview - shown when practicing */}
+      {isPracticing && (
+        <div
+          data-element="practice-panel"
+          className={css({
+            padding: '1rem',
+            backgroundColor: isDark ? 'blue.950' : 'blue.50',
+            borderRadius: '12px',
+            border: '2px solid',
+            borderColor: isDark ? 'blue.800' : 'blue.200',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'blue.800' : 'blue.200',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+                color: isDark ? 'blue.200' : 'blue.700',
+              })}
+            >
+              Practice Panel
+            </span>
+            <span
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'blue.400' : 'blue.500',
+              })}
+            >
+              (does not affect session)
+            </span>
+          </div>
+          <PracticePreview
+            slot={currentItem.slot}
+            part={currentItem.part}
+            problemNumber={browseIndex + 1}
+            onBack={() => setIsPracticing(false)}
+            inline
+          />
+        </div>
+      )}
+
+      {/* Status indicator */}
+      {(isCompleted || isUpcoming || isCurrentPractice) && (
+        <div
+          data-element="status-indicator"
+          className={css({
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.500' : 'gray.500',
+          })}
+        >
+          {isCurrentPractice && '(Current problem in session)'}
+          {isCompleted && '(Already completed in session)'}
+          {isUpcoming && '(Not yet reached in session)'}
+        </div>
+      )}
     </div>
   )
 }
