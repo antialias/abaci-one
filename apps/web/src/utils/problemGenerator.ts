@@ -1,6 +1,10 @@
-import type { GenerationTrace, GenerationTraceStep } from '@/db/schema/session-plans'
+import type {
+  GenerationTrace,
+  GenerationTraceStep,
+  SkillMasteryDisplay,
+} from '@/db/schema/session-plans'
 import type { PracticeStep, SkillSet } from '../types/tutorial'
-import type { SkillCostCalculator } from './skillComplexity'
+import { getBaseComplexity, type SkillCostCalculator } from './skillComplexity'
 import {
   extractSkillsFromProblem,
   extractSkillsFromSequence,
@@ -246,6 +250,138 @@ export interface GenerateProblemOptions {
 }
 
 /**
+ * Diagnostic info about why problem generation failed
+ */
+export interface GenerationDiagnostics {
+  /** Total generation attempts made */
+  totalAttempts: number
+  /** How many attempts failed at sequence generation */
+  sequenceFailures: number
+  /** How many attempts failed sum constraints */
+  sumConstraintFailures: number
+  /** How many attempts failed skill matching */
+  skillMatchFailures: number
+  /** Example of enabled required skills */
+  enabledRequiredSkills: string[]
+  /** Example of target skills (if any) */
+  enabledTargetSkills: string[]
+  /** Last generated problem's skills (if any got that far) */
+  lastGeneratedSkills?: string[]
+  /** How many terms had to use lower complexity because minBudget was impossible */
+  termsWithForcedLowerComplexity?: number
+}
+
+/**
+ * Helper to extract enabled skill paths from a SkillSet
+ */
+function getEnabledSkillPaths(skillSet: SkillSet | Partial<SkillSet>): string[] {
+  const paths: string[] = []
+  for (const [category, skills] of Object.entries(skillSet)) {
+    if (skills && typeof skills === 'object') {
+      for (const [skill, enabled] of Object.entries(skills)) {
+        if (enabled) {
+          paths.push(`${category}.${skill}`)
+        }
+      }
+    }
+  }
+  return paths
+}
+
+/**
+ * Result from generateSingleProblemWithDiagnostics
+ */
+export interface GenerationResult {
+  problem: GeneratedProblem | null
+  diagnostics: GenerationDiagnostics
+}
+
+/**
+ * Generates a single problem with detailed diagnostics about what happened
+ */
+export function generateSingleProblemWithDiagnostics(
+  options: GenerateProblemOptions
+): GenerationResult {
+  const { constraints, requiredSkills, targetSkills, forbiddenSkills, costCalculator } = options
+  const maxAttempts = options.attempts ?? 100
+
+  const diagnostics: GenerationDiagnostics = {
+    totalAttempts: 0,
+    sequenceFailures: 0,
+    sumConstraintFailures: 0,
+    skillMatchFailures: 0,
+    enabledRequiredSkills: getEnabledSkillPaths(requiredSkills),
+    enabledTargetSkills: targetSkills ? getEnabledSkillPaths(targetSkills) : [],
+  }
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    diagnostics.totalAttempts++
+
+    // Generate random number of terms within the specified range
+    const minTerms = constraints.minTerms ?? 3
+    const maxTerms = constraints.maxTerms
+    const termCount = Math.floor(Math.random() * (maxTerms - minTerms + 1)) + minTerms
+
+    // Generate the sequence of numbers to add
+    const sequenceResult = generateSequence(
+      constraints,
+      termCount,
+      requiredSkills,
+      targetSkills,
+      forbiddenSkills,
+      costCalculator
+    )
+
+    if (!sequenceResult) {
+      diagnostics.sequenceFailures++
+      continue
+    }
+
+    const { terms, trace } = sequenceResult
+    const sum = trace.answer
+
+    // Check sum constraints
+    if (constraints.maxSum && sum > constraints.maxSum) {
+      diagnostics.sumConstraintFailures++
+      continue
+    }
+    if (constraints.minSum && sum < constraints.minSum) {
+      diagnostics.sumConstraintFailures++
+      continue
+    }
+
+    const problemSkills = trace.allSkills
+    diagnostics.lastGeneratedSkills = problemSkills
+
+    // Determine difficulty
+    let difficulty: 'easy' | 'medium' | 'hard' = 'easy'
+    if (problemSkills.some((skill) => skill.startsWith('tenComplements'))) {
+      difficulty = 'hard'
+    } else if (problemSkills.some((skill) => skill.startsWith('fiveComplements'))) {
+      difficulty = 'medium'
+    }
+
+    const problem: GeneratedProblem = {
+      id: `problem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      terms,
+      answer: sum,
+      requiredSkills: problemSkills,
+      difficulty,
+      explanation: generateSequentialExplanation(terms, sum, problemSkills),
+      generationTrace: trace,
+    }
+
+    if (problemMatchesSkills(problem, requiredSkills, targetSkills, forbiddenSkills)) {
+      return { problem, diagnostics }
+    }
+
+    diagnostics.skillMatchFailures++
+  }
+
+  return { problem: null, diagnostics }
+}
+
+/**
  * Generates a single sequential addition problem that matches the given constraints and skills
  */
 export function generateSingleProblem(
@@ -280,59 +416,17 @@ export function generateSingleProblem(
     _attempts = attempts
   }
 
-  for (let attempt = 0; attempt < _attempts; attempt++) {
-    // Generate random number of terms within the specified range
-    const minTerms = constraints.minTerms ?? 3
-    const maxTerms = constraints.maxTerms
-    const termCount = Math.floor(Math.random() * (maxTerms - minTerms + 1)) + minTerms
+  // Use the diagnostics version internally
+  const result = generateSingleProblemWithDiagnostics({
+    constraints,
+    requiredSkills: _requiredSkills,
+    targetSkills: _targetSkills,
+    forbiddenSkills: _forbiddenSkills,
+    costCalculator,
+    attempts: _attempts,
+  })
 
-    // Generate the sequence of numbers to add (now returns trace with provenance)
-    const sequenceResult = generateSequence(
-      constraints,
-      termCount,
-      _requiredSkills,
-      _targetSkills,
-      _forbiddenSkills,
-      costCalculator
-    )
-
-    if (!sequenceResult) continue // Failed to generate valid sequence
-
-    const { terms, trace } = sequenceResult
-    const sum = trace.answer
-
-    // Check sum constraints
-    if (constraints.maxSum && sum > constraints.maxSum) continue
-    if (constraints.minSum && sum < constraints.minSum) continue
-
-    // Use skills from the trace (provenance from the generator itself)
-    const problemSkills = trace.allSkills
-
-    // Determine difficulty based on skills required
-    let difficulty: 'easy' | 'medium' | 'hard' = 'easy'
-    if (problemSkills.some((skill) => skill.startsWith('tenComplements'))) {
-      difficulty = 'hard'
-    } else if (problemSkills.some((skill) => skill.startsWith('fiveComplements'))) {
-      difficulty = 'medium'
-    }
-
-    const problem: GeneratedProblem = {
-      id: `problem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      terms,
-      answer: sum,
-      requiredSkills: problemSkills,
-      difficulty,
-      explanation: generateSequentialExplanation(terms, sum, problemSkills),
-      generationTrace: trace, // Include provenance trace
-    }
-
-    // Check if problem matches skill requirements
-    if (problemMatchesSkills(problem, _requiredSkills, _targetSkills, _forbiddenSkills)) {
-      return problem
-    }
-  }
-
-  return null // Failed to generate a suitable problem
+  return result.problem
 }
 
 /** Result from generating a sequence, includes provenance trace */
@@ -432,16 +526,32 @@ function generateSequence(
   // Calculate total complexity cost from all steps
   const totalComplexityCost = steps.reduce((sum, step) => sum + (step.complexityCost ?? 0), 0)
 
+  // Build skill mastery context if cost calculator is available
+  const allSkills = [...new Set(steps.flatMap((s) => s.skillsUsed))]
+  let skillMasteryContext: Record<string, SkillMasteryDisplay> | undefined
+
+  if (costCalculator) {
+    skillMasteryContext = {}
+    for (const skillId of allSkills) {
+      skillMasteryContext[skillId] = {
+        masteryState: costCalculator.getMasteryState(skillId),
+        baseCost: getBaseComplexity(skillId),
+        effectiveCost: costCalculator.calculateSkillCost(skillId),
+      }
+    }
+  }
+
   return {
     terms,
     trace: {
       terms,
       answer: currentValue,
       steps,
-      allSkills: [...new Set(steps.flatMap((s) => s.skillsUsed))],
+      allSkills,
       budgetConstraint: constraints.maxComplexityBudgetPerTerm,
       minBudgetConstraint: constraints.minComplexityBudgetPerTerm,
       totalComplexityCost: totalComplexityCost > 0 ? totalComplexityCost : undefined,
+      skillMasteryContext,
     },
   }
 }
@@ -459,12 +569,110 @@ interface TermWithSkills {
   isSubtraction: boolean
   /** Complexity cost (if calculator was provided) */
   complexityCost?: number
+  /** Whether this term met the minBudget requirement (used for diagnostics) */
+  metMinBudget?: boolean
+}
+
+/**
+ * Collects all valid terms from a given state, categorized by complexity.
+ *
+ * This is the core of the state-aware generation algorithm. Instead of
+ * filtering by minBudget during collection (which can result in empty candidates),
+ * we collect ALL valid terms and categorize them for intelligent selection.
+ */
+function collectValidTerms(
+  currentValue: number,
+  constraints: ProblemConstraints,
+  requiredSkills: SkillSet,
+  forbiddenSkills: Partial<SkillSet> | undefined,
+  allowSubtraction: boolean,
+  costCalculator?: SkillCostCalculator
+): { meetsMinBudget: TermWithSkills[]; belowMinBudget: TermWithSkills[] } {
+  const { min, max } = constraints.numberRange
+  const maxBudget = constraints.maxComplexityBudgetPerTerm
+  const minBudget = constraints.minComplexityBudgetPerTerm
+
+  const meetsMinBudget: TermWithSkills[] = []
+  const belowMinBudget: TermWithSkills[] = []
+
+  // Helper to check if a term is valid and categorize it
+  const processTerm = (term: number, isSubtraction: boolean) => {
+    const newValue = isSubtraction ? currentValue - term : currentValue + term
+
+    // Skip if result would be negative (for subtraction)
+    if (isSubtraction && newValue < 0) return
+
+    // Get skills for this operation
+    const signedTerm = isSubtraction ? -term : term
+    const stepSkills = analyzeStepSkills(currentValue, signedTerm, newValue)
+
+    // Check if the step uses only allowed skills (and no forbidden skills)
+    const usesValidSkills = stepSkills.every((skillPath) => {
+      if (!isSkillEnabled(skillPath, requiredSkills)) return false
+      if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
+      return true
+    })
+
+    if (!usesValidSkills) return
+
+    // Calculate complexity cost
+    const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
+
+    // Check max budget - skip if too complex for this student
+    if (termCost !== undefined && maxBudget !== undefined && termCost > maxBudget) return
+
+    // Determine if this term meets the min budget requirement
+    const meetsMin = minBudget === undefined || termCost === undefined || termCost >= minBudget
+
+    const candidate: TermWithSkills = {
+      term,
+      skillsUsed: stepSkills,
+      isSubtraction,
+      complexityCost: termCost,
+      metMinBudget: meetsMin,
+    }
+
+    if (meetsMin) {
+      meetsMinBudget.push(candidate)
+    } else {
+      belowMinBudget.push(candidate)
+    }
+  }
+
+  // Try each possible ADDITION term value
+  for (let term = min; term <= max; term++) {
+    processTerm(term, false)
+  }
+
+  // Try each possible SUBTRACTION term value (if allowed)
+  if (allowSubtraction) {
+    for (let term = min; term <= max; term++) {
+      processTerm(term, true)
+    }
+  }
+
+  return { meetsMinBudget, belowMinBudget }
 }
 
 /**
  * Finds a valid next term in the sequence and returns both the term and
  * the skills that were computed for it (provenance).
  * Supports both addition and subtraction operations.
+ *
+ * KEY ALGORITHM: State-aware complexity selection
+ *
+ * The complexity of a skill depends on the current abacus state:
+ * - Adding +4 to currentValue=0 uses basic.directAddition (cost 0)
+ * - Adding +4 to currentValue=7 uses fiveComplements.4=5-1 (cost 1)
+ *
+ * This function:
+ * 1. Collects ALL valid terms (skills allowed, max budget OK)
+ * 2. Categorizes them: meets minBudget vs. below minBudget
+ * 3. Prefers terms that meet minBudget
+ * 4. Falls back to lower-cost terms if no term can meet minBudget
+ *
+ * This ensures generation never fails due to impossible budget constraints
+ * while still preferring appropriately challenging problems.
  */
 function findValidNextTermWithTrace(
   currentValue: number,
@@ -477,117 +685,52 @@ function findValidNextTermWithTrace(
   costCalculator?: SkillCostCalculator,
   previousTerm?: PreviousTerm
 ): TermWithSkills | null {
-  const { min, max } = constraints.numberRange
-  const candidates: TermWithSkills[] = []
-  const maxBudget = constraints.maxComplexityBudgetPerTerm
-  const minBudget = constraints.minComplexityBudgetPerTerm
+  // Step 1: Collect all valid terms, categorized by min budget
+  const { meetsMinBudget, belowMinBudget } = collectValidTerms(
+    currentValue,
+    constraints,
+    requiredSkills,
+    forbiddenSkills,
+    allowSubtraction,
+    costCalculator
+  )
 
-  // Try each possible ADDITION term value
-  for (let term = min; term <= max; term++) {
-    const newValue = currentValue + term
-
-    // Check if this addition step is valid - THIS is the provenance computation
-    const stepSkills = analyzeStepSkills(currentValue, term, newValue)
-
-    // Check if the step uses only allowed skills (and no forbidden skills)
-    const usesValidSkills = stepSkills.every((skillPath) => {
-      // Must use only required skills
-      if (!isSkillEnabled(skillPath, requiredSkills)) return false
-
-      // Must not use forbidden skills
-      if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
-
-      return true
-    })
-
-    if (!usesValidSkills) continue
-
-    // Calculate complexity cost (if calculator provided)
-    const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
-
-    // Check complexity budget (if calculator and budget are provided)
-    if (termCost !== undefined) {
-      if (maxBudget !== undefined && termCost > maxBudget) continue // Skip - too complex for this student
-      // Skip min budget check for first term (starting from 0) - basic skills always have cost 0
-      // and we can't avoid using basic skills when adding to 0
-      if (minBudget !== undefined && currentValue > 0 && termCost < minBudget) continue // Skip - too easy for this purpose
-    }
-
-    candidates.push({
-      term,
-      skillsUsed: stepSkills,
-      isSubtraction: false,
-      complexityCost: termCost,
-    })
+  // Step 2: Choose the best candidate pool
+  // Prefer terms that meet minBudget, fall back to lower-cost if needed
+  let candidates: TermWithSkills[]
+  if (meetsMinBudget.length > 0) {
+    candidates = meetsMinBudget
+  } else {
+    // Graceful fallback: accept lower complexity when budget can't be met
+    // This handles cases like first term from 0, or states where no term triggers high-cost skills
+    candidates = belowMinBudget
   }
 
-  // Try each possible SUBTRACTION term value (if allowed)
-  if (allowSubtraction) {
-    for (let term = min; term <= max; term++) {
-      const newValue = currentValue - term
+  if (candidates.length === 0) return null
 
-      // Skip if result would be negative
-      if (newValue < 0) continue
-
-      // Check if this subtraction step is valid - use negative term for subtraction
-      const stepSkills = analyzeStepSkills(currentValue, -term, newValue)
-
-      // Check if the step uses only allowed skills (and no forbidden skills)
-      const usesValidSkills = stepSkills.every((skillPath) => {
-        // Must use only required skills
-        if (!isSkillEnabled(skillPath, requiredSkills)) return false
-
-        // Must not use forbidden skills
-        if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
-
-        return true
-      })
-
-      if (!usesValidSkills) continue
-
-      // Calculate complexity cost (if calculator provided)
-      const termCost = costCalculator ? costCalculator.calculateTermCost(stepSkills) : undefined
-
-      // Check complexity budget (if calculator and budget are provided)
-      if (termCost !== undefined) {
-        if (maxBudget !== undefined && termCost > maxBudget) continue // Skip - too complex for this student
-        // Note: subtraction is only allowed when currentValue > 0, but apply same pattern for consistency
-        if (minBudget !== undefined && currentValue > 0 && termCost < minBudget) continue // Skip - too easy for this purpose
-      }
-
-      candidates.push({
-        term,
-        skillsUsed: stepSkills,
-        isSubtraction: true,
-        complexityCost: termCost,
-      })
-    }
-  }
-
-  // Filter out immediate inverses of the previous term
+  // Step 3: Filter out immediate inverses of the previous term
   // e.g., if previous was +5, don't allow -5; if previous was -3, don't allow +3
   if (previousTerm) {
-    const filteredCandidates = candidates.filter((candidate) => {
-      // Check if this candidate is the exact inverse of the previous term
+    const nonInverseCandidates = candidates.filter((candidate) => {
       if (
         candidate.term === previousTerm.term &&
         candidate.isSubtraction !== previousTerm.isSubtraction
       ) {
-        return false // Skip: this would undo what we just did
+        return false
       }
       return true
     })
 
-    // Only use filtered list if it's not empty (fallback to original if all were filtered)
-    if (filteredCandidates.length > 0) {
-      candidates.length = 0
-      candidates.push(...filteredCandidates)
+    // Only use filtered list if it's not empty
+    if (nonInverseCandidates.length > 0) {
+      candidates = nonInverseCandidates
     }
   }
 
   if (candidates.length === 0) return null
 
-  // If we have target skills and this is not the last term, try to pick a term that uses target skills
+  // Step 4: If we have target skills and this is not the last term,
+  // prefer terms that use target skills
   if (targetSkills && !isLastTerm) {
     const targetCandidates = candidates.filter((candidate) =>
       candidate.skillsUsed.some((skillPath) => isSkillEnabled(skillPath, targetSkills))
@@ -598,7 +741,7 @@ function findValidNextTermWithTrace(
     }
   }
 
-  // Return random valid candidate
+  // Step 5: Return random valid candidate
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
