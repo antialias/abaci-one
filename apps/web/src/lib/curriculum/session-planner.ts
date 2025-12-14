@@ -453,6 +453,66 @@ export async function getMostRecentCompletedSession(playerId: string): Promise<S
 }
 
 /**
+ * Result from a problem with session context for traceability
+ */
+export interface ProblemResultWithContext extends SlotResult {
+  /** Session ID this result came from */
+  sessionId: string
+  /** When the session was completed */
+  sessionCompletedAt: Date
+  /** Part type (abacus/visualization/linear) */
+  partType: SessionPartType
+}
+
+/**
+ * Get recent problem results across multiple sessions for skills analysis
+ *
+ * Returns a flat list of problem results with session context,
+ * ordered by most recent first.
+ *
+ * @param playerId - The player to fetch results for
+ * @param sessionCount - Number of recent sessions to include (default 50)
+ */
+export async function getRecentSessionResults(
+  playerId: string,
+  sessionCount = 50
+): Promise<ProblemResultWithContext[]> {
+  const sessions = await db.query.sessionPlans.findMany({
+    where: and(
+      eq(schema.sessionPlans.playerId, playerId),
+      eq(schema.sessionPlans.status, 'completed')
+    ),
+    orderBy: (plans, { desc }) => [desc(plans.completedAt)],
+    limit: sessionCount,
+  })
+
+  // Flatten results with session context
+  const results: ProblemResultWithContext[] = []
+
+  for (const session of sessions) {
+    if (!session.completedAt) continue
+
+    for (const result of session.results) {
+      // Find the part type for this result
+      const part = session.parts.find((p) => p.partNumber === result.partNumber)
+      const partType = part?.type ?? 'linear'
+
+      results.push({
+        ...result,
+        sessionId: session.id,
+        sessionCompletedAt: session.completedAt,
+        partType,
+      })
+    }
+  }
+
+  // Sort by timestamp descending (most recent first)
+  results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  return results
+}
+
+/**
  * Approve a plan (teacher says "Let's Go!")
  */
 export async function approveSessionPlan(planId: string): Promise<SessionPlan> {

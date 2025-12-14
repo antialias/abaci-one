@@ -152,27 +152,35 @@ function SkillCard({
           fontSize: '0.875rem',
         })}
       >
+        {/* Honest framing: show counts instead of misleading accuracy % */}
         <div>
-          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>Accuracy: </span>
+          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>Correct: </span>
           <span
             className={css({
-              color:
-                skill.accuracy >= 0.7
-                  ? isDark
-                    ? 'green.400'
-                    : 'green.600'
-                  : isDark
-                    ? 'orange.400'
-                    : 'orange.600',
+              color: isDark ? 'green.400' : 'green.600',
               fontWeight: 'medium',
             })}
           >
-            {Math.round(skill.accuracy * 100)}%
+            {Math.round(skill.attempts * skill.accuracy)}
           </span>
         </div>
         <div>
-          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>Attempts: </span>
-          <span className={css({ color: isDark ? 'gray.200' : 'gray.700' })}>{skill.attempts}</span>
+          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>In errors: </span>
+          <span
+            className={css({
+              color:
+                skill.attempts - Math.round(skill.attempts * skill.accuracy) > 0
+                  ? isDark
+                    ? 'orange.400'
+                    : 'orange.600'
+                  : isDark
+                    ? 'gray.400'
+                    : 'gray.500',
+              fontWeight: 'medium',
+            })}
+          >
+            {skill.attempts - Math.round(skill.attempts * skill.accuracy)}
+          </span>
         </div>
         {skill.avgResponseTimeMs && (
           <div className={css({ gridColumn: 'span 2' })}>
@@ -337,7 +345,7 @@ export function SkillPerformanceReports({
         </div>
       )}
 
-      {/* Areas Needing Work */}
+      {/* Skills appearing frequently in errors or slow responses */}
       {(hasSlowSkills || hasLowAccuracySkills || hasReinforcementSkills) && (
         <div className={css({ marginBottom: '20px' })}>
           <h4
@@ -348,8 +356,19 @@ export function SkillPerformanceReports({
               marginBottom: '12px',
             })}
           >
-            ⚠️ Areas Needing Work
+            🔍 Appear in Frequent Errors
           </h4>
+          <p
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '12px',
+              fontStyle: 'italic',
+            })}
+          >
+            Note: These skills appeared in problems with errors. The error may have been caused by
+            other skills in the same problem.
+          </p>
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
             {analysis.slowSkills.map((skill) => (
               <SkillCard

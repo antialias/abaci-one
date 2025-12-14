@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -322,6 +323,59 @@ export function DashboardClient({
             onSetSkillsManually={handleSetSkillsManually}
             onRecordOfflinePractice={handleRecordOfflinePractice}
           />
+
+          {/* Skills Dashboard Link */}
+          <div className={css({ marginTop: '24px' })}>
+            <Link
+              href={`/practice/${studentId}/skills`}
+              data-action="view-skills"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '1rem 1.25rem',
+                borderRadius: '12px',
+                backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                border: '2px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  borderColor: isDark ? 'blue.600' : 'blue.400',
+                  backgroundColor: isDark ? 'gray.750' : 'blue.50',
+                },
+              })}
+            >
+              <div>
+                <div
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    marginBottom: '0.25rem',
+                  })}
+                >
+                  View Skills Dashboard
+                </div>
+                <div
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  See detailed skill performance, intervention points, and problem history
+                </div>
+              </div>
+              <span
+                className={css({
+                  fontSize: '1.5rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                })}
+              >
+                →
+              </span>
+            </Link>
+          </div>
 
           {/* Skill Performance Reports - shows response time analysis */}
           <div className={css({ marginTop: '24px' })}>
