@@ -237,7 +237,7 @@ const newPKnown = oldPKnown * (1 - evidenceWeight) + bktUpdate * evidenceWeight
 
 ## Automaticity-Aware Problem Generation
 
-The BKT estimates feed back into problem generation. We budget problem complexity based on the student's current pattern automaticity.
+Separately from BKT (which powers the Skills Dashboard), we budget problem complexity based on the student's fluency state for each pattern.
 
 ### Complexity Costing
 
