@@ -1480,7 +1480,7 @@ export function ActiveSession({
               )}
               {/* Abacus dock - positioned absolutely so it doesn't affect problem centering */}
               {/* Width 100% matches problem width, height matches problem height */}
-              {currentPart.type === 'abacus' && !showHelpOverlay && problemHeight && (
+              {currentPart.type === 'abacus' && !showHelpOverlay && (problemHeight ?? 0) > 0 && (
                 <AbacusDock
                   id="practice-abacus"
                   columns={String(Math.abs(attempt.problem.answer)).length}
