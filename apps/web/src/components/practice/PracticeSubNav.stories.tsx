@@ -114,23 +114,57 @@ function createSessionHud(config: {
   totalProblems: number
   timing?: TimingData
   health?: { overall: 'good' | 'warning' | 'struggling'; accuracy: number }
+  isBrowseMode?: boolean
 }): SessionHudData {
   const partNumber = config.partType === 'abacus' ? 1 : config.partType === 'visualization' ? 2 : 3
+  const parts = createMockParts()
+  const currentPartIndex = partNumber - 1
+
+  // Create mock results based on completedProblems
+  const results: SlotResult[] = []
+  let remaining = config.completedProblems
+  for (let pIdx = 0; pIdx < parts.length && remaining > 0; pIdx++) {
+    const part = parts[pIdx]
+    const slotsToFill = Math.min(remaining, part.slots.length)
+    for (let sIdx = 0; sIdx < slotsToFill; sIdx++) {
+      results.push({
+        partNumber: (pIdx + 1) as 1 | 2 | 3,
+        slotIndex: sIdx,
+        problem: { terms: [3, 4], answer: 7, skillsRequired: ['basic.directAddition'] },
+        studentAnswer: 7,
+        isCorrect: Math.random() > 0.15,
+        responseTimeMs: 2500 + Math.random() * 3000,
+        skillsExercised: ['basic.directAddition'],
+        usedOnScreenAbacus: pIdx === 0,
+        timestamp: new Date(),
+        helpLevelUsed: 0,
+        incorrectAttempts: 0,
+      })
+    }
+    remaining -= slotsToFill
+  }
+
   return {
     isPaused: config.isPaused ?? false,
+    parts,
+    currentPartIndex,
     currentPart: {
       type: config.partType,
       partNumber,
       totalSlots: 5,
     },
     currentSlotIndex: config.completedProblems % 5,
+    results,
     completedProblems: config.completedProblems,
     totalProblems: config.totalProblems,
     sessionHealth: config.health,
     timing: config.timing,
+    isBrowseMode: config.isBrowseMode ?? false,
     onPause: () => console.log('Pause clicked'),
     onResume: () => console.log('Resume clicked'),
     onEndEarly: () => console.log('End early clicked'),
+    onToggleBrowse: () => console.log('Toggle browse clicked'),
+    onBrowseNavigate: (index) => console.log(`Navigate to problem ${index}`),
   }
 }
 

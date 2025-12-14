@@ -40,6 +40,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [isPaused, setIsPaused] = useState(false)
   // Track timing data from ActiveSession for the sub-nav HUD
   const [timingData, setTimingData] = useState<AttemptTimingData | null>(null)
+  // Browse mode state - lifted here so PracticeSubNav can trigger it
+  const [isBrowseMode, setIsBrowseMode] = useState(false)
+  // Browse index - lifted for navigation from SessionProgressIndicator
+  const [browseIndex, setBrowseIndex] = useState(0)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -116,12 +120,15 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const sessionHud: SessionHudData | undefined = currentPart
     ? {
         isPaused,
+        parts: currentPlan.parts,
+        currentPartIndex: currentPlan.currentPartIndex,
         currentPart: {
           type: currentPart.type,
           partNumber: currentPart.partNumber,
           totalSlots: currentPart.slots.length,
         },
         currentSlotIndex: currentPlan.currentSlotIndex,
+        results: currentPlan.results,
         completedProblems,
         totalProblems,
         sessionHealth: sessionHealth
@@ -142,6 +149,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         onPause: handlePause,
         onResume: handleResume,
         onEndEarly: () => handleEndEarly('Session ended'),
+        isBrowseMode,
+        onToggleBrowse: () => setIsBrowseMode((prev) => !prev),
+        onBrowseNavigate: setBrowseIndex,
       }
     : undefined
 
@@ -166,7 +176,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onResume={handleResume}
             onComplete={handleSessionComplete}
             onTimingUpdate={setTimingData}
-            hideHud={true}
+            isBrowseMode={isBrowseMode}
+            browseIndex={browseIndex}
+            onBrowseIndexChange={setBrowseIndex}
+            onExitBrowse={() => setIsBrowseMode(false)}
           />
         </PracticeErrorBoundary>
       </main>

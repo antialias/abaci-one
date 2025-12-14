@@ -228,9 +228,6 @@ export function PracticeTimingDisplay({
             currentTimeMs={currentElapsedMs}
             isDark={isDark}
             compact={true}
-            averageLabel={`Avg: ${formatSecondsDecimal(overallStats.mean)}`}
-            fastLabel=""
-            slowLabel=""
           />
         </div>
       )}

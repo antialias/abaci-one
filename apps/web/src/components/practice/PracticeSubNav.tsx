@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { SessionProgressIndicator } from './SessionProgressIndicator'
 import { SpeedMeter } from './SpeedMeter'
 
 /**
@@ -27,6 +28,10 @@ export interface TimingData {
 export interface SessionHudData {
   /** Is the session currently paused? */
   isPaused: boolean
+  /** All session parts */
+  parts: SessionPart[]
+  /** Current part index */
+  currentPartIndex: number
   /** Current part info */
   currentPart: {
     type: 'abacus' | 'visualization' | 'linear'
@@ -35,6 +40,8 @@ export interface SessionHudData {
   }
   /** Current slot index within the part */
   currentSlotIndex: number
+  /** All results so far */
+  results: SlotResult[]
   /** Total problems completed so far */
   completedProblems: number
   /** Total problems in session */
@@ -46,10 +53,15 @@ export interface SessionHudData {
   }
   /** Timing data for current problem (optional) */
   timing?: TimingData
+  /** Whether browse mode is active */
+  isBrowseMode: boolean
   /** Callbacks for transport controls */
   onPause: () => void
   onResume: () => void
   onEndEarly: () => void
+  onToggleBrowse: () => void
+  /** Navigate to specific problem in browse mode */
+  onBrowseNavigate?: (linearIndex: number) => void
 }
 
 interface PracticeSubNavProps {
@@ -406,87 +418,78 @@ export function PracticeSubNav({
             >
               ⏹
             </button>
+
+            {/* Browse mode toggle button */}
+            <button
+              type="button"
+              data-action="toggle-browse"
+              data-active={sessionHud.isBrowseMode}
+              onClick={sessionHud.onToggleBrowse}
+              className={css({
+                width: { base: '32px', md: '36px' },
+                height: { base: '32px', md: '36px' },
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: { base: '1rem', md: '1.125rem' },
+                color: sessionHud.isBrowseMode ? 'white' : isDark ? 'blue.400' : 'blue.500',
+                backgroundColor: sessionHud.isBrowseMode
+                  ? 'blue.500'
+                  : isDark
+                    ? 'gray.700'
+                    : 'gray.200',
+                borderRadius: '6px',
+                border: '2px solid',
+                borderColor: sessionHud.isBrowseMode
+                  ? 'blue.400'
+                  : isDark
+                    ? 'gray.600'
+                    : 'gray.300',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: sessionHud.isBrowseMode
+                    ? 'blue.600'
+                    : isDark
+                      ? 'blue.900'
+                      : 'blue.100',
+                  borderColor: sessionHud.isBrowseMode
+                    ? 'blue.500'
+                    : isDark
+                      ? 'blue.700'
+                      : 'blue.300',
+                  transform: 'scale(1.05)',
+                },
+                _active: {
+                  transform: 'scale(0.95)',
+                },
+              })}
+              aria-label={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Browse all problems'}
+              title={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Browse all problems'}
+            >
+              🔢
+            </button>
           </div>
 
-          {/* BIG Progress bar - takes up remaining width */}
+          {/* Session Progress Indicator - discrete problem slots */}
           <div
-            data-element="progress-bar"
+            data-element="progress-indicator"
             className={css({
               flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem',
+              minWidth: 0, // Allow shrinking
             })}
           >
-            {/* Labels row */}
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              })}
-            >
-              {/* Mode label on left */}
-              <div
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                })}
-              >
-                <span
-                  className={css({ fontSize: { base: '1rem', md: '1.125rem' }, lineHeight: 1 })}
-                >
-                  {getPartTypeEmoji(sessionHud.currentPart.type)}
-                </span>
-                <span
-                  className={css({
-                    display: { base: 'none', sm: 'inline' },
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: isDark ? 'gray.100' : 'gray.700',
-                  })}
-                >
-                  {getPartTypeLabel(sessionHud.currentPart.type)}
-                </span>
-              </div>
-
-              {/* "X left" on right */}
-              <span
-                className={css({
-                  fontSize: { base: '0.75rem', md: '0.875rem' },
-                  fontWeight: '600',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                })}
-              >
-                {sessionHud.totalProblems - sessionHud.completedProblems} left
-              </span>
-            </div>
-
-            {/* Big chunky progress bar */}
-            <div
-              className={css({
-                width: '100%',
-                height: { base: '12px', md: '16px' },
-                backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                borderRadius: { base: '6px', md: '8px' },
-                overflow: 'hidden',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
-              })}
-            >
-              <div
-                className={css({
-                  height: '100%',
-                  backgroundColor: 'green.500',
-                  borderRadius: { base: '6px', md: '8px' },
-                  transition: 'width 0.3s ease',
-                  boxShadow: '0 2px 4px rgba(34, 197, 94, 0.3)',
-                })}
-                style={{
-                  width: `${Math.round((sessionHud.completedProblems / sessionHud.totalProblems) * 100)}%`,
-                }}
-              />
-            </div>
+            <SessionProgressIndicator
+              parts={sessionHud.parts}
+              results={sessionHud.results}
+              currentPartIndex={sessionHud.currentPartIndex}
+              currentSlotIndex={sessionHud.currentSlotIndex}
+              isBrowseMode={sessionHud.isBrowseMode}
+              onNavigate={sessionHud.onBrowseNavigate}
+              averageResponseTimeMs={timingStats?.hasEnoughData ? timingStats.mean : undefined}
+              isDark={isDark}
+              compact={true}
+            />
           </div>
 
           {/* Timing display */}
@@ -551,9 +554,6 @@ export function PracticeSubNav({
                     currentTimeMs={currentElapsedMs}
                     isDark={isDark}
                     compact={true}
-                    averageLabel=""
-                    fastLabel=""
-                    slowLabel=""
                   />
                 </div>
               )}

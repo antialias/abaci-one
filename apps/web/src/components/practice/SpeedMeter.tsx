@@ -15,16 +15,22 @@ export interface SpeedMeterProps {
   currentTimeMs?: number
   /** Optional compact mode for inline display */
   compact?: boolean
-  /** Label for the average marker (default: "Your usual speed") */
-  averageLabel?: string
-  /** Label for the fast end (default: "Fast") */
-  fastLabel?: string
-  /** Label for the slow/threshold end (default: "Pause") */
-  slowLabel?: string
 }
 
 /**
- * Speed visualization bar - shows average speed vs variation
+ * Format milliseconds to a kid-friendly short time string
+ * Under 60s: "Xs" (e.g., "8s", "30s")
+ * 60s+: "Xm" (e.g., "2m")
+ */
+function formatTimeShort(ms: number): string {
+  const seconds = Math.round(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.round(seconds / 60)
+  return `${minutes}m`
+}
+
+/**
+ * Speed visualization bar - shows average speed vs variation with actual time values
  * Used in session pause modal and timing displays to visualize response time patterns
  */
 export function SpeedMeter({
@@ -34,14 +40,11 @@ export function SpeedMeter({
   isDark,
   currentTimeMs,
   compact = false,
-  averageLabel = 'Your usual speed',
-  fastLabel = 'Fast',
-  slowLabel = 'Pause',
 }: SpeedMeterProps) {
-  // Scale so the mean is around 50% and threshold is at 100%
-  // This ensures the visualization is always meaningful regardless of absolute values
-  const scaleMax = thresholdMs
+  // Scale so threshold is at ~83% instead of 100%, giving visual room beyond it
+  const scaleMax = thresholdMs * 1.2
   const meanPercent = Math.min(95, Math.max(5, (meanMs / scaleMax) * 100))
+  const thresholdPercent = (thresholdMs / scaleMax) * 100 // ~83%
 
   // Variation should be visible but proportional - minimum 8% width for visibility
   const rawVariationPercent = (stdDevMs / scaleMax) * 100
@@ -52,9 +55,14 @@ export function SpeedMeter({
     ? Math.min(110, Math.max(0, (currentTimeMs / scaleMax) * 100))
     : null
 
+  // Check if mean and threshold labels would overlap (within 15% of each other)
+  const labelsWouldOverlap = thresholdPercent - meanPercent < 15
+
   const barHeight = compact ? '16px' : '24px'
   const markerTop = compact ? '-2px' : '-4px'
   const markerHeight = compact ? '20px' : '32px'
+  const labelFontSize = compact ? '0.625rem' : '0.75rem'
+  const smallLabelFontSize = compact ? '0.5rem' : '0.625rem'
 
   return (
     <div
@@ -117,7 +125,7 @@ export function SpeedMeter({
               position: 'absolute',
               width: '4px',
               backgroundColor:
-                currentPercent > 100
+                currentPercent > thresholdPercent
                   ? isDark
                     ? 'red.400'
                     : 'red.500'
@@ -152,31 +160,87 @@ export function SpeedMeter({
             borderRadius: '2px',
           })}
           style={{
-            left: 'calc(100% - 2px)',
+            left: `calc(${thresholdPercent}% - 2px)`,
           }}
         />
       </div>
 
-      {/* Labels */}
+      {/* Time labels positioned under their markers */}
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: compact ? '0.25rem' : '0.5rem',
-          color: isDark ? 'gray.400' : 'gray.500',
+          position: 'relative',
+          height: compact ? '1.75rem' : '2.25rem',
+          marginTop: compact ? '0.25rem' : '0.375rem',
         })}
-        style={{ fontSize: compact ? '0.625rem' : '0.6875rem' }}
       >
-        <span>{fastLabel}</span>
+        {/* 0s label at left */}
         <span
           className={css({
-            color: isDark ? 'blue.300' : 'blue.600',
-            fontWeight: 'bold',
+            position: 'absolute',
+            left: 0,
+            color: isDark ? 'gray.500' : 'gray.400',
           })}
+          style={{ fontSize: labelFontSize }}
         >
-          {averageLabel}
+          0s
         </span>
-        <span>{slowLabel}</span>
+
+        {/* Average time label - positioned at mean marker */}
+        {!labelsWouldOverlap && (
+          <span
+            className={css({
+              position: 'absolute',
+              textAlign: 'center',
+              color: isDark ? 'blue.300' : 'blue.600',
+              fontWeight: 'bold',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              lineHeight: 1.2,
+            })}
+            style={{
+              left: `${meanPercent}%`,
+              transform: 'translateX(-50%)',
+              fontSize: labelFontSize,
+            }}
+          >
+            ~{formatTimeShort(meanMs)}
+            <span
+              className={css({ fontWeight: 'normal', color: isDark ? 'gray.400' : 'gray.500' })}
+              style={{ fontSize: smallLabelFontSize }}
+            >
+              avg
+            </span>
+          </span>
+        )}
+
+        {/* Threshold time label - positioned at threshold marker */}
+        <span
+          className={css({
+            position: 'absolute',
+            textAlign: 'center',
+            color: isDark ? 'yellow.300' : 'yellow.700',
+            fontWeight: 'bold',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1.2,
+          })}
+          style={{
+            left: `${thresholdPercent}%`,
+            transform: 'translateX(-50%)',
+            fontSize: labelFontSize,
+          }}
+        >
+          {labelsWouldOverlap ? `~${formatTimeShort(meanMs)} / ` : ''}
+          {formatTimeShort(thresholdMs)}
+          <span
+            className={css({ fontWeight: 'normal', color: isDark ? 'gray.400' : 'gray.500' })}
+            style={{ fontSize: smallLabelFontSize }}
+          >
+            {labelsWouldOverlap ? 'avg / pause' : 'pause'}
+          </span>
+        </span>
       </div>
     </div>
   )

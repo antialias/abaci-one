@@ -13,7 +13,10 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 
-import { SessionPausedModal, type AutoPauseStats, type PauseInfo } from './SessionPausedModal'
+import { css } from '../../../styled-system/css'
+import { type AutoPauseStats, calculateAutoPauseInfo, type PauseInfo } from './autoPauseCalculator'
+import { BrowseModeView, getLinearIndex } from './BrowseModeView'
+import { SessionPausedModal } from './SessionPausedModal'
 
 // Re-export types for consumers
 export type { AutoPauseStats, PauseInfo }
@@ -27,73 +30,6 @@ export interface StudentInfo {
   color: string
 }
 
-// ============================================================================
-// Auto-pause threshold calculation
-// ============================================================================
-
-const DEFAULT_PAUSE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes default
-const MIN_SAMPLES_FOR_STATISTICS = 5 // Minimum problems needed for statistical calculation
-
-/**
- * Calculate mean and standard deviation of response times
- */
-function calculateResponseTimeStats(results: SlotResult[]): {
-  mean: number
-  stdDev: number
-  count: number
-} {
-  if (results.length === 0) {
-    return { mean: 0, stdDev: 0, count: 0 }
-  }
-
-  const times = results.map((r) => r.responseTimeMs)
-  const count = times.length
-  const mean = times.reduce((sum, t) => sum + t, 0) / count
-
-  if (count < 2) {
-    return { mean, stdDev: 0, count }
-  }
-
-  const squaredDiffs = times.map((t) => (t - mean) ** 2)
-  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / (count - 1) // Sample std dev
-  const stdDev = Math.sqrt(variance)
-
-  return { mean, stdDev, count }
-}
-
-/**
- * Calculate the auto-pause threshold and full stats for display.
- */
-function calculateAutoPauseInfo(results: SlotResult[]): {
-  threshold: number
-  stats: AutoPauseStats
-} {
-  const { mean, stdDev, count } = calculateResponseTimeStats(results)
-  const usedStatistics = count >= MIN_SAMPLES_FOR_STATISTICS
-
-  let threshold: number
-  if (usedStatistics) {
-    // Use mean + 2 standard deviations
-    threshold = mean + 2 * stdDev
-    // Clamp between 30 seconds and 5 minutes
-    threshold = Math.max(30_000, Math.min(threshold, DEFAULT_PAUSE_TIMEOUT_MS))
-  } else {
-    threshold = DEFAULT_PAUSE_TIMEOUT_MS
-  }
-
-  return {
-    threshold,
-    stats: {
-      meanMs: mean,
-      stdDevMs: stdDev,
-      thresholdMs: threshold,
-      sampleCount: count,
-      usedStatistics,
-    },
-  }
-}
-
-import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { Tooltip, TooltipProvider } from '../ui/Tooltip'
@@ -130,38 +66,16 @@ interface ActiveSessionProps {
   onResume?: () => void
   /** Called when session completes */
   onComplete: () => void
-  /** Hide the built-in HUD (when using external HUD in PracticeSubNav) */
-  hideHud?: boolean
   /** Called with timing data when it changes (for external timing display) */
   onTimingUpdate?: (timing: AttemptTimingData | null) => void
-}
-
-/**
- * Get the part type description for display
- */
-function getPartTypeLabel(type: SessionPart['type']): string {
-  switch (type) {
-    case 'abacus':
-      return 'Use Abacus'
-    case 'visualization':
-      return 'Mental Math (Visualization)'
-    case 'linear':
-      return 'Mental Math (Linear)'
-  }
-}
-
-/**
- * Get part type emoji
- */
-function getPartTypeEmoji(type: SessionPart['type']): string {
-  switch (type) {
-    case 'abacus':
-      return '🧮'
-    case 'visualization':
-      return '🧠'
-    case 'linear':
-      return '💭'
-  }
+  /** Whether browse mode is active (controlled externally via toggle in PracticeSubNav) */
+  isBrowseMode?: boolean
+  /** Controlled browse index (linear problem index) */
+  browseIndex?: number
+  /** Called when browse index changes (for external navigation from progress indicator) */
+  onBrowseIndexChange?: (index: number) => void
+  /** Called when user wants to exit browse mode and return to practice */
+  onExitBrowse?: () => void
 }
 
 /**
@@ -590,8 +504,11 @@ export function ActiveSession({
   onPause,
   onResume,
   onComplete,
-  hideHud = false,
   onTimingUpdate,
+  isBrowseMode: isBrowseModeProp = false,
+  browseIndex: browseIndexProp,
+  onBrowseIndexChange,
+  onExitBrowse,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -678,6 +595,42 @@ export function ActiveSession({
 
   // Track pause info for displaying in the modal (single source of truth)
   const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
+
+  // Browse mode state - isBrowseMode is controlled via props
+  // browseIndex can be controlled (browseIndexProp + onBrowseIndexChange) or internal
+  const [internalBrowseIndex, setInternalBrowseIndex] = useState(0)
+
+  // Determine if browse index is controlled
+  const isControlledBrowseIndex = browseIndexProp !== undefined
+  const browseIndex = isControlledBrowseIndex ? browseIndexProp : internalBrowseIndex
+
+  // Unified setter that handles both controlled and uncontrolled modes
+  const setBrowseIndex = useCallback(
+    (index: number | ((prev: number) => number)) => {
+      const newIndex = typeof index === 'function' ? index(browseIndex) : index
+      if (isControlledBrowseIndex) {
+        onBrowseIndexChange?.(newIndex)
+      } else {
+        setInternalBrowseIndex(newIndex)
+      }
+    },
+    [browseIndex, isControlledBrowseIndex, onBrowseIndexChange]
+  )
+
+  // Compute current practice position as a linear index
+  const currentPracticeLinearIndex = useMemo(() => {
+    return getLinearIndex(plan.parts, plan.currentPartIndex, plan.currentSlotIndex)
+  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+
+  // When entering browse mode, initialize browseIndex to current problem
+  const prevBrowseModeProp = useRef(isBrowseModeProp)
+  useEffect(() => {
+    if (isBrowseModeProp && !prevBrowseModeProp.current) {
+      // Just entered browse mode - set to current practice position
+      setBrowseIndex(currentPracticeLinearIndex)
+    }
+    prevBrowseModeProp.current = isBrowseModeProp
+  }, [isBrowseModeProp, currentPracticeLinearIndex, setBrowseIndex])
 
   // Track last resume time to reset auto-pause timer after resuming
   const lastResumeTimeRef = useRef<number>(0)
@@ -1172,6 +1125,18 @@ export function ActiveSession({
     )
   }
 
+  // Browse mode - show the browse view instead of the practice view
+  if (isBrowseModeProp) {
+    return (
+      <BrowseModeView
+        plan={plan}
+        browseIndex={browseIndex}
+        currentPracticeIndex={currentPracticeLinearIndex}
+        onExitBrowse={onExitBrowse}
+      />
+    )
+  }
+
   return (
     <div
       data-component="active-session"
@@ -1187,212 +1152,6 @@ export function ActiveSession({
         margin: '0 auto',
       })}
     >
-      {/* Practice Session HUD - Control bar with session info and tape-deck controls */}
-      {/* Only render if hideHud is false (default) - when using external HUD in PracticeSubNav */}
-      {!hideHud && (
-        <div
-          data-section="session-hud"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            padding: '0.75rem 1rem',
-            backgroundColor: 'gray.900',
-            borderRadius: '12px',
-            boxShadow: 'lg',
-          })}
-        >
-          {/* Tape deck controls */}
-          <div
-            data-element="transport-controls"
-            className={css({
-              display: 'flex',
-              gap: '0.5rem',
-            })}
-          >
-            {/* Pause/Play button */}
-            <button
-              type="button"
-              data-action={isPaused ? 'resume' : 'pause'}
-              onClick={isPaused ? handleResume : () => handlePause()}
-              className={css({
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                color: 'white',
-                backgroundColor: isPaused ? 'green.500' : 'gray.700',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: isPaused ? 'green.400' : 'gray.600',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isPaused ? 'green.400' : 'gray.600',
-                  transform: 'scale(1.05)',
-                },
-                _active: {
-                  transform: 'scale(0.95)',
-                },
-              })}
-              aria-label={isPaused ? 'Resume session' : 'Pause session'}
-            >
-              {isPaused ? '▶' : '⏸'}
-            </button>
-
-            {/* Stop button */}
-            <button
-              type="button"
-              data-action="end-early"
-              onClick={() => onEndEarly('Session ended')}
-              className={css({
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                color: 'red.300',
-                backgroundColor: 'gray.700',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: 'gray.600',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: 'red.900',
-                  borderColor: 'red.700',
-                  color: 'red.200',
-                  transform: 'scale(1.05)',
-                },
-                _active: {
-                  transform: 'scale(0.95)',
-                },
-              })}
-              aria-label="End session"
-            >
-              ⏹
-            </button>
-          </div>
-
-          {/* Session info display */}
-          <div
-            data-element="session-info"
-            className={css({
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem',
-            })}
-          >
-            {/* Part type with emoji */}
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              })}
-            >
-              <span
-                className={css({
-                  fontSize: '1rem',
-                })}
-              >
-                {getPartTypeEmoji(currentPart.type)}
-              </span>
-              <span
-                className={css({
-                  fontSize: '0.875rem',
-                  fontWeight: 'bold',
-                  color: 'white',
-                })}
-              >
-                Part {currentPart.partNumber}: {getPartTypeLabel(currentPart.type)}
-              </span>
-            </div>
-
-            {/* Progress within part */}
-            <div
-              className={css({
-                fontSize: '0.75rem',
-                color: 'gray.400',
-              })}
-            >
-              Problem {currentSlotIndex + 1} of {currentPart.slots.length} in this part
-            </div>
-          </div>
-
-          {/* Overall progress and health */}
-          <div
-            data-element="progress-display"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-            })}
-          >
-            {/* Problem counter */}
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-              })}
-            >
-              <div
-                className={css({
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  color: 'white',
-                  fontFamily: 'monospace',
-                })}
-              >
-                {completedProblems + 1}/{totalProblems}
-              </div>
-              <div
-                className={css({
-                  fontSize: '0.625rem',
-                  color: 'gray.500',
-                  textTransform: 'uppercase',
-                })}
-              >
-                Total
-              </div>
-            </div>
-
-            {/* Health indicator */}
-            {sessionHealth && (
-              <div
-                data-element="session-health"
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '0.25rem 0.5rem',
-                  backgroundColor: 'gray.800',
-                  borderRadius: '6px',
-                })}
-              >
-                <span className={css({ fontSize: '1rem' })}>
-                  {getHealthEmoji(sessionHealth.overall)}
-                </span>
-                <span
-                  className={css({
-                    fontSize: '0.625rem',
-                    fontWeight: 'bold',
-                    color: getHealthColor(sessionHealth.overall),
-                  })}
-                >
-                  {Math.round(sessionHealth.accuracy * 100)}%
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Problem display */}
       <div
         data-section="problem-area"
