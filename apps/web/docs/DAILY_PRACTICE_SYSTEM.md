@@ -66,7 +66,7 @@ For each number:
 | Skill analysis | `analyzeColumnAddition()` | ✅ Pattern to follow |
 | SkillSet types | `src/types/tutorial.ts` | ✅ Has 5/10 complements |
 | Practice player | `src/components/tutorial/PracticeProblemPlayer.tsx` | ✅ UI exists |
-| Constraint system | `requiredSkills`, `targetSkills`, `forbiddenSkills` | ✅ Ready to use |
+| Constraint system | `allowedSkills`, `targetSkills`, `forbiddenSkills` | ✅ Ready to use |
 
 ### What We Need to Add
 
@@ -332,7 +332,7 @@ Both the **Plan Review** and **Active Session** screens include a "Config" butto
 │  PROBLEM CONSTRAINTS (Current Slot)                              │
 │  ├── slotIndex: 7                                                │
 │  ├── purpose: "focus"                                            │
-│  ├── requiredSkills: { fiveComplements: { "3=5-2": true } }      │
+│  ├── allowedSkills: { fiveComplements: { "3=5-2": true } }      │
 │  ├── forbiddenSkills: { tenComplements: true }                   │
 │  ├── digitRange: { min: 1, max: 2 }                              │
 │  └── termCount: { min: 3, max: 5 }                               │
@@ -419,7 +419,7 @@ interface ProblemSlot {
 
   // Constraints passed to problem generator
   constraints: {
-    requiredSkills?: Partial<SkillSet>
+    allowedSkills?: Partial<SkillSet>
     targetSkills?: Partial<SkillSet>
     forbiddenSkills?: Partial<SkillSet>
     digitRange?: { min: number; max: number }
@@ -860,7 +860,7 @@ When `visualizationMode: true` in the student's curriculum settings:
 **CRITICAL**: Never present problems requiring skills the student hasn't learned yet.
 
 The problem generator (`src/utils/problemGenerator.ts`) already supports:
-- `requiredSkills` - Skills the problem MUST use
+- `allowedSkills` - Skills the problem MUST use
 - `targetSkills` - Skills we're trying to practice
 - `forbiddenSkills` - Skills the problem must NOT use
 
@@ -873,7 +873,7 @@ const constraints = {
     tenComplementsSub: true,     // No subtraction borrowing
     fiveComplementsSub: true,    // No subtraction with fives
   },
-  requiredSkills: {
+  allowedSkills: {
     basic: { directAddition: true }
   }
 }
@@ -1147,7 +1147,7 @@ Use `forbiddenSkills` to exclude five-complement techniques:
 ```typescript
 // Level 1, +3, WITHOUT friends of 5
 const practiceStep: PracticeStep = {
-  requiredSkills: { basic: { directAddition: true, heavenBead: true } },
+  allowedSkills: { basic: { directAddition: true, heavenBead: true } },
   targetSkills: { /* target +3 specifically */ },
   forbiddenSkills: {
     fiveComplements: { '3=5-2': true, '2=5-3': true, '1=5-4': true, '4=5-1': true }
@@ -1156,7 +1156,7 @@ const practiceStep: PracticeStep = {
 
 // Level 1, +3, WITH friends of 5
 const practiceStep: PracticeStep = {
-  requiredSkills: { basic: { directAddition: true, heavenBead: true }, fiveComplements: { '2=5-3': true } },
+  allowedSkills: { basic: { directAddition: true, heavenBead: true }, fiveComplements: { '2=5-3': true } },
   targetSkills: { fiveComplements: { '2=5-3': true } },  // Specifically target +3 via +5-2
 }
 ```

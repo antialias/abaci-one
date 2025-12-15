@@ -543,7 +543,7 @@ export function PracticeProblemPlayer({
               <h4 className={css({ fontWeight: 'bold', mb: 2 })}>Hint:</h4>
               <p>{currentProblem.explanation}</p>
               <div className={css({ mt: 2, fontSize: 'sm' })}>
-                <strong>Skills used:</strong> {currentProblem.requiredSkills.join(', ')}
+                <strong>Skills used:</strong> {currentProblem.skillsUsed.join(', ')}
               </div>
             </div>
           )}

@@ -109,7 +109,7 @@ export interface PracticeStep {
   maxTerms: number // max numbers to add in a single problem
 
   // Skill-based constraints
-  requiredSkills: SkillSet // Skills user must know
+  allowedSkills: SkillSet // Skills student is allowed to use (whitelist)
   targetSkills?: Partial<SkillSet> // Skills to specifically practice (optional)
   forbiddenSkills?: Partial<SkillSet> // Skills user hasn't learned yet (optional)
 

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { css } from '../../../styled-system/css'
-import { type CurrentPhaseInfo, ProgressDashboard, type SkillProgress } from './ProgressDashboard'
+import { type CurrentPhaseInfo, ProgressDashboard } from './ProgressDashboard'
 import type { StudentWithProgress } from './StudentSelector'
 
 const meta: Meta<typeof ProgressDashboard> = {
@@ -69,33 +69,6 @@ const advancedPhase: CurrentPhaseInfo = {
   totalSkills: 5,
 }
 
-const sampleRecentSkills: SkillProgress[] = [
-  {
-    skillId: 'fiveComplements.4=5-1',
-    skillName: '4 = 5 - 1',
-    masteryLevel: 'mastered',
-    attempts: 45,
-    correct: 43,
-    consecutiveCorrect: 10,
-  },
-  {
-    skillId: 'fiveComplements.3=5-2',
-    skillName: '3 = 5 - 2',
-    masteryLevel: 'practicing',
-    attempts: 28,
-    correct: 22,
-    consecutiveCorrect: 3,
-  },
-  {
-    skillId: 'fiveComplements.2=5-3',
-    skillName: '2 = 5 - 3',
-    masteryLevel: 'learning',
-    attempts: 10,
-    correct: 6,
-    consecutiveCorrect: 1,
-  },
-]
-
 const handlers = {
   onStartPractice: () => alert('Start Practice clicked!'),
   onViewFullProgress: () => alert('View Full Progress clicked!'),
@@ -132,12 +105,7 @@ export const Beginner: Story = {
 export const Intermediate: Story = {
   render: () => (
     <DashboardWrapper>
-      <ProgressDashboard
-        student={sampleStudent}
-        currentPhase={intermediatePhase}
-        recentSkills={sampleRecentSkills}
-        {...handlers}
-      />
+      <ProgressDashboard student={sampleStudent} currentPhase={intermediatePhase} {...handlers} />
     </DashboardWrapper>
   ),
 }
@@ -145,20 +113,7 @@ export const Intermediate: Story = {
 export const Advanced: Story = {
   render: () => (
     <DashboardWrapper>
-      <ProgressDashboard
-        student={sampleStudent}
-        currentPhase={advancedPhase}
-        recentSkills={sampleRecentSkills}
-        {...handlers}
-      />
-    </DashboardWrapper>
-  ),
-}
-
-export const WithoutRecentSkills: Story = {
-  render: () => (
-    <DashboardWrapper>
-      <ProgressDashboard student={sampleStudent} currentPhase={beginnerPhase} {...handlers} />
+      <ProgressDashboard student={sampleStudent} currentPhase={advancedPhase} {...handlers} />
     </DashboardWrapper>
   ),
 }
@@ -173,10 +128,6 @@ export const FullProgress: Story = {
           masteredSkills: 4,
           totalSkills: 4,
         }}
-        recentSkills={sampleRecentSkills.map((s) => ({
-          ...s,
-          masteryLevel: 'mastered' as const,
-        }))}
         {...handlers}
       />
     </DashboardWrapper>
@@ -247,7 +198,6 @@ export const WithFocusAreas: Story = {
       <ProgressDashboard
         student={sampleStudent}
         currentPhase={intermediatePhase}
-        recentSkills={sampleRecentSkills}
         focusAreas={[
           {
             skillId: 'fiveComplements.3=5-2',
@@ -289,7 +239,6 @@ export const WithActiveSession: Story = {
       <ProgressDashboard
         student={sampleStudent}
         currentPhase={intermediatePhase}
-        recentSkills={sampleRecentSkills}
         activeSession={{
           id: 'session-123',
           status: 'in_progress',
@@ -316,7 +265,6 @@ export const WithActiveSessionMismatch: Story = {
       <ProgressDashboard
         student={sampleStudent}
         currentPhase={intermediatePhase}
-        recentSkills={sampleRecentSkills}
         activeSession={{
           id: 'session-123',
           status: 'in_progress',

@@ -58,7 +58,7 @@ export async function getViewerId(): Promise<string> {
 
   switch (viewer.kind) {
     case 'user':
-      return viewer.session!.user!.id
+      return viewer.session.user!.id
     case 'guest':
       return viewer.guestId
     case 'unknown':

@@ -620,14 +620,18 @@ describe('A/B Test: Missed Lesson Learners', () => {
 
       console.log('\nBKT Identified Weak Skills (Session 2):')
       console.log(`  Expected: ${expectedWeakSkills.join(', ')}`)
-      console.log(`  Found:    ${bktIdentifiedWeak.join(', ') || '(none with sufficient confidence)'}`)
+      console.log(
+        `  Found:    ${bktIdentifiedWeak.join(', ') || '(none with sufficient confidence)'}`
+      )
 
       // Check overlap
       const correctlyIdentified = expectedWeakSkills.filter((s) => bktIdentifiedWeak.includes(s))
       const missedWeakSkills = expectedWeakSkills.filter((s) => !bktIdentifiedWeak.includes(s))
       const falsePositives = bktIdentifiedWeak.filter((s) => !expectedWeakSkills.includes(s))
 
-      console.log(`  Correctly identified: ${correctlyIdentified.length}/${expectedWeakSkills.length}`)
+      console.log(
+        `  Correctly identified: ${correctlyIdentified.length}/${expectedWeakSkills.length}`
+      )
       if (missedWeakSkills.length > 0) {
         console.log(`  Missed: ${missedWeakSkills.join(', ')}`)
       }

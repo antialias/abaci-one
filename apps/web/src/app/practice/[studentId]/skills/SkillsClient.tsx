@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import { PracticeSubNav } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerCurriculum } from '@/db/schema/player-curriculum'
@@ -12,6 +14,19 @@ import {
   type PlayerSkillMastery,
 } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
+import {
+  computeBktFromHistory,
+  getConfidenceLabel,
+  getStalenessWarning,
+  type BktComputeOptions,
+  type SkillBktResult,
+} from '@/lib/curriculum/bkt'
+import {
+  calculateBktMultiplier,
+  isBktConfident,
+  MASTERY_MULTIPLIERS,
+} from '@/lib/curriculum/config'
+import { computeMasteryState } from '@/utils/skillComplexity'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
 import { css } from '../../../../../styled-system/css'
 
@@ -46,6 +61,20 @@ interface ProcessedSkill {
   avgResponseTimeMs: number | null
   /** Problems involving this skill (most recent first) */
   problems: ProblemResultWithContext[]
+  /** BKT-computed P(known) estimate [0, 1] */
+  pKnown: number | null
+  /** Confidence in the pKnown estimate [0, 1] */
+  confidence: number | null
+  /** Uncertainty range around pKnown */
+  uncertaintyRange: { low: number; high: number } | null
+  /** BKT mastery classification */
+  bktClassification: 'mastered' | 'learning' | 'struggling' | null
+  /** Staleness warning message */
+  stalenessWarning: string | null
+  /** Complexity multiplier used in problem generation (lower = easier problems allowed) */
+  complexityMultiplier: number
+  /** Whether BKT is being used for this skill's multiplier (vs fluency fallback) */
+  usingBktMultiplier: boolean
 }
 
 /** Skill category with display info */
@@ -127,7 +156,8 @@ function formatSkillDisplayName(skillId: string): string {
 
 function processSkills(
   skills: PlayerSkillMastery[],
-  problemHistory: ProblemResultWithContext[]
+  problemHistory: ProblemResultWithContext[],
+  bktResults: Map<string, SkillBktResult>
 ): ProcessedSkill[] {
   const now = new Date()
 
@@ -164,6 +194,28 @@ function processSkills(
 
     const problems = problemsBySkill.get(skill.skillId) ?? []
 
+    // Get BKT data for this skill
+    const bkt = bktResults.get(skill.skillId)
+    const stalenessWarning = getStalenessWarning(daysSinceLastPractice)
+
+    // Calculate complexity multiplier (same logic as problem generation)
+    const usingBktMultiplier = bkt !== undefined && isBktConfident(bkt.confidence)
+    let complexityMultiplier: number
+    if (usingBktMultiplier) {
+      // BKT-based continuous multiplier
+      complexityMultiplier = calculateBktMultiplier(bkt.pKnown)
+    } else {
+      // Fluency-based discrete multiplier
+      const masteryState = computeMasteryState(
+        skill.isPracticing,
+        skill.attempts,
+        skill.correct,
+        skill.consecutiveCorrect,
+        daysSinceLastPractice ?? undefined
+      )
+      complexityMultiplier = MASTERY_MULTIPLIERS[masteryState]
+    }
+
     return {
       id: skill.id,
       skillId: skill.skillId,
@@ -181,6 +233,15 @@ function processSkills(
       daysSinceLastPractice,
       avgResponseTimeMs,
       problems,
+      // BKT metrics
+      pKnown: bkt?.pKnown ?? null,
+      confidence: bkt?.confidence ?? null,
+      uncertaintyRange: bkt?.uncertaintyRange ?? null,
+      bktClassification: bkt?.masteryClassification ?? null,
+      stalenessWarning,
+      // Problem generation metrics
+      complexityMultiplier,
+      usingBktMultiplier,
     }
   })
 }
@@ -200,8 +261,16 @@ function SkillCard({
 }) {
   const errorCount = skill.attempts - skill.correct
 
-  // Determine status color
+  // Determine status color based on BKT classification or fluency state
   const getStatusColor = () => {
+    // Prefer BKT classification if available
+    if (skill.bktClassification === 'mastered')
+      return { bg: 'green.100', border: 'green.400', text: 'green.700' }
+    if (skill.bktClassification === 'struggling')
+      return { bg: 'red.100', border: 'red.400', text: 'red.700' }
+    if (skill.bktClassification === 'learning')
+      return { bg: 'yellow.100', border: 'yellow.400', text: 'yellow.700' }
+    // Fallback to fluency state
     if (skill.fluencyState === 'effortless')
       return { bg: 'green.100', border: 'green.400', text: 'green.700' }
     if (skill.fluencyState === 'fluent')
@@ -214,12 +283,14 @@ function SkillCard({
   }
 
   const colors = getStatusColor()
+  const confidenceLabel = skill.confidence !== null ? getConfidenceLabel(skill.confidence) : null
 
   return (
     <button
       type="button"
       data-element="skill-card"
       data-skill-id={skill.skillId}
+      data-bkt-classification={skill.bktClassification}
       data-fluency={skill.fluencyState}
       onClick={onClick}
       className={css({
@@ -251,42 +322,97 @@ function SkillCard({
         {skill.displayName}
       </span>
 
-      {/* Stats row - honest framing */}
+      {/* BKT P(known) estimate - honest framing */}
+      {skill.pKnown !== null && (
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: '0.25rem',
+            fontSize: '0.75rem',
+            marginBottom: '0.25rem',
+          })}
+        >
+          <span
+            className={css({
+              fontWeight: 'bold',
+              color:
+                skill.pKnown >= 0.8
+                  ? isDark
+                    ? 'green.400'
+                    : 'green.600'
+                  : skill.pKnown < 0.5
+                    ? isDark
+                      ? 'red.400'
+                      : 'red.600'
+                    : isDark
+                      ? 'yellow.400'
+                      : 'yellow.600',
+            })}
+          >
+            ~{Math.round(skill.pKnown * 100)}%
+          </span>
+          {confidenceLabel && (
+            <span
+              className={css({ color: isDark ? 'gray.500' : 'gray.500', fontSize: '0.625rem' })}
+            >
+              ({confidenceLabel})
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Evidence counts - secondary info */}
       <div
         className={css({
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
-          fontSize: '0.75rem',
-          color: isDark ? 'gray.400' : 'gray.600',
+          fontSize: '0.6875rem',
+          color: isDark ? 'gray.500' : 'gray.500',
         })}
       >
-        <span title="Correct problems involving this skill">✓ {skill.correct}</span>
+        <span title="Problems answered correctly">{skill.correct} correct</span>
         {errorCount > 0 && (
           <>
             <span>•</span>
-            <span title="Problems with errors that involved this skill">✗ {errorCount}</span>
+            <span title="Problems with errors">{errorCount} errors</span>
           </>
         )}
-        {skill.needsReinforcement && <span title="Needs reinforcement">⚠️</span>}
       </div>
 
-      {/* Fluency badge */}
-      <span
-        className={css({
-          marginTop: '0.5rem',
-          padding: '0.125rem 0.5rem',
-          borderRadius: '4px',
-          fontSize: '0.625rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          backgroundColor: isDark ? `${colors.bg}/40` : colors.bg,
-          color: isDark ? 'gray.200' : colors.text,
-          alignSelf: 'flex-start',
-        })}
-      >
-        {skill.fluencyState}
-      </span>
+      {/* Staleness warning if applicable */}
+      {skill.stalenessWarning && (
+        <span
+          className={css({
+            marginTop: '0.25rem',
+            fontSize: '0.625rem',
+            color: isDark ? 'orange.400' : 'orange.600',
+            fontStyle: 'italic',
+          })}
+        >
+          {skill.stalenessWarning}
+        </span>
+      )}
+
+      {/* BKT classification badge */}
+      {skill.bktClassification && (
+        <span
+          className={css({
+            marginTop: '0.375rem',
+            padding: '0.125rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.625rem',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            backgroundColor: isDark ? `${colors.bg}/40` : colors.bg,
+            color: isDark ? 'gray.200' : colors.text,
+            alignSelf: 'flex-start',
+          })}
+        >
+          {skill.bktClassification}
+        </span>
+      )}
     </button>
   )
 }
@@ -558,6 +684,157 @@ function SkillDetailDrawer({
           >
             ✕
           </button>
+        </div>
+
+        {/* BKT Mastery Estimate - primary metric */}
+        {skill.pKnown !== null && (
+          <div
+            className={css({
+              padding: '1rem',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              backgroundColor:
+                skill.pKnown >= 0.8
+                  ? isDark
+                    ? 'green.900/20'
+                    : 'green.50'
+                  : skill.pKnown < 0.5
+                    ? isDark
+                      ? 'red.900/20'
+                      : 'red.50'
+                    : isDark
+                      ? 'yellow.900/20'
+                      : 'yellow.50',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+                marginBottom: '0.25rem',
+              })}
+            >
+              Estimated Mastery
+            </div>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '0.5rem',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: '2rem',
+                  fontWeight: 'bold',
+                  color:
+                    skill.pKnown >= 0.8
+                      ? isDark
+                        ? 'green.400'
+                        : 'green.600'
+                      : skill.pKnown < 0.5
+                        ? isDark
+                          ? 'red.400'
+                          : 'red.600'
+                        : isDark
+                          ? 'yellow.400'
+                          : 'yellow.600',
+                })}
+              >
+                ~{Math.round(skill.pKnown * 100)}%
+              </span>
+              {skill.confidence !== null && (
+                <span
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  ({getConfidenceLabel(skill.confidence)} confidence)
+                </span>
+              )}
+            </div>
+            {skill.uncertaintyRange && (
+              <div
+                className={css({
+                  fontSize: '0.75rem',
+                  color: isDark ? 'gray.500' : 'gray.500',
+                  marginTop: '0.25rem',
+                })}
+              >
+                Range: {Math.round(skill.uncertaintyRange.low * 100)}% -{' '}
+                {Math.round(skill.uncertaintyRange.high * 100)}%
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Problem Generation Impact */}
+        <div
+          className={css({
+            padding: '1rem',
+            borderBottom: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            backgroundColor: isDark ? 'purple.900/20' : 'purple.50',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              marginBottom: '0.5rem',
+            })}
+          >
+            Problem Generation Impact
+          </div>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: '0.5rem',
+              marginBottom: '0.375rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: isDark ? 'purple.300' : 'purple.600',
+              })}
+            >
+              {skill.complexityMultiplier.toFixed(2)}×
+            </span>
+            <span
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
+              complexity multiplier
+            </span>
+          </div>
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.500' : 'gray.500',
+            })}
+          >
+            {skill.usingBktMultiplier ? (
+              <>Using Bayesian estimate (adaptive mode)</>
+            ) : (
+              <>Using fluency threshold (classic mode)</>
+            )}
+          </div>
+          <div
+            className={css({
+              fontSize: '0.6875rem',
+              color: isDark ? 'gray.500' : 'gray.500',
+              marginTop: '0.375rem',
+              fontStyle: 'italic',
+            })}
+          >
+            Lower multiplier = skill costs less budget = more skills can appear together
+          </div>
         </div>
 
         {/* Stats - honest framing */}
@@ -833,13 +1110,39 @@ export function SkillsClient({
   skills,
   problemHistory,
 }: SkillsClientProps) {
-  const { isDark } = useTheme()
+  const router = useRouter()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [selectedSkill, setSelectedSkill] = useState<ProcessedSkill | null>(null)
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.5)
+  const [applyDecay, setApplyDecay] = useState(false)
+  const [useCrossStudentPriors, setUseCrossStudentPriors] = useState(false)
+  const [showManualSkillModal, setShowManualSkillModal] = useState(false)
 
-  // Process skills
+  // Compute BKT from problem history
+  const bktResult = useMemo(() => {
+    const options: BktComputeOptions = {
+      confidenceThreshold,
+      useCrossStudentPriors,
+      applyDecay,
+      decayHalfLifeDays: 30,
+    }
+    return computeBktFromHistory(problemHistory, options)
+  }, [problemHistory, confidenceThreshold, applyDecay, useCrossStudentPriors])
+
+  // Create a map of BKT results by skill ID for easy lookup
+  const bktResultsMap = useMemo(() => {
+    const map = new Map<string, SkillBktResult>()
+    for (const skill of bktResult.skills) {
+      map.set(skill.skillId, skill)
+    }
+    return map
+  }, [bktResult])
+
+  // Process skills with BKT data
   const processedSkills = useMemo(
-    () => processSkills(skills, problemHistory),
-    [skills, problemHistory]
+    () => processSkills(skills, problemHistory, bktResultsMap),
+    [skills, problemHistory, bktResultsMap]
   )
 
   // Filter practicing skills only
@@ -848,11 +1151,14 @@ export function SkillsClient({
     [processedSkills]
   )
 
-  // Categorize skills
+  // Categorize skills using BKT classification
   const interventionNeeded = useMemo(
     () =>
       practicingSkills.filter(
-        (s) => s.needsReinforcement || (s.fluencyState === 'practicing' && s.accuracy < 0.7)
+        (s) =>
+          s.bktClassification === 'struggling' ||
+          s.needsReinforcement ||
+          (s.bktClassification === null && s.fluencyState === 'practicing' && s.accuracy < 0.7)
       ),
     [practicingSkills]
   )
@@ -860,13 +1166,26 @@ export function SkillsClient({
   const readyToAdvance = useMemo(
     () =>
       practicingSkills.filter(
-        (s) => s.fluencyState === 'effortless' || s.fluencyState === 'fluent'
+        (s) =>
+          s.bktClassification === 'mastered' ||
+          (s.bktClassification === null &&
+            (s.fluencyState === 'effortless' || s.fluencyState === 'fluent'))
+      ),
+    [practicingSkills]
+  )
+
+  const learningSkills = useMemo(
+    () =>
+      practicingSkills.filter(
+        (s) =>
+          s.bktClassification === 'learning' ||
+          (s.bktClassification === null && s.fluencyState === 'practicing')
       ),
     [practicingSkills]
   )
 
   const rustySkills = useMemo(
-    () => practicingSkills.filter((s) => s.fluencyState === 'rusty'),
+    () => practicingSkills.filter((s) => s.stalenessWarning !== null),
     [practicingSkills]
   )
 
@@ -902,8 +1221,49 @@ export function SkillsClient({
     setSelectedSkill(null)
   }, [])
 
+  // Handle saving manual skill selections
+  const handleSaveManualSkills = useCallback(
+    async (masteredSkillIds: string[]): Promise<void> => {
+      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masteredSkillIds }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save skills')
+      }
+
+      // Reload the page to show updated skills
+      router.refresh()
+      setShowManualSkillModal(false)
+    },
+    [studentId, router]
+  )
+
+  // Handle refreshing a skill's recency (sets lastPracticedAt to today)
+  const handleRefreshSkill = useCallback(
+    async (skillId: string): Promise<void> => {
+      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to refresh skill')
+      }
+
+      // Reload to show updated mastery state
+      router.refresh()
+    },
+    [studentId, router]
+  )
+
   return (
-    <PageWithNav title={`${player.name}'s Skills`} isDark={isDark}>
+    <PageWithNav navTitle={`${player.name}'s Skills`}>
       {/* Sub-navigation */}
       <PracticeSubNav student={player} />
 
@@ -923,6 +1283,8 @@ export function SkillsClient({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
           })}
         >
           <div>
@@ -944,36 +1306,178 @@ export function SkillsClient({
               {practicingSkills.length} skills in practice • Click any skill for details
             </p>
           </div>
-          <Link
-            href={`/practice/${studentId}/dashboard`}
+          <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
+            <button
+              type="button"
+              data-action="manage-skills"
+              onClick={() => setShowManualSkillModal(true)}
+              className={css({
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                backgroundColor: isDark ? 'purple.900' : 'purple.100',
+                color: isDark ? 'purple.200' : 'purple.700',
+                fontSize: '0.875rem',
+                fontWeight: 'medium',
+                border: '1px solid',
+                borderColor: isDark ? 'purple.700' : 'purple.300',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: isDark ? 'purple.800' : 'purple.200',
+                },
+              })}
+            >
+              Manage Skills
+            </button>
+            <Link
+              href={`/practice/${studentId}/dashboard`}
+              className={css({
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                color: isDark ? 'gray.200' : 'gray.700',
+                fontSize: '0.875rem',
+                textDecoration: 'none',
+                _hover: {
+                  backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                },
+              })}
+            >
+              ← Dashboard
+            </Link>
+          </div>
+        </div>
+
+        {/* Confidence threshold control */}
+        <div
+          data-element="confidence-control"
+          className={css({
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            backgroundColor: isDark ? 'gray.800' : 'gray.100',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          })}
+        >
+          <label
             className={css({
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              color: isDark ? 'gray.200' : 'gray.700',
-              fontSize: '0.875rem',
-              textDecoration: 'none',
-              _hover: {
-                backgroundColor: isDark ? 'gray.600' : 'gray.300',
-              },
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
             })}
           >
-            ← Back to Dashboard
-          </Link>
+            Confidence threshold:
+            <input
+              type="range"
+              min="0.3"
+              max="0.8"
+              step="0.05"
+              value={confidenceThreshold}
+              onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
+              className={css({
+                width: '100px',
+                accentColor: isDark ? 'blue.400' : 'blue.600',
+              })}
+            />
+            <span className={css({ fontWeight: 'bold', minWidth: '2.5rem' })}>
+              {(confidenceThreshold * 100).toFixed(0)}%
+            </span>
+          </label>
+          <span
+            className={css({
+              fontSize: '0.6875rem',
+              color: isDark ? 'gray.500' : 'gray.500',
+              fontStyle: 'italic',
+            })}
+          >
+            Higher = stricter classification, lower = more lenient
+          </span>
+
+          {/* Decay toggle */}
+          <label
+            data-setting="decay-toggle"
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer',
+            })}
+          >
+            <input
+              type="checkbox"
+              checked={applyDecay}
+              onChange={(e) => setApplyDecay(e.target.checked)}
+              className={css({
+                accentColor: isDark ? 'blue.400' : 'blue.600',
+              })}
+            />
+            Apply decay
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                color: isDark ? 'gray.500' : 'gray.500',
+                fontStyle: 'italic',
+              })}
+            >
+              (30-day half-life)
+            </span>
+          </label>
+
+          {/* Cross-student priors toggle */}
+          <label
+            data-setting="cross-student-priors-toggle"
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              opacity: 0.5,
+            })}
+            title="Coming soon: Use aggregate data from all students to inform initial estimates"
+          >
+            <input
+              type="checkbox"
+              checked={useCrossStudentPriors}
+              onChange={(e) => setUseCrossStudentPriors(e.target.checked)}
+              disabled
+              className={css({
+                accentColor: isDark ? 'blue.400' : 'blue.600',
+              })}
+            />
+            Cross-student priors
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                color: isDark ? 'gray.500' : 'gray.500',
+                fontStyle: 'italic',
+              })}
+            >
+              (coming soon)
+            </span>
+          </label>
         </div>
 
         {/* Summary cards */}
         <div
           className={css({
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
             gap: '1rem',
             marginBottom: '1.5rem',
           })}
         >
           <div
             data-element="summary-card"
-            data-type="intervention"
+            data-type="struggling"
             className={css({
               padding: '1rem',
               borderRadius: '12px',
@@ -992,13 +1496,40 @@ export function SkillsClient({
               {interventionNeeded.length}
             </div>
             <div className={css({ fontSize: '0.875rem', color: isDark ? 'red.400' : 'red.700' })}>
-              Appear in frequent errors
+              Struggling
             </div>
           </div>
 
           <div
             data-element="summary-card"
-            data-type="rusty"
+            data-type="learning"
+            className={css({
+              padding: '1rem',
+              borderRadius: '12px',
+              backgroundColor: isDark ? 'yellow.900/30' : 'yellow.50',
+              border: '2px solid',
+              borderColor: isDark ? 'yellow.700/50' : 'yellow.200',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                color: isDark ? 'yellow.300' : 'yellow.600',
+              })}
+            >
+              {learningSkills.length}
+            </div>
+            <div
+              className={css({ fontSize: '0.875rem', color: isDark ? 'yellow.400' : 'yellow.700' })}
+            >
+              Learning
+            </div>
+          </div>
+
+          <div
+            data-element="summary-card"
+            data-type="stale"
             className={css({
               padding: '1rem',
               borderRadius: '12px',
@@ -1019,13 +1550,13 @@ export function SkillsClient({
             <div
               className={css({ fontSize: '0.875rem', color: isDark ? 'orange.400' : 'orange.700' })}
             >
-              Rusty (needs review)
+              Stale
             </div>
           </div>
 
           <div
             data-element="summary-card"
-            data-type="ready"
+            data-type="mastered"
             className={css({
               padding: '1rem',
               borderRadius: '12px',
@@ -1046,32 +1577,32 @@ export function SkillsClient({
             <div
               className={css({ fontSize: '0.875rem', color: isDark ? 'green.400' : 'green.700' })}
             >
-              Fluent / Effortless
+              Mastered
             </div>
           </div>
         </div>
 
-        {/* Skills appearing frequently in errors */}
+        {/* Skills that may need intervention */}
         {interventionNeeded.length > 0 && (
           <SkillSection
-            title="Appear Frequently in Errors"
-            emoji="🔍"
+            title="May Need Attention"
+            emoji="🔴"
             skills={interventionNeeded}
             isDark={isDark}
             onSkillClick={handleSkillClick}
-            emptyMessage="No skills frequently appearing in errors"
+            emptyMessage="No skills appear to be struggling"
           />
         )}
 
-        {/* Rusty skills section */}
+        {/* Stale skills section */}
         {rustySkills.length > 0 && (
           <SkillSection
-            title="Getting Rusty"
-            emoji="🌿"
+            title="Not Practiced Recently"
+            emoji="🟠"
             skills={rustySkills}
             isDark={isDark}
             onSkillClick={handleSkillClick}
-            emptyMessage="No rusty skills"
+            emptyMessage="All skills recently practiced"
           />
         )}
 
@@ -1115,6 +1646,18 @@ export function SkillsClient({
 
       {/* Detail drawer */}
       <SkillDetailDrawer skill={selectedSkill} isDark={isDark} onClose={handleCloseDrawer} />
+
+      {/* Manual Skill Selector Modal */}
+      <ManualSkillSelector
+        studentName={player.name}
+        playerId={player.id}
+        open={showManualSkillModal}
+        onClose={() => setShowManualSkillModal(false)}
+        onSave={handleSaveManualSkills}
+        onRefreshSkill={handleRefreshSkill}
+        currentMasteredSkills={skills.filter((s) => s.isPracticing).map((s) => s.skillId)}
+        skillMasteryData={skills}
+      />
     </PageWithNav>
   )
 }

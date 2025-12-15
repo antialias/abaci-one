@@ -479,7 +479,7 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
       terms: number[]
       answer: number
       difficulty: 'easy' | 'medium' | 'hard'
-      requiredSkills: string[]
+      skillsUsed: string[]
     }>
   >([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -506,7 +506,7 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
           maxTerms: step.maxTerms,
           problemCount: step.problemCount,
         },
-        step.requiredSkills || required,
+        step.allowedSkills || required,
         step.targetSkills || target,
         step.forbiddenSkills || forbidden,
         50 // attempts
@@ -1144,7 +1144,7 @@ export function TutorialEditor({
         description: 'Practice description here',
         problemCount: 10,
         maxTerms: 3,
-        requiredSkills: createBasicSkillSet(),
+        allowedSkills: createBasicSkillSet(),
         numberRange: { min: 1, max: 9 },
         sumConstraints: { maxSum: 9 },
         position: newStepPosition,

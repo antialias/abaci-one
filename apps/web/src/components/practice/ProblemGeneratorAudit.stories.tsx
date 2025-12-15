@@ -29,7 +29,7 @@ export default meta
 
 /** Constraints as displayed in the debug trace (different from generator's ProblemConstraints) */
 interface DisplayConstraints {
-  requiredSkills: SkillSet
+  allowedSkills: SkillSet
   digitRange: { min: number; max: number }
   termCount: { min: number; max: number }
 }
@@ -177,7 +177,7 @@ function ProblemGeneratorAuditUI() {
         timestamp: new Date().toISOString(),
         input: {
           constraints: {
-            requiredSkills: skillSet,
+            allowedSkills: skillSet,
             digitRange: { min: 1, max: maxDigits },
             termCount: { min: 3, max: maxTerms },
           },
@@ -208,10 +208,10 @@ function ProblemGeneratorAuditUI() {
     const actualSkillsFromAnalyzer = analyzeRequiredSkills(result.terms, result.answer)
 
     // Check for mismatches between generator's provenance and independent analyzer
-    const resultSkillsSet = new Set(result.requiredSkills)
+    const resultSkillsSet = new Set(result.skillsUsed)
     const analyzerSkillsSet = new Set(actualSkillsFromAnalyzer)
     const mismatchedSkills = [
-      ...result.requiredSkills.filter((s) => !analyzerSkillsSet.has(s)),
+      ...result.skillsUsed.filter((s) => !analyzerSkillsSet.has(s)),
       ...actualSkillsFromAnalyzer.filter((s) => !resultSkillsSet.has(s)),
     ]
 
@@ -219,7 +219,7 @@ function ProblemGeneratorAuditUI() {
       timestamp: new Date().toISOString(),
       input: {
         constraints: {
-          requiredSkills: skillSet,
+          allowedSkills: skillSet,
           digitRange: { min: 1, max: maxDigits },
           termCount: { min: 3, max: maxTerms },
         },
@@ -228,13 +228,13 @@ function ProblemGeneratorAuditUI() {
       output: {
         terms: result.terms,
         answer: result.answer,
-        skillsRequired: result.requiredSkills,
+        skillsRequired: result.skillsUsed,
       },
       analysis: {
         actualSkillsFromAnalyzer,
         skillsMatch:
-          result.requiredSkills.length === actualSkillsFromAnalyzer.length &&
-          result.requiredSkills.every((s) => analyzerSkillsSet.has(s)),
+          result.skillsUsed.length === actualSkillsFromAnalyzer.length &&
+          result.skillsUsed.every((s) => analyzerSkillsSet.has(s)),
         mismatchedSkills,
       },
       stepByStepTrace,

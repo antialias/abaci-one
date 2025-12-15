@@ -239,7 +239,7 @@ describe('Graceful fallback when minBudget cannot be met', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 1, // The problematic constraint
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
       })
@@ -270,7 +270,7 @@ describe('Graceful fallback when minBudget cannot be met', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 1, // Impossible with basic-only skills
         },
-        requiredSkills: basicSkills,
+        allowedSkills: basicSkills,
         costCalculator: calculator,
         attempts: 100,
       })
@@ -293,7 +293,7 @@ describe('Graceful fallback when minBudget cannot be met', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 100, // Absurdly high
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
       })
@@ -332,12 +332,12 @@ describe('Budget preference behavior', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
       })
 
-      if (problem?.requiredSkills.some((s) => s.includes('fiveComplements'))) {
+      if (problem?.skillsUsed.some((s) => s.includes('fiveComplements'))) {
         foundFiveComplement = true
         break
       }
@@ -361,14 +361,14 @@ describe('Budget preference behavior', () => {
           problemCount: 1,
           maxComplexityBudgetPerTerm: 0, // Only allow cost-0 terms
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
       })
 
       if (problem) {
         // With maxBudget=0, should only have basic skills
-        const hasNonBasic = problem.requiredSkills.some(
+        const hasNonBasic = problem.skillsUsed.some(
           (s) =>
             s.includes('fiveComplements') || s.includes('tenComplements') || s.includes('advanced')
         )
@@ -393,7 +393,7 @@ describe('Edge cases', () => {
         maxTerms: 1,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       attempts: 50,
     })
 
@@ -410,7 +410,7 @@ describe('Edge cases', () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         attempts: 100,
       })
 
@@ -427,7 +427,7 @@ describe('Edge cases', () => {
         maxTerms: 5,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       attempts: 100,
     })
 
@@ -442,7 +442,7 @@ describe('Edge cases', () => {
         maxTerms: 10,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       attempts: 100,
     })
 
@@ -466,7 +466,7 @@ describe('Robustness stress tests', () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
       })
@@ -492,7 +492,7 @@ describe('Robustness stress tests', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
       })
@@ -520,7 +520,7 @@ describe('Robustness stress tests', () => {
           minComplexityBudgetPerTerm: 1,
           maxComplexityBudgetPerTerm: 5,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
       })
@@ -542,7 +542,7 @@ describe('Robustness stress tests', () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 20, // Fewer attempts to stress test fallback
       })
@@ -589,7 +589,7 @@ describe('Regression: Original ProblemGenerationError bug', () => {
           problemCount: 1,
           minComplexityBudgetPerTerm: 1, // The constraint that caused the bug
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
       })
@@ -623,7 +623,7 @@ describe('Regression: Original ProblemGenerationError bug', () => {
         problemCount: 1,
         minComplexityBudgetPerTerm: 1, // Impossible with basic-only
       },
-      requiredSkills: basicSkills,
+      allowedSkills: basicSkills,
       costCalculator: calculator,
       attempts: 100,
     })
@@ -632,9 +632,7 @@ describe('Regression: Original ProblemGenerationError bug', () => {
     expect(result.problem).not.toBeNull()
     // All terms should have basic skills only
     expect(
-      result.problem!.requiredSkills.every(
-        (s) => s.startsWith('basic.') || s.includes('Combinations')
-      )
+      result.problem!.skillsUsed.every((s) => s.startsWith('basic.') || s.includes('Combinations'))
     ).toBe(true)
   })
 })
@@ -657,13 +655,13 @@ describe('Generation diagnostics', () => {
         maxTerms: 5,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       costCalculator: calculator,
       attempts: 50,
     })
 
-    expect(result.diagnostics.enabledRequiredSkills.length).toBeGreaterThan(0)
-    expect(result.diagnostics.enabledRequiredSkills).toContain('basic.directAddition')
+    expect(result.diagnostics.enabledAllowedSkills.length).toBeGreaterThan(0)
+    expect(result.diagnostics.enabledAllowedSkills).toContain('basic.directAddition')
   })
 
   it('should report attempt counts', () => {
@@ -677,7 +675,7 @@ describe('Generation diagnostics', () => {
         maxTerms: 5,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       costCalculator: calculator,
       attempts: 50,
     })
@@ -697,7 +695,7 @@ describe('Generation diagnostics', () => {
         maxTerms: 5,
         problemCount: 1,
       },
-      requiredSkills: fullSkillSet,
+      allowedSkills: fullSkillSet,
       costCalculator: calculator,
       attempts: 50,
     })
@@ -729,7 +727,7 @@ describe('Subtraction with budget constraints', () => {
           problemCount: 1,
           maxComplexityBudgetPerTerm: 3,
         },
-        requiredSkills: fullSkillSet, // Includes subtraction skills
+        allowedSkills: fullSkillSet, // Includes subtraction skills
         costCalculator: calculator,
         attempts: 100,
       })
@@ -750,7 +748,7 @@ describe('Subtraction with budget constraints', () => {
           maxTerms: 8,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         attempts: 100,
       })
 
@@ -781,7 +779,7 @@ describe('Performance', () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 20,
       })

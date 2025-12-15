@@ -430,6 +430,245 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
       expect(exposureAdaptiveWins).toBeGreaterThanOrEqual(exposureClassicWins)
     }, 1200000)
   })
+
+  describe('Convergence Speed Comparison', () => {
+    it('should show adaptive reaches mastery faster than classic', async () => {
+      // Test a few profiles to compare convergence speed
+      const testProfiles = getRepresentativeProfilesAllLearners().filter(
+        (p) => p.skillId.includes('tenComplements') || p.skillId.includes('fiveComplements')
+      )
+
+      const convergenceResults: Array<{
+        skillId: string
+        learnerType: LearnerType
+        adaptiveTrajectory: number[]
+        classicTrajectory: number[]
+        adaptiveSessions50: number | null
+        classicSessions50: number | null
+        adaptiveSessions80: number | null
+        classicSessions80: number | null
+        fasterTo50: 'adaptive' | 'classic' | 'tie' | 'neither'
+        fasterTo80: 'adaptive' | 'classic' | 'tie' | 'neither'
+      }> = []
+
+      for (const { skillId, learnerType, profile, practicingSkills } of testProfiles.slice(0, 9)) {
+        const skillSlug = skillId.replace(/[^a-zA-Z0-9]/g, '-')
+
+        // Run adaptive mode session by session
+        const adaptiveTrajectory: number[] = []
+        {
+          const { playerId } = await createTestStudent(
+            ephemeralDb.db,
+            `conv-adaptive-${learnerType}-${skillSlug}`
+          )
+          const rng = new SeededRandom(QUICK_CONFIG.seed)
+          const student = new SimulatedStudent(profile, rng)
+          student.ensureSkillsTracked(practicingSkills)
+
+          // Record initial mastery (should be 0 for deficient skill)
+          adaptiveTrajectory.push(student.getTrueProbability(skillId))
+
+          const config: JourneyConfig = {
+            ...QUICK_CONFIG,
+            practicingSkills,
+            profile,
+            mode: 'adaptive',
+          }
+
+          const runner = new JourneyRunner(ephemeralDb.db, student, config, rng, playerId)
+          await runner.run()
+
+          // We need per-session tracking, so let's just record final and interpolate
+          // Actually, let's track exposure growth instead
+          adaptiveTrajectory.push(student.getTrueProbability(skillId))
+        }
+
+        // Run classic mode session by session
+        const classicTrajectory: number[] = []
+        {
+          const { playerId } = await createTestStudent(
+            ephemeralDb.db,
+            `conv-classic-${learnerType}-${skillSlug}`
+          )
+          const rng = new SeededRandom(QUICK_CONFIG.seed)
+          const student = new SimulatedStudent(profile, rng)
+          student.ensureSkillsTracked(practicingSkills)
+
+          classicTrajectory.push(student.getTrueProbability(skillId))
+
+          const config: JourneyConfig = {
+            ...QUICK_CONFIG,
+            practicingSkills,
+            profile,
+            mode: 'classic',
+          }
+
+          const runner = new JourneyRunner(ephemeralDb.db, student, config, rng, playerId)
+          await runner.run()
+
+          classicTrajectory.push(student.getTrueProbability(skillId))
+        }
+
+        // For proper convergence tracking, we need session-by-session data
+        // Let's run a custom loop that tracks after each session
+        const adaptivePerSession: number[] = []
+        const classicPerSession: number[] = []
+
+        // Adaptive per-session tracking
+        {
+          const { playerId } = await createTestStudent(
+            ephemeralDb.db,
+            `conv2-adaptive-${learnerType}-${skillSlug}`
+          )
+          const rng = new SeededRandom(QUICK_CONFIG.seed)
+          const student = new SimulatedStudent(profile, rng)
+          student.ensureSkillsTracked(practicingSkills)
+
+          adaptivePerSession.push(student.getTrueProbability(skillId))
+
+          // Run sessions one at a time
+          for (let s = 0; s < QUICK_CONFIG.sessionCount; s++) {
+            const sessionConfig: JourneyConfig = {
+              ...QUICK_CONFIG,
+              sessionCount: 1, // Run single session
+              practicingSkills,
+              profile,
+              mode: 'adaptive',
+            }
+            const runner = new JourneyRunner(ephemeralDb.db, student, sessionConfig, rng, playerId)
+            await runner.run()
+            adaptivePerSession.push(student.getTrueProbability(skillId))
+          }
+        }
+
+        // Classic per-session tracking
+        {
+          const { playerId } = await createTestStudent(
+            ephemeralDb.db,
+            `conv2-classic-${learnerType}-${skillSlug}`
+          )
+          const rng = new SeededRandom(QUICK_CONFIG.seed)
+          const student = new SimulatedStudent(profile, rng)
+          student.ensureSkillsTracked(practicingSkills)
+
+          classicPerSession.push(student.getTrueProbability(skillId))
+
+          for (let s = 0; s < QUICK_CONFIG.sessionCount; s++) {
+            const sessionConfig: JourneyConfig = {
+              ...QUICK_CONFIG,
+              sessionCount: 1,
+              practicingSkills,
+              profile,
+              mode: 'classic',
+            }
+            const runner = new JourneyRunner(ephemeralDb.db, student, sessionConfig, rng, playerId)
+            await runner.run()
+            classicPerSession.push(student.getTrueProbability(skillId))
+          }
+        }
+
+        // Find sessions to reach thresholds
+        const findSessionToReach = (trajectory: number[], threshold: number): number | null => {
+          for (let i = 0; i < trajectory.length; i++) {
+            if (trajectory[i] >= threshold) return i
+          }
+          return null
+        }
+
+        const adaptiveSessions50 = findSessionToReach(adaptivePerSession, 0.5)
+        const classicSessions50 = findSessionToReach(classicPerSession, 0.5)
+        const adaptiveSessions80 = findSessionToReach(adaptivePerSession, 0.8)
+        const classicSessions80 = findSessionToReach(classicPerSession, 0.8)
+
+        const fasterTo50 =
+          adaptiveSessions50 === null && classicSessions50 === null
+            ? 'neither'
+            : adaptiveSessions50 === null
+              ? 'classic'
+              : classicSessions50 === null
+                ? 'adaptive'
+                : adaptiveSessions50 < classicSessions50
+                  ? 'adaptive'
+                  : adaptiveSessions50 > classicSessions50
+                    ? 'classic'
+                    : 'tie'
+
+        const fasterTo80 =
+          adaptiveSessions80 === null && classicSessions80 === null
+            ? 'neither'
+            : adaptiveSessions80 === null
+              ? 'classic'
+              : classicSessions80 === null
+                ? 'adaptive'
+                : adaptiveSessions80 < classicSessions80
+                  ? 'adaptive'
+                  : adaptiveSessions80 > classicSessions80
+                    ? 'classic'
+                    : 'tie'
+
+        convergenceResults.push({
+          skillId,
+          learnerType,
+          adaptiveTrajectory: adaptivePerSession,
+          classicTrajectory: classicPerSession,
+          adaptiveSessions50,
+          classicSessions50,
+          adaptiveSessions80,
+          classicSessions80,
+          fasterTo50,
+          fasterTo80,
+        })
+      }
+
+      // Output convergence table
+      console.log(`\n${'='.repeat(130)}`)
+      console.log('CONVERGENCE SPEED: Sessions to Reach Mastery Thresholds')
+      console.log('='.repeat(130))
+      console.log(
+        '\n| Learner  | Deficient Skill                | A→50% | C→50% | Faster50 | A→80% | C→80% | Faster80 | A.Final | C.Final |'
+      )
+      console.log(
+        '|----------|--------------------------------|-------|-------|----------|-------|-------|----------|---------|---------|'
+      )
+
+      for (const r of convergenceResults) {
+        const aFinal = r.adaptiveTrajectory[r.adaptiveTrajectory.length - 1]
+        const cFinal = r.classicTrajectory[r.classicTrajectory.length - 1]
+        console.log(
+          `| ${r.learnerType.padEnd(8)} | ${r.skillId.padEnd(30)} | ${(r.adaptiveSessions50?.toString() ?? '-').padStart(5)} | ${(r.classicSessions50?.toString() ?? '-').padStart(5)} | ${r.fasterTo50.padEnd(8)} | ${(r.adaptiveSessions80?.toString() ?? '-').padStart(5)} | ${(r.classicSessions80?.toString() ?? '-').padStart(5)} | ${r.fasterTo80.padEnd(8)} | ${(aFinal * 100).toFixed(0).padStart(6)}% | ${(cFinal * 100).toFixed(0).padStart(6)}% |`
+        )
+      }
+
+      // Show trajectory for one example
+      const example = convergenceResults[0]
+      if (example) {
+        console.log(`\n--- Example Trajectory: ${example.skillId} (${example.learnerType}) ---`)
+        console.log('Session | Adaptive | Classic')
+        for (let i = 0; i < example.adaptiveTrajectory.length; i++) {
+          console.log(
+            `   ${i.toString().padStart(2)}   |   ${(example.adaptiveTrajectory[i] * 100).toFixed(0).padStart(3)}%   |   ${(example.classicTrajectory[i] * 100).toFixed(0).padStart(3)}%`
+          )
+        }
+      }
+
+      // Statistics
+      const faster50Adaptive = convergenceResults.filter((r) => r.fasterTo50 === 'adaptive').length
+      const faster50Classic = convergenceResults.filter((r) => r.fasterTo50 === 'classic').length
+      const faster80Adaptive = convergenceResults.filter((r) => r.fasterTo80 === 'adaptive').length
+      const faster80Classic = convergenceResults.filter((r) => r.fasterTo80 === 'classic').length
+
+      console.log(`\n${'='.repeat(60)}`)
+      console.log('TOTALS')
+      console.log('='.repeat(60))
+      console.log(`\nFaster to 50%: Adaptive=${faster50Adaptive}, Classic=${faster50Classic}`)
+      console.log(`Faster to 80%: Adaptive=${faster80Adaptive}, Classic=${faster80Classic}`)
+
+      // Adaptive should reach thresholds faster
+      expect(faster50Adaptive + faster80Adaptive).toBeGreaterThanOrEqual(
+        faster50Classic + faster80Classic
+      )
+    }, 1800000) // 30 min timeout
+  })
 })
 
 /**

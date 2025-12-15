@@ -32,6 +32,20 @@ import {
   type SlotResult,
 } from '@/db/schema/session-plans'
 import {
+  buildStudentSkillHistoryFromRecords,
+  calculateMaxSkillCost,
+  createSkillCostCalculator,
+  type SkillCostCalculator,
+} from '@/utils/skillComplexity'
+import { computeBktFromHistory, type SkillBktResult } from './bkt'
+import {
+  BKT_INTEGRATION_CONFIG,
+  CHALLENGE_RATIO_BY_PART_TYPE,
+  DEFAULT_PROBLEM_GENERATION_MODE,
+  WEAK_SKILL_THRESHOLDS,
+  type ProblemGenerationMode,
+} from './config'
+import {
   type CurriculumPhase,
   getPhase,
   getPhaseDisplayInfo,
@@ -44,13 +58,6 @@ import {
   getRecentSessions,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
-import {
-  buildStudentSkillHistoryFromRecords,
-  calculateMaxSkillCost,
-  createSkillCostCalculator,
-  type SkillCostCalculator,
-} from '@/utils/skillComplexity'
-import { CHALLENGE_RATIO_BY_PART_TYPE } from './config'
 
 // ============================================================================
 // Plan Generation
@@ -71,6 +78,12 @@ export interface GenerateSessionPlanOptions {
   config?: Partial<PlanGenerationConfig>
   /** Which parts to include (default: all enabled) */
   enabledParts?: EnabledParts
+  /**
+   * Problem generation mode:
+   * - 'adaptive': BKT-based continuous scaling (default)
+   * - 'classic': Fluency-based discrete states
+   */
+  problemGenerationMode?: ProblemGenerationMode
 }
 
 /**
@@ -111,7 +124,13 @@ export class NoSkillsEnabledError extends Error {
 export async function generateSessionPlan(
   options: GenerateSessionPlanOptions
 ): Promise<SessionPlan> {
-  const { playerId, durationMinutes, config: configOverrides, enabledParts } = options
+  const {
+    playerId,
+    durationMinutes,
+    config: configOverrides,
+    enabledParts,
+    problemGenerationMode = DEFAULT_PROBLEM_GENERATION_MODE,
+  } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
 
@@ -137,14 +156,62 @@ export async function generateSessionPlan(
     }
   }
 
-  // 1. Load student state
-  const curriculum = await getPlayerCurriculum(playerId)
-  const skillMastery = await getAllSkillMastery(playerId)
-  const recentSessions = await getRecentSessions(playerId, 10)
+  // 1. Load student state (in parallel for performance)
+  const [curriculum, skillMastery, recentSessions, problemHistory] = await Promise.all([
+    getPlayerCurriculum(playerId),
+    getAllSkillMastery(playerId),
+    getRecentSessions(playerId, 10),
+    // Only load problem history for BKT in adaptive mode
+    problemGenerationMode === 'adaptive'
+      ? getRecentSessionResults(playerId, BKT_INTEGRATION_CONFIG.sessionHistoryDepth)
+      : Promise.resolve([]),
+  ])
+
+  // Compute BKT if in adaptive mode and we have problem history
+  let bktResults: Map<string, SkillBktResult> | undefined
+  if (problemGenerationMode === 'adaptive' && problemHistory.length > 0) {
+    const bktResult = computeBktFromHistory(problemHistory)
+    bktResults = new Map(bktResult.skills.map((s) => [s.skillId, s]))
+
+    // Debug: Log BKT usage
+    if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+      console.log(
+        `[SessionPlanner] Mode: ${problemGenerationMode}, BKT skills: ${bktResult.skills.length}`
+      )
+      for (const skill of bktResult.skills.slice(0, 3)) {
+        console.log(
+          `  ${skill.skillId}: pKnown=${(skill.pKnown * 100).toFixed(0)}%, ` +
+            `confidence=${skill.confidence.toFixed(2)}, opportunities=${skill.opportunities}`
+        )
+      }
+    }
+  } else if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+    console.log(
+      `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (history=${problemHistory.length})`
+    )
+  }
 
   // Build student-aware cost calculator for complexity budgeting
   const studentHistory = buildStudentSkillHistoryFromRecords(skillMastery)
-  const costCalculator = createSkillCostCalculator(studentHistory)
+  const costCalculator = createSkillCostCalculator(studentHistory, {
+    bktResults,
+    mode: problemGenerationMode,
+  })
+
+  // Debug: Show multipliers for all modes (not just when BKT data exists)
+  if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+    console.log(`[SessionPlanner] Multiplier comparison (mode=${problemGenerationMode}):`)
+    const practicingIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
+    for (const skillId of practicingIds.slice(0, 5)) {
+      const multiplier = costCalculator.getMultiplier(skillId)
+      const masteryState = costCalculator.getMasteryState(skillId)
+      const bkt = costCalculator.getBktResult(skillId)
+      console.log(
+        `  ${skillId}: mult=${multiplier.toFixed(2)} mastery=${masteryState} ` +
+          `bkt_pKnown=${bkt?.pKnown.toFixed(2) ?? 'N/A'} bkt_conf=${bkt?.confidence.toFixed(2) ?? 'N/A'}`
+      )
+    }
+  }
 
   // Calculate max skill cost for dynamic visualization budget
   // This ensures the student's most expensive skill can appear in visualization
@@ -172,6 +239,17 @@ export async function generateSessionPlan(
   // Categorize skills for review/reinforcement purposes
   const struggling = findStrugglingSkills(skillMastery)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
+
+  // Identify weak skills from BKT for targeting (adaptive mode only)
+  const weakSkills = problemGenerationMode === 'adaptive' ? identifyWeakSkills(bktResults) : []
+
+  if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills.length > 0) {
+    console.log(`[SessionPlanner] Identified ${weakSkills.length} weak skills for targeting:`)
+    for (const skillId of weakSkills) {
+      const bkt = bktResults?.get(skillId)
+      console.log(`  ${skillId}: pKnown=${(bkt?.pKnown ?? 0 * 100).toFixed(0)}%`)
+    }
+  }
 
   // 4. Build parts using STUDENT'S MASTERED SKILLS (only enabled parts)
   // Normalize part time weights based on which parts are enabled
@@ -202,7 +280,8 @@ export async function generateSessionPlan(
         currentPhase,
         normalizedWeight,
         costCalculator,
-        studentMaxSkillCost
+        studentMaxSkillCost,
+        weakSkills
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -239,6 +318,9 @@ export async function generateSessionPlan(
 
 /**
  * Build a single session part with the appropriate slots
+ *
+ * @param weakSkills - Skills identified by BKT as weak (low P(known)).
+ *   These are added to targetSkills for focus slots to prioritize practice.
  */
 function buildSessionPart(
   partNumber: 1 | 2 | 3,
@@ -252,7 +334,8 @@ function buildSessionPart(
   currentPhase: CurriculumPhase | undefined,
   normalizedWeight?: number,
   costCalculator?: SkillCostCalculator,
-  studentMaxSkillCost?: number
+  studentMaxSkillCost?: number,
+  weakSkills?: string[]
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
@@ -289,14 +372,31 @@ function buildSessionPart(
   // Build slots
   const slots: ProblemSlot[] = []
 
-  // Focus slots: current phase, primary skill
+  // Build constraints for focus slots that prioritize weak skills
+  // This adds BKT-identified weak skills to targetSkills so problem generator prefers them
+  const focusConstraints =
+    weakSkills && weakSkills.length > 0
+      ? addWeakSkillsToTargets(phaseConstraints, weakSkills)
+      : phaseConstraints
+
+  if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills && weakSkills.length > 0) {
+    const targetSkillsList = Object.entries(focusConstraints.targetSkills || {}).flatMap(
+      ([cat, skills]) =>
+        Object.entries(skills)
+          .filter(([, v]) => v)
+          .map(([s]) => `${cat}.${s}`)
+    )
+    console.log(`[SessionPlanner] Focus slots will target: ${targetSkillsList.join(', ')}`)
+  }
+
+  // Focus slots: current phase, primary skill (with weak skill targeting)
   // Uses adjustedFocusCount which includes redistributed challenge slots for basic-skill-only students
   for (let i = 0; i < adjustedFocusCount; i++) {
     slots.push(
       createSlot(
         slots.length,
         'focus',
-        phaseConstraints,
+        focusConstraints,
         type,
         config,
         costCalculator,
@@ -312,7 +412,7 @@ function buildSessionPart(
       createSlot(
         slots.length,
         'reinforce',
-        skill ? buildConstraintsForSkill(skill) : phaseConstraints,
+        skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints,
         type,
         config,
         costCalculator,
@@ -328,7 +428,7 @@ function buildSessionPart(
       createSlot(
         slots.length,
         'review',
-        skill ? buildConstraintsForSkill(skill) : phaseConstraints,
+        skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints,
         type,
         config,
         costCalculator,
@@ -736,6 +836,31 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
 // ============================================================================
 
 /**
+ * Identify weak skills from BKT estimates.
+ *
+ * A skill is considered "weak" when BKT confidently estimates a low P(known).
+ * These skills should be prioritized in practice to help the student improve.
+ *
+ * @param bktResults - BKT results keyed by skillId
+ * @returns Array of skillIds that are weak and should be prioritized
+ */
+function identifyWeakSkills(bktResults: Map<string, SkillBktResult> | undefined): string[] {
+  if (!bktResults) return []
+
+  const weakSkills: string[] = []
+  const { confidenceThreshold, pKnownThreshold } = WEAK_SKILL_THRESHOLDS
+
+  for (const [skillId, result] of bktResults) {
+    // Weak = confident that P(known) is low
+    if (result.confidence >= confidenceThreshold && result.pKnown < pKnownThreshold) {
+      weakSkills.push(skillId)
+    }
+  }
+
+  return weakSkills
+}
+
+/**
  * Get term count constraints based on part type and config
  *
  * - abacus: Uses config.abacusTermCount
@@ -746,7 +871,8 @@ function getTermCountForPartType(
   partType: SessionPartType,
   config: PlanGenerationConfig
 ): { min: number; max: number } {
-  const abacusTerms = config.abacusTermCount
+  // abacusTermCount can be null in the type, but we default to a safe value
+  const abacusTerms = config.abacusTermCount ?? { min: 3, max: 6 }
 
   if (partType === 'abacus') {
     return abacusTerms
@@ -841,7 +967,7 @@ function createSlot(
   )
 
   const constraints = {
-    requiredSkills: baseConstraints.requiredSkills,
+    allowedSkills: baseConstraints.allowedSkills,
     targetSkills: baseConstraints.targetSkills,
     forbiddenSkills: baseConstraints.forbiddenSkills,
     termCount: getTermCountForPartType(partType, config),
@@ -909,12 +1035,14 @@ function findSkillsNeedingReview(
  * Build skill constraints from the student's actual mastered skills
  *
  * This creates constraints where:
- * - requiredSkills: all practicing skills (problems may ONLY use these skills)
- * - targetSkills: all practicing skills (prefer to use these skills)
+ * - allowedSkills: all practicing skills (problems may ONLY use these skills)
+ * - targetSkills: EMPTY (no targeting preference by default)
  * - forbiddenSkills: empty (don't exclude anything explicitly)
  *
- * The problem generator filters candidates to only allow requiredSkills,
- * then preferentially selects candidates that use targetSkills.
+ * IMPORTANT: targetSkills is empty by default, NOT all practicing skills.
+ * This allows the differentiation between classic and adaptive modes:
+ * - Classic: Uses these constraints directly → even skill distribution
+ * - Adaptive: addWeakSkillsToTargets() adds only weak skills → focused practice
  */
 function buildConstraintsFromPracticingSkills(
   practicingSkills: PlayerSkillMastery[]
@@ -933,35 +1061,105 @@ function buildConstraintsFromPracticingSkills(
     }
   }
 
-  // Both required and target use the same skills:
-  // - requiredSkills: only these skills may be used (acts as filter)
-  // - targetSkills: prefer to use these skills (acts as preference)
+  // allowedSkills: problems can ONLY use these skills (whitelist)
+  // targetSkills: EMPTY by default - no targeting preference
+  //
+  // IMPORTANT: targetSkills MUST be empty here, not all skills!
+  // When targetSkills = all skills, the problem generator accepts ANY problem
+  // that uses allowed skills (since all allowed skills are also targets).
+  // When targetSkills = empty, the problem generator generates an even
+  // distribution across allowed skills.
+  // When targetSkills = specific weak skills, the problem generator
+  // ONLY accepts problems using those weak skills (100% hit rate).
+  //
+  // The differentiation between adaptive and classic modes happens because:
+  // - Classic: Uses phaseConstraints (empty targetSkills) → even distribution
+  // - Adaptive: addWeakSkillsToTargets() adds only weak skills → focused practice
   return {
-    requiredSkills: skills,
-    targetSkills: skills,
+    allowedSkills: skills,
+    targetSkills: {}, // Empty by default - targeting added by addWeakSkillsToTargets()
     forbiddenSkills: {},
   } as ReturnType<typeof getPhaseSkillConstraints>
 }
 
+/**
+ * Build constraints for targeting a specific skill.
+ *
+ * IMPORTANT: Uses the full baseConstraints.allowedSkills as the allowed skill set,
+ * but sets only the target skill as targetSkills. This is critical because:
+ *
+ * - allowedSkills acts as a WHITELIST (problems can ONLY use these skills)
+ * - Some skills have prerequisites (e.g., heavenBeadSubtraction needs heavenBead
+ *   to first reach a state with ones digit >= 5)
+ * - If we only allow the target skill, we can't use prerequisite skills to reach
+ *   the state needed to use the target skill
+ *
+ * @param skill - The specific skill to target
+ * @param baseConstraints - The student's full practicing skill constraints (used as whitelist)
+ */
 function buildConstraintsForSkill(
-  skill: PlayerSkillMastery
+  skill: PlayerSkillMastery,
+  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>
 ): ReturnType<typeof getPhaseSkillConstraints> {
-  // Parse skill ID to determine constraints
+  // Parse skill ID to determine target
   // Format: "category.skillKey" like "fiveComplements.4=5-1"
   const [category, skillKey] = skill.skillId.split('.')
 
   const constraints = {
-    requiredSkills: {} as Record<string, Record<string, boolean>>,
+    // Use ALL practicing skills as the allowed set (whitelist)
+    allowedSkills: baseConstraints.allowedSkills,
+    // Target just the specific skill we want to reinforce/review
     targetSkills: {} as Record<string, Record<string, boolean>>,
-    forbiddenSkills: {} as Record<string, Record<string, boolean>>,
+    forbiddenSkills: baseConstraints.forbiddenSkills,
   }
 
   if (category && skillKey) {
     constraints.targetSkills[category] = { [skillKey]: true }
-    constraints.requiredSkills[category] = { [skillKey]: true }
   }
 
   return constraints as ReturnType<typeof getPhaseSkillConstraints>
+}
+
+/**
+ * Add weak skills to targetSkills in constraints.
+ *
+ * This modifies the constraints to ONLY target weak skills (identified by BKT),
+ * replacing any existing targetSkills. The problem generator will specifically
+ * prefer problems that exercise these weak skills, rather than spreading
+ * attention across all allowed skills.
+ *
+ * IMPORTANT: We start with an EMPTY targetSkills, not a copy of existing ones.
+ * This ensures weak skills get priority attention. If we copied all existing
+ * targetSkills, weak skills would just be mixed in with everything else and
+ * the problem generator wouldn't differentiate.
+ *
+ * @param baseConstraints - Base constraints with all practicing skills
+ * @param weakSkillIds - Skill IDs identified as weak by BKT
+ */
+function addWeakSkillsToTargets(
+  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
+  weakSkillIds: string[]
+): ReturnType<typeof getPhaseSkillConstraints> {
+  // Start with EMPTY targetSkills - we ONLY want to target weak skills
+  // This makes the problem generator specifically prefer weak skill problems
+  const targetSkills: Record<string, Record<string, boolean>> = {}
+
+  // Add ONLY weak skills as targets
+  for (const skillId of weakSkillIds) {
+    const [category, skillKey] = skillId.split('.')
+    if (category && skillKey) {
+      if (!targetSkills[category]) {
+        targetSkills[category] = {}
+      }
+      targetSkills[category][skillKey] = true
+    }
+  }
+
+  return {
+    allowedSkills: baseConstraints.allowedSkills,
+    targetSkills,
+    forbiddenSkills: baseConstraints.forbiddenSkills,
+  } as ReturnType<typeof getPhaseSkillConstraints>
 }
 
 /**

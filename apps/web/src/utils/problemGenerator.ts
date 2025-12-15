@@ -19,7 +19,8 @@ export interface GeneratedProblem {
   id: string
   terms: number[]
   answer: number
-  requiredSkills: string[]
+  /** Skills that this problem exercises (output, not input constraint) */
+  skillsUsed: string[]
   difficulty: 'easy' | 'medium' | 'hard'
   explanation?: string
   /** Step-by-step trace from the generator showing skills used at each step */
@@ -190,24 +191,24 @@ function isSkillEnabled(skillPath: string, skillSet: SkillSet | Partial<SkillSet
 }
 
 /**
- * Checks if a problem matches the required skills
+ * Checks if a problem matches the skill constraints
  */
 export function problemMatchesSkills(
   problem: GeneratedProblem,
-  requiredSkills: SkillSet,
+  allowedSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>
 ): boolean {
-  // Check required skills - problem must use at least one enabled required skill
-  const hasRequiredSkill = problem.requiredSkills.some((skillPath) =>
-    isSkillEnabled(skillPath, requiredSkills)
+  // Check allowed skills - problem must use at least one enabled allowed skill
+  const hasAllowedSkill = problem.skillsUsed.some((skillPath) =>
+    isSkillEnabled(skillPath, allowedSkills)
   )
 
-  if (!hasRequiredSkill) return false
+  if (!hasAllowedSkill) return false
 
   // Check forbidden skills - problem must not use any forbidden skills
   if (forbiddenSkills) {
-    const usesForbiddenSkill = problem.requiredSkills.some((skillPath) =>
+    const usesForbiddenSkill = problem.skillsUsed.some((skillPath) =>
       isSkillEnabled(skillPath, forbiddenSkills)
     )
 
@@ -216,7 +217,7 @@ export function problemMatchesSkills(
 
   // Check target skills - if specified, problem should use at least one target skill
   if (targetSkills) {
-    const hasTargetSkill = problem.requiredSkills.some((skillPath) =>
+    const hasTargetSkill = problem.skillsUsed.some((skillPath) =>
       isSkillEnabled(skillPath, targetSkills)
     )
 
@@ -240,7 +241,7 @@ export function problemMatchesSkills(
  */
 export interface GenerateProblemOptions {
   constraints: ProblemConstraints
-  requiredSkills: SkillSet
+  allowedSkills: SkillSet
   targetSkills?: Partial<SkillSet>
   forbiddenSkills?: Partial<SkillSet>
   /** Student-aware cost calculator for budget enforcement */
@@ -261,14 +262,20 @@ export interface GenerationDiagnostics {
   sumConstraintFailures: number
   /** How many attempts failed skill matching */
   skillMatchFailures: number
-  /** Example of enabled required skills */
-  enabledRequiredSkills: string[]
-  /** Example of target skills (if any) */
+  /** Skills the problem is allowed to use (whitelist) */
+  enabledAllowedSkills: string[]
+  /** Target skills the problem should preferentially use (if any) */
   enabledTargetSkills: string[]
   /** Last generated problem's skills (if any got that far) */
   lastGeneratedSkills?: string[]
   /** How many terms had to use lower complexity because minBudget was impossible */
   termsWithForcedLowerComplexity?: number
+  /**
+   * True if we fell back to a problem that didn't match target skills.
+   * This happens when target skills are unreachable with the current allowed skills.
+   * E.g., heavenBeadSubtraction can't be used if heavenBead isn't enabled to reach state 5+.
+   */
+  targetSkillsFallback?: boolean
 }
 
 /**
@@ -297,12 +304,40 @@ export interface GenerationResult {
 }
 
 /**
+ * Check if a problem matches allowed and forbidden skills (ignoring target skills).
+ * Used to find fallback candidates when target skills are unreachable.
+ */
+function problemMatchesAllowedSkillsOnly(
+  problem: GeneratedProblem,
+  allowedSkills: SkillSet,
+  forbiddenSkills?: Partial<SkillSet>
+): boolean {
+  // Check allowed skills - problem must use at least one enabled allowed skill
+  const hasAllowedSkill = problem.skillsUsed.some((skillPath) =>
+    isSkillEnabled(skillPath, allowedSkills)
+  )
+
+  if (!hasAllowedSkill) return false
+
+  // Check forbidden skills - problem must not use any forbidden skills
+  if (forbiddenSkills) {
+    const usesForbiddenSkill = problem.skillsUsed.some((skillPath) =>
+      isSkillEnabled(skillPath, forbiddenSkills)
+    )
+
+    if (usesForbiddenSkill) return false
+  }
+
+  return true
+}
+
+/**
  * Generates a single problem with detailed diagnostics about what happened
  */
 export function generateSingleProblemWithDiagnostics(
   options: GenerateProblemOptions
 ): GenerationResult {
-  const { constraints, requiredSkills, targetSkills, forbiddenSkills, costCalculator } = options
+  const { constraints, allowedSkills, targetSkills, forbiddenSkills, costCalculator } = options
   const maxAttempts = options.attempts ?? 100
 
   const diagnostics: GenerationDiagnostics = {
@@ -310,9 +345,13 @@ export function generateSingleProblemWithDiagnostics(
     sequenceFailures: 0,
     sumConstraintFailures: 0,
     skillMatchFailures: 0,
-    enabledRequiredSkills: getEnabledSkillPaths(requiredSkills),
+    enabledAllowedSkills: getEnabledSkillPaths(allowedSkills),
     enabledTargetSkills: targetSkills ? getEnabledSkillPaths(targetSkills) : [],
   }
+
+  // Track the best "fallback" candidate - a problem that matches allowed/forbidden
+  // but not target skills. Used when target skills are unreachable.
+  let fallbackCandidate: GeneratedProblem | null = null
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     diagnostics.totalAttempts++
@@ -326,7 +365,7 @@ export function generateSingleProblemWithDiagnostics(
     const sequenceResult = generateSequence(
       constraints,
       termCount,
-      requiredSkills,
+      allowedSkills,
       targetSkills,
       forbiddenSkills,
       costCalculator
@@ -365,17 +404,36 @@ export function generateSingleProblemWithDiagnostics(
       id: `problem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       terms,
       answer: sum,
-      requiredSkills: problemSkills,
+      skillsUsed: problemSkills,
       difficulty,
       explanation: generateSequentialExplanation(terms, sum, problemSkills),
       generationTrace: trace,
     }
 
-    if (problemMatchesSkills(problem, requiredSkills, targetSkills, forbiddenSkills)) {
+    // Check full match (including target skills)
+    if (problemMatchesSkills(problem, allowedSkills, targetSkills, forbiddenSkills)) {
       return { problem, diagnostics }
     }
 
+    // If it matches allowed/forbidden but not target, save as fallback
+    if (
+      targetSkills &&
+      !fallbackCandidate &&
+      problemMatchesAllowedSkillsOnly(problem, allowedSkills, forbiddenSkills)
+    ) {
+      fallbackCandidate = problem
+    }
+
     diagnostics.skillMatchFailures++
+  }
+
+  // If we have a fallback candidate (matched required/forbidden but not target),
+  // return it with a warning. This handles cases where target skills are
+  // unreachable with the current required skills (e.g., heavenBeadSubtraction
+  // requires heavenBead to first reach state 5+).
+  if (fallbackCandidate) {
+    diagnostics.targetSkillsFallback = true
+    return { problem: fallbackCandidate, diagnostics }
   }
 
   return { problem: null, diagnostics }
@@ -386,14 +444,14 @@ export function generateSingleProblemWithDiagnostics(
  */
 export function generateSingleProblem(
   constraintsOrOptions: ProblemConstraints | GenerateProblemOptions,
-  requiredSkills?: SkillSet,
+  allowedSkills?: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
   attempts: number = 100
 ): GeneratedProblem | null {
   // Support both old and new API
   let constraints: ProblemConstraints
-  let _requiredSkills: SkillSet
+  let _allowedSkills: SkillSet
   let _targetSkills: Partial<SkillSet> | undefined
   let _forbiddenSkills: Partial<SkillSet> | undefined
   let _attempts: number
@@ -402,7 +460,7 @@ export function generateSingleProblem(
   if ('constraints' in constraintsOrOptions) {
     // New options-based API
     constraints = constraintsOrOptions.constraints
-    _requiredSkills = constraintsOrOptions.requiredSkills
+    _allowedSkills = constraintsOrOptions.allowedSkills
     _targetSkills = constraintsOrOptions.targetSkills
     _forbiddenSkills = constraintsOrOptions.forbiddenSkills
     _attempts = constraintsOrOptions.attempts ?? 100
@@ -410,7 +468,7 @@ export function generateSingleProblem(
   } else {
     // Old positional API (backward compatibility)
     constraints = constraintsOrOptions
-    _requiredSkills = requiredSkills!
+    _allowedSkills = allowedSkills!
     _targetSkills = targetSkills
     _forbiddenSkills = forbiddenSkills
     _attempts = attempts
@@ -419,7 +477,7 @@ export function generateSingleProblem(
   // Use the diagnostics version internally
   const result = generateSingleProblemWithDiagnostics({
     constraints,
-    requiredSkills: _requiredSkills,
+    allowedSkills: _allowedSkills,
     targetSkills: _targetSkills,
     forbiddenSkills: _forbiddenSkills,
     costCalculator,
@@ -456,7 +514,7 @@ function hasSubtractionSkills(skillSet: SkillSet): boolean {
 function generateSequence(
   constraints: ProblemConstraints,
   termCount: number,
-  requiredSkills: SkillSet,
+  allowedSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
   costCalculator?: SkillCostCalculator
@@ -466,7 +524,7 @@ function generateSequence(
   let currentValue = 0
 
   // Check if we can use subtraction
-  const canSubtract = hasSubtractionSkills(requiredSkills)
+  const canSubtract = hasSubtractionSkills(allowedSkills)
 
   // Track previous term for no-immediate-inverse rule
   let previousTerm: PreviousTerm | undefined
@@ -478,7 +536,7 @@ function generateSequence(
     const result = findValidNextTermWithTrace(
       currentValue,
       constraints,
-      requiredSkills,
+      allowedSkills,
       targetSkills,
       forbiddenSkills,
       i === termCount - 1, // isLastTerm
@@ -562,6 +620,103 @@ interface PreviousTerm {
   isSubtraction: boolean
 }
 
+/**
+ * State-dependent skills and their setup requirements.
+ *
+ * Some skills can only be triggered when the abacus is in a specific state.
+ * This map defines:
+ * - skillId: the skill that needs setup
+ * - canUse: function to check if current state enables the skill
+ * - setupPredicate: function to check if a term would set up the state for this skill
+ *
+ * For example, heavenBeadSubtraction requires ones digit 5-9 (heaven bead active)
+ * so we need to add terms that result in ones digit 5-9 before we can subtract 5.
+ */
+interface StateDependentSkill {
+  skillId: string
+  /** Check if the current value enables this skill */
+  canUse: (currentValue: number) => boolean
+  /** Check if applying this term would set up the state for this skill */
+  wouldSetupState: (currentValue: number, term: number, isSubtraction: boolean) => boolean
+}
+
+const STATE_DEPENDENT_SKILLS: StateDependentSkill[] = [
+  {
+    // heavenBeadSubtraction: requires ones digit 5-9, then subtract 5
+    skillId: 'basic.heavenBeadSubtraction',
+    canUse: (currentValue: number) => {
+      const onesDigit = currentValue % 10
+      return onesDigit >= 5 // Heaven bead is active when ones digit is 5-9
+    },
+    wouldSetupState: (currentValue: number, term: number, isSubtraction: boolean) => {
+      const newValue = isSubtraction ? currentValue - term : currentValue + term
+      if (newValue < 0) return false
+      const newOnesDigit = newValue % 10
+      return newOnesDigit >= 5 // Result has heaven bead active
+    },
+  },
+  {
+    // heavenBead (addition): requires ones digit 0-4 to add 5 directly
+    skillId: 'basic.heavenBead',
+    canUse: (currentValue: number) => {
+      const onesDigit = currentValue % 10
+      return onesDigit <= 4 // Can add 5 directly when ones is 0-4
+    },
+    wouldSetupState: (currentValue: number, term: number, isSubtraction: boolean) => {
+      const newValue = isSubtraction ? currentValue - term : currentValue + term
+      if (newValue < 0) return false
+      const newOnesDigit = newValue % 10
+      return newOnesDigit <= 4 // Result allows adding 5 directly
+    },
+  },
+]
+
+/**
+ * Check if a candidate term moves CLOSER to enabling a state-dependent skill.
+ *
+ * Unlike `wouldSetupState` which requires the state to be fully enabled,
+ * this checks if we're making progress toward the target state.
+ *
+ * For heavenBeadSubtraction (needs ones >= 5):
+ * - If current ones is 0 and new ones is 3, we're closer (progress)
+ * - If current ones is 0 and new ones is 5, we're there (setup complete)
+ */
+function movesTowardSetup(
+  depSkill: StateDependentSkill,
+  currentValue: number,
+  term: number,
+  isSubtraction: boolean
+): boolean {
+  if (depSkill.skillId === 'basic.heavenBeadSubtraction') {
+    const currentOnes = currentValue % 10
+    const newValue = isSubtraction ? currentValue - term : currentValue + term
+    if (newValue < 0) return false
+    const newOnes = newValue % 10
+    // Progress if we're moving toward 5+ without overshooting
+    return newOnes > currentOnes && newOnes <= 9
+  }
+  if (depSkill.skillId === 'basic.heavenBead') {
+    const currentOnes = currentValue % 10
+    const newValue = isSubtraction ? currentValue - term : currentValue + term
+    if (newValue < 0) return false
+    const newOnes = newValue % 10
+    // Progress if we're moving toward 0-4
+    return newOnes < currentOnes && newOnes >= 0
+  }
+  return false
+}
+
+/**
+ * Find state-dependent skills that are in the target skills set
+ */
+function findStateDependentTargetSkills(
+  targetSkills: Partial<SkillSet> | undefined
+): StateDependentSkill[] {
+  if (!targetSkills) return []
+
+  return STATE_DEPENDENT_SKILLS.filter((depSkill) => isSkillEnabled(depSkill.skillId, targetSkills))
+}
+
 /** Result from findValidNextTermWithTrace */
 interface TermWithSkills {
   term: number
@@ -583,7 +738,7 @@ interface TermWithSkills {
 function collectValidTerms(
   currentValue: number,
   constraints: ProblemConstraints,
-  requiredSkills: SkillSet,
+  allowedSkills: SkillSet,
   forbiddenSkills: Partial<SkillSet> | undefined,
   allowSubtraction: boolean,
   costCalculator?: SkillCostCalculator
@@ -608,7 +763,7 @@ function collectValidTerms(
 
     // Check if the step uses only allowed skills (and no forbidden skills)
     const usesValidSkills = stepSkills.every((skillPath) => {
-      if (!isSkillEnabled(skillPath, requiredSkills)) return false
+      if (!isSkillEnabled(skillPath, allowedSkills)) return false
       if (forbiddenSkills && isSkillEnabled(skillPath, forbiddenSkills)) return false
       return true
     })
@@ -677,7 +832,7 @@ function collectValidTerms(
 function findValidNextTermWithTrace(
   currentValue: number,
   constraints: ProblemConstraints,
-  requiredSkills: SkillSet,
+  allowedSkills: SkillSet,
   targetSkills?: Partial<SkillSet>,
   forbiddenSkills?: Partial<SkillSet>,
   isLastTerm: boolean = false,
@@ -689,7 +844,7 @@ function findValidNextTermWithTrace(
   const { meetsMinBudget, belowMinBudget } = collectValidTerms(
     currentValue,
     constraints,
-    requiredSkills,
+    allowedSkills,
     forbiddenSkills,
     allowSubtraction,
     costCalculator
@@ -738,6 +893,40 @@ function findValidNextTermWithTrace(
 
     if (targetCandidates.length > 0) {
       return targetCandidates[Math.floor(Math.random() * targetCandidates.length)]
+    }
+
+    // Step 4b: No candidates directly use target skills.
+    // Check if any target skills are state-dependent (need setup).
+    // If so, prefer terms that SET UP the state for those skills.
+    const stateDependentTargets = findStateDependentTargetSkills(targetSkills)
+    if (stateDependentTargets.length > 0) {
+      // Find candidates that would FULLY set up the state for state-dependent target skills
+      const setupCandidates = candidates.filter((candidate) =>
+        stateDependentTargets.some(
+          (depSkill) =>
+            !depSkill.canUse(currentValue) && // Not currently usable
+            depSkill.wouldSetupState(currentValue, candidate.term, candidate.isSubtraction)
+        )
+      )
+
+      if (setupCandidates.length > 0) {
+        return setupCandidates[Math.floor(Math.random() * setupCandidates.length)]
+      }
+
+      // Step 4c: No single term can complete the setup.
+      // Find candidates that PROGRESS toward the setup state (multi-term setup).
+      // E.g., for heavenBeadSubtraction, prefer terms that increase ones digit toward 5+
+      const progressCandidates = candidates.filter((candidate) =>
+        stateDependentTargets.some(
+          (depSkill) =>
+            !depSkill.canUse(currentValue) && // Not currently usable
+            movesTowardSetup(depSkill, currentValue, candidate.term, candidate.isSubtraction)
+        )
+      )
+
+      if (progressCandidates.length > 0) {
+        return progressCandidates[Math.floor(Math.random() * progressCandidates.length)]
+      }
     }
   }
 
@@ -873,7 +1062,7 @@ export function generateProblems(practiceStep: PracticeStep): GeneratedProblem[]
 
     const problem = generateSingleProblem(
       constraints,
-      practiceStep.requiredSkills,
+      practiceStep.allowedSkills,
       practiceStep.targetSkills,
       practiceStep.forbiddenSkills,
       150 // More attempts per problem for uniqueness
@@ -953,7 +1142,7 @@ function generateFallbackProblem(constraints: ProblemConstraints, index: number)
     id: `fallback_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
     terms,
     answer: sum,
-    requiredSkills: ['basic.directAddition'],
+    skillsUsed: ['basic.directAddition'],
     difficulty: 'easy',
     explanation: generateSequentialExplanation(terms, sum, ['basic.directAddition']),
   }
@@ -990,13 +1179,9 @@ function createModifiedUniqueProblem(
             id: `modified_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
             terms: newTerms,
             answer: newSum,
-            requiredSkills: baseProblem.requiredSkills,
+            skillsUsed: baseProblem.skillsUsed,
             difficulty: baseProblem.difficulty,
-            explanation: generateSequentialExplanation(
-              newTerms,
-              newSum,
-              baseProblem.requiredSkills
-            ),
+            explanation: generateSequentialExplanation(newTerms, newSum, baseProblem.skillsUsed),
           }
 
           // Check if this modification creates a unique problem
@@ -1022,15 +1207,15 @@ export function validatePracticeStepConfiguration(practiceStep: PracticeStep): {
   const warnings: string[] = []
   const suggestions: string[] = []
 
-  // Check if any required skills are enabled
-  const hasAnyRequiredSkill =
-    Object.values(practiceStep.requiredSkills.basic).some(Boolean) ||
-    Object.values(practiceStep.requiredSkills.fiveComplements).some(Boolean) ||
-    Object.values(practiceStep.requiredSkills.tenComplements).some(Boolean)
+  // Check if any allowed skills are enabled
+  const hasAnyAllowedSkill =
+    Object.values(practiceStep.allowedSkills.basic).some(Boolean) ||
+    Object.values(practiceStep.allowedSkills.fiveComplements).some(Boolean) ||
+    Object.values(practiceStep.allowedSkills.tenComplements).some(Boolean)
 
-  if (!hasAnyRequiredSkill) {
-    warnings.push('No required skills are enabled. Problems may be very basic.')
-    suggestions.push('Enable at least one skill in the "Required Skills" section.')
+  if (!hasAnyAllowedSkill) {
+    warnings.push('No skills are enabled. Problems may be very basic.')
+    suggestions.push('Enable at least one skill in the "Allowed Skills" section.')
   }
 
   // Check number range vs sum constraints

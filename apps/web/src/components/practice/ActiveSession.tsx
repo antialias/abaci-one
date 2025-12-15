@@ -656,22 +656,26 @@ export function ActiveSession({
   const [problemHeight, setProblemHeight] = useState<number | null>(null)
 
   // Measure problem container height with ResizeObserver
-  useEffect(() => {
+  // Use useLayoutEffect to run synchronously after DOM mutations (before paint)
+  // This ensures we get accurate measurements before the browser paints
+  useLayoutEffect(() => {
     const element = activeRef.current
     if (!element) return
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setProblemHeight(entry.contentRect.height)
+        // Use borderBoxSize for more accurate measurement including padding
+        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+        setProblemHeight(height)
       }
     })
 
     observer.observe(element)
-    // Initial measurement
+    // Initial measurement - offsetHeight includes padding and border
     setProblemHeight(element.offsetHeight)
 
     return () => observer.disconnect()
-  }, [])
+  }, [attempt?.slotIndex, attempt?.partIndex]) // Re-run when problem changes
 
   // Track if we need to apply centering offset (set true when transition starts)
   const needsCenteringOffsetRef = useRef(false)

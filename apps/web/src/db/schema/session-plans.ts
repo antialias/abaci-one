@@ -62,7 +62,7 @@ export interface ProblemSlot {
 }
 
 export interface ProblemConstraints {
-  requiredSkills?: Partial<SkillSet>
+  allowedSkills?: Partial<SkillSet>
   targetSkills?: Partial<SkillSet>
   forbiddenSkills?: Partial<SkillSet>
   digitRange?: { min: number; max: number }

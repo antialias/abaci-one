@@ -223,7 +223,7 @@ describe('Problem Generator Budget Integration', () => {
           problemCount: 1,
           maxComplexityBudgetPerTerm: 2,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 200,
       })
@@ -232,7 +232,7 @@ describe('Problem Generator Budget Integration', () => {
       // or return null if impossible
       if (problem) {
         // Verify no ten complements (which would cost 8 for a beginner)
-        const hasTenComplement = problem.requiredSkills.some((s) => s.includes('tenComplements'))
+        const hasTenComplement = problem.skillsUsed.some((s) => s.includes('tenComplements'))
         expect(hasTenComplement).toBe(false)
       }
     })
@@ -263,13 +263,13 @@ describe('Problem Generator Budget Integration', () => {
             problemCount: 1,
             maxComplexityBudgetPerTerm: 6, // Higher budget
           },
-          requiredSkills: fullSkillSet,
+          allowedSkills: fullSkillSet,
           costCalculator: calculator,
           attempts: 50,
         })
 
         if (problem) {
-          const hasTenComplement = problem.requiredSkills.some((s) => s.includes('tenComplements'))
+          const hasTenComplement = problem.skillsUsed.some((s) => s.includes('tenComplements'))
           if (hasTenComplement) {
             hasComplexSkill = true
             break
@@ -303,7 +303,7 @@ describe('Problem Generator Budget Integration', () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        requiredSkills: fullSkillSet,
+        allowedSkills: fullSkillSet,
         attempts: 100,
       })
 

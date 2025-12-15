@@ -89,27 +89,27 @@ export function generateProblemFromConstraints(
 ): GeneratedProblem {
   const baseSkillSet = createBasicSkillSet()
 
-  const requiredSkills: SkillSet = {
-    basic: { ...baseSkillSet.basic, ...constraints.requiredSkills?.basic },
+  const allowedSkills: SkillSet = {
+    basic: { ...baseSkillSet.basic, ...constraints.allowedSkills?.basic },
     fiveComplements: {
       ...baseSkillSet.fiveComplements,
-      ...constraints.requiredSkills?.fiveComplements,
+      ...constraints.allowedSkills?.fiveComplements,
     },
     tenComplements: {
       ...baseSkillSet.tenComplements,
-      ...constraints.requiredSkills?.tenComplements,
+      ...constraints.allowedSkills?.tenComplements,
     },
     fiveComplementsSub: {
       ...baseSkillSet.fiveComplementsSub,
-      ...constraints.requiredSkills?.fiveComplementsSub,
+      ...constraints.allowedSkills?.fiveComplementsSub,
     },
     tenComplementsSub: {
       ...baseSkillSet.tenComplementsSub,
-      ...constraints.requiredSkills?.tenComplementsSub,
+      ...constraints.allowedSkills?.tenComplementsSub,
     },
     advanced: {
       ...baseSkillSet.advanced,
-      ...constraints.requiredSkills?.advanced,
+      ...constraints.allowedSkills?.advanced,
     },
   }
 
@@ -127,17 +127,30 @@ export function generateProblemFromConstraints(
 
   const { problem: generatedProblem, diagnostics } = generateSingleProblemWithDiagnostics({
     constraints: generatorConstraints,
-    requiredSkills,
+    allowedSkills,
     targetSkills: constraints.targetSkills,
     forbiddenSkills: constraints.forbiddenSkills,
     costCalculator,
   })
 
+  if (process.env.DEBUG_SESSION_PLANNER === 'true' && constraints.targetSkills) {
+    const targetList = Object.entries(constraints.targetSkills).flatMap(([cat, skills]) =>
+      Object.entries(skills as Record<string, boolean>)
+        .filter(([, v]) => v)
+        .map(([s]) => `${cat}.${s}`)
+    )
+    if (targetList.length > 0) {
+      console.log(
+        `[ProblemGenerator] Targeting: ${targetList.join(', ')} → Generated: ${generatedProblem?.skillsUsed.join(', ') || 'null'}`
+      )
+    }
+  }
+
   if (generatedProblem) {
     return {
       terms: generatedProblem.terms,
       answer: generatedProblem.answer,
-      skillsRequired: generatedProblem.requiredSkills,
+      skillsRequired: generatedProblem.skillsUsed,
       generationTrace: generatedProblem.generationTrace,
     }
   }

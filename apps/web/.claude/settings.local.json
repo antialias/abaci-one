@@ -19,13 +19,32 @@
       "Bash(sqlite3:*)",
       "Bash(gh run view:*)",
       "Bash(gh run rerun:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npx @biomejs/biome check:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node -e:*)",
+      "Bash(npm test:*)",
+      "Bash(npx @biomejs/biome format:*)",
+      "Bash(npm run lint:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npm run db:migrate:*)",
+      "mcp__sqlite__read_query",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(DEBUG_COST_CALCULATOR=true npx vitest:*)",
+      "Bash(DEBUG_SESSION_PLANNER=true npx vitest run:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

@@ -51,8 +51,8 @@ export interface CurriculumPhase {
 }
 
 export interface PhaseSkillConstraints {
-  /** Skills the student must already know */
-  requiredSkills: Partial<SkillSet>
+  /** Skills the student is allowed to use (whitelist - problems may ONLY use these) */
+  allowedSkills: Partial<SkillSet>
   /** Skills we want to practice (weighted higher in problem generation) */
   targetSkills: Partial<SkillSet>
   /** Skills the student hasn't learned yet (problems must NOT require these) */
@@ -433,7 +433,7 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
   }
 
   return {
-    requiredSkills: required,
+    allowedSkills: required,
     targetSkills: target,
     forbiddenSkills: forbidden,
   }
@@ -456,8 +456,8 @@ export function getUnlockedSkillsAtPhase(phaseId: string): Partial<SkillSet> {
     const phase = ALL_PHASES[i]
     const constraints = getPhaseSkillConstraints(phase.id)
 
-    // Merge required skills into unlocked
-    mergeSkillSets(unlocked, constraints.requiredSkills)
+    // Merge allowed skills into unlocked
+    mergeSkillSets(unlocked, constraints.allowedSkills)
   }
 
   return unlocked

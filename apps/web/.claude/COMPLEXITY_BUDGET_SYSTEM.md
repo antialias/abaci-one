@@ -162,7 +162,7 @@ function generateProblemFromConstraints(
       minComplexityBudgetPerTerm: constraints.minComplexityBudgetPerTerm,
       maxComplexityBudgetPerTerm: constraints.maxComplexityBudgetPerTerm,
     },
-    requiredSkills,
+    allowedSkills,
     costCalculator,
   })
 }

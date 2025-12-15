@@ -33,7 +33,7 @@ function createMockSlots(
     index: i,
     purpose: purposes[i % purposes.length],
     constraints: {
-      requiredSkills: {
+      allowedSkills: {
         basic: {
           directAddition: true,
           heavenBead: true,

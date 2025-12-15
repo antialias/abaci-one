@@ -39,7 +39,7 @@ const basicPracticeStep = {
   description: 'Practice adding numbers 1-4 using only earth beads',
   problemCount: 12,
   maxTerms: 3,
-  requiredSkills: createBasicSkillSet(),
+  allowedSkills: createBasicSkillSet(),
   numberRange: { min: 1, max: 4 },
   sumConstraints: { maxSum: 9 },
 }
@@ -51,7 +51,7 @@ const fiveComplementsPracticeStep = {
   description: 'Practice using five complement techniques when earth section is full',
   problemCount: 15,
   maxTerms: 4,
-  requiredSkills: {
+  allowedSkills: {
     basic: {
       directAddition: true,
       heavenBead: true,
@@ -82,7 +82,7 @@ const tenComplementsPracticeStep = {
   description: 'Practice advanced carrying operations using ten complement techniques',
   problemCount: 20,
   maxTerms: 5,
-  requiredSkills: {
+  allowedSkills: {
     basic: {
       directAddition: true,
       heavenBead: true,
@@ -173,7 +173,7 @@ export const EmptyStep: Story = {
       description: '',
       problemCount: 10,
       maxTerms: 3,
-      requiredSkills: createBasicSkillSet(),
+      allowedSkills: createBasicSkillSet(),
     },
     onChange: action('practice-step-changed'),
     onDelete: action('practice-step-deleted'),

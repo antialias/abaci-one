@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import type { MasteryLevel } from '@/db/schema/player-skill-mastery'
+import type { MasteryLevel } from './styles/practiceTheme'
 import { css } from '../../../styled-system/css'
 import type { StudentWithProgress } from './StudentSelector'
 
@@ -59,7 +59,6 @@ export interface ActiveSessionState {
 interface ProgressDashboardProps {
   student: StudentWithProgress
   currentPhase: CurrentPhaseInfo
-  recentSkills?: SkillProgress[]
   /** Skills that need extra practice (used heavy help recently) */
   focusAreas?: SkillProgress[]
   /** Active session state (if any) */
@@ -76,33 +75,12 @@ interface ProgressDashboardProps {
   onGenerateWorksheet: () => void
   /** Callback to run placement test */
   onRunPlacementTest?: () => void
-  /** Callback to manually set skills */
-  onSetSkillsManually?: () => void
   /** Callback to record offline practice */
   onRecordOfflinePractice?: () => void
   /** Callback to clear reinforcement for a skill (teacher only) */
   onClearReinforcement?: (skillId: string) => void
   /** Callback to clear all reinforcement flags (teacher only) */
   onClearAllReinforcement?: () => void
-}
-
-/**
- * Mastery level badge colors (dark mode aware)
- */
-function getMasteryColor(level: MasteryLevel, isDark: boolean): { bg: string; text: string } {
-  switch (level) {
-    case 'mastered':
-      return isDark
-        ? { bg: 'green.900', text: 'green.200' }
-        : { bg: 'green.100', text: 'green.700' }
-    case 'practicing':
-      return isDark
-        ? { bg: 'yellow.900', text: 'yellow.200' }
-        : { bg: 'yellow.100', text: 'yellow.700' }
-    default:
-      // 'learning' and any unknown values use gray
-      return isDark ? { bg: 'gray.700', text: 'gray.300' } : { bg: 'gray.100', text: 'gray.600' }
-  }
 }
 
 /**
@@ -117,7 +95,6 @@ function getMasteryColor(level: MasteryLevel, isDark: boolean): { bg: string; te
 export function ProgressDashboard({
   student,
   currentPhase,
-  recentSkills = [],
   focusAreas = [],
   activeSession,
   onStartPractice,
@@ -127,7 +104,6 @@ export function ProgressDashboard({
   onViewFullProgress,
   onGenerateWorksheet,
   onRunPlacementTest,
-  onSetSkillsManually,
   onRecordOfflinePractice,
   onClearReinforcement,
   onClearAllReinforcement,
@@ -547,7 +523,7 @@ export function ProgressDashboard({
       )}
 
       {/* Onboarding & Assessment Tools */}
-      {(onRunPlacementTest || onSetSkillsManually || onRecordOfflinePractice) && (
+      {(onRunPlacementTest || onRecordOfflinePractice) && (
         <div
           data-section="onboarding-tools"
           className={css({
@@ -600,30 +576,6 @@ export function ProgressDashboard({
                 Placement Test
               </button>
             )}
-            {onSetSkillsManually && (
-              <button
-                type="button"
-                data-action="set-skills-manually"
-                onClick={onSetSkillsManually}
-                className={css({
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.875rem',
-                  color: isDark ? 'purple.300' : 'purple.700',
-                  backgroundColor: isDark ? 'purple.900' : 'purple.50',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'purple.700' : 'purple.200',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'purple.800' : 'purple.100',
-                    borderColor: isDark ? 'purple.600' : 'purple.300',
-                  },
-                })}
-              >
-                Set Skills Manually
-              </button>
-            )}
             {onRecordOfflinePractice && (
               <button
                 type="button"
@@ -648,59 +600,6 @@ export function ProgressDashboard({
                 Record Offline Practice
               </button>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Recent skills (if available) */}
-      {recentSkills.length > 0 && (
-        <div
-          data-section="recent-skills"
-          className={css({
-            width: '100%',
-          })}
-        >
-          <h3
-            className={css({
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.300' : 'gray.700',
-              marginBottom: '0.75rem',
-            })}
-          >
-            Recent Skills
-          </h3>
-          <div
-            className={css({
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-            })}
-          >
-            {recentSkills.map((skill) => {
-              const colors = getMasteryColor(skill.masteryLevel, isDark)
-              return (
-                <span
-                  key={skill.skillId}
-                  className={css({
-                    fontSize: '0.75rem',
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '9999px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                  })}
-                  style={{
-                    backgroundColor: `var(--colors-${colors.bg.replace('.', '-')})`,
-                    color: `var(--colors-${colors.text.replace('.', '-')})`,
-                  }}
-                  title={`${skill.correct}/${skill.attempts} correct, ${skill.consecutiveCorrect} in a row${skill.needsReinforcement ? ' (needs practice)' : ''}`}
-                >
-                  {skill.needsReinforcement && <span title="Needs practice">⚠️</span>}
-                  {skill.skillName}
-                </span>
-              )
-            })}
           </div>
         </div>
       )}

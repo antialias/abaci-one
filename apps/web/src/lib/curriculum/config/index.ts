@@ -58,3 +58,15 @@ export {
   type FluencyThresholds,
   type ReinforcementConfig,
 } from './fluency-thresholds'
+
+// BKT Integration
+export {
+  BKT_INTEGRATION_CONFIG,
+  calculateBktMultiplier,
+  DEFAULT_PROBLEM_GENERATION_MODE,
+  isBktConfident,
+  WEAK_SKILL_THRESHOLDS,
+  type BktIntegrationConfig,
+  type ProblemGenerationMode,
+  type WeakSkillThresholds,
+} from './bkt-integration'

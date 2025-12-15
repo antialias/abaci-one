@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
+import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import {
   ActiveSessionExistsClientError,
   NoSkillsEnabledClientError,
@@ -75,7 +76,11 @@ export function StartPracticeModal({
     visualization: true,
     linear: true,
   })
-  const [abacusMaxTerms, setAbacusMaxTerms] = useState(DEFAULT_PLAN_CONFIG.abacusTermCount.max)
+  const [abacusMaxTerms, setAbacusMaxTerms] = useState(
+    DEFAULT_PLAN_CONFIG.abacusTermCount?.max ?? 5
+  )
+  const [problemGenerationMode, setProblemGenerationMode] =
+    useState<ProblemGenerationMode>('adaptive')
 
   const togglePart = useCallback((partType: keyof EnabledParts) => {
     setEnabledParts((prev) => {
@@ -169,6 +174,7 @@ export function StartPracticeModal({
             durationMinutes,
             abacusTermCount: { min: 3, max: abacusMaxTerms },
             enabledParts,
+            problemGenerationMode,
           })
         } catch (err) {
           if (err instanceof ActiveSessionExistsClientError) {
@@ -192,6 +198,7 @@ export function StartPracticeModal({
     durationMinutes,
     abacusMaxTerms,
     enabledParts,
+    problemGenerationMode,
     existingPlan,
     generatePlan,
     approvePlan,
@@ -461,7 +468,7 @@ export function StartPracticeModal({
                   transition: 'all 0.3s ease',
                 })}
                 style={{
-                  maxHeight: isExpanded ? '400px' : '0px',
+                  maxHeight: isExpanded ? '520px' : '0px',
                   opacity: isExpanded ? 1 : 0,
                 }}
               >
@@ -700,6 +707,121 @@ export function StartPracticeModal({
                             }}
                           >
                             {terms}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Problem Selection Algorithm */}
+                  <div>
+                    <div
+                      className={css({
+                        fontSize: '0.6875rem',
+                        fontWeight: '600',
+                        color: isDark ? 'gray.500' : 'gray.400',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: '0.5rem',
+                      })}
+                    >
+                      Problem Selection
+                    </div>
+                    <div
+                      className={css({ display: 'flex', flexDirection: 'column', gap: '0.375rem' })}
+                    >
+                      {[
+                        {
+                          mode: 'adaptive' as const,
+                          label: 'Adaptive',
+                          desc: 'Bayesian inference (recommended)',
+                        },
+                        {
+                          mode: 'classic' as const,
+                          label: 'Classic',
+                          desc: 'Streak-based thresholds',
+                        },
+                      ].map(({ mode, label, desc }) => {
+                        const isSelected = problemGenerationMode === mode
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setProblemGenerationMode(mode)}
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.625rem',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '8px',
+                              border: '2px solid',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              textAlign: 'left',
+                            })}
+                            style={{
+                              borderColor: isSelected
+                                ? isDark
+                                  ? '#f59e0b'
+                                  : '#d97706'
+                                : isDark
+                                  ? 'rgba(255,255,255,0.1)'
+                                  : 'rgba(0,0,0,0.08)',
+                              backgroundColor: isSelected
+                                ? isDark
+                                  ? 'rgba(245, 158, 11, 0.15)'
+                                  : 'rgba(217, 119, 6, 0.08)'
+                                : 'transparent',
+                            }}
+                          >
+                            <span
+                              className={css({
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                border: '2px solid',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              })}
+                              style={{
+                                borderColor: isSelected
+                                  ? isDark
+                                    ? '#f59e0b'
+                                    : '#d97706'
+                                  : isDark
+                                    ? 'rgba(255,255,255,0.3)'
+                                    : 'rgba(0,0,0,0.2)',
+                              }}
+                            >
+                              {isSelected && (
+                                <span
+                                  className={css({
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                  })}
+                                  style={{
+                                    backgroundColor: isDark ? '#f59e0b' : '#d97706',
+                                  }}
+                                />
+                              )}
+                            </span>
+                            <div>
+                              <div
+                                className={css({ fontSize: '0.8125rem', fontWeight: '600' })}
+                                style={{ color: isDark ? '#e2e8f0' : '#334155' }}
+                              >
+                                {label}
+                              </div>
+                              <div
+                                className={css({ fontSize: '0.6875rem' })}
+                                style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+                              >
+                                {desc}
+                              </div>
+                            </div>
                           </button>
                         )
                       })}

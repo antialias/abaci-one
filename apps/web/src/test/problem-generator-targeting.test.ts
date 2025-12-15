@@ -135,7 +135,8 @@ function runTargetingBatch(
     totalProblems: successfulGenerations,
     problemsWithTarget,
     targetSkillOccurrences,
-    avgTargetSkillsPerProblem: successfulGenerations > 0 ? targetSkillOccurrences / successfulGenerations : 0,
+    avgTargetSkillsPerProblem:
+      successfulGenerations > 0 ? targetSkillOccurrences / successfulGenerations : 0,
     targetHitRate: successfulGenerations > 0 ? problemsWithTarget / successfulGenerations : 0,
     skillDistribution,
   }
@@ -156,7 +157,9 @@ describe('Problem Generator Targeting', () => {
       console.log('\n--- Five Complement Targeting ---')
       console.log(`With targeting:    ${(withTarget.targetHitRate * 100).toFixed(1)}% hit rate`)
       console.log(`Without targeting: ${(withoutTarget.targetHitRate * 100).toFixed(1)}% hit rate`)
-      console.log(`Improvement: ${((withTarget.targetHitRate - withoutTarget.targetHitRate) * 100).toFixed(1)}pp`)
+      console.log(
+        `Improvement: ${((withTarget.targetHitRate - withoutTarget.targetHitRate) * 100).toFixed(1)}pp`
+      )
 
       // Targeting should improve hit rate
       expect(withTarget.targetHitRate).toBeGreaterThan(withoutTarget.targetHitRate)
@@ -172,7 +175,9 @@ describe('Problem Generator Targeting', () => {
       console.log('\n--- Ten Complement Targeting ---')
       console.log(`With targeting:    ${(withTarget.targetHitRate * 100).toFixed(1)}% hit rate`)
       console.log(`Without targeting: ${(withoutTarget.targetHitRate * 100).toFixed(1)}% hit rate`)
-      console.log(`Improvement: ${((withTarget.targetHitRate - withoutTarget.targetHitRate) * 100).toFixed(1)}pp`)
+      console.log(
+        `Improvement: ${((withTarget.targetHitRate - withoutTarget.targetHitRate) * 100).toFixed(1)}pp`
+      )
 
       expect(withTarget.targetHitRate).toBeGreaterThan(withoutTarget.targetHitRate)
     })
@@ -219,7 +224,10 @@ describe('Problem Generator Targeting', () => {
 
         const withRate = (withTarget.targetHitRate * 100).toFixed(1)
         const withoutRate = ((withoutTargetHits / withoutTarget.totalProblems) * 100).toFixed(1)
-        const diff = (withTarget.targetHitRate * 100 - (withoutTargetHits / withoutTarget.totalProblems) * 100).toFixed(1)
+        const diff = (
+          withTarget.targetHitRate * 100 -
+          (withoutTargetHits / withoutTarget.totalProblems) * 100
+        ).toFixed(1)
 
         console.log(
           `${seed.toString().padEnd(10)}${withRate.padStart(5)}%          ${withoutRate.padStart(5)}%            ${diff.padStart(6)}pp`
@@ -308,7 +316,8 @@ describe('Problem Generator Targeting', () => {
 
         results.push({ name: scenario.name, withRate, withoutRate, delta })
 
-        const effect = delta > 0.1 ? 'STRONG' : delta > 0.05 ? 'MODERATE' : delta > 0 ? 'WEAK' : 'NONE'
+        const effect =
+          delta > 0.1 ? 'STRONG' : delta > 0.05 ? 'MODERATE' : delta > 0 ? 'WEAK' : 'NONE'
 
         const diffSign = delta * 100 >= 0 ? '+' : ''
         const line = `${scenario.name.padEnd(44)}${(withRate * 100).toFixed(1).padStart(5)}%    ${(withoutRate * 100).toFixed(1).padStart(5)}%    ${diffSign}${(delta * 100).toFixed(1).padStart(5)}pp  ${effect}`
@@ -366,10 +375,10 @@ describe('Problem Generator Targeting', () => {
 
       // Standard deviation
       const stdWith = Math.sqrt(
-        withTargetRates.reduce((sum, r) => sum + Math.pow(r - avgWith, 2), 0) / numSeeds
+        withTargetRates.reduce((sum, r) => sum + (r - avgWith) ** 2, 0) / numSeeds
       )
       const stdWithout = Math.sqrt(
-        withoutTargetRates.reduce((sum, r) => sum + Math.pow(r - avgWithout, 2), 0) / numSeeds
+        withoutTargetRates.reduce((sum, r) => sum + (r - avgWithout) ** 2, 0) / numSeeds
       )
 
       console.log(`\nWith Targeting:`)
@@ -464,7 +473,8 @@ function runTargetingBatchWithTargetCheck(
     totalProblems: successfulGenerations,
     problemsWithTarget,
     targetSkillOccurrences,
-    avgTargetSkillsPerProblem: successfulGenerations > 0 ? targetSkillOccurrences / successfulGenerations : 0,
+    avgTargetSkillsPerProblem:
+      successfulGenerations > 0 ? targetSkillOccurrences / successfulGenerations : 0,
     targetHitRate: successfulGenerations > 0 ? problemsWithTarget / successfulGenerations : 0,
     skillDistribution,
   }

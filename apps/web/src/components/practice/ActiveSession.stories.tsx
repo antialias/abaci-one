@@ -80,7 +80,7 @@ function generateProblemWithSkills(
     return {
       terms: problem.terms,
       answer: problem.answer,
-      skillsRequired: problem.requiredSkills,
+      skillsRequired: problem.skillsUsed,
     }
   }
 
@@ -104,7 +104,7 @@ function createMockSlotsWithProblems(
   return Array.from({ length: count }, (_, i) => {
     // Build required skills based on skill level
     // Using type assertion since we're building mock data with partial values
-    const requiredSkills: ProblemSlot['constraints']['requiredSkills'] = {
+    const allowedSkills: ProblemSlot['constraints']['allowedSkills'] = {
       basic: { directAddition: true, heavenBead: true },
       ...(skillLevel !== 'basic' && {
         fiveComplements: { '4=5-1': true, '3=5-2': true },
@@ -112,13 +112,13 @@ function createMockSlotsWithProblems(
       ...(skillLevel === 'tenComplements' && {
         tenComplements: { '9=10-1': true, '8=10-2': true },
       }),
-    } as ProblemSlot['constraints']['requiredSkills']
+    } as ProblemSlot['constraints']['allowedSkills']
 
     return {
       index: i,
       purpose: purposes[i % purposes.length],
       constraints: {
-        requiredSkills,
+        allowedSkills,
         digitRange: { min: 1, max: skillLevel === 'tenComplements' ? 2 : 1 },
         termCount: { min: 3, max: 4 },
       },

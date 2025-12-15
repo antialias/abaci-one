@@ -19,7 +19,9 @@ import {
   getBaseComplexity,
   MASTERY_MULTIPLIERS,
   type MasteryState,
+  type ProblemGenerationMode,
 } from '@/lib/curriculum/config'
+import type { SkillBktResult } from '@/lib/curriculum/bkt'
 
 // Re-export for backwards compatibility
 export {
@@ -58,6 +60,24 @@ export interface StudentSkillHistory {
 }
 
 /**
+ * Options for creating a skill cost calculator
+ */
+export interface SkillCostCalculatorOptions {
+  /**
+   * BKT results keyed by skillId.
+   * When provided with mode='adaptive', uses P(known) for continuous multipliers.
+   */
+  bktResults?: Map<string, SkillBktResult>
+
+  /**
+   * Problem generation mode:
+   * - 'adaptive': BKT-based continuous scaling (default)
+   * - 'classic': Fluency-based discrete states
+   */
+  mode?: ProblemGenerationMode
+}
+
+/**
  * Interface for calculating skill cost for a student
  * This abstraction allows swapping implementations later
  */
@@ -76,6 +96,21 @@ export interface SkillCostCalculator {
    * Get mastery state for a skill (useful for debug UI)
    */
   getMasteryState(skillId: string): MasteryState
+
+  /**
+   * Get the raw multiplier used for a skill (useful for debug UI)
+   */
+  getMultiplier(skillId: string): number
+
+  /**
+   * Get BKT result for a skill if available (for transparency)
+   */
+  getBktResult(skillId: string): SkillBktResult | undefined
+
+  /**
+   * Get the mode being used for this calculator
+   */
+  getMode(): ProblemGenerationMode
 }
 
 // =============================================================================
@@ -88,18 +123,46 @@ export interface SkillCostCalculator {
 // =============================================================================
 
 /**
- * Creates a skill cost calculator based on student's skill history
+ * Creates a skill cost calculator based on student's skill history.
  *
- * This is the default implementation that uses mastery levels.
- * Can be replaced with more sophisticated implementations later.
+ * IMPORTANT: Cost calculation ALWAYS uses fluency-based multipliers.
+ * BKT is stored but NOT used for cost calculation - it's only used for
+ * skill TARGETING in session-planner.ts.
+ *
+ * This separation ensures:
+ * - Difficulty control (mastery multipliers) works correctly
+ * - BKT identifies weak skills for targeting, not filtering them out
+ *
+ * @param studentHistory - Student's skill history for fluency-based multipliers
+ * @param options - Optional BKT results (for targeting) and mode selection
  */
 export function createSkillCostCalculator(
-  studentHistory: StudentSkillHistory
+  studentHistory: StudentSkillHistory,
+  options: SkillCostCalculatorOptions = {}
 ): SkillCostCalculator {
+  const { bktResults, mode = 'adaptive' } = options
+
+  /**
+   * Get multiplier for a skill.
+   *
+   * IMPORTANT: Always uses fluency-based multipliers for cost calculation.
+   * BKT is NOT used for cost - it's only used for skill TARGETING (see session-planner.ts).
+   *
+   * Rationale: The mastery multiplier controls problem difficulty by making
+   * mastered skills cost less and unmastered skills cost more. This prevents
+   * overwhelming students. BKT's role is separate: identifying which skills
+   * to prioritize for practice, not inflating their cost.
+   */
+  function getMultiplierForSkill(skillId: string): number {
+    // Always use fluency-based multiplier for cost calculation
+    // BKT is used for skill targeting in session-planner.ts, not for cost
+    return getFluencyMultiplier(skillId, studentHistory)
+  }
+
   return {
     calculateSkillCost(skillId: string): number {
       const baseCost = getBaseComplexity(skillId)
-      const multiplier = getMasteryMultiplier(skillId, studentHistory)
+      const multiplier = getMultiplierForSkill(skillId)
       return baseCost * multiplier
     },
 
@@ -116,13 +179,26 @@ export function createSkillCostCalculator(
       }
       return skillState.masteryState
     },
+
+    getMultiplier(skillId: string): number {
+      return getMultiplierForSkill(skillId)
+    },
+
+    getBktResult(skillId: string): SkillBktResult | undefined {
+      return bktResults?.get(skillId)
+    },
+
+    getMode(): ProblemGenerationMode {
+      return mode
+    },
   }
 }
 
 /**
- * Get mastery multiplier for a skill based on student history
+ * Get fluency-based multiplier for a skill based on student history.
+ * Used as fallback when BKT is not available or not confident.
  */
-function getMasteryMultiplier(skillId: string, history: StudentSkillHistory): number {
+function getFluencyMultiplier(skillId: string, history: StudentSkillHistory): number {
   const skillState = history.skills[skillId]
 
   // Unknown skill = treat as not_practicing (maximum cost)

@@ -1,5 +1,9 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { players } from './players'
+import {
+  DEFAULT_PROBLEM_GENERATION_MODE,
+  type ProblemGenerationMode,
+} from '@/lib/curriculum/config'
 
 /**
  * Player curriculum table - tracks a player's position in the soroban curriculum
@@ -43,6 +47,16 @@ export const playerCurriculum = sqliteTable('player_curriculum', {
    * This is the "mental math" mode for developing anzan skills
    */
   visualizationMode: integer('visualization_mode', { mode: 'boolean' }).notNull().default(false),
+
+  /**
+   * Problem generation mode preference:
+   * - 'adaptive': BKT-based continuous scaling (recommended, default)
+   * - 'classic': Fluency-based discrete states
+   */
+  problemGenerationMode: text('problem_generation_mode')
+    .$type<ProblemGenerationMode>()
+    .notNull()
+    .default(DEFAULT_PROBLEM_GENERATION_MODE),
 
   /** When this record was created */
   createdAt: integer('created_at', { mode: 'timestamp' })

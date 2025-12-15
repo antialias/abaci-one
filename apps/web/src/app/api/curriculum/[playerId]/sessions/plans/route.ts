@@ -8,6 +8,7 @@ import {
   getActiveSessionPlan,
   NoSkillsEnabledError,
 } from '@/lib/curriculum'
+import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -53,6 +54,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  *   (visualization auto-calculates as 75% of abacus)
  * - enabledParts?: { abacus: boolean, visualization: boolean, linear: boolean } - Which parts to include
  *   (default: all enabled)
+ * - problemGenerationMode?: 'adaptive' | 'classic' - Problem generation algorithm
+ *   - 'adaptive': BKT-based continuous scaling (default)
+ *   - 'classic': Fluency-based discrete states
  *
  * The plan will include the selected parts:
  * - Part 1: Abacus (use physical abacus, vertical format)
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json()
-    const { durationMinutes, abacusTermCount, enabledParts } = body
+    const { durationMinutes, abacusTermCount, enabledParts, problemGenerationMode } = body
 
     if (!durationMinutes || typeof durationMinutes !== 'number') {
       return NextResponse.json(
@@ -87,6 +91,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       durationMinutes,
       // Pass enabled parts
       enabledParts: enabledParts as EnabledParts | undefined,
+      // Pass problem generation mode if specified
+      problemGenerationMode: problemGenerationMode as ProblemGenerationMode | undefined,
       // Pass config overrides if abacusTermCount is specified
       ...(abacusTermCount && {
         config: {

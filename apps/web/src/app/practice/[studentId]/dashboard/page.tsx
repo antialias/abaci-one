@@ -4,6 +4,7 @@ import {
   getPlayer,
   getPlayerCurriculum,
   getRecentSessions,
+  getRecentSessionResults,
 } from '@/lib/curriculum/server'
 import { getActiveSessionPlan } from '@/lib/curriculum/session-planner'
 import { DashboardClient } from './DashboardClient'
@@ -13,42 +14,45 @@ export const dynamic = 'force-dynamic'
 
 interface DashboardPageProps {
   params: Promise<{ studentId: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
 /**
  * Dashboard Page - Server Component
  *
- * Shows the student's progress dashboard with:
- * - Current level and progress
- * - Recent skills
- * - "Continue Practice" button to start a new session
+ * Shows the student's tabbed dashboard with:
+ * - Overview tab: Current level, progress, session controls
+ * - Skills tab: Detailed skill mastery, BKT analysis, skill management
+ * - History tab: Past sessions (future)
  *
  * This page is always accessible regardless of session state.
  * Parents/teachers can view stats even while a session is in progress.
  *
- * URL: /practice/[studentId]/dashboard
+ * URL: /practice/[studentId]/dashboard?tab=overview|skills|history
  */
-export default async function DashboardPage({ params }: DashboardPageProps) {
+export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const { studentId } = await params
+  const { tab } = await searchParams
 
   // Fetch player data in parallel
-  const [player, curriculum, skills, recentSessions, activeSession] = await Promise.all([
-    getPlayer(studentId),
-    getPlayerCurriculum(studentId),
-    getAllSkillMastery(studentId),
-    getRecentSessions(studentId, 10),
-    getActiveSessionPlan(studentId),
-  ])
+  const [player, curriculum, skills, recentSessions, activeSession, problemHistory] =
+    await Promise.all([
+      getPlayer(studentId),
+      getPlayerCurriculum(studentId),
+      getAllSkillMastery(studentId),
+      getRecentSessions(studentId, 10),
+      getActiveSessionPlan(studentId),
+      getRecentSessionResults(studentId, 50), // For Skills tab BKT analysis
+    ])
 
   // 404 if player doesn't exist
   if (!player) {
     notFound()
   }
 
-  // Calculate current mastered skill IDs for mismatch detection
-  const currentMasteredSkillIds = skills
-    .filter((s) => s.masteryLevel === 'mastered')
-    .map((s) => s.skillId)
+  // Get skill IDs that are in the student's active practice rotation
+  // isPracticing=true means the skill is enabled for practice, NOT that it's mastered
+  const currentPracticingSkillIds = skills.filter((s) => s.isPracticing).map((s) => s.skillId)
 
   return (
     <DashboardClient
@@ -58,7 +62,9 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       skills={skills}
       recentSessions={recentSessions}
       activeSession={activeSession}
-      currentMasteredSkillIds={currentMasteredSkillIds}
+      currentPracticingSkillIds={currentPracticingSkillIds}
+      problemHistory={problemHistory}
+      initialTab={tab as 'overview' | 'skills' | 'history' | undefined}
     />
   )
 }

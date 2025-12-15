@@ -62,7 +62,7 @@ function generateProblemForResult(
     return {
       terms: problem.terms,
       answer: problem.answer,
-      skillsRequired: problem.requiredSkills,
+      skillsRequired: problem.skillsUsed,
     }
   }
 
@@ -126,7 +126,7 @@ function createCompletedSessionPlan(config: {
       index: i,
       purpose: 'focus' as const,
       constraints: {
-        requiredSkills: { basic: { directAddition: true } },
+        allowedSkills: { basic: { directAddition: true } },
         digitRange: { min: 1, max: 1 },
         termCount: { min: 3, max: 4 },
       },

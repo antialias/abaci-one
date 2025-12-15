@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
 
@@ -54,6 +55,7 @@ async function generateSessionPlan({
   durationMinutes,
   abacusTermCount,
   enabledParts,
+  problemGenerationMode,
 }: {
   playerId: string
   durationMinutes: number
@@ -61,11 +63,13 @@ async function generateSessionPlan({
   abacusTermCount?: { min: number; max: number }
   /** Which parts to include (default: all enabled) */
   enabledParts?: EnabledParts
+  /** Problem generation algorithm: 'adaptive' (BKT) or 'classic' (fluency) */
+  problemGenerationMode?: ProblemGenerationMode
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ durationMinutes, abacusTermCount, enabledParts }),
+    body: JSON.stringify({ durationMinutes, abacusTermCount, enabledParts, problemGenerationMode }),
   })
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

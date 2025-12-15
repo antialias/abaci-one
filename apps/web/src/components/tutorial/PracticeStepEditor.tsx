@@ -54,7 +54,7 @@ export function PracticeStepEditor({
       setSkillConfig(config)
       const { required, target, forbidden } = skillConfigurationToSkillSets(config)
       updateStep({
-        requiredSkills: required,
+        allowedSkills: required,
         targetSkills: target,
         forbiddenSkills: forbidden,
       })

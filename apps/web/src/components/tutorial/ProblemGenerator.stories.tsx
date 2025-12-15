@@ -24,7 +24,7 @@ const defaultPracticeStep: PracticeStep = {
   description: 'Practice basic addition problems using direct addition and heaven bead',
   problemCount: 5,
   maxTerms: 3,
-  requiredSkills: {
+  allowedSkills: {
     ...createBasicSkillSet(),
     basic: {
       directAddition: true,
@@ -50,7 +50,7 @@ const advancedPracticeStep: PracticeStep = {
   description: 'Practice problems requiring five complement techniques',
   problemCount: 8,
   maxTerms: 4,
-  requiredSkills: {
+  allowedSkills: {
     ...createBasicSkillSet(),
     basic: {
       directAddition: true,
@@ -273,7 +273,7 @@ function ProblemGeneratorDemo() {
                       </span>
                     </div>
                     <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                      <div>Sequential skills: {problem.requiredSkills.join(', ')}</div>
+                      <div>Sequential skills: {problem.skillsUsed.join(', ')}</div>
                       <div className={css({ mt: 1 })}>{problem.explanation}</div>
                     </div>
                   </div>

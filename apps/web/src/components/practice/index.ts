@@ -20,6 +20,8 @@ export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'
 export type { ActiveSessionState, CurrentPhaseInfo, SkillProgress } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
+// Re-export MasteryLevel type for display purposes
+export type { MasteryLevel } from './styles/practiceTheme'
 export type { SessionMoodIndicatorProps } from './SessionMoodIndicator'
 export { SessionMoodIndicator } from './SessionMoodIndicator'
 export { SessionOverview } from './SessionOverview'

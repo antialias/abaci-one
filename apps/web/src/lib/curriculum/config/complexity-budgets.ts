@@ -52,24 +52,44 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
  * - focus/visualization max:3 = cap complexity for mental math
  * - challenge min:1 = every term must use at least one five-complement
  */
+/**
+ * Complexity bounds per purpose and part type.
+ *
+ * Each slot purpose can have different min/max complexity requirements.
+ * null = no constraint (unlimited)
+ *
+ * - min: Minimum cost per term (ensures terms aren't trivial)
+ * - max: Maximum cost per term (caps cognitive load)
+ *
+ * The max budget interacts with BKT multipliers:
+ * - Adaptive mode: weak skills have high multipliers (up to 4x), so their terms
+ *   are more likely to exceed max budget and be filtered out
+ * - Classic mode: uses fluency multipliers (~3x for practicing), more lenient
+ *
+ * Example with max=7 and base_cost=2 (complement skill):
+ * - Adaptive (pKnown=0): 2 × 4.0 = 8.0 → filtered (exceeds max)
+ * - Classic (practicing): 2 × 3.0 = 6.0 → allowed (under max)
+ *
+ * This differentiation is key to BKT-driven adaptive problem selection.
+ */
 export const PURPOSE_COMPLEXITY_BOUNDS: Record<
   'focus' | 'reinforce' | 'review' | 'challenge',
   Record<SessionPartType, { min: number | null; max: number | null }>
 > = {
   focus: {
-    abacus: { min: null, max: null },
-    visualization: { min: null, max: 3 },
-    linear: { min: null, max: null },
+    abacus: { min: null, max: 7 }, // Added max to enable adaptive differentiation
+    visualization: { min: null, max: 5 },
+    linear: { min: null, max: 7 }, // Added max to enable adaptive differentiation
   },
   reinforce: {
-    abacus: { min: null, max: null },
-    visualization: { min: null, max: 3 },
-    linear: { min: null, max: null },
+    abacus: { min: null, max: 7 },
+    visualization: { min: null, max: 5 },
+    linear: { min: null, max: 7 },
   },
   review: {
-    abacus: { min: null, max: null },
-    visualization: { min: null, max: 3 },
-    linear: { min: null, max: null },
+    abacus: { min: null, max: 7 },
+    visualization: { min: null, max: 5 },
+    linear: { min: null, max: 7 },
   },
   challenge: {
     /** Challenge problems require at least some skill complexity */

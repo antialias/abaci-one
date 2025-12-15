@@ -284,62 +284,88 @@ export function PracticeSubNav({
             gap: { base: '0.375rem', md: '0.75rem' },
           })}
         >
-          {/* Transport controls dropdown */}
+          {/* Browse mode toggle - prominent standalone button */}
+          <button
+            type="button"
+            data-action="toggle-browse"
+            data-active={sessionHud.isBrowseMode || undefined}
+            onClick={sessionHud.onToggleBrowse}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              padding: '0.375rem 0.625rem',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              borderRadius: '6px',
+              border: '1px solid',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+              // Active (browse mode on) styling
+              ...(sessionHud.isBrowseMode
+                ? {
+                    color: isDark ? 'blue.200' : 'blue.700',
+                    backgroundColor: isDark ? 'blue.900/60' : 'blue.100',
+                    borderColor: isDark ? 'blue.700' : 'blue.300',
+                  }
+                : {
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                    borderColor: isDark ? 'gray.700' : 'gray.300',
+                  }),
+              _hover: sessionHud.isBrowseMode
+                ? {
+                    backgroundColor: isDark ? 'blue.800/60' : 'blue.200',
+                  }
+                : {
+                    backgroundColor: isDark ? 'gray.700' : 'white',
+                    borderColor: isDark ? 'gray.600' : 'gray.400',
+                  },
+            })}
+            aria-pressed={sessionHud.isBrowseMode}
+            aria-label={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Enter browse mode'}
+          >
+            <span>🔍</span>
+            <span className={css({ display: { base: 'none', sm: 'inline' } })}>
+              {sessionHud.isBrowseMode ? 'Exit' : 'Browse'}
+            </span>
+          </button>
+
+          {/* Session controls dropdown (pause/end) */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
                 type="button"
-                data-element="transport-controls"
+                data-element="session-controls"
                 className={css({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.375rem',
-                  padding: '0.375rem 0.625rem',
+                  padding: '0.375rem 0.5rem',
                   fontSize: '0.75rem',
                   fontWeight: '500',
-                  color: isDark ? 'gray.200' : 'gray.700',
-                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                  backgroundColor: isDark ? 'gray.800' : 'gray.50',
                   borderRadius: '6px',
                   border: '1px solid',
-                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  borderColor: isDark ? 'gray.700' : 'gray.300',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   flexShrink: 0,
                   _hover: {
-                    backgroundColor: isDark ? 'gray.600' : 'gray.50',
-                    borderColor: isDark ? 'gray.500' : 'gray.400',
-                  },
-                  _active: {
-                    backgroundColor: isDark ? 'gray.650' : 'gray.100',
+                    backgroundColor: isDark ? 'gray.700' : 'white',
+                    borderColor: isDark ? 'gray.600' : 'gray.400',
                   },
                 })}
                 aria-label="Session controls"
               >
-                {/* Status indicator dot */}
-                <span
-                  className={css({
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: sessionHud.isBrowseMode
-                      ? 'blue.500'
-                      : sessionHud.isPaused
-                        ? 'yellow.500'
-                        : 'green.500',
-                  })}
-                />
-                <span>
-                  {sessionHud.isBrowseMode
-                    ? 'Browse'
-                    : sessionHud.isPaused
-                      ? 'Paused'
-                      : 'Active'}
-                </span>
+                {/* Status indicator */}
+                <span>{sessionHud.isPaused ? '⏸' : '▶'}</span>
                 <span
                   className={css({
                     fontSize: '0.5rem',
-                    color: isDark ? 'gray.400' : 'gray.500',
-                    marginLeft: '0.125rem',
+                    color: isDark ? 'gray.500' : 'gray.400',
                   })}
                 >
                   ▼
@@ -350,7 +376,7 @@ export function PracticeSubNav({
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 className={css({
-                  minWidth: '160px',
+                  minWidth: '140px',
                   backgroundColor: isDark ? 'gray.800' : 'white',
                   borderRadius: '8px',
                   padding: '0.375rem',
@@ -384,42 +410,6 @@ export function PracticeSubNav({
                 >
                   <span>{sessionHud.isPaused ? '▶' : '⏸'}</span>
                   <span>{sessionHud.isPaused ? 'Resume' : 'Pause'}</span>
-                </DropdownMenu.Item>
-
-                {/* Browse mode item */}
-                <DropdownMenu.Item
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '4px',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    color: sessionHud.isBrowseMode
-                      ? isDark
-                        ? 'blue.300'
-                        : 'blue.600'
-                      : isDark
-                        ? 'gray.100'
-                        : 'gray.900',
-                    backgroundColor: sessionHud.isBrowseMode
-                      ? isDark
-                        ? 'blue.900/50'
-                        : 'blue.50'
-                      : 'transparent',
-                    _hover: {
-                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                    },
-                    _focus: {
-                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                    },
-                  })}
-                  onSelect={sessionHud.onToggleBrowse}
-                >
-                  <span>🔢</span>
-                  <span>{sessionHud.isBrowseMode ? 'Exit Browse' : 'Browse'}</span>
                 </DropdownMenu.Item>
 
                 <DropdownMenu.Separator

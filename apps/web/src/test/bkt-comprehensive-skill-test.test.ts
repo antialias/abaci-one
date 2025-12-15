@@ -170,6 +170,7 @@ function createResultFromProblem(
     usedOnScreenAbacus: false,
     timestamp,
     helpLevelUsed: 0,
+    incorrectAttempts: 0,
     sessionCompletedAt: timestamp,
     partType: 'abacus',
   }
