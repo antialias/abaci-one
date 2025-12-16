@@ -10,7 +10,6 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import type { FluencyState } from '@/db/schema/player-skill-mastery'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
 
@@ -373,6 +372,73 @@ export function usePlayerCurriculum(playerId: string | null) {
     updateWorksheetPreset,
     toggleVisualizationMode,
   }
+}
+
+// ============================================================================
+// Standalone Mutations (for use outside of combined hook)
+// ============================================================================
+
+/**
+ * Hook: Set mastered skills (manual skill management)
+ * Used by dashboard to manually enable/disable skills
+ */
+export function useSetMasteredSkills() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      playerId,
+      masteredSkillIds,
+    }: {
+      playerId: string
+      masteredSkillIds: string[]
+    }) => {
+      const response = await api(`curriculum/${playerId}/skills`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masteredSkillIds }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to set mastered skills')
+      }
+
+      return response.json()
+    },
+    onSuccess: (_, { playerId }) => {
+      // Invalidate curriculum to refetch skills
+      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+    },
+  })
+}
+
+/**
+ * Hook: Refresh skill recency (mark as recently practiced)
+ * Used by dashboard to clear staleness warnings
+ */
+export function useRefreshSkillRecency() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ playerId, skillId }: { playerId: string; skillId: string }) => {
+      const response = await api(`curriculum/${playerId}/skills`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to refresh skill')
+      }
+
+      return response.json()
+    },
+    onSuccess: (_, { playerId }) => {
+      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+    },
+  })
 }
 
 export default usePlayerCurriculum

@@ -40,6 +40,8 @@ import {
   MASTERY_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
+import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
+import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { computeMasteryState } from '@/utils/skillComplexity'
 import { css } from '../../../../../styled-system/css'
 
@@ -1473,7 +1475,7 @@ export function DashboardClient({
   curriculum,
   skills,
   recentSessions,
-  activeSession,
+  activeSession: initialActiveSession,
   currentPracticingSkillIds,
   problemHistory,
   initialTab = 'overview',
@@ -1482,6 +1484,14 @@ export function DashboardClient({
   const searchParams = useSearchParams()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // React Query: Use server props as initial data, get live updates from cache
+  const { data: activeSession } = useActiveSessionPlan(studentId, initialActiveSession)
+
+  // React Query mutations
+  const abandonMutation = useAbandonSession()
+  const setMasteredSkillsMutation = useSetMasteredSkills()
+  const refreshSkillMutation = useRefreshSkillRecency()
 
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
@@ -1581,17 +1591,17 @@ export function DashboardClient({
     if (!activeSession) return
     setIsStartingOver(true)
     try {
-      await fetch(`/api/curriculum/${studentId}/sessions/plans/${activeSession.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'abandon' }),
+      await abandonMutation.mutateAsync({
+        playerId: studentId,
+        planId: activeSession.id,
       })
       router.push(`/practice/${studentId}/configure`)
     } catch (error) {
       console.error('Failed to start over:', error)
+    } finally {
       setIsStartingOver(false)
     }
-  }, [activeSession, studentId, router])
+  }, [activeSession, studentId, abandonMutation, router])
 
   const handleResumeSession = useCallback(
     () => router.push(`/practice/${studentId}`),
@@ -1600,35 +1610,23 @@ export function DashboardClient({
 
   const handleSaveManualSkills = useCallback(
     async (masteredSkillIds: string[]): Promise<void> => {
-      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ masteredSkillIds }),
+      await setMasteredSkillsMutation.mutateAsync({
+        playerId: studentId,
+        masteredSkillIds,
       })
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save skills')
-      }
-      router.refresh()
       setShowManualSkillModal(false)
     },
-    [studentId, router]
+    [studentId, setMasteredSkillsMutation]
   )
 
   const handleRefreshSkill = useCallback(
     async (skillId: string): Promise<void> => {
-      const response = await fetch(`/api/curriculum/${studentId}/skills`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skillId }),
+      await refreshSkillMutation.mutateAsync({
+        playerId: studentId,
+        skillId,
       })
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to refresh skill')
-      }
-      router.refresh()
     },
-    [studentId, router]
+    [studentId, refreshSkillMutation]
   )
 
   return (
