@@ -25,6 +25,64 @@ import type { SeededRandom } from './SeededRandom'
 import type { SimulatedAnswer, StudentProfile } from './types'
 
 /**
+ * Skill difficulty multipliers for K (halfMaxExposure).
+ *
+ * Higher multiplier = harder skill = needs more exposures to reach 50% mastery.
+ *
+ * Example: If profile.halfMaxExposure = 10:
+ * - basic.directAddition: K = 10 × 0.8 = 8 (easier, 50% at 8 exposures)
+ * - fiveComplements.*: K = 10 × 1.2 = 12 (harder, 50% at 12 exposures)
+ * - tenComplements.*: K = 10 × 1.8 = 18 (hardest, 50% at 18 exposures)
+ */
+const SKILL_DIFFICULTY_MULTIPLIER: Record<string, number> = {
+  // Basic skills - easier, foundational
+  'basic.directAddition': 0.8,
+  'basic.directSubtraction': 0.8,
+  'basic.heavenBead': 0.9,
+  'basic.heavenBeadSubtraction': 0.9,
+  'basic.simpleCombinations': 1.0,
+  'basic.simpleCombinationsSub': 1.0,
+
+  // Five-complements - moderate difficulty (single column, but requires decomposition)
+  'fiveComplements.4=5-1': 1.2,
+  'fiveComplements.3=5-2': 1.2,
+  'fiveComplements.2=5-3': 1.2,
+  'fiveComplements.1=5-4': 1.2,
+  'fiveComplementsSub.-4=-5+1': 1.3,
+  'fiveComplementsSub.-3=-5+2': 1.3,
+  'fiveComplementsSub.-2=-5+3': 1.3,
+  'fiveComplementsSub.-1=-5+4': 1.3,
+
+  // Ten-complements - hardest (cross-column, carrying/borrowing)
+  'tenComplements.9=10-1': 1.6,
+  'tenComplements.8=10-2': 1.7,
+  'tenComplements.7=10-3': 1.7,
+  'tenComplements.6=10-4': 1.8,
+  'tenComplements.5=10-5': 1.8,
+  'tenComplements.4=10-6': 1.8,
+  'tenComplements.3=10-7': 1.9,
+  'tenComplements.2=10-8': 1.9,
+  'tenComplements.1=10-9': 2.0, // Hardest - biggest adjustment
+  'tenComplementsSub.-9=+1-10': 1.7,
+  'tenComplementsSub.-8=+2-10': 1.8,
+  'tenComplementsSub.-7=+3-10': 1.8,
+  'tenComplementsSub.-6=+4-10': 1.9,
+  'tenComplementsSub.-5=+5-10': 1.9,
+  'tenComplementsSub.-4=+6-10': 1.9,
+  'tenComplementsSub.-3=+7-10': 2.0,
+  'tenComplementsSub.-2=+8-10': 2.0,
+  'tenComplementsSub.-1=+9-10': 2.1, // Hardest subtraction
+}
+
+/**
+ * Get the difficulty multiplier for a skill.
+ * Returns 1.0 for unknown skills (baseline difficulty).
+ */
+function getSkillDifficultyMultiplier(skillId: string): number {
+  return SKILL_DIFFICULTY_MULTIPLIER[skillId] ?? 1.0
+}
+
+/**
  * Convert true probability to a cognitive load multiplier.
  *
  * Higher P(correct) → lower multiplier (more automated, less fatiguing)
@@ -154,11 +212,10 @@ export class SimulatedStudent {
     let probability = 1.0
     for (const skillId of skillIds) {
       const exposure = this.skillExposures.get(skillId) ?? 0
-      const skillProb = this.hillFunction(
-        exposure,
-        this.profile.halfMaxExposure,
-        this.profile.hillCoefficient
-      )
+      // Apply skill-specific difficulty multiplier to K
+      // Higher multiplier = harder skill = needs more exposures
+      const effectiveK = this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId)
+      const skillProb = this.hillFunction(exposure, effectiveK, this.profile.hillCoefficient)
       probability *= skillProb
     }
 
@@ -234,10 +291,17 @@ export class SimulatedStudent {
   /**
    * Get the computed P(correct) for a skill based on current exposure.
    * This is the "ground truth" that BKT is trying to estimate.
+   *
+   * Uses skill-specific difficulty multiplier:
+   * - Ten-complements (multiplier ~1.8) need ~80% more exposures than baseline
+   * - Five-complements (multiplier ~1.2) need ~20% more exposures than baseline
+   * - Basic skills (multiplier ~0.8-0.9) need fewer exposures
    */
   getTrueProbability(skillId: string): number {
     const exposure = this.skillExposures.get(skillId) ?? 0
-    return this.hillFunction(exposure, this.profile.halfMaxExposure, this.profile.hillCoefficient)
+    // Apply skill-specific difficulty multiplier to K
+    const effectiveK = this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId)
+    return this.hillFunction(exposure, effectiveK, this.profile.hillCoefficient)
   }
 
   /**

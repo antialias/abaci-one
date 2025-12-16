@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2025-12-16T15:51:01.133Z",
+  "version": "1.0",
+  "summary": {
+    "basicAvgExposures": 16.666666666666668,
+    "fiveCompAvgExposures": 24,
+    "tenCompAvgExposures": 36,
+    "gapAt20Exposures": "36.2 percentage points",
+    "exposureRatioForEqualMastery": "1.92"
+  },
+  "masteryCurves": {
+    "exposurePoints": [5, 10, 15, 20, 25, 30, 40, 50],
+    "skills": [
+      {
+        "id": "basic.directAddition",
+        "label": "Basic (0.8x)",
+        "category": "basic",
+        "color": "#22c55e",
+        "data": [28.000000000000004, 61, 78, 86, 91, 93, 96, 98]
+      },
+      {
+        "id": "fiveComplements.4=5-1",
+        "label": "Five-Complement (1.2x)",
+        "category": "fiveComplement",
+        "color": "#eab308",
+        "data": [15, 41, 61, 74, 81, 86, 92, 95]
+      },
+      {
+        "id": "tenComplements.9=10-1",
+        "label": "Ten-Complement Easy (1.6x)",
+        "category": "tenComplement",
+        "color": "#f97316",
+        "data": [9, 28.000000000000004, 47, 61, 71, 78, 86, 91]
+      },
+      {
+        "id": "tenComplements.1=10-9",
+        "label": "Ten-Complement Hard (2.0x)",
+        "category": "tenComplement",
+        "color": "#ef4444",
+        "data": [6, 20, 36, 50, 61, 69, 80, 86]
+      }
+    ]
+  },
+  "abComparison": {
+    "exposurePoints": [5, 10, 15, 20, 25, 30, 40, 50],
+    "withDifficulty": {
+      "basic.directAddition": {
+        "avgAt20": 0.86
+      },
+      "fiveComplements.4=5-1": {
+        "avgAt20": 0.74
+      },
+      "tenComplements.1=10-9": {
+        "avgAt20": 0.5
+      },
+      "tenComplements.9=10-1": {
+        "avgAt20": 0.61
+      }
+    },
+    "withoutDifficulty": {
+      "basic.directAddition": {
+        "avgAt20": 0.8
+      },
+      "fiveComplements.4=5-1": {
+        "avgAt20": 0.8
+      },
+      "tenComplements.1=10-9": {
+        "avgAt20": 0.8
+      },
+      "tenComplements.9=10-1": {
+        "avgAt20": 0.8
+      }
+    }
+  },
+  "exposuresToMastery": {
+    "target": "80%",
+    "categories": [
+      {
+        "name": "Basic Skills",
+        "avgExposures": 16.666666666666668,
+        "color": "#22c55e",
+        "skills": [
+          {
+            "id": "basic.directAddition",
+            "exposures": 16
+          },
+          {
+            "id": "basic.directSubtraction",
+            "exposures": 16
+          },
+          {
+            "id": "basic.heavenBead",
+            "exposures": 18
+          }
+        ]
+      },
+      {
+        "name": "Five-Complements",
+        "avgExposures": 24,
+        "color": "#eab308",
+        "skills": [
+          {
+            "id": "fiveComplements.1=5-4",
+            "exposures": 24
+          },
+          {
+            "id": "fiveComplements.3=5-2",
+            "exposures": 24
+          },
+          {
+            "id": "fiveComplements.4=5-1",
+            "exposures": 24
+          }
+        ]
+      },
+      {
+        "name": "Ten-Complements",
+        "avgExposures": 36,
+        "color": "#ef4444",
+        "skills": [
+          {
+            "id": "tenComplements.1=10-9",
+            "exposures": 40
+          },
+          {
+            "id": "tenComplements.6=10-4",
+            "exposures": 36
+          },
+          {
+            "id": "tenComplements.9=10-1",
+            "exposures": 32
+          }
+        ]
+      }
+    ]
+  },
+  "fiftyPercentThresholds": {
+    "exposuresFor50Percent": {
+      "basic.directAddition": 8,
+      "fiveComplements.4=5-1": 12,
+      "tenComplements.1=10-9": 20,
+      "tenComplements.9=10-1": 16
+    },
+    "ratiosRelativeToBasic": {
+      "basic.directAddition": "1.00",
+      "fiveComplements.4=5-1": "1.50",
+      "tenComplements.1=10-9": "2.50",
+      "tenComplements.9=10-1": "2.00"
+    }
+  },
+  "masteryTable": [
+    {
+      "Basic (0.8x)": "0%",
+      "Five-Comp (1.2x)": "0%",
+      "Ten-Comp Easy (1.6x)": "0%",
+      "Ten-Comp Hard (2.0x)": "0%",
+      "exposures": 0
+    },
+    {
+      "Basic (0.8x)": "28%",
+      "Five-Comp (1.2x)": "15%",
+      "Ten-Comp Easy (1.6x)": "9%",
+      "Ten-Comp Hard (2.0x)": "6%",
+      "exposures": 5
+    },
+    {
+      "Basic (0.8x)": "61%",
+      "Five-Comp (1.2x)": "41%",
+      "Ten-Comp Easy (1.6x)": "28%",
+      "Ten-Comp Hard (2.0x)": "20%",
+      "exposures": 10
+    },
+    {
+      "Basic (0.8x)": "78%",
+      "Five-Comp (1.2x)": "61%",
+      "Ten-Comp Easy (1.6x)": "47%",
+      "Ten-Comp Hard (2.0x)": "36%",
+      "exposures": 15
+    },
+    {
+      "Basic (0.8x)": "86%",
+      "Five-Comp (1.2x)": "74%",
+      "Ten-Comp Easy (1.6x)": "61%",
+      "Ten-Comp Hard (2.0x)": "50%",
+      "exposures": 20
+    },
+    {
+      "Basic (0.8x)": "93%",
+      "Five-Comp (1.2x)": "86%",
+      "Ten-Comp Easy (1.6x)": "78%",
+      "Ten-Comp Hard (2.0x)": "69%",
+      "exposures": 30
+    },
+    {
+      "Basic (0.8x)": "96%",
+      "Five-Comp (1.2x)": "92%",
+      "Ten-Comp Easy (1.6x)": "86%",
+      "Ten-Comp Hard (2.0x)": "80%",
+      "exposures": 40
+    },
+    {
+      "Basic (0.8x)": "98%",
+      "Five-Comp (1.2x)": "95%",
+      "Ten-Comp Easy (1.6x)": "91%",
+      "Ten-Comp Hard (2.0x)": "86%",
+      "exposures": 50
+    }
+  ]
+}

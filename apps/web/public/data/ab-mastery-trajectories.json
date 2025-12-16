@@ -1,0 +1,1702 @@
+{
+  "generatedAt": "2025-12-16T19:02:03.919Z",
+  "version": "2.0",
+  "config": {
+    "seed": 98765,
+    "sessionCount": 12,
+    "sessionDurationMinutes": 15
+  },
+  "summary": {
+    "totalSkills": 34,
+    "adaptiveWins50": 0,
+    "classicWins50": 0,
+    "ties50": 34,
+    "adaptiveWins80": 0,
+    "classicWins80": 0,
+    "ties80": 34
+  },
+  "sessions": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "skills": [
+    {
+      "id": "basic.directAddition",
+      "label": "basic: directAddition",
+      "category": "basic",
+      "color": "#22c55e",
+      "adaptive": {
+        "data": [
+          86,
+          96,
+          98,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          86,
+          96,
+          98,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "basic.directSubtraction",
+      "label": "basic: directSubtraction",
+      "category": "basic",
+      "color": "#16a34a",
+      "adaptive": {
+        "data": [
+          86,
+          96,
+          98,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          86,
+          96,
+          98,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "basic.heavenBead",
+      "label": "basic: heavenBead",
+      "category": "basic",
+      "color": "#15803d",
+      "adaptive": {
+        "data": [
+          83,
+          95,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          83,
+          95,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "basic.heavenBeadSubtraction",
+      "label": "basic: heavenBeadSubtraction",
+      "category": "basic",
+      "color": "#166534",
+      "adaptive": {
+        "data": [
+          83,
+          95,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          83,
+          95,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "basic.simpleCombinations",
+      "label": "basic: simpleCombinations",
+      "category": "basic",
+      "color": "#14532d",
+      "adaptive": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "basic.simpleCombinationsSub",
+      "label": "basic: simpleCombinationsSub",
+      "category": "basic",
+      "color": "#052e16",
+      "adaptive": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "fiveComplements.4=5-1",
+      "label": "5-comp: 4=5-1",
+      "category": "fiveComplement",
+      "color": "#eab308",
+      "adaptive": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplements.3=5-2",
+      "label": "5-comp: 3=5-2",
+      "category": "fiveComplement",
+      "color": "#facc15",
+      "adaptive": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplements.2=5-3",
+      "label": "5-comp: 2=5-3",
+      "category": "fiveComplement",
+      "color": "#fde047",
+      "adaptive": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplements.1=5-4",
+      "label": "5-comp: 1=5-4",
+      "category": "fiveComplement",
+      "color": "#fef08a",
+      "adaptive": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          74,
+          92,
+          96,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplementsSub.-4=-5+1",
+      "label": "5-comp sub: -4=-5+1",
+      "category": "fiveComplement",
+      "color": "#eab308",
+      "adaptive": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplementsSub.-3=-5+2",
+      "label": "5-comp sub: -3=-5+2",
+      "category": "fiveComplement",
+      "color": "#facc15",
+      "adaptive": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplementsSub.-2=-5+3",
+      "label": "5-comp sub: -2=-5+3",
+      "category": "fiveComplement",
+      "color": "#fde047",
+      "adaptive": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "fiveComplementsSub.-1=-5+4",
+      "label": "5-comp sub: -1=-5+4",
+      "category": "fiveComplement",
+      "color": "#fef08a",
+      "adaptive": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          70,
+          90,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.9=10-1",
+      "label": "10-comp: 9=10-1",
+      "category": "tenComplement",
+      "color": "#ef4444",
+      "adaptive": {
+        "data": [
+          61,
+          86,
+          93,
+          96,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          61,
+          86,
+          93,
+          96,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.8=10-2",
+      "label": "10-comp: 8=10-2",
+      "category": "tenComplement",
+      "color": "#f97316",
+      "adaptive": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.7=10-3",
+      "label": "10-comp: 7=10-3",
+      "category": "tenComplement",
+      "color": "#dc2626",
+      "adaptive": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.6=10-4",
+      "label": "10-comp: 6=10-4",
+      "category": "tenComplement",
+      "color": "#ea580c",
+      "adaptive": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.5=10-5",
+      "label": "10-comp: 5=10-5",
+      "category": "tenComplement",
+      "color": "#b91c1c",
+      "adaptive": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.4=10-6",
+      "label": "10-comp: 4=10-6",
+      "category": "tenComplement",
+      "color": "#c2410c",
+      "adaptive": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.3=10-7",
+      "label": "10-comp: 3=10-7",
+      "category": "tenComplement",
+      "color": "#991b1b",
+      "adaptive": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.2=10-8",
+      "label": "10-comp: 2=10-8",
+      "category": "tenComplement",
+      "color": "#9a3412",
+      "adaptive": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplements.1=10-9",
+      "label": "10-comp: 1=10-9",
+      "category": "tenComplement",
+      "color": "#7f1d1d",
+      "adaptive": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-9=+1-10",
+      "label": "10-comp sub: -9=+1-10",
+      "category": "tenComplement",
+      "color": "#ef4444",
+      "adaptive": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          58,
+          85,
+          93,
+          96,
+          97,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-8=+2-10",
+      "label": "10-comp sub: -8=+2-10",
+      "category": "tenComplement",
+      "color": "#f97316",
+      "adaptive": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-7=+3-10",
+      "label": "10-comp sub: -7=+3-10",
+      "category": "tenComplement",
+      "color": "#dc2626",
+      "adaptive": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          55,
+          83,
+          92,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-6=+4-10",
+      "label": "10-comp sub: -6=+4-10",
+      "category": "tenComplement",
+      "color": "#ea580c",
+      "adaptive": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-5=+5-10",
+      "label": "10-comp sub: -5=+5-10",
+      "category": "tenComplement",
+      "color": "#b91c1c",
+      "adaptive": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-4=+6-10",
+      "label": "10-comp sub: -4=+6-10",
+      "category": "tenComplement",
+      "color": "#c2410c",
+      "adaptive": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          53,
+          82,
+          91,
+          95,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-3=+7-10",
+      "label": "10-comp sub: -3=+7-10",
+      "category": "tenComplement",
+      "color": "#991b1b",
+      "adaptive": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-2=+8-10",
+      "label": "10-comp sub: -2=+8-10",
+      "category": "tenComplement",
+      "color": "#9a3412",
+      "adaptive": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      },
+      "classic": {
+        "data": [
+          50,
+          80,
+          90,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 2
+      }
+    },
+    {
+      "id": "tenComplementsSub.-1=+9-10",
+      "label": "10-comp sub: -1=+9-10",
+      "category": "tenComplement",
+      "color": "#7f1d1d",
+      "adaptive": {
+        "data": [
+          48,
+          78,
+          89,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 2,
+        "sessionsTo80": 3
+      },
+      "classic": {
+        "data": [
+          48,
+          78,
+          89,
+          94,
+          96,
+          97,
+          98,
+          98,
+          99,
+          99,
+          99,
+          99
+        ],
+        "sessionsTo50": 2,
+        "sessionsTo80": 3
+      }
+    },
+    {
+      "id": "advanced.cascadingCarry",
+      "label": "advanced: cascadingCarry",
+      "category": "advanced",
+      "color": "#8b5cf6",
+      "adaptive": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    },
+    {
+      "id": "advanced.cascadingBorrow",
+      "label": "advanced: cascadingBorrow",
+      "category": "advanced",
+      "color": "#a78bfa",
+      "adaptive": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      },
+      "classic": {
+        "data": [
+          80,
+          94,
+          97,
+          98,
+          99,
+          99,
+          99,
+          100,
+          100,
+          100,
+          100,
+          100
+        ],
+        "sessionsTo50": 1,
+        "sessionsTo80": 1
+      }
+    }
+  ],
+  "comparisonTable": [
+    {
+      "skill": "basic: directAddition",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "basic: directSubtraction",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "basic: heavenBead",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "basic: heavenBeadSubtraction",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "basic: simpleCombinations",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "basic: simpleCombinationsSub",
+      "category": "basic",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp: 4=5-1",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp: 3=5-2",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp: 2=5-3",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp: 1=5-4",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp sub: -4=-5+1",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp sub: -3=-5+2",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp sub: -2=-5+3",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "5-comp sub: -1=-5+4",
+      "category": "fiveComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 9=10-1",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 8=10-2",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 7=10-3",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 6=10-4",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 5=10-5",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 4=10-6",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 3=10-7",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 2=10-8",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp: 1=10-9",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -9=+1-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -8=+2-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -7=+3-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -6=+4-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -5=+5-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -4=+6-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -3=+7-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -2=+8-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 2,
+      "classicTo80": 2,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "10-comp sub: -1=+9-10",
+      "category": "tenComplement",
+      "adaptiveTo80": 3,
+      "classicTo80": 3,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "advanced: cascadingCarry",
+      "category": "advanced",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    },
+    {
+      "skill": "advanced: cascadingBorrow",
+      "category": "advanced",
+      "adaptiveTo80": 1,
+      "classicTo80": 1,
+      "advantage": "Tie"
+    }
+  ]
+}

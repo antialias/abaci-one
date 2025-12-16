@@ -1,0 +1,1024 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`A/B Mastery Trajectories > should capture mastery trajectories for multiple deficient skills > ab-mastery-trajectories 1`] = `
+{
+  "config": {
+    "seed": 98765,
+    "sessionCount": 12,
+    "sessionDurationMinutes": 15,
+  },
+  "summary": {
+    "adaptiveWins50": 4,
+    "adaptiveWins80": 6,
+    "classicWins50": 0,
+    "classicWins80": 0,
+    "skills": [
+      "fiveComplements.3=5-2",
+      "fiveComplementsSub.-3=-5+2",
+      "tenComplements.9=10-1",
+      "tenComplements.5=10-5",
+      "tenComplementsSub.-9=+1-10",
+      "tenComplementsSub.-5=+5-10",
+    ],
+    "ties50": 2,
+    "ties80": 0,
+  },
+  "trajectories": {
+    "fiveComplements.3=5-2": {
+      "adaptive": [
+        {
+          "mastery": 0.25,
+          "session": 1,
+        },
+        {
+          "mastery": 0.75,
+          "session": 2,
+        },
+        {
+          "mastery": 0.85,
+          "session": 3,
+        },
+        {
+          "mastery": 0.89,
+          "session": 4,
+        },
+        {
+          "mastery": 0.93,
+          "session": 5,
+        },
+        {
+          "mastery": 0.94,
+          "session": 6,
+        },
+        {
+          "mastery": 0.95,
+          "session": 7,
+        },
+        {
+          "mastery": 0.96,
+          "session": 8,
+        },
+        {
+          "mastery": 0.97,
+          "session": 9,
+        },
+        {
+          "mastery": 0.97,
+          "session": 10,
+        },
+        {
+          "mastery": 0.98,
+          "session": 11,
+        },
+        {
+          "mastery": 0.98,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.25,
+          "session": 1,
+        },
+        {
+          "mastery": 0.54,
+          "session": 2,
+        },
+        {
+          "mastery": 0.67,
+          "session": 3,
+        },
+        {
+          "mastery": 0.82,
+          "session": 4,
+        },
+        {
+          "mastery": 0.87,
+          "session": 5,
+        },
+        {
+          "mastery": 0.9,
+          "session": 6,
+        },
+        {
+          "mastery": 0.93,
+          "session": 7,
+        },
+        {
+          "mastery": 0.94,
+          "session": 8,
+        },
+        {
+          "mastery": 0.96,
+          "session": 9,
+        },
+        {
+          "mastery": 0.97,
+          "session": 10,
+        },
+        {
+          "mastery": 0.97,
+          "session": 11,
+        },
+        {
+          "mastery": 0.98,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 2,
+      "sessionsTo50Classic": 2,
+      "sessionsTo80Adaptive": 3,
+      "sessionsTo80Classic": 4,
+    },
+    "fiveComplementsSub.-3=-5+2": {
+      "adaptive": [
+        {
+          "mastery": 0.02,
+          "session": 1,
+        },
+        {
+          "mastery": 0.27,
+          "session": 2,
+        },
+        {
+          "mastery": 0.57,
+          "session": 3,
+        },
+        {
+          "mastery": 0.8,
+          "session": 4,
+        },
+        {
+          "mastery": 0.89,
+          "session": 5,
+        },
+        {
+          "mastery": 0.9,
+          "session": 6,
+        },
+        {
+          "mastery": 0.92,
+          "session": 7,
+        },
+        {
+          "mastery": 0.93,
+          "session": 8,
+        },
+        {
+          "mastery": 0.94,
+          "session": 9,
+        },
+        {
+          "mastery": 0.95,
+          "session": 10,
+        },
+        {
+          "mastery": 0.96,
+          "session": 11,
+        },
+        {
+          "mastery": 0.96,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.02,
+          "session": 1,
+        },
+        {
+          "mastery": 0.27,
+          "session": 2,
+        },
+        {
+          "mastery": 0.32,
+          "session": 3,
+        },
+        {
+          "mastery": 0.54,
+          "session": 4,
+        },
+        {
+          "mastery": 0.63,
+          "session": 5,
+        },
+        {
+          "mastery": 0.7,
+          "session": 6,
+        },
+        {
+          "mastery": 0.79,
+          "session": 7,
+        },
+        {
+          "mastery": 0.84,
+          "session": 8,
+        },
+        {
+          "mastery": 0.87,
+          "session": 9,
+        },
+        {
+          "mastery": 0.88,
+          "session": 10,
+        },
+        {
+          "mastery": 0.9,
+          "session": 11,
+        },
+        {
+          "mastery": 0.92,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 3,
+      "sessionsTo50Classic": 4,
+      "sessionsTo80Adaptive": 4,
+      "sessionsTo80Classic": 8,
+    },
+    "tenComplements.5=10-5": {
+      "adaptive": [
+        {
+          "mastery": 0.05,
+          "session": 1,
+        },
+        {
+          "mastery": 0.44,
+          "session": 2,
+        },
+        {
+          "mastery": 0.71,
+          "session": 3,
+        },
+        {
+          "mastery": 0.82,
+          "session": 4,
+        },
+        {
+          "mastery": 0.88,
+          "session": 5,
+        },
+        {
+          "mastery": 0.9,
+          "session": 6,
+        },
+        {
+          "mastery": 0.91,
+          "session": 7,
+        },
+        {
+          "mastery": 0.92,
+          "session": 8,
+        },
+        {
+          "mastery": 0.93,
+          "session": 9,
+        },
+        {
+          "mastery": 0.94,
+          "session": 10,
+        },
+        {
+          "mastery": 0.95,
+          "session": 11,
+        },
+        {
+          "mastery": 0.95,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.05,
+          "session": 1,
+        },
+        {
+          "mastery": 0.1,
+          "session": 2,
+        },
+        {
+          "mastery": 0.16,
+          "session": 3,
+        },
+        {
+          "mastery": 0.31,
+          "session": 4,
+        },
+        {
+          "mastery": 0.44,
+          "session": 5,
+        },
+        {
+          "mastery": 0.47,
+          "session": 6,
+        },
+        {
+          "mastery": 0.64,
+          "session": 7,
+        },
+        {
+          "mastery": 0.72,
+          "session": 8,
+        },
+        {
+          "mastery": 0.77,
+          "session": 9,
+        },
+        {
+          "mastery": 0.83,
+          "session": 10,
+        },
+        {
+          "mastery": 0.87,
+          "session": 11,
+        },
+        {
+          "mastery": 0.87,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 3,
+      "sessionsTo50Classic": 7,
+      "sessionsTo80Adaptive": 4,
+      "sessionsTo80Classic": 10,
+    },
+    "tenComplements.9=10-1": {
+      "adaptive": [
+        {
+          "mastery": 0.2,
+          "session": 1,
+        },
+        {
+          "mastery": 0.63,
+          "session": 2,
+        },
+        {
+          "mastery": 0.85,
+          "session": 3,
+        },
+        {
+          "mastery": 0.89,
+          "session": 4,
+        },
+        {
+          "mastery": 0.93,
+          "session": 5,
+        },
+        {
+          "mastery": 0.94,
+          "session": 6,
+        },
+        {
+          "mastery": 0.95,
+          "session": 7,
+        },
+        {
+          "mastery": 0.96,
+          "session": 8,
+        },
+        {
+          "mastery": 0.97,
+          "session": 9,
+        },
+        {
+          "mastery": 0.97,
+          "session": 10,
+        },
+        {
+          "mastery": 0.98,
+          "session": 11,
+        },
+        {
+          "mastery": 0.98,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.2,
+          "session": 1,
+        },
+        {
+          "mastery": 0.5,
+          "session": 2,
+        },
+        {
+          "mastery": 0.69,
+          "session": 3,
+        },
+        {
+          "mastery": 0.78,
+          "session": 4,
+        },
+        {
+          "mastery": 0.86,
+          "session": 5,
+        },
+        {
+          "mastery": 0.9,
+          "session": 6,
+        },
+        {
+          "mastery": 0.93,
+          "session": 7,
+        },
+        {
+          "mastery": 0.95,
+          "session": 8,
+        },
+        {
+          "mastery": 0.96,
+          "session": 9,
+        },
+        {
+          "mastery": 0.96,
+          "session": 10,
+        },
+        {
+          "mastery": 0.97,
+          "session": 11,
+        },
+        {
+          "mastery": 0.98,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 2,
+      "sessionsTo50Classic": 2,
+      "sessionsTo80Adaptive": 3,
+      "sessionsTo80Classic": 5,
+    },
+    "tenComplementsSub.-5=+5-10": {
+      "adaptive": [
+        {
+          "mastery": 0.01,
+          "session": 1,
+        },
+        {
+          "mastery": 0.06,
+          "session": 2,
+        },
+        {
+          "mastery": 0.44,
+          "session": 3,
+        },
+        {
+          "mastery": 0.67,
+          "session": 4,
+        },
+        {
+          "mastery": 0.78,
+          "session": 5,
+        },
+        {
+          "mastery": 0.81,
+          "session": 6,
+        },
+        {
+          "mastery": 0.83,
+          "session": 7,
+        },
+        {
+          "mastery": 0.85,
+          "session": 8,
+        },
+        {
+          "mastery": 0.87,
+          "session": 9,
+        },
+        {
+          "mastery": 0.88,
+          "session": 10,
+        },
+        {
+          "mastery": 0.89,
+          "session": 11,
+        },
+        {
+          "mastery": 0.9,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.01,
+          "session": 1,
+        },
+        {
+          "mastery": 0.06,
+          "session": 2,
+        },
+        {
+          "mastery": 0.15,
+          "session": 3,
+        },
+        {
+          "mastery": 0.25,
+          "session": 4,
+        },
+        {
+          "mastery": 0.29,
+          "session": 5,
+        },
+        {
+          "mastery": 0.38,
+          "session": 6,
+        },
+        {
+          "mastery": 0.44,
+          "session": 7,
+        },
+        {
+          "mastery": 0.5,
+          "session": 8,
+        },
+        {
+          "mastery": 0.61,
+          "session": 9,
+        },
+        {
+          "mastery": 0.67,
+          "session": 10,
+        },
+        {
+          "mastery": 0.7,
+          "session": 11,
+        },
+        {
+          "mastery": 0.74,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 4,
+      "sessionsTo50Classic": 8,
+      "sessionsTo80Adaptive": 6,
+      "sessionsTo80Classic": null,
+    },
+    "tenComplementsSub.-9=+1-10": {
+      "adaptive": [
+        {
+          "mastery": 0.03,
+          "session": 1,
+        },
+        {
+          "mastery": 0.4,
+          "session": 2,
+        },
+        {
+          "mastery": 0.7,
+          "session": 3,
+        },
+        {
+          "mastery": 0.72,
+          "session": 4,
+        },
+        {
+          "mastery": 0.79,
+          "session": 5,
+        },
+        {
+          "mastery": 0.8,
+          "session": 6,
+        },
+        {
+          "mastery": 0.83,
+          "session": 7,
+        },
+        {
+          "mastery": 0.87,
+          "session": 8,
+        },
+        {
+          "mastery": 0.89,
+          "session": 9,
+        },
+        {
+          "mastery": 0.91,
+          "session": 10,
+        },
+        {
+          "mastery": 0.92,
+          "session": 11,
+        },
+        {
+          "mastery": 0.92,
+          "session": 12,
+        },
+      ],
+      "classic": [
+        {
+          "mastery": 0.03,
+          "session": 1,
+        },
+        {
+          "mastery": 0.11,
+          "session": 2,
+        },
+        {
+          "mastery": 0.22,
+          "session": 3,
+        },
+        {
+          "mastery": 0.33,
+          "session": 4,
+        },
+        {
+          "mastery": 0.53,
+          "session": 5,
+        },
+        {
+          "mastery": 0.56,
+          "session": 6,
+        },
+        {
+          "mastery": 0.63,
+          "session": 7,
+        },
+        {
+          "mastery": 0.68,
+          "session": 8,
+        },
+        {
+          "mastery": 0.72,
+          "session": 9,
+        },
+        {
+          "mastery": 0.76,
+          "session": 10,
+        },
+        {
+          "mastery": 0.77,
+          "session": 11,
+        },
+        {
+          "mastery": 0.8,
+          "session": 12,
+        },
+      ],
+      "sessionsTo50Adaptive": 3,
+      "sessionsTo50Classic": 5,
+      "sessionsTo80Adaptive": 6,
+      "sessionsTo80Classic": 12,
+    },
+  },
+}
+`;
+
+exports[`A/B Test: Skill Difficulty Impact > should show different learning curves with vs without difficulty multipliers > skill-difficulty-ab-comparison 1`] = `
+{
+  "differences": {
+    "basic.directAddition": [
+      -0.08000000000000002,
+      -0.10999999999999999,
+      -0.09000000000000008,
+      -0.05999999999999994,
+      -0.050000000000000044,
+      -0.030000000000000027,
+      -0.020000000000000018,
+      -0.020000000000000018,
+    ],
+    "fiveComplements.4=5-1": [
+      0.05000000000000002,
+      0.09000000000000002,
+      0.07999999999999996,
+      0.06000000000000005,
+      0.04999999999999993,
+      0.040000000000000036,
+      0.019999999999999907,
+      0.010000000000000009,
+    ],
+    "tenComplements.1=10-9": [
+      0.14,
+      0.3,
+      0.32999999999999996,
+      0.30000000000000004,
+      0.25,
+      0.21000000000000008,
+      0.1399999999999999,
+      0.09999999999999998,
+    ],
+    "tenComplements.9=10-1": [
+      0.11000000000000001,
+      0.21999999999999997,
+      0.21999999999999997,
+      0.19000000000000006,
+      0.15000000000000002,
+      0.12,
+      0.07999999999999996,
+      0.04999999999999993,
+    ],
+  },
+  "summary": {
+    "withDifficulty": {
+      "basic.directAddition": {
+        "avgAt20": 0.86,
+      },
+      "fiveComplements.4=5-1": {
+        "avgAt20": 0.74,
+      },
+      "tenComplements.1=10-9": {
+        "avgAt20": 0.5,
+      },
+      "tenComplements.9=10-1": {
+        "avgAt20": 0.61,
+      },
+    },
+    "withoutDifficulty": {
+      "basic.directAddition": {
+        "avgAt20": 0.8,
+      },
+      "fiveComplements.4=5-1": {
+        "avgAt20": 0.8,
+      },
+      "tenComplements.1=10-9": {
+        "avgAt20": 0.8,
+      },
+      "tenComplements.9=10-1": {
+        "avgAt20": 0.8,
+      },
+    },
+  },
+  "withDifficulty": {
+    "basic.directAddition": [
+      0.28,
+      0.61,
+      0.78,
+      0.86,
+      0.91,
+      0.93,
+      0.96,
+      0.98,
+    ],
+    "fiveComplements.4=5-1": [
+      0.15,
+      0.41,
+      0.61,
+      0.74,
+      0.81,
+      0.86,
+      0.92,
+      0.95,
+    ],
+    "tenComplements.1=10-9": [
+      0.06,
+      0.2,
+      0.36,
+      0.5,
+      0.61,
+      0.69,
+      0.8,
+      0.86,
+    ],
+    "tenComplements.9=10-1": [
+      0.09,
+      0.28,
+      0.47,
+      0.61,
+      0.71,
+      0.78,
+      0.86,
+      0.91,
+    ],
+  },
+  "withoutDifficulty": {
+    "basic.directAddition": [
+      0.2,
+      0.5,
+      0.69,
+      0.8,
+      0.86,
+      0.9,
+      0.94,
+      0.96,
+    ],
+    "fiveComplements.4=5-1": [
+      0.2,
+      0.5,
+      0.69,
+      0.8,
+      0.86,
+      0.9,
+      0.94,
+      0.96,
+    ],
+    "tenComplements.1=10-9": [
+      0.2,
+      0.5,
+      0.69,
+      0.8,
+      0.86,
+      0.9,
+      0.94,
+      0.96,
+    ],
+    "tenComplements.9=10-1": [
+      0.2,
+      0.5,
+      0.69,
+      0.8,
+      0.86,
+      0.9,
+      0.94,
+      0.96,
+    ],
+  },
+}
+`;
+
+exports[`Fatigue Multipliers > should return correct multipliers for probability ranges > fatigue-multipliers 1`] = `
+[
+  {
+    "actualMultiplier": 1,
+    "expectedMultiplier": 1,
+    "matches": true,
+    "probability": "95%",
+  },
+  {
+    "actualMultiplier": 1,
+    "expectedMultiplier": 1,
+    "matches": true,
+    "probability": "90%",
+  },
+  {
+    "actualMultiplier": 1.5,
+    "expectedMultiplier": 1.5,
+    "matches": true,
+    "probability": "85%",
+  },
+  {
+    "actualMultiplier": 1.5,
+    "expectedMultiplier": 1.5,
+    "matches": true,
+    "probability": "70%",
+  },
+  {
+    "actualMultiplier": 2,
+    "expectedMultiplier": 2,
+    "matches": true,
+    "probability": "60%",
+  },
+  {
+    "actualMultiplier": 2,
+    "expectedMultiplier": 2,
+    "matches": true,
+    "probability": "50%",
+  },
+  {
+    "actualMultiplier": 3,
+    "expectedMultiplier": 3,
+    "matches": true,
+    "probability": "40%",
+  },
+  {
+    "actualMultiplier": 3,
+    "expectedMultiplier": 3,
+    "matches": true,
+    "probability": "30%",
+  },
+  {
+    "actualMultiplier": 4,
+    "expectedMultiplier": 4,
+    "matches": true,
+    "probability": "20%",
+  },
+  {
+    "actualMultiplier": 4,
+    "expectedMultiplier": 4,
+    "matches": true,
+    "probability": "10%",
+  },
+]
+`;
+
+exports[`Learning Trajectory by Skill Category > should show basic skills mastering faster than complements > learning-trajectory-by-category 1`] = `
+{
+  "categoryAverages": {
+    "basic": 16.666666666666668,
+    "fiveComplement": 24,
+    "tenComplement": 36,
+  },
+  "exposuresToMastery": {
+    "basic.directAddition": 16,
+    "basic.directSubtraction": 16,
+    "basic.heavenBead": 18,
+    "fiveComplements.1=5-4": 24,
+    "fiveComplements.3=5-2": 24,
+    "fiveComplements.4=5-1": 24,
+    "tenComplements.1=10-9": 40,
+    "tenComplements.6=10-4": 36,
+    "tenComplements.9=10-1": 32,
+  },
+  "ordering": {
+    "basicFasterThanFive": true,
+    "fiveFasterThanTen": true,
+  },
+}
+`;
+
+exports[`Skill Category Mastery Curves > should produce expected mastery curves at key exposure points > mastery-curves-table 1`] = `
+{
+  "description": "P(correct) at each exposure level, showing how skill difficulty affects learning speed",
+  "table": [
+    {
+      "Basic (0.8x)": "0%",
+      "Five-Comp (1.2x)": "0%",
+      "Ten-Comp Easy (1.6x)": "0%",
+      "Ten-Comp Hard (2.0x)": "0%",
+      "exposures": 0,
+    },
+    {
+      "Basic (0.8x)": "28%",
+      "Five-Comp (1.2x)": "15%",
+      "Ten-Comp Easy (1.6x)": "9%",
+      "Ten-Comp Hard (2.0x)": "6%",
+      "exposures": 5,
+    },
+    {
+      "Basic (0.8x)": "61%",
+      "Five-Comp (1.2x)": "41%",
+      "Ten-Comp Easy (1.6x)": "28%",
+      "Ten-Comp Hard (2.0x)": "20%",
+      "exposures": 10,
+    },
+    {
+      "Basic (0.8x)": "78%",
+      "Five-Comp (1.2x)": "61%",
+      "Ten-Comp Easy (1.6x)": "47%",
+      "Ten-Comp Hard (2.0x)": "36%",
+      "exposures": 15,
+    },
+    {
+      "Basic (0.8x)": "86%",
+      "Five-Comp (1.2x)": "74%",
+      "Ten-Comp Easy (1.6x)": "61%",
+      "Ten-Comp Hard (2.0x)": "50%",
+      "exposures": 20,
+    },
+    {
+      "Basic (0.8x)": "93%",
+      "Five-Comp (1.2x)": "86%",
+      "Ten-Comp Easy (1.6x)": "78%",
+      "Ten-Comp Hard (2.0x)": "69%",
+      "exposures": 30,
+    },
+    {
+      "Basic (0.8x)": "96%",
+      "Five-Comp (1.2x)": "92%",
+      "Ten-Comp Easy (1.6x)": "86%",
+      "Ten-Comp Hard (2.0x)": "80%",
+      "exposures": 40,
+    },
+    {
+      "Basic (0.8x)": "98%",
+      "Five-Comp (1.2x)": "95%",
+      "Ten-Comp Easy (1.6x)": "91%",
+      "Ten-Comp Hard (2.0x)": "86%",
+      "exposures": 50,
+    },
+  ],
+}
+`;
+
+exports[`Skill Category Mastery Curves > should show consistent ratios between skill categories > fifty-percent-threshold-ratios 1`] = `
+{
+  "exposuresFor50Percent": {
+    "basic.directAddition": 8,
+    "fiveComplements.4=5-1": 12,
+    "tenComplements.1=10-9": 20,
+    "tenComplements.9=10-1": 16,
+  },
+  "ratiosRelativeToBasic": {
+    "basic.directAddition": "1.00",
+    "fiveComplements.4=5-1": "1.50",
+    "tenComplements.1=10-9": "2.50",
+    "tenComplements.9=10-1": "2.00",
+  },
+}
+`;
+
+exports[`Validation Against Learning Expectations > should match expected mastery levels at key milestones > learning-expectations-validation 1`] = `
+{
+  "assertions": {
+    "basicAbove60Percent": true,
+    "gapAtLeast20Points": true,
+    "tenCompHardBelow60Percent": true,
+  },
+  "at20Exposures": {
+    "basic": "86.2%",
+    "fiveComp": "73.5%",
+    "tenCompEasy": "61.0%",
+    "tenCompHard": "50.0%",
+  },
+  "gapBetweenEasiestAndHardest": "36.2 percentage points",
+}
+`;
+
+exports[`Validation Against Learning Expectations > should require ~2x more exposures for ten-complement vs basic to reach same mastery > exposure-ratio-for-equal-mastery 1`] = `
+{
+  "basicExposures": 13,
+  "ratio": "1.92",
+  "ratioMatchesMultiplierRatio": true,
+  "targetMastery": "70%",
+  "tenCompExposures": 25,
+}
+`;

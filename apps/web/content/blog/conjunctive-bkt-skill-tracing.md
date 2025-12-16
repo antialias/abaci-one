@@ -205,35 +205,7 @@ if (totalUnknown < 0.001) {
 
 ## Evidence Quality Modifiers
 
-Not all observations are equally informative. We weight the evidence based on:
-
-### Help Level
-If the student used hints or scaffolding, a correct answer provides weaker evidence of automaticity:
-
-| Help Level | Weight | Interpretation |
-|------------|--------|----------------|
-| 0 (none) | 1.0 | Full evidence |
-| 1 (minor hint) | 0.8 | Slight reduction |
-| 2 (significant help) | 0.5 | Halved evidence |
-| 3 (full solution shown) | 0.5 | Halved evidence |
-
-### Response Time
-Fast correct answers suggest automaticity. Slow correct answers might indicate the pattern isn't yet automatic:
-
-| Condition | Weight | Interpretation |
-|-----------|--------|----------------|
-| Very fast correct | 1.2 | Strong automaticity signal |
-| Normal correct | 1.0 | Standard evidence |
-| Slow correct | 0.8 | Might have struggled |
-| Very fast incorrect | 0.5 | Careless slip |
-| Slow incorrect | 1.2 | Genuine confusion |
-
-The combined evidence weight modulates how much we update P(known):
-
-```typescript
-const evidenceWeight = helpLevelWeight(helpLevel) * responseTimeWeight(responseTimeMs, isCorrect)
-const newPKnown = oldPKnown * (1 - evidenceWeight) + bktUpdate * evidenceWeight
-```
+Not all observations are equally informative. We weight the evidence based on help level and response time.
 
 ## Automaticity-Aware Problem Generation
 
@@ -258,18 +230,7 @@ Each pattern has a **base complexity cost**:
 
 ### Automaticity Multipliers
 
-The cost is scaled by the student's estimated mastery from BKT. The multiplier uses a non-linear (squared) mapping from P(known) to provide better differentiation at high mastery levels:
-
-| P(known) | Multiplier | Meaning |
-|----------|------------|---------|
-| 1.00 | 1.0× | Fully automated |
-| 0.95 | 1.3× | Nearly automated |
-| 0.90 | 1.6× | Solid |
-| 0.80 | 2.1× | Good but not automatic |
-| 0.50 | 3.3× | Halfway there |
-| 0.00 | 4.0× | Just starting |
-
-When BKT confidence is insufficient (< 30%), we fall back to discrete fluency states based on recent streaks.
+The cost is scaled by the student's estimated mastery from BKT. The multiplier uses a non-linear (squared) mapping from P(known) to provide better differentiation at high mastery levels. When BKT confidence is insufficient (< 30%), we fall back to discrete fluency states based on recent streaks.
 
 ### Adaptive Session Planning
 
@@ -406,15 +367,19 @@ This has several advantages:
 
 ## Automaticity Classification
 
-We classify patterns into three categories based on P(known) and confidence:
+We classify patterns into three categories based on P(known) and confidence. The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify."
 
-| Classification | Criteria |
-|----------------|----------|
-| **Automated** | P(known) ≥ 80% AND confidence ≥ threshold |
-| **Struggling** | P(known) < 50% AND confidence ≥ threshold |
-| **Learning** | Everything else (including low-confidence estimates) |
+## Skill-Specific Difficulty Model
 
-The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify."
+Not all soroban patterns are equally difficult to master. Our student simulation model incorporates **skill-specific difficulty multipliers** based on pedagogical observation:
+
+- **Basic skills** (direct bead manipulation): Easiest to master, multiplier 0.8-0.9x
+- **Five-complements** (single-column decomposition): Moderate difficulty, multiplier 1.2-1.3x
+- **Ten-complements** (cross-column carrying): Hardest, multiplier 1.6-2.1x
+
+These multipliers affect the Hill function's K parameter (the exposure count where P(correct) = 50%). A skill with multiplier 2.0x requires twice as many practice exposures to reach the same mastery level.
+
+The interactive charts below show how these difficulty multipliers affect learning trajectories. Data is derived from validated simulation tests.
 
 ## Validation: Does Adaptive Targeting Actually Work?
 
@@ -457,55 +422,9 @@ assessSkill(skillId: string, trials: number = 20): SkillAssessment {
 
 The key question: How fast does each mode bring a weak skill to mastery?
 
-| Learner  | Deficient Skill                | Adaptive→50% | Classic→50% | Adaptive→80% | Classic→80% |
-|----------|--------------------------------|--------------|-------------|--------------|-------------|
-| fast     | fiveComplements.3=5-2          | 3 sessions   | 5 sessions  | 6 sessions   | 9 sessions  |
-| fast     | fiveComplementsSub.-3=-5+2     | 3 sessions   | 4 sessions  | 6 sessions   | 8 sessions  |
-| fast     | tenComplements.9=10-1          | 3 sessions   | 3 sessions  | 5 sessions   | 6 sessions  |
-| fast     | tenComplements.5=10-5          | 4 sessions   | 6 sessions  | 10 sessions  | never       |
-| fast     | tenComplementsSub.-9=+1-10     | 3 sessions   | 5 sessions  | 7 sessions   | 12 sessions |
-| fast     | tenComplementsSub.-5=+5-10     | 5 sessions   | never       | 11 sessions  | never       |
-| average  | fiveComplements.3=5-2          | 4 sessions   | 7 sessions  | 8 sessions   | 10 sessions |
-| average  | fiveComplementsSub.-3=-5+2     | 4 sessions   | 6 sessions  | 8 sessions   | 11 sessions |
-| average  | tenComplements.9=10-1          | 3 sessions   | 5 sessions  | 6 sessions   | 8 sessions  |
-
-**Totals across all test scenarios:**
-- **Faster to 50% mastery**: Adaptive wins 8, Classic wins 0
-- **Faster to 80% mastery**: Adaptive wins 9, Classic wins 0
-
-"Never" entries indicate the mode didn't reach that threshold within 12 sessions.
-
 ### 3-Way Comparison: BKT vs Fluency Multipliers
 
-We also compared whether using BKT for cost calculation (in addition to targeting) provides additional benefit over fluency-based cost calculation:
-
-| Skill | Mode | →50% | →80% | Fatigue/Session |
-|-------|------|------|------|-----------------|
-| fiveComplements.3=5-2 | Classic | 5 | 9 | 120.3 |
-| fiveComplements.3=5-2 | Adaptive (fluency) | 3 | 6 | 122.8 |
-| fiveComplements.3=5-2 | Adaptive (full BKT) | 3 | 6 | 122.8 |
-| fiveComplementsSub.-3 | Classic | 4 | 8 | 131.9 |
-| fiveComplementsSub.-3 | Adaptive (fluency) | 3 | 6 | 133.6 |
-| fiveComplementsSub.-3 | Adaptive (full BKT) | 3 | 6 | 133.0 |
-
-**Finding**: Both adaptive modes perform identically for learning rate—the benefit comes from BKT *targeting*, not from BKT-based cost calculation. However, using BKT for costs simplifies the architecture (one model instead of two) with no measurable downside.
-
-### Example Trajectory
-
-For a fast learner deficient in `fiveComplements.3=5-2`:
-
-| Session | Adaptive Mastery | Classic Mastery |
-|---------|------------------|-----------------|
-| 0       | 0%               | 0%              |
-| 2       | 34%              | 9%              |
-| 3       | 64%              | 21%             |
-| 4       | 72%              | 39%             |
-| 5       | 77%              | 54%             |
-| 6       | 83%              | 61%             |
-| 9       | 91%              | 83%             |
-| 12      | 94%              | 91%             |
-
-Adaptive reaches 50% mastery by session 3; classic doesn't reach 50% until session 5. Adaptive reaches 80% by session 6; classic takes until session 9.
+We also compared whether using BKT for cost calculation (in addition to targeting) provides additional benefit over fluency-based cost calculation.
 
 ### Why Adaptive Wins
 

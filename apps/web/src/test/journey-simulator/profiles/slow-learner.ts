@@ -4,57 +4,62 @@
  * A student who needs more practice to acquire mastery:
  * - High K value (needs more exposures to reach 50%)
  * - Higher hill coefficient (delayed onset, then improvement)
- * - Most skills learned (with extra practice), but MISSED subtraction concepts
+ * - Most skills learned (with extra practice), but MISSED some ten-complement skills
  * - Uses help more often
  *
- * REALISTIC SCENARIO: Student struggles with subtraction generally.
- * They've had extra practice on addition but subtraction never clicked.
+ * REALISTIC SCENARIO: Student missed class when ten-complements were introduced.
+ * They know basic operations and five-complements, but several ten-complements
+ * were never properly taught.
  *
  * With K=15, n=2.5 (reduced K for achievable mastery):
  * - 40 exposures → P ≈ 91% (strong skills - HIGH CONTRAST)
  * - 0 exposures → P = 0% (missed skills)
  *
  * KEY: K=15 instead of K=20 so strong skills can reach 90%+
+ *
+ * NOTE: We use ten-complement skills as the "weak" skills because the problem
+ * generator exercises these during normal practice. Subtraction-specific skills
+ * would require subtraction problems to be generated.
  */
 
 import type { StudentProfile } from '../types'
 
 /**
- * Slow learner who missed subtraction concepts.
- * Strong in addition (with extra practice), weak in all subtraction.
+ * Slow learner who missed some ten-complement concepts.
+ * Strong in basics and five-complements, weak in specific ten-complements.
  */
 const initialExposures: Record<string, number> = {
-  // Basic addition - well learned with extra practice (45 exposures → ~93%)
+  // Basic skills - well learned with extra practice (45 exposures → ~93%)
   'basic.directAddition': 45,
   'basic.heavenBead': 42,
   'basic.simpleCombinations': 40,
-  // Basic subtraction - MISSED/STRUGGLING (0 exposures → 0%)
-  'basic.directSubtraction': 0,
-  'basic.heavenBeadSubtraction': 0,
-  'basic.simpleCombinationsSub': 0,
-  // Five complements addition - well learned (40 exposures → ~91%)
+  'basic.directSubtraction': 40,
+  'basic.heavenBeadSubtraction': 38,
+  'basic.simpleCombinationsSub': 38,
+  // Five complements - well learned (40 exposures → ~91%)
   'fiveComplements.4=5-1': 42,
   'fiveComplements.3=5-2': 40,
   'fiveComplements.2=5-3': 38,
   'fiveComplements.1=5-4': 38,
-  // Ten complements - well learned (38 exposures → ~89%)
+  // Ten complements - MIXED: some well learned, some MISSED (0 exposure)
   'tenComplements.9=10-1': 42,
   'tenComplements.8=10-2': 40,
-  'tenComplements.7=10-3': 38,
-  'tenComplements.6=10-4': 38,
-  'tenComplements.5=10-5': 38,
+  'tenComplements.7=10-3': 0, // MISSED
+  'tenComplements.6=10-4': 0, // MISSED
+  'tenComplements.5=10-5': 0, // MISSED
 }
 
 /** Skills this student is weak at (for test validation) */
 export const SLOW_LEARNER_WEAK_SKILLS = [
-  'basic.directSubtraction',
-  'basic.heavenBeadSubtraction',
-  'basic.simpleCombinationsSub',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
 ]
 
 export const slowLearnerProfile: StudentProfile = {
-  name: 'Slow Learner (Missed Subtraction)',
-  description: 'Strong in addition, missed subtraction concepts, learns slowly',
+  name: 'Slow Learner (Missed Ten-Complements)',
+  description:
+    'Strong in basics and five-complements, missed some ten-complement concepts, learns slowly',
 
   // K = 15: Reaches 50% proficiency at 15 exposures (slow but achievable)
   halfMaxExposure: 15,
