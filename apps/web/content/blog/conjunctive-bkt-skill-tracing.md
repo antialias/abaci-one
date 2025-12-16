@@ -304,7 +304,7 @@ A student struggling with ten-complements gets problems that *include* ten-compl
 
 ## Honest Uncertainty Reporting
 
-Most educational software reports metrics like "85% accuracy" without acknowledging uncertainty. We take a different approach.
+Our system explicitly tracks and reports confidence alongside skill estimates.
 
 ### Confidence Calculation
 
