@@ -207,6 +207,8 @@ if (totalUnknown < 0.001) {
 
 Not all observations are equally informative. We weight the evidence based on help level and response time.
 
+<!-- CHART: EvidenceQuality -->
+
 ## Automaticity-Aware Problem Generation
 
 Problem generation involves two concerns:
@@ -231,6 +233,8 @@ Each pattern has a **base complexity cost**:
 ### Automaticity Multipliers
 
 The cost is scaled by the student's estimated mastery from BKT. The multiplier uses a non-linear (squared) mapping from P(known) to provide better differentiation at high mastery levels. When BKT confidence is insufficient (< 30%), we fall back to discrete fluency states based on recent streaks.
+
+<!-- CHART: AutomaticityMultipliers -->
 
 ### Adaptive Session Planning
 
@@ -375,6 +379,8 @@ Once we have a P(known) estimate with sufficient confidence, we classify each sk
 
 The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify." Skills with insufficient data remain in "Learning" until more evidence accumulates.
 
+<!-- CHART: Classification -->
+
 ## Skill-Specific Difficulty Model
 
 Not all soroban patterns are equally difficult to master. Our student simulation model incorporates **skill-specific difficulty multipliers** based on pedagogical observation:
@@ -386,6 +392,8 @@ Not all soroban patterns are equally difficult to master. Our student simulation
 These multipliers affect the Hill function's K parameter (the exposure count where P(correct) = 50%). A skill with multiplier 2.0x requires twice as many practice exposures to reach the same mastery level.
 
 The interactive charts below show how these difficulty multipliers affect learning trajectories. Data is derived from validated simulation tests.
+
+<!-- CHART: SkillDifficulty -->
 
 ## Validation: Does Adaptive Targeting Actually Work?
 
@@ -428,9 +436,13 @@ assessSkill(skillId: string, trials: number = 20): SkillAssessment {
 
 The key question: How fast does each mode bring a weak skill to mastery?
 
+<!-- CHART: ValidationResults -->
+
 ### 3-Way Comparison: BKT vs Fluency Multipliers
 
 We also compared whether using BKT for cost calculation (in addition to targeting) provides additional benefit over fluency-based cost calculation.
+
+<!-- CHART: ThreeWayComparison -->
 
 ### Why Adaptive Wins
 

@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getPostBySlug, getAllPostSlugs } from '@/lib/blog'
-import { css } from '../../../../styled-system/css'
+import { notFound } from 'next/navigation'
 import { SkillDifficultyCharts } from '@/components/blog/SkillDifficultyCharts'
 import {
   AutomaticityMultiplierCharts,
@@ -11,40 +9,24 @@ import {
   ThreeWayComparisonCharts,
   ValidationResultsCharts,
 } from '@/components/blog/ValidationCharts'
+import { getAllPostSlugs, getPostBySlug } from '@/lib/blog'
+import { css } from '../../../../styled-system/css'
 
 interface ChartInjection {
   component: React.ComponentType
-  /** Heading text to insert after (e.g., "### Example Trajectory") */
-  insertAfter: string
+  /** Marker ID to find in the markdown (e.g., "EvidenceQuality" matches <!-- CHART: EvidenceQuality -->) */
+  markerId: string
 }
 
 /** Blog posts that have interactive chart sections */
 const POSTS_WITH_CHARTS: Record<string, ChartInjection[]> = {
   'conjunctive-bkt-skill-tracing': [
-    {
-      component: EvidenceQualityCharts,
-      insertAfter: '## Evidence Quality Modifiers',
-    },
-    {
-      component: AutomaticityMultiplierCharts,
-      insertAfter: '### Automaticity Multipliers',
-    },
-    {
-      component: ClassificationCharts,
-      insertAfter: '## Automaticity Classification',
-    },
-    {
-      component: SkillDifficultyCharts,
-      insertAfter: '## Skill-Specific Difficulty Model',
-    },
-    {
-      component: ThreeWayComparisonCharts,
-      insertAfter: '### 3-Way Comparison: BKT vs Fluency Multipliers',
-    },
-    {
-      component: ValidationResultsCharts,
-      insertAfter: '### Convergence Speed Results',
-    },
+    { component: EvidenceQualityCharts, markerId: 'EvidenceQuality' },
+    { component: AutomaticityMultiplierCharts, markerId: 'AutomaticityMultipliers' },
+    { component: ClassificationCharts, markerId: 'Classification' },
+    { component: SkillDifficultyCharts, markerId: 'SkillDifficulty' },
+    { component: ThreeWayComparisonCharts, markerId: 'ThreeWayComparison' },
+    { component: ValidationResultsCharts, markerId: 'ValidationResults' },
   ],
 }
 
@@ -300,27 +282,22 @@ function BlogContent({ slug, html }: { slug: string; html: string }) {
     )
   }
 
-  // Build injection points: find each heading and its position
-  const injections: Array<{ position: number; component: React.ComponentType }> = []
+  // Build injection points: find each marker comment and its position
+  // Markers look like: <!-- CHART: EvidenceQuality -->
+  const injections: Array<{ position: number; length: number; component: React.ComponentType }> = []
 
   for (const config of chartConfigs) {
-    // Convert markdown heading to regex pattern for HTML
-    // "### Example Trajectory" → matches <h3...>Example Trajectory</h3>
-    const headingLevel = (config.insertAfter.match(/^#+/)?.[0].length || 2).toString()
-    const headingText = config.insertAfter.replace(/^#+\s*/, '')
-    const escapedText = headingText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-    // Match the closing tag of the heading
-    const pattern = new RegExp(
-      `<h${headingLevel}[^>]*>[^<]*${escapedText}[^<]*</h${headingLevel}>`,
-      'i'
-    )
-    const match = html.match(pattern)
+    // Match the marker comment exactly
+    const markerPattern = new RegExp(`<!--\\s*CHART:\\s*${config.markerId}\\s*-->`, 'i')
+    const match = html.match(markerPattern)
 
     if (match && match.index !== undefined) {
-      // Insert after the heading (after closing tag)
-      const insertPosition = match.index + match[0].length
-      injections.push({ position: insertPosition, component: config.component })
+      // Replace the marker with the chart (position is where marker starts, length is marker length)
+      injections.push({
+        position: match.index,
+        length: match[0].length,
+        component: config.component,
+      })
     }
   }
 
@@ -343,9 +320,9 @@ function BlogContent({ slug, html }: { slug: string; html: string }) {
   let lastPosition = 0
 
   for (let i = 0; i < injections.length; i++) {
-    const { position, component: ChartComponent } = injections[i]
+    const { position, length, component: ChartComponent } = injections[i]
 
-    // Add HTML segment before this injection
+    // Add HTML segment before this injection (up to the marker)
     const htmlSegment = html.slice(lastPosition, position)
     if (htmlSegment) {
       segments.push(
@@ -358,9 +335,10 @@ function BlogContent({ slug, html }: { slug: string; html: string }) {
       )
     }
 
-    // Add the chart component
+    // Add the chart component (replacing the marker)
     segments.push(<ChartComponent key={`chart-${i}`} />)
-    lastPosition = position
+    // Skip past the marker
+    lastPosition = position + length
   }
 
   // Add remaining HTML after last injection
