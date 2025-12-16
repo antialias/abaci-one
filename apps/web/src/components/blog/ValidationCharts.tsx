@@ -600,6 +600,92 @@ export function ValidationResultsCharts() {
   )
 }
 
+/** Get skill difficulty tier for line thickness */
+function getSkillTier(skillId: string): 'basic' | 'fiveComp' | 'tenComp' | 'cascading' {
+  if (skillId.includes('cascading') || skillId.includes('advanced')) {
+    return 'cascading'
+  }
+  if (skillId.startsWith('tenComplements') || skillId.startsWith('tenComplementsSub')) {
+    return 'tenComp'
+  }
+  if (skillId.startsWith('fiveComplements') || skillId.startsWith('fiveComplementsSub')) {
+    return 'fiveComp'
+  }
+  return 'basic'
+}
+
+/** Get line width based on skill tier */
+function getLineWidth(tier: 'basic' | 'fiveComp' | 'tenComp' | 'cascading'): number {
+  switch (tier) {
+    case 'basic':
+      return 1
+    case 'fiveComp':
+      return 1.5
+    case 'tenComp':
+      return 2
+    case 'cascading':
+      return 2.5
+  }
+}
+
+/** Get pedagogical order for color spectrum (0 = easiest, 1 = hardest) */
+function getPedagogicalOrder(skillId: string): number {
+  // Order based on typical learning progression
+  if (skillId.includes('basic')) return 0
+  if (skillId.includes('fiveComplements.4')) return 0.15
+  if (skillId.includes('fiveComplements.3')) return 0.2
+  if (skillId.includes('fiveComplements.2')) return 0.25
+  if (skillId.includes('fiveComplements.1')) return 0.3
+  if (skillId.includes('fiveComplementsSub.-4')) return 0.35
+  if (skillId.includes('fiveComplementsSub.-3')) return 0.4
+  if (skillId.includes('fiveComplementsSub.-2')) return 0.45
+  if (skillId.includes('fiveComplementsSub.-1')) return 0.5
+  if (skillId.includes('tenComplements.9')) return 0.55
+  if (skillId.includes('tenComplements.8')) return 0.6
+  if (skillId.includes('tenComplements.7')) return 0.65
+  if (skillId.includes('tenComplements.6')) return 0.7
+  if (skillId.includes('tenComplements.5')) return 0.72
+  if (skillId.includes('tenComplements.4')) return 0.74
+  if (skillId.includes('tenComplements.3')) return 0.76
+  if (skillId.includes('tenComplements.2')) return 0.78
+  if (skillId.includes('tenComplements.1')) return 0.8
+  if (skillId.includes('tenComplementsSub.-9')) return 0.82
+  if (skillId.includes('tenComplementsSub.-5')) return 0.88
+  if (skillId.includes('tenComplementsSub.-1')) return 0.95
+  if (skillId.includes('cascading')) return 1.0
+  return 0.5
+}
+
+/** Interpolate color along a spectrum */
+function interpolateColor(
+  t: number,
+  colors: Array<{ r: number; g: number; b: number }>
+): string {
+  const idx = t * (colors.length - 1)
+  const lower = Math.floor(idx)
+  const upper = Math.min(lower + 1, colors.length - 1)
+  const blend = idx - lower
+
+  const r = Math.round(colors[lower].r + (colors[upper].r - colors[lower].r) * blend)
+  const g = Math.round(colors[lower].g + (colors[upper].g - colors[lower].g) * blend)
+  const b = Math.round(colors[lower].b + (colors[upper].b - colors[lower].b) * blend)
+
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+// Color spectrums for each mode
+const ADAPTIVE_SPECTRUM = [
+  { r: 187, g: 247, b: 208 }, // light green
+  { r: 74, g: 222, b: 128 }, // green
+  { r: 22, g: 163, b: 74 }, // darker green
+]
+
+const CLASSIC_SPECTRUM = [
+  { r: 209, g: 213, b: 219 }, // light gray
+  { r: 156, g: 163, b: 175 }, // gray
+  { r: 75, g: 85, b: 99 }, // dark gray
+]
+
 /** Average mastery trajectory chart comparing adaptive vs classic */
 function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   if (!data) {
@@ -626,33 +712,91 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     return Math.round(sum / numSkills)
   })
 
+  // Build ghost lines for individual skills
+  const ghostSeries: Array<{
+    name: string
+    type: 'line'
+    data: number[]
+    smooth: boolean
+    symbol: string
+    symbolSize: number
+    lineStyle: { color: string; width: number; opacity: number }
+    itemStyle: { color: string; opacity: number }
+    emphasis: { disabled: boolean }
+    z: number
+  }> = []
+
+  // Sort skills by pedagogical order for consistent layering
+  const sortedSkills = [...data.skills].sort(
+    (a, b) => getPedagogicalOrder(a.id) - getPedagogicalOrder(b.id)
+  )
+
+  for (const skill of sortedSkills) {
+    const order = getPedagogicalOrder(skill.id)
+    const tier = getSkillTier(skill.id)
+    const width = getLineWidth(tier)
+
+    const adaptiveColor = interpolateColor(order, ADAPTIVE_SPECTRUM)
+    const classicColor = interpolateColor(order, CLASSIC_SPECTRUM)
+
+    // Adaptive ghost line
+    ghostSeries.push({
+      name: `${skill.label} (A)`,
+      type: 'line',
+      data: skill.adaptive.data,
+      smooth: true,
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { color: adaptiveColor, width, opacity: 0.4 },
+      itemStyle: { color: adaptiveColor, opacity: 0.4 },
+      emphasis: { disabled: true },
+      z: 1,
+    })
+
+    // Classic ghost line
+    ghostSeries.push({
+      name: `${skill.label} (C)`,
+      type: 'line',
+      data: skill.classic.data,
+      smooth: true,
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { color: classicColor, width, opacity: 0.4 },
+      itemStyle: { color: classicColor, opacity: 0.4 },
+      emphasis: { disabled: true },
+      z: 1,
+    })
+  }
+
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
       formatter: (params: Array<{ seriesName: string; value: number; marker: string }>) => {
         const session = (params[0] as unknown as { axisValue: number })?.axisValue
-        let html = `<strong>Session ${session}</strong><br/>`
-        const adaptiveVal = params.find((p) => p.seriesName === 'Adaptive')?.value ?? 0
-        const classicVal = params.find((p) => p.seriesName === 'Classic')?.value ?? 0
-        const diff = adaptiveVal - classicVal
+        // Only show averages in tooltip (not ghost lines)
+        const adaptiveParam = params.find((p) => p.seriesName === 'Adaptive (avg)')
+        const classicParam = params.find((p) => p.seriesName === 'Classic (avg)')
+        if (!adaptiveParam || !classicParam) return ''
+
+        const diff = adaptiveParam.value - classicParam.value
         const diffStr =
           diff > 0
             ? `<span style="color:#22c55e">+${diff}pp</span>`
             : diff < 0
               ? `<span style="color:#ef4444">${diff}pp</span>`
               : '0pp'
-        for (const p of params) {
-          html += `${p.marker} ${p.seriesName}: ${p.value}%<br/>`
-        }
-        html += `Advantage: ${diffStr}`
-        return html
+
+        return `<strong>Session ${session}</strong><br/>
+          ${adaptiveParam.marker} Adaptive: ${adaptiveParam.value}%<br/>
+          ${classicParam.marker} Classic: ${classicParam.value}%<br/>
+          Advantage: ${diffStr}`
       },
     },
     legend: {
       data: [
-        { name: 'Adaptive', itemStyle: { color: '#22c55e' } },
-        { name: 'Classic', itemStyle: { color: '#6b7280' } },
+        { name: 'Adaptive (avg)', itemStyle: { color: '#22c55e' } },
+        { name: 'Classic (avg)', itemStyle: { color: '#6b7280' } },
       ],
       bottom: 0,
       textStyle: { color: '#9ca3af', fontSize: 12 },
@@ -675,7 +819,7 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     },
     yAxis: {
       type: 'value',
-      name: 'Average Mastery %',
+      name: 'Mastery %',
       nameLocation: 'middle',
       nameGap: 45,
       min: 0,
@@ -685,28 +829,19 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       splitLine: { lineStyle: { color: '#374151', type: 'dashed' } },
     },
     series: [
+      // Ghost lines first (lower z-index)
+      ...ghostSeries,
+      // Average lines on top (higher z-index, full opacity, thicker)
       {
-        name: 'Adaptive',
+        name: 'Adaptive (avg)',
         type: 'line',
         data: adaptiveAvg,
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { color: '#22c55e', width: 3 },
+        lineStyle: { color: '#22c55e', width: 4 },
         itemStyle: { color: '#22c55e' },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(34, 197, 94, 0.3)' },
-              { offset: 1, color: 'rgba(34, 197, 94, 0.05)' },
-            ],
-          },
-        },
+        z: 10,
         markLine: {
           silent: true,
           lineStyle: { color: '#374151', type: 'dashed' },
@@ -717,27 +852,15 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
         },
       },
       {
-        name: 'Classic',
+        name: 'Classic (avg)',
         type: 'line',
         data: classicAvg,
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { color: '#6b7280', width: 3 },
+        lineStyle: { color: '#6b7280', width: 4 },
         itemStyle: { color: '#6b7280' },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(107, 114, 128, 0.2)' },
-              { offset: 1, color: 'rgba(107, 114, 128, 0.02)' },
-            ],
-          },
-        },
+        z: 10,
       },
     ],
   }
@@ -747,13 +870,14 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       <h4
         className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
       >
-        Average Mastery: Adaptive vs Classic
+        Mastery Progression: Adaptive vs Classic
       </h4>
       <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
-        Average mastery across {numSkills} deficient skills. Adaptive mode (green) consistently
-        outpaces Classic mode (gray), reaching 80% mastery faster.
+        Bold lines show average across {numSkills} skills. Ghost lines show individual skills
+        (greens = adaptive, grays = classic). Thicker lines = harder skills (ten-complements).
+        Darker shades = later in pedagogical sequence.
       </p>
-      <ReactECharts option={option} style={{ height: '350px' }} />
+      <ReactECharts option={option} style={{ height: '400px' }} />
     </div>
   )
 }
