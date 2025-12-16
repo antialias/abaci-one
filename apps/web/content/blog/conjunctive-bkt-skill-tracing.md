@@ -391,7 +391,7 @@ Not all soroban patterns are equally difficult to master. Our student simulation
 
 These multipliers affect the Hill function's K parameter (the exposure count where P(correct) = 50%). A skill with multiplier 2.0x requires twice as many practice exposures to reach the same mastery level.
 
-The interactive charts below show how these difficulty multipliers affect learning trajectories. Data is derived from validated simulation tests.
+The interactive charts below show how these difficulty multipliers affect learning trajectories. Data is derived from validated simulation tests ([source code](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/test/journey-simulator/skill-difficulty.test.ts)).
 
 <!-- CHART: SkillDifficulty -->
 
@@ -434,7 +434,7 @@ assessSkill(skillId: string, trials: number = 20): SkillAssessment {
 
 ### Convergence Speed Results
 
-The key question: How fast does each mode bring a weak skill to mastery?
+The key question: How fast does each mode bring a weak skill to mastery? The data below is generated from our journey simulator test suite ([source code](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/test/journey-simulator/journey-simulator.test.ts)).
 
 <!-- CHART: ValidationResults -->
 
@@ -481,7 +481,7 @@ The result is a system that adapts to each student's actual pattern automaticity
 
 ---
 
-*This post describes the pattern tracing system built into [abaci.one](https://abaci.one), a free soroban practice application. The full source code is available on [GitHub](https://github.com/...).*
+*This post describes the pattern tracing system built into [abaci.one](https://abaci.one), a free soroban practice application. The full source code is available on [GitHub](https://github.com/antialias/soroban-abacus-flashcards).*
 
 ## References
 

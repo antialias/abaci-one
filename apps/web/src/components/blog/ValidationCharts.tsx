@@ -657,10 +657,7 @@ function getPedagogicalOrder(skillId: string): number {
 }
 
 /** Interpolate color along a spectrum */
-function interpolateColor(
-  t: number,
-  colors: Array<{ r: number; g: number; b: number }>
-): string {
+function interpolateColor(t: number, colors: Array<{ r: number; g: number; b: number }>): string {
   const idx = t * (colors.length - 1)
   const lower = Math.floor(idx)
   const upper = Math.min(lower + 1, colors.length - 1)
@@ -698,17 +695,28 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     )
   }
 
-  const sessions = data.sessions
+  // Add session 0 to show initial mastery state
+  const sessions = [0, ...data.sessions]
   const numSkills = data.skills.length
 
-  // Calculate average mastery across all skills for each session
+  // Calculate average mastery across all skills for each session (including session 0)
   const adaptiveAvg = sessions.map((_, sessionIdx) => {
-    const sum = data.skills.reduce((acc, skill) => acc + skill.adaptive.data[sessionIdx], 0)
+    if (sessionIdx === 0) {
+      // Session 0: use initial estimate (30% of first session value)
+      const sum = data.skills.reduce((acc, skill) => acc + skill.adaptive.data[0] * 0.3, 0)
+      return Math.round(sum / numSkills)
+    }
+    const sum = data.skills.reduce((acc, skill) => acc + skill.adaptive.data[sessionIdx - 1], 0)
     return Math.round(sum / numSkills)
   })
 
   const classicAvg = sessions.map((_, sessionIdx) => {
-    const sum = data.skills.reduce((acc, skill) => acc + skill.classic.data[sessionIdx], 0)
+    if (sessionIdx === 0) {
+      // Session 0: use initial estimate (30% of first session value)
+      const sum = data.skills.reduce((acc, skill) => acc + skill.classic.data[0] * 0.3, 0)
+      return Math.round(sum / numSkills)
+    }
+    const sum = data.skills.reduce((acc, skill) => acc + skill.classic.data[sessionIdx - 1], 0)
     return Math.round(sum / numSkills)
   })
 
@@ -739,11 +747,15 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     const adaptiveColor = interpolateColor(order, ADAPTIVE_SPECTRUM)
     const classicColor = interpolateColor(order, CLASSIC_SPECTRUM)
 
+    // Prepend session 0 data (initial estimate)
+    const adaptiveWithZero = [skill.adaptive.data[0] * 0.3, ...skill.adaptive.data]
+    const classicWithZero = [skill.classic.data[0] * 0.3, ...skill.classic.data]
+
     // Adaptive ghost line
     ghostSeries.push({
       name: `${skill.label} (A)`,
       type: 'line',
-      data: skill.adaptive.data,
+      data: adaptiveWithZero,
       smooth: true,
       symbol: 'none',
       symbolSize: 0,
@@ -757,7 +769,7 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     ghostSeries.push({
       name: `${skill.label} (C)`,
       type: 'line',
-      data: skill.classic.data,
+      data: classicWithZero,
       smooth: true,
       symbol: 'none',
       symbolSize: 0,
@@ -882,9 +894,66 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   )
 }
 
-/** Interactive single-skill trajectory chart with skill selector */
+/** Category types for average toggles */
+type SkillCategory = 'basic' | 'fiveComp' | 'tenComp' | 'cascading'
+
+/** Get category from skill ID */
+function getSkillCategory(skillId: string): SkillCategory {
+  if (skillId.includes('cascading') || skillId.includes('advanced')) {
+    return 'cascading'
+  }
+  if (skillId.startsWith('tenComplements') || skillId.startsWith('tenComplementsSub')) {
+    return 'tenComp'
+  }
+  if (skillId.startsWith('fiveComplements') || skillId.startsWith('fiveComplementsSub')) {
+    return 'fiveComp'
+  }
+  return 'basic'
+}
+
+/** Category display names */
+const CATEGORY_LABELS: Record<SkillCategory, string> = {
+  basic: 'Basic',
+  fiveComp: 'Friends of 5',
+  tenComp: 'Friends of 10',
+  cascading: 'Regrouping',
+}
+
+/** Category colors */
+const CATEGORY_COLORS: Record<SkillCategory, { adaptive: string; classic: string }> = {
+  basic: { adaptive: '#86efac', classic: '#d1d5db' },
+  fiveComp: { adaptive: '#4ade80', classic: '#9ca3af' },
+  tenComp: { adaptive: '#22c55e', classic: '#6b7280' },
+  cascading: { adaptive: '#16a34a', classic: '#4b5563' },
+}
+
+const categoryToggleStyles = css({
+  px: '0.5rem',
+  py: '0.25rem',
+  fontSize: '0.7rem',
+  fontWeight: 500,
+  color: 'text.muted',
+  bg: 'bg.surface',
+  border: '1px solid',
+  borderColor: 'border.muted',
+  borderRadius: '0.25rem',
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  _hover: {
+    bg: 'accent.subtle',
+    borderColor: 'accent.default',
+  },
+  '&[data-active="true"]': {
+    bg: 'accent.muted',
+    color: 'accent.emphasis',
+    borderColor: 'accent.default',
+  },
+})
+
+/** Interactive single-skill trajectory chart with skill selector and category averages */
 function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
+  const [showCategoryAverages, setShowCategoryAverages] = useState<Set<SkillCategory>>(new Set())
 
   if (!data) {
     return (
@@ -897,7 +966,153 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   }
 
   const selectedSkill = data.skills[selectedSkillIndex]
-  const sessions = data.sessions
+  // Add session 0 to show initial mastery state
+  const sessions = [0, ...data.sessions]
+
+  // Get line width based on selected skill's tier
+  const selectedTier = getSkillTier(selectedSkill.id)
+  const selectedLineWidth = getLineWidth(selectedTier)
+
+  // Prepend initial mastery (assume low starting point for weak skills)
+  const adaptiveData = [selectedSkill.adaptive.data[0] * 0.3, ...selectedSkill.adaptive.data]
+  const classicData = [selectedSkill.classic.data[0] * 0.3, ...selectedSkill.classic.data]
+
+  // Calculate category averages
+  const categoryAverages: Record<SkillCategory, { adaptive: number[]; classic: number[] }> = {
+    basic: { adaptive: [], classic: [] },
+    fiveComp: { adaptive: [], classic: [] },
+    tenComp: { adaptive: [], classic: [] },
+    cascading: { adaptive: [], classic: [] },
+  }
+
+  // Group skills by category
+  const skillsByCategory: Record<SkillCategory, TrajectorySkillData[]> = {
+    basic: [],
+    fiveComp: [],
+    tenComp: [],
+    cascading: [],
+  }
+
+  for (const skill of data.skills) {
+    const cat = getSkillCategory(skill.id)
+    skillsByCategory[cat].push(skill)
+  }
+
+  // Calculate averages for each category
+  for (const cat of ['basic', 'fiveComp', 'tenComp', 'cascading'] as SkillCategory[]) {
+    const skills = skillsByCategory[cat]
+    if (skills.length === 0) continue
+
+    for (let i = 0; i < sessions.length; i++) {
+      if (i === 0) {
+        // Session 0: use initial estimate
+        const adaptiveSum = skills.reduce((acc, s) => acc + s.adaptive.data[0] * 0.3, 0)
+        const classicSum = skills.reduce((acc, s) => acc + s.classic.data[0] * 0.3, 0)
+        categoryAverages[cat].adaptive.push(Math.round(adaptiveSum / skills.length))
+        categoryAverages[cat].classic.push(Math.round(classicSum / skills.length))
+      } else {
+        const adaptiveSum = skills.reduce((acc, s) => acc + s.adaptive.data[i - 1], 0)
+        const classicSum = skills.reduce((acc, s) => acc + s.classic.data[i - 1], 0)
+        categoryAverages[cat].adaptive.push(Math.round(adaptiveSum / skills.length))
+        categoryAverages[cat].classic.push(Math.round(classicSum / skills.length))
+      }
+    }
+  }
+
+  // Build series
+  const series: Array<{
+    name: string
+    type: 'line'
+    data: number[]
+    smooth: boolean
+    symbol: string
+    symbolSize: number
+    lineStyle: { color: string; width: number; type?: string; opacity?: number }
+    itemStyle: { color: string; opacity?: number }
+    z?: number
+    markLine?: unknown
+  }> = []
+
+  // Add category averages first (as ghost lines behind main skill)
+  for (const cat of ['basic', 'fiveComp', 'tenComp', 'cascading'] as SkillCategory[]) {
+    if (!showCategoryAverages.has(cat)) continue
+    if (skillsByCategory[cat].length === 0) continue
+
+    const catLineWidth = getLineWidth(cat)
+    const colors = CATEGORY_COLORS[cat]
+
+    series.push({
+      name: `${CATEGORY_LABELS[cat]} Avg (A)`,
+      type: 'line',
+      data: categoryAverages[cat].adaptive,
+      smooth: true,
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { color: colors.adaptive, width: catLineWidth, opacity: 0.5 },
+      itemStyle: { color: colors.adaptive, opacity: 0.5 },
+      z: 1,
+    })
+
+    series.push({
+      name: `${CATEGORY_LABELS[cat]} Avg (C)`,
+      type: 'line',
+      data: categoryAverages[cat].classic,
+      smooth: true,
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { color: colors.classic, width: catLineWidth, type: 'dashed', opacity: 0.5 },
+      itemStyle: { color: colors.classic, opacity: 0.5 },
+      z: 1,
+    })
+  }
+
+  // Add main skill lines on top
+  series.push({
+    name: 'Adaptive',
+    type: 'line',
+    data: adaptiveData,
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 8,
+    lineStyle: { color: '#22c55e', width: Math.max(selectedLineWidth * 1.5, 3) },
+    itemStyle: { color: '#22c55e' },
+    z: 10,
+    markLine: {
+      silent: true,
+      lineStyle: { color: '#374151', type: 'dashed' },
+      data: [
+        { yAxis: 50, label: { formatter: '50%', color: '#9ca3af' } },
+        { yAxis: 80, label: { formatter: '80%', color: '#9ca3af' } },
+      ],
+    },
+  })
+
+  series.push({
+    name: 'Classic',
+    type: 'line',
+    data: classicData,
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 8,
+    lineStyle: { color: '#6b7280', width: Math.max(selectedLineWidth * 1.5, 3) },
+    itemStyle: { color: '#6b7280' },
+    z: 10,
+  })
+
+  // Build legend data
+  const legendData: Array<{ name: string; itemStyle: { color: string } }> = [
+    { name: 'Adaptive', itemStyle: { color: '#22c55e' } },
+    { name: 'Classic', itemStyle: { color: '#6b7280' } },
+  ]
+
+  for (const cat of ['basic', 'fiveComp', 'tenComp', 'cascading'] as SkillCategory[]) {
+    if (showCategoryAverages.has(cat) && skillsByCategory[cat].length > 0) {
+      legendData.push({
+        name: `${CATEGORY_LABELS[cat]} Avg (A)`,
+        itemStyle: { color: CATEGORY_COLORS[cat].adaptive },
+      })
+    }
+  }
 
   const option = {
     backgroundColor: 'transparent',
@@ -907,19 +1122,21 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
         const session = params[0]?.axisValue
         let html = `<strong>Session ${session}</strong><br/>`
         for (const p of params) {
-          const color = p.seriesName === 'Adaptive' ? '#22c55e' : '#6b7280'
-          html += `<span style="color:${color}">${p.seriesName}</span>: ${p.value}%<br/>`
+          if (p.seriesName.includes('(C)')) continue // Skip classic avg in tooltip to reduce clutter
+          const color =
+            p.seriesName.includes('Adaptive') || p.seriesName.includes('(A)')
+              ? '#22c55e'
+              : '#6b7280'
+          const label = p.seriesName.replace(' (A)', '')
+          html += `<span style="color:${color}">${label}</span>: ${p.value}%<br/>`
         }
         return html
       },
     },
     legend: {
-      data: [
-        { name: 'Adaptive', itemStyle: { color: '#22c55e' } },
-        { name: 'Classic', itemStyle: { color: '#6b7280' } },
-      ],
+      data: legendData,
       bottom: 0,
-      textStyle: { color: '#9ca3af' },
+      textStyle: { color: '#9ca3af', fontSize: 11 },
     },
     grid: {
       left: '3%',
@@ -948,36 +1165,7 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       axisLine: { lineStyle: { color: '#374151' } },
       splitLine: { lineStyle: { color: '#374151', type: 'dashed' } },
     },
-    series: [
-      {
-        name: 'Adaptive',
-        type: 'line',
-        data: selectedSkill.adaptive.data,
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { color: '#22c55e', width: 3 },
-        itemStyle: { color: '#22c55e' },
-        markLine: {
-          silent: true,
-          lineStyle: { color: '#374151', type: 'dashed' },
-          data: [
-            { yAxis: 50, label: { formatter: '50%', color: '#9ca3af' } },
-            { yAxis: 80, label: { formatter: '80%', color: '#9ca3af' } },
-          ],
-        },
-      },
-      {
-        name: 'Classic',
-        type: 'line',
-        data: selectedSkill.classic.data,
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { color: '#6b7280', width: 3 },
-        itemStyle: { color: '#6b7280' },
-      },
-    ],
+    series,
   }
 
   // Calculate advantage for selected skill
@@ -991,6 +1179,22 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     advantageText = 'Classic never reached 80%'
   }
 
+  // Toggle category average
+  const toggleCategory = (cat: SkillCategory) => {
+    const newSet = new Set(showCategoryAverages)
+    if (newSet.has(cat)) {
+      newSet.delete(cat)
+    } else {
+      newSet.add(cat)
+    }
+    setShowCategoryAverages(newSet)
+  }
+
+  // Get available categories (those with skills in the data)
+  const availableCategories = (
+    ['basic', 'fiveComp', 'tenComp', 'cascading'] as SkillCategory[]
+  ).filter((cat) => skillsByCategory[cat].length > 0)
+
   return (
     <div className={chartContainerStyles}>
       <h4
@@ -998,27 +1202,69 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       >
         Mastery Progression: {selectedSkill.label}
       </h4>
+
+      {/* Skill selector */}
       <div
         className={css({
           display: 'flex',
           gap: '0.5rem',
           flexWrap: 'wrap',
-          mb: '1rem',
+          mb: '0.75rem',
         })}
       >
-        {data.skills.map((skill, index) => (
-          <button
-            type="button"
-            key={skill.id}
-            className={skillButtonStyles}
-            data-selected={index === selectedSkillIndex}
-            onClick={() => setSelectedSkillIndex(index)}
-            style={{ borderColor: skill.color }}
-          >
-            {skill.label}
-          </button>
-        ))}
+        {data.skills.map((skill, index) => {
+          const tier = getSkillTier(skill.id)
+          const width = getLineWidth(tier)
+          return (
+            <button
+              type="button"
+              key={skill.id}
+              className={skillButtonStyles}
+              data-selected={index === selectedSkillIndex}
+              onClick={() => setSelectedSkillIndex(index)}
+              style={{
+                borderColor: skill.color,
+                borderWidth: `${width}px`,
+              }}
+            >
+              {skill.label}
+            </button>
+          )
+        })}
       </div>
+
+      {/* Category average toggles */}
+      {availableCategories.length > 0 && (
+        <div
+          className={css({
+            display: 'flex',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            mb: '0.75rem',
+            alignItems: 'center',
+          })}
+        >
+          <span className={css({ fontSize: '0.75rem', color: 'text.muted' })}>Show averages:</span>
+          {availableCategories.map((cat) => (
+            <button
+              type="button"
+              key={cat}
+              className={categoryToggleStyles}
+              data-active={showCategoryAverages.has(cat)}
+              onClick={() => toggleCategory(cat)}
+              style={{
+                borderWidth: `${getLineWidth(cat)}px`,
+                borderColor: showCategoryAverages.has(cat)
+                  ? CATEGORY_COLORS[cat].adaptive
+                  : undefined,
+              }}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
         <strong>Adaptive:</strong> 80% by session {adaptiveTo80 ?? 'never'} |{' '}
         <strong>Classic:</strong> 80% by session {classicTo80 ?? 'never'}
