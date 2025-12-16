@@ -15,8 +15,11 @@ import { calculateFluencyState, FLUENCY_CONFIG } from '@/db/schema/player-skill-
 // Import tunable constants from centralized config
 import {
   BASE_SKILL_COMPLEXITY,
+  BKT_INTEGRATION_CONFIG,
+  calculateBktMultiplier,
   DEFAULT_COMPLEXITY_BUDGETS,
   getBaseComplexity,
+  isBktConfident,
   MASTERY_MULTIPLIERS,
   type MasteryState,
   type ProblemGenerationMode,
@@ -65,14 +68,16 @@ export interface StudentSkillHistory {
 export interface SkillCostCalculatorOptions {
   /**
    * BKT results keyed by skillId.
-   * When provided with mode='adaptive', uses P(known) for continuous multipliers.
+   * Used for skill targeting in all adaptive modes.
+   * Used for cost calculation only in 'adaptive-bkt' mode.
    */
   bktResults?: Map<string, SkillBktResult>
 
   /**
    * Problem generation mode:
-   * - 'adaptive': BKT-based continuous scaling (default)
-   * - 'classic': Fluency-based discrete states
+   * - 'classic': No BKT targeting, fluency-based cost multipliers
+   * - 'adaptive': BKT skill targeting, fluency-based cost multipliers (default)
+   * - 'adaptive-bkt': BKT skill targeting, BKT-based cost multipliers
    */
   mode?: ProblemGenerationMode
 }
@@ -125,16 +130,15 @@ export interface SkillCostCalculator {
 /**
  * Creates a skill cost calculator based on student's skill history.
  *
- * IMPORTANT: Cost calculation ALWAYS uses fluency-based multipliers.
- * BKT is stored but NOT used for cost calculation - it's only used for
- * skill TARGETING in session-planner.ts.
+ * Cost calculation depends on mode:
+ * - 'classic' / 'adaptive': Use fluency-based discrete multipliers
+ * - 'adaptive-bkt': Use BKT P(known) for continuous multipliers (experimental)
  *
- * This separation ensures:
- * - Difficulty control (mastery multipliers) works correctly
- * - BKT identifies weak skills for targeting, not filtering them out
+ * Note: In 'adaptive' mode, BKT is used for skill TARGETING but not cost.
+ * In 'adaptive-bkt' mode, BKT is used for both targeting AND cost.
  *
  * @param studentHistory - Student's skill history for fluency-based multipliers
- * @param options - Optional BKT results (for targeting) and mode selection
+ * @param options - Optional BKT results (for targeting/cost) and mode selection
  */
 export function createSkillCostCalculator(
   studentHistory: StudentSkillHistory,
@@ -145,17 +149,21 @@ export function createSkillCostCalculator(
   /**
    * Get multiplier for a skill.
    *
-   * IMPORTANT: Always uses fluency-based multipliers for cost calculation.
-   * BKT is NOT used for cost - it's only used for skill TARGETING (see session-planner.ts).
-   *
-   * Rationale: The mastery multiplier controls problem difficulty by making
-   * mastered skills cost less and unmastered skills cost more. This prevents
-   * overwhelming students. BKT's role is separate: identifying which skills
-   * to prioritize for practice, not inflating their cost.
+   * In 'classic' and 'adaptive' modes: Uses fluency-based multipliers.
+   * In 'adaptive-bkt' mode: Uses BKT P(known) for continuous multipliers,
+   * falling back to fluency when BKT confidence is too low.
    */
   function getMultiplierForSkill(skillId: string): number {
-    // Always use fluency-based multiplier for cost calculation
-    // BKT is used for skill targeting in session-planner.ts, not for cost
+    // In adaptive-bkt mode, use BKT for cost calculation if confident
+    if (mode === 'adaptive-bkt' && bktResults) {
+      const bktResult = bktResults.get(skillId)
+      if (bktResult && isBktConfident(bktResult.confidence)) {
+        return calculateBktMultiplier(bktResult.pKnown)
+      }
+      // Fall back to fluency if BKT not confident or unavailable
+    }
+
+    // Default: use fluency-based multiplier for cost calculation
     return getFluencyMultiplier(skillId, studentHistory)
   }
 

@@ -111,6 +111,12 @@ export interface SimulatedAnswer {
   helpLevelUsed: HelpLevel
   /** Skills that were actually challenged by this problem */
   skillsChallenged: string[]
+  /**
+   * Cognitive fatigue contribution of this problem.
+   * Sum of getTrueMultiplier(trueP) for each skill, calculated BEFORE exposure increment.
+   * This is the "ground truth" fatigue based on actual skill mastery at the moment.
+   */
+  fatigue: number
 }
 
 /**
@@ -133,6 +139,12 @@ export interface SessionSnapshot {
   problemsAttempted: number
   /** Session plan ID for reference */
   sessionPlanId: string
+  /**
+   * Total cognitive fatigue for this session.
+   * Sum of fatigue for all problems in the session.
+   * Lower is better (less cognitive strain).
+   */
+  sessionFatigue: number
 }
 
 /**
@@ -181,6 +193,17 @@ export interface JourneyMetrics {
   accuracyImprovement: number
   /** Per-skill trajectory data */
   skillTrajectories: Map<string, SkillTrajectory>
+  /**
+   * Total cognitive fatigue across all sessions.
+   * Sum of sessionFatigue for all sessions.
+   * Lower is better (less cognitive strain for the same learning).
+   */
+  totalFatigue: number
+  /**
+   * Average cognitive fatigue per session.
+   * totalFatigue / sessionCount.
+   */
+  avgFatiguePerSession: number
 }
 
 /**

@@ -161,15 +161,17 @@ export async function generateSessionPlan(
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
     getRecentSessions(playerId, 10),
-    // Only load problem history for BKT in adaptive mode
-    problemGenerationMode === 'adaptive'
+    // Only load problem history for BKT in adaptive modes
+    problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
       ? getRecentSessionResults(playerId, BKT_INTEGRATION_CONFIG.sessionHistoryDepth)
       : Promise.resolve([]),
   ])
 
-  // Compute BKT if in adaptive mode and we have problem history
+  // Compute BKT if in adaptive modes and we have problem history
   let bktResults: Map<string, SkillBktResult> | undefined
-  if (problemGenerationMode === 'adaptive' && problemHistory.length > 0) {
+  const usesBktTargeting =
+    problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
+  if (usesBktTargeting && problemHistory.length > 0) {
     const bktResult = computeBktFromHistory(problemHistory)
     bktResults = new Map(bktResult.skills.map((s) => [s.skillId, s]))
 
@@ -187,7 +189,7 @@ export async function generateSessionPlan(
     }
   } else if (process.env.DEBUG_SESSION_PLANNER === 'true') {
     console.log(
-      `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (history=${problemHistory.length})`
+      `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (usesBktTargeting=${usesBktTargeting}, history=${problemHistory.length})`
     )
   }
 
@@ -240,8 +242,8 @@ export async function generateSessionPlan(
   const struggling = findStrugglingSkills(skillMastery)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
-  // Identify weak skills from BKT for targeting (adaptive mode only)
-  const weakSkills = problemGenerationMode === 'adaptive' ? identifyWeakSkills(bktResults) : []
+  // Identify weak skills from BKT for targeting (adaptive modes only)
+  const weakSkills = usesBktTargeting ? identifyWeakSkills(bktResults) : []
 
   if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills.length > 0) {
     console.log(`[SessionPlanner] Identified ${weakSkills.length} weak skills for targeting:`)

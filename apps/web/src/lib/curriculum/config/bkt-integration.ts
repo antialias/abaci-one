@@ -19,15 +19,19 @@
 
 /**
  * Problem generation algorithm selection
- * - 'adaptive': BKT-based continuous scaling (recommended)
- * - 'classic': Fluency-based discrete states
+ * - 'classic': No BKT targeting, fluency-based cost multipliers
+ * - 'adaptive': BKT skill targeting, fluency-based cost multipliers (current default)
+ * - 'adaptive-bkt': BKT skill targeting, BKT-based cost multipliers (experimental)
  */
-export type ProblemGenerationMode = 'adaptive' | 'classic'
+export type ProblemGenerationMode = 'classic' | 'adaptive' | 'adaptive-bkt'
 
 /**
  * Default problem generation mode for new sessions
+ *
+ * 'adaptive-bkt' uses BKT for both skill targeting AND cost multipliers.
+ * This is the most data-driven approach, using full learning history.
  */
-export const DEFAULT_PROBLEM_GENERATION_MODE: ProblemGenerationMode = 'adaptive'
+export const DEFAULT_PROBLEM_GENERATION_MODE: ProblemGenerationMode = 'adaptive-bkt'
 
 // =============================================================================
 // BKT Confidence Thresholds

@@ -80,7 +80,7 @@ export function StartPracticeModal({
     DEFAULT_PLAN_CONFIG.abacusTermCount?.max ?? 5
   )
   const [problemGenerationMode, setProblemGenerationMode] =
-    useState<ProblemGenerationMode>('adaptive')
+    useState<ProblemGenerationMode>('adaptive-bkt')
 
   const togglePart = useCallback((partType: keyof EnabledParts) => {
     setEnabledParts((prev) => {
@@ -732,14 +732,14 @@ export function StartPracticeModal({
                     >
                       {[
                         {
-                          mode: 'adaptive' as const,
-                          label: 'Adaptive',
-                          desc: 'Bayesian inference (recommended)',
+                          mode: 'adaptive-bkt' as const,
+                          label: 'Focus on weak spots',
+                          desc: 'Practices what you need most (recommended)',
                         },
                         {
                           mode: 'classic' as const,
-                          label: 'Classic',
-                          desc: 'Streak-based thresholds',
+                          label: 'Practice everything',
+                          desc: 'Equal time on all skills',
                         },
                       ].map(({ mode, label, desc }) => {
                         const isSelected = problemGenerationMode === mode

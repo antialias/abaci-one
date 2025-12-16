@@ -669,6 +669,212 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
       )
     }, 1800000) // 30 min timeout
   })
+
+  describe('3-Way Comparison: Learning Rate vs Fatigue', () => {
+    /**
+     * Compares three modes:
+     * - classic: No BKT targeting, fluency-based cost multipliers
+     * - adaptive: BKT skill targeting, fluency-based cost multipliers
+     * - adaptive-bkt: BKT skill targeting, BKT-based cost multipliers
+     *
+     * Metrics:
+     * - Learning rate: Sessions to reach 50%/80% mastery on deficient skill
+     * - Fatigue: Total cognitive load during practice (lower = better)
+     *
+     * Hypothesis:
+     * - adaptive-bkt should have similar learning rate to adaptive
+     * - adaptive-bkt should have LOWER fatigue (more accurate budgeting)
+     */
+    it('should compare learning rate and fatigue across 3 modes', async () => {
+      const testProfiles = getRepresentativeProfilesAllLearners().filter(
+        (p) => p.skillId.includes('fiveComplements') && p.learnerType === 'fast'
+      )
+
+      type ModeType = 'classic' | 'adaptive' | 'adaptive-bkt'
+      const modes: ModeType[] = ['classic', 'adaptive', 'adaptive-bkt']
+
+      const results: Array<{
+        skillId: string
+        learnerType: LearnerType
+        mode: ModeType
+        sessionsTo50: number | null
+        sessionsTo80: number | null
+        finalMastery: number
+        totalFatigue: number
+        avgFatiguePerSession: number
+      }> = []
+
+      for (const { skillId, learnerType, profile, practicingSkills } of testProfiles.slice(0, 3)) {
+        for (const mode of modes) {
+          const skillSlug = skillId.replace(/[^a-zA-Z0-9]/g, '-')
+          const { playerId } = await createTestStudent(
+            ephemeralDb.db,
+            `3way-${mode}-${learnerType}-${skillSlug}`
+          )
+
+          const rng = new SeededRandom(QUICK_CONFIG.seed)
+          const student = new SimulatedStudent(profile, rng)
+          student.ensureSkillsTracked(practicingSkills)
+
+          // Track per-session mastery
+          const masteryPerSession: number[] = [student.getTrueProbability(skillId)]
+
+          // Run sessions one at a time to track trajectory
+          for (let s = 0; s < QUICK_CONFIG.sessionCount; s++) {
+            const sessionConfig: JourneyConfig = {
+              ...QUICK_CONFIG,
+              sessionCount: 1,
+              practicingSkills,
+              profile,
+              mode,
+            }
+            const runner = new JourneyRunner(ephemeralDb.db, student, sessionConfig, rng, playerId)
+            await runner.run()
+            masteryPerSession.push(student.getTrueProbability(skillId))
+          }
+
+          // Run full journey for fatigue metrics
+          const { playerId: fullPlayerId } = await createTestStudent(
+            ephemeralDb.db,
+            `3way-full-${mode}-${learnerType}-${skillSlug}`
+          )
+          const fullRng = new SeededRandom(QUICK_CONFIG.seed)
+          const fullStudent = new SimulatedStudent(profile, fullRng)
+          fullStudent.ensureSkillsTracked(practicingSkills)
+
+          const fullConfig: JourneyConfig = {
+            ...QUICK_CONFIG,
+            practicingSkills,
+            profile,
+            mode,
+          }
+          const fullRunner = new JourneyRunner(
+            ephemeralDb.db,
+            fullStudent,
+            fullConfig,
+            fullRng,
+            fullPlayerId
+          )
+          const fullResult = await fullRunner.run()
+
+          // Find sessions to reach thresholds
+          let sessionsTo50: number | null = null
+          let sessionsTo80: number | null = null
+          for (let i = 0; i < masteryPerSession.length; i++) {
+            if (sessionsTo50 === null && masteryPerSession[i] >= 0.5) {
+              sessionsTo50 = i
+            }
+            if (sessionsTo80 === null && masteryPerSession[i] >= 0.8) {
+              sessionsTo80 = i
+            }
+          }
+
+          results.push({
+            skillId,
+            learnerType,
+            mode,
+            sessionsTo50,
+            sessionsTo80,
+            finalMastery: masteryPerSession[masteryPerSession.length - 1],
+            totalFatigue: fullResult.finalMetrics.totalFatigue,
+            avgFatiguePerSession: fullResult.finalMetrics.avgFatiguePerSession,
+          })
+        }
+      }
+
+      // Output results table
+      console.log(`\n${'='.repeat(140)}`)
+      console.log('3-WAY COMPARISON: Learning Rate vs Fatigue')
+      console.log('='.repeat(140))
+      console.log(
+        '\n| Skill                          | Mode         | →50% | →80% | Final | TotalFatigue | AvgFatigue |'
+      )
+      console.log(
+        '|--------------------------------|--------------|------|------|-------|--------------|------------|'
+      )
+
+      for (const r of results) {
+        console.log(
+          `| ${r.skillId.padEnd(30)} | ${r.mode.padEnd(12)} | ${(r.sessionsTo50?.toString() ?? '-').padStart(4)} | ${(r.sessionsTo80?.toString() ?? '-').padStart(4)} | ${(r.finalMastery * 100).toFixed(0).padStart(4)}% | ${r.totalFatigue.toFixed(1).padStart(12)} | ${r.avgFatiguePerSession.toFixed(1).padStart(10)} |`
+        )
+      }
+
+      // Group by skill and compare modes
+      const skills = [...new Set(results.map((r) => r.skillId))]
+
+      console.log(`\n${'='.repeat(80)}`)
+      console.log('COMPARISON BY SKILL')
+      console.log('='.repeat(80))
+
+      for (const skillId of skills) {
+        const skillResults = results.filter((r) => r.skillId === skillId)
+        const classic = skillResults.find((r) => r.mode === 'classic')!
+        const adaptive = skillResults.find((r) => r.mode === 'adaptive')!
+        const adaptiveBkt = skillResults.find((r) => r.mode === 'adaptive-bkt')!
+
+        console.log(`\n${skillId}:`)
+        console.log(`  Learning (sessions to 80%):`)
+        console.log(`    classic:      ${classic.sessionsTo80 ?? 'never'}`)
+        console.log(`    adaptive:     ${adaptive.sessionsTo80 ?? 'never'}`)
+        console.log(`    adaptive-bkt: ${adaptiveBkt.sessionsTo80 ?? 'never'}`)
+        console.log(`  Fatigue (avg per session):`)
+        console.log(`    classic:      ${classic.avgFatiguePerSession.toFixed(1)}`)
+        console.log(`    adaptive:     ${adaptive.avgFatiguePerSession.toFixed(1)}`)
+        console.log(`    adaptive-bkt: ${adaptiveBkt.avgFatiguePerSession.toFixed(1)}`)
+
+        // Calculate improvement
+        const learningImprovementAdaptive =
+          classic.sessionsTo80 && adaptive.sessionsTo80
+            ? ((classic.sessionsTo80 - adaptive.sessionsTo80) / classic.sessionsTo80) * 100
+            : null
+        const learningImprovementBkt =
+          classic.sessionsTo80 && adaptiveBkt.sessionsTo80
+            ? ((classic.sessionsTo80 - adaptiveBkt.sessionsTo80) / classic.sessionsTo80) * 100
+            : null
+        const fatigueReductionAdaptive =
+          ((classic.avgFatiguePerSession - adaptive.avgFatiguePerSession) /
+            classic.avgFatiguePerSession) *
+          100
+        const fatigueReductionBkt =
+          ((classic.avgFatiguePerSession - adaptiveBkt.avgFatiguePerSession) /
+            classic.avgFatiguePerSession) *
+          100
+
+        console.log(`  vs classic:`)
+        console.log(
+          `    adaptive:     ${learningImprovementAdaptive?.toFixed(0) ?? 'N/A'}% faster learning, ${fatigueReductionAdaptive.toFixed(1)}% fatigue change`
+        )
+        console.log(
+          `    adaptive-bkt: ${learningImprovementBkt?.toFixed(0) ?? 'N/A'}% faster learning, ${fatigueReductionBkt.toFixed(1)}% fatigue change`
+        )
+      }
+
+      // Summary statistics
+      const classicResults = results.filter((r) => r.mode === 'classic')
+      const adaptiveResults = results.filter((r) => r.mode === 'adaptive')
+      const adaptiveBktResults = results.filter((r) => r.mode === 'adaptive-bkt')
+
+      const avgFatigueClassic =
+        classicResults.reduce((sum, r) => sum + r.avgFatiguePerSession, 0) / classicResults.length
+      const avgFatigueAdaptive =
+        adaptiveResults.reduce((sum, r) => sum + r.avgFatiguePerSession, 0) / adaptiveResults.length
+      const avgFatigueBkt =
+        adaptiveBktResults.reduce((sum, r) => sum + r.avgFatiguePerSession, 0) /
+        adaptiveBktResults.length
+
+      console.log(`\n${'='.repeat(60)}`)
+      console.log('SUMMARY')
+      console.log('='.repeat(60))
+      console.log(`\nAverage Fatigue Per Session:`)
+      console.log(`  classic:      ${avgFatigueClassic.toFixed(1)}`)
+      console.log(`  adaptive:     ${avgFatigueAdaptive.toFixed(1)}`)
+      console.log(`  adaptive-bkt: ${avgFatigueBkt.toFixed(1)}`)
+
+      // Both adaptive modes should have reasonable learning rates
+      // adaptive-bkt should have lower or equal fatigue compared to adaptive
+      expect(avgFatigueBkt).toBeLessThanOrEqual(avgFatigueAdaptive * 1.1) // Allow 10% margin
+    }, 1800000) // 30 min timeout
+  })
 })
 
 /**

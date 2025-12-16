@@ -3,14 +3,14 @@ title: "Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs
 description: "How we use conjunctive Bayesian Knowledge Tracing to infer which visual-motor patterns a student has automated when all we observe is 'problem correct' or 'problem incorrect'."
 author: "Abaci.one Team"
 publishedAt: "2025-12-14"
-updatedAt: "2025-12-15"
+updatedAt: "2025-12-16"
 tags: ["education", "machine-learning", "bayesian", "soroban", "knowledge-tracing", "adaptive-learning"]
 featured: true
 ---
 
 # Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work
 
-> **Abstract:** Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column context is a distinct pattern; curricula explicitly sequence these patterns, requiring mastery of each before introducing the next. This creates a well-defined skill hierarchy of ~30 discrete patterns. We apply conjunctive Bayesian Knowledge Tracing to infer pattern mastery from binary problem outcomes. At problem-generation time, we simulate the abacus to tag each term with the specific patterns it exercises. Correct answers provide evidence for all tagged patterns; incorrect answers distribute blame proportionally to each pattern's estimated weakness. The discrete, sequenced nature of soroban skills makes this inference tractable—each pattern is independently trainable and assessable. We describe the skill hierarchy, simulation-based tagging, evidence weighting for help usage and response time, and complexity-aware problem generation that respects the student's current mastery profile. Simulation studies validate that this adaptive targeting reaches mastery thresholds significantly faster than uniform skill distribution—in controlled tests, adaptive mode reached 80% mastery faster in 9 out of 9 comparable scenarios.
+> **Abstract:** Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column context is a distinct pattern; curricula explicitly sequence these patterns, requiring mastery of each before introducing the next. This creates a well-defined skill hierarchy of ~30 discrete patterns. We apply conjunctive Bayesian Knowledge Tracing to infer pattern mastery from binary problem outcomes. At problem-generation time, we simulate the abacus to tag each term with the specific patterns it exercises. Correct answers provide evidence for all tagged patterns; incorrect answers distribute blame proportionally to each pattern's estimated weakness. BKT drives both skill targeting (prioritizing weak skills for practice) and difficulty adjustment (scaling problem complexity to mastery level). Simulation studies validate that adaptive targeting reaches mastery 25-33% faster than uniform skill distribution. Our 3-way comparison found that the benefit comes from BKT *targeting*, not the specific cost formula—using BKT for both concerns simplifies the architecture with no performance cost.
 
 ---
 
@@ -237,16 +237,16 @@ const newPKnown = oldPKnown * (1 - evidenceWeight) + bktUpdate * evidenceWeight
 
 ## Automaticity-Aware Problem Generation
 
-Problem generation involves two independent concerns:
+Problem generation involves two concerns:
 
-1. **Cost calculation** (fluency-based): Controls problem difficulty by budgeting cognitive load
-2. **Skill targeting** (BKT-based): Identifies which skills need practice and prioritizes them
+1. **Skill targeting** (BKT-based): Identifies which skills need practice and prioritizes them
+2. **Cost calculation**: Controls problem difficulty by budgeting cognitive load
 
-This section describes cost calculation. The next section covers skill targeting.
+Both concerns now use BKT. We experimented with separating them—using BKT only for targeting while using fluency (recent streak consistency) for cost calculation—but found that using BKT for both produces equivalent results while simplifying the architecture.
 
 ### Complexity Budgeting
 
-We budget problem complexity based on the student's **fluency state** for each pattern. This is separate from BKT—fluency tracks recent performance consistency, while BKT estimates overall mastery.
+We budget problem complexity based on the student's estimated mastery from BKT. When BKT confidence is low (< 30%), we fall back to fluency-based estimates.
 
 ### Complexity Costing
 
@@ -258,15 +258,18 @@ Each pattern has a **base complexity cost**:
 
 ### Automaticity Multipliers
 
-The cost is scaled by the student's automaticity of each pattern:
+The cost is scaled by the student's estimated mastery from BKT. The multiplier uses a non-linear (squared) mapping from P(known) to provide better differentiation at high mastery levels:
 
-| Fluency State | Multiplier | Meaning |
-|---------------|------------|---------|
-| `effortless` | 1× | Recently demonstrated automaticity |
-| `fluent` | 2× | Solid but needs warmup |
-| `rusty` | 3× | Was fluent, needs rebuilding |
-| `practicing` | 3× | Still learning |
-| `not_practicing` | 4× | Not in active rotation |
+| P(known) | Multiplier | Meaning |
+|----------|------------|---------|
+| 1.00 | 1.0× | Fully automated |
+| 0.95 | 1.3× | Nearly automated |
+| 0.90 | 1.6× | Solid |
+| 0.80 | 2.1× | Good but not automatic |
+| 0.50 | 3.3× | Halfway there |
+| 0.00 | 4.0× | Just starting |
+
+When BKT confidence is insufficient (< 30%), we fall back to discrete fluency states based on recent streaks.
 
 ### Adaptive Session Planning
 
@@ -285,16 +288,16 @@ This creates natural adaptation:
 // Same problem, different complexity for different students:
 const problem = [7, 6]  // 7 + 6 = 13, requires tenComplements.6
 
-// Student A (ten-complements automated)
-complexity_A = 2 × 1 = 2  // Easy for this student
+// Student A: BKT P(known) = 0.95 for ten-complements
+complexity_A = 2 × 1.3 = 2.6  // Easy for this student
 
-// Student B (still practicing ten-complements)
-complexity_B = 2 × 3 = 6  // Challenging for this student
+// Student B: BKT P(known) = 0.50 for ten-complements
+complexity_B = 2 × 3.3 = 6.6  // Challenging for this student
 ```
 
 ## Adaptive Skill Targeting
 
-While fluency multipliers control *how difficult* problems should be, BKT serves a different purpose: identifying *which skills need practice*.
+Beyond controlling difficulty, BKT identifies *which skills need practice*.
 
 ### Identifying Weak Skills
 
@@ -330,15 +333,13 @@ for (const slot of focusSlots) {
 }
 ```
 
-### Why Separate Cost from Targeting?
+### The Budget Trap (and How We Avoided It)
 
-Early in development, we experimented with using BKT P(known) directly as a cost multiplier. This was backwards: skills with low P(known) got high multipliers, making them expensive, so the budget filter excluded them. Students never practiced what they needed most.
+When we first tried using BKT P(known) as a cost multiplier, we hit a problem: skills with low P(known) got high multipliers, making them expensive. If we only used cost filtering, the budget would exclude weak skills—students would never practice what they needed most.
 
-The correct architecture separates concerns:
-- **Cost calculation**: Uses fluency state to prevent cognitive overload
-- **Skill targeting**: Uses BKT to prioritize practice on weak skills
+The solution was **skill targeting**: BKT identifies weak skills and adds them to the problem generator's required targets. This ensures weak skills appear in problems *regardless* of their cost. The complexity budget still applies, but it filters problem *structure* (number of terms, digit ranges), not which skills can appear.
 
-A student struggling with ten-complements gets problems that *include* ten-complements (targeting), but those problems still respect their complexity budget (costing). This ensures practice without overwhelming.
+A student struggling with ten-complements gets problems that *include* ten-complements (targeting), while the problem complexity stays within their budget (fewer terms, simpler starting values).
 
 ## Honest Uncertainty Reporting
 
@@ -417,7 +418,10 @@ The confidence threshold is user-adjustable (default 50%), allowing teachers to 
 
 ## Validation: Does Adaptive Targeting Actually Work?
 
-We built a journey simulator to compare adaptive (BKT-driven) vs. classic (uniform) problem generation across controlled scenarios.
+We built a journey simulator to compare three modes across controlled scenarios:
+- **Classic**: Uniform skill distribution, fluency-based difficulty
+- **Adaptive (fluency)**: BKT skill targeting, fluency-based difficulty
+- **Adaptive (full BKT)**: BKT skill targeting, BKT-based difficulty
 
 ### Simulation Framework
 
@@ -426,7 +430,7 @@ The simulator models student learning using:
 - **Hill function learning model**: `P(correct) = exposure^n / (K^n + exposure^n)`, where exposure is the number of times the student has practiced a skill
 - **Conjunctive model**: Multi-skill problems require all skills to succeed—P(correct) is the product of individual skill probabilities
 - **Per-skill deficiency profiles**: Each test case starts one skill at zero exposure, with all prerequisites mastered
-- **Test matrix**: 32 skills × 3 learner types (fast, average, slow) = 96 scenarios
+- **Cognitive fatigue tracking**: Sum of difficulty multipliers for each skill in each problem—measures the mental effort required per session
 
 The Hill function creates realistic learning curves: early practice yields slow improvement (building foundation), then understanding "clicks" (rapid gains), then asymptotic approach to mastery.
 
@@ -470,6 +474,21 @@ The key question: How fast does each mode bring a weak skill to mastery?
 - **Faster to 80% mastery**: Adaptive wins 9, Classic wins 0
 
 "Never" entries indicate the mode didn't reach that threshold within 12 sessions.
+
+### 3-Way Comparison: BKT vs Fluency Multipliers
+
+We also compared whether using BKT for cost calculation (in addition to targeting) provides additional benefit over fluency-based cost calculation:
+
+| Skill | Mode | →50% | →80% | Fatigue/Session |
+|-------|------|------|------|-----------------|
+| fiveComplements.3=5-2 | Classic | 5 | 9 | 120.3 |
+| fiveComplements.3=5-2 | Adaptive (fluency) | 3 | 6 | 122.8 |
+| fiveComplements.3=5-2 | Adaptive (full BKT) | 3 | 6 | 122.8 |
+| fiveComplementsSub.-3 | Classic | 4 | 8 | 131.9 |
+| fiveComplementsSub.-3 | Adaptive (fluency) | 3 | 6 | 133.6 |
+| fiveComplementsSub.-3 | Adaptive (full BKT) | 3 | 6 | 133.0 |
+
+**Finding**: Both adaptive modes perform identically for learning rate—the benefit comes from BKT *targeting*, not from BKT-based cost calculation. However, using BKT for costs simplifies the architecture (one model instead of two) with no measurable downside.
 
 ### Example Trajectory
 
@@ -515,11 +534,13 @@ Our approach combines:
 1. **Simulation-based pattern tagging** at problem-generation time
 2. **Conjunctive BKT** with probabilistic blame distribution
 3. **Evidence quality weighting** based on help level and response time
-4. **Separate concerns**: Fluency-based complexity budgeting (controls difficulty) and BKT-based skill targeting (prioritizes practice)
+4. **Unified BKT architecture**: BKT drives both difficulty adjustment and skill targeting
 5. **Honest uncertainty reporting** with confidence intervals
-6. **Validated adaptive targeting** that reaches mastery thresholds significantly faster than uniform practice
+6. **Validated adaptive targeting** that reaches mastery 25-33% faster than uniform practice
 
-The result is a system that adapts to each student's actual pattern automaticity, not just their overall accuracy—targeting weak skills for accelerated mastery while honestly communicating what it knows and doesn't know.
+The key insight from our validation: the benefit of adaptive practice comes from *targeting weak skills*, not from the specific formula used for difficulty adjustment. BKT targeting ensures students practice what they need; the complexity budget ensures they're not overwhelmed.
+
+The result is a system that adapts to each student's actual pattern automaticity, not just their overall accuracy—focusing practice where it matters most while honestly communicating what it knows and doesn't know.
 
 ---
 

@@ -25,6 +25,23 @@ import type { SeededRandom } from './SeededRandom'
 import type { SimulatedAnswer, StudentProfile } from './types'
 
 /**
+ * Convert true probability to a cognitive load multiplier.
+ *
+ * Higher P(correct) → lower multiplier (more automated, less fatiguing)
+ * Lower P(correct) → higher multiplier (less automated, more fatiguing)
+ *
+ * This is the "ground truth" multiplier based on actual skill mastery,
+ * used to measure fatigue independently of what budgeting system was used.
+ */
+export function getTrueMultiplier(trueP: number): number {
+  if (trueP >= 0.9) return 1.0 // Automated
+  if (trueP >= 0.7) return 1.5 // Nearly automated
+  if (trueP >= 0.5) return 2.0 // Halfway
+  if (trueP >= 0.3) return 3.0 // Struggling
+  return 4.0 // Very weak
+}
+
+/**
  * Simulates a learning student using exposure-based Hill function model.
  */
 export class SimulatedStudent {
@@ -76,9 +93,21 @@ export class SimulatedStudent {
    * simulating that the student is learning from the attempt itself.
    * This matches real learning where engaging with material teaches you,
    * regardless of whether you get it right.
+   *
+   * Fatigue is calculated BEFORE exposure increment, representing the
+   * cognitive load of the problem based on the student's state when
+   * they first see it.
    */
   answerProblem(problem: GeneratedProblem): SimulatedAnswer {
     const skillsChallenged = problem.skillsRequired ?? []
+
+    // Calculate fatigue BEFORE incrementing exposure
+    // This represents cognitive load at the moment of problem presentation
+    let fatigue = 0
+    for (const skillId of skillsChallenged) {
+      const trueP = this.getTrueProbability(skillId)
+      fatigue += getTrueMultiplier(trueP)
+    }
 
     // Increment exposure for all skills BEFORE calculating probability
     // (Learning happens from the attempt, not from success)
@@ -103,6 +132,7 @@ export class SimulatedStudent {
       responseTimeMs,
       helpLevelUsed: helpLevel,
       skillsChallenged,
+      fatigue,
     }
   }
 

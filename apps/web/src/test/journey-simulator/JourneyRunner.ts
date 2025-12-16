@@ -127,6 +127,7 @@ export class JourneyRunner {
     const sessionExposures = new Map<string, number>()
     let correctCount = 0
     let totalProblems = 0
+    let sessionFatigue = 0
 
     // Process all parts and slots
     for (const part of startedPlan.parts) {
@@ -137,9 +138,11 @@ export class JourneyRunner {
 
         // Simulate the student answering this problem
         // Note: This also increments exposure counts in the student model
+        // and calculates fatigue based on true probabilities BEFORE learning
         const answer = this.student.answerProblem(slot.problem)
 
         if (answer.isCorrect) correctCount++
+        sessionFatigue += answer.fatigue
 
         // Track session-specific skill exposures
         for (const skillId of answer.skillsChallenged) {
@@ -203,6 +206,8 @@ export class JourneyRunner {
       accuracy: totalProblems > 0 ? correctCount / totalProblems : 0,
       problemsAttempted: totalProblems,
       sessionPlanId: plan.id,
+      // Cognitive fatigue accumulated during this session
+      sessionFatigue,
     }
   }
 
@@ -225,11 +230,17 @@ export class JourneyRunner {
     // Build skill trajectories
     const skillTrajectories = this.buildSkillTrajectories(snapshots)
 
+    // Calculate total fatigue across all sessions
+    const totalFatigue = snapshots.reduce((sum, s) => sum + s.sessionFatigue, 0)
+    const avgFatiguePerSession = snapshots.length > 0 ? totalFatigue / snapshots.length : 0
+
     return {
       bktCorrelation,
       weakSkillSurfacing,
       accuracyImprovement,
       skillTrajectories,
+      totalFatigue,
+      avgFatiguePerSession,
     }
   }
 
