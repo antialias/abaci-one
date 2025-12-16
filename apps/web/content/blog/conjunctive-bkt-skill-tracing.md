@@ -367,7 +367,13 @@ This has several advantages:
 
 ## Automaticity Classification
 
-We classify patterns into three categories based on P(known) and confidence. The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify."
+Once we have a P(known) estimate with sufficient confidence, we classify each skill into one of three zones:
+
+- **Struggling** (P(known) < 50%): The student likely hasn't internalized this pattern yet. Problems using this skill will feel difficult and error-prone.
+- **Learning** (P(known) 50-80%): The student is developing competence but hasn't achieved automaticity. They can usually get it right but need to think about it.
+- **Automated** (P(known) > 80%): The pattern is internalized. The student can apply it quickly and reliably without conscious effort.
+
+The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify." Skills with insufficient data remain in "Learning" until more evidence accumulates.
 
 ## Skill-Specific Difficulty Model
 
