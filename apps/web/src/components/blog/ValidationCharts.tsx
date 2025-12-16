@@ -600,7 +600,7 @@ export function ValidationResultsCharts() {
   )
 }
 
-/** Multi-skill trajectory chart showing adaptive vs classic comparison */
+/** Average mastery trajectory chart comparing adaptive vs classic */
 function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   if (!data) {
     return (
@@ -613,106 +613,49 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   }
 
   const sessions = data.sessions
+  const numSkills = data.skills.length
 
-  // Build series for all skills - both adaptive (solid) and classic (dashed)
-  const series: Array<{
-    name: string
-    type: 'line'
-    data: number[]
-    smooth: boolean
-    symbol: string
-    symbolSize: number
-    lineStyle: { color: string; width: number; type?: string }
-    itemStyle: { color: string }
-    markLine?: unknown
-  }> = []
+  // Calculate average mastery across all skills for each session
+  const adaptiveAvg = sessions.map((_, sessionIdx) => {
+    const sum = data.skills.reduce((acc, skill) => acc + skill.adaptive.data[sessionIdx], 0)
+    return Math.round(sum / numSkills)
+  })
 
-  for (const skill of data.skills) {
-    // Adaptive line (solid, with symbols)
-    series.push({
-      name: `${skill.label} (Adaptive)`,
-      type: 'line',
-      data: skill.adaptive.data,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 6,
-      lineStyle: { color: skill.color, width: 2 },
-      itemStyle: { color: skill.color },
-    })
-
-    // Classic line (dashed, no symbols)
-    series.push({
-      name: `${skill.label} (Classic)`,
-      type: 'line',
-      data: skill.classic.data,
-      smooth: true,
-      symbol: 'none',
-      symbolSize: 0,
-      lineStyle: { color: skill.color, width: 2, type: 'dashed' },
-      itemStyle: { color: skill.color },
-    })
-  }
-
-  // Add threshold marklines to first series
-  if (series.length > 0) {
-    series[0].markLine = {
-      silent: true,
-      lineStyle: { color: '#374151', type: 'dashed' },
-      data: [
-        { yAxis: 50, label: { formatter: '50%', color: '#9ca3af' } },
-        { yAxis: 80, label: { formatter: '80%', color: '#9ca3af' } },
-      ],
-    }
-  }
+  const classicAvg = sessions.map((_, sessionIdx) => {
+    const sum = data.skills.reduce((acc, skill) => acc + skill.classic.data[sessionIdx], 0)
+    return Math.round(sum / numSkills)
+  })
 
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      formatter: (
-        params: Array<{ seriesName: string; value: number; color: string; data: number }>
-      ) => {
+      formatter: (params: Array<{ seriesName: string; value: number; marker: string }>) => {
         const session = (params[0] as unknown as { axisValue: number })?.axisValue
         let html = `<strong>Session ${session}</strong><br/>`
-
-        // Group by skill for cleaner tooltip
-        const bySkill: Record<string, { adaptive?: number; classic?: number; color: string }> = {}
+        const adaptiveVal = params.find((p) => p.seriesName === 'Adaptive')?.value ?? 0
+        const classicVal = params.find((p) => p.seriesName === 'Classic')?.value ?? 0
+        const diff = adaptiveVal - classicVal
+        const diffStr =
+          diff > 0
+            ? `<span style="color:#22c55e">+${diff}pp</span>`
+            : diff < 0
+              ? `<span style="color:#ef4444">${diff}pp</span>`
+              : '0pp'
         for (const p of params) {
-          const isAdaptive = p.seriesName.includes('(Adaptive)')
-          const skillLabel = p.seriesName.replace(' (Adaptive)', '').replace(' (Classic)', '')
-          if (!bySkill[skillLabel]) {
-            bySkill[skillLabel] = { color: p.color }
-          }
-          if (isAdaptive) {
-            bySkill[skillLabel].adaptive = p.value
-          } else {
-            bySkill[skillLabel].classic = p.value
-          }
+          html += `${p.marker} ${p.seriesName}: ${p.value}%<br/>`
         }
-
-        for (const [label, values] of Object.entries(bySkill)) {
-          const diff =
-            values.adaptive !== undefined && values.classic !== undefined
-              ? values.adaptive - values.classic
-              : 0
-          const diffStr =
-            diff > 0
-              ? `<span style="color:#22c55e">+${diff}</span>`
-              : diff < 0
-                ? `<span style="color:#ef4444">${diff}</span>`
-                : '0'
-          html += `<span style="color:${values.color}">${label}</span>: ${values.adaptive ?? '—'}% vs ${values.classic ?? '—'}% (${diffStr})<br/>`
-        }
+        html += `Advantage: ${diffStr}`
         return html
       },
     },
     legend: {
       data: [
-        { name: 'Adaptive (solid)', icon: 'line' },
-        { name: 'Classic (dashed)', icon: 'line' },
+        { name: 'Adaptive', itemStyle: { color: '#22c55e' } },
+        { name: 'Classic', itemStyle: { color: '#6b7280' } },
       ],
       bottom: 0,
-      textStyle: { color: '#9ca3af', fontSize: 11 },
+      textStyle: { color: '#9ca3af', fontSize: 12 },
     },
     grid: {
       left: '3%',
@@ -732,16 +675,71 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     },
     yAxis: {
       type: 'value',
-      name: 'Mastery %',
+      name: 'Average Mastery %',
       nameLocation: 'middle',
-      nameGap: 40,
+      nameGap: 45,
       min: 0,
       max: 100,
       axisLabel: { color: '#9ca3af', formatter: '{value}%' },
       axisLine: { lineStyle: { color: '#374151' } },
       splitLine: { lineStyle: { color: '#374151', type: 'dashed' } },
     },
-    series,
+    series: [
+      {
+        name: 'Adaptive',
+        type: 'line',
+        data: adaptiveAvg,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: { color: '#22c55e', width: 3 },
+        itemStyle: { color: '#22c55e' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(34, 197, 94, 0.3)' },
+              { offset: 1, color: 'rgba(34, 197, 94, 0.05)' },
+            ],
+          },
+        },
+        markLine: {
+          silent: true,
+          lineStyle: { color: '#374151', type: 'dashed' },
+          data: [
+            { yAxis: 50, label: { formatter: '50%', color: '#9ca3af' } },
+            { yAxis: 80, label: { formatter: '80%', color: '#9ca3af' } },
+          ],
+        },
+      },
+      {
+        name: 'Classic',
+        type: 'line',
+        data: classicAvg,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: { color: '#6b7280', width: 3 },
+        itemStyle: { color: '#6b7280' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(107, 114, 128, 0.2)' },
+              { offset: 1, color: 'rgba(107, 114, 128, 0.02)' },
+            ],
+          },
+        },
+      },
+    ],
   }
 
   return (
@@ -749,13 +747,13 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       <h4
         className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
       >
-        Adaptive vs Classic: All Skills
+        Average Mastery: Adaptive vs Classic
       </h4>
       <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
-        Solid lines = Adaptive mode, Dashed lines = Classic mode. Same color = same skill. Adaptive
-        consistently reaches mastery faster.
+        Average mastery across {numSkills} deficient skills. Adaptive mode (green) consistently
+        outpaces Classic mode (gray), reaching 80% mastery faster.
       </p>
-      <ReactECharts option={option} style={{ height: '400px' }} />
+      <ReactECharts option={option} style={{ height: '350px' }} />
     </div>
   )
 }
