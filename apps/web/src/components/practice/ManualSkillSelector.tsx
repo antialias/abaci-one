@@ -2,15 +2,14 @@
 
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { animated, useSpring } from '@react-spring/web'
+import useMeasure from 'react-use-measure'
+import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
-import { FLUENCY_CONFIG, type FluencyState } from '@/db/schema/player-skill-mastery'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import {
-  BASE_SKILL_COMPLEXITY,
-  computeMasteryState,
-  type MasteryState,
-} from '@/utils/skillComplexity'
+import { FLUENCY_CONFIG, type FluencyState } from '@/db/schema/player-skill-mastery'
+import { BASE_SKILL_COMPLEXITY, computeMasteryState } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -153,22 +152,23 @@ function ComplexityLegend({ isDark }: { isDark: boolean }) {
       className={css({
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '3',
+        gap: '2',
         fontSize: 'xs',
         color: isDark ? 'gray.400' : 'gray.600',
-        p: '2',
+        py: '1.5',
+        px: '2',
         bg: isDark ? 'gray.750' : 'gray.50',
         borderRadius: 'md',
-        mb: '3',
+        alignItems: 'center',
       })}
     >
-      <span className={css({ fontWeight: 'medium' })}>Complexity:</span>
+      <span className={css({ fontWeight: 'medium', mr: '1' })}>Complexity:</span>
       <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
         <span
           className={css({
             fontSize: '10px',
             fontWeight: 'bold',
-            px: '1.5',
+            px: '1',
             py: '0.5',
             borderRadius: 'sm',
             bg: isDark ? 'green.900' : 'green.100',
@@ -184,7 +184,7 @@ function ComplexityLegend({ isDark }: { isDark: boolean }) {
           className={css({
             fontSize: '10px',
             fontWeight: 'bold',
-            px: '1.5',
+            px: '1',
             py: '0.5',
             borderRadius: 'sm',
             bg: isDark ? 'orange.900' : 'orange.100',
@@ -200,7 +200,7 @@ function ComplexityLegend({ isDark }: { isDark: boolean }) {
           className={css({
             fontSize: '10px',
             fontWeight: 'bold',
-            px: '1.5',
+            px: '1',
             py: '0.5',
             borderRadius: 'sm',
             bg: isDark ? 'red.900' : 'red.100',
@@ -304,6 +304,49 @@ function daysSince(date: Date | null | undefined): number | undefined {
   if (!date) return undefined
   const now = new Date()
   return Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * AnimatedAccordionContent - Spring-animated height accordion content
+ *
+ * Provides smooth expand/collapse animation using react-spring.
+ * Content is always rendered (for measurement) but height is animated.
+ */
+function AnimatedAccordionContent({
+  isOpen,
+  children,
+  className,
+}: {
+  isOpen: boolean
+  children: React.ReactNode
+  className?: string
+}) {
+  const [measureRef, bounds] = useMeasure()
+
+  const spring = useSpring({
+    height: isOpen ? bounds.height : 0,
+    opacity: isOpen ? 1 : 0,
+    config: {
+      tension: 280,
+      friction: 28,
+      clamp: true, // Prevents overshoot on height
+    },
+  })
+
+  return (
+    <animated.div
+      data-element="animated-accordion-content"
+      data-state={isOpen ? 'open' : 'closed'}
+      style={{
+        height: spring.height,
+        opacity: spring.opacity,
+        overflow: 'hidden',
+      }}
+      className={className}
+    >
+      <div ref={measureRef}>{children}</div>
+    </animated.div>
+  )
 }
 
 /**
@@ -434,6 +477,86 @@ export function ManualSkillSelector({
   const [isRefreshing, setIsRefreshing] = useState<string | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
 
+  // Scroll state for showing/hiding scroll indicators
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollUp, setCanScrollUp] = useState(false)
+  const [canScrollDown, setCanScrollDown] = useState(false)
+
+  // Update scroll indicators based on scroll position
+  const updateScrollIndicators = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const { scrollTop, scrollHeight, clientHeight } = el
+    setCanScrollUp(scrollTop > 5)
+    setCanScrollDown(scrollTop + clientHeight < scrollHeight - 5)
+  }, [])
+
+  // Check scroll state on mount, content changes, and category expansion
+  useEffect(() => {
+    updateScrollIndicators()
+    // Re-check after a brief delay to account for accordion animation
+    const timer = setTimeout(updateScrollIndicators, 300)
+    return () => clearTimeout(timer)
+  }, [expandedCategories, updateScrollIndicators])
+
+  // Track previous expanded categories to detect newly expanded ones
+  const prevExpandedRef = useRef<string[]>([])
+
+  // Scroll to show expanded category content optimally
+  useEffect(() => {
+    const prevExpanded = prevExpandedRef.current
+    const newlyExpanded = expandedCategories.filter((cat) => !prevExpanded.includes(cat))
+    prevExpandedRef.current = expandedCategories
+
+    if (newlyExpanded.length === 0) return
+
+    // Wait for accordion animation to complete
+    const timer = setTimeout(() => {
+      const container = scrollContainerRef.current
+      if (!container) return
+
+      // Find the newly expanded category element
+      const categoryKey = newlyExpanded[0]
+      const categoryEl = container.querySelector(`[data-category="${categoryKey}"]`) as HTMLElement
+      if (!categoryEl) return
+
+      const containerRect = container.getBoundingClientRect()
+      const categoryRect = categoryEl.getBoundingClientRect()
+
+      // Check if the entire category fits in the visible area
+      const categoryHeight = categoryRect.height
+      const containerHeight = containerRect.height
+      const categoryTopRelative = categoryRect.top - containerRect.top + container.scrollTop
+
+      if (categoryHeight <= containerHeight) {
+        // Category fits - scroll to show it entirely, with header at top if needed
+        const categoryBottomRelative = categoryTopRelative + categoryHeight
+        const visibleBottom = container.scrollTop + containerHeight
+
+        if (categoryBottomRelative > visibleBottom) {
+          // Category extends below visible area - scroll to show it
+          // Prefer showing header at top if that shows more content
+          const scrollToShowAll = categoryBottomRelative - containerHeight
+          const scrollToShowHeader = categoryTopRelative
+
+          // Use whichever scroll position shows the category better
+          container.scrollTo({
+            top: Math.max(scrollToShowHeader, scrollToShowAll),
+            behavior: 'smooth',
+          })
+        }
+      } else {
+        // Category doesn't fit - scroll header to top to show as many checkboxes as possible
+        container.scrollTo({
+          top: categoryTopRelative,
+          behavior: 'smooth',
+        })
+      }
+    }, 150) // Wait for accordion animation
+
+    return () => clearTimeout(timer)
+  }, [expandedCategories])
+
   // Build a map from skill ID to mastery data for quick lookup
   const skillMasteryMap = new Map(skillMasteryData.map((s) => [s.skillId, s]))
 
@@ -474,9 +597,16 @@ export function ManualSkillSelector({
     }
   }
 
-  // Sync selected skills when modal opens with new data
+  // Track previous open state to detect open transition
+  const wasOpenRef = useRef(open)
+
+  // Sync selected skills only when modal OPENS (closed→open transition)
+  // Don't reset when props change while already open (prevents flicker on save)
   useEffect(() => {
-    if (open) {
+    const justOpened = open && !wasOpenRef.current
+    wasOpenRef.current = open
+
+    if (justOpened) {
       setSelectedSkills(new Set(currentMasteredSkills))
     }
   }, [open, currentMasteredSkills])
@@ -558,356 +688,449 @@ export function ManualSkillSelector({
             position: 'fixed',
             inset: 0,
             bg: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 50,
+            zIndex: Z_INDEX.MODAL_BACKDROP,
           })}
         />
         <Dialog.Content
           data-component="manual-skill-selector"
           className={css({
             position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
+            // Mobile: full screen over nav
+            // Desktop: centered modal below nav
+            top: { base: 0, md: 'calc(10vh + 120px)' },
+            left: { base: 0, md: '50%' },
+            transform: { base: 'none', md: 'translateX(-50%)' },
             bg: isDark ? 'gray.800' : 'white',
-            borderRadius: 'xl',
-            boxShadow: 'xl',
-            p: '6',
-            maxWidth: '550px',
-            width: '90vw',
-            maxHeight: '85vh',
-            overflowY: 'auto',
-            zIndex: 51,
+            borderRadius: { base: 0, md: 'xl' },
+            boxShadow: { base: 'none', md: 'xl' },
+            px: { base: '4', md: '6' },
+            py: '4',
+            maxWidth: { base: 'none', md: '550px' },
+            width: { base: '100vw', md: '90vw' },
+            height: { base: '100vh', md: '70vh' },
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            zIndex: Z_INDEX.MODAL,
           })}
         >
-          {/* Header */}
-          <div className={css({ mb: '5' })}>
+          {/* Fixed Header Section - kept compact */}
+          <div data-section="modal-header" className={css({ flexShrink: 0, mb: '3' })}>
+            {/* Title row with close hint */}
             <Dialog.Title
               className={css({
-                fontSize: 'xl',
+                fontSize: { base: 'lg', md: 'xl' },
                 fontWeight: 'bold',
                 color: isDark ? 'gray.100' : 'gray.900',
+                mb: '2',
               })}
             >
-              Set Skills for {studentName}
+              Skills for {studentName}
             </Dialog.Title>
+
             <Dialog.Description
               className={css({
                 fontSize: 'sm',
                 color: isDark ? 'gray.400' : 'gray.600',
-                mt: '1',
+                mb: '3',
               })}
             >
-              Select the skills this student has already mastered. You can use a book level preset
-              or select individual skills.
+              Select mastered skills or import from a book level preset.
             </Dialog.Description>
-          </div>
 
-          {/* Book Preset Selector */}
-          <div className={css({ mb: '4' })}>
-            <label
-              htmlFor="preset-select"
+            {/* Compact controls row */}
+            <div
+              data-element="controls-row"
               className={css({
-                display: 'block',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                color: isDark ? 'gray.300' : 'gray.700',
+                display: 'flex',
+                gap: '2',
+                alignItems: 'center',
+                flexWrap: 'wrap',
                 mb: '2',
               })}
             >
-              Import from Book Level
-            </label>
-            <select
-              id="preset-select"
-              data-element="book-preset-select"
-              onChange={(e) => handlePresetChange(e.target.value)}
-              className={css({
-                width: '100%',
-                px: '3',
-                py: '2',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                borderRadius: 'md',
-                bg: isDark ? 'gray.700' : 'white',
-                color: isDark ? 'gray.100' : 'gray.900',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                _focus: {
-                  outline: 'none',
-                  borderColor: 'blue.500',
-                  ring: '2px',
-                  ringColor: 'blue.500/20',
-                },
-              })}
-            >
-              <option value="">-- Select a preset --</option>
-              {Object.entries(BOOK_PRESETS).map(([key, preset]) => (
-                <option key={key} value={key}>
-                  {preset.name} - {preset.description}
-                </option>
-              ))}
-            </select>
+              {/* Book Preset Selector - inline */}
+              <select
+                id="preset-select"
+                data-element="book-preset-select"
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className={css({
+                  flex: '1',
+                  minWidth: '180px',
+                  px: '2',
+                  py: '1.5',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  borderRadius: 'md',
+                  bg: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.900',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  _focus: {
+                    outline: 'none',
+                    borderColor: 'blue.500',
+                  },
+                })}
+              >
+                <option value="">Import preset...</option>
+                {Object.entries(BOOK_PRESETS).map(([key, preset]) => (
+                  <option key={key} value={key}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Selected count */}
+              <span
+                data-element="selected-count"
+                className={css({
+                  fontSize: 'xs',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  whiteSpace: 'nowrap',
+                })}
+              >
+                {selectedCount}/{totalSkills}
+              </span>
+
+              {/* Clear All */}
+              <button
+                type="button"
+                data-action="clear-all"
+                onClick={() => setSelectedSkills(new Set())}
+                className={css({
+                  fontSize: 'xs',
+                  color: isDark ? 'red.400' : 'red.600',
+                  bg: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  _hover: { textDecoration: 'underline' },
+                })}
+              >
+                Clear
+              </button>
+            </div>
+
+            {/* Complexity Legend - more compact */}
+            <ComplexityLegend isDark={isDark} />
           </div>
 
-          {/* Selected count */}
+          {/* Scrollable Skills Section with dynamic scroll indicators */}
           <div
+            data-element="skills-scroll-wrapper"
             className={css({
-              fontSize: 'sm',
-              color: isDark ? 'gray.400' : 'gray.600',
-              mb: '3',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            })}
-          >
-            <span>
-              {selectedCount} of {totalSkills} skills marked as mastered
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedSkills(new Set())}
-              className={css({
-                fontSize: 'xs',
-                color: isDark ? 'red.400' : 'red.600',
-                bg: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                _hover: { textDecoration: 'underline' },
-              })}
-            >
-              Clear All
-            </button>
-          </div>
-
-          {/* Complexity Legend */}
-          <ComplexityLegend isDark={isDark} />
-
-          {/* Skills Accordion */}
-          <Accordion.Root
-            type="multiple"
-            value={expandedCategories}
-            onValueChange={setExpandedCategories}
-            className={css({
+              flex: 1,
+              minHeight: 0,
+              position: 'relative',
               border: '1px solid',
               borderColor: isDark ? 'gray.600' : 'gray.200',
               borderRadius: 'lg',
               overflow: 'hidden',
             })}
           >
-            {(
-              Object.entries(SKILL_CATEGORIES) as [
-                CategoryKey,
-                (typeof SKILL_CATEGORIES)[CategoryKey],
-              ][]
-            ).map(([categoryKey, category]) => {
-              const categorySkillIds = Object.keys(category.skills).map(
-                (skill) => `${categoryKey}.${skill}`
-              )
-              const selectedInCategory = categorySkillIds.filter((id) =>
-                selectedSkills.has(id)
-              ).length
-              const allSelected = selectedInCategory === categorySkillIds.length
-              const someSelected = selectedInCategory > 0 && !allSelected
+            {/* Top scroll shadow - appears when content is scrolled down */}
+            <div
+              data-element="scroll-indicator-top"
+              className={css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '24px',
+                background: isDark
+                  ? 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)'
+                  : 'linear-gradient(to bottom, rgba(0,0,0,0.12), transparent)',
+                pointerEvents: 'none',
+                zIndex: 2,
+                opacity: canScrollUp ? 1 : 0,
+                transition: 'opacity 0.15s ease',
+              })}
+            />
+            {/* Bottom scroll shadow - appears when more content below */}
+            <div
+              data-element="scroll-indicator-bottom"
+              className={css({
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '24px',
+                background: isDark
+                  ? 'linear-gradient(to top, rgba(0,0,0,0.4), transparent)'
+                  : 'linear-gradient(to top, rgba(0,0,0,0.12), transparent)',
+                pointerEvents: 'none',
+                zIndex: 2,
+                opacity: canScrollDown ? 1 : 0,
+                transition: 'opacity 0.15s ease',
+              })}
+            />
+            <div
+              ref={scrollContainerRef}
+              onScroll={updateScrollIndicators}
+              data-element="skills-scroll-container"
+              className={css({
+                height: '100%',
+                overflowY: 'auto',
+              })}
+            >
+              {/* Skills Accordion */}
+              <Accordion.Root
+                type="multiple"
+                value={expandedCategories}
+                onValueChange={setExpandedCategories}
+              >
+                {(
+                  Object.entries(SKILL_CATEGORIES) as [
+                    CategoryKey,
+                    (typeof SKILL_CATEGORIES)[CategoryKey],
+                  ][]
+                ).map(([categoryKey, category]) => {
+                  const categorySkillIds = Object.keys(category.skills).map(
+                    (skill) => `${categoryKey}.${skill}`
+                  )
+                  const selectedInCategory = categorySkillIds.filter((id) =>
+                    selectedSkills.has(id)
+                  ).length
+                  const allSelected = selectedInCategory === categorySkillIds.length
+                  const someSelected = selectedInCategory > 0 && !allSelected
 
-              return (
-                <Accordion.Item
-                  key={categoryKey}
-                  value={categoryKey}
-                  className={css({
-                    borderBottom: '1px solid',
-                    borderColor: isDark ? 'gray.600' : 'gray.200',
-                    _last: { borderBottom: 'none' },
-                  })}
-                >
-                  <Accordion.Header>
-                    <Accordion.Trigger
+                  return (
+                    <Accordion.Item
+                      key={categoryKey}
+                      value={categoryKey}
+                      data-category={categoryKey}
                       className={css({
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        bg: isDark ? 'gray.700' : 'gray.50',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        _hover: { bg: isDark ? 'gray.600' : 'gray.100' },
+                        borderBottom: '1px solid',
+                        borderColor: isDark ? 'gray.600' : 'gray.200',
+                        _last: { borderBottom: 'none' },
                       })}
                     >
-                      <div
+                      <Accordion.Header
                         className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3',
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 1,
                         })}
                       >
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = someSelected
-                          }}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            toggleCategory(categoryKey)
-                          }}
-                          onClick={(e) => e.stopPropagation()}
+                        <Accordion.Trigger
                           className={css({
-                            width: '18px',
-                            height: '18px',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            bg: isDark ? 'gray.700' : 'gray.50',
+                            border: 'none',
                             cursor: 'pointer',
-                          })}
-                        />
-                        <span
-                          className={css({
-                            fontWeight: 'semibold',
-                            color: isDark ? 'gray.100' : 'gray.800',
+                            textAlign: 'left',
+                            _hover: { bg: isDark ? 'gray.600' : 'gray.100' },
                           })}
                         >
-                          {category.name}
-                        </span>
-                      </div>
-                      <div
-                        className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '2',
-                        })}
-                      >
-                        <span
-                          className={css({
-                            fontSize: 'xs',
-                            color: isDark ? 'gray.400' : 'gray.500',
-                          })}
-                        >
-                          {selectedInCategory}/{categorySkillIds.length}
-                        </span>
-                        <span
-                          className={css({
-                            transition: 'transform 0.2s',
-                          })}
-                        >
-                          {expandedCategories.includes(categoryKey) ? '▲' : '▼'}
-                        </span>
-                      </div>
-                    </Accordion.Trigger>
-                  </Accordion.Header>
-                  <Accordion.Content
-                    className={css({
-                      overflow: 'hidden',
-                      bg: isDark ? 'gray.800' : 'white',
-                    })}
-                  >
-                    <div className={css({ p: '3' })}>
-                      {Object.entries(category.skills).map(([skillKey, skillName]) => {
-                        const skillId = `${categoryKey}.${skillKey}`
-                        const isSelected = selectedSkills.has(skillId)
-                        const fluencyState = getFluencyStateForSkill(skillId)
-                        const isRustyOrOlder =
-                          fluencyState === 'rusty' || (isSelected && !skillMasteryMap.has(skillId))
-                        const showRefreshButton = isSelected && onRefreshSkill && isRustyOrOlder
-
-                        return (
-                          <label
-                            key={skillId}
+                          <div
                             className={css({
                               display: 'flex',
                               alignItems: 'center',
                               gap: '3',
-                              padding: '8px 12px',
-                              borderRadius: 'md',
-                              cursor: 'pointer',
-                              _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
                             })}
                           >
                             <input
                               type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSkill(skillId)}
+                              data-action="toggle-category"
+                              data-category={categoryKey}
+                              checked={allSelected}
+                              ref={(el) => {
+                                if (el) el.indeterminate = someSelected
+                              }}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                toggleCategory(categoryKey)
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                               className={css({
-                                width: '16px',
-                                height: '16px',
+                                width: '18px',
+                                height: '18px',
                                 cursor: 'pointer',
                               })}
                             />
-                            <ComplexityBadge skillId={skillId} isDark={isDark} />
                             <span
                               className={css({
-                                fontSize: 'sm',
-                                color: isSelected
-                                  ? isDark
-                                    ? 'green.400'
-                                    : 'green.700'
-                                  : isDark
-                                    ? 'gray.300'
-                                    : 'gray.700',
-                                fontWeight: isSelected ? 'medium' : 'normal',
-                                flex: 1,
+                                fontWeight: 'semibold',
+                                color: isDark ? 'gray.100' : 'gray.800',
                               })}
                             >
-                              {skillName}
+                              {category.name}
                             </span>
-                            {/* Show fluency state badge for practicing skills */}
-                            {isSelected && fluencyState && (
-                              <FluencyStateBadge fluencyState={fluencyState} isDark={isDark} />
-                            )}
-                            {/* Show "Mastered" if selected but no mastery data (newly added) */}
-                            {isSelected && !skillMasteryMap.has(skillId) && (
+                          </div>
+                          <div
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '2',
+                            })}
+                          >
+                            <span
+                              className={css({
+                                fontSize: 'xs',
+                                color: isDark ? 'gray.400' : 'gray.500',
+                              })}
+                            >
+                              {selectedInCategory}/{categorySkillIds.length}
+                            </span>
+                            <span
+                              className={css({
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '1',
+                                fontSize: 'xs',
+                                color: isDark ? 'gray.400' : 'gray.500',
+                              })}
+                            >
+                              <span>
+                                {expandedCategories.includes(categoryKey) ? 'Hide' : 'Show'}
+                              </span>
                               <span
                                 className={css({
-                                  fontSize: 'xs',
-                                  color: isDark ? 'gray.400' : 'gray.500',
-                                  bg: isDark ? 'gray.700' : 'gray.100',
-                                  px: '2',
-                                  py: '0.5',
-                                  borderRadius: 'full',
+                                  display: 'inline-block',
+                                  transition: 'transform 0.2s ease',
+                                  transform: expandedCategories.includes(categoryKey)
+                                    ? 'rotate(90deg)'
+                                    : 'rotate(0deg)',
                                 })}
                               >
-                                New
+                                ›
                               </span>
-                            )}
-                            {/* Refresh button for rusty skills */}
-                            {showRefreshButton && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleRefreshSkill(skillId, e)}
-                                disabled={isRefreshing === skillId}
-                                title="Mark as recently practiced (sets to Fluent)"
-                                data-action="refresh-skill"
+                            </span>
+                          </div>
+                        </Accordion.Trigger>
+                      </Accordion.Header>
+                      <AnimatedAccordionContent
+                        isOpen={expandedCategories.includes(categoryKey)}
+                        className={css({
+                          bg: isDark ? 'gray.800' : 'white',
+                        })}
+                      >
+                        <div className={css({ p: '3' })}>
+                          {Object.entries(category.skills).map(([skillKey, skillName]) => {
+                            const skillId = `${categoryKey}.${skillKey}`
+                            const isSelected = selectedSkills.has(skillId)
+                            const fluencyState = getFluencyStateForSkill(skillId)
+                            const isRustyOrOlder =
+                              fluencyState === 'rusty' ||
+                              (isSelected && !skillMasteryMap.has(skillId))
+                            const showRefreshButton = isSelected && onRefreshSkill && isRustyOrOlder
+
+                            return (
+                              <label
+                                key={skillId}
+                                data-skill={skillId}
                                 className={css({
-                                  fontSize: '10px',
-                                  fontWeight: 'medium',
-                                  px: '2',
-                                  py: '1',
-                                  border: '1px solid',
-                                  borderColor: isDark ? 'blue.700' : 'blue.300',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3',
+                                  padding: '8px 12px',
                                   borderRadius: 'md',
-                                  bg: isDark ? 'blue.900' : 'blue.50',
-                                  color: isDark ? 'blue.300' : 'blue.700',
                                   cursor: 'pointer',
-                                  _hover: { bg: isDark ? 'blue.800' : 'blue.100' },
-                                  _disabled: { opacity: 0.5, cursor: 'wait' },
+                                  _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
                                 })}
                               >
-                                {isRefreshing === skillId ? '...' : '↻ Refresh'}
-                              </button>
-                            )}
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </Accordion.Content>
-                </Accordion.Item>
-              )
-            })}
-          </Accordion.Root>
+                                <input
+                                  type="checkbox"
+                                  data-action="toggle-skill"
+                                  data-skill={skillId}
+                                  checked={isSelected}
+                                  onChange={() => toggleSkill(skillId)}
+                                  className={css({
+                                    width: '16px',
+                                    height: '16px',
+                                    cursor: 'pointer',
+                                  })}
+                                />
+                                <ComplexityBadge skillId={skillId} isDark={isDark} />
+                                <span
+                                  className={css({
+                                    fontSize: 'sm',
+                                    color: isSelected
+                                      ? isDark
+                                        ? 'green.400'
+                                        : 'green.700'
+                                      : isDark
+                                        ? 'gray.300'
+                                        : 'gray.700',
+                                    fontWeight: isSelected ? 'medium' : 'normal',
+                                    flex: 1,
+                                  })}
+                                >
+                                  {skillName}
+                                </span>
+                                {/* Show fluency state badge for practicing skills */}
+                                {isSelected && fluencyState && (
+                                  <FluencyStateBadge fluencyState={fluencyState} isDark={isDark} />
+                                )}
+                                {/* Show "Mastered" if selected but no mastery data (newly added) */}
+                                {isSelected && !skillMasteryMap.has(skillId) && (
+                                  <span
+                                    className={css({
+                                      fontSize: 'xs',
+                                      color: isDark ? 'gray.400' : 'gray.500',
+                                      bg: isDark ? 'gray.700' : 'gray.100',
+                                      px: '2',
+                                      py: '0.5',
+                                      borderRadius: 'full',
+                                    })}
+                                  >
+                                    New
+                                  </span>
+                                )}
+                                {/* Refresh button for rusty skills */}
+                                {showRefreshButton && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleRefreshSkill(skillId, e)}
+                                    disabled={isRefreshing === skillId}
+                                    title="Mark as recently practiced (sets to Fluent)"
+                                    data-action="refresh-skill"
+                                    className={css({
+                                      fontSize: '10px',
+                                      fontWeight: 'medium',
+                                      px: '2',
+                                      py: '1',
+                                      border: '1px solid',
+                                      borderColor: isDark ? 'blue.700' : 'blue.300',
+                                      borderRadius: 'md',
+                                      bg: isDark ? 'blue.900' : 'blue.50',
+                                      color: isDark ? 'blue.300' : 'blue.700',
+                                      cursor: 'pointer',
+                                      _hover: { bg: isDark ? 'blue.800' : 'blue.100' },
+                                      _disabled: { opacity: 0.5, cursor: 'wait' },
+                                    })}
+                                  >
+                                    {isRefreshing === skillId ? '...' : '↻ Refresh'}
+                                  </button>
+                                )}
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </AnimatedAccordionContent>
+                    </Accordion.Item>
+                  )
+                })}
+              </Accordion.Root>
+            </div>
+          </div>
 
-          {/* Actions */}
+          {/* Fixed Footer Section */}
           <div
+            data-section="modal-footer"
             className={css({
+              flexShrink: 0,
               display: 'flex',
               gap: '3',
               justifyContent: 'flex-end',
-              mt: '6',
+              pt: '4',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              mt: '2',
             })}
           >
             <button

@@ -90,6 +90,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-simple-keyboard": "^3.8.139",
     "react-textfit": "^1.1.1",
+    "react-use-measure": "^2.1.7",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-slug": "^6.0.0",

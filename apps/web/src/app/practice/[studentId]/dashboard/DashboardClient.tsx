@@ -1,5 +1,6 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -27,11 +28,13 @@ import {
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
+import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
+  type BktComputeOptions,
   computeBktFromHistory,
   getConfidenceLabel,
   getStalenessWarning,
-  type BktComputeOptions,
   type SkillBktResult,
 } from '@/lib/curriculum/bkt'
 import {
@@ -40,8 +43,8 @@ import {
   MASTERY_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
-import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
-import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
+import { api } from '@/lib/queryClient'
+import { curriculumKeys } from '@/lib/queryKeys'
 import { computeMasteryState } from '@/utils/skillComplexity'
 import { css } from '../../../../../styled-system/css'
 
@@ -928,7 +931,12 @@ function SkillsTab({
   const [applyDecay, setApplyDecay] = useState(false)
 
   const bktResult = useMemo(() => {
-    const options: BktComputeOptions = { confidenceThreshold, applyDecay, decayHalfLifeDays: 30 }
+    const options: BktComputeOptions = {
+      confidenceThreshold,
+      applyDecay,
+      decayHalfLifeDays: 30,
+      useCrossStudentPriors: false,
+    }
     return computeBktFromHistory(problemHistory, options)
   }, [problemHistory, confidenceThreshold, applyDecay])
 
@@ -1409,7 +1417,7 @@ function HistoryTab({
                   <span
                     className={css({ fontWeight: 'bold', color: isDark ? 'gray.100' : 'gray.900' })}
                   >
-                    {new Date(session.completedAt || session.createdAt).toLocaleDateString()}
+                    {new Date(session.completedAt || session.startedAt).toLocaleDateString()}
                   </span>
                   <span
                     className={css({
@@ -1488,6 +1496,22 @@ export function DashboardClient({
   // React Query: Use server props as initial data, get live updates from cache
   const { data: activeSession } = useActiveSessionPlan(studentId, initialActiveSession)
 
+  // React Query: Skills data with SSR props as initial data
+  // This ensures mutations that invalidate the cache will trigger re-renders
+  const { data: skillsQueryData } = useQuery({
+    queryKey: curriculumKeys.detail(studentId),
+    queryFn: async () => {
+      const response = await api(`curriculum/${studentId}`)
+      if (!response.ok) throw new Error('Failed to fetch curriculum')
+      return response.json()
+    },
+    initialData: { skills },
+    staleTime: 0, // Always refetch when invalidated
+  })
+
+  // Use skills from React Query cache (falls back to SSR prop structure)
+  const liveSkills: PlayerSkillMastery[] = skillsQueryData?.skills ?? skills
+
   // React Query mutations
   const abandonMutation = useAbandonSession()
   const setMasteredSkillsMutation = useSetMasteredSkills()
@@ -1532,29 +1556,35 @@ export function DashboardClient({
   const currentPhase = curriculum
     ? getPhaseInfo(curriculum.currentPhaseId)
     : getPhaseInfo('L1.add.+1.direct')
-  if (skills.length > 0) {
-    const phaseSkills = skills.filter((s) => currentPhase.skillsToMaster.includes(s.skillId))
+  if (liveSkills.length > 0) {
+    const phaseSkills = liveSkills.filter((s) => currentPhase.skillsToMaster.includes(s.skillId))
     currentPhase.masteredSkills = phaseSkills.filter(
       (s) => s.isPracticing && hasFluency(s.attempts, s.correct, s.consecutiveCorrect)
     ).length
     currentPhase.totalSkills = currentPhase.skillsToMaster.length
   }
 
+  // Derive practicing skill IDs from live skills data (reactive to mutations)
+  const livePracticingSkillIds = useMemo(
+    () => liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId),
+    [liveSkills]
+  )
+
   // Build active session state
   const activeSessionState: ActiveSessionState | null = activeSession
     ? (() => {
         const sessionSkillIds = activeSession.masteredSkillIds || []
         const sessionSet = new Set(sessionSkillIds)
-        const currentSet = new Set(currentPracticingSkillIds)
+        const currentSet = new Set(livePracticingSkillIds)
         return {
           id: activeSession.id,
           status: activeSession.status as 'draft' | 'approved' | 'in_progress',
           completedCount: activeSession.results.length,
           totalCount: activeSession.summary.totalProblemCount,
           hasSkillMismatch:
-            currentPracticingSkillIds.some((id) => !sessionSet.has(id)) ||
+            livePracticingSkillIds.some((id) => !sessionSet.has(id)) ||
             sessionSkillIds.some((id) => !currentSet.has(id)),
-          skillsAdded: currentPracticingSkillIds.filter((id) => !sessionSet.has(id)).length,
+          skillsAdded: livePracticingSkillIds.filter((id) => !sessionSet.has(id)).length,
           skillsRemoved: sessionSkillIds.filter((id) => !currentSet.has(id)).length,
         }
       })()
@@ -1610,6 +1640,7 @@ export function DashboardClient({
 
   const handleSaveManualSkills = useCallback(
     async (masteredSkillIds: string[]): Promise<void> => {
+      // Optimistic update in the mutation handles immediate UI feedback
       await setMasteredSkillsMutation.mutateAsync({
         playerId: studentId,
         masteredSkillIds,
@@ -1667,7 +1698,7 @@ export function DashboardClient({
 
           {activeTab === 'skills' && (
             <SkillsTab
-              skills={skills}
+              skills={liveSkills}
               problemHistory={problemHistory}
               isDark={isDark}
               onManageSkills={() => setShowManualSkillModal(true)}
@@ -1695,8 +1726,8 @@ export function DashboardClient({
           onClose={() => setShowManualSkillModal(false)}
           onSave={handleSaveManualSkills}
           onRefreshSkill={handleRefreshSkill}
-          currentMasteredSkills={skills.filter((s) => s.isPracticing).map((s) => s.skillId)}
-          skillMasteryData={skills}
+          currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
+          skillMasteryData={liveSkills}
         />
       </main>
 

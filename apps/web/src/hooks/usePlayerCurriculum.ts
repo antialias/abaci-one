@@ -381,6 +381,11 @@ export function usePlayerCurriculum(playerId: string | null) {
 /**
  * Hook: Set mastered skills (manual skill management)
  * Used by dashboard to manually enable/disable skills
+ *
+ * Uses optimistic updates for instant UI feedback:
+ * - Cache is updated immediately when mutation starts
+ * - Rolled back if the API call fails
+ * - Refetched on settle to ensure sync with server
  */
 export function useSetMasteredSkills() {
   const queryClient = useQueryClient()
@@ -406,8 +411,44 @@ export function useSetMasteredSkills() {
 
       return response.json()
     },
-    onSuccess: (_, { playerId }) => {
-      // Invalidate curriculum to refetch skills
+
+    // Optimistic update: update cache immediately before API call
+    onMutate: async ({ playerId, masteredSkillIds }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: curriculumKeys.detail(playerId) })
+
+      // Snapshot the previous value for rollback
+      const previousData = queryClient.getQueryData(curriculumKeys.detail(playerId))
+
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        curriculumKeys.detail(playerId),
+        (old: CurriculumData | undefined) => {
+          if (!old?.skills) return old
+          const masteredSet = new Set(masteredSkillIds)
+          return {
+            ...old,
+            skills: old.skills.map((skill) => ({
+              ...skill,
+              isPracticing: masteredSet.has(skill.skillId),
+            })),
+          }
+        }
+      )
+
+      // Return context with the previous value for rollback
+      return { previousData }
+    },
+
+    // Rollback on error
+    onError: (_err, { playerId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(curriculumKeys.detail(playerId), context.previousData)
+      }
+    },
+
+    // Always refetch after mutation to ensure sync with server
+    onSettled: (_, __, { playerId }) => {
       queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
     },
   })
