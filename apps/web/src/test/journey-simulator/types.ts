@@ -4,7 +4,8 @@
  * Type definitions for the BKT validation test infrastructure.
  */
 
-import type { GeneratedProblem, HelpLevel, SessionPartType } from '@/db/schema/session-plans'
+import type { HelpLevel } from '@/db/schema/session-plans'
+import type { BlameMethod } from '@/lib/curriculum/bkt'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config/bkt-integration'
 
 // ============================================================================
@@ -93,6 +94,12 @@ export interface JourneyConfig {
   seed: number
   /** Which skills to enable for practice */
   practicingSkills: string[]
+  /**
+   * Blame attribution method for multi-skill incorrect answers.
+   * - 'heuristic': blame ∝ (1 - P(known)) - fast, approximate (default)
+   * - 'bayesian': proper P(~known | fail) via marginalization - exact
+   */
+  blameMethod?: BlameMethod
 }
 
 // ============================================================================

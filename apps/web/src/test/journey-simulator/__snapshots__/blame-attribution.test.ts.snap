@@ -1,0 +1,198 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Blame Attribution: Convergence Speed Results > Multi-seed validation: Fast learner heuristic vs bayesian > multi-seed-fast-learner-validation 1`] = `
+{
+  "seeds": [
+    {
+      "bayesianCorrelation": 0.401,
+      "difference": 0.156,
+      "heuristicCorrelation": 0.245,
+      "seed": 42424,
+    },
+    {
+      "bayesianCorrelation": 0.627,
+      "difference": -0.124,
+      "heuristicCorrelation": 0.751,
+      "seed": 12345,
+    },
+    {
+      "bayesianCorrelation": 0.254,
+      "difference": -0.382,
+      "heuristicCorrelation": 0.636,
+      "seed": 99999,
+    },
+    {
+      "bayesianCorrelation": 0.345,
+      "difference": 0.178,
+      "heuristicCorrelation": 0.166,
+      "seed": 77777,
+    },
+    {
+      "bayesianCorrelation": 0.154,
+      "difference": -0.018,
+      "heuristicCorrelation": 0.172,
+      "seed": 55555,
+    },
+  ],
+  "statistics": {
+    "bayesianMean": 0.356,
+    "bayesianWins": 2,
+    "diffMean": -0.038,
+    "diffStd": 0.205,
+    "heuristicMean": 0.394,
+    "heuristicWins": 3,
+    "isSignificant": false,
+    "tStatistic": -0.413,
+  },
+}
+`;
+
+exports[`Blame Attribution: Convergence Speed Results > Summary: Compare blame methods across all learner types > convergence-speed-heuristic-vs-bayesian 1`] = `
+{
+  "averages": {
+    "bayesianCorrelation": 0.655,
+    "bayesianImprovement": 0.083,
+    "heuristicCorrelation": 0.666,
+    "heuristicImprovement": 0.083,
+  },
+  "summary": [
+    {
+      "bayesianCorrelation": 0.401,
+      "bayesianFinal": 0.75,
+      "bayesianImprovement": 0.583,
+      "heuristicCorrelation": 0.245,
+      "heuristicFinal": 0.75,
+      "heuristicImprovement": 0.583,
+      "name": "Fast Learner",
+    },
+    {
+      "bayesianCorrelation": 0.809,
+      "bayesianFinal": 0.333,
+      "bayesianImprovement": -0.167,
+      "heuristicCorrelation": 0.845,
+      "heuristicFinal": 0.333,
+      "heuristicImprovement": -0.167,
+      "name": "Average Learner",
+    },
+    {
+      "bayesianCorrelation": 0.754,
+      "bayesianFinal": 0.333,
+      "bayesianImprovement": -0.167,
+      "heuristicCorrelation": 0.908,
+      "heuristicFinal": 0.333,
+      "heuristicImprovement": -0.167,
+      "name": "Slow Learner",
+    },
+  ],
+}
+`;
+
+exports[`Blame Attribution: Journey Simulation A/B > should compare heuristic vs bayesian over full learning journey > full-journey-heuristic-vs-bayesian 1`] = `
+{
+  "bayesian": {
+    "accuracies": [
+      0.083,
+      0.167,
+      0.333,
+      0.167,
+      0.5,
+      0.5,
+    ],
+    "accuracyImprovement": 0.4166666666666667,
+    "bktCorrelation": 0.37779114703010414,
+    "finalAccuracy": 0.5,
+    "weakSkillSurfacing": 1,
+  },
+  "heuristic": {
+    "accuracies": [
+      0.083,
+      0.167,
+      0.333,
+      0.167,
+      0.5,
+      0.5,
+    ],
+    "accuracyImprovement": 0.4166666666666667,
+    "bktCorrelation": 0.41776406854017606,
+    "finalAccuracy": 0.5,
+    "weakSkillSurfacing": 1,
+  },
+}
+`;
+
+exports[`Blame Attribution: Unit Tests > should handle 3-skill problems with mixed mastery levels > mixed-mastery-3-skills 1`] = `
+{
+  "bayesian": [
+    {
+      "blame": 0.1059869428242875,
+      "newPKnown": 0.9046117514581413,
+      "skillId": "basic.directAddition",
+    },
+    {
+      "blame": 0.5277061022898832,
+      "newPKnown": 0.5145103858933074,
+      "skillId": "fiveComplements.4=5-1",
+    },
+    {
+      "blame": 0.8841583792645994,
+      "newPKnown": 0.16889112349127658,
+      "skillId": "tenComplements.9=10-1",
+    },
+  ],
+  "heuristic": [
+    {
+      "blame": 0.0689655172413793,
+      "newPKnown": 0.8796814597185713,
+      "skillId": "basic.directAddition",
+    },
+    {
+      "blame": 0.3448275862068966,
+      "newPKnown": 0.3850574712643678,
+      "skillId": "fiveComplements.4=5-1",
+    },
+    {
+      "blame": 0.5862068965517241,
+      "newPKnown": 0.0858049502855934,
+      "skillId": "tenComplements.9=10-1",
+    },
+  ],
+}
+`;
+
+exports[`Blame Attribution: Unit Tests > should produce different blame distributions for stark contrast skills > stark-contrast-2-skills 1`] = `
+{
+  "bayesian": {
+    "basic": {
+      "blame": 0.05693437106867057,
+      "newPKnown": 0.9487590660381965,
+    },
+    "complement": {
+      "blame": 0.9612907201439871,
+      "newPKnown": 0.11561253746753188,
+    },
+  },
+  "heuristic": {
+    "basic": {
+      "blame": 0.05263157894736847,
+      "newPKnown": 0.9402144772117962,
+    },
+    "complement": {
+      "blame": 0.9473684210526315,
+      "newPKnown": 0.025858123569794052,
+    },
+  },
+}
+`;
+
+exports[`Blame Attribution: Unit Tests > should show extreme divergence at mastery cliff > mastery-cliff-extreme 1`] = `
+{
+  "bayesian": {
+    "masteredBlame": 0.010678492618474181,
+    "newBlame": 0.9963019368715436,
+  },
+  "heuristic": {
+    "masteredBlame": 0.010000000000000009,
+    "newBlame": 0.99,
+  },
+}
+`;

@@ -10,7 +10,7 @@ featured: true
 
 # Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work
 
-> **Abstract:** Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column context is a distinct pattern; curricula explicitly sequence these patterns, requiring mastery of each before introducing the next. This creates a well-defined skill hierarchy of ~30 discrete patterns. We apply conjunctive Bayesian Knowledge Tracing to infer pattern mastery from binary problem outcomes. At problem-generation time, we simulate the abacus to tag each term with the specific patterns it exercises. Correct answers provide evidence for all tagged patterns; incorrect answers distribute blame proportionally to each pattern's estimated weakness. BKT drives both skill targeting (prioritizing weak skills for practice) and difficulty adjustment (scaling problem complexity to mastery level). Simulation studies validate that adaptive targeting reaches mastery 25-33% faster than uniform skill distribution. Our 3-way comparison found that the benefit comes from BKT *targeting*, not the specific cost formula—using BKT for both concerns simplifies the architecture with no performance cost.
+> **Abstract:** Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column context is a distinct pattern; curricula explicitly sequence these patterns, requiring mastery of each before introducing the next. This creates a well-defined skill hierarchy of ~30 discrete patterns. We apply conjunctive Bayesian Knowledge Tracing to infer pattern mastery from binary problem outcomes. At problem-generation time, we simulate the abacus to tag each term with the specific patterns it exercises. Correct answers provide evidence for all tagged patterns; incorrect answers distribute blame proportionally to each pattern's estimated weakness. BKT drives both skill targeting (prioritizing weak skills for practice) and difficulty adjustment (scaling problem complexity to mastery level). Simulation studies suggest that adaptive targeting may reach mastery 25-33% faster than uniform skill distribution, though real-world validation with human learners is ongoing. Our 3-way comparison found that the benefit comes from BKT *targeting*, not the specific cost formula—using BKT for both concerns simplifies the architecture with no performance cost.
 
 ---
 
@@ -202,6 +202,30 @@ if (totalUnknown < 0.001) {
   // Apply full negative update with even distribution
 }
 ```
+
+### Methodological Note: Heuristic vs. True Bayesian Inference
+
+The blame distribution formula above is a **heuristic approximation**, not proper Bayesian inference. True conjunctive BKT would compute the posterior probability that each skill is unknown given the failure:
+
+```
+P(¬known_i | fail) = P(fail ∧ ¬known_i) / P(fail)
+```
+
+This requires marginalizing over all 2^n possible knowledge states—computationally tractable for n ≤ 6 skills (our typical case), but more complex to implement.
+
+We validated both approaches using our journey simulator across 5 random seeds and 3 learner profiles:
+
+| Method | Mean BKT-Truth Correlation | Wins |
+|--------|---------------------------|------|
+| Heuristic (linear) | 0.394 | 3/5 |
+| Bayesian (exact) | 0.356 | 2/5 |
+| **t-test** | t = -0.41, **p > 0.05** | |
+
+<!-- CHART: BlameAttribution -->
+
+**Result**: No statistically significant difference. The heuristic's softer blame attribution appears equally effective—possibly more robust to the noise inherent in learning dynamics.
+
+We retain the Bayesian implementation for reproducibility and potential future research ([source code](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/lib/curriculum/bkt/conjunctive-bkt.ts)), but the production system uses the simpler heuristic. Full validation data is available in our [blame attribution test suite](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/test/journey-simulator/blame-attribution.test.ts).
 
 ## Evidence Quality Modifiers
 
@@ -463,6 +487,69 @@ In our simulations, adaptive mode provided ~5% more exposure to deficient skills
 
 If you're interested in the educational data mining aspects of this work, [reach out](mailto:contact@abaci.one).
 
+## Limitations
+
+### Simulation-Only Validation
+
+The validation results reported here are derived entirely from **simulated students**, not human learners. Our simulator assumes:
+
+- **Hill function learning curves**: Mastery probability increases with exposure according to `P = exposure^n / (K^n + exposure^n)`. Real students may exhibit plateau effects, regression, or non-monotonic learning.
+- **Probabilistic slips**: Errors on mastered skills are random with fixed probability. Real errors may reflect systematic misconceptions that BKT handles poorly.
+- **Independent skill application**: The conjunctive model assumes each skill is applied independently within a problem.
+
+The "25-33% faster mastery" finding should be interpreted as: *given students who learn according to our model assumptions, adaptive targeting accelerates simulated progress*. Whether this transfers to human learners remains an open empirical question.
+
+### The Technique Bypass Problem
+
+BKT infers skill mastery from answer correctness, but correct answers don't guarantee proper technique. A student might:
+
+- Use mental arithmetic instead of bead manipulation
+- Count on fingers rather than applying complement rules
+- Arrive at correct answers through inefficient multi-step processes
+
+Our system cannot distinguish "correct via proper abacus technique" from "correct via alternative method." This is partially mitigated by:
+
+- **Response time**: Properly automated technique should be faster than mental workarounds
+- **Visualization mode**: When students use the on-screen abacus, we observe their actual bead movements
+- **Pattern complexity**: Higher-digit problems are harder to solve via mental math, making technique bypass less viable
+
+Definitive detection of technique usage would require video analysis or teacher observation—areas for future integration.
+
+### Independent Failure Assumption
+
+The blame attribution formula treats skill failures as independent parallel events:
+
+```
+blame(skill_i) ∝ (1 - P(known_i))
+```
+
+In reality, foundational skill failures may trigger cognitive cascades. If a student fails `basic.directAddition`, they may become confused and subsequently fail `fiveComplements` even if they "know" it. Our model cannot distinguish:
+
+- "Failed because didn't know the complement rule"
+- "Failed because earlier confusion disrupted working memory"
+
+This is a known limitation of standard BKT. More sophisticated models (e.g., Deep Knowledge Tracing, or models with prerequisite dependencies) could potentially capture these effects, at the cost of interpretability and sample efficiency.
+
+## Why We Built This (And What's Next)
+
+This research was conducted to validate the core idea of **skill-targeted problem generation** before deploying it in [abaci.one](https://abaci.one)—an automatic proctoring system designed to run soroban practice sessions without requiring constant teacher supervision.
+
+The simulation results gave us confidence that the approach is sound in principle. We've now deployed these algorithms in the live system, which is designed to collect detailed data from every practice session:
+
+- Problem-by-problem response times and correctness
+- Help usage patterns (hints, decomposition views, full solutions)
+- Skill exposure sequences and mastery trajectories
+- Session-level fatigue and engagement indicators
+
+**We plan to publish a follow-up analysis** once we've collected sufficient data from real students. This will let us answer the questions our simulator cannot:
+
+- Do real students learn according to Hill-like curves, or something else?
+- Does adaptive targeting actually accelerate mastery in practice?
+- How accurate are our BKT estimates compared to teacher assessments?
+- What failure modes emerge that our simulation didn't anticipate?
+
+Until then, the claims in this post should be understood as *validated in simulation, pending real-world confirmation*.
+
 ## Summary
 
 Building an intelligent tutoring system for soroban arithmetic required solving a fundamental inference problem: how do you know which pattern failed when you only observe binary problem outcomes?
@@ -473,9 +560,9 @@ Our approach combines:
 3. **Evidence quality weighting** based on help level and response time
 4. **Unified BKT architecture**: BKT drives both difficulty adjustment and skill targeting
 5. **Honest uncertainty reporting** with confidence intervals
-6. **Validated adaptive targeting** that reaches mastery 25-33% faster than uniform practice
+6. **Simulation-validated adaptive targeting** that may reach mastery 25-33% faster than uniform practice (pending real-world confirmation)
 
-The key insight from our validation: the benefit of adaptive practice comes from *targeting weak skills*, not from the specific formula used for difficulty adjustment. BKT targeting ensures students practice what they need; the complexity budget ensures they're not overwhelmed.
+The key insight from our simulation studies: the benefit of adaptive practice comes from *targeting weak skills*, not from the specific formula used for difficulty adjustment. BKT targeting ensures students practice what they need; the complexity budget ensures they're not overwhelmed.
 
 The result is a system that adapts to each student's actual pattern automaticity, not just their overall accuracy—focusing practice where it matters most while honestly communicating what it knows and doesn't know.
 

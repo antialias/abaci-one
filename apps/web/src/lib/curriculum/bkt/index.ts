@@ -25,7 +25,12 @@
  */
 
 // Main computation
-export { computeBktFromHistory, DEFAULT_BKT_OPTIONS, recomputeWithOptions } from './compute-bkt'
+export {
+  type BktComputeExtendedOptions,
+  computeBktFromHistory,
+  DEFAULT_BKT_OPTIONS,
+  recomputeWithOptions,
+} from './compute-bkt'
 
 // Types
 export type {
@@ -59,4 +64,10 @@ export {
 
 // Core BKT (for testing/advanced use)
 export { applyLearning, bktUpdate } from './bkt-core'
-export { updateOnCorrect, updateOnIncorrect } from './conjunctive-bkt'
+export {
+  bayesianUpdateOnIncorrect,
+  updateOnCorrect,
+  updateOnIncorrect,
+  updateOnIncorrectWithMethod,
+  type BlameMethod,
+} from './conjunctive-bkt'

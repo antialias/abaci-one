@@ -8,7 +8,7 @@
 
 import type { ProblemResultWithContext } from '../session-planner'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
-import { updateOnCorrect, updateOnIncorrect } from './conjunctive-bkt'
+import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
 import { helpLevelWeight, responseTimeWeight } from './evidence-quality'
 import { getDefaultParams } from './skill-priors'
 import type {
@@ -19,14 +19,21 @@ import type {
   SkillBktResult,
 } from './types'
 
+/** Extended options including blame method (not part of base BktComputeOptions to avoid breaking changes) */
+export interface BktComputeExtendedOptions extends BktComputeOptions {
+  /** Which blame attribution method to use for incorrect multi-skill problems */
+  blameMethod?: BlameMethod
+}
+
 /**
  * Default computation options.
  */
-export const DEFAULT_BKT_OPTIONS: BktComputeOptions = {
+export const DEFAULT_BKT_OPTIONS: BktComputeExtendedOptions = {
   confidenceThreshold: 0.5,
   useCrossStudentPriors: false,
   applyDecay: false,
   decayHalfLifeDays: 30,
+  blameMethod: 'heuristic',
 }
 
 /**
@@ -62,12 +69,12 @@ function applyTimeDecay(
  * P(known) estimate for each skill encountered.
  *
  * @param results - Problem results from session history
- * @param options - Computation options (confidence threshold, etc.)
+ * @param options - Computation options (confidence threshold, blame method, etc.)
  * @returns BKT results for all skills, sorted by need for intervention
  */
 export function computeBktFromHistory(
   results: ProblemResultWithContext[],
-  options: BktComputeOptions = DEFAULT_BKT_OPTIONS
+  options: BktComputeExtendedOptions = DEFAULT_BKT_OPTIONS
 ): BktComputeResult {
   // Sort by timestamp to replay in chronological order
   // Note: timestamp may be a Date or a string (from JSON serialization)
@@ -118,9 +125,10 @@ export function computeBktFromHistory(
     const evidenceWeight = helpWeight * rtWeight
 
     // Compute BKT updates (conjunctive model)
+    const blameMethod = options.blameMethod ?? 'heuristic'
     const updates = result.isCorrect
       ? updateOnCorrect(skillRecords)
-      : updateOnIncorrect(skillRecords)
+      : updateOnIncorrectWithMethod(skillRecords, blameMethod)
 
     // Apply updates with evidence weighting
     for (const update of updates) {

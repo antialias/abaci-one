@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { SkillDifficultyCharts } from '@/components/blog/SkillDifficultyCharts'
 import {
   AutomaticityMultiplierCharts,
+  BlameAttributionCharts,
   ClassificationCharts,
   EvidenceQualityCharts,
   ThreeWayComparisonCharts,
@@ -27,6 +28,7 @@ const POSTS_WITH_CHARTS: Record<string, ChartInjection[]> = {
     { component: SkillDifficultyCharts, markerId: 'SkillDifficulty' },
     { component: ThreeWayComparisonCharts, markerId: 'ThreeWayComparison' },
     { component: ValidationResultsCharts, markerId: 'ValidationResults' },
+    { component: BlameAttributionCharts, markerId: 'BlameAttribution' },
   ],
 }
 

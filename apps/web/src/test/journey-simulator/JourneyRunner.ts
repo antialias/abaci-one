@@ -184,7 +184,13 @@ export class JourneyRunner {
       )
     }
 
-    const bktResult = computeBktFromHistory(problemHistory)
+    const bktResult = computeBktFromHistory(problemHistory, {
+      confidenceThreshold: 0.5,
+      useCrossStudentPriors: false,
+      applyDecay: false,
+      decayHalfLifeDays: 30,
+      blameMethod: this.config.blameMethod ?? 'heuristic',
+    })
 
     const bktEstimates = new Map<string, BktEstimate>()
     for (const skill of bktResult.skills) {

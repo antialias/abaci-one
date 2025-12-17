@@ -2769,3 +2769,235 @@ function ClassificationDataTable() {
     </div>
   )
 }
+
+/**
+ * Blame Attribution Comparison Charts
+ * Compares heuristic vs true Bayesian blame attribution across multiple seeds
+ */
+export function BlameAttributionCharts() {
+  return (
+    <div data-component="blame-attribution-charts" className={css({ my: '2rem' })}>
+      {/* Summary insight */}
+      <div className={summaryCardStyles}>
+        <div className={statCardStyles}>
+          <div className={statValueStyles}>p &gt; 0.05</div>
+          <div className={statLabelStyles}>No significant difference</div>
+        </div>
+        <div className={statCardStyles}>
+          <div className={statValueStyles}>3/5</div>
+          <div className={statLabelStyles}>Heuristic wins</div>
+        </div>
+        <div className={statCardStyles}>
+          <div className={statValueStyles}>t = -0.41</div>
+          <div className={statLabelStyles}>t-statistic (5 seeds)</div>
+        </div>
+      </div>
+
+      {/* Tabbed Charts */}
+      <Tabs.Root defaultValue="comparison" className={tabStyles}>
+        <Tabs.List className={tabListStyles}>
+          <Tabs.Trigger value="comparison" className={tabTriggerStyles}>
+            Seed Comparison
+          </Tabs.Trigger>
+          <Tabs.Trigger value="table" className={tabTriggerStyles}>
+            Data Table
+          </Tabs.Trigger>
+        </Tabs.List>
+
+        <Tabs.Content value="comparison" className={tabContentStyles}>
+          <BlameComparisonChart />
+        </Tabs.Content>
+
+        <Tabs.Content value="table" className={tabContentStyles}>
+          <BlameDataTable />
+        </Tabs.Content>
+      </Tabs.Root>
+    </div>
+  )
+}
+
+/** Internal: Bar chart comparing heuristic vs bayesian across seeds */
+function BlameComparisonChart() {
+  const seeds = ['Seed 1', 'Seed 2', 'Seed 3', 'Seed 4', 'Seed 5']
+  const heuristicCorr = [0.245, 0.751, 0.636, 0.166, 0.172]
+  const bayesianCorr = [0.401, 0.627, 0.254, 0.345, 0.154]
+
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: Array<{ seriesName: string; value: number; name: string }>) => {
+        let html = `<strong>${params[0]?.name}</strong><br/>`
+        for (const p of params) {
+          html += `${p.seriesName}: ${p.value.toFixed(3)}<br/>`
+        }
+        const heur = params.find((p) => p.seriesName === 'Heuristic')?.value ?? 0
+        const baye = params.find((p) => p.seriesName === 'Bayesian')?.value ?? 0
+        const winner = heur > baye ? 'Heuristic' : baye > heur ? 'Bayesian' : 'Tie'
+        html += `<em>Winner: ${winner}</em>`
+        return html
+      },
+    },
+    legend: {
+      data: [
+        { name: 'Heuristic', itemStyle: { color: '#22c55e' } },
+        { name: 'Bayesian', itemStyle: { color: '#3b82f6' } },
+      ],
+      bottom: 0,
+      textStyle: { color: '#9ca3af' },
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      top: '10%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: seeds,
+      axisLabel: { color: '#9ca3af', interval: 0, fontSize: 11 },
+      axisLine: { lineStyle: { color: '#374151' } },
+    },
+    yAxis: {
+      type: 'value',
+      name: 'BKT-Truth Correlation',
+      nameLocation: 'middle',
+      nameGap: 50,
+      min: 0,
+      max: 1,
+      axisLabel: { color: '#9ca3af' },
+      axisLine: { lineStyle: { color: '#374151' } },
+      splitLine: { lineStyle: { color: '#374151', type: 'dashed' } },
+    },
+    series: [
+      {
+        name: 'Heuristic',
+        type: 'bar',
+        data: heuristicCorr.map((v) => ({ value: v, itemStyle: { color: '#22c55e' } })),
+        label: { show: true, position: 'top', color: '#9ca3af', fontSize: 10, formatter: '{c}' },
+      },
+      {
+        name: 'Bayesian',
+        type: 'bar',
+        data: bayesianCorr.map((v) => ({ value: v, itemStyle: { color: '#3b82f6' } })),
+        label: { show: true, position: 'top', color: '#9ca3af', fontSize: 10, formatter: '{c}' },
+      },
+    ],
+  }
+
+  return (
+    <div className={chartContainerStyles}>
+      <h4
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
+      >
+        BKT-Truth Correlation: Heuristic vs Bayesian Blame Attribution
+      </h4>
+      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+        Fast learner profiles across 5 random seeds. Higher correlation = BKT estimates track true
+        mastery more accurately.
+      </p>
+      <ReactECharts option={option} style={{ height: '320px' }} />
+    </div>
+  )
+}
+
+/** Internal: Data table for blame attribution validation */
+function BlameDataTable() {
+  const data = [
+    { seed: 42424, heuristic: 0.245, bayesian: 0.401, diff: 0.156, winner: 'Bayesian' },
+    { seed: 12345, heuristic: 0.751, bayesian: 0.627, diff: -0.124, winner: 'Heuristic' },
+    { seed: 99999, heuristic: 0.636, bayesian: 0.254, diff: -0.382, winner: 'Heuristic' },
+    { seed: 77777, heuristic: 0.166, bayesian: 0.345, diff: 0.178, winner: 'Bayesian' },
+    { seed: 55555, heuristic: 0.172, bayesian: 0.154, diff: -0.018, winner: 'Heuristic' },
+  ]
+
+  const tableStyles = css({
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '0.875rem',
+    '& th': {
+      bg: 'accent.muted',
+      px: '0.75rem',
+      py: '0.5rem',
+      textAlign: 'center',
+      fontWeight: 600,
+      borderBottom: '2px solid',
+      borderColor: 'accent.default',
+      color: 'accent.emphasis',
+    },
+    '& td': {
+      px: '0.75rem',
+      py: '0.5rem',
+      borderBottom: '1px solid',
+      borderColor: 'border.muted',
+      color: 'text.secondary',
+      textAlign: 'center',
+    },
+    '& tr:hover td': { bg: 'accent.subtle' },
+  })
+
+  return (
+    <div className={chartContainerStyles}>
+      <h4
+        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+      >
+        Multi-Seed Validation Results
+      </h4>
+      <table className={tableStyles}>
+        <thead>
+          <tr>
+            <th>Seed</th>
+            <th>Heuristic r</th>
+            <th>Bayesian r</th>
+            <th>Difference</th>
+            <th>Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row) => (
+            <tr key={row.seed}>
+              <td>{row.seed}</td>
+              <td>{row.heuristic.toFixed(3)}</td>
+              <td>{row.bayesian.toFixed(3)}</td>
+              <td
+                className={css({
+                  color: row.diff > 0 ? 'blue.400' : row.diff < 0 ? 'green.400' : 'text.muted',
+                })}
+              >
+                {row.diff > 0 ? '+' : ''}
+                {row.diff.toFixed(3)}
+              </td>
+              <td
+                className={css({
+                  color: row.winner === 'Heuristic' ? 'green.400' : 'blue.400',
+                  fontWeight: 600,
+                })}
+              >
+                {row.winner}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className={css({ fontWeight: 600, borderTop: '2px solid', borderColor: 'gray.600' })}>
+            <td>Mean</td>
+            <td>0.394</td>
+            <td>0.356</td>
+            <td>-0.038</td>
+            <td className={css({ color: 'green.400' })}>Heuristic</td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mt: '1rem' })}>
+        t = -0.41, p &gt; 0.05 (df=4). The difference is not statistically significant.
+      </p>
+    </div>
+  )
+}

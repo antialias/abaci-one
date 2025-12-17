@@ -7,11 +7,17 @@
  *
  * For incorrect answers, we distribute "blame" probabilistically:
  * - Skills with lower P(known) are more likely to have caused the error
- * - blame(skill) ∝ (1 - P(known))
+ *
+ * Two blame attribution methods are available:
+ * 1. Heuristic: blame(skill) ∝ (1 - P(known)) - fast, approximate
+ * 2. Bayesian: proper P(~known_i | fail) via marginalization - exact, O(2^n)
  */
 
 import { applyLearning, bktUpdate } from './bkt-core'
 import type { BlameDistribution, SkillBktRecord } from './types'
+
+/** Which blame attribution algorithm to use for incorrect multi-skill answers */
+export type BlameMethod = 'heuristic' | 'bayesian'
 
 /**
  * For a CORRECT multi-skill answer:
@@ -75,4 +81,110 @@ export function updateOnIncorrect(skills: SkillBktRecord[]): BlameDistribution[]
       updatedPKnown: weightedPKnown,
     }
   })
+}
+
+/**
+ * For an INCORRECT multi-skill answer (PROPER BAYESIAN):
+ * Compute exact posterior P(~know_i | fail) via marginalization over all
+ * possible knowledge states.
+ *
+ * For n skills, this enumerates all 2^n combinations of (known, unknown) states,
+ * computes P(fail | state) × P(state), and marginalizes to get P(~know_i | fail).
+ *
+ * Complexity: O(n × 2^n) - acceptable for n ≤ 6 (typical problem size)
+ *
+ * Mathematical derivation:
+ *   P(~know_i | fail) = P(fail ∧ ~know_i) / P(fail)
+ *
+ * Where:
+ *   P(fail) = Σ_states P(fail | state) × P(state)
+ *   P(fail ∧ ~know_i) = Σ_{states where ~know_i} P(fail | state) × P(state)
+ *   P(fail | state) = 1 - Π_j P(correct_j | state_j)
+ *   P(correct_j | know_j) = 1 - pSlip_j
+ *   P(correct_j | ~know_j) = pGuess_j
+ */
+export function bayesianUpdateOnIncorrect(skills: SkillBktRecord[]): BlameDistribution[] {
+  const n = skills.length
+
+  // Edge cases
+  if (n === 0) return []
+  if (n === 1) {
+    // Single skill: standard BKT update, full blame
+    return [
+      {
+        skillId: skills[0].skillId,
+        blameWeight: 1.0,
+        updatedPKnown: bktUpdate(skills[0].pKnown, false, skills[0].params),
+      },
+    ]
+  }
+
+  // Enumerate all 2^n knowledge states
+  const numStates = 1 << n // 2^n
+  let pFail = 0
+  const pFailAndUnknown: number[] = new Array(n).fill(0)
+
+  for (let state = 0; state < numStates; state++) {
+    // state is a bitmask: bit i = 1 means skill i is known
+
+    // P(this state) = product of P(known_i) or P(~known_i)
+    let pState = 1
+    for (let i = 0; i < n; i++) {
+      const knows = (state >> i) & 1
+      const pKnown = Math.max(0.001, Math.min(0.999, skills[i].pKnown))
+      pState *= knows ? pKnown : 1 - pKnown
+    }
+
+    // P(correct | this state) = product of individual success probabilities
+    // P(fail | this state) = 1 - P(correct | state)
+    let pCorrectGivenState = 1
+    for (let i = 0; i < n; i++) {
+      const knows = (state >> i) & 1
+      const { pSlip, pGuess } = skills[i].params
+      const safeSlip = Math.max(0.001, Math.min(0.999, pSlip))
+      const safeGuess = Math.max(0.001, Math.min(0.999, pGuess))
+      // If knows: P(correct) = 1 - pSlip; if doesn't know: P(correct) = pGuess
+      pCorrectGivenState *= knows ? 1 - safeSlip : safeGuess
+    }
+    const pFailGivenState = 1 - pCorrectGivenState
+
+    // Accumulate P(fail)
+    pFail += pFailGivenState * pState
+
+    // Accumulate P(fail ∧ ~know_i) for each skill i
+    for (let i = 0; i < n; i++) {
+      const knowsI = (state >> i) & 1
+      if (!knowsI) {
+        pFailAndUnknown[i] += pFailGivenState * pState
+      }
+    }
+  }
+
+  // Compute posterior and updated pKnown for each skill
+  return skills.map((skill, i) => {
+    // P(~know_i | fail) = P(fail ∧ ~know_i) / P(fail)
+    const pNotKnownGivenFail = pFail > 0.001 ? pFailAndUnknown[i] / pFail : 1 / n
+
+    // Posterior P(known_i | fail) = 1 - P(~known_i | fail)
+    const posteriorPKnown = 1 - pNotKnownGivenFail
+
+    // Apply learning (small chance student learned from attempt)
+    const finalPKnown = applyLearning(posteriorPKnown, skill.params.pLearn)
+
+    return {
+      skillId: skill.skillId,
+      blameWeight: pNotKnownGivenFail, // Proper Bayesian blame
+      updatedPKnown: finalPKnown,
+    }
+  })
+}
+
+/**
+ * Unified incorrect update function that uses the specified blame method.
+ */
+export function updateOnIncorrectWithMethod(
+  skills: SkillBktRecord[],
+  method: BlameMethod = 'heuristic'
+): BlameDistribution[] {
+  return method === 'bayesian' ? bayesianUpdateOnIncorrect(skills) : updateOnIncorrect(skills)
 }
