@@ -3,7 +3,8 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { animated, to, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import useMeasure from 'react-use-measure'
 import simplify from 'simplify-js'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -337,8 +338,9 @@ export function GameInfoPanel({
   const requiresNameConfirmation = assistanceConfig.nameConfirmationLetters ?? 0
   const isLearningMode = state.assistanceLevel === 'learning'
 
-  // Ref to measure the takeover container (region name + instructions)
-  const takeoverContainerRef = useRef<HTMLDivElement>(null)
+  // Measure the takeover container (region name + instructions) reactively
+  // react-use-measure handles ResizeObserver automatically
+  const [takeoverContainerRef, takeoverBounds] = useMeasure()
 
   // Ref to the takeover region shape SVG for capturing source position
   const takeoverRegionShapeRef = useRef<SVGSVGElement>(null)
@@ -346,38 +348,20 @@ export function GameInfoPanel({
   // Track the last puzzlePieceTarget regionId to avoid resetting animation on unrelated re-renders
   const lastPuzzlePieceRegionIdRef = useRef<string | null>(null)
 
-  // Calculate the safe scale factor based on viewport size
-  const [safeScale, setSafeScale] = useState(2.5)
+  // Calculate the safe scale factor based on measured container size
+  // Automatically updates when container resizes thanks to react-use-measure
+  const safeScale = useMemo(() => {
+    if (!currentRegionName || !isLearningMode) return 2.5
+    if (takeoverBounds.width === 0 || takeoverBounds.height === 0) return 2.5
 
-  // Measure container and calculate safe scale when region changes or window resizes
-  useLayoutEffect(() => {
-    if (!currentRegionName || !isLearningMode) return
-
-    const measureAndUpdate = () => {
-      if (takeoverContainerRef.current) {
-        const rect = takeoverContainerRef.current.getBoundingClientRect()
-
-        // Calculate max scale that keeps element within viewport bounds
-        // Leave 40px padding on each side
-        const maxWidthScale = rect.width > 0 ? (window.innerWidth - 80) / rect.width : 2.5
-        const maxHeightScale = rect.height > 0 ? (window.innerHeight - 80) / rect.height : 2.5
-        // Use the smaller of width/height constraints, clamped between 1.5 and 3.5
-        const calculatedScale = Math.min(maxWidthScale, maxHeightScale)
-        setSafeScale(Math.max(1.5, Math.min(3.5, calculatedScale)))
-      }
-    }
-
-    // Use requestAnimationFrame to ensure text has rendered
-    const rafId = requestAnimationFrame(measureAndUpdate)
-
-    // Also update on resize
-    window.addEventListener('resize', measureAndUpdate)
-
-    return () => {
-      cancelAnimationFrame(rafId)
-      window.removeEventListener('resize', measureAndUpdate)
-    }
-  }, [currentRegionName, isLearningMode])
+    // Calculate max scale that keeps element within viewport bounds
+    // Leave 40px padding on each side
+    const maxWidthScale = (window.innerWidth - 80) / takeoverBounds.width
+    const maxHeightScale = (window.innerHeight - 80) / takeoverBounds.height
+    // Use the smaller of width/height constraints, clamped between 1.5 and 3.5
+    const calculatedScale = Math.min(maxWidthScale, maxHeightScale)
+    return Math.max(1.5, Math.min(3.5, calculatedScale))
+  }, [currentRegionName, isLearningMode, takeoverBounds.width, takeoverBounds.height])
 
   // Calculate takeover progress based on letters typed (0 = full takeover, 1 = complete)
   // Suppress takeover during give up animation to avoid visual conflict
