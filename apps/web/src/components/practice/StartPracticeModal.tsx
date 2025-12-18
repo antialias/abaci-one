@@ -166,19 +166,6 @@ export function StartPracticeModal({
     }
   }, [enabledParts])
 
-  // Derive target skills from sessionMode (no duplicate BKT computation)
-  const targetSkillsInfo = useMemo(() => {
-    if (sessionMode.type === 'remediation') {
-      // In remediation mode, we have the weak skills to target
-      return {
-        targetedSkills: sessionMode.weakSkills,
-        hasData: true,
-      }
-    }
-    // In progression or maintenance mode, no specific targeting
-    return { targetedSkills: [], hasData: true }
-  }, [sessionMode])
-
   const generatePlan = useGenerateSessionPlan()
   const approvePlan = useApproveSessionPlan()
   const startPlan = useStartSessionPlan()
@@ -719,75 +706,6 @@ export function StartPracticeModal({
                       ▼
                     </div>
                   </button>
-
-                  {/* Target skills summary */}
-                  {targetSkillsInfo.hasData && (
-                    <div
-                      data-element="target-skills-summary"
-                      className={css({
-                        padding: '0.5rem 1rem',
-                        borderTop: '1px solid',
-                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                        '@media (max-height: 700px)': {
-                          padding: '0.25rem 0.5rem',
-                        },
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.375rem',
-                        flexWrap: 'wrap',
-                      })}
-                    >
-                      {targetSkillsInfo.targetedSkills.length > 0 ? (
-                        <>
-                          <span
-                            data-element="targeting-label"
-                            className={css({
-                              fontSize: '0.6875rem',
-                              color: isDark ? 'amber.400' : 'amber.600',
-                              fontWeight: '500',
-                            })}
-                          >
-                            Targeting:
-                          </span>
-                          {targetSkillsInfo.targetedSkills.slice(0, 3).map((skill, i) => (
-                            <span
-                              key={skill.skillId}
-                              data-skill={skill.skillId}
-                              className={css({
-                                fontSize: '0.6875rem',
-                                color: isDark ? 'gray.400' : 'gray.600',
-                              })}
-                            >
-                              {skill.displayName}
-                              {i < Math.min(targetSkillsInfo.targetedSkills.length, 3) - 1 && ','}
-                            </span>
-                          ))}
-                          {targetSkillsInfo.targetedSkills.length > 3 && (
-                            <span
-                              data-element="skills-overflow"
-                              className={css({
-                                fontSize: '0.6875rem',
-                                color: isDark ? 'gray.500' : 'gray.500',
-                              })}
-                            >
-                              +{targetSkillsInfo.targetedSkills.length - 3} more
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span
-                          data-element="even-distribution-message"
-                          className={css({
-                            fontSize: '0.6875rem',
-                            color: isDark ? 'gray.500' : 'gray.500',
-                          })}
-                        >
-                          Even distribution across all practicing skills
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Expanded config panel */}
@@ -1214,98 +1132,6 @@ export function StartPracticeModal({
                           })}
                         </div>
                       </div>
-
-                      {/* Target skills info - in the grid for landscape layout */}
-                      {targetSkillsInfo.hasData && (
-                        <div
-                          data-element="target-skills-expanded"
-                          className={css({
-                            padding: '0.625rem',
-                            borderRadius: '6px',
-                            '@media (max-height: 700px)': {
-                              padding: '0.375rem 0.5rem',
-                            },
-                            backgroundColor: isDark
-                              ? targetSkillsInfo.targetedSkills.length > 0
-                                ? 'rgba(245, 158, 11, 0.08)'
-                                : 'rgba(100, 116, 139, 0.08)'
-                              : targetSkillsInfo.targetedSkills.length > 0
-                                ? 'rgba(245, 158, 11, 0.06)'
-                                : 'rgba(100, 116, 139, 0.06)',
-                            border: `1px solid ${
-                              isDark
-                                ? targetSkillsInfo.targetedSkills.length > 0
-                                  ? 'rgba(245, 158, 11, 0.2)'
-                                  : 'rgba(100, 116, 139, 0.2)'
-                                : targetSkillsInfo.targetedSkills.length > 0
-                                  ? 'rgba(245, 158, 11, 0.15)'
-                                  : 'rgba(100, 116, 139, 0.15)'
-                            }`,
-                          })}
-                        >
-                          {targetSkillsInfo.targetedSkills.length > 0 ? (
-                            <>
-                              <div
-                                className={css({
-                                  fontSize: '0.6875rem',
-                                  fontWeight: '600',
-                                  color: isDark ? 'amber.400' : 'amber.700',
-                                  marginBottom: '0.375rem',
-                                  '@media (max-height: 700px)': {
-                                    fontSize: '0.625rem',
-                                    marginBottom: '0.25rem',
-                                  },
-                                })}
-                              >
-                                Focusing on weak skills:
-                              </div>
-                              <div
-                                className={css({
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: '0.25rem',
-                                })}
-                              >
-                                {targetSkillsInfo.targetedSkills.map((skill) => (
-                                  <span
-                                    key={skill.skillId}
-                                    className={css({
-                                      fontSize: '0.625rem',
-                                      padding: '0.125rem 0.375rem',
-                                      borderRadius: '4px',
-                                      backgroundColor: isDark
-                                        ? 'rgba(245, 158, 11, 0.15)'
-                                        : 'rgba(245, 158, 11, 0.12)',
-                                      color: isDark ? 'amber.300' : 'amber.800',
-                                      '@media (max-height: 700px)': {
-                                        fontSize: '0.5625rem',
-                                        padding: '0.0625rem 0.25rem',
-                                      },
-                                    })}
-                                  >
-                                    {skill.displayName}{' '}
-                                    <span className={css({ opacity: 0.7 })}>
-                                      ({Math.round(skill.pKnown * 100)}%)
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            </>
-                          ) : (
-                            <div
-                              className={css({
-                                fontSize: '0.6875rem',
-                                color: isDark ? 'gray.400' : 'gray.600',
-                                '@media (max-height: 700px)': {
-                                  fontSize: '0.625rem',
-                                },
-                              })}
-                            >
-                              ✓ On track! Problems will be evenly distributed across all skills.
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                     {/* End settings-grid */}
                   </div>
