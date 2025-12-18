@@ -36,18 +36,14 @@ export {
   // Skill mastery
   calculateMasteryPercent,
   // Practice sessions
-  completePracticeSession,
   getAllSkillMastery,
   getPlayerCurriculum,
   getPlayerProgressSummary,
   getRecentSessions,
-  getSessionsForPhase,
   getSkillMastery,
   initializeStudent,
   recordSkillAttempt,
   recordSkillAttempts,
-  startPracticeSession,
-  updatePracticeSession,
   upsertPlayerCurriculum,
 } from './progress-manager'
 
@@ -66,3 +62,18 @@ export {
   recordSlotResult,
   startSessionPlan,
 } from './session-planner'
+
+// Session mode - unified session state computation
+export {
+  getSessionMode,
+  getWeakSkillIds,
+  isMaintenanceMode,
+  isProgressionMode,
+  isRemediationMode,
+  type BlockedPromotion,
+  type MaintenanceMode,
+  type ProgressionMode,
+  type RemediationMode,
+  type SessionMode,
+  type SkillInfo,
+} from './session-mode'

@@ -211,6 +211,8 @@ export function StartPracticeModal({
             abacusTermCount: { min: 3, max: abacusMaxTerms },
             enabledParts,
             problemGenerationMode: 'adaptive-bkt',
+            // Pass sessionMode for single source of truth targeting (no rug-pulling)
+            sessionMode,
           })
         } catch (err) {
           if (err instanceof ActiveSessionExistsClientError) {
@@ -235,6 +237,7 @@ export function StartPracticeModal({
     abacusMaxTerms,
     enabledParts,
     existingPlan,
+    sessionMode,
     generatePlan,
     approvePlan,
     startPlan,

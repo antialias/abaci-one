@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
 
@@ -57,6 +58,7 @@ async function generateSessionPlan({
   enabledParts,
   problemGenerationMode,
   confidenceThreshold,
+  sessionMode,
 }: {
   playerId: string
   durationMinutes: number
@@ -68,6 +70,8 @@ async function generateSessionPlan({
   problemGenerationMode?: ProblemGenerationMode
   /** BKT confidence threshold for identifying struggling skills */
   confidenceThreshold?: number
+  /** Pre-computed session mode for targeting consistency */
+  sessionMode?: SessionMode
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
     method: 'POST',
@@ -78,6 +82,7 @@ async function generateSessionPlan({
       enabledParts,
       problemGenerationMode,
       confidenceThreshold,
+      sessionMode,
     }),
   })
   if (!res.ok) {

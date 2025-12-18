@@ -58,6 +58,7 @@ import {
   getRecentSessions,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
+import { getWeakSkillIds, type SessionMode } from './session-mode'
 
 // ============================================================================
 // Plan Generation
@@ -90,6 +91,12 @@ export interface GenerateSessionPlanOptions {
    * - 'classic': Fluency-based discrete states
    */
   problemGenerationMode?: ProblemGenerationMode
+  /**
+   * Pre-computed session mode from getSessionMode().
+   * When provided, skips duplicate BKT computation and uses the mode's weak skills directly.
+   * This ensures the session targets exactly what was shown in the UI (no "rug-pulling").
+   */
+  sessionMode?: SessionMode
 }
 
 /**
@@ -136,6 +143,7 @@ export async function generateSessionPlan(
     config: configOverrides,
     enabledParts,
     problemGenerationMode = DEFAULT_PROBLEM_GENERATION_MODE,
+    sessionMode,
   } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
@@ -248,11 +256,25 @@ export async function generateSessionPlan(
   const struggling = findStrugglingSkills(skillMastery)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
-  // Identify weak skills from BKT for targeting (adaptive modes only)
-  const weakSkills = usesBktTargeting ? identifyWeakSkills(bktResults) : []
+  // Identify weak skills for targeting
+  // When sessionMode is provided, use its pre-computed weak skills (single source of truth)
+  // This ensures the session targets exactly what was shown in the UI (no "rug-pulling")
+  let weakSkills: string[]
+  if (sessionMode) {
+    // Use pre-computed weak skills from sessionMode
+    weakSkills = getWeakSkillIds(sessionMode)
+    if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+      console.log(
+        `[SessionPlanner] Using weak skills from sessionMode (${sessionMode.type}): ${weakSkills.length}`
+      )
+    }
+  } else {
+    // Fallback: compute locally (for backwards compatibility)
+    weakSkills = usesBktTargeting ? identifyWeakSkills(bktResults) : []
+  }
 
   if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills.length > 0) {
-    console.log(`[SessionPlanner] Identified ${weakSkills.length} weak skills for targeting:`)
+    console.log(`[SessionPlanner] Targeting ${weakSkills.length} weak skills:`)
     for (const skillId of weakSkills) {
       const bkt = bktResults?.get(skillId)
       console.log(`  ${skillId}: pKnown=${(bkt?.pKnown ?? 0 * 100).toFixed(0)}%`)

@@ -9,6 +9,7 @@ import {
   NoSkillsEnabledError,
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       enabledParts,
       problemGenerationMode,
       confidenceThreshold,
+      sessionMode,
     } = body
 
     if (!durationMinutes || typeof durationMinutes !== 'number') {
@@ -102,6 +104,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Pass BKT confidence threshold if specified
       confidenceThreshold:
         typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
+      // Pass session mode for single source of truth targeting
+      sessionMode: sessionMode as SessionMode | undefined,
       // Pass config overrides if abacusTermCount is specified
       ...(abacusTermCount && {
         config: {
