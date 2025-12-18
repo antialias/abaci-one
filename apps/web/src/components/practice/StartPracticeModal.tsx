@@ -15,15 +15,14 @@ import {
   useGenerateSessionPlan,
   useStartSessionPlan,
 } from '@/hooks/useSessionPlan'
-import { nextSkillKeys, useNextSkillToLearn } from '@/hooks/useNextSkillToLearn'
+import { sessionModeKeys } from '@/hooks/useSessionMode'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
 import {
   convertSecondsPerProblemToSpt,
   estimateSessionProblemCount,
   TIME_ESTIMATION_DEFAULTS,
 } from '@/lib/curriculum/time-estimation'
-import { getSkillTutorialConfig, getSkillDisplayName } from '@/lib/curriculum/skill-tutorial-config'
-import { computeBktFromHistory } from '@/lib/curriculum/bkt'
-import { WEAK_SKILL_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
+import { getSkillTutorialConfig } from '@/lib/curriculum/skill-tutorial-config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
 import { SkillTutorialLauncher } from '../tutorial/SkillTutorialLauncher'
@@ -32,6 +31,8 @@ interface StartPracticeModalProps {
   studentId: string
   studentName: string
   focusDescription: string
+  /** Session mode - single source of truth for what type of session to run */
+  sessionMode: SessionMode
   /** Seconds per term - the primary time metric from the estimation utility */
   secondsPerTerm?: number
   /** @deprecated Use secondsPerTerm instead. This will be converted automatically. */
@@ -56,6 +57,7 @@ export function StartPracticeModal({
   studentId,
   studentName,
   focusDescription,
+  sessionMode,
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
   existingPlan,
@@ -72,17 +74,17 @@ export function StartPracticeModal({
   // Tutorial gate state
   const [showTutorial, setShowTutorial] = useState(false)
 
-  // Fetch next skill to learn
-  const { data: nextSkill, isLoading: isLoadingNextSkill } = useNextSkillToLearn(studentId)
-
-  // Get the tutorial config if there's a skill ready to learn
+  // Derive tutorial info from sessionMode (no separate hook needed)
   const tutorialConfig = useMemo(() => {
-    if (!nextSkill || nextSkill.tutorialReady) return null
-    return getSkillTutorialConfig(nextSkill.skillId)
-  }, [nextSkill])
+    if (sessionMode.type !== 'progression' || !sessionMode.tutorialRequired) return null
+    return getSkillTutorialConfig(sessionMode.nextSkill.skillId)
+  }, [sessionMode])
 
   // Whether to show the tutorial gate prompt
   const showTutorialGate = !!tutorialConfig && !showTutorial
+
+  // Get skill info for tutorial from sessionMode
+  const nextSkill = sessionMode.type === 'progression' ? sessionMode.nextSkill : null
 
   // Derive secondsPerTerm: prefer direct prop, fall back to converting avgSecondsPerProblem, then default
   const secondsPerTerm = useMemo(() => {
@@ -160,41 +162,18 @@ export function StartPracticeModal({
     }
   }, [enabledParts])
 
-  // Compute weak skills from BKT - these are the ACTUAL skills that get plugged into
-  // the problem generator's targetSkills. Only skills with pKnown < 0.5 AND confidence >= 0.3
-  // are targeted. Skills with 0.5-0.8 pKnown are NOT targeted - they just appear naturally
-  // in the even distribution across all practicing skills.
+  // Derive target skills from sessionMode (no duplicate BKT computation)
   const targetSkillsInfo = useMemo(() => {
-    if (!problemHistory || problemHistory.length === 0) {
-      return { targetedSkills: [], hasData: false }
-    }
-
-    const bktResult = computeBktFromHistory(problemHistory, {
-      confidenceThreshold: WEAK_SKILL_THRESHOLDS.confidenceThreshold,
-    })
-
-    const targetedSkills: Array<{ skillId: string; displayName: string; pKnown: number }> = []
-
-    for (const skill of bktResult.skills) {
-      // Only skills with confidence >= 0.3 AND pKnown < 0.5 get TARGETED
-      // This matches identifyWeakSkills() in session-planner.ts exactly
-      if (
-        skill.confidence >= WEAK_SKILL_THRESHOLDS.confidenceThreshold &&
-        skill.pKnown < WEAK_SKILL_THRESHOLDS.pKnownThreshold
-      ) {
-        targetedSkills.push({
-          skillId: skill.skillId,
-          displayName: getSkillDisplayName(skill.skillId),
-          pKnown: skill.pKnown,
-        })
+    if (sessionMode.type === 'remediation') {
+      // In remediation mode, we have the weak skills to target
+      return {
+        targetedSkills: sessionMode.weakSkills,
+        hasData: true,
       }
     }
-
-    // Sort by pKnown ascending (weakest first)
-    targetedSkills.sort((a, b) => a.pKnown - b.pKnown)
-
-    return { targetedSkills, hasData: true }
-  }, [problemHistory])
+    // In progression or maintenance mode, no specific targeting
+    return { targetedSkills: [], hasData: true }
+  }, [sessionMode])
 
   const generatePlan = useGenerateSessionPlan()
   const approvePlan = useApproveSessionPlan()
@@ -264,11 +243,11 @@ export function StartPracticeModal({
     onStarted,
   ])
 
-  // Handle tutorial completion - refresh next skill query and proceed to practice
+  // Handle tutorial completion - refresh session mode query and proceed to practice
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false)
-    // Invalidate the next skill query to refresh state
-    queryClient.invalidateQueries({ queryKey: nextSkillKeys.forPlayer(studentId) })
+    // Invalidate the session mode query to refresh state
+    queryClient.invalidateQueries({ queryKey: sessionModeKeys.forPlayer(studentId) })
     // Proceed with starting practice
     handleStart()
   }, [queryClient, studentId, handleStart])
@@ -542,1006 +521,1028 @@ export function StartPracticeModal({
                     borderRadius: '8px',
                   },
                 })}
-              style={{
-                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-              }}
-            >
-              {/* Summary view (collapses when expanded) */}
-              <div
-                data-section="config-summary"
-                className={css({
-                  overflow: 'hidden',
-                  transition: 'all 0.3s ease',
-                })}
                 style={{
-                  maxHeight: isExpanded ? '0px' : '140px',
-                  opacity: isExpanded ? 0 : 1,
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
                 }}
               >
-                <button
-                  type="button"
-                  data-action="expand-config"
-                  onClick={() => setIsExpanded(true)}
+                {/* Summary view (collapses when expanded) */}
+                <div
+                  data-section="config-summary"
                   className={css({
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.75rem',
-                    background: 'none',
-                    border: 'none',
-                    padding: '1rem',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s ease',
-                    _hover: {
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                    },
-                    '@media (max-height: 700px)': {
-                      padding: '0.75rem',
-                      gap: '0.5rem',
-                    },
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
                   })}
+                  style={{
+                    maxHeight: isExpanded ? '0px' : '140px',
+                    opacity: isExpanded ? 0 : 1,
+                  }}
                 >
-                  {/* Duration */}
-                  <div data-element="duration-summary" className={css({ textAlign: 'center' })}>
-                    <div
-                      data-value="duration-minutes"
-                      className={css({
-                        fontSize: '1.5rem',
-                        fontWeight: 'bold',
-                        color: isDark ? 'blue.300' : 'blue.600',
-                        lineHeight: 1,
-                        '@media (max-height: 700px)': {
-                          fontSize: '1.25rem',
-                        },
-                      })}
-                    >
-                      {durationMinutes}
-                    </div>
-                    <div
-                      data-label="duration"
-                      className={css({
-                        fontSize: '0.6875rem',
-                        color: isDark ? 'gray.500' : 'gray.500',
-                        marginTop: '0.125rem',
-                      })}
-                    >
-                      min
-                    </div>
-                  </div>
-
-                  <div
+                  <button
+                    type="button"
+                    data-action="expand-config"
+                    onClick={() => setIsExpanded(true)}
                     className={css({
-                      fontSize: '0.875rem',
-                      color: isDark ? 'gray.600' : 'gray.300',
-                    })}
-                  >
-                    •
-                  </div>
-
-                  {/* Problems */}
-                  <div data-element="problems-summary" className={css({ textAlign: 'center' })}>
-                    <div
-                      data-value="problems-count"
-                      className={css({
-                        fontSize: '1.5rem',
-                        fontWeight: 'bold',
-                        color: isDark ? 'green.300' : 'green.600',
-                        lineHeight: 1,
-                        '@media (max-height: 700px)': {
-                          fontSize: '1.25rem',
-                        },
-                      })}
-                    >
-                      ~{estimatedProblems}
-                    </div>
-                    <div
-                      data-label="problems"
-                      className={css({
-                        fontSize: '0.6875rem',
-                        color: isDark ? 'gray.500' : 'gray.500',
-                        marginTop: '0.125rem',
-                        '@media (max-height: 700px)': {
-                          fontSize: '0.625rem',
-                        },
-                      })}
-                    >
-                      problems
-                    </div>
-                  </div>
-
-                  <div
-                    className={css({
-                      fontSize: '0.875rem',
-                      color: isDark ? 'gray.600' : 'gray.300',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      padding: '1rem',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease',
+                      _hover: {
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      },
                       '@media (max-height: 700px)': {
-                        fontSize: '0.75rem',
+                        padding: '0.75rem',
+                        gap: '0.5rem',
                       },
                     })}
                   >
-                    •
-                  </div>
+                    {/* Duration */}
+                    <div data-element="duration-summary" className={css({ textAlign: 'center' })}>
+                      <div
+                        data-value="duration-minutes"
+                        className={css({
+                          fontSize: '1.5rem',
+                          fontWeight: 'bold',
+                          color: isDark ? 'blue.300' : 'blue.600',
+                          lineHeight: 1,
+                          '@media (max-height: 700px)': {
+                            fontSize: '1.25rem',
+                          },
+                        })}
+                      >
+                        {durationMinutes}
+                      </div>
+                      <div
+                        data-label="duration"
+                        className={css({
+                          fontSize: '0.6875rem',
+                          color: isDark ? 'gray.500' : 'gray.500',
+                          marginTop: '0.125rem',
+                        })}
+                      >
+                        min
+                      </div>
+                    </div>
 
-                  {/* Modes with problem counts underneath */}
+                    <div
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.600' : 'gray.300',
+                      })}
+                    >
+                      •
+                    </div>
+
+                    {/* Problems */}
+                    <div data-element="problems-summary" className={css({ textAlign: 'center' })}>
+                      <div
+                        data-value="problems-count"
+                        className={css({
+                          fontSize: '1.5rem',
+                          fontWeight: 'bold',
+                          color: isDark ? 'green.300' : 'green.600',
+                          lineHeight: 1,
+                          '@media (max-height: 700px)': {
+                            fontSize: '1.25rem',
+                          },
+                        })}
+                      >
+                        ~{estimatedProblems}
+                      </div>
+                      <div
+                        data-label="problems"
+                        className={css({
+                          fontSize: '0.6875rem',
+                          color: isDark ? 'gray.500' : 'gray.500',
+                          marginTop: '0.125rem',
+                          '@media (max-height: 700px)': {
+                            fontSize: '0.625rem',
+                          },
+                        })}
+                      >
+                        problems
+                      </div>
+                    </div>
+
+                    <div
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.600' : 'gray.300',
+                        '@media (max-height: 700px)': {
+                          fontSize: '0.75rem',
+                        },
+                      })}
+                    >
+                      •
+                    </div>
+
+                    {/* Modes with problem counts underneath */}
+                    <div
+                      data-element="modes-summary"
+                      className={css({
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        '@media (max-height: 700px)': {
+                          gap: '0.375rem',
+                        },
+                      })}
+                    >
+                      {PART_TYPES.filter((p) => enabledParts[p.type]).map(({ type, emoji }) => (
+                        <div
+                          key={type}
+                          data-mode={type}
+                          className={css({
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0',
+                          })}
+                        >
+                          <span
+                            data-element="mode-icon"
+                            className={css({
+                              fontSize: '1.25rem',
+                              lineHeight: 1,
+                              '@media (max-height: 700px)': {
+                                fontSize: '1rem',
+                              },
+                            })}
+                          >
+                            {emoji}
+                          </span>
+                          <span
+                            data-element="mode-count"
+                            className={css({
+                              fontSize: '0.6875rem',
+                              fontWeight: '600',
+                              lineHeight: 1,
+                              marginTop: '0.125rem',
+                              '@media (max-height: 700px)': {
+                                fontSize: '0.625rem',
+                              },
+                            })}
+                            style={{ color: isDark ? '#22c55e' : '#16a34a' }}
+                          >
+                            {problemsPerType[type]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Expand indicator */}
+                    <div
+                      data-element="expand-indicator"
+                      className={css({
+                        marginLeft: '0.25rem',
+                        fontSize: '0.625rem',
+                        color: isDark ? 'gray.500' : 'gray.400',
+                        '@media (max-height: 700px)': {
+                          fontSize: '0.5rem',
+                          marginLeft: '0.125rem',
+                        },
+                      })}
+                    >
+                      ▼
+                    </div>
+                  </button>
+
+                  {/* Target skills summary */}
+                  {targetSkillsInfo.hasData && (
+                    <div
+                      data-element="target-skills-summary"
+                      className={css({
+                        padding: '0.5rem 1rem',
+                        borderTop: '1px solid',
+                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                        '@media (max-height: 700px)': {
+                          padding: '0.25rem 0.5rem',
+                        },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.375rem',
+                        flexWrap: 'wrap',
+                      })}
+                    >
+                      {targetSkillsInfo.targetedSkills.length > 0 ? (
+                        <>
+                          <span
+                            data-element="targeting-label"
+                            className={css({
+                              fontSize: '0.6875rem',
+                              color: isDark ? 'amber.400' : 'amber.600',
+                              fontWeight: '500',
+                            })}
+                          >
+                            Targeting:
+                          </span>
+                          {targetSkillsInfo.targetedSkills.slice(0, 3).map((skill, i) => (
+                            <span
+                              key={skill.skillId}
+                              data-skill={skill.skillId}
+                              className={css({
+                                fontSize: '0.6875rem',
+                                color: isDark ? 'gray.400' : 'gray.600',
+                              })}
+                            >
+                              {skill.displayName}
+                              {i < Math.min(targetSkillsInfo.targetedSkills.length, 3) - 1 && ','}
+                            </span>
+                          ))}
+                          {targetSkillsInfo.targetedSkills.length > 3 && (
+                            <span
+                              data-element="skills-overflow"
+                              className={css({
+                                fontSize: '0.6875rem',
+                                color: isDark ? 'gray.500' : 'gray.500',
+                              })}
+                            >
+                              +{targetSkillsInfo.targetedSkills.length - 3} more
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span
+                          data-element="even-distribution-message"
+                          className={css({
+                            fontSize: '0.6875rem',
+                            color: isDark ? 'gray.500' : 'gray.500',
+                          })}
+                        >
+                          Even distribution across all practicing skills
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded config panel */}
+                <div
+                  data-section="config-expanded"
+                  className={css({
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                    '@media (max-height: 500px) and (min-width: 500px)': {
+                      overflow: 'auto',
+                      maxHeight: '100%',
+                    },
+                  })}
+                  style={{
+                    maxHeight: isExpanded ? '520px' : '0px',
+                    opacity: isExpanded ? 1 : 0,
+                  }}
+                >
                   <div
-                    data-element="modes-summary"
                     className={css({
+                      padding: '1rem',
                       display: 'flex',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
+                      flexDirection: 'column',
+                      gap: '0.875rem',
                       '@media (max-height: 700px)': {
+                        padding: '0.5rem',
                         gap: '0.375rem',
                       },
                     })}
                   >
-                    {PART_TYPES.filter((p) => enabledParts[p.type]).map(({ type, emoji }) => (
-                      <div
-                        key={type}
-                        data-mode={type}
+                    {/* Expanded header with collapse button */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '-0.25rem',
+                        '@media (max-height: 700px)': {
+                          marginBottom: '-0.125rem',
+                        },
+                      })}
+                    >
+                      <span
                         className={css({
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '0',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: isDark ? 'gray.400' : 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          '@media (max-height: 700px)': {
+                            fontSize: '0.625rem',
+                          },
                         })}
                       >
-                        <span
-                          data-element="mode-icon"
-                          className={css({
-                            fontSize: '1.25rem',
-                            lineHeight: 1,
-                            '@media (max-height: 700px)': {
-                              fontSize: '1rem',
-                            },
-                          })}
-                        >
-                          {emoji}
-                        </span>
-                        <span
-                          data-element="mode-count"
+                        Session Settings
+                      </span>
+                      <button
+                        type="button"
+                        data-action="collapse-settings"
+                        onClick={() => setIsExpanded(false)}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: '500',
+                          color: isDark ? 'gray.400' : 'gray.500',
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          _hover: {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                            color: isDark ? 'gray.300' : 'gray.600',
+                          },
+                          '@media (max-height: 700px)': {
+                            padding: '0.125rem 0.375rem',
+                            fontSize: '0.5625rem',
+                          },
+                        })}
+                      >
+                        <span>▲</span>
+                        <span>Collapse</span>
+                      </button>
+                    </div>
+
+                    {/* Settings grid - 2 columns in landscape */}
+                    <div
+                      data-element="settings-grid"
+                      className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.875rem',
+                        '@media (max-height: 700px)': {
+                          gap: '0.375rem',
+                        },
+                        '@media (max-height: 500px) and (min-width: 500px)': {
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '0.5rem',
+                        },
+                      })}
+                    >
+                      {/* Duration options */}
+                      <div data-setting="duration">
+                        <div
+                          data-element="duration-label"
                           className={css({
                             fontSize: '0.6875rem',
                             fontWeight: '600',
-                            lineHeight: 1,
-                            marginTop: '0.125rem',
+                            color: isDark ? 'gray.500' : 'gray.400',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: '0.5rem',
                             '@media (max-height: 700px)': {
+                              marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
                           })}
-                          style={{ color: isDark ? '#22c55e' : '#16a34a' }}
                         >
-                          {problemsPerType[type]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Expand indicator */}
-                  <div
-                    data-element="expand-indicator"
-                    className={css({
-                      marginLeft: '0.25rem',
-                      fontSize: '0.625rem',
-                      color: isDark ? 'gray.500' : 'gray.400',
-                      '@media (max-height: 700px)': {
-                        fontSize: '0.5rem',
-                        marginLeft: '0.125rem',
-                      },
-                    })}
-                  >
-                    ▼
-                  </div>
-                </button>
-
-                {/* Target skills summary */}
-                {targetSkillsInfo.hasData && (
-                  <div
-                    data-element="target-skills-summary"
-                    className={css({
-                      padding: '0.5rem 1rem',
-                      borderTop: '1px solid',
-                      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                      '@media (max-height: 700px)': {
-                        padding: '0.25rem 0.5rem',
-                      },
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.375rem',
-                      flexWrap: 'wrap',
-                    })}
-                  >
-                    {targetSkillsInfo.targetedSkills.length > 0 ? (
-                      <>
-                        <span
-                          data-element="targeting-label"
+                          Duration
+                        </div>
+                        <div
+                          data-element="duration-options"
                           className={css({
-                            fontSize: '0.6875rem',
-                            color: isDark ? 'amber.400' : 'amber.600',
-                            fontWeight: '500',
+                            display: 'flex',
+                            gap: '0.375rem',
+                            '@media (max-height: 700px)': { gap: '0.25rem' },
                           })}
                         >
-                          Targeting:
-                        </span>
-                        {targetSkillsInfo.targetedSkills.slice(0, 3).map((skill, i) => (
-                          <span
-                            key={skill.skillId}
-                            data-skill={skill.skillId}
-                            className={css({
-                              fontSize: '0.6875rem',
-                              color: isDark ? 'gray.400' : 'gray.600',
-                            })}
-                          >
-                            {skill.displayName}
-                            {i < Math.min(targetSkillsInfo.targetedSkills.length, 3) - 1 && ','}
-                          </span>
-                        ))}
-                        {targetSkillsInfo.targetedSkills.length > 3 && (
-                          <span
-                            data-element="skills-overflow"
-                            className={css({
-                              fontSize: '0.6875rem',
-                              color: isDark ? 'gray.500' : 'gray.500',
-                            })}
-                          >
-                            +{targetSkillsInfo.targetedSkills.length - 3} more
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span
-                        data-element="even-distribution-message"
-                        className={css({
-                          fontSize: '0.6875rem',
-                          color: isDark ? 'gray.500' : 'gray.500',
-                        })}
-                      >
-                        Even distribution across all practicing skills
-                      </span>
-                    )}
+                          {[5, 10, 15, 20].map((min) => {
+                            // Estimate problems for this duration using current settings
+                            const enabledPartTypes = PART_TYPES.filter(
+                              (p) => enabledParts[p.type]
+                            ).map((p) => p.type)
+                            const minutesPerPart =
+                              enabledPartTypes.length > 0 ? min / enabledPartTypes.length : min
+                            let problems = 0
+                            for (const partType of enabledPartTypes) {
+                              problems += estimateSessionProblemCount(
+                                minutesPerPart,
+                                avgTermsPerProblem,
+                                secondsPerTerm,
+                                partType
+                              )
+                            }
+                            const isSelected = durationMinutes === min
+                            return (
+                              <button
+                                key={min}
+                                type="button"
+                                data-option={`duration-${min}`}
+                                data-selected={isSelected}
+                                onClick={() => setDurationMinutes(min)}
+                                className={css({
+                                  flex: 1,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '0.125rem',
+                                  padding: '0.5rem 0.25rem',
+                                  borderRadius: '8px',
+                                  border: '2px solid',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  '@media (max-height: 700px)': {
+                                    padding: '0.375rem 0.125rem',
+                                    borderRadius: '6px',
+                                    gap: '0',
+                                  },
+                                })}
+                                style={{
+                                  borderColor: isSelected
+                                    ? isDark
+                                      ? '#60a5fa'
+                                      : '#3b82f6'
+                                    : isDark
+                                      ? 'rgba(255,255,255,0.1)'
+                                      : 'rgba(0,0,0,0.08)',
+                                  backgroundColor: isSelected
+                                    ? isDark
+                                      ? 'rgba(96, 165, 250, 0.15)'
+                                      : 'rgba(59, 130, 246, 0.08)'
+                                    : 'transparent',
+                                }}
+                              >
+                                <span
+                                  className={css({
+                                    fontSize: '0.9375rem',
+                                    fontWeight: '600',
+                                    '@media (max-height: 700px)': {
+                                      fontSize: '0.8125rem',
+                                    },
+                                  })}
+                                  style={{
+                                    color: isSelected
+                                      ? isDark
+                                        ? '#93c5fd'
+                                        : '#2563eb'
+                                      : isDark
+                                        ? '#e2e8f0'
+                                        : '#334155',
+                                  }}
+                                >
+                                  {min}m
+                                </span>
+                                <span
+                                  className={css({
+                                    fontSize: '0.625rem',
+                                    '@media (max-height: 700px)': {
+                                      fontSize: '0.5625rem',
+                                    },
+                                  })}
+                                  style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+                                >
+                                  ~{problems}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Modes */}
+                      <div data-setting="practice-modes">
+                        <div
+                          data-element="modes-label"
+                          className={css({
+                            fontSize: '0.6875rem',
+                            fontWeight: '600',
+                            color: isDark ? 'gray.500' : 'gray.400',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: '0.5rem',
+                            '@media (max-height: 700px)': {
+                              marginBottom: '0.25rem',
+                              fontSize: '0.625rem',
+                            },
+                          })}
+                        >
+                          Practice Modes
+                        </div>
+                        <div
+                          data-element="modes-options"
+                          className={css({
+                            display: 'flex',
+                            gap: '0.375rem',
+                            '@media (max-height: 700px)': { gap: '0.25rem' },
+                          })}
+                        >
+                          {PART_TYPES.map(({ type, emoji, label }) => {
+                            const isEnabled = enabledParts[type]
+                            const problemCount = problemsPerType[type]
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                data-option={`mode-${type}`}
+                                data-enabled={isEnabled}
+                                onClick={() => togglePart(type)}
+                                className={css({
+                                  position: 'relative',
+                                  flex: 1,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.625rem 0.25rem 0.5rem',
+                                  borderRadius: '8px',
+                                  border: '2px solid',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  '@media (max-height: 700px)': {
+                                    padding: '0.375rem 0.125rem 0.25rem',
+                                    borderRadius: '6px',
+                                    gap: '0.125rem',
+                                  },
+                                })}
+                                style={{
+                                  borderColor: isEnabled
+                                    ? isDark
+                                      ? '#22c55e'
+                                      : '#16a34a'
+                                    : isDark
+                                      ? 'rgba(255,255,255,0.1)'
+                                      : 'rgba(0,0,0,0.08)',
+                                  backgroundColor: isEnabled
+                                    ? isDark
+                                      ? 'rgba(34, 197, 94, 0.15)'
+                                      : 'rgba(22, 163, 74, 0.08)'
+                                    : 'transparent',
+                                  opacity: isEnabled ? 1 : 0.5,
+                                }}
+                              >
+                                {/* Badge positioned at upper-right of button box */}
+                                {isEnabled && (
+                                  <span
+                                    className={css({
+                                      position: 'absolute',
+                                      top: '-8px',
+                                      right: '-8px',
+                                      minWidth: '22px',
+                                      minHeight: '22px',
+                                      aspectRatio: '1 / 1',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 'bold',
+                                      color: 'white',
+                                      backgroundColor: 'green.500',
+                                      borderRadius: '50%',
+                                      padding: '2px',
+                                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                      '@media (max-height: 700px)': {
+                                        top: '-6px',
+                                        right: '-6px',
+                                        minWidth: '18px',
+                                        minHeight: '18px',
+                                        fontSize: '0.625rem',
+                                      },
+                                    })}
+                                  >
+                                    {problemCount}
+                                  </span>
+                                )}
+                                {/* Emoji */}
+                                <span
+                                  className={css({
+                                    fontSize: '1.5rem',
+                                    lineHeight: 1,
+                                    '@media (max-height: 700px)': {
+                                      fontSize: '1.25rem',
+                                    },
+                                  })}
+                                >
+                                  {emoji}
+                                </span>
+                                <span
+                                  className={css({
+                                    fontSize: '0.6875rem',
+                                    fontWeight: '500',
+                                    '@media (max-height: 700px)': {
+                                      fontSize: '0.5625rem',
+                                    },
+                                  })}
+                                  style={{ color: isDark ? '#e2e8f0' : '#334155' }}
+                                >
+                                  {label}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Numbers per problem */}
+                      <div data-setting="max-terms">
+                        <div
+                          data-element="terms-label"
+                          className={css({
+                            fontSize: '0.6875rem',
+                            fontWeight: '600',
+                            color: isDark ? 'gray.500' : 'gray.400',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: '0.5rem',
+                            '@media (max-height: 700px)': {
+                              marginBottom: '0.25rem',
+                              fontSize: '0.625rem',
+                            },
+                          })}
+                        >
+                          Numbers per problem
+                        </div>
+                        <div
+                          data-element="terms-options"
+                          className={css({
+                            display: 'flex',
+                            gap: '0.25rem',
+                            '@media (max-height: 700px)': { gap: '0.125rem' },
+                          })}
+                        >
+                          {[3, 4, 5, 6, 7, 8].map((terms) => {
+                            const isSelected = abacusMaxTerms === terms
+                            return (
+                              <button
+                                key={terms}
+                                type="button"
+                                data-option={`terms-${terms}`}
+                                data-selected={isSelected}
+                                onClick={() => setAbacusMaxTerms(terms)}
+                                className={css({
+                                  flex: 1,
+                                  padding: '0.5rem 0.25rem',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '600',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  '@media (max-height: 700px)': {
+                                    padding: '0.3125rem 0.125rem',
+                                    fontSize: '0.75rem',
+                                    borderRadius: '4px',
+                                  },
+                                })}
+                                style={{
+                                  backgroundColor: isSelected
+                                    ? isDark
+                                      ? '#8b5cf6'
+                                      : '#7c3aed'
+                                    : isDark
+                                      ? 'rgba(255,255,255,0.06)'
+                                      : 'rgba(0,0,0,0.04)',
+                                  color: isSelected ? 'white' : isDark ? '#9ca3af' : '#6b7280',
+                                }}
+                              >
+                                {terms}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Target skills info - in the grid for landscape layout */}
+                      {targetSkillsInfo.hasData && (
+                        <div
+                          data-element="target-skills-expanded"
+                          className={css({
+                            padding: '0.625rem',
+                            borderRadius: '6px',
+                            '@media (max-height: 700px)': {
+                              padding: '0.375rem 0.5rem',
+                            },
+                            backgroundColor: isDark
+                              ? targetSkillsInfo.targetedSkills.length > 0
+                                ? 'rgba(245, 158, 11, 0.08)'
+                                : 'rgba(100, 116, 139, 0.08)'
+                              : targetSkillsInfo.targetedSkills.length > 0
+                                ? 'rgba(245, 158, 11, 0.06)'
+                                : 'rgba(100, 116, 139, 0.06)',
+                            border: `1px solid ${
+                              isDark
+                                ? targetSkillsInfo.targetedSkills.length > 0
+                                  ? 'rgba(245, 158, 11, 0.2)'
+                                  : 'rgba(100, 116, 139, 0.2)'
+                                : targetSkillsInfo.targetedSkills.length > 0
+                                  ? 'rgba(245, 158, 11, 0.15)'
+                                  : 'rgba(100, 116, 139, 0.15)'
+                            }`,
+                          })}
+                        >
+                          {targetSkillsInfo.targetedSkills.length > 0 ? (
+                            <>
+                              <div
+                                className={css({
+                                  fontSize: '0.6875rem',
+                                  fontWeight: '600',
+                                  color: isDark ? 'amber.400' : 'amber.700',
+                                  marginBottom: '0.375rem',
+                                  '@media (max-height: 700px)': {
+                                    fontSize: '0.625rem',
+                                    marginBottom: '0.25rem',
+                                  },
+                                })}
+                              >
+                                Focusing on weak skills:
+                              </div>
+                              <div
+                                className={css({
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '0.25rem',
+                                })}
+                              >
+                                {targetSkillsInfo.targetedSkills.map((skill) => (
+                                  <span
+                                    key={skill.skillId}
+                                    className={css({
+                                      fontSize: '0.625rem',
+                                      padding: '0.125rem 0.375rem',
+                                      borderRadius: '4px',
+                                      backgroundColor: isDark
+                                        ? 'rgba(245, 158, 11, 0.15)'
+                                        : 'rgba(245, 158, 11, 0.12)',
+                                      color: isDark ? 'amber.300' : 'amber.800',
+                                      '@media (max-height: 700px)': {
+                                        fontSize: '0.5625rem',
+                                        padding: '0.0625rem 0.25rem',
+                                      },
+                                    })}
+                                  >
+                                    {skill.displayName}{' '}
+                                    <span className={css({ opacity: 0.7 })}>
+                                      ({Math.round(skill.pKnown * 100)}%)
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div
+                              className={css({
+                                fontSize: '0.6875rem',
+                                color: isDark ? 'gray.400' : 'gray.600',
+                                '@media (max-height: 700px)': {
+                                  fontSize: '0.625rem',
+                                },
+                              })}
+                            >
+                              ✓ On track! Problems will be evenly distributed across all skills.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* End settings-grid */}
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Expanded config panel */}
-              <div
-                data-section="config-expanded"
-                className={css({
-                  overflow: 'hidden',
-                  transition: 'all 0.3s ease',
-                  '@media (max-height: 500px) and (min-width: 500px)': {
-                    overflow: 'auto',
-                    maxHeight: '100%',
-                  },
-                })}
-                style={{
-                  maxHeight: isExpanded ? '520px' : '0px',
-                  opacity: isExpanded ? 1 : 0,
-                }}
-              >
+              {/* Tutorial CTA - New skill unlocked with integrated start button */}
+              {showTutorialGate && tutorialConfig && nextSkill && (
                 <div
+                  data-element="tutorial-cta"
                   className={css({
-                    padding: '1rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.875rem',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
                     '@media (max-height: 700px)': {
-                      padding: '0.5rem',
-                      gap: '0.375rem',
+                      borderRadius: '10px',
+                      marginTop: 'auto',
                     },
                   })}
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)'
+                      : 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
+                    border: `2px solid ${isDark ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.2)'}`,
+                  }}
                 >
-                  {/* Expanded header with collapse button */}
+                  {/* Info section */}
                   <div
                     className={css({
+                      padding: '0.875rem 1rem',
                       display: 'flex',
+                      gap: '0.625rem',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '-0.25rem',
                       '@media (max-height: 700px)': {
-                        marginBottom: '-0.125rem',
+                        padding: '0.5rem 0.75rem',
+                        gap: '0.5rem',
                       },
                     })}
                   >
                     <span
                       className={css({
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        color: isDark ? 'gray.400' : 'gray.500',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        fontSize: '1.5rem',
+                        lineHeight: 1,
                         '@media (max-height: 700px)': {
-                          fontSize: '0.625rem',
+                          fontSize: '1.25rem',
                         },
                       })}
                     >
-                      Session Settings
+                      🌟
                     </span>
-                    <button
-                      type="button"
-                      data-action="collapse-settings"
-                      onClick={() => setIsExpanded(false)}
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: '500',
-                        color: isDark ? 'gray.400' : 'gray.500',
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        _hover: {
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                          color: isDark ? 'gray.300' : 'gray.600',
-                        },
-                        '@media (max-height: 700px)': {
-                          padding: '0.125rem 0.375rem',
-                          fontSize: '0.5625rem',
-                        },
-                      })}
-                    >
-                      <span>▲</span>
-                      <span>Collapse</span>
-                    </button>
+                    <div className={css({ flex: 1 })}>
+                      <p
+                        className={css({
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          '@media (max-height: 700px)': {
+                            fontSize: '0.8125rem',
+                          },
+                        })}
+                        style={{ color: isDark ? '#86efac' : '#166534' }}
+                      >
+                        You've unlocked: <strong>{tutorialConfig.title}</strong>
+                      </p>
+                      <p
+                        className={css({
+                          fontSize: '0.75rem',
+                          marginTop: '0.125rem',
+                          '@media (max-height: 700px)': {
+                            fontSize: '0.6875rem',
+                          },
+                        })}
+                        style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
+                      >
+                        Start with a quick tutorial
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Settings grid - 2 columns in landscape */}
-                  <div
-                    data-element="settings-grid"
+                  {/* Integrated start button */}
+                  <button
+                    type="button"
+                    data-action="start-tutorial"
+                    data-status={isStarting ? 'starting' : 'ready'}
+                    onClick={() => setShowTutorial(true)}
+                    disabled={isStarting}
                     className={css({
+                      width: '100%',
+                      padding: '0.875rem',
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0 0 10px 10px',
+                      cursor: isStarting ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.875rem',
-                      '@media (max-height: 700px)': {
-                        gap: '0.375rem',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      _hover: {
+                        filter: isStarting ? 'none' : 'brightness(1.05)',
                       },
-                      '@media (max-height: 500px) and (min-width: 500px)': {
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '0.5rem',
+                      '@media (max-height: 700px)': {
+                        padding: '0.75rem',
+                        fontSize: '0.9375rem',
                       },
                     })}
+                    style={{
+                      background: isStarting
+                        ? '#9ca3af'
+                        : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      boxShadow: isStarting ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.15)',
+                    }}
                   >
-
-                  {/* Duration options */}
-                  <div data-setting="duration">
-                    <div
-                      data-element="duration-label"
-                      className={css({
-                        fontSize: '0.6875rem',
-                        fontWeight: '600',
-                        color: isDark ? 'gray.500' : 'gray.400',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: '0.5rem',
-                        '@media (max-height: 700px)': {
-                          marginBottom: '0.25rem',
-                          fontSize: '0.625rem',
-                        },
-                      })}
-                    >
-                      Duration
-                    </div>
-                    <div data-element="duration-options" className={css({ display: 'flex', gap: '0.375rem', '@media (max-height: 700px)': { gap: '0.25rem' } })}>
-                      {[5, 10, 15, 20].map((min) => {
-                        // Estimate problems for this duration using current settings
-                        const enabledPartTypes = PART_TYPES.filter((p) => enabledParts[p.type]).map(
-                          (p) => p.type
-                        )
-                        const minutesPerPart =
-                          enabledPartTypes.length > 0 ? min / enabledPartTypes.length : min
-                        let problems = 0
-                        for (const partType of enabledPartTypes) {
-                          problems += estimateSessionProblemCount(
-                            minutesPerPart,
-                            avgTermsPerProblem,
-                            secondsPerTerm,
-                            partType
-                          )
-                        }
-                        const isSelected = durationMinutes === min
-                        return (
-                          <button
-                            key={min}
-                            type="button"
-                            data-option={`duration-${min}`}
-                            data-selected={isSelected}
-                            onClick={() => setDurationMinutes(min)}
-                            className={css({
-                              flex: 1,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '0.125rem',
-                              padding: '0.5rem 0.25rem',
-                              borderRadius: '8px',
-                              border: '2px solid',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              '@media (max-height: 700px)': {
-                                padding: '0.375rem 0.125rem',
-                                borderRadius: '6px',
-                                gap: '0',
-                              },
-                            })}
-                            style={{
-                              borderColor: isSelected
-                                ? isDark
-                                  ? '#60a5fa'
-                                  : '#3b82f6'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.1)'
-                                  : 'rgba(0,0,0,0.08)',
-                              backgroundColor: isSelected
-                                ? isDark
-                                  ? 'rgba(96, 165, 250, 0.15)'
-                                  : 'rgba(59, 130, 246, 0.08)'
-                                : 'transparent',
-                            }}
-                          >
-                            <span
-                              className={css({
-                                fontSize: '0.9375rem',
-                                fontWeight: '600',
-                                '@media (max-height: 700px)': {
-                                  fontSize: '0.8125rem',
-                                },
-                              })}
-                              style={{
-                                color: isSelected
-                                  ? isDark
-                                    ? '#93c5fd'
-                                    : '#2563eb'
-                                  : isDark
-                                    ? '#e2e8f0'
-                                    : '#334155',
-                              }}
-                            >
-                              {min}m
-                            </span>
-                            <span
-                              className={css({
-                                fontSize: '0.625rem',
-                                '@media (max-height: 700px)': {
-                                  fontSize: '0.5625rem',
-                                },
-                              })}
-                              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
-                            >
-                              ~{problems}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Modes */}
-                  <div data-setting="practice-modes">
-                    <div
-                      data-element="modes-label"
-                      className={css({
-                        fontSize: '0.6875rem',
-                        fontWeight: '600',
-                        color: isDark ? 'gray.500' : 'gray.400',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: '0.5rem',
-                        '@media (max-height: 700px)': {
-                          marginBottom: '0.25rem',
-                          fontSize: '0.625rem',
-                        },
-                      })}
-                    >
-                      Practice Modes
-                    </div>
-                    <div data-element="modes-options" className={css({ display: 'flex', gap: '0.375rem', '@media (max-height: 700px)': { gap: '0.25rem' } })}>
-                      {PART_TYPES.map(({ type, emoji, label }) => {
-                        const isEnabled = enabledParts[type]
-                        const problemCount = problemsPerType[type]
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            data-option={`mode-${type}`}
-                            data-enabled={isEnabled}
-                            onClick={() => togglePart(type)}
-                            className={css({
-                              position: 'relative',
-                              flex: 1,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '0.625rem 0.25rem 0.5rem',
-                              borderRadius: '8px',
-                              border: '2px solid',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              '@media (max-height: 700px)': {
-                                padding: '0.375rem 0.125rem 0.25rem',
-                                borderRadius: '6px',
-                                gap: '0.125rem',
-                              },
-                            })}
-                            style={{
-                              borderColor: isEnabled
-                                ? isDark
-                                  ? '#22c55e'
-                                  : '#16a34a'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.1)'
-                                  : 'rgba(0,0,0,0.08)',
-                              backgroundColor: isEnabled
-                                ? isDark
-                                  ? 'rgba(34, 197, 94, 0.15)'
-                                  : 'rgba(22, 163, 74, 0.08)'
-                                : 'transparent',
-                              opacity: isEnabled ? 1 : 0.5,
-                            }}
-                          >
-                            {/* Badge positioned at upper-right of button box */}
-                            {isEnabled && (
-                              <span
-                                className={css({
-                                  position: 'absolute',
-                                  top: '-8px',
-                                  right: '-8px',
-                                  minWidth: '22px',
-                                  minHeight: '22px',
-                                  aspectRatio: '1 / 1',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 'bold',
-                                  color: 'white',
-                                  backgroundColor: 'green.500',
-                                  borderRadius: '50%',
-                                  padding: '2px',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                  '@media (max-height: 700px)': {
-                                    top: '-6px',
-                                    right: '-6px',
-                                    minWidth: '18px',
-                                    minHeight: '18px',
-                                    fontSize: '0.625rem',
-                                  },
-                                })}
-                              >
-                                {problemCount}
-                              </span>
-                            )}
-                            {/* Emoji */}
-                            <span className={css({
-                              fontSize: '1.5rem',
-                              lineHeight: 1,
-                              '@media (max-height: 700px)': {
-                                fontSize: '1.25rem',
-                              },
-                            })}>
-                              {emoji}
-                            </span>
-                            <span
-                              className={css({
-                                fontSize: '0.6875rem',
-                                fontWeight: '500',
-                                '@media (max-height: 700px)': {
-                                  fontSize: '0.5625rem',
-                                },
-                              })}
-                              style={{ color: isDark ? '#e2e8f0' : '#334155' }}
-                            >
-                              {label}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Numbers per problem */}
-                  <div data-setting="max-terms">
-                    <div
-                      data-element="terms-label"
-                      className={css({
-                        fontSize: '0.6875rem',
-                        fontWeight: '600',
-                        color: isDark ? 'gray.500' : 'gray.400',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: '0.5rem',
-                        '@media (max-height: 700px)': {
-                          marginBottom: '0.25rem',
-                          fontSize: '0.625rem',
-                        },
-                      })}
-                    >
-                      Numbers per problem
-                    </div>
-                    <div data-element="terms-options" className={css({ display: 'flex', gap: '0.25rem', '@media (max-height: 700px)': { gap: '0.125rem' } })}>
-                      {[3, 4, 5, 6, 7, 8].map((terms) => {
-                        const isSelected = abacusMaxTerms === terms
-                        return (
-                          <button
-                            key={terms}
-                            type="button"
-                            data-option={`terms-${terms}`}
-                            data-selected={isSelected}
-                            onClick={() => setAbacusMaxTerms(terms)}
-                            className={css({
-                              flex: 1,
-                              padding: '0.5rem 0.25rem',
-                              fontSize: '0.875rem',
-                              fontWeight: '600',
-                              borderRadius: '6px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              '@media (max-height: 700px)': {
-                                padding: '0.3125rem 0.125rem',
-                                fontSize: '0.75rem',
-                                borderRadius: '4px',
-                              },
-                            })}
-                            style={{
-                              backgroundColor: isSelected
-                                ? isDark
-                                  ? '#8b5cf6'
-                                  : '#7c3aed'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.06)'
-                                  : 'rgba(0,0,0,0.04)',
-                              color: isSelected ? 'white' : isDark ? '#9ca3af' : '#6b7280',
-                            }}
-                          >
-                            {terms}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Target skills info - in the grid for landscape layout */}
-                  {targetSkillsInfo.hasData && (
-                    <div
-                      data-element="target-skills-expanded"
-                      className={css({
-                        padding: '0.625rem',
-                        borderRadius: '6px',
-                        '@media (max-height: 700px)': {
-                          padding: '0.375rem 0.5rem',
-                        },
-                        backgroundColor: isDark
-                          ? targetSkillsInfo.targetedSkills.length > 0
-                            ? 'rgba(245, 158, 11, 0.08)'
-                            : 'rgba(100, 116, 139, 0.08)'
-                          : targetSkillsInfo.targetedSkills.length > 0
-                            ? 'rgba(245, 158, 11, 0.06)'
-                            : 'rgba(100, 116, 139, 0.06)',
-                        border: `1px solid ${
-                          isDark
-                            ? targetSkillsInfo.targetedSkills.length > 0
-                              ? 'rgba(245, 158, 11, 0.2)'
-                              : 'rgba(100, 116, 139, 0.2)'
-                            : targetSkillsInfo.targetedSkills.length > 0
-                              ? 'rgba(245, 158, 11, 0.15)'
-                              : 'rgba(100, 116, 139, 0.15)'
-                        }`,
-                      })}
-                    >
-                      {targetSkillsInfo.targetedSkills.length > 0 ? (
-                        <>
-                          <div
-                            className={css({
-                              fontSize: '0.6875rem',
-                              fontWeight: '600',
-                              color: isDark ? 'amber.400' : 'amber.700',
-                              marginBottom: '0.375rem',
-                              '@media (max-height: 700px)': {
-                                fontSize: '0.625rem',
-                                marginBottom: '0.25rem',
-                              },
-                            })}
-                          >
-                            Focusing on weak skills:
-                          </div>
-                          <div
-                            className={css({
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '0.25rem',
-                            })}
-                          >
-                            {targetSkillsInfo.targetedSkills.map((skill) => (
-                              <span
-                                key={skill.skillId}
-                                className={css({
-                                  fontSize: '0.625rem',
-                                  padding: '0.125rem 0.375rem',
-                                  borderRadius: '4px',
-                                  backgroundColor: isDark
-                                    ? 'rgba(245, 158, 11, 0.15)'
-                                    : 'rgba(245, 158, 11, 0.12)',
-                                  color: isDark ? 'amber.300' : 'amber.800',
-                                  '@media (max-height: 700px)': {
-                                    fontSize: '0.5625rem',
-                                    padding: '0.0625rem 0.25rem',
-                                  },
-                                })}
-                              >
-                                {skill.displayName}{' '}
-                                <span className={css({ opacity: 0.7 })}>
-                                  ({Math.round(skill.pKnown * 100)}%)
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <div
-                          className={css({
-                            fontSize: '0.6875rem',
-                            color: isDark ? 'gray.400' : 'gray.600',
-                            '@media (max-height: 700px)': {
-                              fontSize: '0.625rem',
-                            },
-                          })}
-                        >
-                          ✓ On track! Problems will be evenly distributed across all skills.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  </div>{/* End settings-grid */}
-
+                    {isStarting ? (
+                      'Starting...'
+                    ) : (
+                      <>
+                        <span>🎓</span>
+                        <span>Begin Tutorial</span>
+                        <span>→</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* Tutorial CTA - New skill unlocked with integrated start button */}
-            {showTutorialGate && tutorialConfig && nextSkill && (
-              <div
-                data-element="tutorial-cta"
-                className={css({
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  '@media (max-height: 700px)': {
-                    borderRadius: '10px',
-                    marginTop: 'auto',
-                  },
-                })}
-                style={{
-                  background: isDark
-                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)'
-                    : 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
-                  border: `2px solid ${isDark ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.2)'}`,
-                }}
-              >
-                {/* Info section */}
+              {/* Error display */}
+              {displayError && (
                 <div
+                  data-element="error-display"
+                  data-error-type={isNoSkillsError ? 'no-skills' : 'generic'}
                   className={css({
-                    padding: '0.875rem 1rem',
-                    display: 'flex',
-                    gap: '0.625rem',
-                    alignItems: 'center',
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    textAlign: 'center',
                     '@media (max-height: 700px)': {
-                      padding: '0.5rem 0.75rem',
-                      gap: '0.5rem',
+                      marginBottom: '0.5rem',
+                      padding: '0.375rem',
+                      borderRadius: '6px',
                     },
                   })}
+                  style={{
+                    background: isNoSkillsError
+                      ? isDark
+                        ? 'rgba(251, 191, 36, 0.12)'
+                        : 'rgba(251, 191, 36, 0.08)'
+                      : isDark
+                        ? 'rgba(239, 68, 68, 0.12)'
+                        : 'rgba(239, 68, 68, 0.08)',
+                    border: `1px solid ${
+                      isNoSkillsError
+                        ? isDark
+                          ? 'rgba(251, 191, 36, 0.25)'
+                          : 'rgba(251, 191, 36, 0.15)'
+                        : isDark
+                          ? 'rgba(239, 68, 68, 0.25)'
+                          : 'rgba(239, 68, 68, 0.15)'
+                    }`,
+                  }}
                 >
-                  <span
-                    className={css({
-                      fontSize: '1.5rem',
-                      lineHeight: 1,
-                      '@media (max-height: 700px)': {
-                        fontSize: '1.25rem',
-                      },
-                    })}
-                  >
-                    🌟
-                  </span>
-                  <div className={css({ flex: 1 })}>
+                  {isNoSkillsError ? (
+                    <>
+                      <p
+                        className={css({ fontSize: '0.875rem', marginBottom: '0.5rem' })}
+                        style={{ color: isDark ? '#fcd34d' : '#b45309' }}
+                      >
+                        ⚠️ No skills enabled
+                      </p>
+                      <p
+                        className={css({ fontSize: '0.75rem' })}
+                        style={{ color: isDark ? '#d4d4d4' : '#525252' }}
+                      >
+                        Please enable at least one skill in the skill selector before starting a
+                        session.
+                      </p>
+                    </>
+                  ) : (
                     <p
-                      className={css({
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        '@media (max-height: 700px)': {
-                          fontSize: '0.8125rem',
-                        },
-                      })}
-                      style={{ color: isDark ? '#86efac' : '#166534' }}
+                      className={css({ fontSize: '0.875rem' })}
+                      style={{ color: isDark ? '#fca5a5' : '#dc2626' }}
                     >
-                      You've unlocked: <strong>{tutorialConfig.title}</strong>
+                      {displayError.message || 'Something went wrong. Please try again.'}
                     </p>
-                    <p
-                      className={css({
-                        fontSize: '0.75rem',
-                        marginTop: '0.125rem',
-                        '@media (max-height: 700px)': {
-                          fontSize: '0.6875rem',
-                        },
-                      })}
-                      style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
-                    >
-                      Start with a quick tutorial
-                    </p>
-                  </div>
+                  )}
                 </div>
-                {/* Integrated start button */}
+              )}
+
+              {/* Start button - only shown when no tutorial is pending */}
+              {!showTutorialGate && (
                 <button
                   type="button"
-                  data-action="start-tutorial"
+                  data-action="start-practice"
                   data-status={isStarting ? 'starting' : 'ready'}
-                  onClick={() => setShowTutorial(true)}
+                  onClick={handleStart}
                   disabled={isStarting}
                   className={css({
                     width: '100%',
-                    padding: '0.875rem',
-                    fontSize: '1rem',
+                    padding: '1rem',
+                    fontSize: '1.0625rem',
                     fontWeight: 'bold',
                     color: 'white',
+                    borderRadius: '12px',
                     border: 'none',
-                    borderRadius: '0 0 10px 10px',
                     cursor: isStarting ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
                     _hover: {
-                      filter: isStarting ? 'none' : 'brightness(1.05)',
+                      transform: isStarting ? 'none' : 'translateY(-1px)',
+                    },
+                    _active: {
+                      transform: 'translateY(0)',
                     },
                     '@media (max-height: 700px)': {
                       padding: '0.75rem',
-                      fontSize: '0.9375rem',
+                      fontSize: '1rem',
+                      borderRadius: '10px',
+                      marginTop: 'auto',
                     },
                   })}
                   style={{
                     background: isStarting
                       ? '#9ca3af'
                       : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                    boxShadow: isStarting ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.15)',
+                    boxShadow: isStarting ? 'none' : '0 6px 20px rgba(34, 197, 94, 0.35)',
                   }}
                 >
                   {isStarting ? (
                     'Starting...'
                   ) : (
-                    <>
-                      <span>🎓</span>
-                      <span>Begin Tutorial</span>
+                    <span
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                      })}
+                    >
+                      <span>Let's Go!</span>
                       <span>→</span>
-                    </>
+                    </span>
                   )}
                 </button>
-              </div>
-            )}
-
-            {/* Error display */}
-            {displayError && (
-              <div
-                data-element="error-display"
-                data-error-type={isNoSkillsError ? 'no-skills' : 'generic'}
-                className={css({
-                  marginBottom: '1rem',
-                  padding: '0.75rem',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  '@media (max-height: 700px)': {
-                    marginBottom: '0.5rem',
-                    padding: '0.375rem',
-                    borderRadius: '6px',
-                  },
-                })}
-                style={{
-                  background: isNoSkillsError
-                    ? isDark
-                      ? 'rgba(251, 191, 36, 0.12)'
-                      : 'rgba(251, 191, 36, 0.08)'
-                    : isDark
-                      ? 'rgba(239, 68, 68, 0.12)'
-                      : 'rgba(239, 68, 68, 0.08)',
-                  border: `1px solid ${
-                    isNoSkillsError
-                      ? isDark
-                        ? 'rgba(251, 191, 36, 0.25)'
-                        : 'rgba(251, 191, 36, 0.15)'
-                      : isDark
-                        ? 'rgba(239, 68, 68, 0.25)'
-                        : 'rgba(239, 68, 68, 0.15)'
-                  }`,
-                }}
-              >
-                {isNoSkillsError ? (
-                  <>
-                    <p
-                      className={css({ fontSize: '0.875rem', marginBottom: '0.5rem' })}
-                      style={{ color: isDark ? '#fcd34d' : '#b45309' }}
-                    >
-                      ⚠️ No skills enabled
-                    </p>
-                    <p
-                      className={css({ fontSize: '0.75rem' })}
-                      style={{ color: isDark ? '#d4d4d4' : '#525252' }}
-                    >
-                      Please enable at least one skill in the skill selector before starting a
-                      session.
-                    </p>
-                  </>
-                ) : (
-                  <p
-                    className={css({ fontSize: '0.875rem' })}
-                    style={{ color: isDark ? '#fca5a5' : '#dc2626' }}
-                  >
-                    {displayError.message || 'Something went wrong. Please try again.'}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Start button - only shown when no tutorial is pending */}
-            {!showTutorialGate && (
-              <button
-                type="button"
-                data-action="start-practice"
-                data-status={isStarting ? 'starting' : 'ready'}
-                onClick={handleStart}
-                disabled={isStarting}
-                className={css({
-                  width: '100%',
-                  padding: '1rem',
-                  fontSize: '1.0625rem',
-                  fontWeight: 'bold',
-                  color: 'white',
-                  borderRadius: '12px',
-                  border: 'none',
-                  cursor: isStarting ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    transform: isStarting ? 'none' : 'translateY(-1px)',
-                  },
-                  _active: {
-                    transform: 'translateY(0)',
-                  },
-                  '@media (max-height: 700px)': {
-                    padding: '0.75rem',
-                    fontSize: '1rem',
-                    borderRadius: '10px',
-                    marginTop: 'auto',
-                  },
-                })}
-                style={{
-                  background: isStarting
-                    ? '#9ca3af'
-                    : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                  boxShadow: isStarting ? 'none' : '0 6px 20px rgba(34, 197, 94, 0.35)',
-                }}
-              >
-                {isStarting ? (
-                  'Starting...'
-                ) : (
-                  <span
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                    })}
-                  >
-                    <span>Let's Go!</span>
-                    <span>→</span>
-                  </span>
-                )}
-              </button>
-            )}
-            </div>{/* End config-and-action wrapper */}
+              )}
+            </div>
+            {/* End config-and-action wrapper */}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

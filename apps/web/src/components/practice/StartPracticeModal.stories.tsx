@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import type {
+  MaintenanceMode,
+  ProgressionMode,
+  RemediationMode,
+} from '@/lib/curriculum/session-mode'
 import { StartPracticeModal } from './StartPracticeModal'
 import { css } from '../../../styled-system/css'
 
@@ -67,11 +72,48 @@ const meta: Meta<typeof StartPracticeModal> = {
 export default meta
 type Story = StoryObj<typeof StartPracticeModal>
 
+// Mock session modes for stories
+const mockMaintenanceMode: MaintenanceMode = {
+  type: 'maintenance',
+  focusDescription: 'Mixed practice',
+  skillCount: 8,
+}
+
+const mockProgressionMode: ProgressionMode = {
+  type: 'progression',
+  nextSkill: { skillId: 'add-5', displayName: '+5', pKnown: 0 },
+  phase: {
+    id: 'L1.add.+5.direct',
+    levelId: 1,
+    operation: 'addition',
+    targetNumber: 5,
+    usesFiveComplement: false,
+    usesTenComplement: false,
+    name: 'Direct Addition 5',
+    description: 'Learn to add 5 using direct technique',
+    primarySkillId: 'add-5',
+    order: 3,
+  },
+  tutorialRequired: true,
+  skipCount: 0,
+  focusDescription: 'Learning: +5',
+}
+
+const mockRemediationMode: RemediationMode = {
+  type: 'remediation',
+  weakSkills: [
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.35 },
+    { skillId: 'add-4', displayName: '+4', pKnown: 0.42 },
+  ],
+  focusDescription: 'Strengthening: +3 and +4',
+}
+
 // Default props
 const defaultProps = {
   studentId: 'test-student-1',
   studentName: 'Sonia',
-  focusDescription: 'Five Complements Addition',
+  focusDescription: 'Mixed practice',
+  sessionMode: mockMaintenanceMode,
   secondsPerTerm: 4,
   onClose: () => console.log('Modal closed'),
   onStarted: () => console.log('Practice started'),
@@ -141,50 +183,39 @@ export const DarkTheme: Story = {
 }
 
 /**
- * For a student with slower pace
+ * Remediation mode - student has weak skills to strengthen
  */
-export const SlowerPace: Story = {
+export const RemediationMode: Story = {
   render: () => (
     <StoryWrapper>
       <StartPracticeModal
         {...defaultProps}
         studentName="Alex"
-        secondsPerTerm={8}
-        focusDescription="Ten Complements Addition"
+        sessionMode={mockRemediationMode}
+        focusDescription={mockRemediationMode.focusDescription}
       />
     </StoryWrapper>
   ),
 }
 
 /**
- * For a student with faster pace
+ * Progression mode - student is ready to learn a new skill
  */
-export const FasterPace: Story = {
+export const ProgressionMode: Story = {
   render: () => (
     <StoryWrapper>
       <StartPracticeModal
         {...defaultProps}
         studentName="Maya"
-        secondsPerTerm={2}
-        focusDescription="Basic Addition"
+        sessionMode={mockProgressionMode}
+        focusDescription={mockProgressionMode.focusDescription}
       />
     </StoryWrapper>
   ),
 }
 
 /**
- * Note: The tutorial gate feature requires the useNextSkillToLearn hook
- * to return data. In a real scenario, you would need to mock the API
- * response or use MSW (Mock Service Worker) to simulate the API.
- *
- * The tutorial gate shows when:
- * 1. useNextSkillToLearn returns a skill with tutorialReady=false
- * 2. getSkillTutorialConfig returns a config for that skill
- *
- * To test the tutorial gate manually:
- * 1. Use the app with a real student who has a new skill to learn
- * 2. The green "New skill available!" banner will appear
- * 3. Click "Learn Now" to see the SkillTutorialLauncher
+ * Documentation note about the SessionMode system
  */
 export const DocumentationNote: Story = {
   render: () => (
@@ -199,21 +230,26 @@ export const DocumentationNote: Story = {
         })}
       >
         <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' })}>
-          Tutorial Gate Feature
+          Session Mode System
         </h2>
         <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
-          The StartPracticeModal includes a <strong>tutorial gate</strong> that appears when a
-          student has a new skill ready to learn. This feature:
+          The StartPracticeModal receives a <strong>sessionMode</strong> prop that determines the
+          type of session:
         </p>
         <ul className={css({ paddingLeft: '1.5rem', marginBottom: '1rem', lineHeight: 1.8 })}>
-          <li>Shows a green banner with the skill name</li>
-          <li>Offers "Learn Now" to start the tutorial</li>
-          <li>Offers "Practice without it" to skip</li>
-          <li>Tracks skip count for teacher visibility</li>
+          <li>
+            <strong>Maintenance:</strong> All skills are strong, mixed practice
+          </li>
+          <li>
+            <strong>Remediation:</strong> Weak skills need strengthening (shown in targeting info)
+          </li>
+          <li>
+            <strong>Progression:</strong> Ready to learn new skill, may include tutorial gate
+          </li>
         </ul>
         <p className={css({ fontSize: '0.875rem', color: 'gray.600', fontStyle: 'italic' })}>
-          Note: This feature requires API mocking to demonstrate in Storybook. See
-          SkillTutorialLauncher stories for the tutorial UI itself.
+          The sessionMode is fetched via useSessionMode() hook and passed to the modal. See
+          SessionModeBanner stories for the dashboard banner component.
         </p>
       </div>
     </StoryWrapper>

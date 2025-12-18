@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   PracticeSubNav,
+  SessionModeBanner,
   SessionOverview,
   SessionSummary,
   StartPracticeModal,
@@ -12,6 +13,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../../../styled-system/css'
 
@@ -47,6 +49,9 @@ export function SummaryClient({
 
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [viewMode, setViewMode] = useState<'summary' | 'debug'>('summary')
+
+  // Session mode - single source of truth for session planning decisions
+  const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
 
   const isInProgress = session?.startedAt && !session?.completedAt
 
@@ -116,6 +121,18 @@ export function SummaryClient({
               {headerSubtitle}
             </p>
           </header>
+
+          {/* Session mode banner - handles celebration wind-down internally */}
+          {sessionMode && (
+            <div className={css({ marginBottom: '1.5rem' })}>
+              <SessionModeBanner
+                sessionMode={sessionMode}
+                onAction={handlePracticeAgain}
+                isLoading={isLoadingSessionMode}
+                variant="dashboard"
+              />
+            </div>
+          )}
 
           {/* View Mode Toggle (only show when there's a session) */}
           {session && (
@@ -230,11 +247,12 @@ export function SummaryClient({
       </main>
 
       {/* Start Practice Modal */}
-      {showStartPracticeModal && (
+      {showStartPracticeModal && sessionMode && (
         <StartPracticeModal
           studentId={studentId}
           studentName={player.name}
-          focusDescription="Continue practicing"
+          focusDescription={sessionMode.focusDescription}
+          sessionMode={sessionMode}
           avgSecondsPerProblem={avgSecondsPerProblem}
           existingPlan={null}
           problemHistory={problemHistory}

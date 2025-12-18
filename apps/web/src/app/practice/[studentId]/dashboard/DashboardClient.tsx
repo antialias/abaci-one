@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -9,6 +10,7 @@ import {
   type CurrentPhaseInfo,
   PracticeSubNav,
   ProgressDashboard,
+  SessionModeBanner,
   StartPracticeModal,
   type StudentWithProgress,
 } from '@/components/practice'
@@ -28,6 +30,7 @@ import {
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
 import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
@@ -1369,9 +1372,11 @@ function SkillsTab({
 function HistoryTab({
   isDark,
   recentSessions,
+  studentId,
 }: {
   isDark: boolean
   recentSessions: PracticeSession[]
+  studentId: string
 }) {
   return (
     <div data-tab-content="history">
@@ -1420,14 +1425,26 @@ function HistoryTab({
             })}
           >
             {recentSessions.slice(0, 10).map((session) => (
-              <div
+              <Link
                 key={session.id}
+                href={`/practice/${studentId}/session/${session.id}`}
+                data-element="session-history-item"
+                data-session-id={session.id}
                 className={css({
+                  display: 'block',
                   padding: '1rem',
                   borderRadius: '8px',
                   backgroundColor: isDark ? 'gray.700' : 'white',
                   border: '1px solid',
                   borderColor: isDark ? 'gray.600' : 'gray.200',
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.650' : 'gray.50',
+                    borderColor: isDark ? 'gray.500' : 'gray.300',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  },
                 })}
               >
                 <div
@@ -1488,7 +1505,7 @@ function HistoryTab({
                     % accuracy
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -1753,6 +1770,9 @@ export function DashboardClient({
   const setMasteredSkillsMutation = useSetMasteredSkills()
   const refreshSkillMutation = useRefreshSkillRecency()
 
+  // Session mode - single source of truth for session planning decisions
+  const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
@@ -1916,6 +1936,18 @@ export function DashboardClient({
         })}
       >
         <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
+          {/* Session mode banner - handles celebration wind-down internally */}
+          {sessionMode && (
+            <div className={css({ marginBottom: '1rem' })}>
+              <SessionModeBanner
+                sessionMode={sessionMode}
+                onAction={handleStartPractice}
+                isLoading={isLoadingSessionMode}
+                variant="dashboard"
+              />
+            </div>
+          )}
+
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
 
           {activeTab === 'overview' && (
@@ -1945,7 +1977,7 @@ export function DashboardClient({
           )}
 
           {activeTab === 'history' && (
-            <HistoryTab isDark={isDark} recentSessions={recentSessions} />
+            <HistoryTab isDark={isDark} recentSessions={recentSessions} studentId={studentId} />
           )}
 
           {activeTab === 'notes' && (
@@ -1980,11 +2012,12 @@ export function DashboardClient({
         />
       </main>
 
-      {showStartPracticeModal && (
+      {showStartPracticeModal && sessionMode && (
         <StartPracticeModal
           studentId={studentId}
           studentName={player.name}
-          focusDescription={currentPhase.phaseName}
+          focusDescription={sessionMode.focusDescription}
+          sessionMode={sessionMode}
           avgSecondsPerProblem={avgSecondsPerProblem}
           existingPlan={activeSession}
           problemHistory={problemHistory}

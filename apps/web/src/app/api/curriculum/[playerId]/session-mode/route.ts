@@ -1,0 +1,46 @@
+/**
+ * API route for getting the session mode for a student
+ *
+ * GET /api/curriculum/[playerId]/session-mode
+ *
+ * Returns the unified session mode that determines:
+ * - What type of session should be run (remediation/progression/maintenance)
+ * - What to show in the dashboard banner
+ * - What CTA to show in the StartPracticeModal
+ * - What problems the session planner should generate
+ *
+ * This is the single source of truth for session planning decisions.
+ */
+
+import { NextResponse } from 'next/server'
+import { getSessionMode, type SessionMode } from '@/lib/curriculum/session-mode'
+
+interface RouteParams {
+  params: Promise<{ playerId: string }>
+}
+
+export interface SessionModeResponse {
+  sessionMode: SessionMode
+}
+
+/**
+ * GET - Get the session mode for a student
+ */
+export async function GET(_request: Request, { params }: RouteParams) {
+  try {
+    const { playerId } = await params
+
+    if (!playerId) {
+      return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    const sessionMode = await getSessionMode(playerId)
+
+    return NextResponse.json({
+      sessionMode,
+    } satisfies SessionModeResponse)
+  } catch (error) {
+    console.error('Error fetching session mode:', error)
+    return NextResponse.json({ error: 'Failed to fetch session mode' }, { status: 500 })
+  }
+}
