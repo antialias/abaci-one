@@ -25,6 +25,8 @@ interface SummaryPageProps {
  * This page is always accessible regardless of session state.
  * Parents/teachers can view progress even while a session is in progress.
  *
+ * For viewing specific historical sessions, use /practice/[studentId]/session/[sessionId]
+ *
  * URL: /practice/[studentId]/summary
  */
 export default async function SummaryPage({ params }: SummaryPageProps) {

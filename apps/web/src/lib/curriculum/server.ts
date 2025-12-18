@@ -87,5 +87,6 @@ export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
   getRecentSessionResults,
+  getSessionPlan,
 } from './session-planner'
 export type { ProblemResultWithContext } from './session-planner'

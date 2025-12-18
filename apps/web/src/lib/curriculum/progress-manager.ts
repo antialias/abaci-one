@@ -3,7 +3,7 @@
  * Handles CRUD operations for student curriculum progress and skill mastery
  */
 
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/db/schema/player-skill-mastery'
 // Import directly from source to avoid circular dependency issues with re-exports
 import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config/fluency-thresholds'
-import type { NewPracticeSession, PracticeSession } from '@/db/schema/practice-sessions'
+import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { HelpLevel } from '@/db/schema/session-plans'
 import {
   isTutorialSatisfied,
@@ -520,113 +520,55 @@ export async function calculateMasteryPercent(
 // ============================================================================
 
 /**
- * Start a new practice session
- */
-export async function startPracticeSession(
-  playerId: string,
-  phaseId: string,
-  visualizationMode: boolean = false
-): Promise<PracticeSession> {
-  const newSession: NewPracticeSession = {
-    playerId,
-    phaseId,
-    problemsAttempted: 0,
-    problemsCorrect: 0,
-    skillsUsed: [],
-    visualizationMode,
-    startedAt: new Date(),
-  }
-
-  await db.insert(schema.practiceSessions).values(newSession)
-
-  // Return the most recent session for this player
-  const sessions = await db.query.practiceSessions.findMany({
-    where: eq(schema.practiceSessions.playerId, playerId),
-    orderBy: desc(schema.practiceSessions.startedAt),
-    limit: 1,
-  })
-
-  return sessions[0]
-}
-
-/**
- * Update a practice session with problem results
- */
-export async function updatePracticeSession(
-  sessionId: string,
-  data: {
-    problemsAttempted?: number
-    problemsCorrect?: number
-    skillsUsed?: string[]
-    averageTimeMs?: number
-    totalTimeMs?: number
-  }
-): Promise<PracticeSession | null> {
-  await db
-    .update(schema.practiceSessions)
-    .set(data)
-    .where(eq(schema.practiceSessions.id, sessionId))
-
-  return db.query.practiceSessions.findFirst({
-    where: eq(schema.practiceSessions.id, sessionId),
-  }) as Promise<PracticeSession | null>
-}
-
-/**
- * Complete a practice session
- */
-export async function completePracticeSession(
-  sessionId: string,
-  finalData?: {
-    problemsAttempted?: number
-    problemsCorrect?: number
-    skillsUsed?: string[]
-    averageTimeMs?: number
-    totalTimeMs?: number
-  }
-): Promise<PracticeSession | null> {
-  await db
-    .update(schema.practiceSessions)
-    .set({
-      ...finalData,
-      completedAt: new Date(),
-    })
-    .where(eq(schema.practiceSessions.id, sessionId))
-
-  return db.query.practiceSessions.findFirst({
-    where: eq(schema.practiceSessions.id, sessionId),
-  }) as Promise<PracticeSession | null>
-}
-
-/**
  * Get recent practice sessions for a player
+ *
+ * NOTE: This queries from session_plans (the active session system) and
+ * transforms results into PracticeSession format for the dashboard.
+ * The old practice_sessions table is no longer populated.
  */
 export async function getRecentSessions(
   playerId: string,
   limit: number = 10
 ): Promise<PracticeSession[]> {
-  return db.query.practiceSessions.findMany({
-    where: eq(schema.practiceSessions.playerId, playerId),
-    orderBy: desc(schema.practiceSessions.startedAt),
+  // Query completed/abandoned sessions from session_plans
+  const sessions = await db.query.sessionPlans.findMany({
+    where: and(
+      eq(schema.sessionPlans.playerId, playerId),
+      inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
+    ),
+    orderBy: desc(schema.sessionPlans.completedAt),
     limit,
   })
-}
 
-/**
- * Get practice sessions for a specific phase
- */
-export async function getSessionsForPhase(
-  playerId: string,
-  phaseId: string,
-  limit: number = 10
-): Promise<PracticeSession[]> {
-  return db.query.practiceSessions.findMany({
-    where: and(
-      eq(schema.practiceSessions.playerId, playerId),
-      eq(schema.practiceSessions.phaseId, phaseId)
-    ),
-    orderBy: desc(schema.practiceSessions.startedAt),
-    limit,
+  // Transform session_plans data into PracticeSession format
+  return sessions.map((session) => {
+    // Parse results from JSON
+    const results =
+      (session.results as Array<{
+        isCorrect: boolean
+        responseTimeMs: number
+        skillsExercised: string[]
+      }>) || []
+
+    const problemsAttempted = results.length
+    const problemsCorrect = results.filter((r) => r.isCorrect).length
+    const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
+    const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
+    const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
+
+    return {
+      id: session.id,
+      playerId: session.playerId,
+      phaseId: 'session', // session_plans don't have phaseId
+      problemsAttempted,
+      problemsCorrect,
+      averageTimeMs,
+      totalTimeMs,
+      skillsUsed,
+      visualizationMode: false, // Not tracked in session_plans
+      startedAt: session.startedAt || session.createdAt,
+      completedAt: session.completedAt,
+    } as PracticeSession
   })
 }
 

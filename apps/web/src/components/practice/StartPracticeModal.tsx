@@ -84,8 +84,7 @@ export function StartPracticeModal({
   const showTutorialGate = !!tutorialConfig && !showTutorial
 
   // Whether to show the remediation CTA (weak skills need strengthening)
-  const showRemediationCta =
-    sessionMode.type === 'remediation' && sessionMode.weakSkills.length > 0
+  const showRemediationCta = sessionMode.type === 'remediation' && sessionMode.weakSkills.length > 0
 
   // Get skill info for tutorial from sessionMode
   const nextSkill = sessionMode.type === 'progression' ? sessionMode.nextSkill : null

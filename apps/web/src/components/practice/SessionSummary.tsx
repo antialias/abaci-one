@@ -2,8 +2,6 @@
 
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
-import { useNextSkillToLearn } from '@/hooks/useNextSkillToLearn'
-import { getSkillTutorialConfig } from '@/lib/curriculum/skill-tutorial-config'
 import { css } from '../../../styled-system/css'
 import { CompactLinearProblem, CompactVerticalProblem } from './CompactProblemDisplay'
 
@@ -61,7 +59,7 @@ const SKILL_CATEGORY_NAMES: Record<string, string> = {
  */
 export function SessionSummary({
   plan,
-  studentId,
+  studentId: _studentId,
   studentName,
   onPracticeAgain,
 }: SessionSummaryProps) {
@@ -69,11 +67,6 @@ export function SessionSummary({
   const isDark = resolvedTheme === 'dark'
   const results = plan.results as SlotResult[]
 
-  // Check if there's a new skill available to learn
-  const { data: nextSkill } = useNextSkillToLearn(studentId)
-  const nextSkillConfig = nextSkill ? getSkillTutorialConfig(nextSkill.skillId) : null
-  // Only show unlock if the skill needs a tutorial (tutorialReady is false means NOT satisfied)
-  const showUnlockCelebration = nextSkill && !nextSkill.tutorialReady && nextSkillConfig
   const totalProblems = results.length
   const correctProblems = results.filter((r) => r.isCorrect).length
   const accuracy = totalProblems > 0 ? correctProblems / totalProblems : 0
@@ -169,57 +162,6 @@ export function SessionSummary({
           {performanceMessage}
         </p>
       </div>
-
-      {/* Skill unlock celebration */}
-      {showUnlockCelebration && nextSkillConfig && (
-        <div
-          data-section="skill-unlock"
-          className={css({
-            padding: '1rem',
-            backgroundColor: isDark ? 'rgba(234, 179, 8, 0.12)' : 'rgba(234, 179, 8, 0.08)',
-            border: '2px solid',
-            borderColor: isDark ? 'yellow.700' : 'yellow.300',
-            borderRadius: '12px',
-            textAlign: 'center',
-          })}
-        >
-          <div
-            className={css({
-              fontSize: '2rem',
-              marginBottom: '0.5rem',
-            })}
-          >
-            🔓
-          </div>
-          <p
-            className={css({
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              color: isDark ? 'yellow.200' : 'yellow.800',
-              marginBottom: '0.25rem',
-            })}
-          >
-            New Skill Unlocked!
-          </p>
-          <p
-            className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.300' : 'gray.700',
-              marginBottom: '0.5rem',
-            })}
-          >
-            You're ready to learn <strong>{nextSkillConfig.title}</strong>
-          </p>
-          <p
-            className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-            })}
-          >
-            Start your next practice session to begin the tutorial!
-          </p>
-        </div>
-      )}
 
       {/* Main stats */}
       <div

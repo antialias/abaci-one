@@ -1,78 +1,27 @@
-import { createId } from '@paralleldrive/cuid2'
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { players } from './players'
+/**
+ * Practice session types
+ *
+ * NOTE: The practice_sessions table has been dropped.
+ * Session data is now stored in session_plans table.
+ * These types are kept for backwards compatibility with the dashboard.
+ */
 
 /**
- * Practice sessions table - historical record of practice activity
- *
- * Each row represents a single practice session for a player.
- * Used for analytics, progress tracking, and displaying practice history.
+ * Practice session data - used for dashboard display
  */
-export const practiceSessions = sqliteTable(
-  'practice_sessions',
-  {
-    /** Primary key */
-    id: text('id')
-      .primaryKey()
-      .$defaultFn(() => createId()),
-
-    /** Foreign key to players table */
-    playerId: text('player_id')
-      .notNull()
-      .references(() => players.id, { onDelete: 'cascade' }),
-
-    /**
-     * Curriculum phase ID that was practiced
-     * Format: "L{level}.{operation}.{number}.{technique}"
-     * Example: "L1.add.+3.five"
-     */
-    phaseId: text('phase_id').notNull(),
-
-    /** Number of problems attempted in this session */
-    problemsAttempted: integer('problems_attempted').notNull().default(0),
-
-    /** Number of problems solved correctly */
-    problemsCorrect: integer('problems_correct').notNull().default(0),
-
-    /** Average time per problem in milliseconds */
-    averageTimeMs: integer('average_time_ms'),
-
-    /** Total session duration in milliseconds */
-    totalTimeMs: integer('total_time_ms'),
-
-    /**
-     * Skills exercised during this session (JSON array)
-     * Example: ["fiveComplements.4=5-1", "basic.heavenBead"]
-     */
-    skillsUsed: text('skills_used', { mode: 'json' }).notNull().default('[]').$type<string[]>(),
-
-    /**
-     * Whether visualization mode was enabled (no abacus visible)
-     */
-    visualizationMode: integer('visualization_mode', { mode: 'boolean' }).notNull().default(false),
-
-    /** When this session started */
-    startedAt: integer('started_at', { mode: 'timestamp' })
-      .notNull()
-      .$defaultFn(() => new Date()),
-
-    /** When this session was completed (null if abandoned) */
-    completedAt: integer('completed_at', { mode: 'timestamp' }),
-  },
-  (table) => ({
-    /** Index for fast lookups by playerId */
-    playerIdIdx: index('practice_sessions_player_id_idx').on(table.playerId),
-
-    /** Index for queries filtering by date */
-    startedAtIdx: index('practice_sessions_started_at_idx').on(table.startedAt),
-
-    /** Composite index for player + phase queries */
-    playerPhaseIdx: index('practice_sessions_player_phase_idx').on(table.playerId, table.phaseId),
-  })
-)
-
-export type PracticeSession = typeof practiceSessions.$inferSelect
-export type NewPracticeSession = typeof practiceSessions.$inferInsert
+export interface PracticeSession {
+  id: string
+  playerId: string
+  phaseId: string
+  problemsAttempted: number
+  problemsCorrect: number
+  averageTimeMs: number | null
+  totalTimeMs: number | null
+  skillsUsed: string[]
+  visualizationMode: boolean
+  startedAt: Date
+  completedAt: Date | null
+}
 
 /**
  * Helper to calculate accuracy from a session

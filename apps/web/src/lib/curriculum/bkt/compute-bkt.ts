@@ -174,11 +174,7 @@ export function computeBktFromHistory(
     const uncertaintyRange = getUncertaintyRange(finalPKnown, confidence)
 
     // Classify mastery based on P(known) and confidence
-    const masteryClassification = classifyMastery(
-      finalPKnown,
-      confidence,
-      opts.confidenceThreshold
-    )
+    const masteryClassification = classifyMastery(finalPKnown, confidence, opts.confidenceThreshold)
 
     skills.push({
       skillId,

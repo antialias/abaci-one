@@ -9,11 +9,17 @@
  * - "⭐ Ready to Level Up" - End of L1 addition, all strong
  * - "🚀 Overdue for Promotion" - Has mastered L1, ready for L2
  *
+ * Session Mode Test Profiles:
+ * - "🎯 Remediation Test" - REMEDIATION mode (weak skills blocking promotion)
+ * - "📚 Progression Tutorial Test" - PROGRESSION mode (tutorial required)
+ * - "🚀 Progression Ready Test" - PROGRESSION mode (tutorial done)
+ * - "🏆 Maintenance Test" - MAINTENANCE mode (all skills strong)
+ *
  * Usage: npm run seed:test-students
  */
 
 import { createId } from '@paralleldrive/cuid2'
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '../src/db'
 import { computeBktFromHistory } from '../src/lib/curriculum/bkt'
 import { BKT_THRESHOLDS } from '../src/lib/curriculum/config/bkt-integration'
@@ -47,6 +53,10 @@ interface TestStudentProfile {
   skillHistory: SkillConfig[]
   /** Curriculum phase this student is nominally at */
   currentPhaseId: string
+  /** Skills that should have their tutorial marked as completed */
+  tutorialCompletedSkills?: string[]
+  /** Expected session mode for this profile */
+  expectedSessionMode?: 'remediation' | 'progression' | 'maintenance'
 }
 
 // =============================================================================
@@ -278,6 +288,203 @@ Use this student to test:
       { skillId: 'tenComplements.6=10-4', targetAccuracy: 0.85, problems: 18 },
     ],
   },
+
+  // =============================================================================
+  // Session Mode Test Profiles
+  // =============================================================================
+
+  {
+    name: '🎯 Remediation Test',
+    emoji: '🎯',
+    color: '#dc2626', // red-600
+    description: 'REMEDIATION MODE - Weak skills blocking promotion',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+    ],
+    expectedSessionMode: 'remediation',
+    notes: `TEST STUDENT: Remediation Mode
+
+This student is specifically configured to trigger REMEDIATION mode.
+
+Session Mode: REMEDIATION (with blocked promotion)
+
+What you should see:
+• SessionModeBanner shows "Skills need practice" with weak skills listed
+• Banner shows blocked promotion: "Ready for +3 (five-complement) once skills are strong"
+• StartPracticeModal shows remediation-focused CTA
+
+How it works:
+• Has 4 skills practicing: basic.directAddition, heavenBead, simpleCombinations, fiveComplements.4=5-1
+• Two skills have low accuracy (< 50%) with enough problems to be confident
+• The next skill (fiveComplements.3=5-2) is available but blocked by weak skills
+
+Use this to test the remediation UI in dashboard and modal.`,
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+    ],
+    skillHistory: [
+      // Strong skills
+      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20 },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18 },
+      // WEAK skills - will trigger remediation
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.35, problems: 15 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.28, problems: 18 },
+    ],
+  },
+  {
+    name: '📚 Progression Tutorial Test',
+    emoji: '📚',
+    color: '#7c3aed', // violet-600
+    description: 'PROGRESSION MODE - Ready for new skill, tutorial required',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+    ],
+    expectedSessionMode: 'progression',
+    notes: `TEST STUDENT: Progression Mode (Tutorial Required)
+
+This student is specifically configured to trigger PROGRESSION mode with tutorial gate.
+
+Session Mode: PROGRESSION (tutorialRequired: true)
+
+What you should see:
+• SessionModeBanner shows "New Skill Available" with next skill name
+• Banner has "Start Tutorial" button (not "Start Practice")
+• StartPracticeModal shows tutorial CTA with skill description
+
+How it works:
+• Has 4 skills practicing, ALL are strong (>= 80% accuracy)
+• The next skill in curriculum (fiveComplements.3=5-2) is available
+• Tutorial for that skill has NOT been completed
+
+Use this to test the progression UI and tutorial gate flow.`,
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      // NOTE: fiveComplements.3=5-2 tutorial NOT completed - triggers tutorial gate
+    ],
+    skillHistory: [
+      // All skills STRONG (>= 80% accuracy)
+      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 25 },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.92, problems: 22 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.88, problems: 20 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.85, problems: 20 },
+    ],
+  },
+  {
+    name: '🚀 Progression Ready Test',
+    emoji: '🚀',
+    color: '#059669', // emerald-600
+    description: 'PROGRESSION MODE - Tutorial done, ready to practice',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+    ],
+    expectedSessionMode: 'progression',
+    notes: `TEST STUDENT: Progression Mode (Tutorial Already Done)
+
+This student is specifically configured to trigger PROGRESSION mode with tutorial satisfied.
+
+Session Mode: PROGRESSION (tutorialRequired: false)
+
+What you should see:
+• SessionModeBanner shows "New Skill Available" with next skill name
+• Banner has "Start Practice" button (tutorial already done)
+• StartPracticeModal shows practice CTA (may show skip count if any)
+
+How it works:
+• Has 4 skills practicing, ALL are strong (>= 80% accuracy)
+• The next skill in curriculum (fiveComplements.3=5-2) is available
+• Tutorial for that skill HAS been completed (tutorialCompleted: true)
+
+Use this to test the progression UI when tutorial is already satisfied.`,
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2', // Tutorial already completed!
+    ],
+    skillHistory: [
+      // All skills STRONG (>= 80% accuracy)
+      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 25 },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.92, problems: 22 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.88, problems: 20 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.85, problems: 20 },
+    ],
+  },
+  {
+    name: '🏆 Maintenance Test',
+    emoji: '🏆',
+    color: '#0891b2', // cyan-600
+    description: 'MAINTENANCE MODE - All skills strong, mixed practice',
+    currentPhaseId: 'L1.add.+4.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
+    ],
+    expectedSessionMode: 'maintenance',
+    notes: `TEST STUDENT: Maintenance Mode
+
+This student is specifically configured to trigger MAINTENANCE mode.
+
+Session Mode: MAINTENANCE
+
+What you should see:
+• SessionModeBanner shows "Mixed Practice" or similar
+• Banner indicates all skills are strong
+• StartPracticeModal shows general practice CTA
+
+How it works:
+• Has 7 skills practicing (all L1 addition), ALL are strong (>= 80%)
+• All practicing skills have enough history to be confident
+• There IS a next skill available but this student is at a natural "pause" point
+  (actually to force maintenance, we make the next skill's tutorial NOT exist)
+
+NOTE: True maintenance mode is rare in practice - usually there's always a next skill.
+This profile demonstrates the maintenance case.
+
+Use this to test the maintenance mode UI in dashboard and modal.`,
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
+    ],
+    skillHistory: [
+      // All skills STRONG (>= 80% accuracy) with high confidence
+      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 30 },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 28 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.9, problems: 25 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 25 },
+      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 22 },
+      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 22 },
+      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.85, problems: 20 },
+    ],
+  },
 ]
 
 // =============================================================================
@@ -365,6 +572,21 @@ async function createTestStudent(
       correct: 0,
       consecutiveCorrect: 0,
     })
+  }
+
+  // Create tutorial progress records for completed tutorials
+  if (profile.tutorialCompletedSkills) {
+    for (const skillId of profile.tutorialCompletedSkills) {
+      await db.insert(schema.skillTutorialProgress).values({
+        id: createId(),
+        playerId,
+        skillId,
+        tutorialCompleted: true,
+        completedAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+        teacherOverride: false,
+        skipCount: 0,
+      })
+    }
   }
 
   // Generate results from skill history
@@ -471,51 +693,22 @@ async function createTestStudent(
 async function main() {
   console.log('🧪 Seeding Test Students for BKT Testing...\n')
 
-  // Find user with most recent activity (most recent completed session)
-  console.log('1. Finding user with most recent activity...')
+  // Find the most recent browser session by looking at most recently created player
+  // (Players are created when users visit /practice, so this reflects the latest browser activity)
+  console.log('1. Finding most recent browser session...')
 
-  const recentSession = await db.query.sessionPlans.findFirst({
-    where: and(
-      eq(schema.sessionPlans.status, 'completed'),
-      isNotNull(schema.sessionPlans.completedAt)
-    ),
-    orderBy: [desc(schema.sessionPlans.completedAt)],
+  const recentPlayer = await db.query.players.findFirst({
+    where: (players, { not, like }) => not(like(players.name, '%Test%')),
+    orderBy: [desc(schema.players.createdAt)],
   })
 
-  let userId: string
-
-  if (recentSession) {
-    // Get the user who owns the player from that session
-    const player = await db.query.players.findFirst({
-      where: eq(schema.players.id, recentSession.playerId),
-    })
-    if (player) {
-      userId = player.userId
-      console.log(`   Found user via recent session (player: ${player.name})`)
-    } else {
-      // Fallback to finding any player
-      const anyPlayer = await db.query.players.findFirst({
-        where: (players, { not, like }) => not(like(players.name, '%Test%')),
-      })
-      if (!anyPlayer) {
-        console.error('❌ No players found! Create a student at /practice first.')
-        process.exit(1)
-      }
-      userId = anyPlayer.userId
-      console.log(`   Found user via player: ${anyPlayer.name}`)
-    }
-  } else {
-    // No sessions, find any real player
-    const anyPlayer = await db.query.players.findFirst({
-      where: (players, { not, like }) => not(like(players.name, '%Test%')),
-    })
-    if (!anyPlayer) {
-      console.error('❌ No players found! Create a student at /practice first.')
-      process.exit(1)
-    }
-    userId = anyPlayer.userId
-    console.log(`   Found user via player: ${anyPlayer.name}`)
+  if (!recentPlayer) {
+    console.error('❌ No players found! Create a student at /practice first.')
+    process.exit(1)
   }
+
+  const userId = recentPlayer.userId
+  console.log(`   Found user via most recent player: ${recentPlayer.name}`)
 
   // Create each test profile
   console.log('\n2. Creating test students...\n')
@@ -531,6 +724,12 @@ async function main() {
     console.log(
       `      Classifications: 🔴 ${weak} weak, 🟡 ${developing} developing, 🟢 ${strong} strong`
     )
+    if (profile.expectedSessionMode) {
+      console.log(`      Expected Mode: ${profile.expectedSessionMode.toUpperCase()}`)
+    }
+    if (profile.tutorialCompletedSkills) {
+      console.log(`      Tutorials Completed: ${profile.tutorialCompletedSkills.length} skills`)
+    }
     console.log(`      Player ID: ${playerId}`)
     console.log('')
   }

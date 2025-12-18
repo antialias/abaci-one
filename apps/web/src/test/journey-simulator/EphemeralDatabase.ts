@@ -163,7 +163,6 @@ export async function initializeSkillMastery(
 export async function resetDatabase(db: TestDatabase): Promise<void> {
   // Delete in reverse order of dependencies
   await db.delete(schema.sessionPlans)
-  await db.delete(schema.practiceSessions)
   await db.delete(schema.playerSkillMastery)
   await db.delete(schema.playerCurriculum)
   await db.delete(schema.players)

@@ -804,6 +804,7 @@ function MinimalNav({
         // Use the variable for min-height to ensure consistency
         minHeight: 'var(--app-nav-height-minimal)',
       }}
+      className={css({ _print: { display: 'none' } })}
     >
       {/* Hamburger Menu - positioned absolutely on left */}
       <div
@@ -934,6 +935,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
           right: 0,
           zIndex: Z_INDEX.NAV_BAR,
           transition: 'all 0.3s ease',
+          // Hide when printing
+          _print: { display: 'none' },
         })}
       >
         <div className={container({ maxW: '7xl', px: '4', py: '3' })}>

@@ -39,7 +39,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // ============================================================================
   'basic.directAddition': {
     skillId: 'basic.directAddition',
-    title: 'Adding by moving earth beads',
+    title: 'Direct Addition (1-4)',
     description:
       'The simplest way to add: just push up the earth beads you need. Each earth bead is worth 1.',
     exampleProblems: [
@@ -50,7 +50,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'basic.heavenBead': {
     skillId: 'basic.heavenBead',
-    title: 'Using the heaven bead for 5',
+    title: 'Heaven Bead (5)',
     description:
       'The heaven bead is worth 5. Push it down to add 5 in one move instead of pushing 5 earth beads.',
     exampleProblems: [
@@ -61,7 +61,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'basic.simpleCombinations': {
     skillId: 'basic.simpleCombinations',
-    title: 'Combining earth and heaven beads',
+    title: 'Simple Combinations (6-9)',
     description:
       'For numbers 6-9, combine the heaven bead (5) with earth beads. 6 = heaven + 1 earth.',
     exampleProblems: [
@@ -72,7 +72,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'basic.directSubtraction': {
     skillId: 'basic.directSubtraction',
-    title: 'Subtracting by moving earth beads',
+    title: 'Direct Subtraction (1-4)',
     description: 'The simplest way to subtract: just pull down the earth beads you need to remove.',
     exampleProblems: [
       { start: 3, target: 2 },
@@ -82,7 +82,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'basic.heavenBeadSubtraction': {
     skillId: 'basic.heavenBeadSubtraction',
-    title: 'Removing 5 with the heaven bead',
+    title: 'Heaven Bead Subtraction (5)',
     description: 'Push the heaven bead up to subtract 5 in one move.',
     exampleProblems: [
       { start: 5, target: 0 },
@@ -92,7 +92,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'basic.simpleCombinationsSub': {
     skillId: 'basic.simpleCombinationsSub',
-    title: 'Subtracting from combined positions',
+    title: 'Simple Combinations Subtraction (6-9)',
     description: 'When subtracting from 6-9, you may need to move both heaven and earth beads.',
     exampleProblems: [
       { start: 6, target: 0 },
@@ -106,7 +106,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // ============================================================================
   'fiveComplements.4=5-1': {
     skillId: 'fiveComplements.4=5-1',
-    title: "Adding 4 using 5's friend",
+    title: '+4 = +5 - 1',
     description:
       "When you can't fit 4 earth beads, use 5's friend: add 5 (push down heaven), then take away 1 (pull down 1 earth).",
     exampleProblems: [
@@ -117,7 +117,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplements.3=5-2': {
     skillId: 'fiveComplements.3=5-2',
-    title: "Adding 3 using 5's friend",
+    title: '+3 = +5 - 2',
     description:
       "When you can't fit 3 earth beads, use 5's friend: add 5 (push down heaven), then take away 2.",
     exampleProblems: [
@@ -128,7 +128,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplements.2=5-3': {
     skillId: 'fiveComplements.2=5-3',
-    title: "Adding 2 using 5's friend",
+    title: '+2 = +5 - 3',
     description:
       "When you can't fit 2 earth beads, use 5's friend: add 5 (push down heaven), then take away 3.",
     exampleProblems: [
@@ -138,7 +138,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplements.1=5-4': {
     skillId: 'fiveComplements.1=5-4',
-    title: "Adding 1 using 5's friend",
+    title: '+1 = +5 - 4',
     description:
       "When you can't fit 1 more earth bead (column is full at 4), use 5's friend: add 5, take away 4.",
     exampleProblems: [{ start: 4, target: 5 }],
@@ -149,7 +149,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // ============================================================================
   'fiveComplementsSub.-4=-5+1': {
     skillId: 'fiveComplementsSub.-4=-5+1',
-    title: "Subtracting 4 using 5's friend",
+    title: '-4 = -5 + 1',
     description:
       "When you don't have 4 earth beads to remove, use 5's friend: subtract 5 (push up heaven), then add 1 back.",
     exampleProblems: [
@@ -160,7 +160,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplementsSub.-3=-5+2': {
     skillId: 'fiveComplementsSub.-3=-5+2',
-    title: "Subtracting 3 using 5's friend",
+    title: '-3 = -5 + 2',
     description:
       "When you don't have 3 earth beads to remove, use 5's friend: subtract 5, then add 2 back.",
     exampleProblems: [
@@ -171,7 +171,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplementsSub.-2=-5+3': {
     skillId: 'fiveComplementsSub.-2=-5+3',
-    title: "Subtracting 2 using 5's friend",
+    title: '-2 = -5 + 3',
     description:
       "When you don't have 2 earth beads to remove, use 5's friend: subtract 5, then add 3 back.",
     exampleProblems: [
@@ -181,7 +181,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'fiveComplementsSub.-1=-5+4': {
     skillId: 'fiveComplementsSub.-1=-5+4',
-    title: "Subtracting 1 using 5's friend",
+    title: '-1 = -5 + 4',
     description:
       "When you don't have 1 earth bead to remove (column is at 5), use 5's friend: subtract 5, then add 4 back.",
     exampleProblems: [{ start: 5, target: 4 }],
@@ -192,7 +192,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // ============================================================================
   'tenComplements.9=10-1': {
     skillId: 'tenComplements.9=10-1',
-    title: "Adding 9 with 10's friend",
+    title: '+9 = +10 - 1',
     description:
       "When adding 9 would overflow the column, use 10's friend: carry 10 to the tens column, then take away 1 from the ones.",
     exampleProblems: [
@@ -203,7 +203,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.8=10-2': {
     skillId: 'tenComplements.8=10-2',
-    title: "Adding 8 with 10's friend",
+    title: '+8 = +10 - 2',
     description:
       "When adding 8 would overflow, use 10's friend: carry 10 to the tens, take away 2 from the ones.",
     exampleProblems: [
@@ -214,7 +214,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.7=10-3': {
     skillId: 'tenComplements.7=10-3',
-    title: "Adding 7 with 10's friend",
+    title: '+7 = +10 - 3',
     description:
       "When adding 7 would overflow, use 10's friend: carry 10 to the tens, take away 3 from the ones.",
     exampleProblems: [
@@ -225,7 +225,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.6=10-4': {
     skillId: 'tenComplements.6=10-4',
-    title: "Adding 6 with 10's friend",
+    title: '+6 = +10 - 4',
     description:
       "When adding 6 would overflow, use 10's friend: carry 10 to the tens, take away 4 from the ones.",
     exampleProblems: [
@@ -236,7 +236,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.5=10-5': {
     skillId: 'tenComplements.5=10-5',
-    title: "Adding 5 with 10's friend",
+    title: '+5 = +10 - 5',
     description:
       "When adding 5 would overflow, use 10's friend: carry 10 to the tens, take away 5 from the ones.",
     exampleProblems: [
@@ -247,7 +247,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.4=10-6': {
     skillId: 'tenComplements.4=10-6',
-    title: "Adding 4 with 10's friend",
+    title: '+4 = +10 - 6',
     description:
       "When adding 4 would overflow, use 10's friend: carry 10 to the tens, take away 6 from the ones.",
     exampleProblems: [
@@ -258,7 +258,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.3=10-7': {
     skillId: 'tenComplements.3=10-7',
-    title: "Adding 3 with 10's friend",
+    title: '+3 = +10 - 7',
     description:
       "When adding 3 would overflow, use 10's friend: carry 10 to the tens, take away 7 from the ones.",
     exampleProblems: [
@@ -269,7 +269,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.2=10-8': {
     skillId: 'tenComplements.2=10-8',
-    title: "Adding 2 with 10's friend",
+    title: '+2 = +10 - 8',
     description:
       "When adding 2 would overflow, use 10's friend: carry 10 to the tens, take away 8 from the ones.",
     exampleProblems: [
@@ -279,7 +279,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplements.1=10-9': {
     skillId: 'tenComplements.1=10-9',
-    title: "Adding 1 with 10's friend",
+    title: '+1 = +10 - 9',
     description:
       "When adding 1 would overflow (column is at 9), use 10's friend: carry 10 to the tens, take away 9 from the ones.",
     exampleProblems: [{ start: 9, target: 10 }],
@@ -290,7 +290,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // ============================================================================
   'tenComplementsSub.-9=+1-10': {
     skillId: 'tenComplementsSub.-9=+1-10',
-    title: "Subtracting 9 with 10's friend",
+    title: '-9 = +1 - 10',
     description:
       "When you can't subtract 9 directly, use 10's friend: borrow 10 from the tens column, then add 1 back to the ones.",
     exampleProblems: [
@@ -301,7 +301,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-8=+2-10': {
     skillId: 'tenComplementsSub.-8=+2-10',
-    title: "Subtracting 8 with 10's friend",
+    title: '-8 = +2 - 10',
     description: "When you can't subtract 8 directly, use 10's friend: borrow 10, then add 2 back.",
     exampleProblems: [
       { start: 10, target: 2 },
@@ -311,7 +311,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-7=+3-10': {
     skillId: 'tenComplementsSub.-7=+3-10',
-    title: "Subtracting 7 with 10's friend",
+    title: '-7 = +3 - 10',
     description: "When you can't subtract 7 directly, use 10's friend: borrow 10, then add 3 back.",
     exampleProblems: [
       { start: 10, target: 3 },
@@ -321,7 +321,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-6=+4-10': {
     skillId: 'tenComplementsSub.-6=+4-10',
-    title: "Subtracting 6 with 10's friend",
+    title: '-6 = +4 - 10',
     description: "When you can't subtract 6 directly, use 10's friend: borrow 10, then add 4 back.",
     exampleProblems: [
       { start: 10, target: 4 },
@@ -331,7 +331,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-5=+5-10': {
     skillId: 'tenComplementsSub.-5=+5-10',
-    title: "Subtracting 5 with 10's friend",
+    title: '-5 = +5 - 10',
     description: "When you can't subtract 5 directly, use 10's friend: borrow 10, then add 5 back.",
     exampleProblems: [
       { start: 10, target: 5 },
@@ -341,7 +341,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-4=+6-10': {
     skillId: 'tenComplementsSub.-4=+6-10',
-    title: "Subtracting 4 with 10's friend",
+    title: '-4 = +6 - 10',
     description: "When you can't subtract 4 directly, use 10's friend: borrow 10, then add 6 back.",
     exampleProblems: [
       { start: 10, target: 6 },
@@ -351,7 +351,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-3=+7-10': {
     skillId: 'tenComplementsSub.-3=+7-10',
-    title: "Subtracting 3 with 10's friend",
+    title: '-3 = +7 - 10',
     description: "When you can't subtract 3 directly, use 10's friend: borrow 10, then add 7 back.",
     exampleProblems: [
       { start: 10, target: 7 },
@@ -361,7 +361,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-2=+8-10': {
     skillId: 'tenComplementsSub.-2=+8-10',
-    title: "Subtracting 2 with 10's friend",
+    title: '-2 = +8 - 10',
     description: "When you can't subtract 2 directly, use 10's friend: borrow 10, then add 8 back.",
     exampleProblems: [
       { start: 10, target: 8 },
@@ -370,7 +370,7 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
   'tenComplementsSub.-1=+9-10': {
     skillId: 'tenComplementsSub.-1=+9-10',
-    title: "Subtracting 1 with 10's friend",
+    title: '-1 = +9 - 10',
     description:
       "When you can't subtract 1 directly (column is at 0), use 10's friend: borrow 10, then add 9 back.",
     exampleProblems: [{ start: 10, target: 9 }],

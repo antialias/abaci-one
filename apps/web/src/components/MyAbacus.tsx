@@ -539,6 +539,8 @@ export function MyAbacus() {
             zIndex: 102,
             cursor: isOpen || isHeroMode ? 'default' : 'pointer',
             transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            // Hide when printing
+            _print: { display: 'none' },
             // Three modes: hero (absolute - scrolls with document), button (fixed), open (fixed)
             ...(isOpen
               ? {
