@@ -291,7 +291,7 @@ function TabNavigation({
         padding: '0.25rem',
         backgroundColor: isDark ? 'gray.800' : 'gray.100',
         borderRadius: '10px',
-        marginBottom: '1.5rem',
+        marginBottom: { base: '1rem', md: '1.5rem' },
       })}
     >
       {tabs.map((tab) => (
@@ -304,11 +304,12 @@ function TabNavigation({
           className={css({
             flex: 1,
             display: 'flex',
+            flexDirection: { base: 'column', sm: 'row' },
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1rem',
-            fontSize: '0.875rem',
+            gap: { base: '0.125rem', sm: '0.5rem' },
+            padding: { base: '0.5rem 0.25rem', sm: '0.75rem 1rem' },
+            fontSize: { base: '0.6875rem', sm: '0.875rem' },
             fontWeight: 'medium',
             borderRadius: '8px',
             border: 'none',
@@ -336,7 +337,7 @@ function TabNavigation({
             },
           })}
         >
-          <span>{tab.icon}</span>
+          <span className={css({ fontSize: { base: '1rem', sm: '1rem' } })}>{tab.icon}</span>
           <span>{tab.label}</span>
         </button>
       ))}
@@ -1020,12 +1021,19 @@ function SkillsTab({
       <div
         className={css({
           display: 'flex',
+          flexDirection: { base: 'column', sm: 'row' },
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: { base: 'stretch', sm: 'center' },
+          gap: { base: '0.75rem', sm: '1rem' },
           marginBottom: '1rem',
         })}
       >
-        <p className={css({ fontSize: '0.875rem', color: isDark ? 'gray.400' : 'gray.600' })}>
+        <p
+          className={css({
+            fontSize: { base: '0.8125rem', sm: '0.875rem' },
+            color: isDark ? 'gray.400' : 'gray.600',
+          })}
+        >
           {practicingSkills.length} skills in practice • Click any skill for details
         </p>
         <button
@@ -1042,6 +1050,7 @@ function SkillsTab({
             border: '1px solid',
             borderColor: isDark ? 'purple.700' : 'purple.300',
             cursor: 'pointer',
+            flexShrink: 0,
             _hover: { backgroundColor: isDark ? 'purple.800' : 'purple.200' },
           })}
         >
@@ -1052,13 +1061,13 @@ function SkillsTab({
       {/* BKT Controls */}
       <div
         className={css({
-          padding: '0.75rem 1rem',
+          padding: { base: '0.625rem 0.75rem', sm: '0.75rem 1rem' },
           borderRadius: '8px',
           backgroundColor: isDark ? 'gray.800' : 'gray.100',
           marginBottom: '1rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
+          gap: { base: '0.75rem', sm: '1rem' },
           flexWrap: 'wrap',
         })}
       >
@@ -1108,9 +1117,9 @@ function SkillsTab({
       <div
         className={css({
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '0.75rem',
-          marginBottom: '1.5rem',
+          gridTemplateColumns: { base: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+          gap: { base: '0.5rem', sm: '0.75rem' },
+          marginBottom: { base: '1rem', sm: '1.5rem' },
         })}
       >
         {[
@@ -1155,7 +1164,7 @@ function SkillsTab({
       {interventionNeeded.length > 0 && (
         <div
           className={css({
-            padding: '1rem',
+            padding: { base: '0.75rem', sm: '1rem' },
             borderRadius: '12px',
             backgroundColor: isDark ? 'gray.800' : 'gray.50',
             marginBottom: '1rem',
@@ -1163,13 +1172,14 @@ function SkillsTab({
         >
           <h3
             className={css({
-              fontSize: '1rem',
+              fontSize: { base: '0.875rem', sm: '1rem' },
               fontWeight: 'bold',
               color: isDark ? 'gray.100' : 'gray.900',
               marginBottom: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
+              flexWrap: 'wrap',
             })}
           >
             <span>🔴</span> May Need Attention{' '}
@@ -1188,8 +1198,11 @@ function SkillsTab({
           <div
             className={css({
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              gap: '0.75rem',
+              gridTemplateColumns: {
+                base: 'repeat(auto-fill, minmax(120px, 1fr))',
+                sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+              },
+              gap: { base: '0.5rem', sm: '0.75rem' },
             })}
           >
             {interventionNeeded.map((skill) => (
@@ -1208,7 +1221,7 @@ function SkillsTab({
       {rustySkills.length > 0 && (
         <div
           className={css({
-            padding: '1rem',
+            padding: { base: '0.75rem', sm: '1rem' },
             borderRadius: '12px',
             backgroundColor: isDark ? 'gray.800' : 'gray.50',
             marginBottom: '1rem',
@@ -1216,13 +1229,14 @@ function SkillsTab({
         >
           <h3
             className={css({
-              fontSize: '1rem',
+              fontSize: { base: '0.875rem', sm: '1rem' },
               fontWeight: 'bold',
               color: isDark ? 'gray.100' : 'gray.900',
               marginBottom: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
+              flexWrap: 'wrap',
             })}
           >
             <span>🟠</span> Not Practiced Recently{' '}
@@ -1241,8 +1255,11 @@ function SkillsTab({
           <div
             className={css({
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              gap: '0.75rem',
+              gridTemplateColumns: {
+                base: 'repeat(auto-fill, minmax(120px, 1fr))',
+                sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+              },
+              gap: { base: '0.5rem', sm: '0.75rem' },
             })}
           >
             {rustySkills.map((skill) => (
@@ -1258,13 +1275,13 @@ function SkillsTab({
       )}
 
       {/* All by category */}
-      <div className={css({ marginTop: '1.5rem' })}>
+      <div className={css({ marginTop: { base: '1rem', sm: '1.5rem' } })}>
         <h2
           className={css({
-            fontSize: '1.125rem',
+            fontSize: { base: '1rem', sm: '1.125rem' },
             fontWeight: 'bold',
             color: isDark ? 'gray.100' : 'gray.900',
-            marginBottom: '1rem',
+            marginBottom: { base: '0.75rem', sm: '1rem' },
           })}
         >
           All Skills by Category
@@ -1272,7 +1289,7 @@ function SkillsTab({
         {skillsByCategory.length === 0 ? (
           <p
             className={css({
-              padding: '2rem',
+              padding: { base: '1.5rem', sm: '2rem' },
               textAlign: 'center',
               color: isDark ? 'gray.500' : 'gray.500',
               fontStyle: 'italic',
@@ -1285,7 +1302,7 @@ function SkillsTab({
             <div
               key={category.id}
               className={css({
-                padding: '1rem',
+                padding: { base: '0.75rem', sm: '1rem' },
                 borderRadius: '12px',
                 backgroundColor: isDark ? 'gray.800' : 'gray.50',
                 marginBottom: '1rem',
@@ -1293,13 +1310,14 @@ function SkillsTab({
             >
               <h3
                 className={css({
-                  fontSize: '1rem',
+                  fontSize: { base: '0.875rem', sm: '1rem' },
                   fontWeight: 'bold',
                   color: isDark ? 'gray.100' : 'gray.900',
                   marginBottom: '0.75rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
+                  flexWrap: 'wrap',
                 })}
               >
                 <span>{category.emoji}</span> {category.name}{' '}
@@ -1318,8 +1336,11 @@ function SkillsTab({
               <div
                 className={css({
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                  gap: '0.75rem',
+                  gridTemplateColumns: {
+                    base: 'repeat(auto-fill, minmax(120px, 1fr))',
+                    sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  },
+                  gap: { base: '0.5rem', sm: '0.75rem' },
                 })}
               >
                 {skills.map((skill) => (
@@ -1356,16 +1377,18 @@ function HistoryTab({
     <div data-tab-content="history">
       <div
         className={css({
-          padding: '2rem',
+          padding: { base: '1.25rem', sm: '2rem' },
           textAlign: 'center',
           borderRadius: '12px',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
         })}
       >
-        <div className={css({ fontSize: '3rem', marginBottom: '1rem' })}>📈</div>
+        <div className={css({ fontSize: { base: '2.5rem', sm: '3rem' }, marginBottom: '1rem' })}>
+          📈
+        </div>
         <h2
           className={css({
-            fontSize: '1.25rem',
+            fontSize: { base: '1.125rem', sm: '1.25rem' },
             fontWeight: 'bold',
             color: isDark ? 'gray.100' : 'gray.900',
             marginBottom: '0.5rem',
@@ -1375,9 +1398,9 @@ function HistoryTab({
         </h2>
         <p
           className={css({
-            fontSize: '0.875rem',
+            fontSize: { base: '0.8125rem', sm: '0.875rem' },
             color: isDark ? 'gray.400' : 'gray.600',
-            marginBottom: '1.5rem',
+            marginBottom: { base: '1rem', sm: '1.5rem' },
           })}
         >
           Track your practice sessions over time
@@ -1523,7 +1546,7 @@ function NotesTab({
     <div data-tab-content="notes">
       <div
         className={css({
-          padding: '1.5rem',
+          padding: { base: '1rem', sm: '1.5rem' },
           borderRadius: '12px',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
         })}
@@ -1531,14 +1554,16 @@ function NotesTab({
         <div
           className={css({
             display: 'flex',
+            flexDirection: { base: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: { base: 'stretch', sm: 'center' },
+            gap: { base: '0.75rem', sm: '1rem' },
             marginBottom: '1rem',
           })}
         >
           <h2
             className={css({
-              fontSize: '1.25rem',
+              fontSize: { base: '1.125rem', sm: '1.25rem' },
               fontWeight: 'bold',
               color: isDark ? 'gray.100' : 'gray.900',
               display: 'flex',
@@ -1887,7 +1912,7 @@ export function DashboardClient({
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          padding: '1.5rem',
+          padding: { base: '0.75rem', sm: '1rem', md: '1.5rem' },
         })}
       >
         <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
