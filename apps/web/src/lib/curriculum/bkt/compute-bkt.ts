@@ -75,8 +75,10 @@ function applyTimeDecay(
  */
 export function computeBktFromHistory(
   results: ProblemResultWithContext[],
-  options: BktComputeExtendedOptions = DEFAULT_BKT_OPTIONS
+  options: Partial<BktComputeExtendedOptions> = {}
 ): BktComputeResult {
+  // Merge with defaults so callers can override just what they need
+  const opts: BktComputeExtendedOptions = { ...DEFAULT_BKT_OPTIONS, ...options }
   // Sort by timestamp to replay in chronological order
   // Note: timestamp may be a Date or a string (from JSON serialization)
   const sorted = [...results].sort((a, b) => {
@@ -126,7 +128,7 @@ export function computeBktFromHistory(
     const evidenceWeight = helpWeight * rtWeight
 
     // Compute BKT updates (conjunctive model)
-    const blameMethod = options.blameMethod ?? 'heuristic'
+    const blameMethod = opts.blameMethod ?? 'heuristic'
     const updates = result.isCorrect
       ? updateOnCorrect(skillRecords)
       : updateOnIncorrectWithMethod(skillRecords, blameMethod)
@@ -158,13 +160,13 @@ export function computeBktFromHistory(
 
     // Apply decay if enabled
     let finalPKnown = state.pKnown
-    if (options.applyDecay && state.lastPracticedAt) {
+    if (opts.applyDecay && state.lastPracticedAt) {
       const daysSinceLastPractice =
         (now.getTime() - state.lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
       finalPKnown = applyTimeDecay(
         state.pKnown,
         daysSinceLastPractice,
-        options.decayHalfLifeDays,
+        opts.decayHalfLifeDays,
         state.params.pInit
       )
     }
@@ -175,7 +177,7 @@ export function computeBktFromHistory(
     const masteryClassification = classifyMastery(
       finalPKnown,
       confidence,
-      options.confidenceThreshold
+      opts.confidenceThreshold
     )
 
     skills.push({
