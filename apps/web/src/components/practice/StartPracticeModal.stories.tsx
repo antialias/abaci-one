@@ -108,6 +108,25 @@ const mockRemediationMode: RemediationMode = {
   focusDescription: 'Strengthening: +3 and +4',
 }
 
+const mockRemediationModeSingleSkill: RemediationMode = {
+  type: 'remediation',
+  weakSkills: [{ skillId: 'add-2', displayName: '+2', pKnown: 0.28 }],
+  focusDescription: 'Strengthening: +2',
+}
+
+const mockRemediationModeManySkills: RemediationMode = {
+  type: 'remediation',
+  weakSkills: [
+    { skillId: 'add-1', displayName: '+1', pKnown: 0.31 },
+    { skillId: 'add-2', displayName: '+2', pKnown: 0.38 },
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.25 },
+    { skillId: 'add-4', displayName: '+4', pKnown: 0.42 },
+    { skillId: 'sub-1', displayName: '-1', pKnown: 0.33 },
+    { skillId: 'sub-2', displayName: '-2', pKnown: 0.29 },
+  ],
+  focusDescription: 'Strengthening: +1, +2, +3, +4, -1, -2',
+}
+
 // Default props
 const defaultProps = {
   studentId: 'test-student-1',
@@ -183,7 +202,7 @@ export const DarkTheme: Story = {
 }
 
 /**
- * Remediation mode - student has weak skills to strengthen
+ * Remediation mode - student has weak skills to strengthen (2 skills)
  */
 export const RemediationMode: Story = {
   render: () => (
@@ -194,6 +213,56 @@ export const RemediationMode: Story = {
         sessionMode={mockRemediationMode}
         focusDescription={mockRemediationMode.focusDescription}
       />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Remediation mode with a single weak skill
+ */
+export const RemediationModeSingleSkill: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        studentName="Jordan"
+        sessionMode={mockRemediationModeSingleSkill}
+        focusDescription={mockRemediationModeSingleSkill.focusDescription}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Remediation mode with many weak skills (shows overflow)
+ */
+export const RemediationModeManySkills: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        studentName="Riley"
+        sessionMode={mockRemediationModeManySkills}
+        focusDescription={mockRemediationModeManySkills.focusDescription}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Remediation mode - dark theme
+ */
+export const RemediationModeDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          studentName="Alex"
+          sessionMode={mockRemediationMode}
+          focusDescription={mockRemediationMode.focusDescription}
+        />
+      </div>
     </StoryWrapper>
   ),
 }
