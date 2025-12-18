@@ -108,10 +108,98 @@ function sessionPositionMultiplier(problemIndex: number, totalProblems: number):
 - Currently in Oman caring for her mother
 - Not deeply technical/statistical, so answers will be qualitative observations
 
-## When Reply Arrives
+---
 
-1. Extract her observations for each question
-2. Translate qualitative answers to model parameters
-3. Implement changes to SimulatedStudent.ts
-4. Re-run 3-way comparison to see if results change
-5. Update blog post if findings are significant
+## Response Received (2025-12-16)
+
+**From:** Kehkashan Khan
+
+---
+
+Hi, good to hear from you. We are taking it one day at a time with my mother. Thank you for asking.
+
+I appreciate all your concerns about this program.
+
+First the benefits, it is a developmentally appropriate and age appropriate program. Your books are a bit too complicated if you don't mind me saying that. Your initial push with Sonia and Fern has given them a firm footing. They are such beautiful kids I have no words to describe them.
+
+My concerns,
+One is the book I shared with you already. It's unnecessarily complicated.
+Secondly the abacus itself, if you want them to learn all the skills then they need to use the one that has beads on both sides and should be able to manipulate them using both hands.
+
+Their foundational skills are strong, maybe you are looking for perfection. I don't know.
+
+I have seen so much improvement in Fern's mastery of concepts. Sonia was an expert even before I started coaching them. The complicated oral problems she does is amazing.
+
+Now in general, this is a stressful class, you need to give them more breaks. They are great negotiators, come up with a strategy that will please them but still keep you in control.
+
+The skills are transferable, not just within the program but also cross curricular. After a while they will want to continue working on this because it makes them smarter and they will know the difference. All the operations whether +/-, combinations of 10 or 5, need practice and patience. Meta cognition is visible all the time, their learning is almost visible.
+
+Let me see the app , we can arrange a google meet just to check it out. No charges. Children get frustrated when pieces of the puzzle don't fit. I wonder if there are parts that are not quite fitting in their mental framework. I will be able to give you a better idea if I see the components.
+
+I hope I was able to respond to your questions. I am on break from my university work and can spend some time on your project if required even if it is just for feedback. Also, please leave a google review for my program. It will be greatly appreciated.
+
+Sincerely,
+Khan
+
+---
+
+## Interpreted Responses (with Thomas's context)
+
+| Her Statement | Context/Interpretation |
+|---------------|------------------------|
+| "Your books are a bit too complicated" | SAI Speed Academy workbooks - Fern needs more repetition than they provide, which drove building the app |
+| "abacus... beads on both sides... both hands" | Thomas made custom 4-column abaci. Kids will need to transition to full-size after mastering add/subtract |
+| "this is a stressful class, you need to give them more breaks" | Sunday lessons come after other activities (math, violin). Scheduling issue, not generalizable |
+| "skills are transferable... cross curricular" | Too general - she means abacus helps general math, not that +4 helps +3 within soroban |
+| "All operations... need practice and patience" | Every skill needs drilling, none can be skipped. No dramatic difficulty differences implied |
+| "pieces of the puzzle don't fit" | Validates our goal - she recognizes value of isolating specific deficiencies. Has NOT seen app yet |
+| "Let me see the app" | Most valuable next step - schedule Google Meet |
+
+---
+
+## Follow-up Email Sent (2025-12-16)
+
+**From:** Thomas Hallock
+
+---
+
+Hi Ms. Khan,
+
+Good to hear from you. I hope you and your mother continue to hold up well.
+
+Thank you for the feedback on the books and the abacus size. I think you're right that Fern needs more repetition than the books provide, which is what drove me to build the software. I will also look into transitioning them to the full-sized, two-handed abacus now that they are less likely to get distracted by the extra columns.
+
+I would definitely appreciate a Google Meet. I'd love to walk you through the logic the app uses to diagnose student errors. It attempts to automate the "struggle detection" you do naturally as a teacher, and I could use your feedback on whether it's calibrated correctly.
+
+You can preview the basic interface at https://abaci.one/practice, but a live demo would be better to explain the background logic.
+
+Please let me know what time works for you, and send over the link for your Google Review.
+
+Best,
+Thomas
+
+---
+
+## Implications for Student Model
+
+### What we learned:
+- **All skills need practice** - No evidence of dramatic difficulty differences between skill categories
+- **Validation of the goal** - Isolating "puzzle pieces" that don't fit is valuable
+- **Individual variance** - Sonia vs Fern confirms wide learner differences (matches our profiles)
+
+### What we still don't know:
+- Whether skills transfer within soroban (does +4 help +3?)
+- How fast "rust" sets in
+- Warm-up effects
+
+### Recommendation:
+Wait for Google Meet feedback before making model changes. She'll provide more specific input after seeing the app's "struggle detection" logic.
+
+---
+
+## Next Steps
+
+1. ✅ Send follow-up email requesting Google Meet
+2. ⏳ Leave Google review for her program (need link)
+3. ⏳ Schedule and conduct Google Meet demo
+4. ⏳ Update this document with her feedback on BKT calibration

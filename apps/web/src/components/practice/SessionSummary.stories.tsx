@@ -212,6 +212,7 @@ function createCompletedSessionPlan(config: {
 }
 
 const handlers = {
+  studentId: 'storybook-test-student',
   onPracticeAgain: () => alert('Practice Again clicked!'),
 }
 

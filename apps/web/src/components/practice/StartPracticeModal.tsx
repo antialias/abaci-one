@@ -16,12 +16,18 @@ import {
   useGenerateSessionPlan,
   useStartSessionPlan,
 } from '@/hooks/useSessionPlan'
+import { nextSkillKeys, useNextSkillToLearn } from '@/hooks/useNextSkillToLearn'
 import {
   convertSecondsPerProblemToSpt,
   estimateSessionProblemCount,
   TIME_ESTIMATION_DEFAULTS,
 } from '@/lib/curriculum/time-estimation'
+import { getSkillTutorialConfig, getSkillDisplayName } from '@/lib/curriculum/skill-tutorial-config'
+import { computeBktFromHistory } from '@/lib/curriculum/bkt'
+import { WEAK_SKILL_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
+import { SkillTutorialLauncher } from '../tutorial/SkillTutorialLauncher'
 
 interface StartPracticeModalProps {
   studentId: string
@@ -32,6 +38,8 @@ interface StartPracticeModalProps {
   /** @deprecated Use secondsPerTerm instead. This will be converted automatically. */
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
+  /** Problem history for BKT analysis - used to identify weak skills for display */
+  problemHistory?: ProblemResultWithContext[]
   onClose: () => void
   onStarted?: () => void
   open?: boolean
@@ -52,6 +60,7 @@ export function StartPracticeModal({
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
   existingPlan,
+  problemHistory,
   onClose,
   onStarted,
   open = true,
@@ -60,6 +69,21 @@ export function StartPracticeModal({
   const queryClient = useQueryClient()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Tutorial gate state
+  const [showTutorial, setShowTutorial] = useState(false)
+
+  // Fetch next skill to learn
+  const { data: nextSkill, isLoading: isLoadingNextSkill } = useNextSkillToLearn(studentId)
+
+  // Get the tutorial config if there's a skill ready to learn
+  const tutorialConfig = useMemo(() => {
+    if (!nextSkill || nextSkill.tutorialReady) return null
+    return getSkillTutorialConfig(nextSkill.skillId)
+  }, [nextSkill])
+
+  // Whether to show the tutorial gate prompt
+  const showTutorialGate = !!tutorialConfig && !showTutorial
 
   // Derive secondsPerTerm: prefer direct prop, fall back to converting avgSecondsPerProblem, then default
   const secondsPerTerm = useMemo(() => {
@@ -139,6 +163,42 @@ export function StartPracticeModal({
     }
   }, [enabledParts])
 
+  // Compute weak skills from BKT - these are the ACTUAL skills that get plugged into
+  // the problem generator's targetSkills. Only skills with pKnown < 0.5 AND confidence >= 0.3
+  // are targeted. Skills with 0.5-0.8 pKnown are NOT targeted - they just appear naturally
+  // in the even distribution across all practicing skills.
+  const targetSkillsInfo = useMemo(() => {
+    if (!problemHistory || problemHistory.length === 0) {
+      return { targetedSkills: [], hasData: false }
+    }
+
+    const bktResult = computeBktFromHistory(problemHistory, {
+      confidenceThreshold: WEAK_SKILL_THRESHOLDS.confidenceThreshold,
+    })
+
+    const targetedSkills: Array<{ skillId: string; displayName: string; pKnown: number }> = []
+
+    for (const skill of bktResult.skills) {
+      // Only skills with confidence >= 0.3 AND pKnown < 0.5 get TARGETED
+      // This matches identifyWeakSkills() in session-planner.ts exactly
+      if (
+        skill.confidence >= WEAK_SKILL_THRESHOLDS.confidenceThreshold &&
+        skill.pKnown < WEAK_SKILL_THRESHOLDS.pKnownThreshold
+      ) {
+        targetedSkills.push({
+          skillId: skill.skillId,
+          displayName: getSkillDisplayName(skill.skillId),
+          pKnown: skill.pKnown,
+        })
+      }
+    }
+
+    // Sort by pKnown ascending (weakest first)
+    targetedSkills.sort((a, b) => a.pKnown - b.pKnown)
+
+    return { targetedSkills, hasData: true }
+  }, [problemHistory])
+
   const generatePlan = useGenerateSessionPlan()
   const approvePlan = useApproveSessionPlan()
   const startPlan = useStartSessionPlan()
@@ -207,6 +267,78 @@ export function StartPracticeModal({
     router,
     onStarted,
   ])
+
+  // Handle tutorial completion - refresh next skill query and proceed to practice
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false)
+    // Invalidate the next skill query to refresh state
+    queryClient.invalidateQueries({ queryKey: nextSkillKeys.forPlayer(studentId) })
+    // Proceed with starting practice
+    handleStart()
+  }, [queryClient, studentId, handleStart])
+
+  // Handle tutorial skip - proceed without the new skill
+  const handleTutorialSkip = useCallback(() => {
+    setShowTutorial(false)
+    // Proceed with practice (skill remains gated)
+    handleStart()
+  }, [handleStart])
+
+  // Handle tutorial cancel - close modal
+  const handleTutorialCancel = useCallback(() => {
+    setShowTutorial(false)
+    onClose()
+  }, [onClose])
+
+  // If showing tutorial, render the tutorial launcher
+  if (showTutorial && nextSkill) {
+    return (
+      <Dialog.Root open={open} onOpenChange={(o) => !o && handleTutorialCancel()}>
+        <Dialog.Portal>
+          <Dialog.Overlay
+            className={css({
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 1000,
+            })}
+          />
+          <Dialog.Content
+            data-component="skill-tutorial-modal"
+            className={css({
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(100% - 2rem)',
+              maxWidth: '800px',
+              maxHeight: 'calc(100vh - 2rem)',
+              overflowY: 'auto',
+              borderRadius: '20px',
+              boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
+              zIndex: 1001,
+              outline: 'none',
+            })}
+            style={{
+              background: isDark
+                ? 'linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)'
+                : 'linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)',
+            }}
+          >
+            <SkillTutorialLauncher
+              skillId={nextSkill.skillId}
+              playerId={studentId}
+              theme={isDark ? 'dark' : 'light'}
+              onComplete={handleTutorialComplete}
+              onSkip={handleTutorialSkip}
+              onCancel={handleTutorialCancel}
+            />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    )
+  }
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
@@ -459,6 +591,67 @@ export function StartPracticeModal({
                     ▼
                   </div>
                 </button>
+
+                {/* Target skills summary - shown when adaptive-bkt mode is selected */}
+                {problemGenerationMode === 'adaptive-bkt' && targetSkillsInfo.hasData && (
+                  <div
+                    className={css({
+                      padding: '0.5rem 1rem',
+                      borderTop: '1px solid',
+                      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.375rem',
+                      flexWrap: 'wrap',
+                    })}
+                  >
+                    {targetSkillsInfo.targetedSkills.length > 0 ? (
+                      <>
+                        <span
+                          className={css({
+                            fontSize: '0.6875rem',
+                            color: isDark ? 'amber.400' : 'amber.600',
+                            fontWeight: '500',
+                          })}
+                        >
+                          Targeting:
+                        </span>
+                        {targetSkillsInfo.targetedSkills.slice(0, 3).map((skill, i) => (
+                          <span
+                            key={skill.skillId}
+                            className={css({
+                              fontSize: '0.6875rem',
+                              color: isDark ? 'gray.400' : 'gray.600',
+                            })}
+                          >
+                            {skill.displayName}
+                            {i < Math.min(targetSkillsInfo.targetedSkills.length, 3) - 1 && ','}
+                          </span>
+                        ))}
+                        {targetSkillsInfo.targetedSkills.length > 3 && (
+                          <span
+                            className={css({
+                              fontSize: '0.6875rem',
+                              color: isDark ? 'gray.500' : 'gray.500',
+                            })}
+                          >
+                            +{targetSkillsInfo.targetedSkills.length - 3} more
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span
+                        className={css({
+                          fontSize: '0.6875rem',
+                          color: isDark ? 'gray.500' : 'gray.500',
+                        })}
+                      >
+                        Even distribution across all practicing skills
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Expanded config panel */}
@@ -826,6 +1019,85 @@ export function StartPracticeModal({
                         )
                       })}
                     </div>
+
+                    {/* Target skills display - shown when adaptive-bkt mode is selected */}
+                    {problemGenerationMode === 'adaptive-bkt' && targetSkillsInfo.hasData && (
+                      <div
+                        className={css({
+                          marginTop: '0.5rem',
+                          padding: '0.625rem',
+                          borderRadius: '6px',
+                          backgroundColor: isDark
+                            ? targetSkillsInfo.targetedSkills.length > 0
+                              ? 'rgba(245, 158, 11, 0.08)'
+                              : 'rgba(100, 116, 139, 0.08)'
+                            : targetSkillsInfo.targetedSkills.length > 0
+                              ? 'rgba(245, 158, 11, 0.06)'
+                              : 'rgba(100, 116, 139, 0.06)',
+                          border: `1px solid ${
+                            isDark
+                              ? targetSkillsInfo.targetedSkills.length > 0
+                                ? 'rgba(245, 158, 11, 0.2)'
+                                : 'rgba(100, 116, 139, 0.2)'
+                              : targetSkillsInfo.targetedSkills.length > 0
+                                ? 'rgba(245, 158, 11, 0.15)'
+                                : 'rgba(100, 116, 139, 0.15)'
+                          }`,
+                        })}
+                      >
+                        {targetSkillsInfo.targetedSkills.length > 0 ? (
+                          <>
+                            <div
+                              className={css({
+                                fontSize: '0.6875rem',
+                                fontWeight: '600',
+                                color: isDark ? 'amber.400' : 'amber.700',
+                                marginBottom: '0.375rem',
+                              })}
+                            >
+                              Will target these weak skills (pKnown &lt; 50%):
+                            </div>
+                            <div
+                              className={css({
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.25rem',
+                              })}
+                            >
+                              {targetSkillsInfo.targetedSkills.map((skill) => (
+                                <span
+                                  key={skill.skillId}
+                                  className={css({
+                                    fontSize: '0.625rem',
+                                    padding: '0.125rem 0.375rem',
+                                    borderRadius: '4px',
+                                    backgroundColor: isDark
+                                      ? 'rgba(245, 158, 11, 0.15)'
+                                      : 'rgba(245, 158, 11, 0.12)',
+                                    color: isDark ? 'amber.300' : 'amber.800',
+                                  })}
+                                >
+                                  {skill.displayName}{' '}
+                                  <span className={css({ opacity: 0.7 })}>
+                                    ({Math.round(skill.pKnown * 100)}%)
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div
+                            className={css({
+                              fontSize: '0.6875rem',
+                              color: isDark ? 'gray.400' : 'gray.600',
+                            })}
+                          >
+                            No weak skills detected. Problems will be evenly distributed across all
+                            practicing skills.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Collapse button */}
@@ -850,6 +1122,99 @@ export function StartPracticeModal({
                 </div>
               </div>
             </div>
+
+            {/* Tutorial gate - New skill available */}
+            {showTutorialGate && tutorialConfig && nextSkill && (
+              <div
+                data-element="tutorial-gate"
+                className={css({
+                  marginBottom: '1rem',
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                })}
+                style={{
+                  background: isDark
+                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(59, 130, 246, 0.12) 100%)'
+                    : 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)',
+                  border: `2px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.25)'}`,
+                }}
+              >
+                <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'start' })}>
+                  <span className={css({ fontSize: '1.75rem', lineHeight: 1 })}>🌟</span>
+                  <div className={css({ flex: 1 })}>
+                    <p
+                      className={css({
+                        fontSize: '0.9375rem',
+                        fontWeight: '600',
+                        marginBottom: '0.25rem',
+                      })}
+                      style={{ color: isDark ? '#86efac' : '#166534' }}
+                    >
+                      New skill available!
+                    </p>
+                    <p
+                      className={css({ fontSize: '0.8125rem', marginBottom: '0.75rem' })}
+                      style={{ color: isDark ? '#d4d4d4' : '#525252' }}
+                    >
+                      Ready to learn <strong>{tutorialConfig.title}</strong>?
+                      {nextSkill.skipCount > 0 && (
+                        <span className={css({ color: isDark ? '#a1a1aa' : '#71717a' })}>
+                          {' '}
+                          (skipped {nextSkill.skipCount} time{nextSkill.skipCount > 1 ? 's' : ''})
+                        </span>
+                      )}
+                    </p>
+                    <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+                      <button
+                        type="button"
+                        onClick={() => setShowTutorial(true)}
+                        className={css({
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: '600',
+                          color: 'white',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          _hover: { transform: 'translateY(-1px)' },
+                        })}
+                        style={{
+                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                          boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+                        }}
+                      >
+                        Learn Now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStart}
+                        disabled={isStarting}
+                        className={css({
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: '500',
+                          backgroundColor: 'transparent',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          _hover: {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                          },
+                        })}
+                        style={{
+                          color: isDark ? '#a1a1aa' : '#6b7280',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                        }}
+                      >
+                        Practice without it
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Error display */}
             {displayError && (

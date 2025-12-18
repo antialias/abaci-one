@@ -52,7 +52,7 @@ import { css } from '../../../../../styled-system/css'
 // Types
 // ============================================================================
 
-type TabId = 'overview' | 'skills' | 'history'
+type TabId = 'overview' | 'skills' | 'history' | 'notes'
 
 interface DashboardClientProps {
   studentId: string
@@ -87,7 +87,7 @@ interface ProcessedSkill {
   pKnown: number | null
   confidence: number | null
   uncertaintyRange: { low: number; high: number } | null
-  bktClassification: 'mastered' | 'learning' | 'struggling' | null
+  bktClassification: 'strong' | 'developing' | 'weak' | null
   stalenessWarning: string | null
   complexityMultiplier: number
   usingBktMultiplier: boolean
@@ -279,6 +279,7 @@ function TabNavigation({
     { id: 'overview', label: 'Overview', icon: '📋' },
     { id: 'skills', label: 'Skills', icon: '📊' },
     { id: 'history', label: 'History', icon: '📈' },
+    { id: 'notes', label: 'Notes', icon: '📝' },
   ]
 
   return (
@@ -359,11 +360,11 @@ function SkillCard({
   const errorCount = skill.attempts - skill.correct
 
   const getStatusColor = () => {
-    if (skill.bktClassification === 'mastered')
+    if (skill.bktClassification === 'strong')
       return { bg: 'green.100', border: 'green.400', text: 'green.700' }
-    if (skill.bktClassification === 'struggling')
+    if (skill.bktClassification === 'weak')
       return { bg: 'red.100', border: 'red.400', text: 'red.700' }
-    if (skill.bktClassification === 'learning')
+    if (skill.bktClassification === 'developing')
       return { bg: 'yellow.100', border: 'yellow.400', text: 'yellow.700' }
     if (skill.fluencyState === 'effortless')
       return { bg: 'green.100', border: 'green.400', text: 'green.700' }
@@ -959,7 +960,7 @@ function SkillsTab({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'struggling' ||
+          s.bktClassification === 'weak' ||
           s.needsReinforcement ||
           (s.bktClassification === null && s.fluencyState === 'practicing' && s.accuracy < 0.7)
       ),
@@ -970,7 +971,7 @@ function SkillsTab({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'mastered' ||
+          s.bktClassification === 'strong' ||
           (s.bktClassification === null &&
             (s.fluencyState === 'effortless' || s.fluencyState === 'fluent'))
       ),
@@ -981,7 +982,7 @@ function SkillsTab({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'learning' ||
+          s.bktClassification === 'developing' ||
           (s.bktClassification === null && s.fluencyState === 'practicing')
       ),
     [practicingSkills]
@@ -1113,10 +1114,10 @@ function SkillsTab({
         })}
       >
         {[
-          { label: 'Struggling', count: interventionNeeded.length, color: 'red' },
-          { label: 'Learning', count: learningSkills.length, color: 'yellow' },
+          { label: 'Weak', count: interventionNeeded.length, color: 'red' },
+          { label: 'Developing', count: learningSkills.length, color: 'yellow' },
           { label: 'Stale', count: rustySkills.length, color: 'orange' },
-          { label: 'Mastered', count: readyToAdvance.length, color: 'green' },
+          { label: 'Strong', count: readyToAdvance.length, color: 'green' },
         ].map((item) => (
           <div
             key={item.label}
@@ -1473,6 +1474,216 @@ function HistoryTab({
   )
 }
 
+function NotesTab({
+  isDark,
+  notes,
+  studentName,
+  playerId,
+  onNotesSaved,
+}: {
+  isDark: boolean
+  notes: string | null
+  studentName: string
+  playerId: string
+  onNotesSaved: (notes: string) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedNotes, setEditedNotes] = useState(notes ?? '')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleStartEditing = useCallback(() => {
+    setEditedNotes(notes ?? '')
+    setIsEditing(true)
+  }, [notes])
+
+  const handleCancel = useCallback(() => {
+    setEditedNotes(notes ?? '')
+    setIsEditing(false)
+  }, [notes])
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true)
+    try {
+      const response = await fetch(`/api/players/${playerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: editedNotes || null }),
+      })
+      if (!response.ok) throw new Error('Failed to save notes')
+      onNotesSaved(editedNotes)
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to save notes:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [playerId, editedNotes, onNotesSaved])
+
+  return (
+    <div data-tab-content="notes">
+      <div
+        className={css({
+          padding: '1.5rem',
+          borderRadius: '12px',
+          backgroundColor: isDark ? 'gray.800' : 'gray.50',
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1rem',
+          })}
+        >
+          <h2
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            })}
+          >
+            <span>📝</span> Notes for {studentName}
+          </h2>
+          {!isEditing && (
+            <button
+              type="button"
+              data-action="edit-notes"
+              onClick={handleStartEditing}
+              className={css({
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                backgroundColor: isDark ? 'blue.900' : 'blue.100',
+                color: isDark ? 'blue.200' : 'blue.700',
+                fontSize: '0.875rem',
+                fontWeight: 'medium',
+                border: '1px solid',
+                borderColor: isDark ? 'blue.700' : 'blue.300',
+                cursor: 'pointer',
+                _hover: { backgroundColor: isDark ? 'blue.800' : 'blue.200' },
+              })}
+            >
+              {notes ? 'Edit Notes' : 'Add Notes'}
+            </button>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}>
+            <textarea
+              data-element="notes-editor"
+              value={editedNotes}
+              onChange={(e) => setEditedNotes(e.target.value)}
+              placeholder="Add notes about this student... observations, reminders, learning preferences, etc."
+              className={css({
+                width: '100%',
+                minHeight: '200px',
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '2px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: isDark ? 'gray.700' : 'white',
+                color: isDark ? 'gray.100' : 'gray.900',
+                fontSize: '0.9375rem',
+                lineHeight: '1.6',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                _focus: {
+                  outline: 'none',
+                  borderColor: 'blue.500',
+                },
+                _placeholder: {
+                  color: isDark ? 'gray.500' : 'gray.400',
+                },
+              })}
+            />
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+              })}
+            >
+              <button
+                type="button"
+                data-action="cancel-notes"
+                onClick={handleCancel}
+                disabled={isSaving}
+                className={css({
+                  padding: '0.625rem 1.25rem',
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                  color: isDark ? 'gray.300' : 'gray.700',
+                  fontSize: '0.875rem',
+                  fontWeight: 'medium',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-action="save-notes"
+                onClick={handleSave}
+                disabled={isSaving}
+                className={css({
+                  padding: '0.625rem 1.25rem',
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? 'green.700' : 'green.500',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  fontWeight: 'medium',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: isDark ? 'green.600' : 'green.600' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                {isSaving ? 'Saving...' : 'Save Notes'}
+              </button>
+            </div>
+          </div>
+        ) : notes ? (
+          <div
+            data-element="notes-display"
+            className={css({
+              padding: '1rem',
+              borderRadius: '8px',
+              backgroundColor: isDark ? 'gray.700' : 'white',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.600' : 'gray.200',
+              whiteSpace: 'pre-wrap',
+              fontSize: '0.9375rem',
+              lineHeight: '1.6',
+              color: isDark ? 'gray.200' : 'gray.700',
+            })}
+          >
+            {notes}
+          </div>
+        ) : (
+          <div
+            data-element="notes-empty"
+            className={css({
+              padding: '2rem',
+              textAlign: 'center',
+              color: isDark ? 'gray.500' : 'gray.400',
+              fontStyle: 'italic',
+            })}
+          >
+            No notes yet. Click "Add Notes" to add observations about this student.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -1542,6 +1753,9 @@ export function DashboardClient({
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
   const [isStartingOver, setIsStartingOver] = useState(false)
+
+  // Notes state (local, updated when saved)
+  const [currentNotes, setCurrentNotes] = useState<string | null>(player.notes ?? null)
 
   // Build student object
   const selectedStudent: StudentWithProgress = {
@@ -1708,6 +1922,16 @@ export function DashboardClient({
           {activeTab === 'history' && (
             <HistoryTab isDark={isDark} recentSessions={recentSessions} />
           )}
+
+          {activeTab === 'notes' && (
+            <NotesTab
+              isDark={isDark}
+              notes={currentNotes}
+              studentName={player.name}
+              playerId={player.id}
+              onNotesSaved={setCurrentNotes}
+            />
+          )}
         </div>
 
         {/* Modals */}
@@ -1738,6 +1962,7 @@ export function DashboardClient({
           focusDescription={currentPhase.phaseName}
           avgSecondsPerProblem={avgSecondsPerProblem}
           existingPlan={activeSession}
+          problemHistory={problemHistory}
           onClose={() => setShowStartPracticeModal(false)}
           onStarted={() => setShowStartPracticeModal(false)}
         />

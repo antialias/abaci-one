@@ -49,6 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(body.emoji !== undefined && { emoji: body.emoji }),
         ...(body.color !== undefined && { color: body.color }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
+        ...(body.notes !== undefined && { notes: body.notes }),
         // userId is explicitly NOT included - it comes from session
       })
       .where(and(eq(schema.players.id, params.id), eq(schema.players.userId, user.id)))

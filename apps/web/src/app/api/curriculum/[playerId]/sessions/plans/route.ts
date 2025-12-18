@@ -68,7 +68,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json()
-    const { durationMinutes, abacusTermCount, enabledParts, problemGenerationMode } = body
+    const {
+      durationMinutes,
+      abacusTermCount,
+      enabledParts,
+      problemGenerationMode,
+      confidenceThreshold,
+    } = body
 
     if (!durationMinutes || typeof durationMinutes !== 'number') {
       return NextResponse.json(
@@ -93,6 +99,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       enabledParts: enabledParts as EnabledParts | undefined,
       // Pass problem generation mode if specified
       problemGenerationMode: problemGenerationMode as ProblemGenerationMode | undefined,
+      // Pass BKT confidence threshold if specified
+      confidenceThreshold:
+        typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
       // Pass config overrides if abacusTermCount is specified
       ...(abacusTermCount && {
         config: {

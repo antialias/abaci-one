@@ -261,6 +261,16 @@ export default defineConfig({
           '0%, 100%': { filter: 'hue-rotate(0deg)' },
           '50%': { filter: 'hue-rotate(20deg)' },
         },
+        // Accordion slide down - expand content smoothly
+        accordionSlideDown: {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        // Accordion slide up - collapse content smoothly
+        accordionSlideUp: {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
       },
     },
   },

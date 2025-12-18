@@ -3,6 +3,7 @@ import {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
   getPlayer,
+  getRecentSessionResults,
 } from '@/lib/curriculum/server'
 import { SummaryClient } from './SummaryClient'
 
@@ -29,11 +30,12 @@ interface SummaryPageProps {
 export default async function SummaryPage({ params }: SummaryPageProps) {
   const { studentId } = await params
 
-  // Fetch player, active session, and most recent completed session in parallel
-  const [player, activeSession, completedSession] = await Promise.all([
+  // Fetch player, active session, most recent completed session, and problem history in parallel
+  const [player, activeSession, completedSession, problemHistory] = await Promise.all([
     getPlayer(studentId),
     getActiveSessionPlan(studentId),
     getMostRecentCompletedSession(studentId),
+    getRecentSessionResults(studentId, 100),
   ])
 
   // 404 if player doesn't exist
@@ -53,6 +55,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
       player={player}
       session={sessionToShow}
       avgSecondsPerProblem={avgSecondsPerProblem}
+      problemHistory={problemHistory}
     />
   )
 }

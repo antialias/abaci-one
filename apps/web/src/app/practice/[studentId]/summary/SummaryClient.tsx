@@ -12,6 +12,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../../../styled-system/css'
 
 interface SummaryClientProps {
@@ -20,6 +21,8 @@ interface SummaryClientProps {
   session: SessionPlan | null
   /** Average seconds per problem from recent sessions */
   avgSecondsPerProblem?: number
+  /** Problem history for BKT computation in weak skills targeting */
+  problemHistory?: ProblemResultWithContext[]
 }
 
 /**
@@ -36,6 +39,7 @@ export function SummaryClient({
   player,
   session,
   avgSecondsPerProblem = 40,
+  problemHistory,
 }: SummaryClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
@@ -176,6 +180,7 @@ export function SummaryClient({
             viewMode === 'summary' ? (
               <SessionSummary
                 plan={session}
+                studentId={studentId}
                 studentName={player.name}
                 onPracticeAgain={handlePracticeAgain}
               />
@@ -232,6 +237,7 @@ export function SummaryClient({
           focusDescription="Continue practicing"
           avgSecondsPerProblem={avgSecondsPerProblem}
           existingPlan={null}
+          problemHistory={problemHistory}
           onClose={() => setShowStartPracticeModal(false)}
           onStarted={() => setShowStartPracticeModal(false)}
         />

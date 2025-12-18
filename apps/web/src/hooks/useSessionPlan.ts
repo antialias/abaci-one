@@ -56,6 +56,7 @@ async function generateSessionPlan({
   abacusTermCount,
   enabledParts,
   problemGenerationMode,
+  confidenceThreshold,
 }: {
   playerId: string
   durationMinutes: number
@@ -65,11 +66,19 @@ async function generateSessionPlan({
   enabledParts?: EnabledParts
   /** Problem generation algorithm: 'adaptive' (BKT) or 'classic' (fluency) */
   problemGenerationMode?: ProblemGenerationMode
+  /** BKT confidence threshold for identifying struggling skills */
+  confidenceThreshold?: number
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ durationMinutes, abacusTermCount, enabledParts, problemGenerationMode }),
+    body: JSON.stringify({
+      durationMinutes,
+      abacusTermCount,
+      enabledParts,
+      problemGenerationMode,
+      confidenceThreshold,
+    }),
   })
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

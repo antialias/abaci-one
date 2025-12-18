@@ -27,6 +27,9 @@ import {
   MASTERY_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import { computeMasteryState } from '@/utils/skillComplexity'
+import { getSkillTutorialConfig } from '@/lib/curriculum/skill-tutorial-config'
+import { useNextSkillToLearn } from '@/hooks/useNextSkillToLearn'
+import { useSkillAnomalies } from '@/hooks/useSkillAnomalies'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
 import { css } from '../../../../../styled-system/css'
 
@@ -68,7 +71,7 @@ interface ProcessedSkill {
   /** Uncertainty range around pKnown */
   uncertaintyRange: { low: number; high: number } | null
   /** BKT mastery classification */
-  bktClassification: 'mastered' | 'learning' | 'struggling' | null
+  bktClassification: 'strong' | 'developing' | 'weak' | null
   /** Staleness warning message */
   stalenessWarning: string | null
   /** Complexity multiplier used in problem generation (lower = easier problems allowed) */
@@ -264,11 +267,11 @@ function SkillCard({
   // Determine status color based on BKT classification or fluency state
   const getStatusColor = () => {
     // Prefer BKT classification if available
-    if (skill.bktClassification === 'mastered')
+    if (skill.bktClassification === 'strong')
       return { bg: 'green.100', border: 'green.400', text: 'green.700' }
-    if (skill.bktClassification === 'struggling')
+    if (skill.bktClassification === 'weak')
       return { bg: 'red.100', border: 'red.400', text: 'red.700' }
-    if (skill.bktClassification === 'learning')
+    if (skill.bktClassification === 'developing')
       return { bg: 'yellow.100', border: 'yellow.400', text: 'yellow.700' }
     // Fallback to fluency state
     if (skill.fluencyState === 'effortless')
@@ -1119,6 +1122,13 @@ export function SkillsClient({
   const [useCrossStudentPriors, setUseCrossStudentPriors] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
 
+  // Fetch next skill to learn
+  const { data: nextSkill } = useNextSkillToLearn(studentId)
+  const nextSkillConfig = nextSkill ? getSkillTutorialConfig(nextSkill.skillId) : null
+
+  // Fetch skill anomalies for teacher review
+  const { data: anomalies } = useSkillAnomalies(studentId)
+
   // Compute BKT from problem history
   const bktResult = useMemo(() => {
     const options: BktComputeOptions = {
@@ -1156,7 +1166,7 @@ export function SkillsClient({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'struggling' ||
+          s.bktClassification === 'weak' ||
           s.needsReinforcement ||
           (s.bktClassification === null && s.fluencyState === 'practicing' && s.accuracy < 0.7)
       ),
@@ -1167,7 +1177,7 @@ export function SkillsClient({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'mastered' ||
+          s.bktClassification === 'strong' ||
           (s.bktClassification === null &&
             (s.fluencyState === 'effortless' || s.fluencyState === 'fluent'))
       ),
@@ -1178,7 +1188,7 @@ export function SkillsClient({
     () =>
       practicingSkills.filter(
         (s) =>
-          s.bktClassification === 'learning' ||
+          s.bktClassification === 'developing' ||
           (s.bktClassification === null && s.fluencyState === 'practicing')
       ),
     [practicingSkills]
@@ -1581,6 +1591,266 @@ export function SkillsClient({
             </div>
           </div>
         </div>
+
+        {/* Promotion Status - shows what's blocking promotion to next skill */}
+        {!nextSkill && learningSkills.length > 0 && (
+          <div
+            data-section="promotion-blocked"
+            className={css({
+              padding: '1rem',
+              borderRadius: '12px',
+              backgroundColor: isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(251, 191, 36, 0.08)',
+              border: '2px solid',
+              borderColor: isDark ? 'yellow.600' : 'yellow.400',
+              marginBottom: '1.5rem',
+            })}
+          >
+            <div className={css({ display: 'flex', gap: '1rem', alignItems: 'start' })}>
+              <span className={css({ fontSize: '1.5rem' })}>🔒</span>
+              <div className={css({ flex: 1 })}>
+                <h3
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'yellow.200' : 'yellow.800',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  Next Skill Locked
+                </h3>
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  To unlock the next skill in the curriculum, these skills need to reach{' '}
+                  <strong>MASTERED</strong> status (80%+ estimated mastery):
+                </p>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  {learningSkills.map((skill) => (
+                    <button
+                      type="button"
+                      key={skill.skillId}
+                      onClick={() => handleSkillClick(skill)}
+                      className={css({
+                        padding: '0.375rem 0.75rem',
+                        borderRadius: '6px',
+                        backgroundColor: isDark ? 'yellow.900/40' : 'yellow.100',
+                        border: '1px solid',
+                        borderColor: isDark ? 'yellow.700' : 'yellow.300',
+                        color: isDark ? 'yellow.200' : 'yellow.800',
+                        fontSize: '0.8125rem',
+                        fontWeight: 'medium',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        _hover: {
+                          backgroundColor: isDark ? 'yellow.800/50' : 'yellow.200',
+                        },
+                      })}
+                    >
+                      {skill.displayName}
+                      {skill.pKnown !== null && (
+                        <span
+                          className={css({
+                            marginLeft: '0.5rem',
+                            color: isDark ? 'yellow.400' : 'yellow.600',
+                            fontSize: '0.75rem',
+                          })}
+                        >
+                          ({Math.round(skill.pKnown * 100)}%)
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.500' : 'gray.500',
+                    fontStyle: 'italic',
+                  })}
+                >
+                  Keep practicing these skills until the system is confident the student has
+                  mastered them.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* All skills mastered - curriculum complete! */}
+        {!nextSkill && learningSkills.length === 0 && practicingSkills.length > 0 && (
+          <div
+            data-section="curriculum-complete"
+            className={css({
+              padding: '1rem',
+              borderRadius: '12px',
+              backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)',
+              border: '2px solid',
+              borderColor: isDark ? 'green.700' : 'green.300',
+              marginBottom: '1.5rem',
+            })}
+          >
+            <div className={css({ display: 'flex', gap: '1rem', alignItems: 'center' })}>
+              <span className={css({ fontSize: '2rem' })}>🎉</span>
+              <div>
+                <h3
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'green.200' : 'green.800',
+                    marginBottom: '0.25rem',
+                  })}
+                >
+                  All Current Skills Mastered!
+                </h3>
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                  })}
+                >
+                  Excellent progress! The student has mastered all skills currently in the practice
+                  rotation.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Next Skill Ready to Learn */}
+        {nextSkillConfig && nextSkill && !nextSkill.tutorialReady && (
+          <div
+            data-section="next-skill-ready"
+            className={css({
+              padding: '1rem',
+              borderRadius: '12px',
+              backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)',
+              border: '2px solid',
+              borderColor: isDark ? 'green.700' : 'green.300',
+              marginBottom: '1.5rem',
+            })}
+          >
+            <div className={css({ display: 'flex', gap: '1rem', alignItems: 'start' })}>
+              <span className={css({ fontSize: '2rem' })}>🌟</span>
+              <div className={css({ flex: 1 })}>
+                <h3
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'green.200' : 'green.800',
+                    marginBottom: '0.25rem',
+                  })}
+                >
+                  Ready to Learn: {nextSkillConfig.title}
+                </h3>
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  {nextSkillConfig.description}
+                </p>
+                <Link
+                  href={`/practice/${studentId}/dashboard`}
+                  className={css({
+                    display: 'inline-block',
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    backgroundColor: 'green.500',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    _hover: { backgroundColor: 'green.600' },
+                  })}
+                >
+                  Start Practice Session
+                </Link>
+                {nextSkill.skipCount > 0 && (
+                  <span
+                    className={css({
+                      marginLeft: '1rem',
+                      fontSize: '0.75rem',
+                      color: isDark ? 'orange.400' : 'orange.600',
+                    })}
+                  >
+                    (Tutorial skipped {nextSkill.skipCount} time{nextSkill.skipCount > 1 ? 's' : ''}
+                    )
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Teacher Anomalies Pane */}
+        {anomalies && anomalies.length > 0 && (
+          <div
+            data-section="teacher-anomalies"
+            className={css({
+              padding: '1rem',
+              borderRadius: '12px',
+              backgroundColor: isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(251, 191, 36, 0.08)',
+              border: '2px solid',
+              borderColor: isDark ? 'yellow.700' : 'yellow.300',
+              marginBottom: '1.5rem',
+            })}
+          >
+            <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'start' })}>
+              <span className={css({ fontSize: '1.5rem' })}>⚠️</span>
+              <div className={css({ flex: 1 })}>
+                <h3
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'yellow.200' : 'yellow.800',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  Teacher Review
+                </h3>
+                <ul className={css({ listStyle: 'none', margin: 0, padding: 0 })}>
+                  {anomalies.map((anomaly, idx) => (
+                    <li
+                      key={`${anomaly.skillId}-${anomaly.type}-${idx}`}
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.300' : 'gray.700',
+                        marginBottom: '0.5rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: idx < anomalies.length - 1 ? '1px solid' : 'none',
+                        borderColor: isDark ? 'yellow.800/50' : 'yellow.200',
+                      })}
+                    >
+                      <strong>{anomaly.displayName}:</strong>{' '}
+                      {anomaly.type === 'mastered_not_practicing' && (
+                        <span>
+                          Appears mastered (BKT: {Math.round((anomaly.pKnown ?? 0) * 100)}%) but not
+                          in practice rotation
+                        </span>
+                      )}
+                      {anomaly.type === 'repeatedly_skipped' && (
+                        <span>Tutorial skipped {anomaly.skipCount} times</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Skills that may need intervention */}
         {interventionNeeded.length > 0 && (

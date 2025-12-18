@@ -181,9 +181,24 @@
       "Bash(shasum:*)",
       "Bash(open http://localhost:3000/arcade/matching)",
       "Bash(echo:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "mcp__sqlite__read_query",
+      "mcp__sqlite__list_tables",
+      "mcp__sqlite__describe_table",
+      "Bash(npm run format:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npm run db:migrate:*)",
+      "Bash(npm run pre-commit:*)",
+      "Bash(npm run seed:test-students:*)",
+      "Bash(npx @biomejs/biome lint:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

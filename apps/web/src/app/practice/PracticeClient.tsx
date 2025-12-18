@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -33,6 +34,7 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
     emoji: player.emoji,
     color: player.color,
     createdAt: player.createdAt,
+    notes: player.notes,
   }))
 
   // Handle student selection - navigate to student's resume page

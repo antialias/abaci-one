@@ -456,8 +456,26 @@ export function TutorialProvider({
   const goToNextStep = useCallback(() => {
     if (navigationState.canGoNext) {
       goToStep(state.currentStepIndex + 1)
+    } else if (state.isStepCompleted && state.currentStepIndex === tutorial.steps.length - 1) {
+      // On the last step and step is completed - trigger tutorial completion
+      const startTime =
+        state.events.length > 0 ? new Date(state.events[0].timestamp).getTime() : Date.now() - 60000 // fallback to 1 minute ago
+      const timeSpent = Math.round((Date.now() - startTime) / 1000)
+
+      // Calculate score based on completed steps (100% for completing all steps)
+      const score = 100
+
+      onTutorialComplete?.(score, timeSpent)
     }
-  }, [navigationState.canGoNext, goToStep, state.currentStepIndex])
+  }, [
+    navigationState.canGoNext,
+    goToStep,
+    state.currentStepIndex,
+    state.isStepCompleted,
+    state.events,
+    tutorial.steps.length,
+    onTutorialComplete,
+  ])
 
   const goToPreviousStep = useCallback(() => {
     if (navigationState.canGoPrevious) {

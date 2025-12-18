@@ -6,6 +6,7 @@
  * the current P(known) estimate for each skill.
  */
 
+import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import type { ProblemResultWithContext } from '../session-planner'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
@@ -189,20 +190,25 @@ export function computeBktFromHistory(
     })
   }
 
-  // Sort by pKnown ascending (struggling skills first)
+  // Sort by pKnown ascending (weak skills first)
   skills.sort((a, b) => a.pKnown - b.pKnown)
 
   // Identify intervention needed (low pKnown with sufficient confidence)
-  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'struggling')
+  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'weak')
 
   // Identify strengths (high pKnown with sufficient confidence)
-  const strengths = skills.filter((s) => s.masteryClassification === 'mastered')
+  const strengths = skills.filter((s) => s.masteryClassification === 'strong')
 
   return { skills, interventionNeeded, strengths }
 }
 
 /**
  * Classify a skill's mastery level based on P(known) and confidence.
+ *
+ * Uses unified thresholds from BKT_THRESHOLDS:
+ * - strong: P(known) >= 0.8
+ * - weak: P(known) < 0.5
+ * - developing: everything in between (or insufficient confidence)
  */
 function classifyMastery(
   pKnown: number,
@@ -211,15 +217,15 @@ function classifyMastery(
 ): MasteryClassification {
   // Need sufficient confidence to make strong claims
   if (confidence < confidenceThreshold) {
-    return 'learning' // Not enough data to be sure either way
+    return 'developing' // Not enough data to be sure either way
   }
 
-  if (pKnown >= 0.8) {
-    return 'mastered'
-  } else if (pKnown < 0.5) {
-    return 'struggling'
+  if (pKnown >= BKT_THRESHOLDS.strong) {
+    return 'strong'
+  } else if (pKnown < BKT_THRESHOLDS.weak) {
+    return 'weak'
   } else {
-    return 'learning'
+    return 'developing'
   }
 }
 
@@ -241,8 +247,8 @@ export function recomputeWithOptions(
     ),
   }))
 
-  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'struggling')
-  const strengths = skills.filter((s) => s.masteryClassification === 'mastered')
+  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'weak')
+  const strengths = skills.filter((s) => s.masteryClassification === 'strong')
 
   return { skills, interventionNeeded, strengths }
 }

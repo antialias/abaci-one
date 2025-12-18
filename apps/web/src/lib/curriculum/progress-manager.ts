@@ -16,6 +16,11 @@ import {
 import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config/fluency-thresholds'
 import type { NewPracticeSession, PracticeSession } from '@/db/schema/practice-sessions'
 import type { HelpLevel } from '@/db/schema/session-plans'
+import {
+  isTutorialSatisfied,
+  type NewSkillTutorialProgress,
+  type SkillTutorialProgress,
+} from '@/db/schema/skill-tutorial-progress'
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -854,4 +859,227 @@ export async function getSkillsByResponseTime(
     const timeB = b.avgResponseTimeMs ?? 0
     return order === 'slowest' ? timeB - timeA : timeA - timeB
   })
+}
+
+// ============================================================================
+// SKILL TUTORIAL PROGRESS OPERATIONS
+// ============================================================================
+
+/**
+ * Get a player's tutorial progress for a specific skill
+ */
+export async function getSkillTutorialProgress(
+  playerId: string,
+  skillId: string
+): Promise<SkillTutorialProgress | null> {
+  const result = await db.query.skillTutorialProgress.findFirst({
+    where: and(
+      eq(schema.skillTutorialProgress.playerId, playerId),
+      eq(schema.skillTutorialProgress.skillId, skillId)
+    ),
+  })
+  return result ?? null
+}
+
+/**
+ * Get all tutorial progress records for a player
+ */
+export async function getAllTutorialProgress(playerId: string): Promise<SkillTutorialProgress[]> {
+  return db.query.skillTutorialProgress.findMany({
+    where: eq(schema.skillTutorialProgress.playerId, playerId),
+  })
+}
+
+/**
+ * Check if a skill's tutorial requirement is satisfied for a player.
+ * Returns true if tutorial completed OR teacher override applied.
+ */
+export async function isSkillTutorialSatisfied(
+  playerId: string,
+  skillId: string
+): Promise<boolean> {
+  const progress = await getSkillTutorialProgress(playerId, skillId)
+  return isTutorialSatisfied(progress)
+}
+
+/**
+ * Mark a skill's tutorial as completed
+ */
+export async function markTutorialComplete(
+  playerId: string,
+  skillId: string
+): Promise<SkillTutorialProgress> {
+  const existing = await getSkillTutorialProgress(playerId, skillId)
+  const now = new Date()
+
+  if (existing) {
+    await db
+      .update(schema.skillTutorialProgress)
+      .set({
+        tutorialCompleted: true,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(schema.skillTutorialProgress.id, existing.id))
+
+    return (await getSkillTutorialProgress(playerId, skillId))!
+  }
+
+  // Create new record
+  const newRecord: NewSkillTutorialProgress = {
+    playerId,
+    skillId,
+    tutorialCompleted: true,
+    completedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await db.insert(schema.skillTutorialProgress).values(newRecord)
+  return (await getSkillTutorialProgress(playerId, skillId))!
+}
+
+/**
+ * Apply teacher override to bypass tutorial requirement.
+ * Use case: student learned the technique offline with their teacher.
+ */
+export async function applyTutorialOverride(
+  playerId: string,
+  skillId: string,
+  reason?: string
+): Promise<SkillTutorialProgress> {
+  const existing = await getSkillTutorialProgress(playerId, skillId)
+  const now = new Date()
+
+  if (existing) {
+    await db
+      .update(schema.skillTutorialProgress)
+      .set({
+        teacherOverride: true,
+        overrideAt: now,
+        overrideReason: reason ?? null,
+        updatedAt: now,
+      })
+      .where(eq(schema.skillTutorialProgress.id, existing.id))
+
+    return (await getSkillTutorialProgress(playerId, skillId))!
+  }
+
+  // Create new record
+  const newRecord: NewSkillTutorialProgress = {
+    playerId,
+    skillId,
+    teacherOverride: true,
+    overrideAt: now,
+    overrideReason: reason ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await db.insert(schema.skillTutorialProgress).values(newRecord)
+  return (await getSkillTutorialProgress(playerId, skillId))!
+}
+
+/**
+ * Record that a student skipped the tutorial prompt.
+ * Used to surface to teachers if student is repeatedly avoiding tutorials.
+ */
+export async function recordTutorialSkip(
+  playerId: string,
+  skillId: string
+): Promise<SkillTutorialProgress> {
+  const existing = await getSkillTutorialProgress(playerId, skillId)
+  const now = new Date()
+
+  if (existing) {
+    await db
+      .update(schema.skillTutorialProgress)
+      .set({
+        skipCount: existing.skipCount + 1,
+        lastSkippedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(schema.skillTutorialProgress.id, existing.id))
+
+    return (await getSkillTutorialProgress(playerId, skillId))!
+  }
+
+  // Create new record
+  const newRecord: NewSkillTutorialProgress = {
+    playerId,
+    skillId,
+    skipCount: 1,
+    lastSkippedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await db.insert(schema.skillTutorialProgress).values(newRecord)
+  return (await getSkillTutorialProgress(playerId, skillId))!
+}
+
+/**
+ * Get skills that have been skipped multiple times (for teacher dashboard).
+ * Returns skills where the student has skipped the tutorial 3+ times.
+ */
+export async function getRepeatedlySkippedTutorials(
+  playerId: string,
+  minSkipCount: number = 3
+): Promise<SkillTutorialProgress[]> {
+  const allProgress = await getAllTutorialProgress(playerId)
+  return allProgress.filter(
+    (p) => p.skipCount >= minSkipCount && !p.tutorialCompleted && !p.teacherOverride
+  )
+}
+
+// Re-export the helper function
+export { isTutorialSatisfied }
+
+// ============================================================================
+// SKILL ACTIVATION OPERATIONS
+// ============================================================================
+
+/**
+ * Enable a single skill for practice.
+ * Creates a new skill mastery record if one doesn't exist, or updates isPracticing to true.
+ * This is typically called after a tutorial is completed.
+ *
+ * @param playerId - The player's ID
+ * @param skillId - The skill to enable
+ * @returns Updated skill mastery record
+ */
+export async function enableSkillForPractice(
+  playerId: string,
+  skillId: string
+): Promise<PlayerSkillMastery> {
+  const existing = await getSkillMastery(playerId, skillId)
+  const now = new Date()
+
+  if (existing) {
+    // Only update if not already practicing
+    if (!existing.isPracticing) {
+      await db
+        .update(schema.playerSkillMastery)
+        .set({
+          isPracticing: true,
+          updatedAt: now,
+        })
+        .where(eq(schema.playerSkillMastery.id, existing.id))
+    }
+    return (await getSkillMastery(playerId, skillId))!
+  }
+
+  // Create new record with skill enabled for practice
+  const newRecord: NewPlayerSkillMastery = {
+    playerId,
+    skillId,
+    attempts: 0,
+    correct: 0,
+    consecutiveCorrect: 0,
+    isPracticing: true,
+    lastPracticedAt: now,
+  }
+
+  await db.insert(schema.playerSkillMastery).values(newRecord)
+  return (await getSkillMastery(playerId, skillId))!
 }

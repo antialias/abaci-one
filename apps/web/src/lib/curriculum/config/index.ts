@@ -61,6 +61,13 @@ export {
 
 // BKT Integration
 export {
+  // Unified thresholds (preferred)
+  BKT_THRESHOLDS,
+  classifySkill,
+  shouldTargetSkill,
+  type BktThresholds,
+  type SkillClassification,
+  // Legacy exports (use unified thresholds internally)
   BKT_INTEGRATION_CONFIG,
   calculateBktMultiplier,
   DEFAULT_PROBLEM_GENERATION_MODE,

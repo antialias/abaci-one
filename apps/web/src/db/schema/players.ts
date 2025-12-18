@@ -85,6 +85,12 @@ export const players = sqliteTable(
      * Controls how help is triggered and escalated
      */
     helpSettings: text('help_settings', { mode: 'json' }).$type<StudentHelpSettings>(),
+
+    /**
+     * Teacher notes about this student
+     * Free-form text for observations, reminders, etc.
+     */
+    notes: text('notes'),
   },
   (table) => ({
     /** Index for fast lookups by userId */

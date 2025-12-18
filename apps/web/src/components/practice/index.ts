@@ -13,6 +13,7 @@ export { ActiveSession } from './ActiveSession'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
 export { useHasPhysicalKeyboard, useIsTouchDevice } from './hooks/useDeviceDetection'
+export { NotesModal } from './NotesModal'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export type { SessionHudData } from './PracticeSubNav'

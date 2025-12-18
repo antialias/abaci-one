@@ -65,8 +65,15 @@ export interface BktComputeOptions {
 
 /**
  * Mastery classification based on P(known) and confidence.
+ *
+ * - 'strong': P(known) >= 0.8 - student has mastered this skill
+ * - 'developing': 0.5 <= P(known) < 0.8 - student is making progress
+ * - 'weak': P(known) < 0.5 - student needs more practice
+ *
+ * Note: When confidence is insufficient, classification may be returned as
+ * 'developing' (safest default) or the classifier may return null.
  */
-export type MasteryClassification = 'mastered' | 'learning' | 'struggling'
+export type MasteryClassification = 'strong' | 'developing' | 'weak'
 
 /**
  * Result for a single skill after BKT computation.

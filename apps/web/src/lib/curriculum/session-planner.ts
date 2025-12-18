@@ -79,6 +79,12 @@ export interface GenerateSessionPlanOptions {
   /** Which parts to include (default: all enabled) */
   enabledParts?: EnabledParts
   /**
+   * BKT confidence threshold for identifying struggling skills.
+   * Skills need this level of confidence before being classified.
+   * Default: WEAK_SKILL_THRESHOLDS.confidenceThreshold (0.3)
+   */
+  confidenceThreshold?: number
+  /**
    * Problem generation mode:
    * - 'adaptive': BKT-based continuous scaling (default)
    * - 'classic': Fluency-based discrete states

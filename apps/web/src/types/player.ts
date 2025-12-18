@@ -26,6 +26,8 @@ export interface Player {
   createdAt: Date | number
   isActive?: boolean
   isLocal?: boolean
+  /** Teacher notes about this student */
+  notes?: string | null
 }
 
 /**

@@ -34,7 +34,96 @@ export type ProblemGenerationMode = 'classic' | 'adaptive' | 'adaptive-bkt'
 export const DEFAULT_PROBLEM_GENERATION_MODE: ProblemGenerationMode = 'adaptive-bkt'
 
 // =============================================================================
-// BKT Confidence Thresholds
+// Unified BKT Classification Thresholds
+// =============================================================================
+
+/**
+ * SINGLE SOURCE OF TRUTH for all BKT classification thresholds.
+ *
+ * These thresholds determine how skills are classified based on P(known):
+ * - P(known) >= strong → "strong" (mastered, ready to advance)
+ * - P(known) < weak → "weak" (struggling, needs targeted practice)
+ * - weak <= P(known) < strong → "developing" (learning, in progress)
+ *
+ * The confidence threshold determines when we trust the BKT estimate enough
+ * to make classification decisions. Below this, we fall back to fluency-based
+ * assessment or show "insufficient data".
+ *
+ * IMPORTANT: These values are designed to be adjustable via admin UI in the future.
+ * All code should import from here rather than hardcoding values.
+ */
+export const BKT_THRESHOLDS = {
+  /**
+   * P(known) threshold for "strong" classification.
+   * Skills at or above this are considered mastered.
+   */
+  strong: 0.8,
+
+  /**
+   * P(known) threshold for "weak" classification.
+   * Skills below this need targeted practice.
+   * Skills between weak and strong are "developing".
+   */
+  weak: 0.5,
+
+  /**
+   * Minimum confidence required to trust BKT estimates.
+   * Below this, classification falls back to fluency-based assessment.
+   *
+   * Confidence formula: 1 - exp(-opportunities / 20)
+   * - ~7 problems → 0.30 confidence
+   * - ~15 problems → 0.53 confidence
+   * - ~50 problems → 0.92 confidence
+   */
+  confidence: 0.3,
+} as const
+
+export type BktThresholds = typeof BKT_THRESHOLDS
+
+/**
+ * Skill classification based on BKT P(known) estimate.
+ * - 'strong': P(known) >= 0.8 - student has mastered this skill
+ * - 'developing': 0.5 <= P(known) < 0.8 - student is learning, making progress
+ * - 'weak': P(known) < 0.5 - student needs more practice on this skill
+ */
+export type SkillClassification = 'strong' | 'developing' | 'weak'
+
+/**
+ * Classify a skill based on P(known) using unified thresholds.
+ *
+ * @param pKnown - BKT probability of knowing skill [0, 1]
+ * @param confidence - BKT confidence in the estimate [0, 1]
+ * @returns Classification or null if confidence is insufficient
+ */
+export function classifySkill(pKnown: number, confidence: number): SkillClassification | null {
+  // Insufficient confidence - can't reliably classify
+  if (confidence < BKT_THRESHOLDS.confidence) {
+    return null
+  }
+
+  if (pKnown >= BKT_THRESHOLDS.strong) {
+    return 'strong'
+  } else if (pKnown < BKT_THRESHOLDS.weak) {
+    return 'weak'
+  } else {
+    return 'developing'
+  }
+}
+
+/**
+ * Check if a skill should be targeted for extra practice.
+ * A skill is targeted when it's confidently classified as "weak".
+ *
+ * @param pKnown - BKT probability of knowing skill [0, 1]
+ * @param confidence - BKT confidence in the estimate [0, 1]
+ * @returns true if skill should be targeted for practice
+ */
+export function shouldTargetSkill(pKnown: number, confidence: number): boolean {
+  return confidence >= BKT_THRESHOLDS.confidence && pKnown < BKT_THRESHOLDS.weak
+}
+
+// =============================================================================
+// BKT Confidence Thresholds (Legacy - uses unified thresholds)
 // =============================================================================
 
 /**
@@ -46,16 +135,9 @@ export const BKT_INTEGRATION_CONFIG = {
    * Below this, we use fluency-based discrete multipliers.
    * Above this, we use BKT P(known) for continuous scaling.
    *
-   * Confidence formula: 1 - exp(-opportunities / 20)
-   * With ~5 problems per skill, confidence reaches ~0.22
-   * With ~7 problems per skill, confidence reaches ~0.30
-   * With ~15 problems per skill, confidence reaches ~0.53
-   * With ~50 problems per skill, confidence reaches ~0.92
-   *
-   * Threshold 0.30 requires ~7 opportunities per skill to engage BKT,
-   * allowing adaptive behavior to emerge in shorter sessions.
+   * @see BKT_THRESHOLDS.confidence for the unified source of truth
    */
-  confidenceThreshold: 0.3,
+  confidenceThreshold: BKT_THRESHOLDS.confidence,
 
   /**
    * Minimum multiplier (when pKnown = 1.0, fully mastered)
@@ -129,28 +211,27 @@ export function isBktConfident(confidence: number): boolean {
 }
 
 // =============================================================================
-// Weak Skill Identification
+// Weak Skill Identification (Legacy - uses unified thresholds)
 // =============================================================================
 
 /**
- * Thresholds for identifying weak skills from BKT estimates.
+ * @deprecated Use BKT_THRESHOLDS and shouldTargetSkill() instead.
  *
- * A skill is considered "weak" and prioritized for practice when:
- * - BKT confidence >= confidenceThreshold (we trust the estimate)
- * - BKT P(known) < pKnownThreshold (skill needs more practice)
+ * Thresholds for identifying weak skills from BKT estimates.
+ * Now delegates to unified BKT_THRESHOLDS.
  */
 export const WEAK_SKILL_THRESHOLDS = {
   /**
    * P(known) below this = weak skill that needs practice.
-   * 0.5 means skills the student has <50% chance of knowing correctly.
+   * @deprecated Use BKT_THRESHOLDS.weak instead
    */
-  pKnownThreshold: 0.5,
+  pKnownThreshold: BKT_THRESHOLDS.weak,
 
   /**
    * Confidence required to trust BKT assessment for targeting.
-   * Uses same threshold as general BKT confidence.
+   * @deprecated Use BKT_THRESHOLDS.confidence instead
    */
-  confidenceThreshold: BKT_INTEGRATION_CONFIG.confidenceThreshold,
+  confidenceThreshold: BKT_THRESHOLDS.confidence,
 } as const
 
 export type WeakSkillThresholds = typeof WEAK_SKILL_THRESHOLDS
