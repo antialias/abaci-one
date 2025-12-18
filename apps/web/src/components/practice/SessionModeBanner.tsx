@@ -56,6 +56,9 @@ function RemediationBanner({ mode, onAction, isLoading, variant, isDark }: Remed
         overflow: 'hidden',
         border: '2px solid',
         borderColor: isDark ? 'amber.600' : 'amber.400',
+        '@media (max-width: 400px)': {
+          borderRadius: '12px',
+        },
       })}
       style={{
         background: isDark
@@ -70,22 +73,33 @@ function RemediationBanner({ mode, onAction, isLoading, variant, isDark }: Remed
           display: 'flex',
           gap: '0.75rem',
           alignItems: 'flex-start',
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            gap: '0.5rem',
+          },
         })}
       >
         <span
           className={css({
             fontSize: variant === 'modal' ? '1.5rem' : '2rem',
             lineHeight: 1,
+            '@media (max-width: 400px)': {
+              fontSize: '1.25rem',
+            },
           })}
         >
           {hasBlockedPromotion ? '🔒' : '💪'}
         </span>
-        <div className={css({ flex: 1 })}>
+        <div className={css({ flex: 1, minWidth: 0 })}>
           <p
             className={css({
               fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
               fontWeight: '600',
               marginBottom: '0.25rem',
+              '@media (max-width: 400px)': {
+                fontSize: '0.875rem',
+                marginBottom: '0.125rem',
+              },
             })}
             style={{ color: isDark ? '#fcd34d' : '#b45309' }}
           >
@@ -95,6 +109,9 @@ function RemediationBanner({ mode, onAction, isLoading, variant, isDark }: Remed
             className={css({
               fontSize: variant === 'modal' ? '0.8125rem' : '0.875rem',
               marginBottom: hasBlockedPromotion ? '0.5rem' : '0',
+              '@media (max-width: 400px)': {
+                fontSize: '0.75rem',
+              },
             })}
             style={{ color: isDark ? '#d4d4d4' : '#525252' }}
           >
@@ -190,6 +207,10 @@ function RemediationBanner({ mode, onAction, isLoading, variant, isDark }: Remed
           _hover: {
             filter: isLoading ? 'none' : 'brightness(1.05)',
           },
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            fontSize: '0.9375rem',
+          },
         })}
         style={{
           background: isLoading ? '#9ca3af' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -221,6 +242,9 @@ function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: Progr
         overflow: 'hidden',
         border: '2px solid',
         borderColor: isDark ? 'green.500' : 'green.400',
+        '@media (max-width: 400px)': {
+          borderRadius: '12px',
+        },
       })}
       style={{
         background: isDark
@@ -235,21 +259,31 @@ function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: Progr
           display: 'flex',
           gap: '0.75rem',
           alignItems: 'center',
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            gap: '0.5rem',
+          },
         })}
       >
         <span
           className={css({
             fontSize: variant === 'modal' ? '1.5rem' : '2rem',
             lineHeight: 1,
+            '@media (max-width: 400px)': {
+              fontSize: '1.25rem',
+            },
           })}
         >
           🌟
         </span>
-        <div className={css({ flex: 1 })}>
+        <div className={css({ flex: 1, minWidth: 0 })}>
           <p
             className={css({
               fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
               fontWeight: '600',
+              '@media (max-width: 400px)': {
+                fontSize: '0.875rem',
+              },
             })}
             style={{ color: isDark ? '#86efac' : '#166534' }}
           >
@@ -260,6 +294,9 @@ function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: Progr
             className={css({
               fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
               marginTop: '0.125rem',
+              '@media (max-width: 400px)': {
+                fontSize: '0.6875rem',
+              },
             })}
             style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
           >
@@ -290,6 +327,11 @@ function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: Progr
           gap: '0.5rem',
           _hover: {
             filter: isLoading ? 'none' : 'brightness(1.05)',
+          },
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            fontSize: '0.9375rem',
+            gap: '0.375rem',
           },
         })}
         style={{
@@ -332,6 +374,9 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
         overflow: 'hidden',
         border: '2px solid',
         borderColor: isDark ? 'blue.500' : 'blue.400',
+        '@media (max-width: 400px)': {
+          borderRadius: '12px',
+        },
       })}
       style={{
         background: isDark
@@ -346,21 +391,31 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
           display: 'flex',
           gap: '0.75rem',
           alignItems: 'center',
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            gap: '0.5rem',
+          },
         })}
       >
         <span
           className={css({
             fontSize: variant === 'modal' ? '1.5rem' : '2rem',
             lineHeight: 1,
+            '@media (max-width: 400px)': {
+              fontSize: '1.25rem',
+            },
           })}
         >
           ✨
         </span>
-        <div className={css({ flex: 1 })}>
+        <div className={css({ flex: 1, minWidth: 0 })}>
           <p
             className={css({
               fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
               fontWeight: '600',
+              '@media (max-width: 400px)': {
+                fontSize: '0.875rem',
+              },
             })}
             style={{ color: isDark ? '#93c5fd' : '#1d4ed8' }}
           >
@@ -370,6 +425,9 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
             className={css({
               fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
               marginTop: '0.125rem',
+              '@media (max-width: 400px)': {
+                fontSize: '0.6875rem',
+              },
             })}
             style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
           >
@@ -400,6 +458,10 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
           gap: '0.5rem',
           _hover: {
             filter: isLoading ? 'none' : 'brightness(1.05)',
+          },
+          '@media (max-width: 400px)': {
+            padding: '0.75rem',
+            fontSize: '0.9375rem',
           },
         })}
         style={{
