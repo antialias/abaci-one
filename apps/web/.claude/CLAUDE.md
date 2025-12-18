@@ -821,6 +821,49 @@ When adding/modifying database schema:
 - Production deployments run `npm run db:migrate` automatically
 - Improperly created migrations will fail in production
 
+### CRITICAL: Statement Breakpoints in Migrations
+
+**When a migration contains multiple SQL statements, you MUST add `--> statement-breakpoint` between them.**
+
+Drizzle's better-sqlite3 driver executes statements one at a time. If you have multiple statements without breakpoints, the migration will fail with:
+
+```
+RangeError: The supplied SQL string contains more than one statement
+```
+
+**✅ CORRECT - Multiple statements with breakpoints:**
+
+```sql
+-- Create the table
+CREATE TABLE `app_settings` (
+  `id` text PRIMARY KEY DEFAULT 'default' NOT NULL,
+  `threshold` real DEFAULT 0.3 NOT NULL
+);
+--> statement-breakpoint
+
+-- Seed default data
+INSERT INTO `app_settings` (`id`, `threshold`) VALUES ('default', 0.3);
+```
+
+**❌ WRONG - Multiple statements without breakpoint (CAUSES PRODUCTION OUTAGE):**
+
+```sql
+CREATE TABLE `app_settings` (...);
+
+-- This will fail!
+INSERT INTO `app_settings` ...;
+```
+
+**When this applies:**
+
+- CREATE TABLE followed by INSERT (seeding data)
+- CREATE TABLE followed by CREATE INDEX
+- Any migration with 2+ SQL statements
+
+**Historical context:**
+
+This mistake caused a production outage on 2025-12-18. The app crash-looped because migration 0035 had CREATE TABLE + INSERT without a breakpoint. Always verify migrations with multiple statements have `--> statement-breakpoint` markers.
+
 ## Deployment Verification
 
 **CRITICAL: Never assume deployment is complete just because the website is accessible.**
