@@ -3,6 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { NavBannerSlot } from '@/contexts/SessionModeBannerContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
@@ -77,8 +78,6 @@ interface PracticeSubNavProps {
   pageContext?: 'dashboard' | 'configure' | 'session' | 'summary' | 'resume' | 'placement-test'
   /** Session HUD data (shown when in active session) */
   sessionHud?: SessionHudData
-  /** Callback when "Start Practice" button is clicked (shown on dashboard) */
-  onStartPractice?: () => void
 }
 
 // Minimum samples needed for statistical display
@@ -119,12 +118,7 @@ function calculateStats(times: number[]): {
  * - Session HUD controls when in an active session
  * - Consistent visual identity across all practice pages
  */
-export function PracticeSubNav({
-  student,
-  pageContext,
-  sessionHud,
-  onStartPractice,
-}: PracticeSubNavProps) {
+export function PracticeSubNav({ student, pageContext, sessionHud }: PracticeSubNavProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -463,7 +457,6 @@ export function PracticeSubNav({
               currentSlotIndex={sessionHud.currentSlotIndex}
               isBrowseMode={sessionHud.isBrowseMode}
               onNavigate={sessionHud.onBrowseNavigate}
-              averageResponseTimeMs={timingStats?.hasEnoughData ? timingStats.mean : undefined}
               isDark={isDark}
               compact={true}
             />
@@ -489,45 +482,15 @@ export function PracticeSubNav({
         </div>
       )}
 
-      {/* Center: Start Practice button (when on dashboard with no active session) */}
-      {isOnDashboard && !sessionHud && onStartPractice && (
-        <button
-          type="button"
-          data-action="start-practice"
-          onClick={onStartPractice}
+      {/* Nav Banner Slot - shown when not in session and not on a page with content slot */}
+      {!sessionHud && pageContext !== 'dashboard' && pageContext !== 'summary' && (
+        <NavBannerSlot
           className={css({
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            flex: 1,
             display: 'flex',
-            alignItems: 'center',
-            gap: '0.625rem',
-            padding: '0.875rem 1.75rem',
-            fontSize: '1.0625rem',
-            fontWeight: 'bold',
-            color: 'white',
-            backgroundColor: 'green.500',
-            borderRadius: '12px',
-            border: '2px solid',
-            borderColor: 'green.400',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(34, 197, 94, 0.4)',
-            transition: 'all 0.2s ease',
-            _hover: {
-              backgroundColor: 'green.400',
-              borderColor: 'green.300',
-              transform: 'translateX(-50%) translateY(-2px) scale(1.02)',
-              boxShadow: '0 6px 20px rgba(34, 197, 94, 0.5)',
-            },
-            _active: {
-              transform: 'translateX(-50%) translateY(0) scale(0.98)',
-              boxShadow: '0 2px 8px rgba(34, 197, 94, 0.4)',
-            },
+            justifyContent: 'center',
           })}
-        >
-          <span className={css({ fontSize: '1.25rem' })}>▶</span>
-          <span>Start Practice</span>
-        </button>
+        />
       )}
     </nav>
   )

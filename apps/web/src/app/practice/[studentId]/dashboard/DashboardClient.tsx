@@ -3,17 +3,22 @@
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
   PracticeSubNav,
   ProgressDashboard,
-  SessionModeBanner,
   StartPracticeModal,
   type StudentWithProgress,
 } from '@/components/practice'
+import { ProjectingBanner } from '@/components/practice/ProjectingBanner'
+import {
+  ContentBannerSlot,
+  SessionModeBannerProvider,
+  useSessionModeBanner,
+} from '@/contexts/SessionModeBannerContext'
 import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import {
   type OfflineSessionData,
@@ -1727,6 +1732,24 @@ function NotesTab({
 }
 
 // ============================================================================
+// Banner Action Helper
+// ============================================================================
+
+/**
+ * Helper component that registers the banner action and renders ProjectingBanner.
+ * Must be used inside SessionModeBannerProvider.
+ */
+function BannerActionRegistrar({ onAction }: { onAction: () => void }) {
+  const { setOnAction } = useSessionModeBanner()
+
+  useEffect(() => {
+    setOnAction(onAction)
+  }, [onAction, setOnAction])
+
+  return <ProjectingBanner />
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -1920,111 +1943,104 @@ export function DashboardClient({
   )
 
   return (
-    <PageWithNav>
-      <PracticeSubNav
-        student={selectedStudent}
-        pageContext="dashboard"
-        onStartPractice={handleStartPractice}
-      />
+    <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoadingSessionMode}>
+      <BannerActionRegistrar onAction={handleStartPractice} />
+      <PageWithNav>
+        <PracticeSubNav student={selectedStudent} pageContext="dashboard" />
 
-      <main
-        data-component="practice-dashboard-page"
-        className={css({
-          minHeight: '100vh',
-          backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          padding: { base: '0.75rem', sm: '1rem', md: '1.5rem' },
-        })}
-      >
-        <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
-          {/* Session mode banner - handles celebration wind-down internally */}
-          {sessionMode && (
-            <div className={css({ marginBottom: '1rem' })}>
-              <SessionModeBanner
-                sessionMode={sessionMode}
-                onAction={handleStartPractice}
-                isLoading={isLoadingSessionMode}
-                variant="dashboard"
+        <main
+          data-component="practice-dashboard-page"
+          className={css({
+            minHeight: '100vh',
+            backgroundColor: isDark ? 'gray.900' : 'gray.50',
+            padding: { base: '0.75rem', sm: '1rem', md: '1.5rem' },
+          })}
+        >
+          <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
+            {/* Session mode banner slot - ProjectingBanner renders here via portal */}
+            <ContentBannerSlot
+              className={css({ marginBottom: '1rem' })}
+              minHeight={sessionMode ? 120 : 0}
+            />
+
+            <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
+
+            {activeTab === 'overview' && (
+              <OverviewTab
+                student={selectedStudent}
+                currentPhase={currentPhase}
+                activeSession={activeSessionState}
+                isDark={isDark}
+                onStartPractice={handleStartPractice}
+                onResumePractice={handleResumeSession}
+                onStartOver={handleStartOver}
+                isStartingOver={isStartingOver}
+                onViewFullProgress={handleViewFullProgress}
+                onGenerateWorksheet={handleGenerateWorksheet}
+                onRunPlacementTest={handleRunPlacementTest}
+                onRecordOfflinePractice={handleRecordOfflinePractice}
               />
-            </div>
-          )}
+            )}
 
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
+            {activeTab === 'skills' && (
+              <SkillsTab
+                skills={liveSkills}
+                problemHistory={problemHistory}
+                isDark={isDark}
+                onManageSkills={() => setShowManualSkillModal(true)}
+              />
+            )}
 
-          {activeTab === 'overview' && (
-            <OverviewTab
-              student={selectedStudent}
-              currentPhase={currentPhase}
-              activeSession={activeSessionState}
-              isDark={isDark}
-              onStartPractice={handleStartPractice}
-              onResumePractice={handleResumeSession}
-              onStartOver={handleStartOver}
-              isStartingOver={isStartingOver}
-              onViewFullProgress={handleViewFullProgress}
-              onGenerateWorksheet={handleGenerateWorksheet}
-              onRunPlacementTest={handleRunPlacementTest}
-              onRecordOfflinePractice={handleRecordOfflinePractice}
-            />
-          )}
+            {activeTab === 'history' && (
+              <HistoryTab isDark={isDark} recentSessions={recentSessions} studentId={studentId} />
+            )}
 
-          {activeTab === 'skills' && (
-            <SkillsTab
-              skills={liveSkills}
-              problemHistory={problemHistory}
-              isDark={isDark}
-              onManageSkills={() => setShowManualSkillModal(true)}
-            />
-          )}
+            {activeTab === 'notes' && (
+              <NotesTab
+                isDark={isDark}
+                notes={currentNotes}
+                studentName={player.name}
+                playerId={player.id}
+                onNotesSaved={setCurrentNotes}
+              />
+            )}
+          </div>
 
-          {activeTab === 'history' && (
-            <HistoryTab isDark={isDark} recentSessions={recentSessions} studentId={studentId} />
-          )}
+          {/* Modals */}
+          <OfflineSessionForm
+            studentName={selectedStudent.name}
+            playerId={selectedStudent.id}
+            open={showOfflineSessionModal}
+            onClose={() => setShowOfflineSessionModal(false)}
+            onSubmit={handleSubmitOfflineSession}
+          />
 
-          {activeTab === 'notes' && (
-            <NotesTab
-              isDark={isDark}
-              notes={currentNotes}
-              studentName={player.name}
-              playerId={player.id}
-              onNotesSaved={setCurrentNotes}
-            />
-          )}
-        </div>
+          <ManualSkillSelector
+            studentName={player.name}
+            playerId={player.id}
+            open={showManualSkillModal}
+            onClose={() => setShowManualSkillModal(false)}
+            onSave={handleSaveManualSkills}
+            onRefreshSkill={handleRefreshSkill}
+            currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
+            skillMasteryData={liveSkills}
+          />
+        </main>
 
-        {/* Modals */}
-        <OfflineSessionForm
-          studentName={selectedStudent.name}
-          playerId={selectedStudent.id}
-          open={showOfflineSessionModal}
-          onClose={() => setShowOfflineSessionModal(false)}
-          onSubmit={handleSubmitOfflineSession}
-        />
-
-        <ManualSkillSelector
-          studentName={player.name}
-          playerId={player.id}
-          open={showManualSkillModal}
-          onClose={() => setShowManualSkillModal(false)}
-          onSave={handleSaveManualSkills}
-          onRefreshSkill={handleRefreshSkill}
-          currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
-          skillMasteryData={liveSkills}
-        />
-      </main>
-
-      {showStartPracticeModal && sessionMode && (
-        <StartPracticeModal
-          studentId={studentId}
-          studentName={player.name}
-          focusDescription={sessionMode.focusDescription}
-          sessionMode={sessionMode}
-          avgSecondsPerProblem={avgSecondsPerProblem}
-          existingPlan={activeSession}
-          problemHistory={problemHistory}
-          onClose={() => setShowStartPracticeModal(false)}
-          onStarted={() => setShowStartPracticeModal(false)}
-        />
-      )}
-    </PageWithNav>
+        {showStartPracticeModal && sessionMode && (
+          <StartPracticeModal
+            studentId={studentId}
+            studentName={player.name}
+            focusDescription={sessionMode.focusDescription}
+            sessionMode={sessionMode}
+            avgSecondsPerProblem={avgSecondsPerProblem}
+            existingPlan={activeSession}
+            problemHistory={problemHistory}
+            onClose={() => setShowStartPracticeModal(false)}
+            onStarted={() => setShowStartPracticeModal(false)}
+          />
+        )}
+      </PageWithNav>
+    </SessionModeBannerProvider>
   )
 }

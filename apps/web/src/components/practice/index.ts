@@ -19,6 +19,8 @@ export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export type { SessionHudData } from './PracticeSubNav'
 export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'
+export { ProjectingBanner } from './ProjectingBanner'
+export { CompactBanner } from './CompactBanner'
 export type { ActiveSessionState, CurrentPhaseInfo, SkillProgress } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
 // Re-export MasteryLevel type for display purposes

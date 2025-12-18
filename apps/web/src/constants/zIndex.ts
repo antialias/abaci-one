@@ -13,6 +13,8 @@ export const Z_INDEX = {
   // Navigation and UI chrome (100-999)
   NAV_BAR: 100,
   STICKY_HEADER: 100,
+  SUB_NAV: 90,
+  SESSION_MODE_BANNER: 85, // Below sub-nav, but above content
 
   // Overlays and dropdowns (1000-9999)
   DROPDOWN: 1000,

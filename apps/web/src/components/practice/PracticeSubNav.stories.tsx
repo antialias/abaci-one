@@ -180,7 +180,7 @@ function NavWrapper({
   darkMode?: boolean
 }) {
   return (
-    <ThemeProvider forcedTheme={darkMode ? 'dark' : 'light'}>
+    <ThemeProvider>
       <div
         className={css({
           minHeight: '300px',
@@ -242,14 +242,10 @@ export const DashboardDefault: Story = {
   ),
 }
 
-export const DashboardWithStartButton: Story = {
+export const DashboardWithBannerSlot: Story = {
   render: () => (
     <NavWrapper>
-      <PracticeSubNav
-        student={mockStudent}
-        pageContext="dashboard"
-        onStartPractice={() => alert('Start Practice clicked!')}
-      />
+      <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
 }
@@ -257,11 +253,7 @@ export const DashboardWithStartButton: Story = {
 export const DashboardLongName: Story = {
   render: () => (
     <NavWrapper>
-      <PracticeSubNav
-        student={mockStudentLongName}
-        pageContext="dashboard"
-        onStartPractice={() => alert('Start Practice clicked!')}
-      />
+      <PracticeSubNav student={mockStudentLongName} pageContext="dashboard" />
     </NavWrapper>
   ),
 }
@@ -559,11 +551,7 @@ export const SessionPaused: Story = {
 export const DarkModeDashboard: Story = {
   render: () => (
     <NavWrapper darkMode>
-      <PracticeSubNav
-        student={mockStudent}
-        pageContext="dashboard"
-        onStartPractice={() => alert('Start Practice clicked!')}
-      />
+      <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
 }
@@ -662,11 +650,7 @@ export const MobileDashboard: Story = {
   },
   render: () => (
     <NavWrapper>
-      <PracticeSubNav
-        student={mockStudent}
-        pageContext="dashboard"
-        onStartPractice={() => alert('Start Practice clicked!')}
-      />
+      <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
 }
