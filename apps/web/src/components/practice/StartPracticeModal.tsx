@@ -409,6 +409,13 @@ export function StartPracticeModal({
                 padding: '1rem',
                 paddingTop: '2.5rem', // Account for close button
               },
+              // Tall phones: generous padding, truly centered content
+              '@media (max-width: 480px) and (min-height: 700px)': {
+                padding: '1.5rem',
+                paddingTop: '3rem',
+                justifyContent: 'center',
+                gap: '1.5rem',
+              },
               // Landscape mode: single column, more compact, scrollable if needed
               '@media (max-height: 500px) and (orientation: landscape)': {
                 padding: '0.75rem 2rem',
@@ -428,6 +435,10 @@ export function StartPracticeModal({
                 '@media (max-width: 480px), (max-height: 700px)': {
                   marginBottom: '0.5rem',
                 },
+                // Tall phones: restore some header prominence
+                '@media (max-width: 480px) and (min-height: 700px)': {
+                  marginBottom: '0.75rem',
+                },
                 // Landscape: even more compact header
                 '@media (max-height: 500px) and (orientation: landscape)': {
                   marginBottom: '0.375rem',
@@ -443,6 +454,12 @@ export function StartPracticeModal({
                   '@media (max-width: 480px), (max-height: 700px)': {
                     display: 'none',
                   },
+                  // Tall phones: show icon again
+                  '@media (max-width: 480px) and (min-height: 700px)': {
+                    display: 'block',
+                    fontSize: '2.5rem',
+                    marginBottom: '0.5rem',
+                  },
                 })}
               >
                 🎯
@@ -456,6 +473,11 @@ export function StartPracticeModal({
                   '@media (max-width: 480px), (max-height: 700px)': {
                     fontSize: '1.125rem',
                     marginBottom: '0.125rem',
+                  },
+                  // Tall phones: larger title
+                  '@media (max-width: 480px) and (min-height: 700px)': {
+                    fontSize: '1.5rem',
+                    marginBottom: '0.25rem',
                   },
                 })}
                 style={{
@@ -492,6 +514,12 @@ export function StartPracticeModal({
               data-section="config-and-action"
               className={css({
                 display: 'contents',
+                // Tall phones: use flex for reordering (CTA first, settings second)
+                '@media (max-width: 480px) and (min-height: 700px)': {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                },
                 '@media (max-height: 500px) and (min-width: 500px)': {
                   display: 'flex',
                   flexDirection: 'column',
@@ -512,6 +540,12 @@ export function StartPracticeModal({
                   '@media (max-width: 480px), (max-height: 700px)': {
                     marginBottom: '0.5rem',
                     borderRadius: '8px',
+                  },
+                  // Tall phones: settings appear AFTER CTA (order: 2)
+                  '@media (max-width: 480px) and (min-height: 700px)': {
+                    order: 2,
+                    marginBottom: 0,
+                    marginTop: '0.5rem',
                   },
                 })}
                 style={{
@@ -1148,6 +1182,12 @@ export function StartPracticeModal({
                       borderRadius: '10px',
                       marginTop: 'auto',
                     },
+                    // Tall phones: hero CTA comes first (order: 1), larger styling
+                    '@media (max-width: 480px) and (min-height: 700px)': {
+                      order: 1,
+                      marginTop: 0,
+                      borderRadius: '16px',
+                    },
                   })}
                   style={{
                     background: isDark
@@ -1167,6 +1207,13 @@ export function StartPracticeModal({
                         padding: '0.5rem 0.75rem',
                         gap: '0.5rem',
                       },
+                      // Tall phones: larger hero padding
+                      '@media (max-width: 480px) and (min-height: 700px)': {
+                        padding: '1.25rem 1rem',
+                        gap: '0.875rem',
+                        flexDirection: 'column',
+                        textAlign: 'center',
+                      },
                     })}
                   >
                     <span
@@ -1175,6 +1222,10 @@ export function StartPracticeModal({
                         lineHeight: 1,
                         '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '1.25rem',
+                        },
+                        // Tall phones: larger emoji
+                        '@media (max-width: 480px) and (min-height: 700px)': {
+                          fontSize: '2.5rem',
                         },
                       })}
                     >
@@ -1188,6 +1239,10 @@ export function StartPracticeModal({
                           '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.8125rem',
                           },
+                          // Tall phones: larger title
+                          '@media (max-width: 480px) and (min-height: 700px)': {
+                            fontSize: '1.125rem',
+                          },
                         })}
                         style={{ color: isDark ? '#86efac' : '#166534' }}
                       >
@@ -1199,6 +1254,11 @@ export function StartPracticeModal({
                           marginTop: '0.125rem',
                           '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.6875rem',
+                          },
+                          // Tall phones: larger subtitle
+                          '@media (max-width: 480px) and (min-height: 700px)': {
+                            fontSize: '0.875rem',
+                            marginTop: '0.25rem',
                           },
                         })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
@@ -1235,6 +1295,12 @@ export function StartPracticeModal({
                         padding: '0.75rem',
                         fontSize: '0.9375rem',
                       },
+                      // Tall phones: larger button
+                      '@media (max-width: 480px) and (min-height: 700px)': {
+                        padding: '1rem',
+                        fontSize: '1.0625rem',
+                        borderRadius: '0 0 14px 14px',
+                      },
                     })}
                     style={{
                       background: isStarting
@@ -1267,6 +1333,12 @@ export function StartPracticeModal({
                       borderRadius: '10px',
                       marginTop: 'auto',
                     },
+                    // Tall phones: hero CTA comes first (order: 1), larger styling
+                    '@media (max-width: 480px) and (min-height: 700px)': {
+                      order: 1,
+                      marginTop: 0,
+                      borderRadius: '16px',
+                    },
                   })}
                   style={{
                     background: isDark
@@ -1286,6 +1358,14 @@ export function StartPracticeModal({
                         padding: '0.5rem 0.75rem',
                         gap: '0.5rem',
                       },
+                      // Tall phones: larger hero padding, centered layout
+                      '@media (max-width: 480px) and (min-height: 700px)': {
+                        padding: '1.25rem 1rem',
+                        gap: '0.875rem',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                      },
                     })}
                   >
                     <span
@@ -1294,6 +1374,10 @@ export function StartPracticeModal({
                         lineHeight: 1,
                         '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '1.25rem',
+                        },
+                        // Tall phones: larger emoji
+                        '@media (max-width: 480px) and (min-height: 700px)': {
+                          fontSize: '2.5rem',
                         },
                       })}
                     >
@@ -1307,6 +1391,10 @@ export function StartPracticeModal({
                           '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.8125rem',
                           },
+                          // Tall phones: larger title
+                          '@media (max-width: 480px) and (min-height: 700px)': {
+                            fontSize: '1.125rem',
+                          },
                         })}
                         style={{ color: isDark ? '#fcd34d' : '#b45309' }}
                       >
@@ -1318,6 +1406,11 @@ export function StartPracticeModal({
                           marginTop: '0.125rem',
                           '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.6875rem',
+                          },
+                          // Tall phones: larger subtitle
+                          '@media (max-width: 480px) and (min-height: 700px)': {
+                            fontSize: '0.875rem',
+                            marginTop: '0.25rem',
                           },
                         })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
@@ -1336,6 +1429,12 @@ export function StartPracticeModal({
                             marginTop: '0.375rem',
                             gap: '0.1875rem',
                           },
+                          // Tall phones: center badges
+                          '@media (max-width: 480px) and (min-height: 700px)': {
+                            justifyContent: 'center',
+                            marginTop: '0.5rem',
+                            gap: '0.375rem',
+                          },
                         })}
                       >
                         {sessionMode.weakSkills.slice(0, 4).map((skill) => (
@@ -1349,6 +1448,12 @@ export function StartPracticeModal({
                               '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '0.5625rem',
                                 padding: '0.0625rem 0.25rem',
+                              },
+                              // Tall phones: larger badges
+                              '@media (max-width: 480px) and (min-height: 700px)': {
+                                fontSize: '0.75rem',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '6px',
                               },
                             })}
                             style={{
@@ -1372,6 +1477,11 @@ export function StartPracticeModal({
                               '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '0.5625rem',
                                 padding: '0.0625rem 0.25rem',
+                              },
+                              // Tall phones: larger
+                              '@media (max-width: 480px) and (min-height: 700px)': {
+                                fontSize: '0.75rem',
+                                padding: '0.25rem 0.5rem',
                               },
                             })}
                             style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
@@ -1410,6 +1520,12 @@ export function StartPracticeModal({
                         padding: '0.75rem',
                         fontSize: '0.9375rem',
                       },
+                      // Tall phones: larger button
+                      '@media (max-width: 480px) and (min-height: 700px)': {
+                        padding: '1rem',
+                        fontSize: '1.0625rem',
+                        borderRadius: '0 0 14px 14px',
+                      },
                     })}
                     style={{
                       background: isStarting
@@ -1445,6 +1561,12 @@ export function StartPracticeModal({
                       marginBottom: '0.5rem',
                       padding: '0.375rem',
                       borderRadius: '6px',
+                    },
+                    // Tall phones: error appears last
+                    '@media (max-width: 480px) and (min-height: 700px)': {
+                      order: 3,
+                      marginBottom: 0,
+                      marginTop: '0.5rem',
                     },
                   })}
                   style={{
@@ -1522,6 +1644,14 @@ export function StartPracticeModal({
                       fontSize: '1rem',
                       borderRadius: '10px',
                       marginTop: 'auto',
+                    },
+                    // Tall phones: hero button comes first (order: 1), larger styling
+                    '@media (max-width: 480px) and (min-height: 700px)': {
+                      order: 1,
+                      marginTop: 0,
+                      padding: '1.25rem',
+                      fontSize: '1.125rem',
+                      borderRadius: '16px',
                     },
                   })}
                   style={{
