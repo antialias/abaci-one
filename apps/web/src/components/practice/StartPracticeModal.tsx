@@ -3,7 +3,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
@@ -99,15 +99,6 @@ export function StartPracticeModal({
 
   const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
   const [isExpanded, setIsExpanded] = useState(false)
-
-  // On tall phones, expand settings by default since we have room
-  useEffect(() => {
-    const isTallPhone = window.innerWidth <= 480 && window.innerHeight >= 700
-    if (isTallPhone) {
-      setIsExpanded(true)
-    }
-  }, [])
-
   const [enabledParts, setEnabledParts] = useState<EnabledParts>({
     abacus: true,
     visualization: true,
@@ -409,153 +400,49 @@ export function StartPracticeModal({
             data-expanded={isExpanded}
             className={css({
               padding: '1.5rem',
-              // Full-screen mode: center content vertically
-              '@media (max-width: 480px), (max-height: 700px)': {
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                padding: '1rem',
-                paddingTop: '2.5rem', // Account for close button
-              },
-              // Tall phones: generous padding, truly centered content
-              '@media (max-width: 480px) and (min-height: 700px)': {
-                padding: '1.5rem',
-                paddingTop: '3rem',
-                justifyContent: 'center',
-                gap: '1.5rem',
-              },
-              // Landscape mode: single column, more compact, scrollable if needed
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              flex: 1,
+              overflow: 'hidden',
+              // Landscape: more compact
               '@media (max-height: 500px) and (orientation: landscape)': {
-                padding: '0.75rem 2rem',
+                padding: '0.75rem 1.5rem',
                 paddingTop: '2rem',
-                overflowY: 'auto',
                 justifyContent: 'flex-start',
               },
             })}
           >
-            {/* Header */}
-            <div
-              data-section="header"
-              className={css({
-                textAlign: 'center',
-                marginBottom: '1.25rem',
-                // Minimal header on full-screen mobile
-                '@media (max-width: 480px), (max-height: 700px)': {
-                  marginBottom: '0.5rem',
-                },
-                // Tall phones: restore some header prominence
-                '@media (max-width: 480px) and (min-height: 700px)': {
-                  marginBottom: '0.75rem',
-                },
-                // Landscape: even more compact header
-                '@media (max-height: 500px) and (orientation: landscape)': {
-                  marginBottom: '0.375rem',
-                },
-              })}
-            >
-              <div
-                data-element="header-icon"
-                className={css({
-                  fontSize: '2rem',
-                  marginBottom: '0.375rem',
-                  // Hide icon on small screens to save vertical space
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    display: 'none',
-                  },
-                  // Tall phones: show icon again
-                  '@media (max-width: 480px) and (min-height: 700px)': {
-                    display: 'block',
-                    fontSize: '2.5rem',
-                    marginBottom: '0.5rem',
-                  },
-                })}
-              >
-                🎯
-              </div>
-              <Dialog.Title
-                className={css({
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  marginBottom: '0.25rem',
-                  // Smaller title on full-screen mobile
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    fontSize: '1.125rem',
-                    marginBottom: '0.125rem',
-                  },
-                  // Tall phones: larger title
-                  '@media (max-width: 480px) and (min-height: 700px)': {
-                    fontSize: '1.5rem',
-                    marginBottom: '0.25rem',
-                  },
-                })}
-                style={{
-                  background: isDark
-                    ? 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)'
-                    : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                Ready to practice?
-              </Dialog.Title>
-              <Dialog.Description
-                className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  // Hide description on small portrait screens to save space
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    display: 'none',
-                  },
-                  // Also hidden in landscape
-                  '@media (max-height: 500px) and (orientation: landscape)': {
-                    display: 'none',
-                  },
-                })}
-              >
-                {focusDescription}
-              </Dialog.Description>
-            </div>
+            {/* Screen reader only title/description for accessibility */}
+            <Dialog.Title className={css({ srOnly: true })}>Start Practice Session</Dialog.Title>
+            <Dialog.Description className={css({ srOnly: true })}>
+              {focusDescription}
+            </Dialog.Description>
 
-            {/* Config and action wrapper */}
+            {/* Config and action wrapper - CTA first, settings second via order */}
             <div
               data-section="config-and-action"
               className={css({
-                display: 'contents',
-                // Tall phones: use flex for reordering (CTA first, settings second)
-                '@media (max-width: 480px) and (min-height: 700px)': {
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1.5rem',
-                },
-                '@media (max-height: 500px) and (min-width: 500px)': {
-                  display: 'flex',
-                  flexDirection: 'column',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                // Landscape mode: allow flex to fill space
+                '@media (max-height: 500px) and (orientation: landscape)': {
                   flex: 1,
                   minHeight: 0,
                   overflow: 'hidden',
+                  gap: '0.5rem',
                 },
               })}
             >
-              {/* Session config card */}
+              {/* Session config card - always appears after CTA via order */}
               <div
                 data-section="session-config"
                 className={css({
+                  order: 99, // Always last
                   borderRadius: '12px',
-                  marginBottom: '1rem',
                   overflow: 'hidden',
                   transition: 'all 0.3s ease',
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    marginBottom: '0.5rem',
-                    borderRadius: '8px',
-                  },
-                  // Tall phones: settings appear AFTER CTA (order: 2)
-                  '@media (max-width: 480px) and (min-height: 700px)': {
-                    order: 2,
-                    marginBottom: 0,
-                    marginTop: '0.5rem',
-                  },
                 })}
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
@@ -772,15 +659,6 @@ export function StartPracticeModal({
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.875rem',
-                      '@media (max-width: 480px), (max-height: 700px)': {
-                        padding: '0.5rem',
-                        gap: '0.375rem',
-                      },
-                      // Tall phones: restore normal padding since we have room
-                      '@media (max-width: 480px) and (min-height: 700px)': {
-                        padding: '1rem',
-                        gap: '1rem',
-                      },
                     })}
                   >
                     {/* Expanded header with collapse button */}
@@ -873,11 +751,6 @@ export function StartPracticeModal({
                               marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
-                            // Tall phones: restore normal sizing
-                            '@media (max-width: 480px) and (min-height: 700px)': {
-                              marginBottom: '0.5rem',
-                              fontSize: '0.75rem',
-                            },
                           })}
                         >
                           Duration
@@ -888,8 +761,6 @@ export function StartPracticeModal({
                             display: 'flex',
                             gap: '0.375rem',
                             '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
-                            // Tall phones: restore normal gap
-                            '@media (max-width: 480px) and (min-height: 700px)': { gap: '0.5rem' },
                           })}
                         >
                           {[5, 10, 15, 20].map((min) => {
@@ -1199,16 +1070,6 @@ export function StartPracticeModal({
                   className={css({
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    '@media (max-width: 480px), (max-height: 700px)': {
-                      borderRadius: '10px',
-                      marginTop: 'auto',
-                    },
-                    // Tall phones: hero CTA comes first (order: 1), larger styling
-                    '@media (max-width: 480px) and (min-height: 700px)': {
-                      order: 1,
-                      marginTop: 0,
-                      borderRadius: '16px',
-                    },
                   })}
                   style={{
                     background: isDark
@@ -1224,64 +1085,18 @@ export function StartPracticeModal({
                       display: 'flex',
                       gap: '0.625rem',
                       alignItems: 'center',
-                      '@media (max-width: 480px), (max-height: 700px)': {
-                        padding: '0.5rem 0.75rem',
-                        gap: '0.5rem',
-                      },
-                      // Tall phones: larger hero padding
-                      '@media (max-width: 480px) and (min-height: 700px)': {
-                        padding: '1.25rem 1rem',
-                        gap: '0.875rem',
-                        flexDirection: 'column',
-                        textAlign: 'center',
-                      },
                     })}
                   >
-                    <span
-                      className={css({
-                        fontSize: '1.5rem',
-                        lineHeight: 1,
-                        '@media (max-width: 480px), (max-height: 700px)': {
-                          fontSize: '1.25rem',
-                        },
-                        // Tall phones: larger emoji
-                        '@media (max-width: 480px) and (min-height: 700px)': {
-                          fontSize: '2.5rem',
-                        },
-                      })}
-                    >
-                      🌟
-                    </span>
+                    <span className={css({ fontSize: '1.5rem', lineHeight: 1 })}>🌟</span>
                     <div className={css({ flex: 1 })}>
                       <p
-                        className={css({
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            fontSize: '0.8125rem',
-                          },
-                          // Tall phones: larger title
-                          '@media (max-width: 480px) and (min-height: 700px)': {
-                            fontSize: '1.125rem',
-                          },
-                        })}
+                        className={css({ fontSize: '0.875rem', fontWeight: '600' })}
                         style={{ color: isDark ? '#86efac' : '#166534' }}
                       >
                         You've unlocked: <strong>{tutorialConfig.title}</strong>
                       </p>
                       <p
-                        className={css({
-                          fontSize: '0.75rem',
-                          marginTop: '0.125rem',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            fontSize: '0.6875rem',
-                          },
-                          // Tall phones: larger subtitle
-                          '@media (max-width: 480px) and (min-height: 700px)': {
-                            fontSize: '0.875rem',
-                            marginTop: '0.25rem',
-                          },
-                        })}
+                        className={css({ fontSize: '0.75rem', marginTop: '0.125rem' })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
                       >
                         Start with a quick tutorial
@@ -1312,16 +1127,6 @@ export function StartPracticeModal({
                       _hover: {
                         filter: isStarting ? 'none' : 'brightness(1.05)',
                       },
-                      '@media (max-width: 480px), (max-height: 700px)': {
-                        padding: '0.75rem',
-                        fontSize: '0.9375rem',
-                      },
-                      // Tall phones: larger button
-                      '@media (max-width: 480px) and (min-height: 700px)': {
-                        padding: '1rem',
-                        fontSize: '1.0625rem',
-                        borderRadius: '0 0 14px 14px',
-                      },
                     })}
                     style={{
                       background: isStarting
@@ -1350,16 +1155,6 @@ export function StartPracticeModal({
                   className={css({
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    '@media (max-width: 480px), (max-height: 700px)': {
-                      borderRadius: '10px',
-                      marginTop: 'auto',
-                    },
-                    // Tall phones: hero CTA comes first (order: 1), larger styling
-                    '@media (max-width: 480px) and (min-height: 700px)': {
-                      order: 1,
-                      marginTop: 0,
-                      borderRadius: '16px',
-                    },
                   })}
                   style={{
                     background: isDark
@@ -1375,65 +1170,18 @@ export function StartPracticeModal({
                       display: 'flex',
                       gap: '0.625rem',
                       alignItems: 'flex-start',
-                      '@media (max-width: 480px), (max-height: 700px)': {
-                        padding: '0.5rem 0.75rem',
-                        gap: '0.5rem',
-                      },
-                      // Tall phones: larger hero padding, centered layout
-                      '@media (max-width: 480px) and (min-height: 700px)': {
-                        padding: '1.25rem 1rem',
-                        gap: '0.875rem',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                      },
                     })}
                   >
-                    <span
-                      className={css({
-                        fontSize: '1.5rem',
-                        lineHeight: 1,
-                        '@media (max-width: 480px), (max-height: 700px)': {
-                          fontSize: '1.25rem',
-                        },
-                        // Tall phones: larger emoji
-                        '@media (max-width: 480px) and (min-height: 700px)': {
-                          fontSize: '2.5rem',
-                        },
-                      })}
-                    >
-                      💪
-                    </span>
+                    <span className={css({ fontSize: '1.5rem', lineHeight: 1 })}>💪</span>
                     <div className={css({ flex: 1 })}>
                       <p
-                        className={css({
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            fontSize: '0.8125rem',
-                          },
-                          // Tall phones: larger title
-                          '@media (max-width: 480px) and (min-height: 700px)': {
-                            fontSize: '1.125rem',
-                          },
-                        })}
+                        className={css({ fontSize: '0.875rem', fontWeight: '600' })}
                         style={{ color: isDark ? '#fcd34d' : '#b45309' }}
                       >
                         Time to build strength!
                       </p>
                       <p
-                        className={css({
-                          fontSize: '0.75rem',
-                          marginTop: '0.125rem',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            fontSize: '0.6875rem',
-                          },
-                          // Tall phones: larger subtitle
-                          '@media (max-width: 480px) and (min-height: 700px)': {
-                            fontSize: '0.875rem',
-                            marginTop: '0.25rem',
-                          },
-                        })}
+                        className={css({ fontSize: '0.75rem', marginTop: '0.125rem' })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
                       >
                         Focusing on {sessionMode.weakSkills.length} skill
@@ -1446,16 +1194,6 @@ export function StartPracticeModal({
                           flexWrap: 'wrap',
                           gap: '0.25rem',
                           marginTop: '0.5rem',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            marginTop: '0.375rem',
-                            gap: '0.1875rem',
-                          },
-                          // Tall phones: center badges
-                          '@media (max-width: 480px) and (min-height: 700px)': {
-                            justifyContent: 'center',
-                            marginTop: '0.5rem',
-                            gap: '0.375rem',
-                          },
                         })}
                       >
                         {sessionMode.weakSkills.slice(0, 4).map((skill) => (
@@ -1466,16 +1204,6 @@ export function StartPracticeModal({
                               fontSize: '0.625rem',
                               padding: '0.125rem 0.375rem',
                               borderRadius: '4px',
-                              '@media (max-width: 480px), (max-height: 700px)': {
-                                fontSize: '0.5625rem',
-                                padding: '0.0625rem 0.25rem',
-                              },
-                              // Tall phones: larger badges
-                              '@media (max-width: 480px) and (min-height: 700px)': {
-                                fontSize: '0.75rem',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '6px',
-                              },
                             })}
                             style={{
                               backgroundColor: isDark
@@ -1495,15 +1223,6 @@ export function StartPracticeModal({
                             className={css({
                               fontSize: '0.625rem',
                               padding: '0.125rem 0.375rem',
-                              '@media (max-width: 480px), (max-height: 700px)': {
-                                fontSize: '0.5625rem',
-                                padding: '0.0625rem 0.25rem',
-                              },
-                              // Tall phones: larger
-                              '@media (max-width: 480px) and (min-height: 700px)': {
-                                fontSize: '0.75rem',
-                                padding: '0.25rem 0.5rem',
-                              },
                             })}
                             style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
                           >
@@ -1537,16 +1256,6 @@ export function StartPracticeModal({
                       _hover: {
                         filter: isStarting ? 'none' : 'brightness(1.05)',
                       },
-                      '@media (max-width: 480px), (max-height: 700px)': {
-                        padding: '0.75rem',
-                        fontSize: '0.9375rem',
-                      },
-                      // Tall phones: larger button
-                      '@media (max-width: 480px) and (min-height: 700px)': {
-                        padding: '1rem',
-                        fontSize: '1.0625rem',
-                        borderRadius: '0 0 14px 14px',
-                      },
                     })}
                     style={{
                       background: isStarting
@@ -1574,21 +1283,9 @@ export function StartPracticeModal({
                   data-element="error-display"
                   data-error-type={isNoSkillsError ? 'no-skills' : 'generic'}
                   className={css({
-                    marginBottom: '1rem',
                     padding: '0.75rem',
                     borderRadius: '8px',
                     textAlign: 'center',
-                    '@media (max-width: 480px), (max-height: 700px)': {
-                      marginBottom: '0.5rem',
-                      padding: '0.375rem',
-                      borderRadius: '6px',
-                    },
-                    // Tall phones: error appears last
-                    '@media (max-width: 480px) and (min-height: 700px)': {
-                      order: 3,
-                      marginBottom: 0,
-                      marginTop: '0.5rem',
-                    },
                   })}
                   style={{
                     background: isNoSkillsError
@@ -1659,20 +1356,6 @@ export function StartPracticeModal({
                     },
                     _active: {
                       transform: 'translateY(0)',
-                    },
-                    '@media (max-width: 480px), (max-height: 700px)': {
-                      padding: '0.75rem',
-                      fontSize: '1rem',
-                      borderRadius: '10px',
-                      marginTop: 'auto',
-                    },
-                    // Tall phones: hero button comes first (order: 1), larger styling
-                    '@media (max-width: 480px) and (min-height: 700px)': {
-                      order: 1,
-                      marginTop: 0,
-                      padding: '1.25rem',
-                      fontSize: '1.125rem',
-                      borderRadius: '16px',
                     },
                   })}
                   style={{
