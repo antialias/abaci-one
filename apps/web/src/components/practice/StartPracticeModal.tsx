@@ -3,7 +3,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
@@ -99,6 +99,15 @@ export function StartPracticeModal({
 
   const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // On tall phones, expand settings by default since we have room
+  useEffect(() => {
+    const isTallPhone = window.innerWidth <= 480 && window.innerHeight >= 700
+    if (isTallPhone) {
+      setIsExpanded(true)
+    }
+  }, [])
+
   const [enabledParts, setEnabledParts] = useState<EnabledParts>({
     abacus: true,
     visualization: true,
@@ -518,7 +527,7 @@ export function StartPracticeModal({
                 '@media (max-width: 480px) and (min-height: 700px)': {
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '1rem',
+                  gap: '1.5rem',
                 },
                 '@media (max-height: 500px) and (min-width: 500px)': {
                   display: 'flex',
@@ -767,6 +776,11 @@ export function StartPracticeModal({
                         padding: '0.5rem',
                         gap: '0.375rem',
                       },
+                      // Tall phones: restore normal padding since we have room
+                      '@media (max-width: 480px) and (min-height: 700px)': {
+                        padding: '1rem',
+                        gap: '1rem',
+                      },
                     })}
                   >
                     {/* Expanded header with collapse button */}
@@ -859,6 +873,11 @@ export function StartPracticeModal({
                               marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
+                            // Tall phones: restore normal sizing
+                            '@media (max-width: 480px) and (min-height: 700px)': {
+                              marginBottom: '0.5rem',
+                              fontSize: '0.75rem',
+                            },
                           })}
                         >
                           Duration
@@ -869,6 +888,8 @@ export function StartPracticeModal({
                             display: 'flex',
                             gap: '0.375rem',
                             '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
+                            // Tall phones: restore normal gap
+                            '@media (max-width: 480px) and (min-height: 700px)': { gap: '0.5rem' },
                           })}
                         >
                           {[5, 10, 15, 20].map((min) => {
