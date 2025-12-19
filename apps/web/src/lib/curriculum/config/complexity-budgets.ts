@@ -7,11 +7,11 @@
  * Budget = Σ(baseCost × masteryMultiplier) per term
  *
  * A term's cost reflects how hard it is for THIS student:
- * - Expert at ten complements: +9 costs 2 (base 2 × effortless 1)
- * - Beginner at ten complements: +9 costs 8 (base 2 × learning 4)
+ * - Practiced ten complements: +9 costs 6 (base 2 × practicing 3)
+ * - Unpracticed ten complements: +9 costs 8 (base 2 × not_practicing 4)
  */
 
-import type { SessionPartType } from '@/db/schema/session-plans'
+import type { SessionPartType } from "@/db/schema/session-plans";
 
 // =============================================================================
 // General Budget Defaults
@@ -33,7 +33,7 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
 
   /** Linear mode */
   linearDefault: 8,
-} as const
+} as const;
 
 // =============================================================================
 // Per-Purpose, Per-Part Complexity Bounds
@@ -62,9 +62,9 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
  * - max: Maximum cost per term (caps cognitive load)
  *
  * The max budget interacts with BKT multipliers:
- * - Adaptive mode: weak skills have high multipliers (up to 4x), so their terms
+ * - Adaptive-BKT mode: weak skills have high multipliers (up to 4x), so their terms
  *   are more likely to exceed max budget and be filtered out
- * - Classic mode: uses fluency multipliers (~3x for practicing), more lenient
+ * - Classic/Adaptive mode: uses discrete multipliers (practicing=3x), more lenient
  *
  * Example with max=7 and base_cost=2 (complement skill):
  * - Adaptive (pKnown=0): 2 × 4.0 = 8.0 → filtered (exceeds max)
@@ -73,7 +73,7 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
  * This differentiation is key to BKT-driven adaptive problem selection.
  */
 export const PURPOSE_COMPLEXITY_BOUNDS: Record<
-  'focus' | 'reinforce' | 'review' | 'challenge',
+  "focus" | "reinforce" | "review" | "challenge",
   Record<SessionPartType, { min: number | null; max: number | null }>
 > = {
   focus: {
@@ -97,16 +97,16 @@ export const PURPOSE_COMPLEXITY_BOUNDS: Record<
     visualization: { min: 1, max: null },
     linear: { min: 1, max: null },
   },
-}
+};
 
 /**
  * Get complexity bounds for a specific purpose and part type.
  */
 export function getComplexityBounds(
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge',
-  partType: SessionPartType
+  purpose: "focus" | "reinforce" | "review" | "challenge",
+  partType: SessionPartType,
 ): { min: number | null; max: number | null } {
-  return PURPOSE_COMPLEXITY_BOUNDS[purpose][partType]
+  return PURPOSE_COMPLEXITY_BOUNDS[purpose][partType];
 }
 
-export type PurposeComplexityBounds = typeof PURPOSE_COMPLEXITY_BOUNDS
+export type PurposeComplexityBounds = typeof PURPOSE_COMPLEXITY_BOUNDS;

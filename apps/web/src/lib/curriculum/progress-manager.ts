@@ -3,24 +3,24 @@
  * Handles CRUD operations for student curriculum progress and skill mastery
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm'
-import { db, schema } from '@/db'
-import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { db, schema } from "@/db";
+import type {
+  NewPlayerCurriculum,
+  PlayerCurriculum,
+} from "@/db/schema/player-curriculum";
 import {
-  calculateFluencyState,
-  type FluencyState,
   type NewPlayerSkillMastery,
   type PlayerSkillMastery,
-} from '@/db/schema/player-skill-mastery'
-// Import directly from source to avoid circular dependency issues with re-exports
-import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config/fluency-thresholds'
-import type { PracticeSession } from '@/db/schema/practice-sessions'
-import type { HelpLevel } from '@/db/schema/session-plans'
+} from "@/db/schema/player-skill-mastery";
+import { REINFORCEMENT_CONFIG } from "@/lib/curriculum/config";
+import type { PracticeSession } from "@/db/schema/practice-sessions";
+import type { HelpLevel } from "@/db/schema/session-plans";
 import {
   isTutorialSatisfied,
   type NewSkillTutorialProgress,
   type SkillTutorialProgress,
-} from '@/db/schema/skill-tutorial-progress'
+} from "@/db/schema/skill-tutorial-progress";
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -30,11 +30,13 @@ import {
  * Get a player's curriculum position
  * Returns null if the player hasn't started the curriculum
  */
-export async function getPlayerCurriculum(playerId: string): Promise<PlayerCurriculum | null> {
+export async function getPlayerCurriculum(
+  playerId: string,
+): Promise<PlayerCurriculum | null> {
   const result = await db.query.playerCurriculum.findFirst({
     where: eq(schema.playerCurriculum.playerId, playerId),
-  })
-  return result ?? null
+  });
+  return result ?? null;
 }
 
 /**
@@ -42,9 +44,9 @@ export async function getPlayerCurriculum(playerId: string): Promise<PlayerCurri
  */
 export async function upsertPlayerCurriculum(
   playerId: string,
-  data: Partial<Omit<NewPlayerCurriculum, 'playerId'>>
+  data: Partial<Omit<NewPlayerCurriculum, "playerId">>,
 ): Promise<PlayerCurriculum> {
-  const existing = await getPlayerCurriculum(playerId)
+  const existing = await getPlayerCurriculum(playerId);
 
   if (existing) {
     // Update existing record
@@ -54,22 +56,22 @@ export async function upsertPlayerCurriculum(
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(schema.playerCurriculum.playerId, playerId))
+      .where(eq(schema.playerCurriculum.playerId, playerId));
 
-    return (await getPlayerCurriculum(playerId))!
+    return (await getPlayerCurriculum(playerId))!;
   }
 
   // Create new record with defaults
   const newRecord: NewPlayerCurriculum = {
     playerId,
     currentLevel: data.currentLevel ?? 1,
-    currentPhaseId: data.currentPhaseId ?? 'L1.add.+1.direct',
+    currentPhaseId: data.currentPhaseId ?? "L1.add.+1.direct",
     worksheetPreset: data.worksheetPreset ?? null,
     visualizationMode: data.visualizationMode ?? false,
-  }
+  };
 
-  await db.insert(schema.playerCurriculum).values(newRecord)
-  return (await getPlayerCurriculum(playerId))!
+  await db.insert(schema.playerCurriculum).values(newRecord);
+  return (await getPlayerCurriculum(playerId))!;
 }
 
 /**
@@ -78,12 +80,12 @@ export async function upsertPlayerCurriculum(
 export async function advanceToNextPhase(
   playerId: string,
   nextPhaseId: string,
-  nextLevel?: number
+  nextLevel?: number,
 ): Promise<PlayerCurriculum> {
   return upsertPlayerCurriculum(playerId, {
     currentPhaseId: nextPhaseId,
     ...(nextLevel !== undefined ? { currentLevel: nextLevel } : {}),
-  })
+  });
 }
 
 // ============================================================================
@@ -95,38 +97,42 @@ export async function advanceToNextPhase(
  */
 export async function getSkillMastery(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<PlayerSkillMastery | null> {
   const result = await db.query.playerSkillMastery.findFirst({
     where: and(
       eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.skillId, skillId)
+      eq(schema.playerSkillMastery.skillId, skillId),
     ),
-  })
-  return result ?? null
+  });
+  return result ?? null;
 }
 
 /**
  * Get all skill mastery records for a player
  */
-export async function getAllSkillMastery(playerId: string): Promise<PlayerSkillMastery[]> {
+export async function getAllSkillMastery(
+  playerId: string,
+): Promise<PlayerSkillMastery[]> {
   return db.query.playerSkillMastery.findMany({
     where: eq(schema.playerSkillMastery.playerId, playerId),
     orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
-  })
+  });
 }
 
 /**
  * Get all skills in a player's active practice rotation
  */
-export async function getPracticingSkills(playerId: string): Promise<PlayerSkillMastery[]> {
+export async function getPracticingSkills(
+  playerId: string,
+): Promise<PlayerSkillMastery[]> {
   return db.query.playerSkillMastery.findMany({
     where: and(
       eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.isPracticing, true)
+      eq(schema.playerSkillMastery.isPracticing, true),
     ),
     orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
-  })
+  });
 }
 
 /**
@@ -139,18 +145,18 @@ export async function getPracticingSkills(playerId: string): Promise<PlayerSkill
  */
 export async function setPracticingSkills(
   playerId: string,
-  practicingSkillIds: string[]
+  practicingSkillIds: string[],
 ): Promise<PlayerSkillMastery[]> {
-  const now = new Date()
-  const practicingSet = new Set(practicingSkillIds)
+  const now = new Date();
+  const practicingSet = new Set(practicingSkillIds);
 
   // Get all existing skills for this player
-  const existingSkills = await getAllSkillMastery(playerId)
-  const existingSkillIds = new Set(existingSkills.map((s) => s.skillId))
+  const existingSkills = await getAllSkillMastery(playerId);
+  const existingSkillIds = new Set(existingSkills.map((s) => s.skillId));
 
   // Update existing skills
   for (const skill of existingSkills) {
-    const shouldBePracticing = practicingSet.has(skill.skillId)
+    const shouldBePracticing = practicingSet.has(skill.skillId);
 
     // Only update if isPracticing changed
     if (skill.isPracticing !== shouldBePracticing) {
@@ -160,7 +166,7 @@ export async function setPracticingSkills(
           isPracticing: shouldBePracticing,
           updatedAt: now,
         })
-        .where(eq(schema.playerSkillMastery.id, skill.id))
+        .where(eq(schema.playerSkillMastery.id, skill.id));
     }
   }
 
@@ -175,12 +181,12 @@ export async function setPracticingSkills(
         consecutiveCorrect: 0,
         isPracticing: true,
         lastPracticedAt: now,
-      }
-      await db.insert(schema.playerSkillMastery).values(newRecord)
+      };
+      await db.insert(schema.playerSkillMastery).values(newRecord);
     }
   }
 
-  return getAllSkillMastery(playerId)
+  return getAllSkillMastery(playerId);
 }
 
 /**
@@ -188,17 +194,17 @@ export async function setPracticingSkills(
  */
 export async function setMasteredSkills(
   playerId: string,
-  masteredSkillIds: string[]
+  masteredSkillIds: string[],
 ): Promise<PlayerSkillMastery[]> {
-  return setPracticingSkills(playerId, masteredSkillIds)
+  return setPracticingSkills(playerId, masteredSkillIds);
 }
 
 /**
  * Refresh skill recency by updating lastPracticedAt to now
  *
  * Use this when a teacher wants to mark a skill as "recently practiced"
- * (e.g., student did offline workbooks). This updates the recency state
- * from "rusty" to "fluent" without changing mastery statistics.
+ * (e.g., student did offline workbooks). This updates the lastPracticedAt
+ * timestamp without changing BKT mastery statistics.
  *
  * @param playerId - The player's ID
  * @param skillId - The skill to refresh
@@ -206,15 +212,15 @@ export async function setMasteredSkills(
  */
 export async function refreshSkillRecency(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<PlayerSkillMastery | null> {
-  const existing = await getSkillMastery(playerId, skillId)
+  const existing = await getSkillMastery(playerId, skillId);
 
   if (!existing) {
-    return null
+    return null;
   }
 
-  const now = new Date()
+  const now = new Date();
 
   const [updated] = await db
     .update(schema.playerSkillMastery)
@@ -223,9 +229,9 @@ export async function refreshSkillRecency(
       updatedAt: now,
     })
     .where(eq(schema.playerSkillMastery.id, existing.id))
-    .returning()
+    .returning();
 
-  return updated
+  return updated;
 }
 
 /**
@@ -235,16 +241,16 @@ export async function refreshSkillRecency(
 export async function recordSkillAttempt(
   playerId: string,
   skillId: string,
-  isCorrect: boolean
+  isCorrect: boolean,
 ): Promise<PlayerSkillMastery> {
-  const existing = await getSkillMastery(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillMastery(playerId, skillId);
+  const now = new Date();
 
   if (existing) {
     // Update existing record
-    const newAttempts = existing.attempts + 1
-    const newCorrect = existing.correct + (isCorrect ? 1 : 0)
-    const newConsecutive = isCorrect ? existing.consecutiveCorrect + 1 : 0
+    const newAttempts = existing.attempts + 1;
+    const newCorrect = existing.correct + (isCorrect ? 1 : 0);
+    const newConsecutive = isCorrect ? existing.consecutiveCorrect + 1 : 0;
 
     await db
       .update(schema.playerSkillMastery)
@@ -255,9 +261,9 @@ export async function recordSkillAttempt(
         lastPracticedAt: now,
         updatedAt: now,
       })
-      .where(eq(schema.playerSkillMastery.id, existing.id))
+      .where(eq(schema.playerSkillMastery.id, existing.id));
 
-    return (await getSkillMastery(playerId, skillId))!
+    return (await getSkillMastery(playerId, skillId))!;
   }
 
   // Create new record - if we're recording an attempt, this skill is being practiced
@@ -269,10 +275,10 @@ export async function recordSkillAttempt(
     consecutiveCorrect: isCorrect ? 1 : 0,
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
-  }
+  };
 
-  await db.insert(schema.playerSkillMastery).values(newRecord)
-  return (await getSkillMastery(playerId, skillId))!
+  await db.insert(schema.playerSkillMastery).values(newRecord);
+  return (await getSkillMastery(playerId, skillId))!;
 }
 
 /**
@@ -298,61 +304,65 @@ export async function recordSkillAttemptWithHelp(
   skillId: string,
   isCorrect: boolean,
   helpLevel: HelpLevel,
-  responseTimeMs?: number
+  responseTimeMs?: number,
 ): Promise<PlayerSkillMastery> {
-  const existing = await getSkillMastery(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillMastery(playerId, skillId);
+  const now = new Date();
 
   // Calculate effective credit based on help level
-  const creditMultiplier = REINFORCEMENT_CONFIG.creditMultipliers[helpLevel]
+  const creditMultiplier = REINFORCEMENT_CONFIG.creditMultipliers[helpLevel];
 
   // Determine if this help level triggers reinforcement tracking
-  const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold
+  const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold;
 
   if (existing) {
     // Update existing record with help-adjusted progress
-    const newAttempts = existing.attempts + 1
+    const newAttempts = existing.attempts + 1;
 
     // Apply credit multiplier - only count fraction of correct answer
     // For simplicity, we round: 1.0 = full credit, 0.5+ = credit, <0.5 = no credit
-    const effectiveCorrect = isCorrect && creditMultiplier >= 0.5 ? 1 : 0
-    const newCorrect = existing.correct + effectiveCorrect
+    const effectiveCorrect = isCorrect && creditMultiplier >= 0.5 ? 1 : 0;
+    const newCorrect = existing.correct + effectiveCorrect;
 
     // Consecutive streak logic with help consideration
     // Heavy help (L2, L3) breaks the streak even if correct
     const newConsecutive =
-      isCorrect && !isHeavyHelp ? existing.consecutiveCorrect + 1 : isCorrect ? 1 : 0
+      isCorrect && !isHeavyHelp
+        ? existing.consecutiveCorrect + 1
+        : isCorrect
+          ? 1
+          : 0;
 
     // Reinforcement tracking
-    let needsReinforcement = existing.needsReinforcement
-    let reinforcementStreak = existing.reinforcementStreak
+    let needsReinforcement = existing.needsReinforcement;
+    let reinforcementStreak = existing.reinforcementStreak;
 
     if (isHeavyHelp) {
       // Heavy help triggers reinforcement flag
-      needsReinforcement = true
-      reinforcementStreak = 0
+      needsReinforcement = true;
+      reinforcementStreak = 0;
     } else if (isCorrect && existing.needsReinforcement) {
       // Correct answer without heavy help - increment streak toward clearing
-      reinforcementStreak = existing.reinforcementStreak + 1
+      reinforcementStreak = existing.reinforcementStreak + 1;
 
       // Clear reinforcement if streak reaches threshold
       if (reinforcementStreak >= REINFORCEMENT_CONFIG.streakToClear) {
-        needsReinforcement = false
-        reinforcementStreak = 0
+        needsReinforcement = false;
+        reinforcementStreak = 0;
       }
     } else if (!isCorrect) {
       // Incorrect answer resets reinforcement streak
-      reinforcementStreak = 0
+      reinforcementStreak = 0;
     }
 
     // Calculate response time updates (only if provided)
-    const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
+    const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0;
     const newTotalResponseTimeMs = hasResponseTime
       ? existing.totalResponseTimeMs + responseTimeMs
-      : existing.totalResponseTimeMs
+      : existing.totalResponseTimeMs;
     const newResponseTimeCount = hasResponseTime
       ? existing.responseTimeCount + 1
-      : existing.responseTimeCount
+      : existing.responseTimeCount;
 
     await db
       .update(schema.playerSkillMastery)
@@ -368,13 +378,13 @@ export async function recordSkillAttemptWithHelp(
         totalResponseTimeMs: newTotalResponseTimeMs,
         responseTimeCount: newResponseTimeCount,
       })
-      .where(eq(schema.playerSkillMastery.id, existing.id))
+      .where(eq(schema.playerSkillMastery.id, existing.id));
 
-    return (await getSkillMastery(playerId, skillId))!
+    return (await getSkillMastery(playerId, skillId))!;
   }
 
   // Calculate response time for new record (only if provided)
-  const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
+  const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0;
 
   // Create new record with help tracking - skill is being practiced
   const newRecord: NewPlayerSkillMastery = {
@@ -390,11 +400,11 @@ export async function recordSkillAttemptWithHelp(
     reinforcementStreak: 0,
     totalResponseTimeMs: hasResponseTime ? responseTimeMs : 0,
     responseTimeCount: hasResponseTime ? 1 : 0,
-  }
+  };
 
-  await db.insert(schema.playerSkillMastery).values(newRecord)
+  await db.insert(schema.playerSkillMastery).values(newRecord);
 
-  return (await getSkillMastery(playerId, skillId))!
+  return (await getSkillMastery(playerId, skillId))!;
 }
 
 /**
@@ -405,9 +415,9 @@ export async function recordSkillAttemptsWithHelp(
   playerId: string,
   skillResults: Array<{ skillId: string; isCorrect: boolean }>,
   helpLevel: HelpLevel,
-  responseTimeMs?: number
+  responseTimeMs?: number,
 ): Promise<PlayerSkillMastery[]> {
-  const results: PlayerSkillMastery[] = []
+  const results: PlayerSkillMastery[] = [];
 
   for (const { skillId, isCorrect } of skillResults) {
     const result = await recordSkillAttemptWithHelp(
@@ -415,33 +425,36 @@ export async function recordSkillAttemptsWithHelp(
       skillId,
       isCorrect,
       helpLevel,
-      responseTimeMs
-    )
-    results.push(result)
+      responseTimeMs,
+    );
+    results.push(result);
   }
 
-  return results
+  return results;
 }
 
 /**
  * Get skills that need reinforcement for a player
  */
 export async function getSkillsNeedingReinforcement(
-  playerId: string
+  playerId: string,
 ): Promise<PlayerSkillMastery[]> {
   return db.query.playerSkillMastery.findMany({
     where: and(
       eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.needsReinforcement, true)
+      eq(schema.playerSkillMastery.needsReinforcement, true),
     ),
     orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
-  })
+  });
 }
 
 /**
  * Clear reinforcement for a specific skill (teacher override)
  */
-export async function clearSkillReinforcement(playerId: string, skillId: string): Promise<void> {
+export async function clearSkillReinforcement(
+  playerId: string,
+  skillId: string,
+): Promise<void> {
   await db
     .update(schema.playerSkillMastery)
     .set({
@@ -452,9 +465,9 @@ export async function clearSkillReinforcement(playerId: string, skillId: string)
     .where(
       and(
         eq(schema.playerSkillMastery.playerId, playerId),
-        eq(schema.playerSkillMastery.skillId, skillId)
-      )
-    )
+        eq(schema.playerSkillMastery.skillId, skillId),
+      ),
+    );
 }
 
 /**
@@ -468,7 +481,7 @@ export async function clearAllReinforcement(playerId: string): Promise<void> {
       reinforcementStreak: 0,
       updatedAt: new Date(),
     })
-    .where(eq(schema.playerSkillMastery.playerId, playerId))
+    .where(eq(schema.playerSkillMastery.playerId, playerId));
 }
 
 /**
@@ -476,16 +489,16 @@ export async function clearAllReinforcement(playerId: string): Promise<void> {
  */
 export async function recordSkillAttempts(
   playerId: string,
-  skillResults: Array<{ skillId: string; isCorrect: boolean }>
+  skillResults: Array<{ skillId: string; isCorrect: boolean }>,
 ): Promise<PlayerSkillMastery[]> {
-  const results: PlayerSkillMastery[] = []
+  const results: PlayerSkillMastery[] = [];
 
   for (const { skillId, isCorrect } of skillResults) {
-    const result = await recordSkillAttempt(playerId, skillId, isCorrect)
-    results.push(result)
+    const result = await recordSkillAttempt(playerId, skillId, isCorrect);
+    results.push(result);
   }
 
-  return results
+  return results;
 }
 
 /**
@@ -493,16 +506,18 @@ export async function recordSkillAttempts(
  */
 export async function calculatePracticingPercent(
   playerId: string,
-  skillIds: string[]
+  skillIds: string[],
 ): Promise<number> {
-  if (skillIds.length === 0) return 0
+  if (skillIds.length === 0) return 0;
 
-  const masteryRecords = await getAllSkillMastery(playerId)
-  const relevantRecords = masteryRecords.filter((r) => skillIds.includes(r.skillId))
+  const masteryRecords = await getAllSkillMastery(playerId);
+  const relevantRecords = masteryRecords.filter((r) =>
+    skillIds.includes(r.skillId),
+  );
 
-  const practicingCount = relevantRecords.filter((r) => r.isPracticing).length
+  const practicingCount = relevantRecords.filter((r) => r.isPracticing).length;
 
-  return Math.round((practicingCount / skillIds.length) * 100)
+  return Math.round((practicingCount / skillIds.length) * 100);
 }
 
 /**
@@ -510,9 +525,9 @@ export async function calculatePracticingPercent(
  */
 export async function calculateMasteryPercent(
   playerId: string,
-  skillIds: string[]
+  skillIds: string[],
 ): Promise<number> {
-  return calculatePracticingPercent(playerId, skillIds)
+  return calculatePracticingPercent(playerId, skillIds);
 }
 
 // ============================================================================
@@ -528,38 +543,46 @@ export async function calculateMasteryPercent(
  */
 export async function getRecentSessions(
   playerId: string,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<PracticeSession[]> {
   // Query completed/abandoned sessions from session_plans
   const sessions = await db.query.sessionPlans.findMany({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
+      inArray(schema.sessionPlans.status, ["completed", "abandoned"]),
     ),
     orderBy: desc(schema.sessionPlans.completedAt),
     limit,
-  })
+  });
 
   // Transform session_plans data into PracticeSession format
   return sessions.map((session) => {
     // Parse results from JSON
     const results =
       (session.results as Array<{
-        isCorrect: boolean
-        responseTimeMs: number
-        skillsExercised: string[]
-      }>) || []
+        isCorrect: boolean;
+        responseTimeMs: number;
+        skillsExercised: string[];
+      }>) || [];
 
-    const problemsAttempted = results.length
-    const problemsCorrect = results.filter((r) => r.isCorrect).length
-    const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
-    const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
-    const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
+    const problemsAttempted = results.length;
+    const problemsCorrect = results.filter((r) => r.isCorrect).length;
+    const totalTimeMs = results.reduce(
+      (sum, r) => sum + (r.responseTimeMs || 0),
+      0,
+    );
+    const averageTimeMs =
+      problemsAttempted > 0
+        ? Math.round(totalTimeMs / problemsAttempted)
+        : null;
+    const skillsUsed = [
+      ...new Set(results.flatMap((r) => r.skillsExercised || [])),
+    ];
 
     return {
       id: session.id,
       playerId: session.playerId,
-      phaseId: 'session', // session_plans don't have phaseId
+      phaseId: "session", // session_plans don't have phaseId
       problemsAttempted,
       problemsCorrect,
       averageTimeMs,
@@ -568,8 +591,8 @@ export async function getRecentSessions(
       visualizationMode: false, // Not tracked in session_plans
       startedAt: session.startedAt || session.createdAt,
       completedAt: session.completedAt,
-    } as PracticeSession
-  })
+    } as PracticeSession;
+  });
 }
 
 // ============================================================================
@@ -580,39 +603,43 @@ export async function getRecentSessions(
  * Get full progress summary for a player
  */
 export interface PlayerProgressSummary {
-  curriculum: PlayerCurriculum | null
-  totalSkills: number
+  curriculum: PlayerCurriculum | null;
+  totalSkills: number;
   /** Number of skills with isPracticing=true */
-  practicingSkillCount: number
+  practicingSkillCount: number;
   /** Percentage of skills being practiced */
-  practicingPercent: number
-  recentSessions: PracticeSession[]
-  recentSkills: PlayerSkillMastery[]
+  practicingPercent: number;
+  recentSessions: PracticeSession[];
+  recentSkills: PlayerSkillMastery[];
   /** @deprecated Use practicingSkillCount instead */
-  masteredSkills: number
+  masteredSkills: number;
   /** @deprecated No longer used - was always 0 */
-  practicingSkills: number
+  practicingSkills: number;
   /** @deprecated No longer used */
-  learningSkills: number
+  learningSkills: number;
   /** @deprecated Use practicingPercent instead */
-  masteryPercent: number
+  masteryPercent: number;
 }
 
-export async function getPlayerProgressSummary(playerId: string): Promise<PlayerProgressSummary> {
+export async function getPlayerProgressSummary(
+  playerId: string,
+): Promise<PlayerProgressSummary> {
   const [curriculum, allSkills, recentSessions] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
     getRecentSessions(playerId, 5),
-  ])
+  ]);
 
-  const practicingSkillCount = allSkills.filter((s) => s.isPracticing).length
-  const totalSkills = allSkills.length
+  const practicingSkillCount = allSkills.filter((s) => s.isPracticing).length;
+  const totalSkills = allSkills.length;
 
   const practicingPercent =
-    totalSkills > 0 ? Math.round((practicingSkillCount / totalSkills) * 100) : 0
+    totalSkills > 0
+      ? Math.round((practicingSkillCount / totalSkills) * 100)
+      : 0;
 
   // Get 5 most recently practiced skills
-  const recentSkills = allSkills.slice(0, 5)
+  const recentSkills = allSkills.slice(0, 5);
 
   return {
     curriculum,
@@ -626,19 +653,21 @@ export async function getPlayerProgressSummary(playerId: string): Promise<Player
     practicingSkills: 0,
     learningSkills: totalSkills - practicingSkillCount,
     masteryPercent: practicingPercent,
-  }
+  };
 }
 
 /**
  * Initialize a new student in the curriculum
  * Creates curriculum position if it doesn't exist
  */
-export async function initializeStudent(playerId: string): Promise<PlayerCurriculum> {
+export async function initializeStudent(
+  playerId: string,
+): Promise<PlayerCurriculum> {
   return upsertPlayerCurriculum(playerId, {
     currentLevel: 1,
-    currentPhaseId: 'L1.add.+1.direct',
+    currentPhaseId: "L1.add.+1.direct",
     visualizationMode: false,
-  })
+  });
 }
 
 // ============================================================================
@@ -649,13 +678,13 @@ export async function initializeStudent(playerId: string): Promise<PlayerCurricu
  * Skill performance data with calculated averages
  */
 export interface SkillPerformance {
-  skillId: string
-  isPracticing: boolean
-  fluencyState: FluencyState
-  attempts: number
-  accuracy: number // 0-1
-  avgResponseTimeMs: number | null // null if no timing data
-  responseTimeCount: number
+  skillId: string;
+  /** BKT-based mastery classification (null = insufficient data, computed client-side) */
+  bktClassification: "strong" | "developing" | "weak" | null;
+  attempts: number;
+  accuracy: number; // 0-1
+  avgResponseTimeMs: number | null; // null if no timing data
+  responseTimeCount: number;
 }
 
 /**
@@ -663,17 +692,17 @@ export interface SkillPerformance {
  */
 export interface SkillPerformanceAnalysis {
   /** All skills with performance data */
-  skills: SkillPerformance[]
+  skills: SkillPerformance[];
   /** Overall average response time (ms) across all skills with timing data */
-  overallAvgResponseTimeMs: number | null
+  overallAvgResponseTimeMs: number | null;
   /** Skills where student is significantly faster than average (excelling) */
-  fastSkills: SkillPerformance[]
+  fastSkills: SkillPerformance[];
   /** Skills where student is significantly slower than average (struggling) */
-  slowSkills: SkillPerformance[]
+  slowSkills: SkillPerformance[];
   /** Skills with low accuracy that may need intervention */
-  lowAccuracySkills: SkillPerformance[]
+  lowAccuracySkills: SkillPerformance[];
   /** Skills needing reinforcement (from help system) */
-  reinforcementSkills: SkillPerformance[]
+  reinforcementSkills: SkillPerformance[];
 }
 
 /**
@@ -686,53 +715,49 @@ const PERFORMANCE_THRESHOLDS = {
   minAccuracyThreshold: 0.7, // 70%
   /** Minimum responses needed for timing analysis */
   minResponsesForTiming: 3,
-} as const
+} as const;
 
 /**
  * Analyze a player's skill performance to identify strengths and weaknesses
  * Uses response time data to find skills where the student excels vs struggles
+ *
+ * Note: BKT classification is computed client-side from session plan data,
+ * so we return null here. The client enriches this with BKT data.
  */
-export async function analyzeSkillPerformance(playerId: string): Promise<SkillPerformanceAnalysis> {
-  const allSkills = await getAllSkillMastery(playerId)
-  const now = new Date()
+export async function analyzeSkillPerformance(
+  playerId: string,
+): Promise<SkillPerformanceAnalysis> {
+  const allSkills = await getAllSkillMastery(playerId);
 
   // Calculate performance data for each skill
-  const skills: SkillPerformance[] = allSkills.map((s) => {
-    // Calculate days since last practice
-    const daysSincePractice = s.lastPracticedAt
-      ? Math.floor((now.getTime() - new Date(s.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24))
-      : undefined
-
-    // Compute fluency state
-    const fluencyState = s.isPracticing
-      ? calculateFluencyState(s.attempts, s.correct, s.consecutiveCorrect, daysSincePractice)
-      : ('practicing' as FluencyState) // Non-practicing skills default to 'practicing' state
-
-    return {
-      skillId: s.skillId,
-      isPracticing: s.isPracticing,
-      fluencyState,
-      attempts: s.attempts,
-      accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
-      avgResponseTimeMs:
-        s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
-      responseTimeCount: s.responseTimeCount,
-    }
-  })
+  // Note: bktClassification is computed client-side from session history
+  const skills: SkillPerformance[] = allSkills.map((s) => ({
+    skillId: s.skillId,
+    bktClassification: null, // Computed client-side from session plans
+    attempts: s.attempts,
+    accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
+    avgResponseTimeMs:
+      s.responseTimeCount > 0
+        ? Math.round(s.totalResponseTimeMs / s.responseTimeCount)
+        : null,
+    responseTimeCount: s.responseTimeCount,
+  }));
 
   // Calculate overall average response time (only from skills with sufficient data)
   const skillsWithTiming = skills.filter(
     (s) =>
       s.avgResponseTimeMs !== null &&
-      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming
-  )
+      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming,
+  );
   const overallAvgResponseTimeMs =
     skillsWithTiming.length > 0
       ? Math.round(
-          skillsWithTiming.reduce((sum, s) => sum + (s.avgResponseTimeMs ?? 0), 0) /
-            skillsWithTiming.length
+          skillsWithTiming.reduce(
+            (sum, s) => sum + (s.avgResponseTimeMs ?? 0),
+            0,
+          ) / skillsWithTiming.length,
         )
-      : null
+      : null;
 
   // Identify fast skills (significantly faster than average)
   const fastSkills =
@@ -741,9 +766,10 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
           (s) =>
             s.avgResponseTimeMs !== null &&
             s.avgResponseTimeMs <
-              overallAvgResponseTimeMs * (1 - PERFORMANCE_THRESHOLDS.speedDeviationPercent)
+              overallAvgResponseTimeMs *
+                (1 - PERFORMANCE_THRESHOLDS.speedDeviationPercent),
         )
-      : []
+      : [];
 
   // Identify slow skills (significantly slower than average)
   const slowSkills =
@@ -752,21 +778,26 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
           (s) =>
             s.avgResponseTimeMs !== null &&
             s.avgResponseTimeMs >
-              overallAvgResponseTimeMs * (1 + PERFORMANCE_THRESHOLDS.speedDeviationPercent)
+              overallAvgResponseTimeMs *
+                (1 + PERFORMANCE_THRESHOLDS.speedDeviationPercent),
         )
-      : []
+      : [];
 
   // Identify low accuracy skills
   const lowAccuracySkills = skills.filter(
     (s) =>
       s.attempts >= PERFORMANCE_THRESHOLDS.minResponsesForTiming &&
-      s.accuracy < PERFORMANCE_THRESHOLDS.minAccuracyThreshold
-  )
+      s.accuracy < PERFORMANCE_THRESHOLDS.minAccuracyThreshold,
+  );
 
   // Get skills needing reinforcement
-  const reinforcementRecords = await getSkillsNeedingReinforcement(playerId)
-  const reinforcementSkillIds = new Set(reinforcementRecords.map((r) => r.skillId))
-  const reinforcementSkills = skills.filter((s) => reinforcementSkillIds.has(s.skillId))
+  const reinforcementRecords = await getSkillsNeedingReinforcement(playerId);
+  const reinforcementSkillIds = new Set(
+    reinforcementRecords.map((r) => r.skillId),
+  );
+  const reinforcementSkills = skills.filter((s) =>
+    reinforcementSkillIds.has(s.skillId),
+  );
 
   return {
     skills,
@@ -775,7 +806,7 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
     slowSkills,
     lowAccuracySkills,
     reinforcementSkills,
-  }
+  };
 }
 
 /**
@@ -784,23 +815,23 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
  */
 export async function getSkillsByResponseTime(
   playerId: string,
-  order: 'slowest' | 'fastest' = 'slowest'
+  order: "slowest" | "fastest" = "slowest",
 ): Promise<SkillPerformance[]> {
-  const analysis = await analyzeSkillPerformance(playerId)
+  const analysis = await analyzeSkillPerformance(playerId);
 
   // Filter to only skills with timing data
   const skillsWithTiming = analysis.skills.filter(
     (s) =>
       s.avgResponseTimeMs !== null &&
-      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming
-  )
+      s.responseTimeCount >= PERFORMANCE_THRESHOLDS.minResponsesForTiming,
+  );
 
   // Sort by response time
   return skillsWithTiming.sort((a, b) => {
-    const timeA = a.avgResponseTimeMs ?? 0
-    const timeB = b.avgResponseTimeMs ?? 0
-    return order === 'slowest' ? timeB - timeA : timeA - timeB
-  })
+    const timeA = a.avgResponseTimeMs ?? 0;
+    const timeB = b.avgResponseTimeMs ?? 0;
+    return order === "slowest" ? timeB - timeA : timeA - timeB;
+  });
 }
 
 // ============================================================================
@@ -812,24 +843,26 @@ export async function getSkillsByResponseTime(
  */
 export async function getSkillTutorialProgress(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<SkillTutorialProgress | null> {
   const result = await db.query.skillTutorialProgress.findFirst({
     where: and(
       eq(schema.skillTutorialProgress.playerId, playerId),
-      eq(schema.skillTutorialProgress.skillId, skillId)
+      eq(schema.skillTutorialProgress.skillId, skillId),
     ),
-  })
-  return result ?? null
+  });
+  return result ?? null;
 }
 
 /**
  * Get all tutorial progress records for a player
  */
-export async function getAllTutorialProgress(playerId: string): Promise<SkillTutorialProgress[]> {
+export async function getAllTutorialProgress(
+  playerId: string,
+): Promise<SkillTutorialProgress[]> {
   return db.query.skillTutorialProgress.findMany({
     where: eq(schema.skillTutorialProgress.playerId, playerId),
-  })
+  });
 }
 
 /**
@@ -838,10 +871,10 @@ export async function getAllTutorialProgress(playerId: string): Promise<SkillTut
  */
 export async function isSkillTutorialSatisfied(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<boolean> {
-  const progress = await getSkillTutorialProgress(playerId, skillId)
-  return isTutorialSatisfied(progress)
+  const progress = await getSkillTutorialProgress(playerId, skillId);
+  return isTutorialSatisfied(progress);
 }
 
 /**
@@ -849,10 +882,10 @@ export async function isSkillTutorialSatisfied(
  */
 export async function markTutorialComplete(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<SkillTutorialProgress> {
-  const existing = await getSkillTutorialProgress(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillTutorialProgress(playerId, skillId);
+  const now = new Date();
 
   if (existing) {
     await db
@@ -862,9 +895,9 @@ export async function markTutorialComplete(
         completedAt: now,
         updatedAt: now,
       })
-      .where(eq(schema.skillTutorialProgress.id, existing.id))
+      .where(eq(schema.skillTutorialProgress.id, existing.id));
 
-    return (await getSkillTutorialProgress(playerId, skillId))!
+    return (await getSkillTutorialProgress(playerId, skillId))!;
   }
 
   // Create new record
@@ -875,10 +908,10 @@ export async function markTutorialComplete(
     completedAt: now,
     createdAt: now,
     updatedAt: now,
-  }
+  };
 
-  await db.insert(schema.skillTutorialProgress).values(newRecord)
-  return (await getSkillTutorialProgress(playerId, skillId))!
+  await db.insert(schema.skillTutorialProgress).values(newRecord);
+  return (await getSkillTutorialProgress(playerId, skillId))!;
 }
 
 /**
@@ -888,10 +921,10 @@ export async function markTutorialComplete(
 export async function applyTutorialOverride(
   playerId: string,
   skillId: string,
-  reason?: string
+  reason?: string,
 ): Promise<SkillTutorialProgress> {
-  const existing = await getSkillTutorialProgress(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillTutorialProgress(playerId, skillId);
+  const now = new Date();
 
   if (existing) {
     await db
@@ -902,9 +935,9 @@ export async function applyTutorialOverride(
         overrideReason: reason ?? null,
         updatedAt: now,
       })
-      .where(eq(schema.skillTutorialProgress.id, existing.id))
+      .where(eq(schema.skillTutorialProgress.id, existing.id));
 
-    return (await getSkillTutorialProgress(playerId, skillId))!
+    return (await getSkillTutorialProgress(playerId, skillId))!;
   }
 
   // Create new record
@@ -916,10 +949,10 @@ export async function applyTutorialOverride(
     overrideReason: reason ?? null,
     createdAt: now,
     updatedAt: now,
-  }
+  };
 
-  await db.insert(schema.skillTutorialProgress).values(newRecord)
-  return (await getSkillTutorialProgress(playerId, skillId))!
+  await db.insert(schema.skillTutorialProgress).values(newRecord);
+  return (await getSkillTutorialProgress(playerId, skillId))!;
 }
 
 /**
@@ -928,10 +961,10 @@ export async function applyTutorialOverride(
  */
 export async function recordTutorialSkip(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<SkillTutorialProgress> {
-  const existing = await getSkillTutorialProgress(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillTutorialProgress(playerId, skillId);
+  const now = new Date();
 
   if (existing) {
     await db
@@ -941,9 +974,9 @@ export async function recordTutorialSkip(
         lastSkippedAt: now,
         updatedAt: now,
       })
-      .where(eq(schema.skillTutorialProgress.id, existing.id))
+      .where(eq(schema.skillTutorialProgress.id, existing.id));
 
-    return (await getSkillTutorialProgress(playerId, skillId))!
+    return (await getSkillTutorialProgress(playerId, skillId))!;
   }
 
   // Create new record
@@ -954,10 +987,10 @@ export async function recordTutorialSkip(
     lastSkippedAt: now,
     createdAt: now,
     updatedAt: now,
-  }
+  };
 
-  await db.insert(schema.skillTutorialProgress).values(newRecord)
-  return (await getSkillTutorialProgress(playerId, skillId))!
+  await db.insert(schema.skillTutorialProgress).values(newRecord);
+  return (await getSkillTutorialProgress(playerId, skillId))!;
 }
 
 /**
@@ -966,16 +999,17 @@ export async function recordTutorialSkip(
  */
 export async function getRepeatedlySkippedTutorials(
   playerId: string,
-  minSkipCount: number = 3
+  minSkipCount: number = 3,
 ): Promise<SkillTutorialProgress[]> {
-  const allProgress = await getAllTutorialProgress(playerId)
+  const allProgress = await getAllTutorialProgress(playerId);
   return allProgress.filter(
-    (p) => p.skipCount >= minSkipCount && !p.tutorialCompleted && !p.teacherOverride
-  )
+    (p) =>
+      p.skipCount >= minSkipCount && !p.tutorialCompleted && !p.teacherOverride,
+  );
 }
 
 // Re-export the helper function
-export { isTutorialSatisfied }
+export { isTutorialSatisfied };
 
 // ============================================================================
 // SKILL ACTIVATION OPERATIONS
@@ -992,10 +1026,10 @@ export { isTutorialSatisfied }
  */
 export async function enableSkillForPractice(
   playerId: string,
-  skillId: string
+  skillId: string,
 ): Promise<PlayerSkillMastery> {
-  const existing = await getSkillMastery(playerId, skillId)
-  const now = new Date()
+  const existing = await getSkillMastery(playerId, skillId);
+  const now = new Date();
 
   if (existing) {
     // Only update if not already practicing
@@ -1006,9 +1040,9 @@ export async function enableSkillForPractice(
           isPracticing: true,
           updatedAt: now,
         })
-        .where(eq(schema.playerSkillMastery.id, existing.id))
+        .where(eq(schema.playerSkillMastery.id, existing.id));
     }
-    return (await getSkillMastery(playerId, skillId))!
+    return (await getSkillMastery(playerId, skillId))!;
   }
 
   // Create new record with skill enabled for practice
@@ -1020,8 +1054,8 @@ export async function enableSkillForPractice(
     consecutiveCorrect: 0,
     isPracticing: true,
     lastPracticedAt: now,
-  }
+  };
 
-  await db.insert(schema.playerSkillMastery).values(newRecord)
-  return (await getSkillMastery(playerId, skillId))!
+  await db.insert(schema.playerSkillMastery).values(newRecord);
+  return (await getSkillMastery(playerId, skillId))!;
 }
