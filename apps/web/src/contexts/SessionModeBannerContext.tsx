@@ -10,7 +10,6 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import useMeasure from 'react-use-measure'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { ActiveSessionState } from '@/components/practice/ActiveSessionBanner'
 
@@ -23,7 +22,7 @@ export type BannerSlot = 'content' | 'nav' | 'hidden'
 // Re-export for convenience
 export type { ActiveSessionState } from '@/components/practice/ActiveSessionBanner'
 
-export interface Bounds {
+export interface SlotBounds {
   x: number
   y: number
   width: number
@@ -31,46 +30,40 @@ export interface Bounds {
 }
 
 interface SessionModeBannerContextValue {
-  // Which slot is the "home" for the banner (computed from registered slots)
+  // Which slot is currently active (computed from registered slots)
   activeSlot: BannerSlot
 
-  // Slot registration - pages call these to register their slots
-  registerContentSlot: (element: HTMLElement | null) => void
-  registerNavSlot: (element: HTMLElement | null) => void
+  // Slot registration - components call these to register/unregister
+  registerContentSlot: () => void
+  unregisterContentSlot: () => void
+  registerNavSlot: () => void
+  unregisterNavSlot: () => void
 
-  // Current measured bounds (null if slot not registered)
-  contentBounds: Bounds | null
-  navBounds: Bounds | null
+  // Bounds reporting - slots report their position
+  setContentBounds: (bounds: SlotBounds | null) => void
+  setNavBounds: (bounds: SlotBounds | null) => void
 
-  // Session mode data (passed through from hook)
+  // Current target bounds for the banner (from active slot)
+  targetBounds: SlotBounds | null
+
+  // Session mode data
   sessionMode: SessionMode | null
   isLoading: boolean
-
-  // Action callback (opens StartPracticeModal)
-  onAction: () => void
-  setOnAction: (callback: () => void) => void
-
-  // Track if this is initial render (skip animation)
-  isInitialRender: boolean
-
-  // Previous slot (for animation direction)
-  previousSlot: BannerSlot | null
 
   // Active session state (if there's an in-progress session)
   activeSession: ActiveSessionState | null
 
-  // Resume session callback
+  // Action callbacks
+  onAction: () => void
+  setOnAction: (callback: () => void) => void
   onResume: () => void
   setOnResume: (callback: () => void) => void
-
-  // Start fresh callback (opens modal while session is still active)
   onStartFresh: () => void
   setOnStartFresh: (callback: () => void) => void
-}
 
-// ============================================================================
-// Context
-// ============================================================================
+  // Skip animation on rapid navigation
+  shouldAnimate: boolean
+}
 
 const SessionModeBannerContext = createContext<SessionModeBannerContextValue | null>(null)
 
@@ -82,7 +75,6 @@ interface SessionModeBannerProviderProps {
   children: ReactNode
   sessionMode: SessionMode | null
   isLoading: boolean
-  /** Active session state (if there's an in-progress session) */
   activeSession?: ActiveSessionState | null
 }
 
@@ -93,65 +85,70 @@ export function SessionModeBannerProvider({
   activeSession = null,
 }: SessionModeBannerProviderProps) {
   // Track which slots are currently registered
-  const [contentSlotRegistered, setContentSlotRegistered] = useState(false)
-  const [navSlotRegistered, setNavSlotRegistered] = useState(false)
+  const [contentSlotCount, setContentSlotCount] = useState(0)
+  const [navSlotCount, setNavSlotCount] = useState(0)
 
-  // Track initial render
-  const [isInitialRender, setIsInitialRender] = useState(true)
-  useEffect(() => {
-    // After first effect cycle, we're no longer in initial render
-    const timer = setTimeout(() => setIsInitialRender(false), 100)
-    return () => clearTimeout(timer)
-  }, [])
+  // Track bounds from each slot
+  const [contentBounds, setContentBoundsState] = useState<SlotBounds | null>(null)
+  const [navBounds, setNavBoundsState] = useState<SlotBounds | null>(null)
+
+  // Track last slot change time for animation skipping
+  const lastSlotChangeRef = useRef<number>(0)
+  const [shouldAnimate, setShouldAnimate] = useState(true)
 
   // Compute active slot based on which slots are registered
   // Priority: content > nav > hidden
-  const activeSlot: BannerSlot = contentSlotRegistered
-    ? 'content'
-    : navSlotRegistered
-      ? 'nav'
-      : 'hidden'
+  const activeSlot: BannerSlot =
+    contentSlotCount > 0 ? 'content' : navSlotCount > 0 ? 'nav' : 'hidden'
 
-  // Track previous slot for animation direction
-  const previousSlotRef = useRef<BannerSlot | null>(null)
-  const [previousSlot, setPreviousSlot] = useState<BannerSlot | null>(null)
+  // Compute target bounds based on active slot
+  const targetBounds =
+    activeSlot === 'content' ? contentBounds : activeSlot === 'nav' ? navBounds : null
 
+  // When slot changes, check if we should animate
+  const previousSlotRef = useRef<BannerSlot>(activeSlot)
   useEffect(() => {
-    if (previousSlotRef.current !== null && previousSlotRef.current !== activeSlot) {
-      setPreviousSlot(previousSlotRef.current)
+    if (previousSlotRef.current !== activeSlot) {
+      const now = Date.now()
+      const timeSinceLastChange = now - lastSlotChangeRef.current
+
+      // Skip animation if navigating rapidly (< 300ms between changes)
+      setShouldAnimate(timeSinceLastChange > 300)
+      lastSlotChangeRef.current = now
+      previousSlotRef.current = activeSlot
     }
-    previousSlotRef.current = activeSlot
   }, [activeSlot])
 
-  // Use react-use-measure for content slot
-  const [contentRef, contentBounds] = useMeasure({ scroll: true })
-  const contentElementRef = useRef<HTMLElement | null>(null)
-
-  // Use react-use-measure for nav slot
-  const [navRef, navBounds] = useMeasure({ scroll: true })
-  const navElementRef = useRef<HTMLElement | null>(null)
-
   // Registration callbacks
-  const registerContentSlot = useCallback(
-    (element: HTMLElement | null) => {
-      contentElementRef.current = element
-      contentRef(element)
-      setContentSlotRegistered(element !== null)
-    },
-    [contentRef]
-  )
+  const registerContentSlot = useCallback(() => {
+    setContentSlotCount((c) => c + 1)
+  }, [])
 
-  const registerNavSlot = useCallback(
-    (element: HTMLElement | null) => {
-      navElementRef.current = element
-      navRef(element)
-      setNavSlotRegistered(element !== null)
-    },
-    [navRef]
-  )
+  const unregisterContentSlot = useCallback(() => {
+    setContentSlotCount((c) => Math.max(0, c - 1))
+  }, [])
 
-  // Action callback ref (to avoid re-renders when callback changes)
+  const registerNavSlot = useCallback(() => {
+    setNavSlotCount((c) => c + 1)
+  }, [])
+
+  const unregisterNavSlot = useCallback(() => {
+    setNavSlotCount((c) => Math.max(0, c - 1))
+  }, [])
+
+  // Bounds setters (wrapped for stability)
+  const setContentBounds = useCallback((bounds: SlotBounds | null) => {
+    setContentBoundsState(bounds)
+  }, [])
+
+  const setNavBounds = useCallback((bounds: SlotBounds | null) => {
+    setNavBoundsState(bounds)
+  }, [])
+
+  // Action callback refs (to avoid re-renders when callbacks change)
   const onActionRef = useRef<() => void>(() => {})
+  const onResumeRef = useRef<() => void>(() => {})
+  const onStartFreshRef = useRef<() => void>(() => {})
 
   const onAction = useCallback(() => {
     onActionRef.current()
@@ -161,9 +158,6 @@ export function SessionModeBannerProvider({
     onActionRef.current = callback
   }, [])
 
-  // Resume session callback ref
-  const onResumeRef = useRef<() => void>(() => {})
-
   const onResume = useCallback(() => {
     onResumeRef.current()
   }, [])
@@ -171,9 +165,6 @@ export function SessionModeBannerProvider({
   const setOnResume = useCallback((callback: () => void) => {
     onResumeRef.current = callback
   }, [])
-
-  // Start fresh callback ref
-  const onStartFreshRef = useRef<() => void>(() => {})
 
   const onStartFresh = useCallback(() => {
     onStartFreshRef.current()
@@ -183,67 +174,46 @@ export function SessionModeBannerProvider({
     onStartFreshRef.current = callback
   }, [])
 
-  // Convert bounds to our format (null if not registered or zero-sized)
-  const processedContentBounds: Bounds | null = useMemo(() => {
-    if (!contentBounds || contentBounds.width === 0 || contentBounds.height === 0) {
-      return null
-    }
-    return {
-      x: contentBounds.x,
-      y: contentBounds.y,
-      width: contentBounds.width,
-      height: contentBounds.height,
-    }
-  }, [contentBounds])
-
-  const processedNavBounds: Bounds | null = useMemo(() => {
-    if (!navBounds || navBounds.width === 0 || navBounds.height === 0) {
-      return null
-    }
-    return {
-      x: navBounds.x,
-      y: navBounds.y,
-      width: navBounds.width,
-      height: navBounds.height,
-    }
-  }, [navBounds])
-
   const value = useMemo(
     () => ({
       activeSlot,
       registerContentSlot,
+      unregisterContentSlot,
       registerNavSlot,
-      contentBounds: processedContentBounds,
-      navBounds: processedNavBounds,
+      unregisterNavSlot,
+      setContentBounds,
+      setNavBounds,
+      targetBounds,
       sessionMode,
       isLoading,
+      activeSession,
       onAction,
       setOnAction,
-      isInitialRender,
-      previousSlot,
-      activeSession,
       onResume,
       setOnResume,
       onStartFresh,
       setOnStartFresh,
+      shouldAnimate,
     }),
     [
       activeSlot,
       registerContentSlot,
+      unregisterContentSlot,
       registerNavSlot,
-      processedContentBounds,
-      processedNavBounds,
+      unregisterNavSlot,
+      setContentBounds,
+      setNavBounds,
+      targetBounds,
       sessionMode,
       isLoading,
+      activeSession,
       onAction,
       setOnAction,
-      isInitialRender,
-      previousSlot,
-      activeSession,
       onResume,
       setOnResume,
       onStartFresh,
       setOnStartFresh,
+      shouldAnimate,
     ]
   )
 
@@ -274,87 +244,4 @@ export function useSessionModeBanner() {
  */
 export function useSessionModeBannerOptional() {
   return useContext(SessionModeBannerContext)
-}
-
-// ============================================================================
-// Slot Components
-// ============================================================================
-
-interface ContentBannerSlotProps {
-  className?: string
-  /** Minimum height to reserve when banner is not measured yet */
-  minHeight?: number
-}
-
-/**
- * Placeholder slot for the full banner in content area.
- * Renders an invisible div that the ProjectingBanner will measure and target.
- * When this component mounts, the banner will animate to this slot.
- */
-export function ContentBannerSlot({ className, minHeight = 120 }: ContentBannerSlotProps) {
-  const { registerContentSlot, activeSlot } = useSessionModeBanner()
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Register on mount, unregister on unmount
-  useEffect(() => {
-    registerContentSlot(ref.current)
-    return () => registerContentSlot(null)
-  }, [registerContentSlot])
-
-  return (
-    <div
-      ref={ref}
-      data-slot="content-banner"
-      data-active={activeSlot === 'content'}
-      className={className}
-      style={{
-        // Reserve space for the banner - the portal will render on top
-        minHeight,
-      }}
-    />
-  )
-}
-
-interface NavBannerSlotProps {
-  className?: string
-  /** Minimum height to reserve for compact banner */
-  minHeight?: number
-}
-
-/**
- * Placeholder slot for the compact banner in nav area.
- * Renders an invisible div that the ProjectingBanner will measure and target.
- * This slot is used when ContentBannerSlot is not mounted.
- *
- * Returns null if used outside SessionModeBannerProvider (graceful degradation).
- */
-export function NavBannerSlot({ className, minHeight = 40 }: NavBannerSlotProps) {
-  const context = useSessionModeBannerOptional()
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Register on mount, unregister on unmount
-  useEffect(() => {
-    if (context) {
-      context.registerNavSlot(ref.current)
-      return () => context.registerNavSlot(null)
-    }
-  }, [context])
-
-  // Don't render if no provider
-  if (!context) {
-    return null
-  }
-
-  return (
-    <div
-      ref={ref}
-      data-slot="nav-banner"
-      data-active={context.activeSlot === 'nav'}
-      className={className}
-      style={{
-        // Reserve space for the compact banner
-        minHeight,
-      }}
-    />
-  )
 }

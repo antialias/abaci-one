@@ -4,14 +4,12 @@ import type { Meta, StoryObj } from '@storybook/react'
 import React, { useEffect, useState } from 'react'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import {
-  ContentBannerSlot,
-  NavBannerSlot,
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { css } from '../../../styled-system/css'
-import { ProjectingBanner } from './ProjectingBanner'
+import { ContentBannerSlot, NavBannerSlot, ProjectingBanner } from './BannerSlots'
 
 // =============================================================================
 // Mock Data
@@ -68,6 +66,18 @@ const mockMaintenanceMode: SessionMode = {
 }
 
 // =============================================================================
+// Helper Components
+// =============================================================================
+
+function ActionRegistrar() {
+  const { setOnAction } = useSessionModeBanner()
+  useEffect(() => {
+    setOnAction(() => alert('Practice action triggered!'))
+  }, [setOnAction])
+  return null
+}
+
+// =============================================================================
 // Interactive Demo Component
 // =============================================================================
 
@@ -76,14 +86,15 @@ interface DemoProps {
   darkMode?: boolean
 }
 
-function ProjectingBannerDemo({ sessionMode, darkMode = false }: DemoProps) {
+function BannerSlotsDemo({ sessionMode, darkMode = false }: DemoProps) {
   const [activeView, setActiveView] = useState<'dashboard' | 'other'>('dashboard')
 
   return (
     <ThemeProvider>
       <SessionModeBannerProvider sessionMode={sessionMode} isLoading={false}>
-        {/* Action registrar */}
         <ActionRegistrar />
+        {/* Single ProjectingBanner renders at provider level */}
+        <ProjectingBanner />
 
         <div
           className={css({
@@ -219,7 +230,7 @@ function ProjectingBannerDemo({ sessionMode, darkMode = false }: DemoProps) {
 
             {/* Content Slot - only rendered on dashboard */}
             {activeView === 'dashboard' && (
-              <ContentBannerSlot className={css({ marginBottom: '1rem' })} minHeight={120} />
+              <ContentBannerSlot className={css({ marginBottom: '1rem' })} />
             )}
 
             <p
@@ -233,43 +244,32 @@ function ProjectingBannerDemo({ sessionMode, darkMode = false }: DemoProps) {
             </p>
           </div>
         </div>
-
-        {/* The actual projecting banner (renders via portal) */}
-        <ProjectingBanner />
       </SessionModeBannerProvider>
     </ThemeProvider>
   )
-}
-
-// Helper to register the action callback
-function ActionRegistrar() {
-  const { setOnAction } = useSessionModeBanner()
-  useEffect(() => {
-    setOnAction(() => alert('Practice action triggered!'))
-  }, [setOnAction])
-  return null
 }
 
 // =============================================================================
 // Story Configuration
 // =============================================================================
 
-const meta: Meta<typeof ProjectingBannerDemo> = {
-  title: 'Practice/ProjectingBanner',
-  component: ProjectingBannerDemo,
+const meta: Meta<typeof BannerSlotsDemo> = {
+  title: 'Practice/BannerSlots',
+  component: BannerSlotsDemo,
   parameters: {
     layout: 'fullscreen',
     docs: {
       description: {
         component: `
-The ProjectingBanner component creates a unified banner that seamlessly "projects"
-between the main content area (dashboard) and a compact slot in the navigation bar.
+The BannerSlots system creates a unified banner that seamlessly animates between positions
+using Framer Motion's layoutId feature.
 
 **Key Features:**
-- Animates between content and nav slots using React Spring
+- Banner renders in document flow (not fixed positioning)
+- Animates between content and nav slots using shared layoutId
 - Full banner in content area (Dashboard, Summary)
 - Compact banner in nav slot (other practice pages)
-- Smooth position/size morphing during transitions
+- Smooth layout animation during transitions
 
 **How to test:**
 1. Click the navigation buttons to simulate page transitions
@@ -283,45 +283,45 @@ between the main content area (dashboard) and a compact slot in the navigation b
 }
 
 export default meta
-type Story = StoryObj<typeof ProjectingBannerDemo>
+type Story = StoryObj<typeof BannerSlotsDemo>
 
 // =============================================================================
 // Stories
 // =============================================================================
 
 export const RemediationMode: Story = {
-  render: () => <ProjectingBannerDemo sessionMode={mockRemediationMode} />,
+  render: () => <BannerSlotsDemo sessionMode={mockRemediationMode} />,
 }
 
 export const RemediationBlocked: Story = {
   name: 'Remediation (Blocked Promotion)',
-  render: () => <ProjectingBannerDemo sessionMode={mockRemediationBlockedMode} />,
+  render: () => <BannerSlotsDemo sessionMode={mockRemediationBlockedMode} />,
 }
 
 export const ProgressionTutorial: Story = {
   name: 'Progression (Tutorial Required)',
-  render: () => <ProjectingBannerDemo sessionMode={mockProgressionMode} />,
+  render: () => <BannerSlotsDemo sessionMode={mockProgressionMode} />,
 }
 
 export const ProgressionPractice: Story = {
   name: 'Progression (Practice)',
-  render: () => <ProjectingBannerDemo sessionMode={mockProgressionPracticeMode} />,
+  render: () => <BannerSlotsDemo sessionMode={mockProgressionPracticeMode} />,
 }
 
 export const MaintenanceMode: Story = {
-  render: () => <ProjectingBannerDemo sessionMode={mockMaintenanceMode} />,
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceMode} />,
 }
 
 export const DarkMode: Story = {
-  render: () => <ProjectingBannerDemo sessionMode={mockRemediationMode} darkMode />,
+  render: () => <BannerSlotsDemo sessionMode={mockRemediationMode} darkMode />,
 }
 
 export const DarkModeProgression: Story = {
   name: 'Dark Mode (Progression)',
-  render: () => <ProjectingBannerDemo sessionMode={mockProgressionMode} darkMode />,
+  render: () => <BannerSlotsDemo sessionMode={mockProgressionMode} darkMode />,
 }
 
 export const DarkModeMaintenance: Story = {
   name: 'Dark Mode (Maintenance)',
-  render: () => <ProjectingBannerDemo sessionMode={mockMaintenanceMode} darkMode />,
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceMode} darkMode />,
 }

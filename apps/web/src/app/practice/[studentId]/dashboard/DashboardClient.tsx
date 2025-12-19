@@ -13,9 +13,8 @@ import {
   StartPracticeModal,
   type StudentWithProgress,
 } from '@/components/practice'
-import { ProjectingBanner } from '@/components/practice/ProjectingBanner'
+import { ContentBannerSlot, ProjectingBanner } from '@/components/practice/BannerSlots'
 import {
-  ContentBannerSlot,
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
@@ -1729,7 +1728,7 @@ interface BannerActionRegistrarProps {
 }
 
 /**
- * Helper component that registers the banner actions and renders ProjectingBanner.
+ * Helper component that registers the banner action callbacks.
  * Must be used inside SessionModeBannerProvider.
  */
 function BannerActionRegistrar({ onAction, onResume, onStartFresh }: BannerActionRegistrarProps) {
@@ -1747,7 +1746,7 @@ function BannerActionRegistrar({ onAction, onResume, onStartFresh }: BannerActio
     setOnStartFresh(onStartFresh)
   }, [onStartFresh, setOnStartFresh])
 
-  return <ProjectingBanner />
+  return null
 }
 
 // ============================================================================
@@ -1959,6 +1958,8 @@ export function DashboardClient({
         onResume={handleResumeSession}
         onStartFresh={handleStartPractice}
       />
+      {/* Single ProjectingBanner renders at provider level */}
+      <ProjectingBanner />
       <PageWithNav>
         <PracticeSubNav student={selectedStudent} pageContext="dashboard" />
 
@@ -1971,11 +1972,8 @@ export function DashboardClient({
           })}
         >
           <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
-            {/* Session mode banner slot - ProjectingBanner renders here via portal */}
-            <ContentBannerSlot
-              className={css({ marginBottom: '1rem' })}
-              minHeight={sessionMode ? 120 : 0}
-            />
+            {/* Session mode banner - renders in-flow, animates when navigating */}
+            <ContentBannerSlot className={css({ marginBottom: '1rem' })} />
 
             <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
 

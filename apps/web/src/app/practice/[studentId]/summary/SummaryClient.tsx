@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
+  ContentBannerSlot,
   PracticeSubNav,
   ProjectingBanner,
   SessionOverview,
@@ -11,7 +12,6 @@ import {
 } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
-  ContentBannerSlot,
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
@@ -26,7 +26,7 @@ import { css } from '../../../../../styled-system/css'
 // ============================================================================
 
 /**
- * Registers the action callback with the banner context and renders the ProjectingBanner.
+ * Registers the action callback with the banner context.
  * Must be inside SessionModeBannerProvider to access context.
  */
 function BannerActionRegistrar({ onAction }: { onAction: () => void }) {
@@ -36,7 +36,7 @@ function BannerActionRegistrar({ onAction }: { onAction: () => void }) {
     setOnAction(onAction)
   }, [onAction, setOnAction])
 
-  return <ProjectingBanner />
+  return null
 }
 
 interface SummaryClientProps {
@@ -97,6 +97,8 @@ export function SummaryClient({
   return (
     <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoadingSessionMode}>
       <BannerActionRegistrar onAction={handlePracticeAgain} />
+      {/* Single ProjectingBanner renders at provider level */}
+      <ProjectingBanner />
       <PageWithNav>
         {/* Practice Sub-Navigation */}
         <PracticeSubNav student={player} pageContext="summary" />
@@ -145,11 +147,8 @@ export function SummaryClient({
               </p>
             </header>
 
-            {/* Content slot for projecting banner - shown after session completion */}
-            <ContentBannerSlot
-              className={css({ marginBottom: '1.5rem' })}
-              minHeight={sessionMode ? 120 : 0}
-            />
+            {/* Session mode banner - renders in-flow after session completion */}
+            <ContentBannerSlot className={css({ marginBottom: '1.5rem' })} />
 
             {/* View Mode Toggle (only show when there's a session) */}
             {session && (

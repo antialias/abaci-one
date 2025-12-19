@@ -74,6 +74,7 @@
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "emojibase-data": "^16.0.3",
+    "framer-motion": "^12.23.26",
     "gray-matter": "^4.0.3",
     "jose": "^6.1.0",
     "js-yaml": "^4.1.0",

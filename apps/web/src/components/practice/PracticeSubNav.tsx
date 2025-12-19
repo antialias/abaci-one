@@ -3,7 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { NavBannerSlot } from '@/contexts/SessionModeBannerContext'
+import { NavBannerSlot } from './BannerSlots'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
