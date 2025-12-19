@@ -337,6 +337,8 @@ export function SessionProgressIndicator({
         borderRadius: '8px',
         overflow: 'hidden',
         minHeight: '36px',
+        minWidth: 0, // Allow shrinking in flex container
+        flex: 1,
       })}
     >
       {/* Section indicators */}
@@ -347,6 +349,7 @@ export function SessionProgressIndicator({
           alignItems: 'center',
           gap: '0.375rem',
           flex: 1,
+          minWidth: 0, // Allow shrinking in flex container
           overflowX: 'auto',
           overflowY: 'hidden',
           // Hide scrollbar but allow scrolling

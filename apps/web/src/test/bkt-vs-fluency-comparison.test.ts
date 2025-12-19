@@ -66,7 +66,12 @@ function createResult(
 function computeFluencyFromHistory(
   results: ProblemResultWithContext[],
   skillId: string
-): { fluencyState: FluencyState; attempts: number; correct: number; consecutiveCorrect: number } {
+): {
+  fluencyState: FluencyState
+  attempts: number
+  correct: number
+  consecutiveCorrect: number
+} {
   // Filter results that include this skill
   const skillResults = results.filter((r) => r.skillsExercised.includes(skillId))
 

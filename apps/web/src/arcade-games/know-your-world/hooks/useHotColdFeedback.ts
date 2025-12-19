@@ -608,5 +608,11 @@ export function useHotColdFeedback({
     }
   }, [])
 
-  return { checkPosition, reset, isSpeaking, lastFeedbackType, getSearchMetrics }
+  return {
+    checkPosition,
+    reset,
+    isSpeaking,
+    lastFeedbackType,
+    getSearchMetrics,
+  }
 }

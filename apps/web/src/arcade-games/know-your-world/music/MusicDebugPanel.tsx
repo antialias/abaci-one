@@ -81,7 +81,11 @@ export function MusicDebugPanel({ defaultExpanded = false }: MusicDebugPanelProp
           >
             <span>
               Status:{' '}
-              <span className={css({ color: music.isPlaying ? 'green.400' : 'yellow.400' })}>
+              <span
+                className={css({
+                  color: music.isPlaying ? 'green.400' : 'yellow.400',
+                })}
+              >
                 {music.isPlaying ? 'Playing' : 'Paused'}
               </span>
             </span>

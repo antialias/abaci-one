@@ -227,7 +227,12 @@ export function ProblemDebugPanel({
                 marginBottom: '6px',
               })}
             >
-              <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                })}
+              >
                 <span>Complexity Budget</span>
                 {totalCost !== undefined && (
                   <span className={css({ color: '#4ade80' })}>total: {totalCost}</span>
@@ -258,7 +263,13 @@ export function ProblemDebugPanel({
               </div>
             </div>
             {trace ? (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '4px' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                })}
+              >
                 {trace.steps.map((step, i) => {
                   const cost = step.complexityCost
                   const isFirstTerm = i === 0
@@ -305,7 +316,14 @@ export function ProblemDebugPanel({
                       >
                         {cost !== undefined ? `${cost}` : '—'}
                         {isExemptFromMin && cost !== undefined && cost < minBudget && (
-                          <span className={css({ color: '#6b7280', fontSize: '8px' })}>*</span>
+                          <span
+                            className={css({
+                              color: '#6b7280',
+                              fontSize: '8px',
+                            })}
+                          >
+                            *
+                          </span>
                         )}
                       </span>
                       <span

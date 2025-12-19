@@ -175,7 +175,8 @@ export function SafeZoneDebugOverlay({
           Viewport: {Math.round(svgDimensions.width)}×{Math.round(svgDimensions.height)}
         </div>
         <div>
-          Margins: T={safeZoneMargins.top} R={safeZoneMargins.right} B={safeZoneMargins.bottom} L=
+          Margins: T={safeZoneMargins.top} R={safeZoneMargins.right} B=
+          {safeZoneMargins.bottom} L=
           {safeZoneMargins.left}
         </div>
         <div style={{ color: '#0f0' }}>

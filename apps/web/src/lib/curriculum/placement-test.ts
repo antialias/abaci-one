@@ -260,13 +260,21 @@ export function generateProblemForSkill(
   if (category === 'basic') {
     targetSkills.basic = { [skill]: true } as SkillSet['basic']
   } else if (category === 'fiveComplements') {
-    targetSkills.fiveComplements = { [skill]: true } as SkillSet['fiveComplements']
+    targetSkills.fiveComplements = {
+      [skill]: true,
+    } as SkillSet['fiveComplements']
   } else if (category === 'fiveComplementsSub') {
-    targetSkills.fiveComplementsSub = { [skill]: true } as SkillSet['fiveComplementsSub']
+    targetSkills.fiveComplementsSub = {
+      [skill]: true,
+    } as SkillSet['fiveComplementsSub']
   } else if (category === 'tenComplements') {
-    targetSkills.tenComplements = { [skill]: true } as SkillSet['tenComplements']
+    targetSkills.tenComplements = {
+      [skill]: true,
+    } as SkillSet['tenComplements']
   } else if (category === 'tenComplementsSub') {
-    targetSkills.tenComplementsSub = { [skill]: true } as SkillSet['tenComplementsSub']
+    targetSkills.tenComplementsSub = {
+      [skill]: true,
+    } as SkillSet['tenComplementsSub']
   }
 
   const problem = generateSingleProblem(constraints, skillSet, targetSkills)

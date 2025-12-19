@@ -358,16 +358,17 @@ export function DecompositionProvider({
 **File:** `src/components/decomposition/DecompositionDisplay.tsx`
 
 This will be a refactored version of `DecompositionWithReasons` that:
+
 1. Uses `useDecomposition()` instead of `useTutorialContext()`
 2. Receives no props (gets everything from context)
 3. Can be dropped anywhere inside a `DecompositionProvider`
 
 ```typescript
-'use client'
+"use client";
 
-import { useDecomposition } from '@/contexts/DecompositionContext'
-import { ReasonTooltip } from './ReasonTooltip'  // Moved here
-import './decomposition.css'
+import { useDecomposition } from "@/contexts/DecompositionContext";
+import { ReasonTooltip } from "./ReasonTooltip"; // Moved here
+import "./decomposition.css";
 
 export function DecompositionDisplay() {
   const {
@@ -380,7 +381,7 @@ export function DecompositionDisplay() {
     activeIndividualTermIndex,
     handleTermHover,
     getGroupTermIndicesFromTermIndex,
-  } = useDecomposition()
+  } = useDecomposition();
 
   // ... rendering logic (adapted from DecompositionWithReasons)
 }
@@ -406,6 +407,7 @@ function SegmentGroup({ segment, steps, ... }) {
 ### Step 4: Update ReasonTooltip
 
 The tooltip already has a conditional import pattern for TutorialUIContext. We keep that but also:
+
 1. Move it to `src/components/decomposition/ReasonTooltip.tsx`
 2. Receive `steps` as a prop instead of from context
 
@@ -491,21 +493,25 @@ src/
 ## Migration Strategy
 
 ### Phase 1: Create New Context (Non-Breaking)
+
 1. Create `DecompositionContext.tsx` with all logic
 2. Create `DecompositionDisplay.tsx` using new context
 3. Keep existing `DecompositionWithReasons.tsx` working
 
 ### Phase 2: Update TutorialPlayer
+
 1. Wrap decomposition area with `DecompositionProvider`
 2. Update TutorialPlayer to sync state via callbacks
 3. Verify tutorial still works identically
 
 ### Phase 3: Integrate into Practice
+
 1. Add `DecompositionProvider` to help panel
 2. Render `DecompositionDisplay`
 3. Test practice help flow
 
 ### Phase 4: Cleanup (Optional)
+
 1. Remove decomposition logic from `TutorialContext`
 2. Delete old `DecompositionWithReasons.tsx`
 3. Update imports throughout codebase
@@ -513,6 +519,7 @@ src/
 ## Testing Checklist
 
 ### Tutorial Mode
+
 - [ ] Decomposition shows correctly for each step
 - [ ] Current step is highlighted
 - [ ] Term hover shows tooltip
@@ -521,6 +528,7 @@ src/
 - [ ] Abacus column hover highlights related terms
 
 ### Practice Mode
+
 - [ ] Decomposition shows when help is active
 - [ ] Correct decomposition for current term (start → target)
 - [ ] Tooltips work on hover
@@ -528,6 +536,7 @@ src/
 - [ ] No console errors
 
 ### Edge Cases
+
 - [ ] Single-digit addition (no meaningful decomposition)
 - [ ] Multi-column carries
 - [ ] Complement operations (five/ten complements)
@@ -536,24 +545,28 @@ src/
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking tutorial functionality | Phase 2: Keep old code working in parallel during migration |
-| Performance: Re-generating sequence | useMemo ensures sequence only regenerates on value changes |
-| CSS conflicts | Move CSS to shared location, use consistent naming |
-| Missing data in practice context | `usePracticeHelp` already generates sequence - verify compatibility |
+| Risk                                | Mitigation                                                          |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| Breaking tutorial functionality     | Phase 2: Keep old code working in parallel during migration         |
+| Performance: Re-generating sequence | useMemo ensures sequence only regenerates on value changes          |
+| CSS conflicts                       | Move CSS to shared location, use consistent naming                  |
+| Missing data in practice context    | `usePracticeHelp` already generates sequence - verify compatibility |
 
 ## Notes
 
 ### Why Not Just Pass Props?
+
 We could pass all data as props, but:
+
 1. Deep prop drilling through TermSpan, SegmentGroup, ReasonTooltip
 2. Many components need same data
 3. Interactive state (hover) needs to be shared
 4. Context pattern is cleaner and more React-idiomatic
 
 ### Compatibility with usePracticeHelp
+
 The `usePracticeHelp` hook already calls `generateUnifiedInstructionSequence()` and stores the result. For practice mode, we have two options:
+
 1. **Option A:** Let `DecompositionProvider` regenerate (simple, slightly redundant)
 2. **Option B:** Accept pre-generated `sequence` as prop (more efficient)
 

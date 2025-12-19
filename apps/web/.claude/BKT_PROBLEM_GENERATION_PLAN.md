@@ -10,14 +10,14 @@
 
 ## Current State vs Target State
 
-| Aspect | Current (Fluency) | Target (BKT) |
-|--------|-------------------|--------------|
-| **Output** | 5 discrete states | Continuous P(known) [0,1] |
-| **Multi-skill blame** | All skills get +1 attempt | Probabilistic: `blame ∝ (1 - pKnown)` |
-| **Help level** | Heavy help breaks streak | Weighted evidence: 1.0×, 0.8×, 0.5× |
-| **Response time** | Recorded but IGNORED | Weighted evidence: 0.5× to 1.2× |
-| **Confidence** | None | Built-in confidence measure |
-| **Progress** | Binary threshold (cliff effect) | Continuous smooth updates |
+| Aspect                | Current (Fluency)               | Target (BKT)                          |
+| --------------------- | ------------------------------- | ------------------------------------- |
+| **Output**            | 5 discrete states               | Continuous P(known) [0,1]             |
+| **Multi-skill blame** | All skills get +1 attempt       | Probabilistic: `blame ∝ (1 - pKnown)` |
+| **Help level**        | Heavy help breaks streak        | Weighted evidence: 1.0×, 0.8×, 0.5×   |
+| **Response time**     | Recorded but IGNORED            | Weighted evidence: 0.5× to 1.2×       |
+| **Confidence**        | None                            | Built-in confidence measure           |
+| **Progress**          | Binary threshold (cliff effect) | Continuous smooth updates             |
 
 ---
 
@@ -44,11 +44,13 @@ generateSessionPlan()
 ### Multiplier Mapping
 
 **BKT Continuous:**
+
 - `pKnown = 0.0` → multiplier 4.0 (struggling)
 - `pKnown = 0.5` → multiplier 2.5 (learning)
 - `pKnown = 1.0` → multiplier 1.0 (mastered)
 
 **Fluency Discrete (fallback):**
+
 - `effortless` → 1
 - `fluent` → 2
 - `rusty` → 3
@@ -135,7 +137,7 @@ export const BKT_INTEGRATION_CONFIG = {
 
   /** Number of recent sessions to load for BKT computation */
   sessionHistoryDepth: 50,
-}
+};
 ```
 
 ---
@@ -193,18 +195,19 @@ export const BKT_INTEGRATION_CONFIG = {
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
+| Risk                          | Mitigation                         |
+| ----------------------------- | ---------------------------------- |
 | Performance (loading history) | Load in parallel; consider caching |
-| Cold start (no data) | Automatic fluency fallback |
-| User confusion | Clear explanations, "Learn more" |
-| Dashboard/generation mismatch | Single BKT computation source |
+| Cold start (no data)          | Automatic fluency fallback         |
+| User confusion                | Clear explanations, "Learn more"   |
+| Dashboard/generation mismatch | Single BKT computation source      |
 
 ---
 
 ## Documentation Updates
 
 After implementation, update:
+
 - `docs/DAILY_PRACTICE_SYSTEM.md` - Add BKT integration section
 - `.claude/CLAUDE.md` - Add BKT integration notes
 - Blog post - Update to reflect actual integration

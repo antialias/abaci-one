@@ -3,11 +3,13 @@
 ## Problem Statement
 
 `DashboardClient.tsx` has 3 direct `fetch()` calls that bypass React Query:
+
 1. `handleStartOver` - abandons session
 2. `handleSaveManualSkills` - sets mastered skills
 3. `handleRefreshSkill` - refreshes skill recency
 
 These use `router.refresh()` to update data, but this doesn't work reliably because:
+
 - `router.refresh()` re-runs server components but doesn't guarantee client state updates
 - The React Query cache is not invalidated, so other components see stale data
 - There's a race condition between navigation and data refresh
@@ -15,6 +17,7 @@ These use `router.refresh()` to update data, but this doesn't work reliably beca
 ## Root Cause
 
 `DashboardClient` receives data as **server-side props** and doesn't use React Query hooks:
+
 ```typescript
 // Current: Props-based data
 export function DashboardClient({
@@ -70,51 +73,67 @@ The skills mutations (`setMasteredSkills`, `refreshSkillRecency`) aren't current
  * Hook: Set mastered skills (manual skill management)
  */
 export function useSetMasteredSkills() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ playerId, masteredSkillIds }: { playerId: string; masteredSkillIds: string[] }) => {
+    mutationFn: async ({
+      playerId,
+      masteredSkillIds,
+    }: {
+      playerId: string;
+      masteredSkillIds: string[];
+    }) => {
       const res = await api(`curriculum/${playerId}/skills`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ masteredSkillIds }),
-      })
+      });
       if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        throw new Error(error.error || 'Failed to set mastered skills')
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to set mastered skills");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: (_, { playerId }) => {
       // Invalidate curriculum to refetch skills
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      });
     },
-  })
+  });
 }
 
 /**
  * Hook: Refresh skill recency (mark as recently practiced)
  */
 export function useRefreshSkillRecency() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ playerId, skillId }: { playerId: string; skillId: string }) => {
+    mutationFn: async ({
+      playerId,
+      skillId,
+    }: {
+      playerId: string;
+      skillId: string;
+    }) => {
       const res = await api(`curriculum/${playerId}/skills`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillId }),
-      })
+      });
       if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        throw new Error(error.error || 'Failed to refresh skill')
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to refresh skill");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: (_, { playerId }) => {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      });
     },
-  })
+  });
 }
 ```
 
@@ -123,12 +142,20 @@ export function useRefreshSkillRecency() {
 **File:** `src/app/practice/[studentId]/dashboard/DashboardClient.tsx`
 
 1. Add imports:
+
 ```typescript
-import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
-import { useSetMasteredSkills, useRefreshSkillRecency } from '@/hooks/usePlayerCurriculum'
+import {
+  useAbandonSession,
+  useActiveSessionPlan,
+} from "@/hooks/useSessionPlan";
+import {
+  useSetMasteredSkills,
+  useRefreshSkillRecency,
+} from "@/hooks/usePlayerCurriculum";
 ```
 
 2. Use hooks with server props as initial data:
+
 ```typescript
 export function DashboardClient({
   studentId,
@@ -151,37 +178,44 @@ export function DashboardClient({
 ```
 
 3. Replace direct fetch handlers:
+
 ```typescript
 const handleStartOver = useCallback(async () => {
-  if (!activeSession) return
-  setIsStartingOver(true)
+  if (!activeSession) return;
+  setIsStartingOver(true);
   try {
     await abandonMutation.mutateAsync({
       playerId: studentId,
-      planId: activeSession.id
-    })
-    router.push(`/practice/${studentId}/configure`)
+      planId: activeSession.id,
+    });
+    router.push(`/practice/${studentId}/configure`);
   } catch (error) {
-    console.error('Failed to start over:', error)
+    console.error("Failed to start over:", error);
   } finally {
-    setIsStartingOver(false)
+    setIsStartingOver(false);
   }
-}, [activeSession, studentId, abandonMutation, router])
+}, [activeSession, studentId, abandonMutation, router]);
 
-const handleSaveManualSkills = useCallback(async (masteredSkillIds: string[]) => {
-  await setMasteredSkillsMutation.mutateAsync({
-    playerId: studentId,
-    masteredSkillIds
-  })
-  setShowManualSkillModal(false)
-}, [studentId, setMasteredSkillsMutation])
+const handleSaveManualSkills = useCallback(
+  async (masteredSkillIds: string[]) => {
+    await setMasteredSkillsMutation.mutateAsync({
+      playerId: studentId,
+      masteredSkillIds,
+    });
+    setShowManualSkillModal(false);
+  },
+  [studentId, setMasteredSkillsMutation],
+);
 
-const handleRefreshSkill = useCallback(async (skillId: string) => {
-  await refreshSkillMutation.mutateAsync({
-    playerId: studentId,
-    skillId
-  })
-}, [studentId, refreshSkillMutation])
+const handleRefreshSkill = useCallback(
+  async (skillId: string) => {
+    await refreshSkillMutation.mutateAsync({
+      playerId: studentId,
+      skillId,
+    });
+  },
+  [studentId, refreshSkillMutation],
+);
 ```
 
 4. Remove router.refresh() calls - they're no longer needed.
@@ -191,24 +225,28 @@ const handleRefreshSkill = useCallback(async (skillId: string) => {
 For full consistency, skills should also come from React Query. Add to `usePlayerCurriculum.ts`:
 
 ```typescript
-export function usePlayerSkills(playerId: string, initialData?: PlayerSkillMastery[]) {
+export function usePlayerSkills(
+  playerId: string,
+  initialData?: PlayerSkillMastery[],
+) {
   return useQuery({
-    queryKey: [...curriculumKeys.detail(playerId), 'skills'],
+    queryKey: [...curriculumKeys.detail(playerId), "skills"],
     queryFn: async () => {
-      const res = await api(`curriculum/${playerId}`)
-      if (!res.ok) throw new Error('Failed to fetch curriculum')
-      const data = await res.json()
-      return data.skills as PlayerSkillMastery[]
+      const res = await api(`curriculum/${playerId}`);
+      if (!res.ok) throw new Error("Failed to fetch curriculum");
+      const data = await res.json();
+      return data.skills as PlayerSkillMastery[];
     },
     initialData,
     staleTime: initialData ? 30000 : 0,
-  })
+  });
 }
 ```
 
 Then in DashboardClient:
+
 ```typescript
-const { data: skills } = usePlayerSkills(studentId, initialSkills)
+const { data: skills } = usePlayerSkills(studentId, initialSkills);
 ```
 
 ### Step 4: Ensure QueryClient Provider Wraps Practice Pages
@@ -242,10 +280,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/hooks/usePlayerCurriculum.ts` | Add `useSetMasteredSkills`, `useRefreshSkillRecency` |
-| `src/app/practice/[studentId]/dashboard/DashboardClient.tsx` | Use React Query hooks, remove direct fetch |
+| File                                                         | Changes                                              |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| `src/hooks/usePlayerCurriculum.ts`                           | Add `useSetMasteredSkills`, `useRefreshSkillRecency` |
+| `src/app/practice/[studentId]/dashboard/DashboardClient.tsx` | Use React Query hooks, remove direct fetch           |
 
 ## Testing Checklist
 
@@ -267,6 +305,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ## Rollout Risk
 
 Low risk:
+
 - Existing hooks already tested in other practice components
 - Server props still provide initial data (no loading states)
 - Incremental change - only DashboardClient affected

@@ -72,17 +72,32 @@ describe('Weak Skill Targeting', () => {
         // Weak: low P(known), high confidence
         [
           'fiveComplements.4=5-1',
-          { skillId: 'fiveComplements.4=5-1', pKnown: 0.2, confidence: 0.5, opportunities: 10 },
+          {
+            skillId: 'fiveComplements.4=5-1',
+            pKnown: 0.2,
+            confidence: 0.5,
+            opportunities: 10,
+          },
         ],
         // Strong: high P(known), high confidence
         [
           'basic.directAddition',
-          { skillId: 'basic.directAddition', pKnown: 0.9, confidence: 0.6, opportunities: 15 },
+          {
+            skillId: 'basic.directAddition',
+            pKnown: 0.9,
+            confidence: 0.6,
+            opportunities: 15,
+          },
         ],
         // Unknown: low confidence (not enough data)
         [
           'tenComplements.9=10-1',
-          { skillId: 'tenComplements.9=10-1', pKnown: 0.3, confidence: 0.1, opportunities: 2 },
+          {
+            skillId: 'tenComplements.9=10-1',
+            pKnown: 0.3,
+            confidence: 0.1,
+            opportunities: 2,
+          },
         ],
       ])
 
@@ -102,17 +117,32 @@ describe('Weak Skill Targeting', () => {
         // Just below threshold - should be weak
         [
           'skill.belowThreshold',
-          { skillId: 'skill.belowThreshold', pKnown: 0.49, confidence: 0.31, opportunities: 8 },
+          {
+            skillId: 'skill.belowThreshold',
+            pKnown: 0.49,
+            confidence: 0.31,
+            opportunities: 8,
+          },
         ],
         // Just above threshold - should be strong
         [
           'skill.aboveThreshold',
-          { skillId: 'skill.aboveThreshold', pKnown: 0.51, confidence: 0.31, opportunities: 8 },
+          {
+            skillId: 'skill.aboveThreshold',
+            pKnown: 0.51,
+            confidence: 0.31,
+            opportunities: 8,
+          },
         ],
         // Confidence just below threshold - should not be identified
         [
           'skill.lowConfidence',
-          { skillId: 'skill.lowConfidence', pKnown: 0.2, confidence: 0.29, opportunities: 5 },
+          {
+            skillId: 'skill.lowConfidence',
+            pKnown: 0.2,
+            confidence: 0.29,
+            opportunities: 5,
+          },
         ],
       ])
 
@@ -127,19 +157,39 @@ describe('Weak Skill Targeting', () => {
       const bktResults = new Map<string, SkillBktResult>([
         [
           'fiveComplements.4=5-1',
-          { skillId: 'fiveComplements.4=5-1', pKnown: 0.2, confidence: 0.5, opportunities: 10 },
+          {
+            skillId: 'fiveComplements.4=5-1',
+            pKnown: 0.2,
+            confidence: 0.5,
+            opportunities: 10,
+          },
         ],
         [
           'fiveComplements.3=5-2',
-          { skillId: 'fiveComplements.3=5-2', pKnown: 0.3, confidence: 0.4, opportunities: 8 },
+          {
+            skillId: 'fiveComplements.3=5-2',
+            pKnown: 0.3,
+            confidence: 0.4,
+            opportunities: 8,
+          },
         ],
         [
           'tenComplements.9=10-1',
-          { skillId: 'tenComplements.9=10-1', pKnown: 0.15, confidence: 0.6, opportunities: 12 },
+          {
+            skillId: 'tenComplements.9=10-1',
+            pKnown: 0.15,
+            confidence: 0.6,
+            opportunities: 12,
+          },
         ],
         [
           'basic.directAddition',
-          { skillId: 'basic.directAddition', pKnown: 0.95, confidence: 0.8, opportunities: 20 },
+          {
+            skillId: 'basic.directAddition',
+            pKnown: 0.95,
+            confidence: 0.8,
+            opportunities: 20,
+          },
         ],
       ])
 
@@ -345,15 +395,30 @@ describe('Weak Skill Targeting', () => {
       const bktResults = new Map<string, SkillBktResult>([
         [
           'basic.directAddition',
-          { skillId: 'basic.directAddition', pKnown: 0.9, confidence: 0.8, opportunities: 20 },
+          {
+            skillId: 'basic.directAddition',
+            pKnown: 0.9,
+            confidence: 0.8,
+            opportunities: 20,
+          },
         ],
         [
           'basic.heavenBead',
-          { skillId: 'basic.heavenBead', pKnown: 0.85, confidence: 0.7, opportunities: 15 },
+          {
+            skillId: 'basic.heavenBead',
+            pKnown: 0.85,
+            confidence: 0.7,
+            opportunities: 15,
+          },
         ],
         [
           'fiveComplements.4=5-1',
-          { skillId: 'fiveComplements.4=5-1', pKnown: 0.2, confidence: 0.5, opportunities: 10 },
+          {
+            skillId: 'fiveComplements.4=5-1',
+            pKnown: 0.2,
+            confidence: 0.5,
+            opportunities: 10,
+          },
         ],
       ])
 

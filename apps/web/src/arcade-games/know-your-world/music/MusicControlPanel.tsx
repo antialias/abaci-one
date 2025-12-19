@@ -176,7 +176,13 @@ export function MusicControlPanel() {
               marginBottom: '2',
             })}
           >
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2',
+              })}
+            >
               <span className={css({ fontSize: 'lg' })}>{music.isPlaying ? '🎵' : '🔇'}</span>
               <span
                 className={css({
@@ -374,7 +380,11 @@ export function MusicControlPanel() {
                   {music.isHintActive ? music.hintRegionId : 'none'}
                 </span>
                 <span>Temp:</span>
-                <span className={css({ color: isDark ? 'orange.400' : 'orange.600' })}>
+                <span
+                  className={css({
+                    color: isDark ? 'orange.400' : 'orange.600',
+                  })}
+                >
                   {music.currentTemperature || 'neutral'}
                 </span>
               </div>

@@ -182,7 +182,13 @@ export function PracticeTimingDisplay({
           borderRadius: '8px',
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
           <span className={css({ fontSize: '1rem' })}>{getPartTypeEmoji(currentPartType)}</span>
           <span
             className={css({

@@ -15,14 +15,16 @@ The Unified Step Generator is the core algorithm that powers all soroban arithme
 ## Quick Reference
 
 **Main Entry Point:**
-```typescript
-import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'
 
-const sequence = generateUnifiedInstructionSequence(startValue, targetValue)
+```typescript
+import { generateUnifiedInstructionSequence } from "@/utils/unifiedStepGenerator";
+
+const sequence = generateUnifiedInstructionSequence(startValue, targetValue);
 // Returns: UnifiedInstructionSequence with all tutorial data
 ```
 
 **Current Limitations:**
+
 - ✅ Addition: Fully implemented
 - ❌ Subtraction: Throws `Error('Subtraction not implemented yet')` at line 705-708
 
@@ -101,24 +103,24 @@ The main output of the system, containing everything needed for tutorials and he
 ```typescript
 interface UnifiedInstructionSequence {
   // The full equation string: "3 + 14 = 3 + 10 + (5 - 1) = 17"
-  fullDecomposition: string
+  fullDecomposition: string;
 
   // Whether decomposition adds pedagogical value (vs redundant "5 = 5")
-  isMeaningfulDecomposition: boolean
+  isMeaningfulDecomposition: boolean;
 
   // Individual steps with all coordinated data
-  steps: UnifiedStepData[]
+  steps: UnifiedStepData[];
 
   // High-level "chapters" explaining the why
-  segments: PedagogicalSegment[]
+  segments: PedagogicalSegment[];
 
   // Start/end values and step count
-  startValue: number
-  targetValue: number
-  totalSteps: number
+  startValue: number;
+  targetValue: number;
+  totalSteps: number;
 
   // For highlighting addend digits in UI
-  equationAnchors?: EquationAnchors
+  equationAnchors?: EquationAnchors;
 }
 ```
 
@@ -128,29 +130,29 @@ Each step contains perfectly synchronized information:
 
 ```typescript
 interface UnifiedStepData {
-  stepIndex: number
+  stepIndex: number;
 
   // MATH: The term for this step
-  mathematicalTerm: string          // e.g., "10", "-3", "5"
-  termPosition: { startIndex, endIndex }  // Position in fullDecomposition
+  mathematicalTerm: string; // e.g., "10", "-3", "5"
+  termPosition: { startIndex; endIndex }; // Position in fullDecomposition
 
   // ENGLISH: Human-readable instruction
-  englishInstruction: string        // e.g., "add 1 to tens"
+  englishInstruction: string; // e.g., "add 1 to tens"
 
   // STATE: Expected abacus state after this step
-  expectedValue: number
-  expectedState: AbacusState
+  expectedValue: number;
+  expectedState: AbacusState;
 
   // BEADS: Which beads move (for arrows/highlights)
-  beadMovements: StepBeadHighlight[]
+  beadMovements: StepBeadHighlight[];
 
   // VALIDATION: Self-consistency check
-  isValid: boolean
-  validationIssues?: string[]
+  isValid: boolean;
+  validationIssues?: string[];
 
   // TRACKING: Links to source
-  segmentId?: string
-  provenance?: TermProvenance
+  segmentId?: string;
+  provenance?: TermProvenance;
 }
 ```
 
@@ -160,33 +162,33 @@ Groups related steps into "chapters" with human-friendly explanations:
 
 ```typescript
 interface PedagogicalSegment {
-  id: string                    // e.g., "place-1-digit-4"
-  place: number                 // Place value (0=ones, 1=tens, etc.)
-  digit: number                 // The digit being added
+  id: string; // e.g., "place-1-digit-4"
+  place: number; // Place value (0=ones, 1=tens, etc.)
+  digit: number; // The digit being added
 
   // Current abacus state at this place
-  a: number                     // Current digit showing
-  L: number                     // Earth beads active (0-4)
-  U: 0 | 1                      // Heaven bead active?
+  a: number; // Current digit showing
+  L: number; // Earth beads active (0-4)
+  U: 0 | 1; // Heaven bead active?
 
   // Pedagogical classification
-  goal: string                  // "Add 4 to tens with a carry"
-  plan: SegmentDecision[]       // One or more rules applied
+  goal: string; // "Add 4 to tens with a carry"
+  plan: SegmentDecision[]; // One or more rules applied
 
   // Term/step mappings
-  expression: string            // "(100 - 90 - 6)" for complements
-  stepIndices: number[]         // Which steps belong here
-  termIndices: number[]         // Which terms belong here
-  termRange: { startIndex, endIndex }  // Position in fullDecomposition
+  expression: string; // "(100 - 90 - 6)" for complements
+  stepIndices: number[]; // Which steps belong here
+  termIndices: number[]; // Which terms belong here
+  termRange: { startIndex; endIndex }; // Position in fullDecomposition
 
   // State snapshots
-  startValue: number
-  endValue: number
-  startState: AbacusState
-  endState: AbacusState
+  startValue: number;
+  endValue: number;
+  startState: AbacusState;
+  endState: AbacusState;
 
   // Human-friendly content for tooltips
-  readable: SegmentReadable
+  readable: SegmentReadable;
 }
 ```
 
@@ -196,15 +198,15 @@ User-facing explanations generated for each segment:
 
 ```typescript
 interface SegmentReadable {
-  title: string           // "Make 10 — ones" or "Add 3 — tens"
-  subtitle?: string       // "Using 10's friend"
-  chips: Array<{ label: string; value: string }>  // Quick context
-  why: string[]           // Bullet explanations
-  carryPath?: string      // "Tens is 9 → hundreds +1; tens → 0"
-  stepsFriendly: string[] // Bead instructions for each step
-  showMath?: { lines: string[] }  // Math explanation
-  summary: string         // 1-2 sentence plain English
-  validation?: { ok: boolean; issues: string[] }  // Dev self-check
+  title: string; // "Make 10 — ones" or "Add 3 — tens"
+  subtitle?: string; // "Using 10's friend"
+  chips: Array<{ label: string; value: string }>; // Quick context
+  why: string[]; // Bullet explanations
+  carryPath?: string; // "Tens is 9 → hundreds +1; tens → 0"
+  stepsFriendly: string[]; // Bead instructions for each step
+  showMath?: { lines: string[] }; // Math explanation
+  summary: string; // 1-2 sentence plain English
+  validation?: { ok: boolean; issues: string[] }; // Dev self-check
 }
 ```
 
@@ -214,18 +216,18 @@ Links each term back to its source in the original problem:
 
 ```typescript
 interface TermProvenance {
-  rhs: number              // The addend (e.g., 25)
-  rhsDigit: number         // The specific digit (e.g., 2 for tens)
-  rhsPlace: number         // Place value (1=tens, 0=ones)
-  rhsPlaceName: string     // "tens"
-  rhsDigitIndex: number    // Index in addend string (for UI)
-  rhsValue: number         // digit × 10^place (e.g., 20)
-  groupId?: string         // Same ID for complement groups
+  rhs: number; // The addend (e.g., 25)
+  rhsDigit: number; // The specific digit (e.g., 2 for tens)
+  rhsPlace: number; // Place value (1=tens, 0=ones)
+  rhsPlaceName: string; // "tens"
+  rhsDigitIndex: number; // Index in addend string (for UI)
+  rhsValue: number; // digit × 10^place (e.g., 20)
+  groupId?: string; // Same ID for complement groups
 
   // For complement operations affecting multiple columns
-  termPlace?: number       // Actual place this term affects
-  termPlaceName?: string
-  termValue?: number       // Actual value (e.g., 100, -90)
+  termPlace?: number; // Actual place this term affects
+  termPlaceName?: string;
+  termValue?: number; // Actual value (e.g., 100, -90)
 }
 ```
 
@@ -291,21 +293,25 @@ processDigitAtPlace(digit, place, currentDigit, currentState):
 ## The Four Pedagogical Rules
 
 ### 1. Direct
+
 **When:** `a + d ≤ 9` and enough beads available
 **What:** Simply add beads
 **Example:** `3 + 2 = 5` (add 2 earth beads)
 
 ### 2. FiveComplement
+
 **When:** `a + d ≤ 9` but not enough earth beads, heaven is inactive
 **What:** `+d = +5 - (5-d)` — activate heaven, remove complement
 **Example:** `3 + 4 = 7` → `+5 - 1` (activate heaven, remove 1 earth)
 
 ### 3. TenComplement
+
 **When:** `a + d > 9` and next place is not 9
 **What:** `+d = +10 - (10-d)` — add to next place, remove complement
 **Example:** `7 + 5 = 12` → `+10 - 5` (add 1 to tens, remove 5 from ones)
 
 ### 4. Cascade
+
 **When:** `a + d > 9` and next place is 9 (or chain of 9s)
 **What:** Find first non-9 place, add there, clear all 9s
 **Example:** `99 + 5 = 104` → `+100 - 90 - 5` (add 1 to hundreds, clear tens, subtract 5 from ones)
@@ -317,6 +323,7 @@ processDigitAtPlace(digit, place, currentDigit, currentState):
 **Addition processes digits LEFT TO RIGHT (highest place first).**
 
 This is important because:
+
 1. Carries propagate toward higher places
 2. Processing high-to-low means we know the destination state before processing each digit
 3. The decomposition string reads naturally (left-to-right like the original number)
@@ -345,6 +352,7 @@ The React context that wraps components needing decomposition data:
 ```
 
 **Key features:**
+
 - Memoized sequence generation
 - Term ↔ column bidirectional mapping
 - Highlighting state management
@@ -355,6 +363,7 @@ The React context that wraps components needing decomposition data:
 **Location:** `src/components/decomposition/DecompositionDisplay.tsx`
 
 Renders the interactive equation with:
+
 - Hoverable terms that show tooltips
 - Grouped segments (parenthesized complements)
 - Current step highlighting
@@ -365,6 +374,7 @@ Renders the interactive equation with:
 **Location:** `src/components/decomposition/ReasonTooltip.tsx`
 
 Rich tooltips showing:
+
 - Rule name and emoji (✨ Direct, 🤝 Five's Friend, 🔟 Ten's Friend, 🌊 Cascade)
 - Summary explanation
 - Context chips (source digit, rod shows)
@@ -376,6 +386,7 @@ Rich tooltips showing:
 **Location:** `src/hooks/usePracticeHelp.ts`
 
 Progressive help levels using the unified sequence:
+
 - **L0:** No help
 - **L1:** Coach hint (from `segment.readable.summary`)
 - **L2:** Decomposition display
@@ -386,6 +397,7 @@ Progressive help levels using the unified sequence:
 **Location:** `src/utils/skillExtraction.ts`
 
 Maps pedagogical segments to mastery tracking:
+
 - `Direct` → `basic.directAddition`, `basic.heavenBead`, `basic.simpleCombinations`
 - `FiveComplement` → `fiveComplements.4=5-1`, etc.
 - `TenComplement` → `tenComplements.9=10-1`, etc.
@@ -396,6 +408,7 @@ Maps pedagogical segments to mastery tracking:
 ## Test Coverage
 
 **292 snapshot tests** protect the algorithm across:
+
 - 41 Direct entry cases
 - 25 Five-complement cases
 - 28 Ten-complement cases
@@ -416,10 +429,18 @@ See `src/utils/__tests__/SNAPSHOT_TEST_SUMMARY.md` for details.
 Each step is validated for self-consistency:
 
 ```typescript
-validateStepConsistency(term, instruction, startValue, expectedValue, beadMovements, toState)
+validateStepConsistency(
+  term,
+  instruction,
+  startValue,
+  expectedValue,
+  beadMovements,
+  toState,
+);
 ```
 
 Checks:
+
 1. Bead movements produce the expected state
 2. Earth bead counts stay in valid range (0-4)
 3. Heaven bead state is boolean
@@ -438,7 +459,7 @@ The system currently only handles addition. Subtraction throws an error:
 
 ```typescript
 if (addend < 0) {
-  throw new Error('Subtraction not implemented yet')
+  throw new Error("Subtraction not implemented yet");
 }
 ```
 
@@ -489,11 +510,18 @@ src/components/practice/
 ### Adding a New Pedagogical Rule
 
 1. Add to `PedagogicalRule` type:
+
 ```typescript
-export type PedagogicalRule = 'Direct' | 'FiveComplement' | 'TenComplement' | 'Cascade' | 'NewRule'
+export type PedagogicalRule =
+  | "Direct"
+  | "FiveComplement"
+  | "TenComplement"
+  | "Cascade"
+  | "NewRule";
 ```
 
 2. Add decision function in `unifiedStepGenerator.ts`:
+
 ```typescript
 function decisionForNewRule(...): SegmentDecision[] { ... }
 ```
@@ -511,6 +539,7 @@ function decisionForNewRule(...): SegmentDecision[] { ... }
 ### Adding Multi-Step Animations
 
 The `beadMovements` array on each step is already ordered:
+
 1. Higher place first
 2. Heaven beads before earth
 3. Activations before deactivations
@@ -521,16 +550,16 @@ Use `step.beadMovements[].order` for animation sequencing.
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **Place** | Position in number (0=ones, 1=tens, 2=hundreds) |
-| **Heaven bead** | The single bead above the reckoning bar (value: 5) |
-| **Earth beads** | The four beads below the reckoning bar (value: 1 each) |
-| **Complement** | The number that adds to make 5 or 10 |
-| **Cascade** | Chain reaction through consecutive 9s |
-| **Provenance** | Tracking where a term came from in the original problem |
-| **Segment** | Group of related terms forming one pedagogical "chapter" |
+| Term            | Definition                                               |
+| --------------- | -------------------------------------------------------- |
+| **Place**       | Position in number (0=ones, 1=tens, 2=hundreds)          |
+| **Heaven bead** | The single bead above the reckoning bar (value: 5)       |
+| **Earth beads** | The four beads below the reckoning bar (value: 1 each)   |
+| **Complement**  | The number that adds to make 5 or 10                     |
+| **Cascade**     | Chain reaction through consecutive 9s                    |
+| **Provenance**  | Tracking where a term came from in the original problem  |
+| **Segment**     | Group of related terms forming one pedagogical "chapter" |
 
 ---
 
-*Last updated: December 2024*
+_Last updated: December 2024_

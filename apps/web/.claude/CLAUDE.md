@@ -42,6 +42,7 @@ When you agree with the user on a technical approach (e.g., "use getBBox() for b
 3. **When fixes don't work, FIRST verify the agreed approach was actually implemented everywhere** - don't add patches on top of a broken foundation
 
 **The failure pattern:**
+
 - User and Claude agree: "Part 1 and Part 2 should both use method X"
 - Claude implements method X for Part 2 (the obvious case)
 - Claude leaves Part 1 using the old method Y
@@ -50,11 +51,13 @@ When you agree with the user on a technical approach (e.g., "use getBBox() for b
 - Cycle repeats until user is frustrated
 
 **What to do instead:**
+
 - Before implementing: "Part 1 will use [exact method], Part 2 will use [exact method]"
 - After implementing: Verify BOTH actually use the agreed method
 - When debugging: First question should be "did I actually implement what we agreed on everywhere?"
 
 **Why this matters:**
+
 - Users cannot verify every line of code you write
 - They trust that when you agree to do something, you actually do it
 - Superficial fixes waste everyone's time when the root cause is incomplete implementation
@@ -927,6 +930,7 @@ When working on the curriculum-based daily practice system, refer to:
   - Database schema and API endpoints
 
 **Key Files**:
+
 - `src/lib/curriculum/progress-manager.ts` - CRUD operations
 - `src/hooks/usePlayerCurriculum.ts` - Client-side state management
 - `src/components/practice/` - UI components (StudentSelector, ProgressDashboard)

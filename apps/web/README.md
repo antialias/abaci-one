@@ -29,17 +29,17 @@ npm run pre-commit
 
 ### Components
 
-| Component | Description |
-|-----------|-------------|
+| Component                                                         | Description                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------- |
 | [Decomposition Display](./src/components/decomposition/README.md) | Interactive mathematical decomposition visualization |
-| [Worksheet Generator](./src/app/create/worksheets/README.md) | Math worksheet creation with Typst PDF generation |
+| [Worksheet Generator](./src/app/create/worksheets/README.md)      | Math worksheet creation with Typst PDF generation    |
 
 ### Games
 
-| Game | Description |
-|------|-------------|
-| [Arcade System](./src/arcade-games/README.md) | Modular multiplayer game architecture |
-| [Know Your World](./src/arcade-games/know-your-world/README.md) | Geography quiz game |
+| Game                                                            | Description                           |
+| --------------------------------------------------------------- | ------------------------------------- |
+| [Arcade System](./src/arcade-games/README.md)                   | Modular multiplayer game architecture |
+| [Know Your World](./src/arcade-games/know-your-world/README.md) | Geography quiz game                   |
 
 ### Developer Documentation
 

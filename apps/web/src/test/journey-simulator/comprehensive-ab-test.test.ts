@@ -204,7 +204,11 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
         }
 
         // Adaptive
-        const adaptiveConfig: JourneyConfig = { ...baseConfig, profile, mode: 'adaptive' }
+        const adaptiveConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'adaptive',
+        }
         const adaptiveRng = new SeededRandom(baseConfig.seed)
         const adaptiveResult = await new JourneyRunner(
           ephemeralDb.db,
@@ -215,7 +219,11 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
         ).run()
 
         // Classic
-        const classicConfig: JourneyConfig = { ...baseConfig, profile, mode: 'classic' }
+        const classicConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'classic',
+        }
         const classicRng = new SeededRandom(baseConfig.seed)
         const classicResult = await new JourneyRunner(
           ephemeralDb.db,
@@ -319,7 +327,11 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
         }
 
         // Run adaptive mode
-        const adaptiveConfig: JourneyConfig = { ...baseConfig, profile, mode: 'adaptive' }
+        const adaptiveConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'adaptive',
+        }
         const adaptiveRng = new SeededRandom(baseConfig.seed)
         const adaptiveStudent = new SimulatedStudent(profile, adaptiveRng)
         await new JourneyRunner(
@@ -331,7 +343,11 @@ describe('Comprehensive A/B Test: Per-Skill Deficiency', () => {
         ).run()
 
         // Run classic mode
-        const classicConfig: JourneyConfig = { ...baseConfig, profile, mode: 'classic' }
+        const classicConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'classic',
+        }
         const classicRng = new SeededRandom(baseConfig.seed)
         const classicStudent = new SimulatedStudent(profile, classicRng)
         await new JourneyRunner(
@@ -923,7 +939,11 @@ describe('Full 32-Skill A/B Test - All Learner Types', () => {
           }
 
           // Adaptive
-          const adaptiveConfig: JourneyConfig = { ...baseConfig, profile, mode: 'adaptive' }
+          const adaptiveConfig: JourneyConfig = {
+            ...baseConfig,
+            profile,
+            mode: 'adaptive',
+          }
           const adaptiveRng = new SeededRandom(baseConfig.seed)
           const adaptiveResult = await new JourneyRunner(
             ephemeralDb.db,
@@ -934,7 +954,11 @@ describe('Full 32-Skill A/B Test - All Learner Types', () => {
           ).run()
 
           // Classic
-          const classicConfig: JourneyConfig = { ...baseConfig, profile, mode: 'classic' }
+          const classicConfig: JourneyConfig = {
+            ...baseConfig,
+            profile,
+            mode: 'classic',
+          }
           const classicRng = new SeededRandom(baseConfig.seed)
           const classicResult = await new JourneyRunner(
             ephemeralDb.db,
@@ -1016,7 +1040,11 @@ describe('Aggregate Summary: Full 32-Skill × 3 Learner Types', () => {
         }
 
         // Adaptive
-        const adaptiveConfig: JourneyConfig = { ...baseConfig, profile, mode: 'adaptive' }
+        const adaptiveConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'adaptive',
+        }
         const adaptiveRng = new SeededRandom(baseConfig.seed)
         const adaptiveResult = await new JourneyRunner(
           ephemeralDb.db,
@@ -1027,7 +1055,11 @@ describe('Aggregate Summary: Full 32-Skill × 3 Learner Types', () => {
         ).run()
 
         // Classic
-        const classicConfig: JourneyConfig = { ...baseConfig, profile, mode: 'classic' }
+        const classicConfig: JourneyConfig = {
+          ...baseConfig,
+          profile,
+          mode: 'classic',
+        }
         const classicRng = new SeededRandom(baseConfig.seed)
         const classicResult = await new JourneyRunner(
           ephemeralDb.db,

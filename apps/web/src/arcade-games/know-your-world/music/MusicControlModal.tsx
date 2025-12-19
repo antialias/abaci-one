@@ -360,7 +360,11 @@ export function MusicControlModal({ open, onOpenChange }: MusicControlModalProps
                   {music.isHintActive ? music.hintRegionId : 'none'}
                 </span>
                 <span>Temp:</span>
-                <span className={css({ color: isDark ? 'orange.400' : 'orange.600' })}>
+                <span
+                  className={css({
+                    color: isDark ? 'orange.400' : 'orange.600',
+                  })}
+                >
                   {music.currentTemperature || 'neutral'}
                 </span>
               </div>

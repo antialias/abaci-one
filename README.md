@@ -858,6 +858,7 @@ React component library for rendering interactive and static abacus visualizatio
 Interactive mathematical decomposition visualization showing step-by-step soroban operations. Features hoverable terms with pedagogical explanations, grouped operations, and bidirectional abacus coordination.
 
 **Key Features**:
+
 - **Interactive Terms** - Hover to see why each operation is performed
 - **Pedagogical Grouping** - Related operations (e.g., "+10 -3" for adding 7) grouped visually
 - **Step Tracking** - Integrates with tutorial and practice step progression
@@ -871,6 +872,7 @@ Interactive mathematical decomposition visualization showing step-by-step soroba
 Structured curriculum-based practice system following traditional Japanese soroban teaching methodology.
 
 **Key Features**:
+
 - **Student Progress Tracking** - Per-skill mastery levels (learning → practicing → mastered)
 - **Session Planning** - Adaptive problem selection based on student history
 - **Teacher Controls** - Real-time session health monitoring and mid-session adjustments

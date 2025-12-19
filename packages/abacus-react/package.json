@@ -19,7 +19,9 @@
   },
   "typesVersions": {
     "*": {
-      "static": ["./dist/static.d.ts"]
+      "static": [
+        "./dist/static.d.ts"
+      ]
     }
   },
   "files": [

@@ -62,6 +62,12 @@ interface MyAbacusContextValue {
   /** Temporarily hide the abacus (e.g., when virtual keyboard is shown) */
   isHidden: boolean
   setIsHidden: (hidden: boolean) => void
+  /** Bottom offset for abacus button (to position above on-screen keyboards in portrait) */
+  bottomOffset: number
+  setBottomOffset: (offset: number) => void
+  /** Right offset for abacus button (to position left of on-screen keyboards in landscape) */
+  rightOffset: number
+  setRightOffset: (offset: number) => void
   /** Opt-in to show the abacus while in a game (games hide it by default) */
   showInGame: boolean
   setShowInGame: (show: boolean) => void
@@ -98,6 +104,8 @@ const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefine
 export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
+  const [bottomOffset, setBottomOffset] = useState(0)
+  const [rightOffset, setRightOffset] = useState(0)
   const [showInGame, setShowInGame] = useState(false)
   const [dock, setDock] = useState<DockConfig | null>(null)
   const [isDockedByUser, setIsDockedByUser] = useState(false)
@@ -172,6 +180,10 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         toggle,
         isHidden,
         setIsHidden,
+        bottomOffset,
+        setBottomOffset,
+        rightOffset,
+        setRightOffset,
         showInGame,
         setShowInGame,
         dock,

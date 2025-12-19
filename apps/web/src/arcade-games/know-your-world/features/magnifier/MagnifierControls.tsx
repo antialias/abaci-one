@@ -96,8 +96,14 @@ function ControlButton({
   // Border radius based on position
   const borderRadiusStyles: Record<string, React.CSSProperties> = {
     'top-right': { borderRadius: '6px' },
-    'bottom-right': { borderTopLeftRadius: '12px', borderBottomRightRadius: '10px' },
-    'bottom-left': { borderTopRightRadius: '12px', borderBottomLeftRadius: '10px' },
+    'bottom-right': {
+      borderTopLeftRadius: '12px',
+      borderBottomRightRadius: '10px',
+    },
+    'bottom-left': {
+      borderTopRightRadius: '12px',
+      borderBottomLeftRadius: '10px',
+    },
   }
 
   // Style-specific colors and backgrounds

@@ -19,19 +19,19 @@ This document defines the code patterns and conventions for the Know Your World 
 
 ### Rules
 
-| Limit | Lines | Action |
-|-------|-------|--------|
-| **Hard limit** | 500 | Must split |
-| **Soft limit** | 300 | Consider extraction |
-| **Ideal** | < 200 | Preferred |
+| Limit          | Lines | Action              |
+| -------------- | ----- | ------------------- |
+| **Hard limit** | 500   | Must split          |
+| **Soft limit** | 300   | Consider extraction |
+| **Ideal**      | < 200 | Preferred           |
 
 ### Current Violations
 
-| File | Lines | Status |
-|------|-------|--------|
-| `MapRenderer.tsx` | 6,285 | Needs refactoring (Phase 3) |
-| `GameInfoPanel.tsx` | 2,090 | Needs refactoring (Phase 3) |
-| `DrillDownMapSelector.tsx` | 1,717 | Needs refactoring |
+| File                       | Lines | Status                      |
+| -------------------------- | ----- | --------------------------- |
+| `MapRenderer.tsx`          | 6,285 | Needs refactoring (Phase 3) |
+| `GameInfoPanel.tsx`        | 2,090 | Needs refactoring (Phase 3) |
+| `DrillDownMapSelector.tsx` | 1,717 | Needs refactoring           |
 
 ### How to Split Large Components
 
@@ -66,9 +66,9 @@ features/
 
 ```typescript
 // features/magnifier/index.ts
-export { MagnifierOverlay } from './MagnifierOverlay'
-export { useMagnifierZoom } from './useMagnifierZoom'
-export type { MagnifierConfig, ZoomState } from './types'
+export { MagnifierOverlay } from "./MagnifierOverlay";
+export { useMagnifierZoom } from "./useMagnifierZoom";
+export type { MagnifierConfig, ZoomState } from "./types";
 ```
 
 ### Usage
@@ -91,15 +91,15 @@ function MapRenderer() {
 
 ### Candidate Features for Extraction
 
-| Feature | Current Location | Priority |
-|---------|------------------|----------|
-| Magnifier | MapRenderer.tsx | High |
-| Labels | MapRenderer.tsx | High |
-| Precision Controls | MapRenderer.tsx | Medium |
-| Hot/Cold | hooks/ + MapRenderer | Medium |
-| Celebration | components/ + utils/ | Low |
-| Letter Confirmation | GameInfoPanel.tsx | Medium |
-| Speech Controls | GameInfoPanel.tsx | Low |
+| Feature             | Current Location     | Priority |
+| ------------------- | -------------------- | -------- |
+| Magnifier           | MapRenderer.tsx      | High     |
+| Labels              | MapRenderer.tsx      | High     |
+| Precision Controls  | MapRenderer.tsx      | Medium   |
+| Hot/Cold            | hooks/ + MapRenderer | Medium   |
+| Celebration         | components/ + utils/ | Low      |
+| Letter Confirmation | GameInfoPanel.tsx    | Medium   |
+| Speech Controls     | GameInfoPanel.tsx    | Low      |
 
 ---
 
@@ -112,18 +112,18 @@ function MapRenderer() {
 
 interface UseFeatureNameParams {
   // Required configuration
-  requiredParam: string
+  requiredParam: string;
   // Optional with defaults
-  optionalParam?: number
+  optionalParam?: number;
 }
 
 interface UseFeatureNameReturn {
   // State
-  currentValue: string
-  isActive: boolean
+  currentValue: string;
+  isActive: boolean;
   // Actions
-  doSomething: () => void
-  reset: () => void
+  doSomething: () => void;
+  reset: () => void;
 }
 
 export function useFeatureName({
@@ -131,34 +131,34 @@ export function useFeatureName({
   optionalParam = 100,
 }: UseFeatureNameParams): UseFeatureNameReturn {
   // State
-  const [currentValue, setCurrentValue] = useState('')
+  const [currentValue, setCurrentValue] = useState("");
 
   // Refs for non-reactive values
-  const timerRef = useRef<number | null>(null)
+  const timerRef = useRef<number | null>(null);
 
   // Callbacks (stable references)
   const doSomething = useCallback(() => {
     // Implementation
-  }, [requiredParam])
+  }, [requiredParam]);
 
   const reset = useCallback(() => {
-    setCurrentValue('')
-  }, [])
+    setCurrentValue("");
+  }, []);
 
   // Effects
   useEffect(() => {
     // Setup/cleanup
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [])
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return {
     currentValue,
-    isActive: currentValue !== '',
+    isActive: currentValue !== "",
     doSomething,
     reset,
-  }
+  };
 }
 ```
 
@@ -170,22 +170,22 @@ When a component needs many hooks, create a composition hook:
 // hooks/useMapInteraction.ts
 
 interface UseMapInteractionParams {
-  regions: Region[]
-  targetRegion: string | null
-  assistanceLevel: AssistanceLevel
+  regions: Region[];
+  targetRegion: string | null;
+  assistanceLevel: AssistanceLevel;
   // ... other config
 }
 
 export function useMapInteraction(params: UseMapInteractionParams) {
   // Compose multiple hooks
-  const detection = useRegionDetection(params.regions)
-  const magnifier = useMagnifierZoom({ regions: params.regions })
+  const detection = useRegionDetection(params.regions);
+  const magnifier = useMagnifierZoom({ regions: params.regions });
   const hotCold = useHotColdFeedback({
     targetRegionId: params.targetRegion,
-    enabled: params.assistanceLevel !== 'none',
+    enabled: params.assistanceLevel !== "none",
     // ...
-  })
-  const pointer = usePointerLock()
+  });
+  const pointer = usePointerLock();
 
   // Combine into unified interface
   return {
@@ -204,7 +204,7 @@ export function useMapInteraction(params: UseMapInteractionParams) {
     // Precision
     isPointerLocked: pointer.isLocked,
     requestPointerLock: pointer.request,
-  }
+  };
 }
 ```
 
@@ -225,48 +225,51 @@ export function useMapInteraction(params: UseMapInteractionParams) {
 
 interface ContextValue {
   // Server-synced state (read-only to components)
-  state: GameState
+  state: GameState;
 
   // Actions (mutate via server)
-  doAction: (params: ActionParams) => void
+  doAction: (params: ActionParams) => void;
 
   // Local UI state (not synced)
-  localState: LocalState
-  setLocalState: (state: LocalState) => void
+  localState: LocalState;
+  setLocalState: (state: LocalState) => void;
 }
 
-const Context = createContext<ContextValue | null>(null)
+const Context = createContext<ContextValue | null>(null);
 
 export function useGameContext() {
-  const context = useContext(Context)
+  const context = useContext(Context);
   if (!context) {
-    throw new Error('Must be used within Provider')
+    throw new Error("Must be used within Provider");
   }
-  return context
+  return context;
 }
 ```
 
 ### Server State vs Local State
 
-| State Type | Where | Persistence | Multiplayer Sync |
-|------------|-------|-------------|------------------|
-| Game state | `state.*` | Server DB | Yes |
-| UI preferences | `controlsState` | localStorage | No |
-| Ephemeral UI | `useState` | None | No |
-| Cursors | `otherPlayerCursors` | None | Yes (ephemeral) |
+| State Type     | Where                | Persistence  | Multiplayer Sync |
+| -------------- | -------------------- | ------------ | ---------------- |
+| Game state     | `state.*`            | Server DB    | Yes              |
+| UI preferences | `controlsState`      | localStorage | No               |
+| Ephemeral UI   | `useState`           | None         | No               |
+| Cursors        | `otherPlayerCursors` | None         | Yes (ephemeral)  |
 
 ### Action Pattern
 
 ```typescript
 // All game mutations go through moves
-const clickRegion = useCallback((regionId: string, regionName: string) => {
-  sendMove({
-    type: 'CLICK_REGION',
-    playerId: state.currentPlayer,
-    userId: viewerId,
-    data: { regionId, regionName },
-  })
-}, [sendMove, state.currentPlayer, viewerId])
+const clickRegion = useCallback(
+  (regionId: string, regionName: string) => {
+    sendMove({
+      type: "CLICK_REGION",
+      playerId: state.currentPlayer,
+      userId: viewerId,
+      data: { regionId, regionName },
+    });
+  },
+  [sendMove, state.currentPlayer, viewerId],
+);
 ```
 
 ---
@@ -290,54 +293,54 @@ features/magnifier/
 
 ```typescript
 // __tests__/adaptiveZoomSearch.test.ts
-import { describe, it, expect } from 'vitest'
-import { findOptimalZoom } from '../adaptiveZoomSearch'
+import { describe, it, expect } from "vitest";
+import { findOptimalZoom } from "../adaptiveZoomSearch";
 
-describe('findOptimalZoom', () => {
-  it('returns minimum zoom when no small regions', () => {
+describe("findOptimalZoom", () => {
+  it("returns minimum zoom when no small regions", () => {
     const result = findOptimalZoom({
       regions: [{ width: 100, height: 100 }],
       minZoom: 8,
-    })
-    expect(result).toBe(8)
-  })
+    });
+    expect(result).toBe(8);
+  });
 
-  it('increases zoom for tiny regions', () => {
+  it("increases zoom for tiny regions", () => {
     const result = findOptimalZoom({
       regions: [{ width: 1, height: 1 }],
       minZoom: 8,
-    })
-    expect(result).toBeGreaterThan(20)
-  })
-})
+    });
+    expect(result).toBeGreaterThan(20);
+  });
+});
 ```
 
 ### Hook Test Pattern
 
 ```typescript
 // __tests__/useMagnifierZoom.test.ts
-import { renderHook, act } from '@testing-library/react'
-import { useMagnifierZoom } from '../useMagnifierZoom'
+import { renderHook, act } from "@testing-library/react";
+import { useMagnifierZoom } from "../useMagnifierZoom";
 
-describe('useMagnifierZoom', () => {
-  it('starts with default zoom', () => {
-    const { result } = renderHook(() => useMagnifierZoom({ minZoom: 8 }))
-    expect(result.current.zoom).toBe(8)
-  })
+describe("useMagnifierZoom", () => {
+  it("starts with default zoom", () => {
+    const { result } = renderHook(() => useMagnifierZoom({ minZoom: 8 }));
+    expect(result.current.zoom).toBe(8);
+  });
 
-  it('updates zoom when regions change', () => {
+  it("updates zoom when regions change", () => {
     const { result, rerender } = renderHook(
       ({ regions }) => useMagnifierZoom({ regions, minZoom: 8 }),
-      { initialProps: { regions: [] } }
-    )
+      { initialProps: { regions: [] } },
+    );
 
     act(() => {
-      rerender({ regions: [{ width: 1, height: 1 }] })
-    })
+      rerender({ regions: [{ width: 1, height: 1 }] });
+    });
 
-    expect(result.current.zoom).toBeGreaterThan(8)
-  })
-})
+    expect(result.current.zoom).toBeGreaterThan(8);
+  });
+});
 ```
 
 ### Component Test Pattern
@@ -421,33 +424,33 @@ Follow this order in all files:
 
 ```typescript
 // 1. React/Next.js
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 // 2. External packages
-import { useSpring, animated } from '@react-spring/web'
-import * as d3 from 'd3-force'
+import { useSpring, animated } from "@react-spring/web";
+import * as d3 from "d3-force";
 
 // 3. Internal SDK/lib imports
-import { useArcadeSession } from '@/lib/arcade/game-sdk'
+import { useArcadeSession } from "@/lib/arcade/game-sdk";
 
 // 4. Context/Provider imports
-import { useKnowYourWorld } from '../Provider'
+import { useKnowYourWorld } from "../Provider";
 
 // 5. Feature imports
-import { MagnifierOverlay } from '../features/magnifier'
+import { MagnifierOverlay } from "../features/magnifier";
 
 // 6. Hook imports
-import { useDeviceCapabilities } from '../hooks/useDeviceCapabilities'
+import { useDeviceCapabilities } from "../hooks/useDeviceCapabilities";
 
 // 7. Utility imports
-import { calculateZoom } from '../utils/screenPixelRatio'
+import { calculateZoom } from "../utils/screenPixelRatio";
 
 // 8. Component imports (siblings/children)
-import { CelebrationOverlay } from './CelebrationOverlay'
+import { CelebrationOverlay } from "./CelebrationOverlay";
 
 // 9. Type imports (always last, with `type` keyword)
-import type { Region, GameState } from '../types'
+import type { Region, GameState } from "../types";
 ```
 
 ---
@@ -456,48 +459,48 @@ import type { Region, GameState } from '../types'
 
 ### Files
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Component | PascalCase | `MapRenderer.tsx` |
-| Hook | camelCase with `use` prefix | `useMagnifierZoom.ts` |
-| Utility | camelCase | `screenPixelRatio.ts` |
-| Types | camelCase or PascalCase | `types.ts` |
-| Test | Same name + `.test` | `useMagnifierZoom.test.ts` |
-| Stories | Same name + `.stories` | `MapRenderer.stories.tsx` |
+| Type      | Convention                  | Example                    |
+| --------- | --------------------------- | -------------------------- |
+| Component | PascalCase                  | `MapRenderer.tsx`          |
+| Hook      | camelCase with `use` prefix | `useMagnifierZoom.ts`      |
+| Utility   | camelCase                   | `screenPixelRatio.ts`      |
+| Types     | camelCase or PascalCase     | `types.ts`                 |
+| Test      | Same name + `.test`         | `useMagnifierZoom.test.ts` |
+| Stories   | Same name + `.stories`      | `MapRenderer.stories.tsx`  |
 
 ### Functions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Component | PascalCase | `function MapRenderer()` |
-| Hook | camelCase with `use` | `function useMagnifierZoom()` |
-| Event handler | `handle` + Event | `handleRegionClick` |
-| Callback prop | `on` + Action | `onRegionClick` |
-| Boolean getter | `is`/`has`/`should` | `isVisible`, `hasHint` |
-| Utility | camelCase | `calculateOptimalZoom` |
+| Type           | Convention           | Example                       |
+| -------------- | -------------------- | ----------------------------- |
+| Component      | PascalCase           | `function MapRenderer()`      |
+| Hook           | camelCase with `use` | `function useMagnifierZoom()` |
+| Event handler  | `handle` + Event     | `handleRegionClick`           |
+| Callback prop  | `on` + Action        | `onRegionClick`               |
+| Boolean getter | `is`/`has`/`should`  | `isVisible`, `hasHint`        |
+| Utility        | camelCase            | `calculateOptimalZoom`        |
 
 ### Types
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Interface | PascalCase | `interface RegionData {}` |
-| Type alias | PascalCase | `type AssistanceLevel = ...` |
-| Props | ComponentName + `Props` | `interface MapRendererProps {}` |
-| State | Descriptive | `interface MagnifierState {}` |
-| Return type | Hook + `Return` | `interface UseMagnifierReturn {}` |
+| Type        | Convention              | Example                           |
+| ----------- | ----------------------- | --------------------------------- |
+| Interface   | PascalCase              | `interface RegionData {}`         |
+| Type alias  | PascalCase              | `type AssistanceLevel = ...`      |
+| Props       | ComponentName + `Props` | `interface MapRendererProps {}`   |
+| State       | Descriptive             | `interface MagnifierState {}`     |
+| Return type | Hook + `Return`         | `interface UseMagnifierReturn {}` |
 
 ### Constants
 
 ```typescript
 // SCREAMING_SNAKE_CASE for true constants
-const MAX_ZOOM = 60
-const DEFAULT_COOLDOWN_MS = 1200
+const MAX_ZOOM = 60;
+const DEFAULT_COOLDOWN_MS = 1200;
 
 // Regular camelCase for configuration objects
 const defaultConfig = {
   minZoom: 8,
   maxZoom: 60,
-}
+};
 ```
 
 ---

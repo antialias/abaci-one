@@ -93,7 +93,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Must be: approve, start, record, end_early, or abandon' },
+          {
+            error: 'Invalid action. Must be: approve, start, record, end_early, or abandon',
+          },
           { status: 400 }
         )
     }

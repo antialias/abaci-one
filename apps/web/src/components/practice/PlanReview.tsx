@@ -236,7 +236,8 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
                         color: colors.text,
                       })}
                     >
-                      {partSummary.problemCount} problems (~{partSummary.estimatedMinutes} min)
+                      {partSummary.problemCount} problems (~
+                      {partSummary.estimatedMinutes} min)
                     </div>
                   </div>
                 </div>
@@ -445,7 +446,10 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             </div>
 
             <hr
-              className={css({ margin: '0.5rem 0', borderColor: isDark ? 'gray.600' : 'gray.300' })}
+              className={css({
+                margin: '0.5rem 0',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+              })}
             />
 
             {parts.map((part: SessionPart) => (
@@ -471,7 +475,12 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
                           #{slot.index + 1} - <strong>{slot.purpose}</strong>
                         </div>
                         {slot.constraints && (
-                          <div className={css({ marginLeft: '1rem', fontSize: '0.7rem' })}>
+                          <div
+                            className={css({
+                              marginLeft: '1rem',
+                              fontSize: '0.7rem',
+                            })}
+                          >
                             Terms: {slot.constraints.termCount?.min}-
                             {slot.constraints.termCount?.max}, Digits:{' '}
                             {slot.constraints.digitRange?.min}-{slot.constraints.digitRange?.max}

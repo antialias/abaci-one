@@ -60,7 +60,10 @@ function CreatorCard({
           p: { base: 5, sm: 6, md: 8 },
           border: '1px solid',
           borderColor: 'border.default',
-          boxShadow: { base: '0 10px 40px rgba(0,0,0,0.15)', md: '0 20px 60px rgba(0,0,0,0.2)' },
+          boxShadow: {
+            base: '0 10px 40px rgba(0,0,0,0.15)',
+            md: '0 20px 60px rgba(0,0,0,0.2)',
+          },
           cursor: 'pointer',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           position: 'relative',
@@ -69,8 +72,14 @@ function CreatorCard({
           display: 'flex',
           flexDirection: 'column',
           _hover: {
-            transform: { base: 'translateY(-4px)', md: 'translateY(-8px) scale(1.01)' },
-            boxShadow: { base: '0 16px 50px rgba(0,0,0,0.2)', md: '0 30px 80px rgba(0,0,0,0.25)' },
+            transform: {
+              base: 'translateY(-4px)',
+              md: 'translateY(-8px) scale(1.01)',
+            },
+            boxShadow: {
+              base: '0 16px 50px rgba(0,0,0,0.2)',
+              md: '0 30px 80px rgba(0,0,0,0.25)',
+            },
             borderColor: 'border.emphasized',
           },
         })}

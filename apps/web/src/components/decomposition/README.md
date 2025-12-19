@@ -35,17 +35,17 @@ Context provider that generates all decomposition data from start/target values.
 ```typescript
 interface DecompositionContextConfig {
   /** Starting value on the abacus */
-  startValue: number
+  startValue: number;
   /** Target value to reach */
-  targetValue: number
+  targetValue: number;
   /** Current step index for highlighting (optional) */
-  currentStepIndex?: number
+  currentStepIndex?: number;
   /** Number of abacus columns for coordinate mapping (default: 5) */
-  abacusColumns?: number
+  abacusColumns?: number;
   /** Callback when segment changes (optional) */
-  onSegmentChange?: (segment: PedagogicalSegment | null) => void
+  onSegmentChange?: (segment: PedagogicalSegment | null) => void;
   /** Callback when term is hovered (optional) */
-  onTermHover?: (termIndex: number | null, columnIndex: number | null) => void
+  onTermHover?: (termIndex: number | null, columnIndex: number | null) => void;
 }
 ```
 
@@ -71,6 +71,7 @@ import { DecompositionDisplay } from '@/components/decomposition'
 ```
 
 The display automatically:
+
 - Renders all terms from the decomposition
 - Groups related terms (pedagogical segments)
 - Shows tooltips with explanations on hover
@@ -104,22 +105,22 @@ Access decomposition context data. Must be inside `DecompositionProvider`.
 ```typescript
 const {
   // Data
-  fullDecomposition,     // "45 +10 -3 +20" (full string)
-  termPositions,         // Position metadata for each term
-  segments,              // Grouped pedagogical segments
-  steps,                 // Unified instruction steps
-  currentStepIndex,      // Current highlighted step
+  fullDecomposition, // "45 +10 -3 +20" (full string)
+  termPositions, // Position metadata for each term
+  segments, // Grouped pedagogical segments
+  steps, // Unified instruction steps
+  currentStepIndex, // Current highlighted step
 
   // Highlighting state
-  activeTermIndices,     // Set of currently highlighted term indices
+  activeTermIndices, // Set of currently highlighted term indices
   activeIndividualTermIndex, // Single hovered term index
 
   // Actions
-  setActiveTermIndices,  // Highlight multiple terms
+  setActiveTermIndices, // Highlight multiple terms
   setActiveIndividualTermIndex, // Highlight single term
   getGroupTermIndicesFromTermIndex, // Get all terms in a group
   getColumnIndexFromTermIndex, // Map term to abacus column
-} = useDecomposition()
+} = useDecomposition();
 ```
 
 ### useDecompositionOptional()
@@ -127,7 +128,7 @@ const {
 Same as `useDecomposition()` but returns `null` outside provider (doesn't throw).
 
 ```typescript
-const decomposition = useDecompositionOptional()
+const decomposition = useDecompositionOptional();
 
 if (decomposition) {
   // Use decomposition data
@@ -241,31 +242,31 @@ generateUnifiedInstructionSequence()
 ```typescript
 /** Position of a term in the decomposition string */
 interface TermPosition {
-  index: number           // Term index in sequence
-  start: number          // Character start position
-  end: number            // Character end position
-  term: string           // The term text (e.g., "+10")
-  value: number          // Numeric value
-  columnIndex?: number   // Abacus column this affects
+  index: number; // Term index in sequence
+  start: number; // Character start position
+  end: number; // Character end position
+  term: string; // The term text (e.g., "+10")
+  value: number; // Numeric value
+  columnIndex?: number; // Abacus column this affects
 }
 
 /** Group of related terms */
 interface PedagogicalSegment {
-  segmentIndex: number
-  termIndices: number[]  // Which terms belong to this segment
-  ruleName: string       // e.g., "Add 7 using complement"
-  description: string    // User-friendly explanation
+  segmentIndex: number;
+  termIndices: number[]; // Which terms belong to this segment
+  ruleName: string; // e.g., "Add 7 using complement"
+  description: string; // User-friendly explanation
 }
 
 /** Pedagogical explanation for a term */
 interface TermReason {
-  name: string           // Rule name
-  description: string    // Why this operation
-  emoji: string          // Visual indicator
-  variant: 'green' | 'blue' | 'purple' | 'orange' | 'gray'
-  steps?: BeadStep[]     // Physical bead movements
-  expansion?: string     // Mathematical expansion
-  context?: string       // Additional context
+  name: string; // Rule name
+  description: string; // Why this operation
+  emoji: string; // Visual indicator
+  variant: "green" | "blue" | "purple" | "orange" | "gray";
+  steps?: BeadStep[]; // Physical bead movements
+  expansion?: string; // Mathematical expansion
+  context?: string; // Additional context
 }
 ```
 
@@ -279,12 +280,18 @@ The components use CSS files for styling:
 ### CSS Classes
 
 ```css
-.decomposition { }        /* Container */
-.term { }                 /* Individual term */
-.term--current { }        /* Current step highlight */
-.term--active { }         /* Hovered/selected term */
-.term--grouped { }        /* Term in a segment */
-.segment-group { }        /* Grouped segment wrapper */
+.decomposition {
+} /* Container */
+.term {
+} /* Individual term */
+.term--current {
+} /* Current step highlight */
+.term--active {
+} /* Hovered/selected term */
+.term--grouped {
+} /* Term in a segment */
+.segment-group {
+} /* Grouped segment wrapper */
 ```
 
 ### Customization

@@ -475,7 +475,11 @@ export function PracticeHelpPanel({
                     {step.mathematicalTerm}
                   </span>
                   {step.englishInstruction && (
-                    <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+                    <span
+                      className={css({
+                        color: isDark ? 'gray.400' : 'gray.600',
+                      })}
+                    >
                       {' '}
                       — {step.englishInstruction}
                     </span>

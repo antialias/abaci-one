@@ -391,10 +391,20 @@ export function PlacementTest({
               mb: '2',
             })}
           >
-            <span className={css({ fontSize: 'sm', color: isDark ? 'gray.400' : 'gray.600' })}>
+            <span
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
               Testing: {skillName}
             </span>
-            <span className={css({ fontSize: 'sm', color: isDark ? 'gray.500' : 'gray.500' })}>
+            <span
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'gray.500' : 'gray.500',
+              })}
+            >
               {testState.problemsAnswered} problems answered
             </span>
           </div>
@@ -489,7 +499,10 @@ export function PlacementTest({
             bg: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            _hover: { color: isDark ? 'gray.200' : 'gray.700', textDecoration: 'underline' },
+            _hover: {
+              color: isDark ? 'gray.200' : 'gray.700',
+              textDecoration: 'underline',
+            },
           })}
         >
           End Test Early
@@ -527,7 +540,12 @@ export function PlacementTest({
           >
             Placement Complete!
           </h1>
-          <p className={css({ fontSize: '1.25rem', color: isDark ? 'blue.300' : 'blue.600' })}>
+          <p
+            className={css({
+              fontSize: '1.25rem',
+              color: isDark ? 'blue.300' : 'blue.600',
+            })}
+          >
             {studentName} placed at: <strong>{results.suggestedLevel}</strong>
           </p>
         </div>
@@ -558,7 +576,12 @@ export function PlacementTest({
             >
               {results.masteredSkills.length}
             </div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'green.300' : 'green.600' })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'green.300' : 'green.600',
+              })}
+            >
               Skills Mastered
             </div>
           </div>
@@ -580,7 +603,12 @@ export function PlacementTest({
             >
               {results.practicingSkills.length}
             </div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'yellow.300' : 'yellow.600' })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'yellow.300' : 'yellow.600',
+              })}
+            >
               Skills Practicing
             </div>
           </div>
@@ -602,7 +630,12 @@ export function PlacementTest({
             >
               {Math.round(results.overallAccuracy * 100)}%
             </div>
-            <div className={css({ fontSize: 'sm', color: isDark ? 'blue.300' : 'blue.600' })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: isDark ? 'blue.300' : 'blue.600',
+              })}
+            >
               Accuracy
             </div>
           </div>

@@ -7,6 +7,7 @@
 **Why:** Makes help discoverable without reading - kid just enters what's on their abacus and help appears.
 
 **Key insight:** We already have all the coaching/decomposition infrastructure extracted. Only need to:
+
 1. Extract bead tooltip positioning from TutorialPlayer
 2. Build new overlay component using existing decomposition system
 3. Wire up time-based escalation
@@ -28,11 +29,11 @@
 
 ## Time-Based Escalation
 
-| Time | What appears |
-|------|--------------|
-| 0s | Abacus with arrows |
-| +5s (debug: 1s) | Coach hint (from decomposition system) |
-| +10s (debug: 3s) | Bead tooltip pointing at beads |
+| Time             | What appears                           |
+| ---------------- | -------------------------------------- |
+| 0s               | Abacus with arrows                     |
+| +5s (debug: 1s)  | Coach hint (from decomposition system) |
+| +10s (debug: 3s) | Bead tooltip pointing at beads         |
 
 ## Shared Infrastructure (Already Exists)
 
@@ -49,15 +50,15 @@
 
 ## Files
 
-| File | Action |
-|------|--------|
-| `src/utils/beadTooltipUtils.ts` | CREATE - extracted tooltip utils |
-| `src/constants/helpTiming.ts` | CREATE - timing config |
-| `src/components/practice/PracticeHelpOverlay.tsx` | CREATE - main component |
-| `src/components/practice/PracticeHelpOverlay.stories.tsx` | CREATE - stories |
-| `src/components/practice/HelpAbacus.tsx` | MODIFY - add overlays prop |
-| `src/components/practice/ActiveSession.tsx` | MODIFY - integrate overlay |
-| `src/components/tutorial/TutorialPlayer.tsx` | MODIFY - use shared utils |
+| File                                                      | Action                           |
+| --------------------------------------------------------- | -------------------------------- |
+| `src/utils/beadTooltipUtils.ts`                           | CREATE - extracted tooltip utils |
+| `src/constants/helpTiming.ts`                             | CREATE - timing config           |
+| `src/components/practice/PracticeHelpOverlay.tsx`         | CREATE - main component          |
+| `src/components/practice/PracticeHelpOverlay.stories.tsx` | CREATE - stories                 |
+| `src/components/practice/HelpAbacus.tsx`                  | MODIFY - add overlays prop       |
+| `src/components/practice/ActiveSession.tsx`               | MODIFY - integrate overlay       |
+| `src/components/tutorial/TutorialPlayer.tsx`              | MODIFY - use shared utils        |
 
 ## Deferred
 

@@ -191,6 +191,9 @@ export function PracticeSubNav({ student, pageContext, sessionHud }: PracticeSub
         borderBottom: '1px solid',
         borderColor: isDark ? 'gray.800' : 'gray.200',
         boxShadow: 'sm',
+        // Prevent horizontal overflow
+        overflow: 'hidden',
+        maxWidth: '100vw',
       })}
     >
       {/* Left: Student avatar + name (link to dashboard) */}
@@ -273,9 +276,11 @@ export function PracticeSubNav({ student, pageContext, sessionHud }: PracticeSub
           data-section="session-hud"
           className={css({
             flex: 1,
+            minWidth: 0, // Allow shrinking below content size
             display: 'flex',
             alignItems: 'center',
             gap: { base: '0.375rem', md: '0.75rem' },
+            overflow: 'hidden',
           })}
         >
           {/* Browse mode toggle - prominent standalone button */}

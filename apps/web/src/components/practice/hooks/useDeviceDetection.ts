@@ -6,4 +6,7 @@
  * @see src/hooks/useDeviceCapabilities.ts for implementations
  */
 
-export { useHasPhysicalKeyboard, useIsTouchDevice } from '@/hooks/useDeviceCapabilities'
+export {
+  useHasPhysicalKeyboard,
+  useIsTouchDevice,
+} from '@/hooks/useDeviceCapabilities'

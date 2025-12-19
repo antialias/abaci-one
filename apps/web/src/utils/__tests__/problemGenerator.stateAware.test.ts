@@ -224,7 +224,10 @@ describe('Graceful fallback when minBudget cannot be met', () => {
     // because all first terms from 0 use basic skills (cost 0)
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -256,7 +259,10 @@ describe('Graceful fallback when minBudget cannot be met', () => {
     const basicSkills = createBasicOnlySkillSet()
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': { skillId: 'basic.directAddition', masteryState: 'effortless' },
+        'basic.directAddition': {
+          skillId: 'basic.directAddition',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -315,8 +321,14 @@ describe('Budget preference behavior', () => {
     // Create a calculator where five complements are tracked
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
-        'fiveComplements.3=5-2': { skillId: 'fiveComplements.3=5-2', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
+        'fiveComplements.3=5-2': {
+          skillId: 'fiveComplements.3=5-2',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -478,7 +490,10 @@ describe('Robustness stress tests', () => {
   it('should NEVER fail with minBudget constraint (100 iterations)', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -504,8 +519,14 @@ describe('Robustness stress tests', () => {
   it('should NEVER fail with both min and max budget (100 iterations)', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
+        'tenComplements.9=10-1': {
+          skillId: 'tenComplements.9=10-1',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -573,8 +594,14 @@ describe('Regression: Original ProblemGenerationError bug', () => {
     const fullSkillSet = createFullSkillSet()
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
-        'fiveComplements.3=5-2': { skillId: 'fiveComplements.3=5-2', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
+        'fiveComplements.3=5-2': {
+          skillId: 'fiveComplements.3=5-2',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)
@@ -609,8 +636,14 @@ describe('Regression: Original ProblemGenerationError bug', () => {
     const basicSkills = createBasicOnlySkillSet()
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': { skillId: 'basic.directAddition', masteryState: 'effortless' },
-        'basic.heavenBead': { skillId: 'basic.heavenBead', masteryState: 'effortless' },
+        'basic.directAddition': {
+          skillId: 'basic.directAddition',
+          masteryState: 'effortless',
+        },
+        'basic.heavenBead': {
+          skillId: 'basic.heavenBead',
+          masteryState: 'effortless',
+        },
       },
     }
     const calculator = createSkillCostCalculator(history)

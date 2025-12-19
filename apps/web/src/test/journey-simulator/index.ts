@@ -53,7 +53,11 @@ export type {
 } from './types'
 
 // Seeded random
-export { SeededRandom, withSeededRandom, withSeededRandomAsync } from './SeededRandom'
+export {
+  SeededRandom,
+  withSeededRandom,
+  withSeededRandomAsync,
+} from './SeededRandom'
 
 // Ephemeral database
 export {

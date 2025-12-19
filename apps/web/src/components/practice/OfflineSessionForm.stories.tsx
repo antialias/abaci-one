@@ -51,7 +51,13 @@ function InteractiveDemo({ studentName }: { studentName: string }) {
                 borderColor: 'green.200',
               })}
             >
-              <p className={css({ fontWeight: 'bold', color: 'green.700', mb: '2' })}>
+              <p
+                className={css({
+                  fontWeight: 'bold',
+                  color: 'green.700',
+                  mb: '2',
+                })}
+              >
                 Session Recorded!
               </p>
               <ul

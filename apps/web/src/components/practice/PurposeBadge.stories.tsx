@@ -380,7 +380,10 @@ export const ReinforceBasicSubtract: Story = {
 export const ReinforceFiveComplement: Story = {
   name: 'Reinforce - 5-Complement for 4',
   args: {
-    slot: createMockSlot('reinforce', { category: 'fiveComplements', skillKey: '4=5-1' }),
+    slot: createMockSlot('reinforce', {
+      category: 'fiveComplements',
+      skillKey: '4=5-1',
+    }),
     isDark: false,
   },
 }
@@ -388,7 +391,10 @@ export const ReinforceFiveComplement: Story = {
 export const ReinforceTenComplement: Story = {
   name: 'Reinforce - 10-Complement for 9',
   args: {
-    slot: createMockSlot('reinforce', { category: 'tenComplements', skillKey: '9=10-1' }),
+    slot: createMockSlot('reinforce', {
+      category: 'tenComplements',
+      skillKey: '9=10-1',
+    }),
     isDark: false,
   },
 }
@@ -396,7 +402,10 @@ export const ReinforceTenComplement: Story = {
 export const ReinforceDark: Story = {
   name: 'Reinforce - Dark Mode with Skill',
   args: {
-    slot: createMockSlot('reinforce', { category: 'fiveComplements', skillKey: '3=5-2' }),
+    slot: createMockSlot('reinforce', {
+      category: 'fiveComplements',
+      skillKey: '3=5-2',
+    }),
     isDark: true,
   },
   parameters: {
@@ -427,7 +436,10 @@ export const ReviewBasicAdd: Story = {
 export const ReviewFiveComplement: Story = {
   name: 'Review - 5-Complement for 1',
   args: {
-    slot: createMockSlot('review', { category: 'fiveComplements', skillKey: '1=5-4' }),
+    slot: createMockSlot('review', {
+      category: 'fiveComplements',
+      skillKey: '1=5-4',
+    }),
     isDark: false,
   },
 }
@@ -435,7 +447,10 @@ export const ReviewFiveComplement: Story = {
 export const ReviewTenComplement: Story = {
   name: 'Review - 10-Complement for 7',
   args: {
-    slot: createMockSlot('review', { category: 'tenComplements', skillKey: '7=10-3' }),
+    slot: createMockSlot('review', {
+      category: 'tenComplements',
+      skillKey: '7=10-3',
+    }),
     isDark: false,
   },
 }
@@ -482,7 +497,10 @@ export const AllBadgesLight: Story = {
     <div className={css({ display: 'flex', gap: '1rem', flexWrap: 'wrap' })}>
       <PurposeBadge slot={createMockSlot('focus')} isDark={false} />
       <PurposeBadge
-        slot={createMockSlot('reinforce', { category: 'fiveComplements', skillKey: '4=5-1' })}
+        slot={createMockSlot('reinforce', {
+          category: 'fiveComplements',
+          skillKey: '4=5-1',
+        })}
         isDark={false}
       />
       <PurposeBadge
@@ -503,11 +521,17 @@ export const AllBadgesDark: Story = {
     <div className={css({ display: 'flex', gap: '1rem', flexWrap: 'wrap' })}>
       <PurposeBadge slot={createMockSlot('focus')} isDark={true} />
       <PurposeBadge
-        slot={createMockSlot('reinforce', { category: 'tenComplements', skillKey: '8=10-2' })}
+        slot={createMockSlot('reinforce', {
+          category: 'tenComplements',
+          skillKey: '8=10-2',
+        })}
         isDark={true}
       />
       <PurposeBadge
-        slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '2=5-3' })}
+        slot={createMockSlot('review', {
+          category: 'fiveComplements',
+          skillKey: '2=5-3',
+        })}
         isDark={true}
       />
       <PurposeBadge slot={createMockSlot('challenge')} isDark={true} />
@@ -522,52 +546,117 @@ export const AllBadgesDark: Story = {
 export const AllSkillTypes: Story = {
   name: 'All Skill Types Comparison',
   render: () => (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+    <div
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      })}
+    >
       <div>
-        <h3 className={css({ marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold' })}>
+        <h3
+          className={css({
+            marginBottom: '0.5rem',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+          })}
+        >
           Basic Skills
         </h3>
         <div className={css({ display: 'flex', gap: '0.5rem' })}>
-          <PurposeBadge slot={createMockSlot('reinforce', { category: 'basic', skillKey: '+1' })} />
-          <PurposeBadge slot={createMockSlot('reinforce', { category: 'basic', skillKey: '+4' })} />
-          <PurposeBadge slot={createMockSlot('reinforce', { category: 'basic', skillKey: '-2' })} />
-          <PurposeBadge slot={createMockSlot('reinforce', { category: 'basic', skillKey: '-5' })} />
+          <PurposeBadge
+            slot={createMockSlot('reinforce', {
+              category: 'basic',
+              skillKey: '+1',
+            })}
+          />
+          <PurposeBadge
+            slot={createMockSlot('reinforce', {
+              category: 'basic',
+              skillKey: '+4',
+            })}
+          />
+          <PurposeBadge
+            slot={createMockSlot('reinforce', {
+              category: 'basic',
+              skillKey: '-2',
+            })}
+          />
+          <PurposeBadge
+            slot={createMockSlot('reinforce', {
+              category: 'basic',
+              skillKey: '-5',
+            })}
+          />
         </div>
       </div>
 
       <div>
-        <h3 className={css({ marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold' })}>
+        <h3
+          className={css({
+            marginBottom: '0.5rem',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+          })}
+        >
           5-Complements
         </h3>
         <div className={css({ display: 'flex', gap: '0.5rem' })}>
           <PurposeBadge
-            slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '1=5-4' })}
+            slot={createMockSlot('review', {
+              category: 'fiveComplements',
+              skillKey: '1=5-4',
+            })}
           />
           <PurposeBadge
-            slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '2=5-3' })}
+            slot={createMockSlot('review', {
+              category: 'fiveComplements',
+              skillKey: '2=5-3',
+            })}
           />
           <PurposeBadge
-            slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '3=5-2' })}
+            slot={createMockSlot('review', {
+              category: 'fiveComplements',
+              skillKey: '3=5-2',
+            })}
           />
           <PurposeBadge
-            slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '4=5-1' })}
+            slot={createMockSlot('review', {
+              category: 'fiveComplements',
+              skillKey: '4=5-1',
+            })}
           />
         </div>
       </div>
 
       <div>
-        <h3 className={css({ marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold' })}>
+        <h3
+          className={css({
+            marginBottom: '0.5rem',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+          })}
+        >
           10-Complements
         </h3>
         <div className={css({ display: 'flex', gap: '0.5rem' })}>
           <PurposeBadge
-            slot={createMockSlot('reinforce', { category: 'tenComplements', skillKey: '1=10-9' })}
+            slot={createMockSlot('reinforce', {
+              category: 'tenComplements',
+              skillKey: '1=10-9',
+            })}
           />
           <PurposeBadge
-            slot={createMockSlot('reinforce', { category: 'tenComplements', skillKey: '5=10-5' })}
+            slot={createMockSlot('reinforce', {
+              category: 'tenComplements',
+              skillKey: '5=10-5',
+            })}
           />
           <PurposeBadge
-            slot={createMockSlot('reinforce', { category: 'tenComplements', skillKey: '9=10-1' })}
+            slot={createMockSlot('reinforce', {
+              category: 'tenComplements',
+              skillKey: '9=10-1',
+            })}
           />
         </div>
       </div>
@@ -579,28 +668,84 @@ export const MixedPurposesWithSkills: Story = {
   name: 'Mixed Purposes with Different Skills',
   render: () => (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}>
-      <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
-        <span className={css({ width: '100px', fontSize: '0.75rem', color: 'gray.500' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+        })}
+      >
+        <span
+          className={css({
+            width: '100px',
+            fontSize: '0.75rem',
+            color: 'gray.500',
+          })}
+        >
           Focus:
         </span>
         <PurposeBadge slot={createMockSlot('focus')} />
       </div>
-      <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
-        <span className={css({ width: '100px', fontSize: '0.75rem', color: 'gray.500' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+        })}
+      >
+        <span
+          className={css({
+            width: '100px',
+            fontSize: '0.75rem',
+            color: 'gray.500',
+          })}
+        >
           Reinforce +3:
         </span>
-        <PurposeBadge slot={createMockSlot('reinforce', { category: 'basic', skillKey: '+3' })} />
+        <PurposeBadge
+          slot={createMockSlot('reinforce', {
+            category: 'basic',
+            skillKey: '+3',
+          })}
+        />
       </div>
-      <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
-        <span className={css({ width: '100px', fontSize: '0.75rem', color: 'gray.500' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+        })}
+      >
+        <span
+          className={css({
+            width: '100px',
+            fontSize: '0.75rem',
+            color: 'gray.500',
+          })}
+        >
           Review 5-comp:
         </span>
         <PurposeBadge
-          slot={createMockSlot('review', { category: 'fiveComplements', skillKey: '4=5-1' })}
+          slot={createMockSlot('review', {
+            category: 'fiveComplements',
+            skillKey: '4=5-1',
+          })}
         />
       </div>
-      <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
-        <span className={css({ width: '100px', fontSize: '0.75rem', color: 'gray.500' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+        })}
+      >
+        <span
+          className={css({
+            width: '100px',
+            fontSize: '0.75rem',
+            color: 'gray.500',
+          })}
+        >
           Challenge:
         </span>
         <PurposeBadge slot={createMockSlot('challenge')} />
@@ -630,7 +775,10 @@ export const InProblemContext: Story = {
       })}
     >
       <PurposeBadge
-        slot={createMockSlot('reinforce', { category: 'fiveComplements', skillKey: '4=5-1' })}
+        slot={createMockSlot('reinforce', {
+          category: 'fiveComplements',
+          skillKey: '4=5-1',
+        })}
       />
 
       {/* Simulated problem */}
@@ -679,7 +827,10 @@ export const InProblemContextDark: Story = {
       })}
     >
       <PurposeBadge
-        slot={createMockSlot('review', { category: 'tenComplements', skillKey: '7=10-3' })}
+        slot={createMockSlot('review', {
+          category: 'tenComplements',
+          skillKey: '7=10-3',
+        })}
         isDark={true}
       />
 

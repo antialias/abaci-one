@@ -239,7 +239,10 @@ function InlineSkillList({
             </span>
             {hasMultiplier && (
               <span
-                className={css({ color: isDark ? 'gray.500' : 'gray.400', fontSize: '0.625rem' })}
+                className={css({
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  fontSize: '0.625rem',
+                })}
               >
                 ({baseCost}×{effectiveCost / baseCost})
               </span>
@@ -478,7 +481,13 @@ function DetailedVerticalProblem({
             {/* Skill breakdown - inline (no total, that's separate) */}
             {hasTrace && (
               <InlineSkillList
-                step={step ?? { termAdded: term, skillsUsed: [], runningTotal: term }}
+                step={
+                  step ?? {
+                    termAdded: term,
+                    skillsUsed: [],
+                    runningTotal: term,
+                  }
+                }
                 skillMasteryContext={trace.skillMasteryContext}
                 isDark={isDark}
               />
@@ -1002,7 +1011,13 @@ export function DetailedProblemCard({
           alignItems: 'center',
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
           <span
             className={css({
               fontWeight: 'bold',
@@ -1067,7 +1082,13 @@ export function DetailedProblemCard({
         })}
       >
         {/* Constraints */}
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.125rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.125rem',
+          })}
+        >
           <span className={css({ fontWeight: 'bold' })}>Constraints:</span>
           {formatConstraints(slot).map((line, i) => (
             <span key={i}>{line}</span>
@@ -1077,7 +1098,13 @@ export function DetailedProblemCard({
 
         {/* Timing */}
         {autoPauseStats && (
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.125rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.125rem',
+            })}
+          >
             <span className={css({ fontWeight: 'bold' })}>Auto-pause threshold:</span>
             <span>{formatMs(autoPauseStats.thresholdMs)}</span>
             <span className={css({ fontSize: '0.625rem', maxWidth: '200px' })}>
@@ -1088,7 +1115,13 @@ export function DetailedProblemCard({
 
         {/* Result timing */}
         {result && (
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.125rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.125rem',
+            })}
+          >
             <span className={css({ fontWeight: 'bold' })}>Response:</span>
             <span
               className={css({

@@ -306,7 +306,9 @@ export const sessionPlans = sqliteTable(
     currentSlotIndex: integer('current_slot_index').notNull().default(0),
 
     /** Real-time health metrics */
-    sessionHealth: text('session_health', { mode: 'json' }).$type<SessionHealth>(),
+    sessionHealth: text('session_health', {
+      mode: 'json',
+    }).$type<SessionHealth>(),
 
     /** Teacher adjustments made during session */
     adjustments: text('adjustments', { mode: 'json' })

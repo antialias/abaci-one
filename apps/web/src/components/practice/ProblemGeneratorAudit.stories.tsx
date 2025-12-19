@@ -562,7 +562,13 @@ ${trace.analysis.mismatchedSkills.length > 0 ? `- **Mismatched Skills:** ${trace
             </p>
           </div>
         ) : (
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            })}
+          >
             {debugTraces.map((trace, index) => (
               <div
                 key={trace.timestamp}
@@ -752,10 +758,21 @@ ${trace.analysis.mismatchedSkills.length > 0 ? `- **Mismatched Skills:** ${trace
                     <div className={css({ flex: 1 })}>
                       {/* Skills Required */}
                       <div className={css({ mb: '0.75rem' })}>
-                        <span className={css({ fontSize: '0.75rem', color: 'gray.500' })}>
+                        <span
+                          className={css({
+                            fontSize: '0.75rem',
+                            color: 'gray.500',
+                          })}
+                        >
                           Skills from generator:
                         </span>
-                        <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' })}>
+                        <div
+                          className={css({
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.25rem',
+                          })}
+                        >
                           {trace.output.skillsRequired.map((skill) => (
                             <span
                               key={skill}
@@ -776,10 +793,21 @@ ${trace.analysis.mismatchedSkills.length > 0 ? `- **Mismatched Skills:** ${trace
 
                       {/* Skills from Analyzer */}
                       <div className={css({ mb: '0.75rem' })}>
-                        <span className={css({ fontSize: '0.75rem', color: 'gray.500' })}>
+                        <span
+                          className={css({
+                            fontSize: '0.75rem',
+                            color: 'gray.500',
+                          })}
+                        >
                           Skills from analyzer:
                         </span>
-                        <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' })}>
+                        <div
+                          className={css({
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.25rem',
+                          })}
+                        >
                           {trace.analysis.actualSkillsFromAnalyzer.map((skill) => (
                             <span
                               key={skill}

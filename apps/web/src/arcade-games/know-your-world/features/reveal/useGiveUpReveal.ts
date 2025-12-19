@@ -90,7 +90,11 @@ const GIVE_UP_ANIMATION_PULSES = 3
 const DEFAULT_NAV_HEIGHT_OFFSET = 150
 
 /** Default zoom target (no transformation) */
-const DEFAULT_ZOOM_TARGET: ZoomTarget = { scale: 1, translateX: 0, translateY: 0 }
+const DEFAULT_ZOOM_TARGET: ZoomTarget = {
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+}
 
 // ============================================================================
 // Hook Implementation

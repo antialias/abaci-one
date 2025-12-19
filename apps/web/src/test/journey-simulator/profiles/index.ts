@@ -10,7 +10,10 @@
  * they acquire mastery through exposure, not prior knowledge.
  */
 
-export { AVERAGE_LEARNER_WEAK_SKILLS, averageLearnerProfile } from './average-learner'
+export {
+  AVERAGE_LEARNER_WEAK_SKILLS,
+  averageLearnerProfile,
+} from './average-learner'
 export { FAST_LEARNER_WEAK_SKILLS, fastLearnerProfile } from './fast-learner'
 // Per-skill deficiency profiles (comprehensive A/B testing)
 export {
@@ -31,7 +34,11 @@ export {
   starkContrastProfile,
 } from './stark-contrast'
 // Legacy profiles for specific test scenarios (not blank slate)
-export { STRONG_SKILLS, unevenSkillsProfile, WEAK_SKILLS } from './uneven-skills'
+export {
+  STRONG_SKILLS,
+  unevenSkillsProfile,
+  WEAK_SKILLS,
+} from './uneven-skills'
 
 /**
  * All skills used across profiles.

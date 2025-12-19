@@ -146,9 +146,27 @@ function calculateEstimates(
     return {
       totalProblems: 0,
       parts: [
-        { type: 'abacus' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
-        { type: 'visualization' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
-        { type: 'linear' as const, weight: 0, minutes: 0, problems: 0, enabled: false },
+        {
+          type: 'abacus' as const,
+          weight: 0,
+          minutes: 0,
+          problems: 0,
+          enabled: false,
+        },
+        {
+          type: 'visualization' as const,
+          weight: 0,
+          minutes: 0,
+          problems: 0,
+          enabled: false,
+        },
+        {
+          type: 'linear' as const,
+          weight: 0,
+          minutes: 0,
+          problems: 0,
+          enabled: false,
+        },
       ],
       purposes: { focus: 0, reinforce: 0, review: 0, challenge: 0 },
     }
@@ -420,7 +438,13 @@ export function ConfigureClient({
               >
                 How long today?
               </label>
-              <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                })}
+              >
                 {[5, 10, 15, 20, 30, 45].map((mins) => (
                   <button
                     key={mins}
@@ -449,7 +473,15 @@ export function ConfigureClient({
                     })}
                   >
                     {mins}
-                    <span className={css({ fontSize: '0.75rem', fontWeight: 'normal' })}> min</span>
+                    <span
+                      className={css({
+                        fontSize: '0.75rem',
+                        fontWeight: 'normal',
+                      })}
+                    >
+                      {' '}
+                      min
+                    </span>
                   </button>
                 ))}
               </div>
@@ -476,7 +508,13 @@ export function ConfigureClient({
               >
                 Numbers per problem (max)
               </label>
-              <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                })}
+              >
                 {[3, 4, 5, 6, 7, 8].map((terms) => (
                   <button
                     key={terms}
@@ -569,11 +607,22 @@ export function ConfigureClient({
                   })}
                 >
                   Session Structure{' '}
-                  <span className={css({ fontWeight: 'normal', textTransform: 'none' })}>
+                  <span
+                    className={css({
+                      fontWeight: 'normal',
+                      textTransform: 'none',
+                    })}
+                  >
                     (tap to toggle)
                   </span>
                 </h3>
-                <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                  })}
+                >
                   {PART_INFO.map((partInfo, index) => {
                     const partEstimate = estimates.parts[index]
                     const isEnabled = enabledParts[partInfo.type]
@@ -839,7 +888,11 @@ export function ConfigureClient({
                     </p>
                   ) : (
                     <div
-                      className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}
+                      className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                      })}
                     >
                       {Array.from(groupSkillsByCategory(masteredSkillIds)).map(
                         ([category, skills]) => (
@@ -898,7 +951,13 @@ export function ConfigureClient({
                 borderColor: isDark ? 'red.700' : 'red.200',
               })}
             >
-              <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
+                })}
+              >
                 <span className={css({ fontSize: '1.25rem' })}>⚠️</span>
                 <div>
                   <div
@@ -947,7 +1006,9 @@ export function ConfigureClient({
                 cursor: isStarting ? 'not-allowed' : 'pointer',
                 boxShadow: isStarting ? 'none' : '0 4px 14px rgba(34, 197, 94, 0.4)',
                 transition: 'all 0.2s ease',
-                _hover: { backgroundColor: isStarting ? 'gray.400' : 'green.600' },
+                _hover: {
+                  backgroundColor: isStarting ? 'gray.400' : 'green.600',
+                },
               })}
             >
               {isStarting ? 'Starting...' : "Let's Go!"}

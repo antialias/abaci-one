@@ -4,23 +4,23 @@ A geography quiz game where players identify countries, states, and territories 
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| **[Architecture](./docs/ARCHITECTURE.md)** | System overview, data flow, component responsibilities |
-| **[Features](./docs/FEATURES.md)** | Complete feature inventory with file references |
-| **[Patterns](./docs/PATTERNS.md)** | Code conventions, component limits, testing patterns |
-| **[Magnifier Architecture](./docs/MAGNIFIER_ARCHITECTURE.md)** | Deep dive on zoom system |
-| **[Precision Controls](./docs/PRECISION_CONTROLS.md)** | Cursor dampening and pointer lock |
+| Document                                                       | Description                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------ |
+| **[Architecture](./docs/ARCHITECTURE.md)**                     | System overview, data flow, component responsibilities |
+| **[Features](./docs/FEATURES.md)**                             | Complete feature inventory with file references        |
+| **[Patterns](./docs/PATTERNS.md)**                             | Code conventions, component limits, testing patterns   |
+| **[Magnifier Architecture](./docs/MAGNIFIER_ARCHITECTURE.md)** | Deep dive on zoom system                               |
+| **[Precision Controls](./docs/PRECISION_CONTROLS.md)**         | Cursor dampening and pointer lock                      |
 
 ### Implementation Details
 
-| Document | Description |
-|----------|-------------|
+| Document                                                      | Description                         |
+| ------------------------------------------------------------- | ----------------------------------- |
 | [Background Music](./docs/implementation/background-music.md) | Music system architecture (Strudel) |
-| [Celebration System](./docs/implementation/celebration.md) | Victory animations and types |
-| [Give Up Flow](./docs/implementation/give-up.md) | Give up mechanics and re-asking |
-| [Map Cropping](./docs/implementation/map-cropping.md) | Viewport fitting algorithm |
-| [Strudel Layering](./docs/implementation/strudel-layering.md) | Music layering implementation |
+| [Celebration System](./docs/implementation/celebration.md)    | Victory animations and types        |
+| [Give Up Flow](./docs/implementation/give-up.md)              | Give up mechanics and re-asking     |
+| [Map Cropping](./docs/implementation/map-cropping.md)         | Viewport fitting algorithm          |
+| [Strudel Layering](./docs/implementation/strudel-layering.md) | Music layering implementation       |
 
 ---
 
@@ -43,13 +43,13 @@ Filter by region size: Huge → Large → Medium → Small → Tiny
 
 ### Assistance Levels
 
-| Level | Hot/Cold | Hints | Learning Mode |
-|-------|----------|-------|---------------|
-| Learning | ✓ | ✓ Auto | ✓ Type name |
-| Guided | ✓ | ✓ | |
-| Helpful | ✓ | On request | |
-| Standard | | On request | |
-| None | | | |
+| Level    | Hot/Cold | Hints      | Learning Mode |
+| -------- | -------- | ---------- | ------------- |
+| Learning | ✓        | ✓ Auto     | ✓ Type name   |
+| Guided   | ✓        | ✓          |               |
+| Helpful  | ✓        | On request |               |
+| Standard |          | On request |               |
+| None     |          |            |               |
 
 ---
 
@@ -58,6 +58,7 @@ Filter by region size: Huge → Large → Medium → Small → Tiny
 ### Precision Controls
 
 Tiny regions (like Gibraltar at 0.08px) are clickable thanks to:
+
 - **Adaptive magnifier**: 8-60x zoom based on region density
 - **Cursor dampening**: Slows cursor over tiny regions
 - **Pointer lock**: Pixel-precise control mode
@@ -122,6 +123,7 @@ npm run storybook
 ### Debug Mode
 
 Add `?debug=1` to any URL to enable debug overlays:
+
 - Bounding boxes
 - Zoom info
 - Hot/cold enable conditions
@@ -132,21 +134,21 @@ Add `?debug=1` to any URL to enable debug overlays:
 
 ### Large Files Needing Refactoring
 
-| File | Lines | Notes |
-|------|-------|-------|
-| `MapRenderer.tsx` | 6,285 | Extract to feature modules |
-| `GameInfoPanel.tsx` | 2,090 | Extract UI sections |
+| File                | Lines | Notes                      |
+| ------------------- | ----- | -------------------------- |
+| `MapRenderer.tsx`   | 6,285 | Extract to feature modules |
+| `GameInfoPanel.tsx` | 2,090 | Extract UI sections        |
 
 See [PATTERNS.md](./docs/PATTERNS.md) for refactoring guidelines.
 
 ### Test Coverage
 
-| Area | Status |
-|------|--------|
-| Validator | ✓ Good |
-| Utils | ✓ Good |
-| Components | Partial |
-| Hooks | Needs coverage |
+| Area       | Status         |
+| ---------- | -------------- |
+| Validator  | ✓ Good         |
+| Utils      | ✓ Good         |
+| Components | Partial        |
+| Hooks      | Needs coverage |
 
 ---
 

@@ -6,13 +6,13 @@ We are improving the SimulatedStudent model used in journey simulation tests to 
 
 ## Current Model Limitations
 
-| Phenomenon | Reality | Current Model |
-|------------|---------|---------------|
-| **Forgetting** | Skills decay without practice | Skills never decay |
-| **Transfer** | Learning one complement helps learn others | Skills are independent |
-| **Skill difficulty** | Some skills are inherently harder | All skills have same K |
-| **Within-session fatigue** | Later problems are harder | All problems equal |
-| **Warm-up effect** | First few problems are shakier | No warm-up |
+| Phenomenon                 | Reality                                    | Current Model          |
+| -------------------------- | ------------------------------------------ | ---------------------- |
+| **Forgetting**             | Skills decay without practice              | Skills never decay     |
+| **Transfer**               | Learning one complement helps learn others | Skills are independent |
+| **Skill difficulty**       | Some skills are inherently harder          | All skills have same K |
+| **Within-session fatigue** | Later problems are harder                  | All problems equal     |
+| **Warm-up effect**         | First few problems are shakier             | No warm-up             |
 
 ## Email Sent to Kehkashan
 
@@ -54,48 +54,61 @@ Thomas
 ## Questions Asked & How to Use Answers
 
 ### 1. Skill Difficulty
+
 **Question:** Are 10-complements harder than 5-complements?
 **How to model:** Add per-skill K values (half-max exposure) in SimulatedStudent
+
 ```typescript
 const SKILL_DIFFICULTY: Record<string, number> = {
-  'basic.directAddition': 5,
-  'fiveComplements.*': 10,      // If she says 5-comp is medium
-  'tenComplements.*': 18,       // If she says 10-comp is harder
-}
+  "basic.directAddition": 5,
+  "fiveComplements.*": 10, // If she says 5-comp is medium
+  "tenComplements.*": 18, // If she says 10-comp is harder
+};
 ```
 
 ### 2. Transfer Effects
+
 **Question:** Does learning +4 help with +3?
 **How to model:** Add transfer weights between related skills
+
 ```typescript
 // If she says yes, skills transfer within categories:
 function getEffectiveExposure(skillId: string): number {
-  const direct = exposures.get(skillId) ?? 0
-  const transferred = getRelatedSkills(skillId)
-    .reduce((sum, related) => sum + (exposures.get(related) ?? 0) * TRANSFER_WEIGHT, 0)
-  return direct + transferred
+  const direct = exposures.get(skillId) ?? 0;
+  const transferred = getRelatedSkills(skillId).reduce(
+    (sum, related) => sum + (exposures.get(related) ?? 0) * TRANSFER_WEIGHT,
+    0,
+  );
+  return direct + transferred;
 }
 ```
 
 ### 3. Forgetting/Rust
+
 **Question:** How fast do skills decay without practice?
 **How to model:** Multiply probability by retention factor
+
 ```typescript
 // If she says 2 weeks causes noticeable rust:
-const HALF_LIFE_DAYS = 14  // Tune based on her answer
-retention = Math.exp(-daysSinceLastPractice / HALF_LIFE_DAYS)
-P_effective = P_base * retention
+const HALF_LIFE_DAYS = 14; // Tune based on her answer
+retention = Math.exp(-daysSinceLastPractice / HALF_LIFE_DAYS);
+P_effective = P_base * retention;
 ```
 
 ### 4. Fatigue & Warm-up
+
 **Question:** Does accuracy drop after 15-20 min? Is there warm-up?
 **How to model:** Add session position effects
+
 ```typescript
 // If she says both exist:
-function sessionPositionMultiplier(problemIndex: number, totalProblems: number): number {
-  const warmupBoost = Math.min(1, problemIndex / 3)  // First 3 problems are warm-up
-  const fatiguePenalty = problemIndex / totalProblems * 0.1  // 10% drop by end
-  return warmupBoost * (1 - fatiguePenalty)
+function sessionPositionMultiplier(
+  problemIndex: number,
+  totalProblems: number,
+): number {
+  const warmupBoost = Math.min(1, problemIndex / 3); // First 3 problems are warm-up
+  const fatiguePenalty = (problemIndex / totalProblems) * 0.1; // 10% drop by end
+  return warmupBoost * (1 - fatiguePenalty);
 }
 ```
 
@@ -145,15 +158,15 @@ Khan
 
 ## Interpreted Responses (with Thomas's context)
 
-| Her Statement | Context/Interpretation |
-|---------------|------------------------|
-| "Your books are a bit too complicated" | SAI Speed Academy workbooks - Fern needs more repetition than they provide, which drove building the app |
-| "abacus... beads on both sides... both hands" | Thomas made custom 4-column abaci. Kids will need to transition to full-size after mastering add/subtract |
-| "this is a stressful class, you need to give them more breaks" | Sunday lessons come after other activities (math, violin). Scheduling issue, not generalizable |
-| "skills are transferable... cross curricular" | Too general - she means abacus helps general math, not that +4 helps +3 within soroban |
-| "All operations... need practice and patience" | Every skill needs drilling, none can be skipped. No dramatic difficulty differences implied |
-| "pieces of the puzzle don't fit" | Validates our goal - she recognizes value of isolating specific deficiencies. Has NOT seen app yet |
-| "Let me see the app" | Most valuable next step - schedule Google Meet |
+| Her Statement                                                  | Context/Interpretation                                                                                    |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| "Your books are a bit too complicated"                         | SAI Speed Academy workbooks - Fern needs more repetition than they provide, which drove building the app  |
+| "abacus... beads on both sides... both hands"                  | Thomas made custom 4-column abaci. Kids will need to transition to full-size after mastering add/subtract |
+| "this is a stressful class, you need to give them more breaks" | Sunday lessons come after other activities (math, violin). Scheduling issue, not generalizable            |
+| "skills are transferable... cross curricular"                  | Too general - she means abacus helps general math, not that +4 helps +3 within soroban                    |
+| "All operations... need practice and patience"                 | Every skill needs drilling, none can be skipped. No dramatic difficulty differences implied               |
+| "pieces of the puzzle don't fit"                               | Validates our goal - she recognizes value of isolating specific deficiencies. Has NOT seen app yet        |
+| "Let me see the app"                                           | Most valuable next step - schedule Google Meet                                                            |
 
 ---
 
@@ -183,16 +196,19 @@ Thomas
 ## Implications for Student Model
 
 ### What we learned:
+
 - **All skills need practice** - No evidence of dramatic difficulty differences between skill categories
 - **Validation of the goal** - Isolating "puzzle pieces" that don't fit is valuable
 - **Individual variance** - Sonia vs Fern confirms wide learner differences (matches our profiles)
 
 ### What we still don't know:
+
 - Whether skills transfer within soroban (does +4 help +3?)
 - How fast "rust" sets in
 - Warm-up effects
 
 ### Recommendation:
+
 Wait for Google Meet feedback before making model changes. She'll provide more specific input after seeing the app's "struggle detection" logic.
 
 ---

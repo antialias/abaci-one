@@ -63,6 +63,8 @@ export function MyAbacus() {
     close,
     toggle,
     isHidden,
+    bottomOffset,
+    rightOffset,
     showInGame,
     dock,
     isDockedByUser,
@@ -336,10 +338,18 @@ export function MyAbacus() {
     // Button is fixed at bottom-right with some margin
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
-    const buttonSize = viewportWidth >= 768 ? 100 : 80
+    const buttonSize = viewportWidth >= 768 ? 100 : 60
     const margin = viewportWidth >= 768 ? 24 : 16
-    const buttonX = viewportWidth - buttonSize - margin
-    const buttonY = viewportHeight - buttonSize - margin
+    // Check if we're in landscape mode on a small screen (where keypad is on the right)
+    const isLandscapeSmallScreen = window.matchMedia(
+      '(orientation: landscape) and (max-height: 500px)'
+    ).matches
+    // In landscape small screen: rightOffset applies, bottomOffset doesn't
+    // In portrait/large landscape: bottomOffset applies, rightOffset doesn't
+    const effectiveRightOffset = isLandscapeSmallScreen ? rightOffset : 0
+    const effectiveBottomOffset = isLandscapeSmallScreen ? 0 : bottomOffset
+    const buttonX = viewportWidth - buttonSize - margin - effectiveRightOffset
+    const buttonY = viewportHeight - buttonSize - margin - effectiveBottomOffset
 
     const buttonScale = 0.35
 
@@ -357,7 +367,15 @@ export function MyAbacus() {
     }
 
     startUndockAnimation(animState)
-  }, [dock, undock, structuralStyles, startUndockAnimation, calculateEffectiveScaleFactor])
+  }, [
+    dock,
+    undock,
+    structuralStyles,
+    startUndockAnimation,
+    calculateEffectiveScaleFactor,
+    bottomOffset,
+    rightOffset,
+  ])
 
   // Check if we're currently animating
   const isAnimating = dockAnimationState !== null
@@ -534,6 +552,22 @@ export function MyAbacus() {
           data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
           data-dockable={isDockable ? 'true' : undefined}
           onClick={isOpen || isHeroMode ? undefined : isDockable ? handleDockClick : toggle}
+          style={
+            // In button mode, position with offset for on-screen keyboards
+            // Portrait: bottomOffset moves button up
+            // Landscape (small screens): rightOffset moves button left (handled via CSS media query below)
+            !isOpen && !isHeroMode
+              ? ({
+                  // Set CSS custom properties for use in media queries
+                  '--abacus-bottom-offset': `${bottomOffset}px`,
+                  '--abacus-right-offset': `${rightOffset}px`,
+                  bottom:
+                    bottomOffset > 0
+                      ? `calc(1rem + ${bottomOffset}px)` // base: 1rem (16px) + offset
+                      : undefined,
+                } as React.CSSProperties)
+              : undefined
+          }
           className={css({
             position: isHeroMode ? 'absolute' : 'fixed',
             zIndex: 102,
@@ -558,7 +592,8 @@ export function MyAbacus() {
                   }
                 : {
                     // Button mode: fixed to bottom-right corner
-                    bottom: { base: '4', md: '6' },
+                    // bottomOffset is added via inline style when needed, otherwise use CSS default
+                    bottom: bottomOffset > 0 ? undefined : { base: '4', md: '6' },
                     right: { base: '4', md: '6' },
                     transform: 'translate(0, 0)',
                   }),
@@ -592,8 +627,8 @@ export function MyAbacus() {
                         ? '0 8px 32px rgba(251, 191, 36, 0.4)'
                         : '0 8px 32px rgba(251, 191, 36, 0.5)',
                     borderRadius: 'xl',
-                    w: { base: '80px', md: '100px' },
-                    h: { base: '80px', md: '100px' },
+                    w: { base: '60px', md: '100px' },
+                    h: { base: '60px', md: '100px' },
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -739,6 +774,13 @@ export function MyAbacus() {
             @keyframes pulseDock {
               0%, 100% { box-shadow: 0 8px 32px rgba(34, 211, 238, 0.5); }
               50% { box-shadow: 0 12px 48px rgba(34, 211, 238, 0.8); }
+            }
+            /* Landscape mode on small screens: position abacus left of the right-side keypad */
+            @media (orientation: landscape) and (max-height: 500px) {
+              [data-component="my-abacus"][data-mode="button"] {
+                right: calc(1rem + var(--abacus-right-offset, 0px)) !important;
+                bottom: 1rem !important;
+              }
             }
           `,
         }}

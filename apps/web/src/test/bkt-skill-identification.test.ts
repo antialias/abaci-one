@@ -478,7 +478,11 @@ describe('BKT Skill Identification', () => {
 
       // Test with increasing problem counts
       const problemCounts = [10, 20, 40, 80]
-      const confidenceResults: Array<{ count: number; conf: number; pKnown: number }> = []
+      const confidenceResults: Array<{
+        count: number
+        conf: number
+        pKnown: number
+      }> = []
 
       console.log('\n=== Confidence Building ===')
 

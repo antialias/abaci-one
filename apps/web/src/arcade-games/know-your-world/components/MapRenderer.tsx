@@ -542,11 +542,16 @@ export function MapRenderer({
   })
 
   // Hint animation (extracted hook)
-  const { hintFlashProgress, isHintAnimating } = useHintAnimation({ hintActive })
+  const { hintFlashProgress, isHintAnimating } = useHintAnimation({
+    hintActive,
+  })
 
   // Celebration animation (extracted hook)
   const { celebrationFlashProgress } = useCelebrationAnimation({ celebration })
-  const pendingCelebrationClick = useRef<{ regionId: string; regionName: string } | null>(null)
+  const pendingCelebrationClick = useRef<{
+    regionId: string
+    regionName: string
+  } | null>(null)
 
   // Debug: Track bounding boxes for visualization
   const [debugBoundingBoxes, setDebugBoundingBoxes] = useState<DebugBoundingBox[]>([])
@@ -989,7 +994,10 @@ export function MapRenderer({
       // Use the transmitted hoveredRegionId directly (avoids hit-testing discrepancies
       // due to pixel scaling/rendering differences between clients)
       if (position.hoveredRegionId) {
-        result[position.hoveredRegionId] = { playerId: position.playerId, color: player.color }
+        result[position.hoveredRegionId] = {
+          playerId: position.playerId,
+          color: player.color,
+        }
       }
     })
 
@@ -1225,7 +1233,10 @@ export function MapRenderer({
   )
 
   // Get center of celebrating region for confetti origin
-  const getCelebrationRegionCenter = useCallback((): { x: number; y: number } => {
+  const getCelebrationRegionCenter = useCallback((): {
+    x: number
+    y: number
+  } => {
     if (!celebration || !svgRef.current || !containerRef.current) {
       return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
     }
@@ -1369,7 +1380,10 @@ export function MapRenderer({
     }
 
     // Dispatch mouse down to state machine
-    interaction.dispatch({ type: 'MOUSE_DOWN', position: { x: cursorX, y: cursorY } })
+    interaction.dispatch({
+      type: 'MOUSE_DOWN',
+      position: { x: cursorX, y: cursorY },
+    })
 
     desktopDragStartRef.current = { x: cursorX, y: cursorY }
     desktopDragDidMoveRef.current = false

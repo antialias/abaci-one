@@ -162,23 +162,48 @@ function DiceIcon({
         {/* Front face (1) */}
         <div style={{ ...faceStyle, transform: `translateZ(${halfSize}px)` }}>{renderDots(1)}</div>
         {/* Back face (6) */}
-        <div style={{ ...faceStyle, transform: `rotateY(180deg) translateZ(${halfSize}px)` }}>
+        <div
+          style={{
+            ...faceStyle,
+            transform: `rotateY(180deg) translateZ(${halfSize}px)`,
+          }}
+        >
           {renderDots(6)}
         </div>
         {/* Right face (2) */}
-        <div style={{ ...faceStyle, transform: `rotateY(90deg) translateZ(${halfSize}px)` }}>
+        <div
+          style={{
+            ...faceStyle,
+            transform: `rotateY(90deg) translateZ(${halfSize}px)`,
+          }}
+        >
           {renderDots(2)}
         </div>
         {/* Left face (5) */}
-        <div style={{ ...faceStyle, transform: `rotateY(-90deg) translateZ(${halfSize}px)` }}>
+        <div
+          style={{
+            ...faceStyle,
+            transform: `rotateY(-90deg) translateZ(${halfSize}px)`,
+          }}
+        >
           {renderDots(5)}
         </div>
         {/* Top face (3) */}
-        <div style={{ ...faceStyle, transform: `rotateX(90deg) translateZ(${halfSize}px)` }}>
+        <div
+          style={{
+            ...faceStyle,
+            transform: `rotateX(90deg) translateZ(${halfSize}px)`,
+          }}
+        >
           {renderDots(3)}
         </div>
         {/* Bottom face (4) */}
-        <div style={{ ...faceStyle, transform: `rotateX(-90deg) translateZ(${halfSize}px)` }}>
+        <div
+          style={{
+            ...faceStyle,
+            transform: `rotateX(-90deg) translateZ(${halfSize}px)`,
+          }}
+        >
           {renderDots(4)}
         </div>
       </animated.div>
@@ -252,7 +277,10 @@ export function PreviewCenter({
   const portalDiceRef = useRef<HTMLDivElement>(null)
 
   // Compute target rotation for the current face (needed by physics simulation)
-  const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || { rotateX: 0, rotateY: 0 }
+  const targetFaceRotation = DICE_FACE_ROTATIONS[currentFace] || {
+    rotateX: 0,
+    rotateY: 0,
+  }
 
   // Physics simulation for thrown dice - uses direct DOM manipulation for performance
   useEffect(() => {
@@ -519,7 +547,11 @@ export function PreviewCenter({
       }
 
       dragStartPos.current = { x: e.clientX, y: e.clientY }
-      lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() }
+      lastPointerPos.current = {
+        x: e.clientX,
+        y: e.clientY,
+        time: performance.now(),
+      }
       velocitySamples.current = [] // Reset velocity tracking
       dicePhysics.current = {
         x: 0,

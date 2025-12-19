@@ -16,6 +16,7 @@ Operations that don't require carrying/borrowing across columns.
 
 **Addition (+1 through +9)**
 For each number, practice in this order:
+
 1. **Without friends of 5**: Direct bead movements only
    - e.g., `2 + 1 = 3` (just move earth beads)
 2. **With friends of 5**: Using the 5-complement technique
@@ -23,6 +24,7 @@ For each number, practice in this order:
 
 **Subtraction (-9 through -1)**
 For each number, practice in this order:
+
 1. **Without friends of 5**: Direct bead movements only
    - e.g., `7 - 2 = 5` (just remove earth beads)
 2. **With friends of 5**: Using the 5-complement technique
@@ -34,6 +36,7 @@ Addition that requires carrying to the next column.
 
 **Addition (+1 through +9)**
 For each number:
+
 1. **Without friends of 5**: Pure 10-complement
    - e.g., `5 + 7 = 12` → needs `-3, +10` (no 5-bead manipulation in ones)
 2. **With friends of 5**: Combined 10-complement and 5-complement
@@ -45,6 +48,7 @@ Subtraction that requires borrowing from the next column.
 
 **Subtraction (-9 through -1)**
 For each number:
+
 1. **Without friends of 5**: Pure 10-complement
    - e.g., `12 - 7 = 5` → needs `+3, -10`
 2. **With friends of 5**: Combined 10-complement and 5-complement
@@ -60,26 +64,26 @@ For each number:
 
 ### What We Have
 
-| Component | Location | Can Leverage |
-|-----------|----------|--------------|
-| Problem generator | `src/utils/problemGenerator.ts` | ✅ Core logic exists |
-| Skill analysis | `analyzeColumnAddition()` | ✅ Pattern to follow |
-| SkillSet types | `src/types/tutorial.ts` | ✅ Has 5/10 complements |
-| Practice player | `src/components/tutorial/PracticeProblemPlayer.tsx` | ✅ UI exists |
-| Constraint system | `allowedSkills`, `targetSkills`, `forbiddenSkills` | ✅ Ready to use |
+| Component         | Location                                            | Can Leverage            |
+| ----------------- | --------------------------------------------------- | ----------------------- |
+| Problem generator | `src/utils/problemGenerator.ts`                     | ✅ Core logic exists    |
+| Skill analysis    | `analyzeColumnAddition()`                           | ✅ Pattern to follow    |
+| SkillSet types    | `src/types/tutorial.ts`                             | ✅ Has 5/10 complements |
+| Practice player   | `src/components/tutorial/PracticeProblemPlayer.tsx` | ✅ UI exists            |
+| Constraint system | `allowedSkills`, `targetSkills`, `forbiddenSkills`  | ✅ Ready to use         |
 
 ### What We Need to Add
 
-| Feature | Description | File(s) to Modify | Status |
-|---------|-------------|-------------------|--------|
-| Subtraction skill analysis | `analyzeColumnSubtraction()` | `src/utils/problemGenerator.ts` | ✅ Done |
-| Subtraction in SkillSet | Add subtraction-specific skills | `src/types/tutorial.ts` | ✅ Done |
-| Curriculum definitions | Level 1/2/3 PracticeStep configs | New: `src/curriculum/` | ⏳ Pending |
-| Visualization mode | Hide abacus option | `PracticeProblemPlayer.tsx` | ⏳ Pending |
-| Adaptive mastery | Continue until N consecutive correct | New logic | ⏳ Pending |
-| Progress persistence | Track technique mastery | Database/localStorage | ⏳ Pending |
-| **Student profiles** | Extend players with curriculum progress | New DB tables | ✅ Done |
-| **Student selection UI** | Pick student before practice | `src/components/practice/` | ✅ Done |
+| Feature                    | Description                             | File(s) to Modify               | Status     |
+| -------------------------- | --------------------------------------- | ------------------------------- | ---------- |
+| Subtraction skill analysis | `analyzeColumnSubtraction()`            | `src/utils/problemGenerator.ts` | ✅ Done    |
+| Subtraction in SkillSet    | Add subtraction-specific skills         | `src/types/tutorial.ts`         | ✅ Done    |
+| Curriculum definitions     | Level 1/2/3 PracticeStep configs        | New: `src/curriculum/`          | ⏳ Pending |
+| Visualization mode         | Hide abacus option                      | `PracticeProblemPlayer.tsx`     | ⏳ Pending |
+| Adaptive mastery           | Continue until N consecutive correct    | New logic                       | ⏳ Pending |
+| Progress persistence       | Track technique mastery                 | Database/localStorage           | ⏳ Pending |
+| **Student profiles**       | Extend players with curriculum progress | New DB tables                   | ✅ Done    |
+| **Student selection UI**   | Pick student before practice            | `src/components/practice/`      | ✅ Done    |
 
 ## Student Progress Architecture
 
@@ -135,38 +139,38 @@ This means a child's avatar in arcade games is the same avatar they use for prac
 ```typescript
 // player_curriculum - Overall curriculum position for a player
 interface PlayerCurriculum {
-  playerId: string           // FK to players, PRIMARY KEY
-  currentLevel: 1 | 2 | 3    // Which level they're on
-  currentPhaseId: string     // e.g., "L1.add.+3.withFive"
-  worksheetPreset: string    // Saved worksheet difficulty profile
-  visualizationMode: boolean // Practice without visible abacus
-  updatedAt: Date
+  playerId: string; // FK to players, PRIMARY KEY
+  currentLevel: 1 | 2 | 3; // Which level they're on
+  currentPhaseId: string; // e.g., "L1.add.+3.withFive"
+  worksheetPreset: string; // Saved worksheet difficulty profile
+  visualizationMode: boolean; // Practice without visible abacus
+  updatedAt: Date;
 }
 
 // player_skill_mastery - Per-skill progress tracking
 interface PlayerSkillMastery {
-  id: string
-  playerId: string           // FK to players
-  skillId: string            // e.g., "fiveComplements.4=5-1"
-  attempts: number           // Total attempts using this skill
-  correct: number            // Successful uses
-  consecutiveCorrect: number // Current streak (resets on error)
-  masteryLevel: 'learning' | 'practicing' | 'mastered'
-  lastPracticedAt: Date
+  id: string;
+  playerId: string; // FK to players
+  skillId: string; // e.g., "fiveComplements.4=5-1"
+  attempts: number; // Total attempts using this skill
+  correct: number; // Successful uses
+  consecutiveCorrect: number; // Current streak (resets on error)
+  masteryLevel: "learning" | "practicing" | "mastered";
+  lastPracticedAt: Date;
   // UNIQUE constraint on (playerId, skillId)
 }
 
 // practice_sessions - Historical session data
 interface PracticeSession {
-  id: string
-  playerId: string
-  phaseId: string            // Which curriculum phase
-  problemsAttempted: number
-  problemsCorrect: number
-  averageTimeMs: number
-  skillsUsed: string[]       // Skills exercised this session
-  startedAt: Date
-  completedAt: Date
+  id: string;
+  playerId: string;
+  phaseId: string; // Which curriculum phase
+  problemsAttempted: number;
+  problemsCorrect: number;
+  averageTimeMs: number;
+  skillsUsed: string[]; // Skills exercised this session
+  startedAt: Date;
+  completedAt: Date;
 }
 ```
 
@@ -174,21 +178,23 @@ interface PracticeSession {
 
 ```typescript
 const MASTERY_CONFIG = {
-  consecutiveForMastery: 5,  // 5 correct in a row = mastered
-  minimumAttempts: 10,       // Need at least 10 attempts
-  accuracyThreshold: 0.85,   // 85% accuracy for practicing → mastered
-}
+  consecutiveForMastery: 5, // 5 correct in a row = mastered
+  minimumAttempts: 10, // Need at least 10 attempts
+  accuracyThreshold: 0.85, // 85% accuracy for practicing → mastered
+};
 
 function updateMasteryLevel(skill: PlayerSkillMastery): MasteryLevel {
-  if (skill.consecutiveCorrect >= MASTERY_CONFIG.consecutiveForMastery
-      && skill.attempts >= MASTERY_CONFIG.minimumAttempts
-      && (skill.correct / skill.attempts) >= MASTERY_CONFIG.accuracyThreshold) {
-    return 'mastered'
+  if (
+    skill.consecutiveCorrect >= MASTERY_CONFIG.consecutiveForMastery &&
+    skill.attempts >= MASTERY_CONFIG.minimumAttempts &&
+    skill.correct / skill.attempts >= MASTERY_CONFIG.accuracyThreshold
+  ) {
+    return "mastered";
   }
   if (skill.attempts >= 5) {
-    return 'practicing'
+    return "practicing";
   }
-  return 'learning'
+  return "learning";
 }
 ```
 
@@ -233,6 +239,7 @@ function updateMasteryLevel(skill: PlayerSkillMastery): MasteryLevel {
 ### Worksheet Integration
 
 When generating worksheets:
+
 1. **No student selected**: Manual difficulty selection (current behavior)
 2. **Student selected**:
    - Pre-populate settings based on their curriculum position
@@ -244,6 +251,7 @@ When generating worksheets:
 ### Overview
 
 A "session plan" is the system's recommendation for what a student should practice, generated based on:
+
 - Available time (specified by teacher)
 - Student's current curriculum position
 - Skill mastery levels (what needs work vs. what's mastered)
@@ -353,12 +361,12 @@ Both the **Plan Review** and **Active Session** screens include a "Config" butto
 
 Real-time metrics visible to the teacher during the active session:
 
-| Indicator | 🟢 Good | 🟡 Warning | 🔴 Struggling |
-|-----------|---------|------------|---------------|
-| **Accuracy** | >80% | 60-80% | <60% |
-| **Pace** | On track or ahead | 10-30% behind | >30% behind |
-| **Streak** | 3+ consecutive correct | Mixed results | 3+ consecutive wrong |
-| **Engagement** | <60s per problem | 60-90s per problem | >90s or long pauses |
+| Indicator      | 🟢 Good                | 🟡 Warning         | 🔴 Struggling        |
+| -------------- | ---------------------- | ------------------ | -------------------- |
+| **Accuracy**   | >80%                   | 60-80%             | <60%                 |
+| **Pace**       | On track or ahead      | 10-30% behind      | >30% behind          |
+| **Streak**     | 3+ consecutive correct | Mixed results      | 3+ consecutive wrong |
+| **Engagement** | <60s per problem       | 60-90s per problem | >90s or long pauses  |
 
 Overall session health is the worst of the four indicators.
 
@@ -366,14 +374,14 @@ Overall session health is the worst of the four indicators.
 
 When the session isn't going well, the teacher can:
 
-| Adjustment | Effect | When to Use |
-|------------|--------|-------------|
-| **Reduce Difficulty** | Switch remaining slots to easier problems | Accuracy < 60%, frustration visible |
-| **Enable Scaffolding** | Turn on visualization mode (show abacus) | Conceptual confusion |
-| **Narrow Focus** | Drop review/challenge, focus only on current skill | Overwhelmed by variety |
-| **Take a Break** | Pause timer, allow discussion | Long pauses, emotional state |
-| **Extend Session** | Add more problems | Going well, student wants more |
-| **End Gracefully** | Complete current problem, show summary | Time constraint, fatigue |
+| Adjustment             | Effect                                             | When to Use                         |
+| ---------------------- | -------------------------------------------------- | ----------------------------------- |
+| **Reduce Difficulty**  | Switch remaining slots to easier problems          | Accuracy < 60%, frustration visible |
+| **Enable Scaffolding** | Turn on visualization mode (show abacus)           | Conceptual confusion                |
+| **Narrow Focus**       | Drop review/challenge, focus only on current skill | Overwhelmed by variety              |
+| **Take a Break**       | Pause timer, allow discussion                      | Long pauses, emotional state        |
+| **Extend Session**     | Add more problems                                  | Going well, student wants more      |
+| **End Gracefully**     | Complete current problem, show summary             | Time constraint, fatigue            |
 
 All adjustments are logged in `SessionPlan.adjustments[]` for later analysis.
 
@@ -381,89 +389,95 @@ All adjustments are logged in `SessionPlan.adjustments[]` for later analysis.
 
 ```typescript
 interface SessionPlan {
-  id: string
-  playerId: string
+  id: string;
+  playerId: string;
 
   // Setup parameters
-  targetDurationMinutes: number
-  estimatedProblemCount: number
-  avgTimePerProblemSeconds: number  // Calculated from student history
+  targetDurationMinutes: number;
+  estimatedProblemCount: number;
+  avgTimePerProblemSeconds: number; // Calculated from student history
 
   // Problem slots (generated upfront, can be modified)
-  slots: ProblemSlot[]
+  slots: ProblemSlot[];
 
   // Human-readable summary for plan review screen
-  summary: SessionSummary
+  summary: SessionSummary;
 
   // State machine
-  status: 'draft' | 'approved' | 'in_progress' | 'completed' | 'abandoned'
+  status: "draft" | "approved" | "in_progress" | "completed" | "abandoned";
 
   // Timestamps
-  createdAt: Date
-  approvedAt?: Date      // When teacher/student clicked "Let's Go"
-  startedAt?: Date       // When first problem displayed
-  completedAt?: Date
+  createdAt: Date;
+  approvedAt?: Date; // When teacher/student clicked "Let's Go"
+  startedAt?: Date; // When first problem displayed
+  completedAt?: Date;
 
   // Live tracking
-  currentSlotIndex: number
-  sessionHealth: SessionHealth
-  adjustments: SessionAdjustment[]
+  currentSlotIndex: number;
+  sessionHealth: SessionHealth;
+  adjustments: SessionAdjustment[];
 
   // Results (filled in as session progresses)
-  results: SlotResult[]
+  results: SlotResult[];
 }
 
 interface ProblemSlot {
-  index: number
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  index: number;
+  purpose: "focus" | "reinforce" | "review" | "challenge";
 
   // Constraints passed to problem generator
   constraints: {
-    allowedSkills?: Partial<SkillSet>
-    targetSkills?: Partial<SkillSet>
-    forbiddenSkills?: Partial<SkillSet>
-    digitRange?: { min: number; max: number }
-    termCount?: { min: number; max: number }
-    operator?: 'addition' | 'subtraction' | 'mixed'
-  }
+    allowedSkills?: Partial<SkillSet>;
+    targetSkills?: Partial<SkillSet>;
+    forbiddenSkills?: Partial<SkillSet>;
+    digitRange?: { min: number; max: number };
+    termCount?: { min: number; max: number };
+    operator?: "addition" | "subtraction" | "mixed";
+  };
 
   // Generated problem (filled when slot is reached)
-  problem?: GeneratedProblem
+  problem?: GeneratedProblem;
 }
 
 interface SessionSummary {
-  focusDescription: string      // "Adding +3 using five-complement"
-  focusCount: number
-  reviewSkills: string[]        // Human-readable skill names
-  reviewCount: number
-  challengeCount: number
-  estimatedMinutes: number
+  focusDescription: string; // "Adding +3 using five-complement"
+  focusCount: number;
+  reviewSkills: string[]; // Human-readable skill names
+  reviewCount: number;
+  challengeCount: number;
+  estimatedMinutes: number;
 }
 
 interface SessionHealth {
-  overall: 'good' | 'warning' | 'struggling'
-  accuracy: number              // 0-1
-  pacePercent: number           // 100 = on track, <100 = behind
-  currentStreak: number         // Positive = correct streak, negative = wrong streak
-  avgResponseTimeMs: number
+  overall: "good" | "warning" | "struggling";
+  accuracy: number; // 0-1
+  pacePercent: number; // 100 = on track, <100 = behind
+  currentStreak: number; // Positive = correct streak, negative = wrong streak
+  avgResponseTimeMs: number;
 }
 
 interface SessionAdjustment {
-  timestamp: Date
-  type: 'difficulty_reduced' | 'scaffolding_enabled' | 'focus_narrowed'
-      | 'paused' | 'resumed' | 'extended' | 'ended_early'
-  reason?: string               // Optional teacher note
-  previousHealth: SessionHealth
+  timestamp: Date;
+  type:
+    | "difficulty_reduced"
+    | "scaffolding_enabled"
+    | "focus_narrowed"
+    | "paused"
+    | "resumed"
+    | "extended"
+    | "ended_early";
+  reason?: string; // Optional teacher note
+  previousHealth: SessionHealth;
 }
 
 interface SlotResult {
-  slotIndex: number
-  problem: GeneratedProblem
-  studentAnswer: number
-  isCorrect: boolean
-  responseTimeMs: number
-  skillsExercised: string[]     // Which skills this problem tested
-  timestamp: Date
+  slotIndex: number;
+  problem: GeneratedProblem;
+  studentAnswer: number;
+  isCorrect: boolean;
+  responseTimeMs: number;
+  skillsExercised: string[]; // Which skills this problem tested
+  timestamp: Date;
 }
 ```
 
@@ -472,100 +486,102 @@ interface SlotResult {
 ```typescript
 interface PlanGenerationConfig {
   // Distribution weights (should sum to 1.0)
-  focusWeight: number       // Default: 0.60
-  reinforceWeight: number   // Default: 0.20
-  reviewWeight: number      // Default: 0.15
-  challengeWeight: number   // Default: 0.05
+  focusWeight: number; // Default: 0.60
+  reinforceWeight: number; // Default: 0.20
+  reviewWeight: number; // Default: 0.15
+  challengeWeight: number; // Default: 0.05
 
   // Timing
-  defaultSecondsPerProblem: number  // Default: 45
+  defaultSecondsPerProblem: number; // Default: 45
 
   // Spaced repetition
   reviewIntervalDays: {
-    mastered: number        // Default: 7 (review mastered skills weekly)
-    practicing: number      // Default: 3 (review practicing skills every 3 days)
-  }
+    mastered: number; // Default: 7 (review mastered skills weekly)
+    practicing: number; // Default: 3 (review practicing skills every 3 days)
+  };
 }
 
 function generateSessionPlan(
   playerId: string,
   durationMinutes: number,
-  config: PlanGenerationConfig = DEFAULT_CONFIG
+  config: PlanGenerationConfig = DEFAULT_CONFIG,
 ): SessionPlan {
-
   // 1. Load student state
-  const curriculum = await getPlayerCurriculum(playerId)
-  const skillMastery = await getAllSkillMastery(playerId)
-  const recentSessions = await getRecentSessions(playerId, 10)
+  const curriculum = await getPlayerCurriculum(playerId);
+  const skillMastery = await getAllSkillMastery(playerId);
+  const recentSessions = await getRecentSessions(playerId, 10);
 
   // 2. Calculate personalized timing
-  const avgTime = calculateAvgTimePerProblem(recentSessions)
-                  ?? config.defaultSecondsPerProblem
-  const problemCount = Math.floor((durationMinutes * 60) / avgTime)
+  const avgTime =
+    calculateAvgTimePerProblem(recentSessions) ??
+    config.defaultSecondsPerProblem;
+  const problemCount = Math.floor((durationMinutes * 60) / avgTime);
 
   // 3. Categorize skills by need
-  const currentPhaseSkills = getSkillsForPhase(curriculum.currentPhaseId)
-  const struggling = skillMastery.filter(s =>
-    currentPhaseSkills.includes(s.skillId) &&
-    s.correct / s.attempts < 0.7
-  )
-  const needsReview = skillMastery.filter(s =>
-    s.masteryLevel === 'mastered' &&
-    daysSince(s.lastPracticedAt) > config.reviewIntervalDays.mastered
-  )
+  const currentPhaseSkills = getSkillsForPhase(curriculum.currentPhaseId);
+  const struggling = skillMastery.filter(
+    (s) =>
+      currentPhaseSkills.includes(s.skillId) && s.correct / s.attempts < 0.7,
+  );
+  const needsReview = skillMastery.filter(
+    (s) =>
+      s.masteryLevel === "mastered" &&
+      daysSince(s.lastPracticedAt) > config.reviewIntervalDays.mastered,
+  );
 
   // 4. Calculate slot distribution
-  const focusCount = Math.round(problemCount * config.focusWeight)
-  const reinforceCount = Math.round(problemCount * config.reinforceWeight)
-  const reviewCount = Math.round(problemCount * config.reviewWeight)
-  const challengeCount = problemCount - focusCount - reinforceCount - reviewCount
+  const focusCount = Math.round(problemCount * config.focusWeight);
+  const reinforceCount = Math.round(problemCount * config.reinforceWeight);
+  const reviewCount = Math.round(problemCount * config.reviewWeight);
+  const challengeCount =
+    problemCount - focusCount - reinforceCount - reviewCount;
 
   // 5. Build slots with constraints
-  const slots: ProblemSlot[] = []
+  const slots: ProblemSlot[] = [];
 
   // Focus slots: current phase, primary skill
   for (let i = 0; i < focusCount; i++) {
     slots.push({
       index: slots.length,
-      purpose: 'focus',
-      constraints: buildConstraintsForPhase(curriculum.currentPhaseId)
-    })
+      purpose: "focus",
+      constraints: buildConstraintsForPhase(curriculum.currentPhaseId),
+    });
   }
 
   // Reinforce slots: struggling skills get extra practice
   for (let i = 0; i < reinforceCount; i++) {
-    const skill = struggling[i % struggling.length]
+    const skill = struggling[i % struggling.length];
     slots.push({
       index: slots.length,
-      purpose: 'reinforce',
-      constraints: buildConstraintsForSkill(skill?.skillId)
-    })
+      purpose: "reinforce",
+      constraints: buildConstraintsForSkill(skill?.skillId),
+    });
   }
 
   // Review slots: spaced repetition of mastered skills
   for (let i = 0; i < reviewCount; i++) {
-    const skill = needsReview[i % needsReview.length]
+    const skill = needsReview[i % needsReview.length];
     slots.push({
       index: slots.length,
-      purpose: 'review',
-      constraints: buildConstraintsForSkill(skill?.skillId)
-    })
+      purpose: "review",
+      constraints: buildConstraintsForSkill(skill?.skillId),
+    });
   }
 
   // Challenge slots: slightly harder or mixed
   for (let i = 0; i < challengeCount; i++) {
     slots.push({
       index: slots.length,
-      purpose: 'challenge',
-      constraints: buildChallengeConstraints(curriculum)
-    })
+      purpose: "challenge",
+      constraints: buildChallengeConstraints(curriculum),
+    });
   }
 
   // 6. Shuffle to interleave purposes (but keep some focus problems together)
-  const shuffledSlots = intelligentShuffle(slots)
+  const shuffledSlots = intelligentShuffle(slots);
 
   // 7. Build summary
-  const summary = buildHumanReadableSummary(shuffledSlots, curriculum)
+  const summary = buildHumanReadableSummary(shuffledSlots, curriculum);
 
   return {
     id: generateId(),
@@ -575,13 +591,19 @@ function generateSessionPlan(
     avgTimePerProblemSeconds: avgTime,
     slots: shuffledSlots,
     summary,
-    status: 'draft',
+    status: "draft",
     createdAt: new Date(),
     currentSlotIndex: 0,
-    sessionHealth: { overall: 'good', accuracy: 1, pacePercent: 100, currentStreak: 0, avgResponseTimeMs: 0 },
+    sessionHealth: {
+      overall: "good",
+      accuracy: 1,
+      pacePercent: 100,
+      currentStreak: 0,
+      avgResponseTimeMs: 0,
+    },
     adjustments: [],
-    results: []
-  }
+    results: [],
+  };
 }
 ```
 
@@ -686,6 +708,7 @@ The curriculum uses two distinct problem formats:
 #### 1. Vertical (Columnar) Format - Primary
 
 This is the main format from the workbooks. Numbers are stacked vertically:
+
 - **Plus sign omitted** - Addition is implicit
 - **Minus sign shown** - Only subtraction is marked
 - **Answer box at bottom** - Student fills in the result
@@ -753,23 +776,24 @@ After visualization practice, students progress to linear problems - sequences p
 
 Based on the workbook format, a typical daily practice session has three parts:
 
-| Part | Format | Abacus | Purpose |
-|------|--------|--------|---------|
-| **Part 1: Skill Building** | Vertical | Physical abacus | Build muscle memory, learn techniques |
-| **Part 2: Visualization** | Vertical | Hidden/mental | Internalize bead movements mentally |
-| **Part 3: Mental Math** | Linear | None | Pure mental calculation, no visual aid |
+| Part                       | Format   | Abacus          | Purpose                                |
+| -------------------------- | -------- | --------------- | -------------------------------------- |
+| **Part 1: Skill Building** | Vertical | Physical abacus | Build muscle memory, learn techniques  |
+| **Part 2: Visualization**  | Vertical | Hidden/mental   | Internalize bead movements mentally    |
+| **Part 3: Mental Math**    | Linear   | None            | Pure mental calculation, no visual aid |
 
 ### Input Methods
 
-| Device | Primary Input | Implementation |
-|--------|---------------|----------------|
-| **Desktop/Laptop** | Native keyboard | `<input type="number">` with auto-focus |
-| **Tablet with keyboard** | Native keyboard | Same as desktop |
-| **Phone/Touch tablet** | Virtual keypad | `react-simple-keyboard` numeric layout |
+| Device                   | Primary Input   | Implementation                          |
+| ------------------------ | --------------- | --------------------------------------- |
+| **Desktop/Laptop**       | Native keyboard | `<input type="number">` with auto-focus |
+| **Tablet with keyboard** | Native keyboard | Same as desktop                         |
+| **Phone/Touch tablet**   | Virtual keypad  | `react-simple-keyboard` numeric layout  |
 
 #### Phone Keypad Implementation
 
 Reference existing implementations:
+
 - **Know Your World**: `src/arcade-games/know-your-world/components/SimpleLetterKeyboard.tsx`
   - Uses `react-simple-keyboard` v3.8.139
   - Configured for letter input in learning mode
@@ -780,19 +804,14 @@ Reference existing implementations:
 ```typescript
 // Simplified numeric keypad for practice
 const numericLayout = {
-  default: [
-    '7 8 9',
-    '4 5 6',
-    '1 2 3',
-    '{bksp} 0 {enter}'
-  ]
-}
+  default: ["7 8 9", "4 5 6", "1 2 3", "{bksp} 0 {enter}"],
+};
 
 // Use device detection from memory quiz
 const useDeviceType = () => {
   // Returns 'desktop' | 'tablet' | 'phone'
   // Based on screen size and touch capability
-}
+};
 ```
 
 ### Abacus Access
@@ -847,6 +866,7 @@ When `visualizationMode: true` in the student's curriculum settings:
 ```
 
 **Visualization mode behaviors**:
+
 - Hide "Show Abacus" button entirely
 - Add gentle reminder: "Picture the beads in your mind"
 - If student struggles (2+ wrong in a row):
@@ -860,6 +880,7 @@ When `visualizationMode: true` in the student's curriculum settings:
 **CRITICAL**: Never present problems requiring skills the student hasn't learned yet.
 
 The problem generator (`src/utils/problemGenerator.ts`) already supports:
+
 - `allowedSkills` - Skills the problem MUST use
 - `targetSkills` - Skills we're trying to practice
 - `forbiddenSkills` - Skills the problem must NOT use
@@ -868,18 +889,19 @@ The problem generator (`src/utils/problemGenerator.ts`) already supports:
 // For a Level 1 student who has only learned +1, +2, +3 direct addition:
 const constraints = {
   forbiddenSkills: {
-    fiveComplements: true,      // No five-complement techniques
-    tenComplements: true,        // No ten-complement techniques
-    tenComplementsSub: true,     // No subtraction borrowing
-    fiveComplementsSub: true,    // No subtraction with fives
+    fiveComplements: true, // No five-complement techniques
+    tenComplements: true, // No ten-complement techniques
+    tenComplementsSub: true, // No subtraction borrowing
+    fiveComplementsSub: true, // No subtraction with fives
   },
   allowedSkills: {
-    basic: { directAddition: true }
-  }
-}
+    basic: { directAddition: true },
+  },
+};
 ```
 
 **Audit checklist for problem generation**:
+
 1. ✅ `analyzeRequiredSkills()` accurately categorizes all techniques needed
 2. ✅ `problemMatchesSkills()` correctly validates against constraints
 3. ⏳ Create curriculum phase → constraints mapping
@@ -887,33 +909,33 @@ const constraints = {
 
 ### Existing Components to Leverage
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `PracticeProblemPlayer` | `src/components/tutorial/PracticeProblemPlayer.tsx` | Existing practice UI (abacus-based input) |
-| `SimpleLetterKeyboard` | `src/arcade-games/know-your-world/components/SimpleLetterKeyboard.tsx` | `react-simple-keyboard` integration |
-| `InputPhase` | `src/arcade-games/memory-quiz/components/InputPhase.tsx` | Custom numeric keypad + device detection |
-| `problemGenerator` | `src/utils/problemGenerator.ts` | Skill-constrained problem generation |
-| `AbacusReact` | `@soroban/abacus-react` | On-screen abacus (last resort) |
+| Component               | Location                                                               | Purpose                                   |
+| ----------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| `PracticeProblemPlayer` | `src/components/tutorial/PracticeProblemPlayer.tsx`                    | Existing practice UI (abacus-based input) |
+| `SimpleLetterKeyboard`  | `src/arcade-games/know-your-world/components/SimpleLetterKeyboard.tsx` | `react-simple-keyboard` integration       |
+| `InputPhase`            | `src/arcade-games/memory-quiz/components/InputPhase.tsx`               | Custom numeric keypad + device detection  |
+| `problemGenerator`      | `src/utils/problemGenerator.ts`                                        | Skill-constrained problem generation      |
+| `AbacusReact`           | `@soroban/abacus-react`                                                | On-screen abacus (last resort)            |
 
 ### Data Model Extensions
 
 ```typescript
 interface PracticeAnswer {
-  slotIndex: number
-  studentAnswer: number
-  isCorrect: boolean
-  responseTimeMs: number
-  inputMethod: 'keyboard' | 'virtual_keypad' | 'touch'
-  usedOnScreenAbacus: boolean  // Track abacus usage
-  visualizationMode: boolean   // Was this in visualization mode?
+  slotIndex: number;
+  studentAnswer: number;
+  isCorrect: boolean;
+  responseTimeMs: number;
+  inputMethod: "keyboard" | "virtual_keypad" | "touch";
+  usedOnScreenAbacus: boolean; // Track abacus usage
+  visualizationMode: boolean; // Was this in visualization mode?
 }
 
 // For identifying students who may need a physical abacus
 interface StudentAbacusUsage {
-  onScreenAbacusUsed: number    // Count of problems using on-screen
-  totalProblems: number
-  usageRate: number             // Percentage
-  suggestPhysicalAbacus: boolean // true if usage rate > 30%
+  onScreenAbacusUsed: number; // Count of problems using on-screen
+  totalProblems: number;
+  usageRate: number; // Percentage
+  suggestPhysicalAbacus: boolean; // true if usage rate > 30%
 }
 ```
 
@@ -988,6 +1010,7 @@ interface StudentAbacusUsage {
 **Goal**: Create database tables and basic UI for tracking student progress through the curriculum.
 
 **Tasks**:
+
 1. ✅ Create `player_curriculum` table schema - `src/db/schema/player-curriculum.ts`
 2. ✅ Create `player_skill_mastery` table schema - `src/db/schema/player-skill-mastery.ts`
 3. ✅ Create `practice_sessions` table schema - `src/db/schema/practice-sessions.ts`
@@ -1000,6 +1023,7 @@ interface StudentAbacusUsage {
 10. ✅ Create `/practice` page - `src/app/practice/page.tsx`
 
 **Files Created**:
+
 - ✅ `src/db/schema/player-curriculum.ts` - Curriculum position tracking
 - ✅ `src/db/schema/player-skill-mastery.ts` - Per-skill mastery tracking with `MASTERY_CONFIG` and `calculateMasteryLevel()`
 - ✅ `src/db/schema/practice-sessions.ts` - Practice session history
@@ -1021,6 +1045,7 @@ interface StudentAbacusUsage {
 **Goal**: Enable the problem generator to handle subtraction and properly categorize "with/without friends of 5".
 
 **Tasks**:
+
 1. ✅ Add `analyzeColumnSubtraction()` function - `src/utils/problemGenerator.ts:148`
 2. ✅ Add subtraction skills to `SkillSet` type - `src/types/tutorial.ts:36`
    - `fiveComplementsSub`: `-4=-5+1`, `-3=-5+2`, `-2=-5+3`, `-1=-5+4`
@@ -1036,23 +1061,26 @@ interface StudentAbacusUsage {
 **Goal**: Define the Level 1/2/3 structure as data that drives practice.
 
 **Tasks**:
+
 1. Create curriculum data structure:
+
    ```typescript
    interface CurriculumLevel {
-     id: string
-     name: string
-     description: string
-     phases: CurriculumPhase[]
+     id: string;
+     name: string;
+     description: string;
+     phases: CurriculumPhase[];
    }
 
    interface CurriculumPhase {
-     targetNumber: number  // +1, +2, ... +9 or -9, -8, ... -1
-     operation: 'addition' | 'subtraction'
-     useFiveComplement: boolean
-     usesTenComplement: boolean
-     practiceStep: PracticeStep  // Existing type
+     targetNumber: number; // +1, +2, ... +9 or -9, -8, ... -1
+     operation: "addition" | "subtraction";
+     useFiveComplement: boolean;
+     usesTenComplement: boolean;
+     practiceStep: PracticeStep; // Existing type
    }
    ```
+
 2. Define all phases for Level 1, 2, 3
 3. Create helper to convert curriculum phase to PracticeStep constraints
 
@@ -1061,6 +1089,7 @@ interface StudentAbacusUsage {
 **Goal**: A `/practice` page that guides students through the curriculum with intelligent session planning.
 
 **Tasks**:
+
 1. ✅ Create `/app/practice/page.tsx` - Basic structure done
 2. ✅ Track current position in curriculum - Database schema done
 3. ⏳ Create session plan generator (`src/lib/curriculum/session-planner.ts`)
@@ -1077,18 +1106,21 @@ interface StudentAbacusUsage {
 **Sub-phases**:
 
 #### Phase 3a: Session Plan Generation
+
 - Create `SessionPlan` type definitions
 - Implement `generateSessionPlan()` algorithm
 - Create `session_plans` table schema
 - API: POST `/api/curriculum/{playerId}/sessions/plan`
 
 #### Phase 3b: Plan Review UI
+
 - Plan summary display
 - Configuration inspector (debug panel)
 - "Adjust Plan" controls
 - "Let's Go" approval flow
 
 #### Phase 3c: Active Session UI (Practice Experience)
+
 - One-problem-at-a-time display with progress bar
 - Timer and pace tracking
 - Device-appropriate input:
@@ -1108,6 +1140,7 @@ interface StudentAbacusUsage {
 - Configuration inspector (current slot details)
 
 #### Phase 3d: Session Completion
+
 - Summary display with results
 - Mastery level changes
 - Skill update and persistence
@@ -1118,6 +1151,7 @@ interface StudentAbacusUsage {
 **Goal**: Generate printable worksheets targeting specific techniques.
 
 **Tasks**:
+
 1. Add "technique mode" to worksheet config
 2. Allow selecting specific curriculum phase for worksheet
 3. Generate problems using same constraints as online practice
@@ -1127,6 +1161,7 @@ interface StudentAbacusUsage {
 ### Skill Analysis Logic
 
 **Current addition analysis** (from `analyzeColumnAddition`):
+
 - Checks if adding `termDigit` to `currentDigit` requires:
   - Direct addition (result ≤ 4)
   - Heaven bead (involves 5)
@@ -1134,6 +1169,7 @@ interface StudentAbacusUsage {
   - Ten complement (needs -n+10)
 
 **Subtraction analysis** (to implement):
+
 - Check if subtracting `termDigit` from `currentDigit` requires:
   - Direct subtraction (have enough earth beads)
   - Heaven bead removal (have 5-bead to remove)
@@ -1148,17 +1184,27 @@ Use `forbiddenSkills` to exclude five-complement techniques:
 // Level 1, +3, WITHOUT friends of 5
 const practiceStep: PracticeStep = {
   allowedSkills: { basic: { directAddition: true, heavenBead: true } },
-  targetSkills: { /* target +3 specifically */ },
-  forbiddenSkills: {
-    fiveComplements: { '3=5-2': true, '2=5-3': true, '1=5-4': true, '4=5-1': true }
+  targetSkills: {
+    /* target +3 specifically */
   },
-}
+  forbiddenSkills: {
+    fiveComplements: {
+      "3=5-2": true,
+      "2=5-3": true,
+      "1=5-4": true,
+      "4=5-1": true,
+    },
+  },
+};
 
 // Level 1, +3, WITH friends of 5
 const practiceStep: PracticeStep = {
-  allowedSkills: { basic: { directAddition: true, heavenBead: true }, fiveComplements: { '2=5-3': true } },
-  targetSkills: { fiveComplements: { '2=5-3': true } },  // Specifically target +3 via +5-2
-}
+  allowedSkills: {
+    basic: { directAddition: true, heavenBead: true },
+    fiveComplements: { "2=5-3": true },
+  },
+  targetSkills: { fiveComplements: { "2=5-3": true } }, // Specifically target +3 via +5-2
+};
 ```
 
 ## Assessment Data to Track
@@ -1178,12 +1224,12 @@ const practiceStep: PracticeStep = {
 
 ## Questions Resolved
 
-| Question | Answer |
-|----------|--------|
-| Problem format? | Multi-term sequences (3-7 terms), like the books |
-| Single-digit first? | No, double-digit from the start |
+| Question            | Answer                                              |
+| ------------------- | --------------------------------------------------- |
+| Problem format?     | Multi-term sequences (3-7 terms), like the books    |
+| Single-digit first? | No, double-digit from the start                     |
 | Visualization mode? | No abacus visible - that's the point of mental math |
-| Adaptive mastery? | Yes, continue until demonstrated proficiency |
+| Adaptive mastery?   | Yes, continue until demonstrated proficiency        |
 
 ## Sources
 

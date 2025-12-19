@@ -15,6 +15,7 @@ P(correct | skill) = exposure^n / (K^n + exposure^n)
 ```
 
 Where:
+
 - **exposure**: Number of times the student has attempted problems using this skill
 - **K** (halfMaxExposure): Exposure count where P(correct) = 0.5
 - **n** (hillCoefficient): Controls curve shape (n > 1 delays onset, then accelerates)
@@ -22,6 +23,7 @@ Where:
 ### Why Hill Function?
 
 The Hill function naturally models how real learning works:
+
 1. **Early struggles**: Low exposure = low probability (building foundation)
 2. **Breakthrough**: At some point, understanding "clicks" (steep improvement)
 3. **Mastery plateau**: High exposure approaches but never reaches 100%
@@ -30,14 +32,14 @@ The Hill function naturally models how real learning works:
 
 With K=10, n=2:
 
-| Exposures | P(correct) | Stage |
-|-----------|------------|-------|
-| 0 | 0% | No knowledge |
-| 5 | 20% | Building foundation |
-| 10 | 50% | Half-way (by definition of K) |
-| 15 | 69% | Understanding clicks |
-| 20 | 80% | Confident |
-| 30 | 90% | Near mastery |
+| Exposures | P(correct) | Stage                         |
+| --------- | ---------- | ----------------------------- |
+| 0         | 0%         | No knowledge                  |
+| 5         | 20%        | Building foundation           |
+| 10        | 50%        | Half-way (by definition of K) |
+| 15        | 69%        | Understanding clicks          |
+| 20        | 80%        | Confident                     |
+| 30        | 90%        | Near mastery                  |
 
 ## Skill-Specific Difficulty
 
@@ -48,29 +50,30 @@ With K=10, n=2:
 Each skill has a difficulty multiplier applied to K:
 
 ```typescript
-effectiveK = profile.halfMaxExposure * SKILL_DIFFICULTY_MULTIPLIER[skillId]
+effectiveK = profile.halfMaxExposure * SKILL_DIFFICULTY_MULTIPLIER[skillId];
 ```
 
-| Skill Category | Multiplier | Effect |
-|----------------|------------|--------|
-| Basic (directAddition, heavenBead) | 0.8-0.9x | Easier, fewer exposures needed |
-| Five-complements | 1.2-1.3x | Moderate, ~20-30% more exposures |
-| Ten-complements | 1.6-2.1x | Hardest, ~60-110% more exposures |
+| Skill Category                     | Multiplier | Effect                           |
+| ---------------------------------- | ---------- | -------------------------------- |
+| Basic (directAddition, heavenBead) | 0.8-0.9x   | Easier, fewer exposures needed   |
+| Five-complements                   | 1.2-1.3x   | Moderate, ~20-30% more exposures |
+| Ten-complements                    | 1.6-2.1x   | Hardest, ~60-110% more exposures |
 
 ### Concrete Example
 
 With profile K=10:
 
-| Skill | Multiplier | Effective K | Exposures for 50% |
-|-------|------------|-------------|-------------------|
-| basic.directAddition | 0.8 | 8 | 8 |
-| fiveComplements.4=5-1 | 1.2 | 12 | 12 |
-| tenComplements.9=10-1 | 1.6 | 16 | 16 |
-| tenComplements.1=10-9 | 2.0 | 20 | 20 |
+| Skill                 | Multiplier | Effective K | Exposures for 50% |
+| --------------------- | ---------- | ----------- | ----------------- |
+| basic.directAddition  | 0.8        | 8           | 8                 |
+| fiveComplements.4=5-1 | 1.2        | 12          | 12                |
+| tenComplements.9=10-1 | 1.6        | 16          | 16                |
+| tenComplements.1=10-9 | 2.0        | 20          | 20                |
 
 ### Rationale for Specific Values
 
 Based on soroban pedagogy:
+
 - **Basic skills (0.8-0.9)**: Single-column, direct bead manipulation
 - **Five-complements (1.2-1.3)**: Requires decomposition thinking (+4 = +5 -1)
 - **Ten-complements (1.6-2.1)**: Cross-column carrying/borrowing, harder mental model
@@ -92,24 +95,24 @@ Profiles define different learner types:
 
 ```typescript
 interface StudentProfile {
-  name: string
-  halfMaxExposure: number      // K: lower = faster learner
-  hillCoefficient: number      // n: curve shape
-  initialExposures: Record<string, number>  // Pre-seeded learning
-  helpUsageProbabilities: [number, number, number, number]
-  helpBonuses: [number, number, number, number]
-  baseResponseTimeMs: number
-  responseTimeVariance: number
+  name: string;
+  halfMaxExposure: number; // K: lower = faster learner
+  hillCoefficient: number; // n: curve shape
+  initialExposures: Record<string, number>; // Pre-seeded learning
+  helpUsageProbabilities: [number, number, number, number];
+  helpBonuses: [number, number, number, number];
+  baseResponseTimeMs: number;
+  responseTimeVariance: number;
 }
 ```
 
 ### Example Profiles
 
-| Profile | K | n | Description |
-|---------|---|---|-------------|
-| Fast Learner | 8 | 1.5 | Quick acquisition, smooth curve |
-| Average Learner | 12 | 2.0 | Typical learning rate |
-| Slow Learner | 15 | 2.5 | Needs more practice, delayed onset |
+| Profile         | K   | n   | Description                        |
+| --------------- | --- | --- | ---------------------------------- |
+| Fast Learner    | 8   | 1.5 | Quick acquisition, smooth curve    |
+| Average Learner | 12  | 2.0 | Typical learning rate              |
+| Slow Learner    | 15  | 2.5 | Needs more practice, delayed onset |
 
 ## Exposure Accumulation
 
@@ -120,8 +123,8 @@ This models that students learn from engaging with material, regardless of succe
 ```typescript
 // Learning happens from attempting, not just succeeding
 for (const skillId of skillsChallenged) {
-  const current = this.skillExposures.get(skillId) ?? 0
-  this.skillExposures.set(skillId, current + 1)
+  const current = this.skillExposures.get(skillId) ?? 0;
+  this.skillExposures.set(skillId, current + 1);
 }
 ```
 
@@ -129,17 +132,18 @@ for (const skillId of skillsChallenged) {
 
 The model tracks cognitive load based on true skill mastery:
 
-| True P(correct) | Fatigue Multiplier | Interpretation |
-|-----------------|-------------------|----------------|
-| ≥ 90% | 1.0x | Automated, low effort |
-| ≥ 70% | 1.5x | Nearly automated |
-| ≥ 50% | 2.0x | Moderate effort |
-| ≥ 30% | 3.0x | Struggling |
-| < 30% | 4.0x | Very weak, high cognitive load |
+| True P(correct) | Fatigue Multiplier | Interpretation                 |
+| --------------- | ------------------ | ------------------------------ |
+| ≥ 90%           | 1.0x               | Automated, low effort          |
+| ≥ 70%           | 1.5x               | Nearly automated               |
+| ≥ 50%           | 2.0x               | Moderate effort                |
+| ≥ 30%           | 3.0x               | Struggling                     |
+| < 30%           | 4.0x               | Very weak, high cognitive load |
 
 ## Help System
 
 Students can use help at four levels:
+
 - **Level 0**: No help
 - **Level 1**: Hint
 - **Level 2**: Decomposition shown

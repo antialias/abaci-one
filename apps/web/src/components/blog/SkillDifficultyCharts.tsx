@@ -94,7 +94,11 @@ const chartContainerStyles = css({
 
 const summaryCardStyles = css({
   display: 'grid',
-  gridTemplateColumns: { base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+  gridTemplateColumns: {
+    base: '1fr',
+    sm: 'repeat(2, 1fr)',
+    md: 'repeat(4, 1fr)',
+  },
   gap: '1rem',
   mb: '1.5rem',
 })
@@ -139,7 +143,13 @@ export function SkillDifficultyCharts() {
 
   if (loading) {
     return (
-      <div className={css({ textAlign: 'center', py: '3rem', color: 'text.muted' })}>
+      <div
+        className={css({
+          textAlign: 'center',
+          py: '3rem',
+          color: 'text.muted',
+        })}
+      >
         Loading skill difficulty data...
       </div>
     )
@@ -147,7 +157,13 @@ export function SkillDifficultyCharts() {
 
   if (!data) {
     return (
-      <div className={css({ textAlign: 'center', py: '3rem', color: 'text.muted' })}>
+      <div
+        className={css({
+          textAlign: 'center',
+          py: '3rem',
+          color: 'text.muted',
+        })}
+      >
         Failed to load data. Run: <code>npx tsx scripts/generateSkillDifficultyData.ts</code>
       </div>
     )
@@ -273,11 +289,22 @@ function MasteryCurvesChart({ data }: { data: ReportData }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Mastery Curves by Skill Category
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Harder skills (higher difficulty multiplier) require more exposures to reach the same
         mastery level.
       </p>
@@ -336,11 +363,22 @@ function ExposuresToMasteryChart({ data }: { data: ReportData }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Average Exposures to Reach 80% Mastery
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Ten-complements require roughly 2x the practice of basic skills to reach the same mastery
         level.
       </p>
@@ -414,11 +452,22 @@ function ThresholdsChart({ data }: { data: ReportData }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Exposures to Reach 50% Mastery (K Value)
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         The K value in the Hill function determines where P(correct) = 50%. Higher K = harder skill.
       </p>
       <ReactECharts option={option} style={{ height: '300px' }} />
@@ -462,11 +511,22 @@ function MasteryTable({ data }: { data: ReportData }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Mastery by Exposure Level
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         P(correct) for each skill category at various exposure counts.
       </p>
       <div className={css({ overflowX: 'auto' })}>

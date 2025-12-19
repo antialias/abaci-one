@@ -140,6 +140,7 @@ All game state flows through the server:
 - **Clients** render the authoritative state
 
 This ensures:
+
 - Multiplayer consistency
 - Cheat prevention
 - Single source of truth
@@ -171,10 +172,10 @@ MapRenderer renders remote cursors with player emoji
 
 The game uses discrete phases rather than complex nested states:
 
-| Phase | Component | Purpose |
-|-------|-----------|---------|
-| `setup` | SetupPhase | Configure game settings |
-| `playing` | PlayingPhase | Active gameplay |
+| Phase     | Component    | Purpose                 |
+| --------- | ------------ | ----------------------- |
+| `setup`   | SetupPhase   | Configure game settings |
+| `playing` | PlayingPhase | Active gameplay         |
 | `results` | ResultsPhase | Show scores, play again |
 
 **Rationale**: Simplifies component logic - each phase component only handles its concerns.
@@ -184,6 +185,7 @@ The game uses discrete phases rather than complex nested states:
 All game logic lives in `Validator.ts`, never on the client.
 
 **Rationale**:
+
 - Prevents cheating in multiplayer
 - Single source of truth for game rules
 - Easier to add new game modes without client updates
@@ -192,12 +194,12 @@ All game logic lives in `Validator.ts`, never on the client.
 
 Complex features are extracted into custom hooks:
 
-| Hook | Responsibility |
-|------|----------------|
+| Hook                 | Responsibility                          |
+| -------------------- | --------------------------------------- |
 | `useRegionDetection` | Hit testing cursor against region paths |
-| `useMagnifierZoom` | Zoom state and spring animations |
-| `useHotColdFeedback` | Distance-based audio feedback |
-| `usePointerLock` | Precision cursor control |
+| `useMagnifierZoom`   | Zoom state and spring animations        |
+| `useHotColdFeedback` | Distance-based audio feedback           |
+| `usePointerLock`     | Precision cursor control                |
 
 **Rationale**: Keeps MapRenderer focused on rendering, moves logic elsewhere.
 
@@ -221,6 +223,7 @@ Two orthogonal axes:
 ### MapRenderer (5,496 lines) - Refactoring In Progress
 
 Currently handles:
+
 - SVG map rendering
 - Region detection (bounding boxes + isPointInFill)
 - Magnifier overlay with adaptive zoom
@@ -238,6 +241,7 @@ Currently handles:
 ### GameInfoPanel (2,090 lines) - Needs Refactoring
 
 Currently handles:
+
 - Region prompt display
 - Letter confirmation (learning mode)
 - Speech synthesis controls
@@ -252,6 +256,7 @@ Currently handles:
 ### Provider (655 lines) - Well-Sized
 
 Handles:
+
 - React Context for game state
 - Action dispatchers (sendMove wrappers)
 - Cursor sharing coordination
@@ -261,6 +266,7 @@ Handles:
 ### Validator (806 lines) - Well-Sized
 
 Handles:
+
 - Move validation
 - State transitions
 - Scoring logic
@@ -347,13 +353,13 @@ know-your-world/
 
 ## External Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `@svg-maps/world` | World map SVG paths |
-| `@svg-maps/usa` | USA map SVG paths |
-| `d3-force` | Label collision avoidance |
-| `@react-spring/web` | Smooth animations |
-| `@strudel/core` | Music generation |
+| Package             | Purpose                   |
+| ------------------- | ------------------------- |
+| `@svg-maps/world`   | World map SVG paths       |
+| `@svg-maps/usa`     | USA map SVG paths         |
+| `d3-force`          | Label collision avoidance |
+| `@react-spring/web` | Smooth animations         |
+| `@strudel/core`     | Music generation          |
 
 ## Related Documentation
 

@@ -14,4 +14,8 @@ export type {
   MapGameProviderProps,
 } from './MapGameContext'
 
-export { MapGameProvider, useMapGameContext, useMapGameContextSafe } from './MapGameContext'
+export {
+  MapGameProvider,
+  useMapGameContext,
+  useMapGameContextSafe,
+} from './MapGameContext'

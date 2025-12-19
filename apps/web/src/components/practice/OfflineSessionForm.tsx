@@ -9,10 +9,26 @@ import { css } from '../../../styled-system/css'
  * Skill focus options for offline sessions
  */
 const SKILL_FOCUS_OPTIONS = [
-  { id: 'basic', name: 'Basic Operations', description: 'Direct addition/subtraction (1-9)' },
-  { id: 'fiveComplements', name: 'Five Complements', description: 'Using +5/-5 techniques' },
-  { id: 'tenComplements', name: 'Ten Complements', description: 'Carrying and borrowing' },
-  { id: 'mixed', name: 'Mixed Practice', description: 'All skill levels combined' },
+  {
+    id: 'basic',
+    name: 'Basic Operations',
+    description: 'Direct addition/subtraction (1-9)',
+  },
+  {
+    id: 'fiveComplements',
+    name: 'Five Complements',
+    description: 'Using +5/-5 techniques',
+  },
+  {
+    id: 'tenComplements',
+    name: 'Ten Complements',
+    description: 'Carrying and borrowing',
+  },
+  {
+    id: 'mixed',
+    name: 'Mixed Practice',
+    description: 'All skill levels combined',
+  },
 ] as const
 
 export interface OfflineSessionData {
@@ -177,7 +193,13 @@ export function OfflineSessionForm({
           </div>
 
           {/* Form */}
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4',
+            })}
+          >
             {/* Date */}
             <div>
               <label
@@ -477,7 +499,12 @@ export function OfflineSessionForm({
                 borderColor: isDark ? 'blue.700' : 'blue.100',
               })}
             >
-              <p className={css({ fontSize: 'sm', color: isDark ? 'blue.200' : 'blue.800' })}>
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: isDark ? 'blue.200' : 'blue.800',
+                })}
+              >
                 This will record <strong>{problemCount} problems</strong> at{' '}
                 <strong>{accuracy}% accuracy</strong> (~{estimatedCorrect} correct) for{' '}
                 <strong>{studentName}</strong> on{' '}

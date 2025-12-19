@@ -473,7 +473,13 @@ export function ProgressDashboard({
                   borderColor: isDark ? 'orange.800' : 'orange.100',
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  })}
+                >
                   <span
                     className={css({
                       fontSize: '0.875rem',

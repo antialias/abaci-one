@@ -206,7 +206,10 @@ export function SpeedMeter({
           >
             ~{formatTimeShort(meanMs)}
             <span
-              className={css({ fontWeight: 'normal', color: isDark ? 'gray.400' : 'gray.500' })}
+              className={css({
+                fontWeight: 'normal',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
               style={{ fontSize: smallLabelFontSize }}
             >
               avg
@@ -235,7 +238,10 @@ export function SpeedMeter({
           {labelsWouldOverlap ? `~${formatTimeShort(meanMs)} / ` : ''}
           {formatTimeShort(thresholdMs)}
           <span
-            className={css({ fontWeight: 'normal', color: isDark ? 'gray.400' : 'gray.500' })}
+            className={css({
+              fontWeight: 'normal',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
             style={{ fontSize: smallLabelFontSize }}
           >
             {labelsWouldOverlap ? 'avg / pause' : 'pause'}

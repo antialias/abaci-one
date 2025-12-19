@@ -136,7 +136,12 @@ function SkillCard({
           marginBottom: '8px',
         })}
       >
-        <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.100' : 'gray.900' })}>
+        <span
+          className={css({
+            fontWeight: 'bold',
+            color: isDark ? 'gray.100' : 'gray.900',
+          })}
+        >
           {formatSkillName(skill.skillId)}
         </span>
         <span className={css(getMasteryBadgeStyle(skill.masteryLevel, isDark))}>
@@ -237,7 +242,12 @@ export function SkillPerformanceReports({
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        <div className={css({ color: isDark ? 'gray.400' : 'gray.500', textAlign: 'center' })}>
+        <div
+          className={css({
+            color: isDark ? 'gray.400' : 'gray.500',
+            textAlign: 'center',
+          })}
+        >
           Loading performance data...
         </div>
       </div>
@@ -256,7 +266,12 @@ export function SkillPerformanceReports({
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        <div className={css({ color: isDark ? 'red.400' : 'red.600', textAlign: 'center' })}>
+        <div
+          className={css({
+            color: isDark ? 'red.400' : 'red.600',
+            textAlign: 'center',
+          })}
+        >
           {error || 'No performance data available'}
         </div>
       </div>
@@ -330,7 +345,12 @@ export function SkillPerformanceReports({
             borderRadius: '8px',
           })}
         >
-          <div className={css({ fontSize: '0.875rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+          <div
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
             Average Response Time
           </div>
           <div
@@ -369,7 +389,13 @@ export function SkillPerformanceReports({
             Note: These skills appeared in problems with errors. The error may have been caused by
             other skills in the same problem.
           </p>
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
             {analysis.slowSkills.map((skill) => (
               <SkillCard
                 key={skill.skillId}
@@ -419,7 +445,13 @@ export function SkillPerformanceReports({
           >
             🌟 Strengths
           </h4>
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
             {analysis.fastSkills.map((skill) => (
               <SkillCard
                 key={skill.skillId}

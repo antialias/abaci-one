@@ -50,7 +50,13 @@ function InteractiveDemo() {
           marginBottom: '1rem',
         })}
       >
-        <h3 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Progressive Help Overlay Demo
         </h3>
         <p className={css({ fontSize: '0.875rem', color: 'gray.500' })}>
@@ -108,7 +114,13 @@ function InteractiveDemo() {
           })}
         >
           <span className={css({ fontSize: '2rem' })}>🎉</span>
-          <p className={css({ fontSize: '1rem', color: 'green.700', fontWeight: 'bold' })}>
+          <p
+            className={css({
+              fontSize: '1rem',
+              color: 'green.700',
+              fontWeight: 'bold',
+            })}
+          >
             Target Reached!
           </p>
         </div>

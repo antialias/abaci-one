@@ -92,7 +92,10 @@ export const TERM_COUNT_RANGES: Record<SessionPartType, { min: number; max: numb
  * Get effective term count range for a part type.
  * Falls back to abacus range (or adjusted) if null.
  */
-export function getTermCountRange(partType: SessionPartType): { min: number; max: number } {
+export function getTermCountRange(partType: SessionPartType): {
+  min: number
+  max: number
+} {
   const explicit = TERM_COUNT_RANGES[partType]
   if (explicit) return explicit
 

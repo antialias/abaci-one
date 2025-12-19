@@ -23,7 +23,10 @@ interface ChartInjection {
 const POSTS_WITH_CHARTS: Record<string, ChartInjection[]> = {
   'conjunctive-bkt-skill-tracing': [
     { component: EvidenceQualityCharts, markerId: 'EvidenceQuality' },
-    { component: AutomaticityMultiplierCharts, markerId: 'AutomaticityMultipliers' },
+    {
+      component: AutomaticityMultiplierCharts,
+      markerId: 'AutomaticityMultipliers',
+    },
     { component: ClassificationCharts, markerId: 'Classification' },
     { component: SkillDifficultyCharts, markerId: 'SkillDifficulty' },
     { component: ThreeWayComparisonCharts, markerId: 'ThreeWayComparison' },
@@ -286,7 +289,11 @@ function BlogContent({ slug, html }: { slug: string; html: string }) {
 
   // Build injection points: find each marker comment and its position
   // Markers look like: <!-- CHART: EvidenceQuality -->
-  const injections: Array<{ position: number; length: number; component: React.ComponentType }> = []
+  const injections: Array<{
+    position: number
+    length: number
+    component: React.ComponentType
+  }> = []
 
   for (const config of chartConfigs) {
     // Match the marker comment exactly

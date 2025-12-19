@@ -30,11 +30,11 @@ When subtracting digit `d` from current digit `a` at place P:
 
 ### Key Difference from Addition
 
-| Addition | Subtraction |
-|----------|-------------|
-| Carry **forward** (to higher place) | Borrow **from** higher place |
-| `+10 - (10-d)` at current place | `-10` from next place, then work at current |
-| Cascade when next place is **9** | Cascade when next place is **0** |
+| Addition                            | Subtraction                                 |
+| ----------------------------------- | ------------------------------------------- |
+| Carry **forward** (to higher place) | Borrow **from** higher place                |
+| `+10 - (10-d)` at current place     | `-10` from next place, then work at current |
+| Cascade when next place is **9**    | Cascade when next place is **0**            |
 
 ---
 
@@ -108,7 +108,11 @@ Replace the error throw with subtraction handling:
 
 ```typescript
 if (addend < 0) {
-  return generateSubtractionDecompositionTerms(startValue, targetValue, toState)
+  return generateSubtractionDecompositionTerms(
+    startValue,
+    targetValue,
+    toState,
+  );
 }
 ```
 
@@ -118,15 +122,16 @@ if (addend < 0) {
 function generateSubtractionDecompositionTerms(
   startValue: number,
   targetValue: number,
-  toState: (n: number) => AbacusState
+  toState: (n: number) => AbacusState,
 ): {
-  terms: string[]
-  segmentsPlan: SegmentDraft[]
-  decompositionSteps: DecompositionStep[]
-}
+  terms: string[];
+  segmentsPlan: SegmentDraft[];
+  decompositionSteps: DecompositionStep[];
+};
 ```
 
 **Algorithm:**
+
 1. Calculate `subtrahend = startValue - targetValue` (positive number)
 2. Process digit-by-digit from **right to left** (ones first)
    - Unlike addition which goes left-to-right, subtraction must track borrows
@@ -149,11 +154,12 @@ function processDirectSubtraction(
   placeValue: number,
   currentState: AbacusState,
   toState: (n: number) => AbacusState,
-  baseProvenance: TermProvenance
-): { steps: DecompositionStep[]; newValue: number; newState: AbacusState }
+  baseProvenance: TermProvenance,
+): { steps: DecompositionStep[]; newValue: number; newState: AbacusState };
 ```
 
 **Cases:**
+
 - `d <= 4, L >= d`: Remove earth beads directly
 - `d <= 4, L < d, U == 1`: Five's complement (-5, +remainder)
 - `d == 5, U == 1`: Remove heaven bead
@@ -167,11 +173,12 @@ function processTensBorrow(
   placeValue: number,
   currentState: AbacusState,
   toState: (n: number) => AbacusState,
-  baseProvenance: TermProvenance
-): { steps: DecompositionStep[]; newValue: number; newState: AbacusState }
+  baseProvenance: TermProvenance,
+): { steps: DecompositionStep[]; newValue: number; newState: AbacusState };
 ```
 
 **Algorithm:**
+
 1. Check next place digit
 2. If > 0: Simple borrow
 3. If == 0: Cascade borrow (find first non-zero)
@@ -184,8 +191,8 @@ function generateCascadeBorrowSteps(
   startPlace: number,
   digitToSubtract: number,
   baseProvenance: TermProvenance,
-  groupId: string
-): DecompositionStep[]
+  groupId: string,
+): DecompositionStep[];
 ```
 
 ---
@@ -198,18 +205,19 @@ Add to `PedagogicalRule` type:
 
 ```typescript
 export type PedagogicalRule =
-  | 'Direct'
-  | 'FiveComplement'
-  | 'TenComplement'
-  | 'Cascade'
+  | "Direct"
+  | "FiveComplement"
+  | "TenComplement"
+  | "Cascade"
   // New for subtraction:
-  | 'DirectSub'
-  | 'FiveComplementSub'
-  | 'TenBorrow'
-  | 'CascadeBorrow'
+  | "DirectSub"
+  | "FiveComplementSub"
+  | "TenBorrow"
+  | "CascadeBorrow";
 ```
 
 **Or** reuse existing rules with context flag. The existing rules are:
+
 - `Direct` - works for both add/sub
 - `FiveComplement` - could work for both (context determines +5-n vs -5+n)
 - `TenComplement` / `TenBorrow` - these are conceptually different
@@ -241,19 +249,20 @@ Add subtraction-specific titles and summaries:
 
 ```typescript
 // Detect if this is a subtraction segment
-const isSubtraction = steps.some(s => s.operation.startsWith('-'))
+const isSubtraction = steps.some((s) => s.operation.startsWith("-"));
 
 if (isSubtraction) {
   // Generate subtraction-specific readable content
-  title = rule === 'Direct'
-    ? `Subtract ${digit} — ${placeName}`
-    : rule === 'FiveComplement'
-      ? `Break down 5 — ${placeName}`
-      : rule === 'TenBorrow'
-        ? hasCascade
-          ? `Borrow (cascade) — ${placeName}`
-          : `Borrow 10 — ${placeName}`
-        : `Strategy — ${placeName}`
+  title =
+    rule === "Direct"
+      ? `Subtract ${digit} — ${placeName}`
+      : rule === "FiveComplement"
+        ? `Break down 5 — ${placeName}`
+        : rule === "TenBorrow"
+          ? hasCascade
+            ? `Borrow (cascade) — ${placeName}`
+            : `Borrow 10 — ${placeName}`
+          : `Strategy — ${placeName}`;
 }
 ```
 
@@ -263,17 +272,17 @@ if (isSubtraction) {
 // Direct subtraction
 summary = `Remove ${digit} from the ${placeName}. ${
   digit <= 4
-    ? `Take away ${digit} earth bead${digit > 1 ? 's' : ''}.`
+    ? `Take away ${digit} earth bead${digit > 1 ? "s" : ""}.`
     : digit === 5
-      ? 'Deactivate the heaven bead.'
-      : `Deactivate heaven bead and remove ${digit - 5} earth bead${digit > 6 ? 's' : ''}.`
-}`
+      ? "Deactivate the heaven bead."
+      : `Deactivate heaven bead and remove ${digit - 5} earth bead${digit > 6 ? "s" : ""}.`
+}`;
 
 // Five's complement subtraction
-summary = `Subtract ${digit} from the ${placeName}. Not enough earth beads to remove directly, so deactivate the heaven bead (−5) and add back ${5 - digit} (that's −5 + ${5 - digit} = −${digit}).`
+summary = `Subtract ${digit} from the ${placeName}. Not enough earth beads to remove directly, so deactivate the heaven bead (−5) and add back ${5 - digit} (that's −5 + ${5 - digit} = −${digit}).`;
 
 // Ten's borrow
-summary = `Subtract ${digit} from the ${placeName}, but we only have ${currentDigit}. Borrow 10 from ${nextPlaceName}, giving us ${currentDigit + 10}. Now subtract ${digit} to get ${currentDigit + 10 - digit}.`
+summary = `Subtract ${digit} from the ${placeName}, but we only have ${currentDigit}. Borrow 10 from ${nextPlaceName}, giving us ${currentDigit + 10}. Now subtract ${digit} to get ${currentDigit + 10 - digit}.`;
 ```
 
 ---
@@ -283,12 +292,14 @@ summary = `Subtract ${digit} from the ${placeName}, but we only have ${currentDi
 #### 4.1 Verify `generateInstructionFromTerm()` Coverage
 
 Current implementation (lines 1127-1175) already handles:
+
 - `-1` to `-4`: "remove N earth beads"
 - `-5`: "deactivate heaven bead"
 - `-6` to `-9`: "deactivate heaven bead and remove N earth beads"
 - `-10`, `-100`, etc.: "remove 1 from [place]"
 
 **May need additions for:**
+
 - Multi-digit subtraction terms
 - Combined operations in single term
 
@@ -308,7 +319,7 @@ Handle negative difference:
 if (difference < 0) {
   // Format as: "startValue - |difference| = startValue - decomposition = targetValue"
   // Example: "17 - 8 = 17 - (10 - 2) = 9"
-  leftSide = `${startValue} - ${Math.abs(difference)} = ${startValue} - `
+  leftSide = `${startValue} - ${Math.abs(difference)} = ${startValue} - `;
 }
 ```
 
@@ -317,24 +328,29 @@ if (difference < 0) {
 ## Test Cases
 
 ### Direct Subtraction
+
 - `5 - 2 = 3` (remove 2 earth beads)
 - `7 - 5 = 2` (deactivate heaven bead)
 - `9 - 7 = 2` (deactivate heaven, remove 2 earth)
 
 ### Five's Complement Subtraction
+
 - `7 - 4 = 3` (have 5+2, need to remove 4; -5+1)
 - `6 - 3 = 3` (have 5+1, need to remove 3; -5+2)
 
 ### Simple Borrow
+
 - `12 - 5 = 7` (borrow from tens)
 - `23 - 8 = 15` (borrow from tens)
 
 ### Cascade Borrow
+
 - `100 - 1 = 99` (cascade through two zeros)
 - `1000 - 1 = 999` (cascade through three zeros)
 - `1000 - 999 = 1` (massive cascade)
 
 ### Multi-digit Subtraction
+
 - `45 - 23 = 22` (no borrowing needed)
 - `52 - 27 = 25` (borrow in ones place)
 - `503 - 247 = 256` (mixed borrowing)
@@ -391,6 +407,7 @@ if (difference < 0) {
 **Decision:** Use skill IDs that match `src/types/tutorial.ts` SkillSet structure.
 
 The existing skills are:
+
 - **basic**: `directSubtraction`, `heavenBeadSubtraction`, `simpleCombinationsSub`
 - **fiveComplementsSub**: `-4=-5+1`, `-3=-5+2`, `-2=-5+3`, `-1=-5+4`
 - **tenComplementsSub**: `-9=+1-10`, `-8=+2-10`, `-7=+3-10`, etc.
@@ -402,6 +419,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 **Decision:** `17 - 8 = 17 + (-10 + 2) = 9`
 
 **Rationale:** This format:
+
 - Is consistent with how the system internally represents operations
 - Uses signed terms that match bead movements directly
 - Groups complement operations clearly in parentheses
@@ -413,6 +431,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 **Example:** `7 - 4 = 7 + (-5 + 1) = 3`
 
 **Rationale:** This directly maps to bead movements:
+
 - `-5` = deactivate heaven bead
 - `+1` = activate earth bead
 
@@ -427,6 +446,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 **Skill:** `fiveComplementsSub['-4=-5+1']`
 
 **Decision:**
+
 - a = 7, d = 4
 - a >= d ✓ (no borrow needed)
 - d = 4, earth beads L = 2
@@ -434,6 +454,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 - Heaven is active, so use five's complement
 
 **Steps:**
+
 1. Deactivate heaven bead: -5 (state: 2)
 2. Add back (5-4)=1 earth bead: +1 (state: 3)
 
@@ -446,11 +467,13 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 **Skill:** `tenComplementsSub['-5=+5-10']`
 
 **Decision at ones place:**
+
 - a = 2, d = 5
 - a < d, need to borrow from tens
 - tens = 1 ≠ 0, so simple borrow (no cascade)
 
 **Steps:**
+
 1. Borrow from tens: -10 (state: 2)
 2. Add complement to ones: +5 (state: 7)
 
@@ -463,6 +486,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
 **Skills:** `tenComplementsSub['-1=+9-10']` + Cascade
 
 **Decision at ones place (processing left-to-right):**
+
 - At hundreds: digit to subtract = 0, skip
 - At tens: digit to subtract = 0, skip
 - At ones: digit to subtract = 1
@@ -472,6 +496,7 @@ The `PedagogicalRule` type can stay the same (`Direct`, `FiveComplement`, `TenCo
   - Find first non-zero: hundreds = 1
 
 **Steps:**
+
 1. Borrow from hundreds: -100
 2. Fill tens with 9: +90
 3. Add 10 to ones (completing the borrow): +10
@@ -492,11 +517,13 @@ Or grouped by operation:
 **Processing left-to-right (tens first, then ones):**
 
 **Tens place:** subtract 2
+
 - a = 5, d = 2
 - a >= d ✓, direct subtraction
 - Terms: `-20`
 
 **Ones place:** subtract 7
+
 - a = 2, d = 7
 - a < d, need to borrow from tens
 - tens = 3 ≠ 0, simple borrow

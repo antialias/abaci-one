@@ -286,7 +286,11 @@ export function MusicProvider({
       try {
         audioContextRef.current = new (
           window.AudioContext ||
-          (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+          (
+            window as typeof window & {
+              webkitAudioContext: typeof AudioContext
+            }
+          ).webkitAudioContext
         )()
       } catch {
         console.warn('[MusicContext] Web Audio API not supported')

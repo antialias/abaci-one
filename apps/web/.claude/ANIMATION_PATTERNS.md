@@ -7,10 +7,12 @@ When animating continuous rotation where the **speed changes smoothly** but you 
 ### The Problem
 
 **CSS Animation approach fails because:**
+
 - Changing `animation-duration` resets the animation phase, causing jumps
 - `animation-delay` tricks don't reliably preserve position across speed changes
 
 **Calling `spring.start()` 60fps fails because:**
+
 - React-spring's internal batching can't keep up with 60fps updates
 - Spring value lags 1000+ degrees behind, causing wild spinning
 - React re-renders interfere with spring updates

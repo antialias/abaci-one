@@ -192,11 +192,20 @@ export function getMasteryColors(
 ): { bg: string; text: string } {
   switch (level) {
     case 'mastered':
-      return { bg: themed('success', isDark), text: themed('successText', isDark) }
+      return {
+        bg: themed('success', isDark),
+        text: themed('successText', isDark),
+      }
     case 'practicing':
-      return { bg: themed('warning', isDark), text: themed('warningText', isDark) }
+      return {
+        bg: themed('warning', isDark),
+        text: themed('warningText', isDark),
+      }
     default:
-      return { bg: themed('surfaceMuted', isDark), text: themed('textMuted', isDark) }
+      return {
+        bg: themed('surfaceMuted', isDark),
+        text: themed('textMuted', isDark),
+      }
   }
 }
 
@@ -244,10 +253,19 @@ export function getPurposeColors(
     case 'focus':
       return { bg: themed('info', isDark), text: themed('infoText', isDark) }
     case 'reinforce':
-      return { bg: themed('orange', isDark), text: themed('orangeText', isDark) }
+      return {
+        bg: themed('orange', isDark),
+        text: themed('orangeText', isDark),
+      }
     case 'review':
-      return { bg: themed('success', isDark), text: themed('successText', isDark) }
+      return {
+        bg: themed('success', isDark),
+        text: themed('successText', isDark),
+      }
     case 'challenge':
-      return { bg: themed('purple', isDark), text: themed('purpleText', isDark) }
+      return {
+        bg: themed('purple', isDark),
+        text: themed('purpleText', isDark),
+      }
   }
 }

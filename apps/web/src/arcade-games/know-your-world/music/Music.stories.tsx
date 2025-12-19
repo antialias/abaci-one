@@ -138,7 +138,14 @@ function MusicDemoControls() {
       {/* Celebration Controls */}
       <div data-section="celebrations">
         <h3 className={css({ fontWeight: 'bold', mb: '2' })}>Celebrations</h3>
-        <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', mb: '2' })}>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '2',
+            flexWrap: 'wrap',
+            mb: '2',
+          })}
+        >
           {celebrationTypes.map((type) => (
             <button
               key={type}
@@ -281,7 +288,11 @@ const Template = (args: StoryArgs) => {
             {/* Music Control Panel (the actual UI component) */}
             <div
               data-section="control-panel"
-              className={css({ position: 'relative', minWidth: '250px', minHeight: '200px' })}
+              className={css({
+                position: 'relative',
+                minWidth: '250px',
+                minHeight: '200px',
+              })}
             >
               <MusicControlPanel />
             </div>

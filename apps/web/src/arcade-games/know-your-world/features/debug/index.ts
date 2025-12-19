@@ -4,7 +4,10 @@
  * Provides debug overlays and panels for Know Your World game.
  */
 
-export type { AutoZoomDebugOverlayProps, DetectedRegion } from './AutoZoomDebugOverlay'
+export type {
+  AutoZoomDebugOverlayProps,
+  DetectedRegion,
+} from './AutoZoomDebugOverlay'
 export { AutoZoomDebugOverlay } from './AutoZoomDebugOverlay'
 
 export type { HotColdDebugPanelProps } from './HotColdDebugPanel'

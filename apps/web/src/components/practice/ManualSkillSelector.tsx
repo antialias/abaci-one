@@ -695,10 +695,12 @@ export function ManualSkillSelector({
           data-component="manual-skill-selector"
           className={css({
             position: 'fixed',
-            // Mobile: full screen over nav
+            // Mobile: full screen using inset (handles iOS Safari URL bar properly)
             // Desktop: centered modal below nav
             top: { base: 0, md: 'calc(10vh + 120px)' },
             left: { base: 0, md: '50%' },
+            right: { base: 0, md: 'auto' },
+            bottom: { base: 0, md: 'auto' },
             transform: { base: 'none', md: 'translateX(-50%)' },
             bg: isDark ? 'gray.800' : 'white',
             borderRadius: { base: 0, md: 'xl' },
@@ -706,8 +708,8 @@ export function ManualSkillSelector({
             px: { base: '4', md: '6' },
             py: '4',
             maxWidth: { base: 'none', md: '550px' },
-            width: { base: '100vw', md: '90vw' },
-            height: { base: '100vh', md: '70vh' },
+            width: { base: 'auto', md: '90vw' },
+            height: { base: 'auto', md: '70vh' },
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',

@@ -27,26 +27,28 @@ This document outlines the integration between the curriculum skill system and t
 Location: `src/utils/unifiedStepGenerator.ts`
 
 This function is a complete pedagogical engine that:
+
 - Takes any `(startValue, targetValue)` pair
 - Generates step-by-step bead movements with English instructions
 - Detects which complement rules are used (Direct, FiveComplement, TenComplement, Cascade)
 - Creates `PedagogicalSegment` objects with human-readable explanations
 
 **Output structure:**
+
 ```typescript
 interface UnifiedInstructionSequence {
-  fullDecomposition: string  // e.g., "3 + 4 = 3 + (5 - 1) = 7"
-  isMeaningfulDecomposition: boolean
-  steps: UnifiedStepData[]  // Each step has:
-    // - mathematicalTerm: "5", "-1"
-    // - englishInstruction: "activate heaven bead", "remove 1 earth bead"
-    // - expectedValue: number after this step
-    // - expectedState: AbacusState after this step
-    // - beadMovements: which beads to move
-  segments: PedagogicalSegment[]  // High-level explanations:
-    // - readable.title: "Make 5 — ones"
-    // - readable.summary: "Add 4 to the ones, but there isn't room..."
-    // - readable.subtitle: "Using 5's friend"
+  fullDecomposition: string; // e.g., "3 + 4 = 3 + (5 - 1) = 7"
+  isMeaningfulDecomposition: boolean;
+  steps: UnifiedStepData[]; // Each step has:
+  // - mathematicalTerm: "5", "-1"
+  // - englishInstruction: "activate heaven bead", "remove 1 earth bead"
+  // - expectedValue: number after this step
+  // - expectedState: AbacusState after this step
+  // - beadMovements: which beads to move
+  segments: PedagogicalSegment[]; // High-level explanations:
+  // - readable.title: "Make 5 — ones"
+  // - readable.summary: "Add 4 to the ones, but there isn't room..."
+  // - readable.subtitle: "Using 5's friend"
 }
 ```
 
@@ -55,6 +57,7 @@ interface UnifiedInstructionSequence {
 Location: `src/components/tutorial/TutorialPlayer.tsx`
 
 Already handles:
+
 - Step-by-step guided practice
 - Bead highlighting and movement tracking
 - Progress tracking through steps
@@ -80,33 +83,35 @@ Each skill maps to a set of example problems that demonstrate it:
 // src/lib/curriculum/skill-tutorial-config.ts
 
 interface SkillTutorialConfig {
-  skillId: string
-  title: string
-  description: string
+  skillId: string;
+  title: string;
+  description: string;
   /** Example problems that demonstrate this skill */
-  exampleProblems: Array<{ start: number; target: number }>
+  exampleProblems: Array<{ start: number; target: number }>;
   /** Number of practice problems before sign-off (default 3) */
-  practiceCount?: number
+  practiceCount?: number;
 }
 
 export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   // Five-complement addition
-  'fiveComplements.4=5-1': {
-    skillId: 'fiveComplements.4=5-1',
-    title: 'Adding 4 using 5\'s friend',
-    description: 'When you need to add 4 but don\'t have room for 4 earth beads, use 5\'s friend: add 5, then take away 1.',
+  "fiveComplements.4=5-1": {
+    skillId: "fiveComplements.4=5-1",
+    title: "Adding 4 using 5's friend",
+    description:
+      "When you need to add 4 but don't have room for 4 earth beads, use 5's friend: add 5, then take away 1.",
     exampleProblems: [
-      { start: 1, target: 5 },   // 1 + 4 = 5 (simplest)
-      { start: 2, target: 6 },   // 2 + 4 = 6
-      { start: 3, target: 7 },   // 3 + 4 = 7
+      { start: 1, target: 5 }, // 1 + 4 = 5 (simplest)
+      { start: 2, target: 6 }, // 2 + 4 = 6
+      { start: 3, target: 7 }, // 3 + 4 = 7
     ],
     practiceCount: 3,
   },
 
-  'fiveComplements.3=5-2': {
-    skillId: 'fiveComplements.3=5-2',
-    title: 'Adding 3 using 5\'s friend',
-    description: 'When you need to add 3 but don\'t have room, use 5\'s friend: add 5, then take away 2.',
+  "fiveComplements.3=5-2": {
+    skillId: "fiveComplements.3=5-2",
+    title: "Adding 3 using 5's friend",
+    description:
+      "When you need to add 3 but don't have room, use 5's friend: add 5, then take away 2.",
     exampleProblems: [
       { start: 2, target: 5 },
       { start: 3, target: 6 },
@@ -115,22 +120,24 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
 
   // Ten-complement addition
-  'tenComplements.9=10-1': {
-    skillId: 'tenComplements.9=10-1',
-    title: 'Adding 9 with a carry',
-    description: 'When adding 9 would overflow the column, carry 10 to the next column and take away 1 here.',
+  "tenComplements.9=10-1": {
+    skillId: "tenComplements.9=10-1",
+    title: "Adding 9 with a carry",
+    description:
+      "When adding 9 would overflow the column, carry 10 to the next column and take away 1 here.",
     exampleProblems: [
-      { start: 1, target: 10 },   // 1 + 9 = 10
-      { start: 2, target: 11 },   // 2 + 9 = 11
-      { start: 5, target: 14 },   // 5 + 9 = 14
+      { start: 1, target: 10 }, // 1 + 9 = 10
+      { start: 2, target: 11 }, // 2 + 9 = 11
+      { start: 5, target: 14 }, // 5 + 9 = 14
     ],
   },
 
   // Five-complement subtraction
-  'fiveComplementsSub.-4=-5+1': {
-    skillId: 'fiveComplementsSub.-4=-5+1',
-    title: 'Subtracting 4 using 5\'s friend',
-    description: 'When you need to subtract 4 but don\'t have 4 earth beads, use 5\'s friend: take away 5, then add 1 back.',
+  "fiveComplementsSub.-4=-5+1": {
+    skillId: "fiveComplementsSub.-4=-5+1",
+    title: "Subtracting 4 using 5's friend",
+    description:
+      "When you need to subtract 4 but don't have 4 earth beads, use 5's friend: take away 5, then add 1 back.",
     exampleProblems: [
       { start: 5, target: 1 },
       { start: 6, target: 2 },
@@ -139,10 +146,11 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
 
   // Ten-complement subtraction
-  'tenComplementsSub.-9=+1-10': {
-    skillId: 'tenComplementsSub.-9=+1-10',
-    title: 'Subtracting 9 with a borrow',
-    description: 'When subtracting 9 but you don\'t have enough, borrow 10 from the next column and add 1 here.',
+  "tenComplementsSub.-9=+1-10": {
+    skillId: "tenComplementsSub.-9=+1-10",
+    title: "Subtracting 9 with a borrow",
+    description:
+      "When subtracting 9 but you don't have enough, borrow 10 from the next column and add 1 here.",
     exampleProblems: [
       { start: 10, target: 1 },
       { start: 11, target: 2 },
@@ -151,10 +159,11 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
   },
 
   // Basic skills (simpler tutorials)
-  'basic.directAddition': {
-    skillId: 'basic.directAddition',
-    title: 'Adding by moving earth beads',
-    description: 'The simplest way to add: just push up the earth beads you need.',
+  "basic.directAddition": {
+    skillId: "basic.directAddition",
+    title: "Adding by moving earth beads",
+    description:
+      "The simplest way to add: just push up the earth beads you need.",
     exampleProblems: [
       { start: 0, target: 1 },
       { start: 0, target: 3 },
@@ -162,17 +171,18 @@ export const SKILL_TUTORIAL_CONFIGS: Record<string, SkillTutorialConfig> = {
     ],
   },
 
-  'basic.heavenBead': {
-    skillId: 'basic.heavenBead',
-    title: 'Using the heaven bead for 5',
-    description: 'The heaven bead is worth 5. Push it down to add 5 in one move.',
+  "basic.heavenBead": {
+    skillId: "basic.heavenBead",
+    title: "Using the heaven bead for 5",
+    description:
+      "The heaven bead is worth 5. Push it down to add 5 in one move.",
     exampleProblems: [
       { start: 0, target: 5 },
       { start: 1, target: 6 },
       { start: 3, target: 8 },
     ],
   },
-}
+};
 ```
 
 ---
@@ -211,49 +221,57 @@ CREATE INDEX idx_skill_tutorial_player ON skill_tutorial_progress(player_id);
 ```typescript
 // src/db/schema/skill-tutorial-progress.ts
 
-import { createId } from '@paralleldrive/cuid2'
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import { players } from './players'
+import { createId } from "@paralleldrive/cuid2";
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+import { players } from "./players";
 
 export const skillTutorialProgress = sqliteTable(
-  'skill_tutorial_progress',
+  "skill_tutorial_progress",
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
 
-    playerId: text('player_id')
+    playerId: text("player_id")
       .notNull()
-      .references(() => players.id, { onDelete: 'cascade' }),
+      .references(() => players.id, { onDelete: "cascade" }),
 
-    skillId: text('skill_id').notNull(),
+    skillId: text("skill_id").notNull(),
 
     // Tutorial completion
-    tutorialCompleted: integer('tutorial_completed', { mode: 'boolean' })
+    tutorialCompleted: integer("tutorial_completed", { mode: "boolean" })
       .notNull()
       .default(false),
-    completedAt: integer('completed_at', { mode: 'timestamp' }),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
 
     // Teacher override (bypasses tutorial requirement)
-    teacherOverride: integer('teacher_override', { mode: 'boolean' })
+    teacherOverride: integer("teacher_override", { mode: "boolean" })
       .notNull()
       .default(false),
-    overrideAt: integer('override_at', { mode: 'timestamp' }),
-    overrideReason: text('override_reason'),
+    overrideAt: integer("override_at", { mode: "timestamp" }),
+    overrideReason: text("override_reason"),
 
-    createdAt: integer('created_at', { mode: 'timestamp' })
+    createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
+    updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
   (table) => ({
-    playerIdIdx: index('skill_tutorial_player_idx').on(table.playerId),
-    playerSkillUnique: uniqueIndex('skill_tutorial_player_skill_unique').on(
+    playerIdIdx: index("skill_tutorial_player_idx").on(table.playerId),
+    playerSkillUnique: uniqueIndex("skill_tutorial_player_skill_unique").on(
       table.playerId,
-      table.skillId
+      table.skillId,
     ),
-  })
-)
+  }),
+);
 ```
 
 ---
@@ -268,12 +286,12 @@ Simple linear walk through curriculum: find the **first unmastered, unpracticed 
 // src/lib/curriculum/skill-unlock.ts
 
 interface SkillSuggestion {
-  skillId: string
-  phaseId: string
-  phaseName: string
-  description: string
+  skillId: string;
+  phaseId: string;
+  phaseName: string;
+  description: string;
   /** True if tutorial is already completed (or teacher override) */
-  tutorialReady: boolean
+  tutorialReady: boolean;
 }
 
 /**
@@ -284,43 +302,45 @@ interface SkillSuggestion {
  * - If skill is PRACTICING → return null (they're working on it)
  * - Otherwise → this is the next skill to learn
  */
-export async function getNextSkillToLearn(playerId: string): Promise<SkillSuggestion | null> {
+export async function getNextSkillToLearn(
+  playerId: string,
+): Promise<SkillSuggestion | null> {
   // 1. Get mastered skills from BKT
-  const history = await getRecentSessionResults(playerId, 100)
+  const history = await getRecentSessionResults(playerId, 100);
   const bktResults = computeBktFromHistory(history, {
     confidenceThreshold: 0.3,
     useCrossStudentPriors: false,
-  })
+  });
   const masteredSkillIds = new Set(
     bktResults.skills
-      .filter(s => s.masteryClassification === 'mastered')
-      .map(s => s.skillId)
-  )
+      .filter((s) => s.masteryClassification === "mastered")
+      .map((s) => s.skillId),
+  );
 
   // 2. Get currently practicing skills
-  const practicing = await getPracticingSkills(playerId)
-  const practicingIds = new Set(practicing.map(s => s.skillId))
+  const practicing = await getPracticingSkills(playerId);
+  const practicingIds = new Set(practicing.map((s) => s.skillId));
 
   // 3. Walk curriculum in order
   for (const phase of ALL_PHASES) {
-    const skillId = phase.primarySkillId
+    const skillId = phase.primarySkillId;
 
     // Mastered? Skip - they know it
     if (masteredSkillIds.has(skillId)) {
-      continue
+      continue;
     }
 
     // Currently practicing? They're working on it - no new suggestion
     if (practicingIds.has(skillId)) {
-      return null
+      return null;
     }
 
     // Found first unmastered, unpracticed skill!
-    const tutorialProgress = await getSkillTutorialProgress(playerId, skillId)
+    const tutorialProgress = await getSkillTutorialProgress(playerId, skillId);
     const tutorialReady =
       tutorialProgress?.tutorialCompleted ||
       tutorialProgress?.teacherOverride ||
-      false
+      false;
 
     return {
       skillId,
@@ -328,50 +348,54 @@ export async function getNextSkillToLearn(playerId: string): Promise<SkillSugges
       phaseName: phase.name,
       description: phase.description,
       tutorialReady,
-    }
+    };
   }
 
   // All phases complete - curriculum finished!
-  return null
+  return null;
 }
 
 /**
  * Get anomalies for teacher dashboard.
  * Returns skills that are mastered but not in practice rotation.
  */
-export async function getSkillAnomalies(playerId: string): Promise<Array<{
-  skillId: string
-  issue: 'mastered_not_practicing' | 'tutorial_skipped_repeatedly'
-  details: string
-}>> {
-  const anomalies = []
+export async function getSkillAnomalies(playerId: string): Promise<
+  Array<{
+    skillId: string;
+    issue: "mastered_not_practicing" | "tutorial_skipped_repeatedly";
+    details: string;
+  }>
+> {
+  const anomalies = [];
 
   // Get mastered and practicing sets
-  const history = await getRecentSessionResults(playerId, 100)
-  const bktResults = computeBktFromHistory(history, { confidenceThreshold: 0.3 })
+  const history = await getRecentSessionResults(playerId, 100);
+  const bktResults = computeBktFromHistory(history, {
+    confidenceThreshold: 0.3,
+  });
   const masteredSkillIds = new Set(
     bktResults.skills
-      .filter(s => s.masteryClassification === 'mastered')
-      .map(s => s.skillId)
-  )
+      .filter((s) => s.masteryClassification === "mastered")
+      .map((s) => s.skillId),
+  );
 
-  const practicing = await getPracticingSkills(playerId)
-  const practicingIds = new Set(practicing.map(s => s.skillId))
+  const practicing = await getPracticingSkills(playerId);
+  const practicingIds = new Set(practicing.map((s) => s.skillId));
 
   // Find mastered but not practicing
   for (const skillId of masteredSkillIds) {
     if (!practicingIds.has(skillId)) {
       anomalies.push({
         skillId,
-        issue: 'mastered_not_practicing' as const,
-        details: 'Skill is mastered but not in practice rotation',
-      })
+        issue: "mastered_not_practicing" as const,
+        details: "Skill is mastered but not in practice rotation",
+      });
     }
   }
 
   // TODO: Track tutorial skip count and flag repeated skips
 
-  return anomalies
+  return anomalies;
 }
 ```
 
@@ -599,7 +623,8 @@ Add teacher override capability:
 // In ManualSkillSelector.tsx
 
 function SkillRow({ skill, tutorialProgress, onToggle, onOverride }) {
-  const needsTutorial = !tutorialProgress?.tutorialCompleted && !tutorialProgress?.teacherOverride
+  const needsTutorial =
+    !tutorialProgress?.tutorialCompleted && !tutorialProgress?.teacherOverride;
 
   return (
     <div data-skill={skill.id}>
@@ -632,33 +657,36 @@ function SkillRow({ skill, tutorialProgress, onToggle, onOverride }) {
         </span>
       )}
     </div>
-  )
+  );
 }
 ```
 
 ### UI Touchpoint Summary
 
-| Touchpoint | What happens |
-|------------|--------------|
-| **Start Practice Modal** | PRIMARY GATE - Tutorial offered here before session starts |
-| **Session Summary** | Celebrate unlock, no action required |
-| **Skills Dashboard** | Shows readiness + teacher anomalies pane, offers "start session with tutorial" |
+| Touchpoint               | What happens                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| **Start Practice Modal** | PRIMARY GATE - Tutorial offered here before session starts                     |
+| **Session Summary**      | Celebrate unlock, no action required                                           |
+| **Skills Dashboard**     | Shows readiness + teacher anomalies pane, offers "start session with tutorial" |
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1: Data Foundation (1-2 hours)
+
 - [ ] Create `skill_tutorial_progress` schema
 - [ ] Create migration
 - [ ] Add CRUD operations in `progress-manager.ts`
 
 ### Phase 2: Skill Tutorial Config (2-3 hours)
+
 - [ ] Create `src/lib/curriculum/skill-tutorial-config.ts`
 - [ ] Map all ~30 skills to example problems
 - [ ] Add display names for skills
 
 ### Phase 3: Gap Detection (2-3 hours)
+
 - [ ] Implement `computeUnlockSuggestions()`
 - [ ] Implement `findHighestMasteredPhase()`
 - [ ] Unit tests for gap detection scenarios:
@@ -668,18 +696,21 @@ function SkillRow({ skill, tutorialProgress, onToggle, onOverride }) {
   - Multiple gaps
 
 ### Phase 4: Tutorial Launcher (3-4 hours)
+
 - [ ] Create `SkillTutorialLauncher` component
 - [ ] Integrate with existing `TutorialPlayer`
 - [ ] Handle tutorial completion tracking
 - [ ] Test with various skill types
 
 ### Phase 5: UI Integration (2-3 hours)
+
 - [ ] Add to Session Summary
 - [ ] Create Skills Dashboard progression view
 - [ ] Update ManualSkillSelector with tutorial gating
 - [ ] Add teacher override modal
 
 ### Phase 6: Testing & Polish (2-3 hours)
+
 - [ ] End-to-end flow testing
 - [ ] Edge cases (no skills practicing, all mastered, etc.)
 - [ ] Mobile responsiveness
@@ -692,63 +723,64 @@ function SkillRow({ skill, tutorialProgress, onToggle, onOverride }) {
 ### Gap Detection Tests
 
 ```typescript
-describe('Gap Detection', () => {
-  it('identifies gap when five-complement missing but ten-complement mastered', async () => {
+describe("Gap Detection", () => {
+  it("identifies gap when five-complement missing but ten-complement mastered", async () => {
     // Setup: Student has mastered +7=10-3 but never learned -2=-5+3
-    await setMasteredSkill(playerId, 'tenComplements.7=10-3')
+    await setMasteredSkill(playerId, "tenComplements.7=10-3");
     // -2=-5+3 is in L1, should be unlocked before L2 ten-complements
 
-    const suggestions = await computeUnlockSuggestions(playerId)
+    const suggestions = await computeUnlockSuggestions(playerId);
 
     expect(suggestions[0]).toMatchObject({
-      skillId: 'fiveComplementsSub.-2=-5+3',
-      type: 'gap',
-    })
-  })
+      skillId: "fiveComplementsSub.-2=-5+3",
+      type: "gap",
+    });
+  });
 
-  it('suggests advancement when no gaps exist', async () => {
+  it("suggests advancement when no gaps exist", async () => {
     // Setup: All L1 skills mastered
-    await masterAllL1Skills(playerId)
+    await masterAllL1Skills(playerId);
 
-    const suggestions = await computeUnlockSuggestions(playerId)
+    const suggestions = await computeUnlockSuggestions(playerId);
 
     expect(suggestions[0]).toMatchObject({
-      type: 'advancement',
+      type: "advancement",
       // First L2 skill
-    })
-  })
+    });
+  });
 
-  it('blocks advancement until all gaps filled', async () => {
+  it("blocks advancement until all gaps filled", async () => {
     // Setup: Two gaps exist
-    await setMasteredSkill(playerId, 'tenComplements.9=10-1')
+    await setMasteredSkill(playerId, "tenComplements.9=10-1");
     // Missing: basic.heavenBead and fiveComplements.3=5-2
 
-    const suggestions = await computeUnlockSuggestions(playerId)
+    const suggestions = await computeUnlockSuggestions(playerId);
 
     // Should suggest gaps first, ordered by curriculum
-    expect(suggestions.length).toBe(2)
-    expect(suggestions[0].type).toBe('gap')
-    expect(suggestions[1].type).toBe('gap')
-  })
-})
+    expect(suggestions.length).toBe(2);
+    expect(suggestions[0].type).toBe("gap");
+    expect(suggestions[1].type).toBe("gap");
+  });
+});
 ```
 
 ---
 
 ## Open Questions (Resolved)
 
-| Question | Decision |
-|----------|----------|
-| Gap-fill before advancement? | **STRICT** - Must fill all gaps before advancing |
-| Auto-generated vs authored tutorials? | **AUTO** - Use `generateUnifiedInstructionSequence()` |
-| Tutorial thoroughness? | **THOROUGH** - 3 guided examples with explanations |
-| Teacher override? | **YES** - Teachers can mark skills as "learned offline" |
+| Question                              | Decision                                                |
+| ------------------------------------- | ------------------------------------------------------- |
+| Gap-fill before advancement?          | **STRICT** - Must fill all gaps before advancing        |
+| Auto-generated vs authored tutorials? | **AUTO** - Use `generateUnifiedInstructionSequence()`   |
+| Tutorial thoroughness?                | **THOROUGH** - 3 guided examples with explanations      |
+| Teacher override?                     | **YES** - Teachers can mark skills as "learned offline" |
 
 ---
 
 ## Files to Create/Modify
 
 ### New Files
+
 - `src/db/schema/skill-tutorial-progress.ts` - DB schema
 - `drizzle/XXXX_skill_tutorial_progress.sql` - Migration
 - `src/lib/curriculum/skill-tutorial-config.ts` - Skill → tutorial mapping
@@ -757,6 +789,7 @@ describe('Gap Detection', () => {
 - `src/app/api/curriculum/[playerId]/tutorial-progress/route.ts` - API
 
 ### Modified Files
+
 - `src/lib/curriculum/progress-manager.ts` - Add tutorial progress CRUD
 - `src/components/practice/SessionSummary.tsx` - Add unlock prompts
 - `src/components/practice/ManualSkillSelector.tsx` - Add tutorial gating

@@ -218,19 +218,44 @@ describe('BKT Validation Suite', () => {
     const scenarios: TestScenario[] = [
       // Fast learner scenarios
       { profile: 'fastLearner', skillSet: 'focused', sessions: 6, seed: 11111 },
-      { profile: 'fastLearner', skillSet: 'basicPlusFive', sessions: 8, seed: 22222 },
+      {
+        profile: 'fastLearner',
+        skillSet: 'basicPlusFive',
+        sessions: 8,
+        seed: 22222,
+      },
 
       // Slow learner scenarios
       { profile: 'slowLearner', skillSet: 'minimal', sessions: 8, seed: 33333 },
       { profile: 'slowLearner', skillSet: 'basic', sessions: 10, seed: 44444 },
 
       // Uneven skills scenarios
-      { profile: 'unevenSkills', skillSet: 'focused', sessions: 6, seed: 55555 },
-      { profile: 'unevenSkills', skillSet: 'basicPlusFive', sessions: 8, seed: 66666 },
+      {
+        profile: 'unevenSkills',
+        skillSet: 'focused',
+        sessions: 6,
+        seed: 55555,
+      },
+      {
+        profile: 'unevenSkills',
+        skillSet: 'basicPlusFive',
+        sessions: 8,
+        seed: 66666,
+      },
 
       // Stark contrast scenarios
-      { profile: 'starkContrast', skillSet: 'focused', sessions: 6, seed: 77777 },
-      { profile: 'starkContrast', skillSet: 'minimal', sessions: 8, seed: 88888 },
+      {
+        profile: 'starkContrast',
+        skillSet: 'focused',
+        sessions: 6,
+        seed: 77777,
+      },
+      {
+        profile: 'starkContrast',
+        skillSet: 'minimal',
+        sessions: 8,
+        seed: 88888,
+      },
     ]
 
     it('should validate BKT assumptions across multiple scenarios', async () => {

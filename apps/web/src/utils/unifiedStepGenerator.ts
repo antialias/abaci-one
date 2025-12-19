@@ -1392,7 +1392,10 @@ function processDirectSubtraction(
   toState: (n: number) => AbacusState,
   baseProvenance: TermProvenance
 ): { steps: DecompositionStep[]; newValue: number; newState: AbacusState } {
-  const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
+  const placeState = currentState[placeValue] || {
+    heavenActive: false,
+    earthActive: 0,
+  }
   const L = placeState.earthActive
   const U = placeState.heavenActive
   const steps: DecompositionStep[] = []
@@ -1447,7 +1450,10 @@ function processDirectSubtraction(
         },
       })
 
-      newState[placeValue] = { heavenActive: false, earthActive: L + complement }
+      newState[placeValue] = {
+        heavenActive: false,
+        earthActive: L + complement,
+      }
     }
   } else if (digit === 5) {
     // Deactivate heaven bead
@@ -1494,7 +1500,10 @@ function processDirectSubtraction(
       },
     })
 
-    newState[placeValue] = { heavenActive: false, earthActive: L - earthToRemove }
+    newState[placeValue] = {
+      heavenActive: false,
+      earthActive: L - earthToRemove,
+    }
   }
 
   const currentValue = abacusStateToNumber(currentState)

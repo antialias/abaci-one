@@ -61,21 +61,21 @@ The complexity budget system controls problem difficulty by measuring the cognit
 
 ### Base Skill Complexity (Intrinsic)
 
-| Skill Category | Base Cost | Rationale |
-|----------------|-----------|-----------|
-| `basic.*` (direct moves) | 0 | Trivial bead movements |
-| `fiveComplements.*` | 1 | Single mental substitution |
-| `tenComplements.*` | 2 | Cross-column operation |
-| `advanced.cascading*` | 3 | Multi-column propagation |
+| Skill Category           | Base Cost | Rationale                  |
+| ------------------------ | --------- | -------------------------- |
+| `basic.*` (direct moves) | 0         | Trivial bead movements     |
+| `fiveComplements.*`      | 1         | Single mental substitution |
+| `tenComplements.*`       | 2         | Cross-column operation     |
+| `advanced.cascading*`    | 3         | Multi-column propagation   |
 
 ### Mastery Multipliers (Student-Specific)
 
-| Mastery State | Multiplier | Description |
-|---------------|------------|-------------|
-| `effortless` | 1× | Automatic, no thought required |
-| `fluent` | 2× | Solid but needs some attention |
-| `practicing` | 3× | Currently working on, needs focus |
-| `learning` | 4× | Just introduced, maximum effort |
+| Mastery State | Multiplier | Description                       |
+| ------------- | ---------- | --------------------------------- |
+| `effortless`  | 1×         | Automatic, no thought required    |
+| `fluent`      | 2×         | Solid but needs some attention    |
+| `practicing`  | 3×         | Currently working on, needs focus |
+| `learning`    | 4×         | Just introduced, maximum effort   |
 
 ### Effective Cost Formula
 
@@ -133,19 +133,19 @@ purposeComplexityBounds: {
 
 ```typescript
 // session-planner.ts
-const skillMastery = await getAllSkillMastery(playerId)
+const skillMastery = await getAllSkillMastery(playerId);
 
 // Build student-aware calculator
-const studentHistory = buildStudentSkillHistory(skillMastery)
-const costCalculator = createSkillCostCalculator(studentHistory)
+const studentHistory = buildStudentSkillHistory(skillMastery);
+const costCalculator = createSkillCostCalculator(studentHistory);
 
 // For each slot
-const bounds = getComplexityBoundsForSlot(purpose, partType, config)
-const slot = createSlot(index, purpose, constraints, partType, config)
-slot.complexityBounds = bounds
+const bounds = getComplexityBoundsForSlot(purpose, partType, config);
+const slot = createSlot(index, purpose, constraints, partType, config);
+slot.complexityBounds = bounds;
 
 // Generate problem with calculator
-slot.problem = generateProblemFromConstraints(slot.constraints, costCalculator)
+slot.problem = generateProblemFromConstraints(slot.constraints, costCalculator);
 ```
 
 ### 2. Problem Generation
@@ -154,17 +154,18 @@ slot.problem = generateProblemFromConstraints(slot.constraints, costCalculator)
 // problem-generator.ts
 function generateProblemFromConstraints(
   constraints: ProblemConstraints,
-  costCalculator?: SkillCostCalculator
+  costCalculator?: SkillCostCalculator,
 ): GeneratedProblem {
   // Pass through to generator
   const problem = generateSingleProblem({
-    constraints: { ...generatorConstraints,
+    constraints: {
+      ...generatorConstraints,
       minComplexityBudgetPerTerm: constraints.minComplexityBudgetPerTerm,
       maxComplexityBudgetPerTerm: constraints.maxComplexityBudgetPerTerm,
     },
     allowedSkills,
     costCalculator,
-  })
+  });
 }
 ```
 
@@ -172,14 +173,14 @@ function generateProblemFromConstraints(
 
 ```typescript
 // problemGenerator.ts - findValidNextTermWithTrace
-const termCost = costCalculator?.calculateTermCost(stepSkills)
+const termCost = costCalculator?.calculateTermCost(stepSkills);
 
 if (termCost !== undefined) {
-  if (maxBudget !== undefined && termCost > maxBudget) continue
-  if (minBudget !== undefined && termCost < minBudget) continue
+  if (maxBudget !== undefined && termCost > maxBudget) continue;
+  if (minBudget !== undefined && termCost < minBudget) continue;
 }
 
-candidates.push({ term, skillsUsed, complexityCost: termCost })
+candidates.push({ term, skillsUsed, complexityCost: termCost });
 ```
 
 ### 4. Trace Capture
@@ -231,6 +232,7 @@ Harder problems - every term requires complement techniques.
 The architecture supports adding recency-based mastery states:
 
 **Scenarios to support:**
+
 1. **Mastered + continuously practiced** → `effortless` (1×)
 2. **Mastered + not practiced recently** → `rusty` (2.5×) - NEW STATE
 3. **Recently mastered** → `fluent` (2×)
@@ -239,40 +241,48 @@ The architecture supports adding recency-based mastery states:
 
 1. **Track `masteredAt` timestamp** in `player_skill_mastery` table
 2. **Add `rusty` state** to `MasteryState` type and multipliers:
+
    ```typescript
-   export type MasteryState = 'effortless' | 'fluent' | 'rusty' | 'practicing' | 'learning'
+   export type MasteryState =
+     | "effortless"
+     | "fluent"
+     | "rusty"
+     | "practicing"
+     | "learning";
 
    export const MASTERY_MULTIPLIERS: Record<MasteryState, number> = {
      effortless: 1,
      fluent: 2,
-     rusty: 2.5,    // NEW
+     rusty: 2.5, // NEW
      practicing: 3,
      learning: 4,
-   }
+   };
    ```
 
 3. **Enhance `dbMasteryToState` conversion:**
+
    ```typescript
    export function dbMasteryToState(
-     dbLevel: 'learning' | 'practicing' | 'mastered',
+     dbLevel: "learning" | "practicing" | "mastered",
      daysSinceLastPractice?: number,
-     daysSinceMastery?: number
+     daysSinceMastery?: number,
    ): MasteryState {
-     if (dbLevel === 'learning') return 'learning'
-     if (dbLevel === 'practicing') return 'practicing'
+     if (dbLevel === "learning") return "learning";
+     if (dbLevel === "practicing") return "practicing";
 
      // Mastered - but how rusty?
      if (daysSinceLastPractice !== undefined && daysSinceLastPractice > 14) {
-       return 'rusty'  // Mastered but neglected
+       return "rusty"; // Mastered but neglected
      }
      if (daysSinceMastery !== undefined && daysSinceMastery > 30) {
-       return 'effortless'  // Long-term mastery + recent practice
+       return "effortless"; // Long-term mastery + recent practice
      }
-     return 'fluent'  // Recently mastered
+     return "fluent"; // Recently mastered
    }
    ```
 
 **Why this is straightforward:**
+
 - `SkillCostCalculator` is an interface - can swap implementations
 - `dbMasteryToState` is the single conversion point - all recency logic goes here
 - `StudentSkillState` interface already has documented extension points
@@ -286,14 +296,14 @@ The architecture supports adding recency-based mastery states:
 
 ## Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src/utils/skillComplexity.ts` | Base costs, mastery states, calculator factory |
-| `src/utils/problemGenerator.ts` | Term filtering with budget enforcement |
-| `src/lib/curriculum/problem-generator.ts` | Wrapper that passes calculator through |
-| `src/lib/curriculum/session-planner.ts` | Builds calculator, sets purpose bounds |
-| `src/db/schema/session-plans.ts` | Type definitions, config defaults |
-| `src/components/practice/ActiveSession.tsx` | UI display of complexity data |
+| File                                        | Purpose                                        |
+| ------------------------------------------- | ---------------------------------------------- |
+| `src/utils/skillComplexity.ts`              | Base costs, mastery states, calculator factory |
+| `src/utils/problemGenerator.ts`             | Term filtering with budget enforcement         |
+| `src/lib/curriculum/problem-generator.ts`   | Wrapper that passes calculator through         |
+| `src/lib/curriculum/session-planner.ts`     | Builds calculator, sets purpose bounds         |
+| `src/db/schema/session-plans.ts`            | Type definitions, config defaults              |
+| `src/components/practice/ActiveSession.tsx` | UI display of complexity data                  |
 
 ## Testing
 

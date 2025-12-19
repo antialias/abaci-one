@@ -147,7 +147,10 @@ export const Interactive: Story = {
 
 // Static examples with skill-appropriate problems
 const basicProblem = generateProblem({ basic: true })
-const fiveComplementProblem = generateProblem({ basic: true, fiveComplements: true })
+const fiveComplementProblem = generateProblem({
+  basic: true,
+  fiveComplements: true,
+})
 const tenComplementProblem = generateProblem({
   basic: true,
   fiveComplements: true,
@@ -249,7 +252,11 @@ function ProblemGallery() {
   const problems = [
     generateProblem({ basic: true }),
     generateProblem({ basic: true, fiveComplements: true }),
-    generateProblem({ basic: true, fiveComplements: true, tenComplements: true }),
+    generateProblem({
+      basic: true,
+      fiveComplements: true,
+      tenComplements: true,
+    }),
   ]
 
   return (
@@ -479,7 +486,13 @@ function TermsPlayground() {
       tabIndex={0}
     >
       {/* Terms input */}
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+        })}
+      >
         <label
           className={css({
             fontSize: '0.875rem',
@@ -522,7 +535,13 @@ function TermsPlayground() {
           fontSize: '0.8125rem',
         })}
       >
-        <div className={css({ fontWeight: 'bold', marginBottom: '0.25rem', color: 'blue.800' })}>
+        <div
+          className={css({
+            fontWeight: 'bold',
+            marginBottom: '0.25rem',
+            color: 'blue.800',
+          })}
+        >
           Prefix sums (intermediate values):
         </div>
         <div className={css({ fontFamily: 'monospace', color: 'blue.700' })}>
@@ -545,7 +564,13 @@ function TermsPlayground() {
             </span>
           ))}
         </div>
-        <div className={css({ marginTop: '0.5rem', color: 'blue.600', fontSize: '0.75rem' })}>
+        <div
+          className={css({
+            marginTop: '0.5rem',
+            color: 'blue.600',
+            fontSize: '0.75rem',
+          })}
+        >
           Max digits needed:{' '}
           {Math.max(
             ...terms.map((t) => Math.abs(t).toString().length),
@@ -640,7 +665,13 @@ function TermsPlayground() {
       )}
 
       {terms.length === 0 && (
-        <div className={css({ textAlign: 'center', color: 'gray.400', padding: '2rem' })}>
+        <div
+          className={css({
+            textAlign: 'center',
+            color: 'gray.400',
+            padding: '2rem',
+          })}
+        >
           Enter some terms above to see the problem
         </div>
       )}

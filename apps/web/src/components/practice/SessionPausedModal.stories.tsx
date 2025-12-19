@@ -719,7 +719,13 @@ export const AllPauseTypes: Story = {
     }
 
     return (
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '2rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2rem',
+        })}
+      >
         <div>
           <h3
             className={css({

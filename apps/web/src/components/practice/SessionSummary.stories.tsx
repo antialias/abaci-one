@@ -236,7 +236,11 @@ function SummaryWrapper({ children }: { children: React.ReactNode }) {
 
 export const Excellent: Story = {
   render: () => {
-    const results = generateMockResults({ count: 15, correctRate: 0.95, skillLevel: 'basic' })
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 0.95,
+      skillLevel: 'basic',
+    })
     return (
       <SummaryWrapper>
         <SessionSummary
@@ -259,7 +263,10 @@ export const Good: Story = {
     return (
       <SummaryWrapper>
         <SessionSummary
-          plan={createCompletedSessionPlan({ results, skillLevel: 'fiveComplements' })}
+          plan={createCompletedSessionPlan({
+            results,
+            skillLevel: 'fiveComplements',
+          })}
           studentName="Marcus"
           {...handlers}
         />
@@ -278,7 +285,10 @@ export const Average: Story = {
     return (
       <SummaryWrapper>
         <SessionSummary
-          plan={createCompletedSessionPlan({ results, skillLevel: 'tenComplements' })}
+          plan={createCompletedSessionPlan({
+            results,
+            skillLevel: 'tenComplements',
+          })}
           studentName="Luna"
           {...handlers}
         />
@@ -297,7 +307,10 @@ export const NeedsWork: Story = {
     return (
       <SummaryWrapper>
         <SessionSummary
-          plan={createCompletedSessionPlan({ results, skillLevel: 'tenComplements' })}
+          plan={createCompletedSessionPlan({
+            results,
+            skillLevel: 'tenComplements',
+          })}
           studentName="Kai"
           {...handlers}
         />
@@ -308,7 +321,11 @@ export const NeedsWork: Story = {
 
 export const PerfectScore: Story = {
   render: () => {
-    const results = generateMockResults({ count: 15, correctRate: 1.0, skillLevel: 'basic' })
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 1.0,
+      skillLevel: 'basic',
+    })
     return (
       <SummaryWrapper>
         <SessionSummary
@@ -323,7 +340,11 @@ export const PerfectScore: Story = {
 
 export const ShortSession: Story = {
   render: () => {
-    const results = generateMockResults({ count: 6, correctRate: 0.83, skillLevel: 'basic' })
+    const results = generateMockResults({
+      count: 6,
+      correctRate: 0.83,
+      skillLevel: 'basic',
+    })
     return (
       <SummaryWrapper>
         <SessionSummary
@@ -346,7 +367,10 @@ export const LongSession: Story = {
     return (
       <SummaryWrapper>
         <SessionSummary
-          plan={createCompletedSessionPlan({ results, skillLevel: 'fiveComplements' })}
+          plan={createCompletedSessionPlan({
+            results,
+            skillLevel: 'fiveComplements',
+          })}
           studentName="Dedicated Learner"
           {...handlers}
         />
@@ -386,7 +410,10 @@ export const NoAbacusUsage: Story = {
     return (
       <SummaryWrapper>
         <SessionSummary
-          plan={createCompletedSessionPlan({ results, skillLevel: 'fiveComplements' })}
+          plan={createCompletedSessionPlan({
+            results,
+            skillLevel: 'fiveComplements',
+          })}
           studentName="Mental Math Pro"
           {...handlers}
         />
@@ -406,11 +433,18 @@ export const PerformanceComparison: Story = {
         { name: 'Good (80%)', rate: 0.8 },
         { name: 'Needs Work (55%)', rate: 0.55 },
       ].map(({ name, rate }) => {
-        const results = generateMockResults({ count: 10, correctRate: rate, skillLevel: 'basic' })
+        const results = generateMockResults({
+          count: 10,
+          correctRate: rate,
+          skillLevel: 'basic',
+        })
         return (
           <SummaryWrapper key={name}>
             <SessionSummary
-              plan={createCompletedSessionPlan({ results, skillLevel: 'basic' })}
+              plan={createCompletedSessionPlan({
+                results,
+                skillLevel: 'basic',
+              })}
               studentName={name}
               {...handlers}
             />

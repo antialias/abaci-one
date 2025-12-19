@@ -82,8 +82,16 @@ export type ActivePhase =
     }
   | { phase: 'helpMode'; attempt: AttemptInput; helpContext: HelpContext }
   | { phase: 'submitting'; attempt: AttemptInput }
-  | { phase: 'showingFeedback'; attempt: AttemptInput; result: 'correct' | 'incorrect' }
-  | { phase: 'transitioning'; outgoing: OutgoingAttempt; incoming: AttemptInput }
+  | {
+      phase: 'showingFeedback'
+      attempt: AttemptInput
+      result: 'correct' | 'incorrect'
+    }
+  | {
+      phase: 'transitioning'
+      outgoing: OutgoingAttempt
+      incoming: AttemptInput
+    }
   | { phase: 'complete' }
 
 /**
@@ -128,7 +136,11 @@ export function transformActivePhase(
   if (phase.phase === 'paused') {
     const newResumePhase = transform(phase.resumePhase)
     if (newResumePhase === null) return phase
-    return { phase: 'paused', resumePhase: newResumePhase, pauseStartedAt: phase.pauseStartedAt }
+    return {
+      phase: 'paused',
+      resumePhase: newResumePhase,
+      pauseStartedAt: phase.pauseStartedAt,
+    }
   }
   const newPhase = transform(phase)
   return newPhase === null ? phase : newPhase
@@ -234,7 +246,11 @@ export function findMatchedPrefixIndex(
   userAnswer: string,
   prefixSums: number[]
 ): PrefixMatchResult {
-  const noMatch: PrefixMatchResult = { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 }
+  const noMatch: PrefixMatchResult = {
+    matchedIndex: -1,
+    isAmbiguous: false,
+    helpTermIndex: -1,
+  }
 
   if (!userAnswer) return noMatch
 
@@ -249,7 +265,11 @@ export function findMatchedPrefixIndex(
 
   // Check if this is the final answer
   if (answerNum === finalAnswer) {
-    return { matchedIndex: prefixSums.length - 1, isAmbiguous: false, helpTermIndex: -1 }
+    return {
+      matchedIndex: prefixSums.length - 1,
+      isAmbiguous: false,
+      helpTermIndex: -1,
+    }
   }
 
   // Check if user's input matches an intermediate prefix sum
@@ -770,7 +790,11 @@ export function useInteractionPhase(
     setPhase((prev) => {
       if (prev.phase !== 'helpMode') return prev
       const updatedAttempt = { ...prev.attempt, userAnswer: '' }
-      return { phase: 'helpMode', attempt: updatedAttempt, helpContext: prev.helpContext }
+      return {
+        phase: 'helpMode',
+        attempt: updatedAttempt,
+        helpContext: prev.helpContext,
+      }
     })
   }, [])
 
@@ -779,7 +803,11 @@ export function useInteractionPhase(
       if (prev.phase !== 'helpMode' && prev.phase !== 'inputting') return prev
       const updatedAttempt = { ...prev.attempt, userAnswer: value }
       if (prev.phase === 'helpMode') {
-        return { phase: 'helpMode', attempt: updatedAttempt, helpContext: prev.helpContext }
+        return {
+          phase: 'helpMode',
+          attempt: updatedAttempt,
+          helpContext: prev.helpContext,
+        }
       }
       return { phase: 'inputting', attempt: updatedAttempt }
     })
@@ -867,15 +895,30 @@ export function useInteractionPhase(
       const resumePhase = prev.resumePhase
       switch (resumePhase.phase) {
         case 'inputting':
-          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+          return {
+            ...resumePhase,
+            attempt: addPauseDuration(resumePhase.attempt),
+          }
         case 'awaitingDisambiguation':
-          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+          return {
+            ...resumePhase,
+            attempt: addPauseDuration(resumePhase.attempt),
+          }
         case 'helpMode':
-          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+          return {
+            ...resumePhase,
+            attempt: addPauseDuration(resumePhase.attempt),
+          }
         case 'submitting':
-          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+          return {
+            ...resumePhase,
+            attempt: addPauseDuration(resumePhase.attempt),
+          }
         case 'showingFeedback':
-          return { ...resumePhase, attempt: addPauseDuration(resumePhase.attempt) }
+          return {
+            ...resumePhase,
+            attempt: addPauseDuration(resumePhase.attempt),
+          }
         case 'transitioning':
           // Update both outgoing (for accuracy of recorded time) and incoming
           return {

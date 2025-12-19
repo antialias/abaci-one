@@ -1197,7 +1197,11 @@ export function GameInfoPanel({
               }}
             >
               {displayFlagEmoji && (
-                <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
+                <span
+                  className={css({
+                    fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
+                  })}
+                >
                   {displayFlagEmoji}
                 </span>
               )}
@@ -1218,7 +1222,12 @@ export function GameInfoPanel({
                         // Spaces are always shown as confirmed (not underlined, full opacity)
                         if (isSpace) {
                           return (
-                            <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
+                            <span
+                              key={index}
+                              className={css({
+                                transition: 'all 0.15s ease-out',
+                              })}
+                            >
                               {char}
                             </span>
                           )
@@ -1237,7 +1246,9 @@ export function GameInfoPanel({
                         return (
                           <span
                             key={index}
-                            className={css({ transition: 'all 0.15s ease-out' })}
+                            className={css({
+                              transition: 'all 0.15s ease-out',
+                            })}
                             style={{
                               opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
                               textDecoration: isNextToConfirm ? 'underline' : 'none',
@@ -1437,7 +1448,13 @@ export function GameInfoPanel({
             🎯 Find
           </div>
           {/* Right side controls: Give Up button and Guidance dropdown */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.5',
+            })}
+          >
             {/* Give Up button - subtle design */}
             <button
               onClick={(e) => {
@@ -1608,7 +1625,11 @@ export function GameInfoPanel({
                                 <span>✓</span>
                               </DropdownMenu.ItemIndicator>
                             )}
-                            <span className={css({ marginLeft: isLocked || autoHint ? '0' : '4' })}>
+                            <span
+                              className={css({
+                                marginLeft: isLocked || autoHint ? '0' : '4',
+                              })}
+                            >
                               💡 Auto-Show Hints
                             </span>
                           </DropdownMenu.CheckboxItem>
@@ -1663,7 +1684,9 @@ export function GameInfoPanel({
                               </DropdownMenu.ItemIndicator>
                             )}
                             <span
-                              className={css({ marginLeft: isLocked || autoSpeak ? '0' : '4' })}
+                              className={css({
+                                marginLeft: isLocked || autoSpeak ? '0' : '4',
+                              })}
                             >
                               🔈 Auto Speak
                             </span>
@@ -1809,7 +1832,11 @@ export function GameInfoPanel({
             }}
           >
             {displayFlagEmoji && (
-              <span className={css({ fontSize: { base: 'lg', sm: 'xl', md: '2xl' } })}>
+              <span
+                className={css({
+                  fontSize: { base: 'lg', sm: 'xl', md: '2xl' },
+                })}
+              >
                 {displayFlagEmoji}
               </span>
             )}
@@ -1830,7 +1857,12 @@ export function GameInfoPanel({
                       // Spaces are always shown as confirmed (not underlined, full opacity)
                       if (isSpace) {
                         return (
-                          <span key={index} className={css({ transition: 'all 0.15s ease-out' })}>
+                          <span
+                            key={index}
+                            className={css({
+                              transition: 'all 0.15s ease-out',
+                            })}
+                          >
                             {char}
                           </span>
                         )
@@ -1976,7 +2008,8 @@ export function GameInfoPanel({
               })}
             >
               Waiting for {activeUserIds.length - giveUpVotes.length} other{' '}
-              {activeUserIds.length - giveUpVotes.length === 1 ? 'player' : 'players'}...
+              {activeUserIds.length - giveUpVotes.length === 1 ? 'player' : 'players'}
+              ...
             </div>
           )}
       </div>

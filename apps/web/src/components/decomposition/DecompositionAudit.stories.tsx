@@ -273,35 +273,105 @@ const TEST_CATEGORIES: Record<string, TestCase[]> = {
       expectedRules: ['Direct'],
       description: 'Add one tens bead',
     },
-    { name: '+25 from 0', start: 0, target: 25, description: 'Multiple places' },
+    {
+      name: '+25 from 0',
+      start: 0,
+      target: 25,
+      description: 'Multiple places',
+    },
     { name: '+14 from 3', start: 3, target: 17, description: 'Mix of rules' },
     { name: '+99 from 0', start: 0, target: 99, description: 'Max two-digit' },
-    { name: '+45 from 23', start: 23, target: 68, description: 'Complex multi-digit' },
+    {
+      name: '+45 from 23',
+      start: 23,
+      target: 68,
+      description: 'Complex multi-digit',
+    },
   ],
   'Multi-digit Subtraction': [
     { name: '-10 from 15', start: 15, target: 5, description: 'Subtract tens' },
-    { name: '-25 from 50', start: 50, target: 25, description: 'Multiple places' },
-    { name: '-14 from 30', start: 30, target: 16, description: 'With borrowing' },
-    { name: '-37 from 52', start: 52, target: 15, description: 'Complex borrowing' },
+    {
+      name: '-25 from 50',
+      start: 50,
+      target: 25,
+      description: 'Multiple places',
+    },
+    {
+      name: '-14 from 30',
+      start: 30,
+      target: 16,
+      description: 'With borrowing',
+    },
+    {
+      name: '-37 from 52',
+      start: 52,
+      target: 15,
+      description: 'Complex borrowing',
+    },
   ],
   'Cascade Cases': [
     { name: '+1 from 9', start: 9, target: 10, description: 'Simple cascade' },
-    { name: '+1 from 99', start: 99, target: 100, description: 'Double cascade' },
-    { name: '+1 from 999', start: 999, target: 1000, description: 'Triple cascade' },
-    { name: '+2 from 98', start: 98, target: 100, description: 'Cascade with +2' },
-    { name: '+11 from 89', start: 89, target: 100, description: 'Multi-digit cascade' },
+    {
+      name: '+1 from 99',
+      start: 99,
+      target: 100,
+      description: 'Double cascade',
+    },
+    {
+      name: '+1 from 999',
+      start: 999,
+      target: 1000,
+      description: 'Triple cascade',
+    },
+    {
+      name: '+2 from 98',
+      start: 98,
+      target: 100,
+      description: 'Cascade with +2',
+    },
+    {
+      name: '+11 from 89',
+      start: 89,
+      target: 100,
+      description: 'Multi-digit cascade',
+    },
   ],
   'Edge Cases': [
     { name: '0 → 0', start: 0, target: 0, description: 'No change' },
     { name: '5 → 5', start: 5, target: 5, description: 'No change at 5' },
     { name: '+5 from 0', start: 0, target: 5, description: 'Add heaven bead' },
-    { name: '-5 from 5', start: 5, target: 0, description: 'Remove heaven bead' },
-    { name: '+5 from 4', start: 4, target: 9, description: 'Add 5 when earth full' },
-    { name: '-5 from 9', start: 9, target: 4, description: 'Remove 5 when earth full' },
+    {
+      name: '-5 from 5',
+      start: 5,
+      target: 0,
+      description: 'Remove heaven bead',
+    },
+    {
+      name: '+5 from 4',
+      start: 4,
+      target: 9,
+      description: 'Add 5 when earth full',
+    },
+    {
+      name: '-5 from 9',
+      start: 9,
+      target: 4,
+      description: 'Remove 5 when earth full',
+    },
   ],
   'Mixed Operations (Practice Session Style)': [
-    { name: '0 → 5 → 12', start: 0, target: 5, description: 'First of a sequence' },
-    { name: '12 → 8', start: 12, target: 8, description: 'Subtract in sequence' },
+    {
+      name: '0 → 5 → 12',
+      start: 0,
+      target: 5,
+      description: 'First of a sequence',
+    },
+    {
+      name: '12 → 8',
+      start: 12,
+      target: 8,
+      description: 'Subtract in sequence',
+    },
     { name: '8 → 15', start: 8, target: 15, description: 'Add after subtract' },
     { name: '15 → 6', start: 15, target: 6, description: 'Large subtract' },
   ],
@@ -376,14 +446,25 @@ function TestCaseDisplay({
       })}
     >
       <div
-        className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        })}
       >
         <span className={css({ fontWeight: 'medium', fontSize: '0.875rem' })}>{testCase.name}</span>
         <span className={css({ fontSize: '0.75rem', color: 'gray.500' })}>
           {testCase.start} → {testCase.target}
         </span>
       </div>
-      <div className={css({ display: 'flex', gap: '0.25rem', mt: '0.25rem', flexWrap: 'wrap' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.25rem',
+          mt: '0.25rem',
+          flexWrap: 'wrap',
+        })}
+      >
         {uniqueRules.map((rule) => (
           <span
             key={rule}
@@ -421,9 +502,15 @@ function TestCaseDisplay({
 function DetailedView({ start, target }: { start: number; target: number }) {
   const { sequence, error } = useMemo(() => {
     try {
-      return { sequence: generateUnifiedInstructionSequence(start, target), error: null }
+      return {
+        sequence: generateUnifiedInstructionSequence(start, target),
+        error: null,
+      }
     } catch (e) {
-      return { sequence: null, error: e instanceof Error ? e.message : 'Unknown error' }
+      return {
+        sequence: null,
+        error: e instanceof Error ? e.message : 'Unknown error',
+      }
     }
   }, [start, target])
   const [currentStep, setCurrentStep] = useState(0)
@@ -457,7 +544,13 @@ function DetailedView({ start, target }: { start: number; target: number }) {
           >
             {operation} Not Yet Implemented
           </h3>
-          <p className={css({ fontSize: '0.875rem', color: 'orange.700', mb: '1rem' })}>
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: 'orange.700',
+              mb: '1rem',
+            })}
+          >
             {start} → {target} ({difference >= 0 ? '+' : ''}
             {difference})
           </p>
@@ -470,7 +563,13 @@ function DetailedView({ start, target }: { start: number; target: number }) {
   }
 
   return (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+    <div
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      })}
+    >
       {/* Header */}
       <div className={css({ p: '1rem', bg: 'gray.50', borderRadius: '8px' })}>
         <div
@@ -595,7 +694,13 @@ function DetailedView({ start, target }: { start: number; target: number }) {
         >
           Pedagogical Segments ({sequence.segments.length})
         </h4>
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+          })}
+        >
           {sequence.segments.map((segment, i) => (
             <SegmentCard key={segment.id} segment={segment} index={i} />
           ))}
@@ -622,7 +727,14 @@ function DetailedView({ start, target }: { start: number; target: number }) {
         >
           Steps ({sequence.steps.length})
         </h4>
-        <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', mb: '0.75rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            mb: '0.75rem',
+          })}
+        >
           {sequence.steps.map((step, i) => (
             <button
               key={step.stepIndex}
@@ -650,7 +762,13 @@ function DetailedView({ start, target }: { start: number; target: number }) {
 
       {/* Debug JSON */}
       <details className={css({ p: '1rem', bg: 'gray.900', borderRadius: '8px' })}>
-        <summary className={css({ color: 'gray.400', cursor: 'pointer', fontSize: '0.75rem' })}>
+        <summary
+          className={css({
+            color: 'gray.400',
+            cursor: 'pointer',
+            fontSize: '0.75rem',
+          })}
+        >
           Raw JSON (click to expand)
         </summary>
         <pre
@@ -699,7 +817,13 @@ function SegmentCard({ segment, index }: { segment: PedagogicalSegment; index: n
             </div>
           )}
         </div>
-        <div className={css({ fontSize: '0.625rem', color: 'gray.500', fontFamily: 'monospace' })}>
+        <div
+          className={css({
+            fontSize: '0.625rem',
+            color: 'gray.500',
+            fontFamily: 'monospace',
+          })}
+        >
           {segment.id}
         </div>
       </div>
@@ -747,9 +871,20 @@ function SegmentCard({ segment, index }: { segment: PedagogicalSegment; index: n
 
 function StepDetail({ step }: { step: UnifiedInstructionSequence['steps'][0] }) {
   return (
-    <div className={css({ p: '0.75rem', bg: 'gray.50', borderRadius: '6px', fontSize: '0.75rem' })}>
+    <div
+      className={css({
+        p: '0.75rem',
+        bg: 'gray.50',
+        borderRadius: '6px',
+        fontSize: '0.75rem',
+      })}
+    >
       <div
-        className={css({ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem 1rem' })}
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr',
+          gap: '0.5rem 1rem',
+        })}
       >
         <span className={css({ fontWeight: 'bold' })}>Term:</span>
         <code>{step.mathematicalTerm}</code>
@@ -795,11 +930,30 @@ function CustomTestInput({ onSelect }: { onSelect: (start: number, target: numbe
   const [target, setTarget] = useState(17)
 
   return (
-    <div className={css({ p: '1rem', bg: 'blue.50', borderRadius: '8px', mb: '1rem' })}>
-      <h3 className={css({ fontSize: '0.875rem', fontWeight: 'bold', mb: '0.75rem' })}>
+    <div
+      className={css({
+        p: '1rem',
+        bg: 'blue.50',
+        borderRadius: '8px',
+        mb: '1rem',
+      })}
+    >
+      <h3
+        className={css({
+          fontSize: '0.875rem',
+          fontWeight: 'bold',
+          mb: '0.75rem',
+        })}
+      >
         Custom Test
       </h3>
-      <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' })}>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0.75rem',
+          alignItems: 'flex-end',
+        })}
+      >
         <label className={css({ flex: 1 })}>
           <span className={css({ fontSize: '0.75rem', color: 'gray.600' })}>Start</span>
           <input
@@ -862,7 +1016,10 @@ function CustomTestInput({ onSelect }: { onSelect: (start: number, target: numbe
 
 // Main audit UI
 function DecompositionAuditUI() {
-  const [selectedTest, setSelectedTest] = useState<{ start: number; target: number } | null>({
+  const [selectedTest, setSelectedTest] = useState<{
+    start: number
+    target: number
+  } | null>({
     start: 3,
     target: 17,
   })
@@ -902,7 +1059,13 @@ function DecompositionAuditUI() {
           p: '1rem',
         })}
       >
-        <h1 className={css({ fontSize: '1.25rem', fontWeight: 'bold', mb: '1rem' })}>
+        <h1
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            mb: '1rem',
+          })}
+        >
           Decomposition Audit
         </h1>
 
@@ -947,7 +1110,12 @@ function DecompositionAuditUI() {
                     isSelected={
                       selectedTest?.start === test.start && selectedTest?.target === test.target
                     }
-                    onClick={() => setSelectedTest({ start: test.start, target: test.target })}
+                    onClick={() =>
+                      setSelectedTest({
+                        start: test.start,
+                        target: test.target,
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -961,7 +1129,13 @@ function DecompositionAuditUI() {
         {selectedTest ? (
           <DetailedView start={selectedTest.start} target={selectedTest.target} />
         ) : (
-          <div className={css({ textAlign: 'center', py: '4rem', color: 'gray.500' })}>
+          <div
+            className={css({
+              textAlign: 'center',
+              py: '4rem',
+              color: 'gray.500',
+            })}
+          >
             Select a test case to see details
           </div>
         )}

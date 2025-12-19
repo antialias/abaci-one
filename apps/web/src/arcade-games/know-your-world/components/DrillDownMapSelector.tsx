@@ -1051,7 +1051,11 @@ export function DrillDownMapSelector({
           {breadcrumbs.map((crumb, index) => (
             <span
               key={crumb.label}
-              className={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1',
+              })}
             >
               {index > 0 && (
                 <span

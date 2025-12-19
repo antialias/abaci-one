@@ -120,7 +120,10 @@ describe('Blame Attribution: Unit Tests', () => {
         },
       },
       bayesian: {
-        basic: { blame: bayesianResult[0].blameWeight, newPKnown: bayesianResult[0].updatedPKnown },
+        basic: {
+          blame: bayesianResult[0].blameWeight,
+          newPKnown: bayesianResult[0].updatedPKnown,
+        },
         complement: {
           blame: bayesianResult[1].blameWeight,
           newPKnown: bayesianResult[1].updatedPKnown,
@@ -189,8 +192,16 @@ describe('Blame Attribution: Unit Tests', () => {
   it('should converge when all skills have equal mastery', () => {
     // When all skills have equal P(known), both methods should give equal blame
     const skills: SkillBktRecord[] = [
-      { skillId: 'skill.a', pKnown: 0.5, params: getDefaultParams('basic.directAddition') },
-      { skillId: 'skill.b', pKnown: 0.5, params: getDefaultParams('basic.directAddition') },
+      {
+        skillId: 'skill.a',
+        pKnown: 0.5,
+        params: getDefaultParams('basic.directAddition'),
+      },
+      {
+        skillId: 'skill.b',
+        pKnown: 0.5,
+        params: getDefaultParams('basic.directAddition'),
+      },
     ]
 
     const heuristicResult = updateOnIncorrect(skills)
@@ -307,7 +318,11 @@ describe('Blame Attribution: Journey Simulation A/B', () => {
     const runnerHeuristic = new JourneyRunner(
       dbHeuristic.db,
       studentHeuristic,
-      { ...baseConfig, mode: 'adaptive', blameMethod: 'heuristic' as BlameMethod },
+      {
+        ...baseConfig,
+        mode: 'adaptive',
+        blameMethod: 'heuristic' as BlameMethod,
+      },
       rngHeuristic,
       heuristicPlayerId
     )
@@ -328,7 +343,11 @@ describe('Blame Attribution: Journey Simulation A/B', () => {
     const runnerBayesian = new JourneyRunner(
       dbBayesian.db,
       studentBayesian,
-      { ...baseConfig, mode: 'adaptive', blameMethod: 'bayesian' as BlameMethod },
+      {
+        ...baseConfig,
+        mode: 'adaptive',
+        blameMethod: 'bayesian' as BlameMethod,
+      },
       rngBayesian,
       bayesianPlayerId
     )

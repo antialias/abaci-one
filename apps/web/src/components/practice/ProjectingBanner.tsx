@@ -6,8 +6,7 @@ import { createPortal } from 'react-dom'
 import { type Bounds, useSessionModeBanner } from '@/contexts/SessionModeBannerContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Z_INDEX } from '@/constants/zIndex'
-import { SessionModeBanner } from './SessionModeBanner'
-import { CompactBanner } from './CompactBanner'
+import { MorphingBanner } from './MorphingBanner'
 
 // ============================================================================
 // Types
@@ -113,33 +112,21 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
   // Determine if we should animate
   const shouldAnimate = hasRendered && !isInitialRender && previousBounds !== null
 
-  // Spring animation for position and size
+  // Target progress: 0 = content (full), 1 = nav (compact)
+  const targetProgress = activeSlot === 'nav' ? 1 : 0
+
+  // Spring animation for position, size, AND morph progress
   const springProps = useSpring({
     x: targetBounds?.x ?? 0,
     y: targetBounds?.y ?? 0,
     width: targetBounds?.width ?? 0,
     height: targetBounds?.height ?? 0,
     opacity: activeSlot === 'hidden' || !sessionMode ? 0 : 1,
+    progress: targetProgress,
     // Animate smoothly when we have valid previous bounds
     immediate: !shouldAnimate,
     config: { tension: 170, friction: 26 }, // Slower, smoother animation
   })
-
-  // Track slot change for content transition
-  const [displaySlot, setDisplaySlot] = useState(activeSlot)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  useEffect(() => {
-    if (activeSlot !== displaySlot) {
-      setIsTransitioning(true)
-      // Delay content change to middle of animation (match spring timing)
-      const timer = setTimeout(() => {
-        setDisplaySlot(activeSlot)
-        setIsTransitioning(false)
-      }, 200) // Slightly longer for smoother spring
-      return () => clearTimeout(timer)
-    }
-  }, [activeSlot, displaySlot])
 
   // Don't render if no session mode or hidden
   if (!sessionMode || activeSlot === 'hidden') {
@@ -151,48 +138,32 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
     return null
   }
 
-  // Render content based on display slot (with transition delay)
-  const renderContent = () => {
-    if (displaySlot === 'content') {
-      return (
-        <SessionModeBanner
-          sessionMode={sessionMode}
-          onAction={onAction}
-          isLoading={isLoading || isLoadingSessionMode}
-          variant="dashboard"
-        />
-      )
-    }
-    return (
-      <CompactBanner
-        sessionMode={sessionMode}
-        onAction={onAction}
-        isLoading={isLoading || isLoadingSessionMode}
-        isDark={isDark}
-      />
-    )
-  }
-
   // Portal to body for fixed positioning
   return createPortal(
     <animated.div
       data-component="projecting-banner"
       data-slot={activeSlot}
-      data-transitioning={isTransitioning || undefined}
       style={{
         position: 'fixed',
         left: springProps.x,
         top: springProps.y,
         width: springProps.width,
-        // Don't animate height to avoid content squishing
-        minHeight: springProps.height,
+        height: springProps.height,
         opacity: springProps.opacity,
         zIndex: Z_INDEX.SESSION_MODE_BANNER ?? 95,
         pointerEvents: 'auto',
         overflow: 'hidden',
       }}
     >
-      {renderContent()}
+      <MorphingBanner
+        sessionMode={sessionMode}
+        onAction={onAction}
+        isLoading={isLoading || isLoadingSessionMode}
+        isDark={isDark}
+        progress={springProps.progress}
+        containerWidth={springProps.width}
+        containerHeight={springProps.height}
+      />
     </animated.div>,
     document.body
   )

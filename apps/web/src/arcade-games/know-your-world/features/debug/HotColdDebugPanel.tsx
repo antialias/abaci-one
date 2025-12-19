@@ -94,7 +94,13 @@ export function HotColdDebugPanel({
 
       {/* Enable conditions */}
       <div className={css({ marginBottom: '6px' })}>
-        <div className={css({ color: '#888', fontSize: '10px', marginBottom: '2px' })}>
+        <div
+          className={css({
+            color: '#888',
+            fontSize: '10px',
+            marginBottom: '2px',
+          })}
+        >
           Enable Conditions:
         </div>
         <div style={{ color: assistanceAllowsHotCold ? '#4ade80' : '#f87171' }}>
@@ -113,7 +119,11 @@ export function HotColdDebugPanel({
           {isMobileMapDragging ? '✓' : '✗'} Mobile dragging
         </div>
         {gameMode === 'turn-based' && (
-          <div style={{ color: currentPlayer === localPlayerId ? '#4ade80' : '#f87171' }}>
+          <div
+            style={{
+              color: currentPlayer === localPlayerId ? '#4ade80' : '#f87171',
+            }}
+          >
             {currentPlayer === localPlayerId ? '✓' : '✗'} Is my turn
           </div>
         )}

@@ -158,7 +158,10 @@ export function useMagnifierTouchHandlers(
    * Measure the actual pixels-per-SVG-unit by comparing screen positions
    * of the two probe circles. This is robust to any transform pipeline changes.
    */
-  const measureEmpiricalScale = useCallback((): { pixelsPerSvgUnit: number; isValid: boolean } => {
+  const measureEmpiricalScale = useCallback((): {
+    pixelsPerSvgUnit: number
+    isValid: boolean
+  } => {
     const probe1 = scaleProbe1Ref.current
     const probe2 = scaleProbe2Ref.current
 
@@ -307,7 +310,10 @@ export function useMagnifierTouchHandlers(
 
           // Record the finger's initial screen position for delta tracking
           // We'll use this to track how far the finger has moved from start
-          anchorInitialScreenRef.current = { x: touch.clientX, y: touch.clientY }
+          anchorInitialScreenRef.current = {
+            x: touch.clientX,
+            y: touch.clientY,
+          }
 
           console.log('[MagnifierTouchStart] ANCHOR SETUP:', {
             fingerScreen: { x: touch.clientX, y: touch.clientY },
@@ -474,7 +480,10 @@ export function useMagnifierTouchHandlers(
           console.log('[MagnifierPan] DIRECT delta tracking:', {
             frameDelta: { x: deltaX.toFixed(1), y: deltaY.toFixed(1) },
             touchMultiplier: touchMultiplier.toFixed(4),
-            cursorDelta: { x: cursorDeltaX.toFixed(2), y: cursorDeltaY.toFixed(2) },
+            cursorDelta: {
+              x: cursorDeltaX.toFixed(2),
+              y: cursorDeltaY.toFixed(2),
+            },
             empiricalPxPerSvg: empiricalScale.pixelsPerSvgUnit.toFixed(2),
             viewportScale: viewportScale.toFixed(2),
             zoom: currentZoom.toFixed(2),
@@ -682,7 +691,10 @@ export function useMagnifierTouchHandlers(
         if (e.touches.length === 1) {
           // User lifted one finger but still has one down - start panning
           const touch = e.touches[0]
-          magnifierTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+          magnifierTouchStartRef.current = {
+            x: touch.clientX,
+            y: touch.clientY,
+          }
           // State machine will transition to magnifierPanning on TOUCH_MOVE
         }
         return

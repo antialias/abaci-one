@@ -89,7 +89,10 @@ describe('createSkillCostCalculator', () => {
   it('should calculate cost based on mastery state', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
         'tenComplements.9=10-1': {
           skillId: 'tenComplements.9=10-1',
           masteryState: 'not_practicing',
@@ -117,9 +120,18 @@ describe('createSkillCostCalculator', () => {
   it('should calculate term cost as sum of skill costs', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
-        'fiveComplements.3=5-2': { skillId: 'fiveComplements.3=5-2', masteryState: 'fluent' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'practicing' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
+        'fiveComplements.3=5-2': {
+          skillId: 'fiveComplements.3=5-2',
+          masteryState: 'fluent',
+        },
+        'tenComplements.9=10-1': {
+          skillId: 'tenComplements.9=10-1',
+          masteryState: 'practicing',
+        },
       },
     }
 
@@ -143,8 +155,14 @@ describe('createSkillCostCalculator', () => {
   it('should return correct mastery state via getMasteryState', () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': { skillId: 'fiveComplements.4=5-1', masteryState: 'effortless' },
-        'tenComplements.9=10-1': { skillId: 'tenComplements.9=10-1', masteryState: 'practicing' },
+        'fiveComplements.4=5-1': {
+          skillId: 'fiveComplements.4=5-1',
+          masteryState: 'effortless',
+        },
+        'tenComplements.9=10-1': {
+          skillId: 'tenComplements.9=10-1',
+          masteryState: 'practicing',
+        },
       },
     }
 

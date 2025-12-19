@@ -110,7 +110,9 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
 
   const invalidate = () => {
     if (playerId) {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
     }
   }
 
@@ -305,7 +307,9 @@ export function usePlayerCurriculum(playerId: string | null) {
   // Refresh function for backwards compatibility
   const refresh = async () => {
     if (playerId) {
-      await queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      await queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
     }
   }
 
@@ -327,7 +331,10 @@ export function usePlayerCurriculum(playerId: string | null) {
     visualizationMode: boolean = false
   ): Promise<string | null> => {
     try {
-      const session = await mutations.startSession.mutateAsync({ phaseId, visualizationMode })
+      const session = await mutations.startSession.mutateAsync({
+        phaseId,
+        visualizationMode,
+      })
       return session.id
     } catch {
       return null
@@ -415,7 +422,9 @@ export function useSetMasteredSkills() {
     // Optimistic update: update cache immediately before API call
     onMutate: async ({ playerId, masteredSkillIds }) => {
       // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: curriculumKeys.detail(playerId) })
+      await queryClient.cancelQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
 
       // Snapshot the previous value for rollback
       const previousData = queryClient.getQueryData(curriculumKeys.detail(playerId))
@@ -449,7 +458,9 @@ export function useSetMasteredSkills() {
 
     // Always refetch after mutation to ensure sync with server
     onSettled: (_, __, { playerId }) => {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
     },
   })
 }
@@ -477,7 +488,9 @@ export function useRefreshSkillRecency() {
       return response.json()
     },
     onSuccess: (_, { playerId }) => {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.detail(playerId) })
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
     },
   })
 }

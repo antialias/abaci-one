@@ -33,7 +33,10 @@ export interface TermSkillAnnotationProps {
 /**
  * Format a skill ID for human-readable display
  */
-function formatSkillId(skillId: string): { shortName: string; fullName: string } {
+function formatSkillId(skillId: string): {
+  shortName: string
+  fullName: string
+} {
   // "fiveComplements.4=5-1" → { shortName: "4=5-1", fullName: "5-complement for 4" }
   // "tenComplements.9=10-1" → { shortName: "9=10-1", fullName: "10-complement for 9" }
   // "basic.directAddition" → { shortName: "direct", fullName: "Direct addition" }
@@ -187,7 +190,12 @@ export function TermSkillAnnotation({
       >
         [{complexityCost ?? '?'}]{statusIcon && <span>{statusIcon}</span>}
         {isFirstTerm && minBudget !== undefined && (
-          <span className={css({ fontSize: '0.625rem', color: isDark ? 'gray.500' : 'gray.400' })}>
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              color: isDark ? 'gray.500' : 'gray.400',
+            })}
+          >
             *
           </span>
         )}

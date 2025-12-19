@@ -1146,10 +1146,12 @@ export function ActiveSession({
       className={css({
         display: 'flex',
         flexDirection: 'column',
-        gap: '1.5rem',
-        padding: '1rem',
+        gap: { base: '0.75rem', md: '1rem' },
+        padding: { base: '0.5rem', md: '1rem' },
         maxWidth: '600px',
         margin: '0 auto',
+        height: '100%', // Fill parent container
+        overflow: 'hidden', // Prevent overflow
       })}
     >
       {/* Problem display */}
@@ -1159,14 +1161,18 @@ export function ActiveSession({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '1.5rem',
-          paddingTop: '4rem',
-          paddingRight: '2rem',
-          paddingBottom: '2rem',
-          paddingLeft: '2rem',
+          justifyContent: 'center',
+          gap: { base: '0.75rem', md: '1rem' },
+          flex: 1, // Take remaining space
+          minHeight: 0, // Allow shrinking
+          paddingTop: { base: '1rem', md: '2rem' },
+          paddingRight: { base: '1rem', md: '2rem' },
+          paddingBottom: { base: '1rem', md: '1.5rem' },
+          paddingLeft: { base: '1rem', md: '2rem' },
           backgroundColor: isDark ? 'gray.800' : 'white',
           borderRadius: '16px',
           boxShadow: 'md',
+          overflow: 'hidden', // Prevent overflow
         })}
       >
         {/* Purpose badge with tooltip */}
@@ -1526,44 +1532,51 @@ export function ActiveSession({
 
       {/* Input area */}
       {showInputArea && !isPaused && (
-        <div data-section="input-area">
-          {/* Submit button - only shown when auto-submit threshold exceeded */}
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'center',
-              marginBottom: '1rem',
-              minHeight: '52px',
-              overflow: 'hidden',
-            })}
-          >
-            <animated.button
-              type="button"
-              data-action="submit"
-              data-visible={showSubmitButton}
-              onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting || !showSubmitButton}
-              style={submitButtonSpring}
+        <div
+          data-section="input-area"
+          className={css({
+            flexShrink: 0, // Don't shrink the input area
+          })}
+        >
+          {/* Submit button - hidden on small screens when keypad is shown (integrated into keypad instead) */}
+          {!showOnScreenKeypad && (
+            <div
               className={css({
-                padding: '0.75rem 2rem',
-                fontSize: '1.125rem',
-                fontWeight: 'bold',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: !canSubmit || !showSubmitButton ? 'not-allowed' : 'pointer',
-                backgroundColor: canSubmit ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
-                color: !canSubmit ? (isDark ? 'gray.400' : 'gray.500') : 'white',
-                _hover: {
-                  backgroundColor:
-                    canSubmit && showSubmitButton ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
-                },
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '0.75rem',
+                minHeight: '48px',
+                overflow: 'hidden',
               })}
             >
-              Submit
-            </animated.button>
-          </div>
+              <animated.button
+                type="button"
+                data-action="submit"
+                data-visible={showSubmitButton}
+                onClick={handleSubmit}
+                disabled={!canSubmit || isSubmitting || !showSubmitButton}
+                style={submitButtonSpring}
+                className={css({
+                  padding: '0.75rem 2rem',
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: !canSubmit || !showSubmitButton ? 'not-allowed' : 'pointer',
+                  backgroundColor: canSubmit ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
+                  color: !canSubmit ? (isDark ? 'gray.400' : 'gray.500') : 'white',
+                  _hover: {
+                    backgroundColor:
+                      canSubmit && showSubmitButton ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                  },
+                })}
+              >
+                Submit
+              </animated.button>
+            </div>
+          )}
 
-          {/* On-screen keypad for mobile */}
+          {/* On-screen keypad for mobile - includes submit button */}
           {showOnScreenKeypad && (
             <NumericKeypad
               onDigit={handleDigit}

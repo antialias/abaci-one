@@ -1,10 +1,16 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Keyboard from 'react-simple-keyboard'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import 'react-simple-keyboard/build/css/index.css'
 import { css } from '../../../styled-system/css'
+
+// Height of the portrait keypad (button height + padding)
+const PORTRAIT_KEYPAD_HEIGHT = 48
+// Width of the landscape keypad (on small screens)
+const LANDSCAPE_KEYPAD_WIDTH = 100
 
 interface NumericKeypadProps {
   /** Called when a digit is pressed */
@@ -197,6 +203,20 @@ export function NumericKeypad({
   const isDark = resolvedTheme === 'dark'
   const portraitKeyboardRef = useRef<any>(null)
   const landscapeKeyboardRef = useRef<any>(null)
+  const { setBottomOffset, setRightOffset } = useMyAbacus()
+
+  // Set offsets for floating abacus when keypad is shown
+  // This positions the abacus above/left of the keypad to avoid overlap
+  // Portrait: bottom offset (keypad at bottom)
+  // Landscape (small screens): right offset (keypad on right side)
+  useEffect(() => {
+    setBottomOffset(PORTRAIT_KEYPAD_HEIGHT)
+    setRightOffset(LANDSCAPE_KEYPAD_WIDTH)
+    return () => {
+      setBottomOffset(0)
+      setRightOffset(0)
+    }
+  }, [setBottomOffset, setRightOffset])
 
   // Portrait layout: single row (no empty spacer - buttons flex to fill)
   const portraitLayout = {

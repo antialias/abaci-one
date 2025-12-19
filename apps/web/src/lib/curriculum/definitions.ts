@@ -367,7 +367,9 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
         // Target the specific five-complement skill
         const skill = FIVE_COMPLEMENT_ADD[phase.targetNumber]
         target.fiveComplements = { [skill]: true } as Partial<SkillSet['fiveComplements']>
-        required.fiveComplements = { [skill]: true } as SkillSet['fiveComplements']
+        required.fiveComplements = {
+          [skill]: true,
+        } as SkillSet['fiveComplements']
       } else if (!phase.usesFiveComplement) {
         // Forbid five-complements for direct-only practice
         forbidden.fiveComplements = {
@@ -385,7 +387,9 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
       if (phase.usesFiveComplement && Math.abs(phase.targetNumber) <= 4) {
         const skill = FIVE_COMPLEMENT_SUB[Math.abs(phase.targetNumber)]
         target.fiveComplementsSub = { [skill]: true } as Partial<SkillSet['fiveComplementsSub']>
-        required.fiveComplementsSub = { [skill]: true } as SkillSet['fiveComplementsSub']
+        required.fiveComplementsSub = {
+          [skill]: true,
+        } as SkillSet['fiveComplementsSub']
       } else if (!phase.usesFiveComplement) {
         forbidden.fiveComplementsSub = {
           '-4=-5+1': true,
@@ -420,7 +424,9 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
 
     const skill = TEN_COMPLEMENT_SUB[Math.abs(phase.targetNumber)]
     target.tenComplementsSub = { [skill]: true } as Partial<SkillSet['tenComplementsSub']>
-    required.tenComplementsSub = { [skill]: true } as SkillSet['tenComplementsSub']
+    required.tenComplementsSub = {
+      [skill]: true,
+    } as SkillSet['tenComplementsSub']
 
     if (!phase.usesFiveComplement) {
       forbidden.fiveComplementsSub = {

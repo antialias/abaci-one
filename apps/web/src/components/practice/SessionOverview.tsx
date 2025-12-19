@@ -176,11 +176,21 @@ export function SessionOverview({ plan, studentName }: SessionOverviewProps) {
             fontSize: '0.875rem',
           })}
         >
-          <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+            })}
+          >
             <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
               Current threshold:
             </span>
-            <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isDark ? 'gray.200' : 'gray.800',
+              })}
+            >
               {formatMs(currentAutoPause.threshold)}
             </span>
           </div>

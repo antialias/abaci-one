@@ -9,7 +9,10 @@
 import { useEffect, useState } from 'react'
 
 // Re-export shared hooks for convenience
-export { useHasAnyFinePointer, useIsTouchDevice } from '@/hooks/useDeviceCapabilities'
+export {
+  useHasAnyFinePointer,
+  useIsTouchDevice,
+} from '@/hooks/useDeviceCapabilities'
 
 /**
  * Hook to detect if the device supports precision mode (pointer lock).

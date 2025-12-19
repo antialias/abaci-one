@@ -77,14 +77,32 @@ export const paddingLg: SystemStyleObject = { padding: '1.5rem' }
 export const paddingXl: SystemStyleObject = { padding: '2rem' }
 
 // Horizontal padding
-export const paddingXSm: SystemStyleObject = { paddingLeft: '0.5rem', paddingRight: '0.5rem' }
-export const paddingXMd: SystemStyleObject = { paddingLeft: '1rem', paddingRight: '1rem' }
-export const paddingXLg: SystemStyleObject = { paddingLeft: '1.5rem', paddingRight: '1.5rem' }
+export const paddingXSm: SystemStyleObject = {
+  paddingLeft: '0.5rem',
+  paddingRight: '0.5rem',
+}
+export const paddingXMd: SystemStyleObject = {
+  paddingLeft: '1rem',
+  paddingRight: '1rem',
+}
+export const paddingXLg: SystemStyleObject = {
+  paddingLeft: '1.5rem',
+  paddingRight: '1.5rem',
+}
 
 // Vertical padding
-export const paddingYSm: SystemStyleObject = { paddingTop: '0.5rem', paddingBottom: '0.5rem' }
-export const paddingYMd: SystemStyleObject = { paddingTop: '1rem', paddingBottom: '1rem' }
-export const paddingYLg: SystemStyleObject = { paddingTop: '1.5rem', paddingBottom: '1.5rem' }
+export const paddingYSm: SystemStyleObject = {
+  paddingTop: '0.5rem',
+  paddingBottom: '0.5rem',
+}
+export const paddingYMd: SystemStyleObject = {
+  paddingTop: '1rem',
+  paddingBottom: '1rem',
+}
+export const paddingYLg: SystemStyleObject = {
+  paddingTop: '1.5rem',
+  paddingBottom: '1.5rem',
+}
 
 // ============================================================================
 // Margin Presets
@@ -145,9 +163,15 @@ export const textRight: SystemStyleObject = { textAlign: 'right' }
 // Common Transitions
 // ============================================================================
 
-export const transitionFast: SystemStyleObject = { transition: 'all 0.15s ease' }
-export const transitionNormal: SystemStyleObject = { transition: 'all 0.2s ease' }
-export const transitionSlow: SystemStyleObject = { transition: 'all 0.3s ease' }
+export const transitionFast: SystemStyleObject = {
+  transition: 'all 0.15s ease',
+}
+export const transitionNormal: SystemStyleObject = {
+  transition: 'all 0.2s ease',
+}
+export const transitionSlow: SystemStyleObject = {
+  transition: 'all 0.3s ease',
+}
 
 // ============================================================================
 // Interaction States

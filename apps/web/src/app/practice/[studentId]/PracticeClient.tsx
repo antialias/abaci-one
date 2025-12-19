@@ -163,9 +163,32 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       <main
         data-component="practice-page"
         className={css({
-          minHeight: 'calc(100vh - 140px)', // Full height minus nav and sub-nav
+          // Fixed positioning to precisely control bounds
+          position: 'fixed',
+          // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
+          top: { base: '132px', md: '140px' },
+          left: 0,
+          // Right: 0 by default, landscape mobile handled via media query below
+          right: 0,
+          // Bottom: keypad height on mobile portrait (48px), 0 on desktop
+          // Landscape mobile handled via media query below
+          bottom: { base: '48px', md: 0 },
+          overflow: 'hidden', // Prevent scrolling during practice
         })}
       >
+        {/* Landscape mobile: keypad is on right (100px) instead of bottom */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @media (orientation: landscape) and (max-height: 500px) {
+                [data-component="practice-page"] {
+                  bottom: 0 !important;
+                  right: 100px !important;
+                }
+              }
+            `,
+          }}
+        />
         <PracticeErrorBoundary studentName={player.name}>
           <ActiveSession
             plan={currentPlan}

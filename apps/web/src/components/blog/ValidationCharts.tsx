@@ -59,7 +59,11 @@ const tabContentStyles = css({
 
 const summaryCardStyles = css({
   display: 'grid',
-  gridTemplateColumns: { base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+  gridTemplateColumns: {
+    base: '1fr',
+    sm: 'repeat(2, 1fr)',
+    md: 'repeat(3, 1fr)',
+  },
   gap: '1rem',
   mb: '1.5rem',
 })
@@ -254,7 +258,13 @@ export function ExampleTrajectoryChart() {
       >
         Mastery Progression: Adaptive vs Classic
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Fast learner deficient in <code>fiveComplements.3=5-2</code>. Adaptive reaches 80% mastery
         by session 6; classic takes until session 9.
       </p>
@@ -287,7 +297,13 @@ export function ConvergenceSpeedChart() {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: Array<{ seriesName: string; value: number | null; name: string }>) => {
+      formatter: (
+        params: Array<{
+          seriesName: string
+          value: number | null
+          name: string
+        }>
+      ) => {
         const skill = params[0]?.name.replace('\n', ' ')
         let html = `<strong>${skill}</strong><br/>`
         for (const p of params) {
@@ -385,7 +401,13 @@ export function ConvergenceSpeedChart() {
       >
         Sessions to Reach 80% Mastery (Fast Learner)
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Adaptive mode consistently reaches mastery faster. "Never" indicates the mode did not reach
         80% within 12 sessions.
       </p>
@@ -510,7 +532,13 @@ export function AutomaticityMultiplierChart() {
       >
         Non-Linear Cost Multiplier Curve
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         The squared mapping provides better differentiation at high mastery levels. A skill at 50%
         P(known) costs 3.3× more than a fully automated skill.
       </p>
@@ -688,7 +716,13 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   if (!data) {
     return (
       <div className={chartContainerStyles}>
-        <p className={css({ color: 'text.muted', textAlign: 'center', py: '2rem' })}>
+        <p
+          className={css({
+            color: 'text.muted',
+            textAlign: 'center',
+            py: '2rem',
+          })}
+        >
           Loading trajectory data...
         </p>
       </div>
@@ -880,11 +914,22 @@ function MultiSkillTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Mastery Progression: Adaptive vs Classic
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Bold lines show average across {numSkills} skills. Ghost lines show individual skills
         (greens = adaptive, grays = classic). Thicker lines = harder skills (ten-complements).
         Darker shades = later in pedagogical sequence.
@@ -958,7 +1003,13 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   if (!data) {
     return (
       <div className={chartContainerStyles}>
-        <p className={css({ color: 'text.muted', textAlign: 'center', py: '2rem' })}>
+        <p
+          className={css({
+            color: 'text.muted',
+            textAlign: 'center',
+            py: '2rem',
+          })}
+        >
           Loading trajectory data...
         </p>
       </div>
@@ -1027,7 +1078,12 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     smooth: boolean
     symbol: string
     symbolSize: number
-    lineStyle: { color: string; width: number; type?: string; opacity?: number }
+    lineStyle: {
+      color: string
+      width: number
+      type?: string
+      opacity?: number
+    }
     itemStyle: { color: string; opacity?: number }
     z?: number
     markLine?: unknown
@@ -1060,7 +1116,12 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
       smooth: true,
       symbol: 'none',
       symbolSize: 0,
-      lineStyle: { color: colors.classic, width: catLineWidth, type: 'dashed', opacity: 0.5 },
+      lineStyle: {
+        color: colors.classic,
+        width: catLineWidth,
+        type: 'dashed',
+        opacity: 0.5,
+      },
       itemStyle: { color: colors.classic, opacity: 0.5 },
       z: 1,
     })
@@ -1074,7 +1135,10 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     smooth: true,
     symbol: 'circle',
     symbolSize: 8,
-    lineStyle: { color: '#22c55e', width: Math.max(selectedLineWidth * 1.5, 3) },
+    lineStyle: {
+      color: '#22c55e',
+      width: Math.max(selectedLineWidth * 1.5, 3),
+    },
     itemStyle: { color: '#22c55e' },
     z: 10,
     markLine: {
@@ -1094,7 +1158,10 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
     smooth: true,
     symbol: 'circle',
     symbolSize: 8,
-    lineStyle: { color: '#6b7280', width: Math.max(selectedLineWidth * 1.5, 3) },
+    lineStyle: {
+      color: '#6b7280',
+      width: Math.max(selectedLineWidth * 1.5, 3),
+    },
     itemStyle: { color: '#6b7280' },
     z: 10,
   })
@@ -1198,7 +1265,12 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Mastery Progression: {selectedSkill.label}
       </h4>
@@ -1265,7 +1337,13 @@ function InteractiveTrajectoryChart({ data }: { data: TrajectoryData | null }) {
         </div>
       )}
 
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         <strong>Adaptive:</strong> 80% by session {adaptiveTo80 ?? 'never'} |{' '}
         <strong>Classic:</strong> 80% by session {classicTo80 ?? 'never'}
         {advantageText && (
@@ -1297,7 +1375,13 @@ function ConvergenceChart({ data }: { data: TrajectoryData | null }) {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: Array<{ seriesName: string; value: number | null; name: string }>) => {
+      formatter: (
+        params: Array<{
+          seriesName: string
+          value: number | null
+          name: string
+        }>
+      ) => {
         const skill = params[0]?.name.replace('\n', ' ')
         let html = `<strong>${skill}</strong><br/>`
         for (const p of params) {
@@ -1366,7 +1450,12 @@ function ConvergenceChart({ data }: { data: TrajectoryData | null }) {
           itemStyle: { color: '#6b7280' },
           label:
             v === null
-              ? { show: true, position: 'inside', formatter: 'Never', color: '#ef4444' }
+              ? {
+                  show: true,
+                  position: 'inside',
+                  formatter: 'Never',
+                  color: '#ef4444',
+                }
               : undefined,
         })),
         barWidth: '35%',
@@ -1395,7 +1484,13 @@ function ConvergenceChart({ data }: { data: TrajectoryData | null }) {
       >
         Sessions to Reach 80% Mastery by Skill
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Adaptive mode consistently reaches mastery faster across all tested skills. "—" or "Never"
         indicates the mode did not reach 80% within 12 sessions.
       </p>
@@ -1434,7 +1529,12 @@ function ValidationDataTable({ data }: { data: TrajectoryData | null }) {
 
   // Use comparison table from data if available
   const comparisonData = data?.comparisonTable ?? [
-    { skill: 'fiveComp 3=5-2', adaptiveTo80: 6, classicTo80: 9, advantage: 'Adaptive +3 sessions' },
+    {
+      skill: 'fiveComp 3=5-2',
+      adaptiveTo80: 6,
+      classicTo80: 9,
+      advantage: 'Adaptive +3 sessions',
+    },
   ]
 
   return (
@@ -1449,7 +1549,13 @@ function ValidationDataTable({ data }: { data: TrajectoryData | null }) {
       >
         A/B Comparison Summary
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Sessions to reach 80% mastery for each skill, comparing adaptive vs classic modes.
       </p>
       <div className={css({ overflowX: 'auto' })}>
@@ -1465,7 +1571,12 @@ function ValidationDataTable({ data }: { data: TrajectoryData | null }) {
           <tbody>
             {comparisonData.map((row) => (
               <tr key={row.skill}>
-                <td className={css({ fontFamily: 'monospace', fontSize: '0.75rem' })}>
+                <td
+                  className={css({
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                  })}
+                >
                   {row.skill}
                 </td>
                 <td className={css({ color: 'green.400', fontWeight: 600 })}>
@@ -1597,7 +1708,10 @@ function ThreeWayComparisonChart() {
       {
         name: 'Classic',
         type: 'bar',
-        data: classicTo80.map((v) => ({ value: v, itemStyle: { color: '#6b7280' } })),
+        data: classicTo80.map((v) => ({
+          value: v,
+          itemStyle: { color: '#6b7280' },
+        })),
         label: { show: true, position: 'top', color: '#9ca3af', fontSize: 11 },
       },
       {
@@ -1633,7 +1747,13 @@ function ThreeWayComparisonChart() {
       >
         Sessions to 80% Mastery: 3-Way Comparison
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Both adaptive modes perform identically—the benefit comes from BKT <em>targeting</em>, not
         from BKT-based cost calculation.
       </p>
@@ -1700,7 +1820,10 @@ function FatigueComparisonChart() {
       {
         name: 'Classic',
         type: 'bar',
-        data: classicFatigue.map((v) => ({ value: v, itemStyle: { color: '#6b7280' } })),
+        data: classicFatigue.map((v) => ({
+          value: v,
+          itemStyle: { color: '#6b7280' },
+        })),
         label: {
           show: true,
           position: 'top',
@@ -1754,7 +1877,13 @@ function FatigueComparisonChart() {
       >
         Cognitive Fatigue Per Session
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         All modes have similar cognitive load. Adaptive modes are slightly higher because they
         include more challenging (weak skill) problems.
       </p>
@@ -1832,7 +1961,13 @@ function ThreeWayDataTable() {
       >
         3-Way Comparison Data
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Sessions to reach mastery thresholds and cognitive fatigue per session.
       </p>
       <div className={css({ overflowX: 'auto' })}>
@@ -1982,11 +2117,22 @@ function HelpLevelChart() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Evidence Weight by Help Level
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Using hints or scaffolding reduces evidence strength. A correct answer with full solution
         shown provides only 50% of the evidence weight.
       </p>
@@ -2067,11 +2213,22 @@ function ResponseTimeChart() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Evidence Weight by Response Time
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Fast correct answers suggest automaticity (1.2×). Slow incorrect answers suggest genuine
         confusion (1.2×). Very fast incorrect answers are likely careless slips (0.5×).
       </p>
@@ -2107,10 +2264,23 @@ function EvidenceQualityTable() {
 
   return (
     <div className={chartContainerStyles}>
-      <h4 className={css({ fontSize: '1rem', fontWeight: 600, mb: '1rem', color: 'text.primary' })}>
+      <h4
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '1rem',
+          color: 'text.primary',
+        })}
+      >
         Evidence Quality Data
       </h4>
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        })}
+      >
         <div>
           <h5
             className={css({
@@ -2333,11 +2503,22 @@ function MultiplierCurveChart() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Non-Linear Cost Multiplier Curve
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         The squared mapping provides better differentiation at high mastery levels. A skill at 50%
         P(known) costs 3.3× more than a fully automated skill.
       </p>
@@ -2383,11 +2564,22 @@ function MultiplierDataTable() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Automaticity Multiplier Data
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Reference points showing how P(known) maps to cost multiplier.
       </p>
       <table className={tableStyles}>
@@ -2499,11 +2691,22 @@ function StalenessVisual() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Staleness Warning Levels
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Skills are flagged based on days since last practice. Staleness is shown as a separate
         indicator, not by decaying P(known).
       </p>
@@ -2540,7 +2743,12 @@ function StalenessDataTable() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Staleness Indicator Data
       </h4>
@@ -2688,11 +2896,22 @@ function ClassificationVisual() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         P(known) Classification Zones
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Skills are classified into zones based on their P(known) value when confidence meets
         threshold. Low-confidence estimates default to "Learning" regardless of P(known).
       </p>
@@ -2740,7 +2959,12 @@ function ClassificationDataTable() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Classification Criteria
       </h4>
@@ -2875,14 +3099,32 @@ function BlameComparisonChart() {
       {
         name: 'Heuristic',
         type: 'bar',
-        data: heuristicCorr.map((v) => ({ value: v, itemStyle: { color: '#22c55e' } })),
-        label: { show: true, position: 'top', color: '#9ca3af', fontSize: 10, formatter: '{c}' },
+        data: heuristicCorr.map((v) => ({
+          value: v,
+          itemStyle: { color: '#22c55e' },
+        })),
+        label: {
+          show: true,
+          position: 'top',
+          color: '#9ca3af',
+          fontSize: 10,
+          formatter: '{c}',
+        },
       },
       {
         name: 'Bayesian',
         type: 'bar',
-        data: bayesianCorr.map((v) => ({ value: v, itemStyle: { color: '#3b82f6' } })),
-        label: { show: true, position: 'top', color: '#9ca3af', fontSize: 10, formatter: '{c}' },
+        data: bayesianCorr.map((v) => ({
+          value: v,
+          itemStyle: { color: '#3b82f6' },
+        })),
+        label: {
+          show: true,
+          position: 'top',
+          color: '#9ca3af',
+          fontSize: 10,
+          formatter: '{c}',
+        },
       },
     ],
   }
@@ -2899,7 +3141,13 @@ function BlameComparisonChart() {
       >
         BKT-Truth Correlation: Heuristic vs Bayesian Blame Attribution
       </h4>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mb: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mb: '1rem',
+        })}
+      >
         Fast learner profiles across 5 random seeds. Higher correlation = BKT estimates track true
         mastery more accurately.
       </p>
@@ -2911,11 +3159,41 @@ function BlameComparisonChart() {
 /** Internal: Data table for blame attribution validation */
 function BlameDataTable() {
   const data = [
-    { seed: 42424, heuristic: 0.245, bayesian: 0.401, diff: 0.156, winner: 'Bayesian' },
-    { seed: 12345, heuristic: 0.751, bayesian: 0.627, diff: -0.124, winner: 'Heuristic' },
-    { seed: 99999, heuristic: 0.636, bayesian: 0.254, diff: -0.382, winner: 'Heuristic' },
-    { seed: 77777, heuristic: 0.166, bayesian: 0.345, diff: 0.178, winner: 'Bayesian' },
-    { seed: 55555, heuristic: 0.172, bayesian: 0.154, diff: -0.018, winner: 'Heuristic' },
+    {
+      seed: 42424,
+      heuristic: 0.245,
+      bayesian: 0.401,
+      diff: 0.156,
+      winner: 'Bayesian',
+    },
+    {
+      seed: 12345,
+      heuristic: 0.751,
+      bayesian: 0.627,
+      diff: -0.124,
+      winner: 'Heuristic',
+    },
+    {
+      seed: 99999,
+      heuristic: 0.636,
+      bayesian: 0.254,
+      diff: -0.382,
+      winner: 'Heuristic',
+    },
+    {
+      seed: 77777,
+      heuristic: 0.166,
+      bayesian: 0.345,
+      diff: 0.178,
+      winner: 'Bayesian',
+    },
+    {
+      seed: 55555,
+      heuristic: 0.172,
+      bayesian: 0.154,
+      diff: -0.018,
+      winner: 'Heuristic',
+    },
   ]
 
   const tableStyles = css({
@@ -2946,7 +3224,12 @@ function BlameDataTable() {
   return (
     <div className={chartContainerStyles}>
       <h4
-        className={css({ fontSize: '1rem', fontWeight: 600, mb: '0.5rem', color: 'text.primary' })}
+        className={css({
+          fontSize: '1rem',
+          fontWeight: 600,
+          mb: '0.5rem',
+          color: 'text.primary',
+        })}
       >
         Multi-Seed Validation Results
       </h4>
@@ -2986,7 +3269,13 @@ function BlameDataTable() {
           ))}
         </tbody>
         <tfoot>
-          <tr className={css({ fontWeight: 600, borderTop: '2px solid', borderColor: 'gray.600' })}>
+          <tr
+            className={css({
+              fontWeight: 600,
+              borderTop: '2px solid',
+              borderColor: 'gray.600',
+            })}
+          >
             <td>Mean</td>
             <td>0.394</td>
             <td>0.356</td>
@@ -2995,7 +3284,13 @@ function BlameDataTable() {
           </tr>
         </tfoot>
       </table>
-      <p className={css({ fontSize: '0.875rem', color: 'text.muted', mt: '1rem' })}>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: 'text.muted',
+          mt: '1rem',
+        })}
+      >
         t = -0.41, p &gt; 0.05 (df=4). The difference is not statistically significant.
       </p>
     </div>

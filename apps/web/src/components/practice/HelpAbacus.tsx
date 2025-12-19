@@ -138,7 +138,11 @@ export function HelpAbacus({
       const beadDiff = calculateBeadDiffFromValues(displayedValue, targetValue)
 
       if (!beadDiff.hasChanges) {
-        return { stepBeadHighlights: undefined, hasChanges: false, summary: '' }
+        return {
+          stepBeadHighlights: undefined,
+          hasChanges: false,
+          summary: '',
+        }
       }
 
       // Convert bead diff to StepBeadHighlight format

@@ -175,8 +175,18 @@ export type InteractionEvent =
   | { type: 'SHIFT_KEY_DOWN' }
   | { type: 'SHIFT_KEY_UP' }
   // Mobile events
-  | { type: 'TOUCH_START'; position: Point; touchCount: number; regionId: string | null }
-  | { type: 'TOUCH_MOVE'; position: Point; touchCount: number; regionId?: string | null }
+  | {
+      type: 'TOUCH_START'
+      position: Point
+      touchCount: number
+      regionId: string | null
+    }
+  | {
+      type: 'TOUCH_MOVE'
+      position: Point
+      touchCount: number
+      regionId?: string | null
+    }
   | { type: 'TOUCH_END'; touchCount: number }
   | { type: 'TAP'; regionId: string | null }
   | { type: 'PAN_THRESHOLD_EXCEEDED' }
@@ -185,7 +195,11 @@ export type InteractionEvent =
   | { type: 'MAGNIFIER_ACTIVATED' }
   | { type: 'MAGNIFIER_DEACTIVATED' }
   // Magnifier display events (shared by both modes)
-  | { type: 'MAGNIFIER_SHOW'; position?: { top: number; left: number }; zoom?: number }
+  | {
+      type: 'MAGNIFIER_SHOW'
+      position?: { top: number; left: number }
+      zoom?: number
+    }
   | { type: 'MAGNIFIER_HIDE' }
   | { type: 'MAGNIFIER_SET_ZOOM'; zoom: number }
   | { type: 'MAGNIFIER_SET_POSITION'; top: number; left: number }
@@ -193,7 +207,11 @@ export type InteractionEvent =
   | { type: 'MAGNIFIER_SET_EXPANDED'; expanded: boolean }
   | { type: 'MAGNIFIER_TOGGLE_EXPANDED' }
   // Precision mode events (desktop only)
-  | { type: 'PRECISION_THRESHOLD_UPDATE'; atThreshold: boolean; screenPixelRatio: number }
+  | {
+      type: 'PRECISION_THRESHOLD_UPDATE'
+      atThreshold: boolean
+      screenPixelRatio: number
+    }
   // Shared events
   | { type: 'RESET' }
   | { type: 'SET_MODE'; mode: 'desktop' | 'mobile' }
@@ -292,7 +310,10 @@ function handleMagnifierEvent(
     case 'MAGNIFIER_TOGGLE_EXPANDED':
       return {
         ...state,
-        magnifier: { ...state.magnifier, isExpanded: !state.magnifier.isExpanded },
+        magnifier: {
+          ...state.magnifier,
+          isExpanded: !state.magnifier.isExpanded,
+        },
       }
 
     default:
@@ -475,7 +496,11 @@ function mobileReducer(
           touchedRegion: event.regionId !== undefined ? event.regionId : state.touchedRegion,
           // Show magnifier when entering mapPanning phase
           ...(enteringMapPanning && {
-            magnifier: { ...state.magnifier, isVisible: true, targetOpacity: 1 },
+            magnifier: {
+              ...state.magnifier,
+              isVisible: true,
+              targetOpacity: 1,
+            },
           }),
         }
       }
@@ -526,7 +551,12 @@ function mobileReducer(
         }
         if (state.phase === 'magnifierPanning') {
           // Magnifier panning ended - stay in magnifier mode, preserve drag-triggered state
-          return { ...state, phase: 'magnifierActive', touchCount: 0, hasPanned: false }
+          return {
+            ...state,
+            phase: 'magnifierActive',
+            touchCount: 0,
+            hasPanned: false,
+          }
         }
         if (state.phase === 'magnifierPinching') {
           return { ...state, phase: 'magnifierActive', touchCount: 0 }
