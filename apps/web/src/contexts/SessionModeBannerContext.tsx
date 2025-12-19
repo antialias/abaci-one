@@ -29,8 +29,13 @@ export interface SlotBounds {
   height: number
 }
 
+export interface SlotDimensions {
+  width: number
+  height: number
+}
+
 interface SessionModeBannerContextValue {
-  // Which slot is currently active (computed from registered slots)
+  // Which slot is currently active (computed from registered slots + visibility)
   activeSlot: BannerSlot
 
   // Slot registration - components call these to register/unregister
@@ -42,6 +47,15 @@ interface SessionModeBannerContextValue {
   // Bounds reporting - slots report their position
   setContentBounds: (bounds: SlotBounds | null) => void
   setNavBounds: (bounds: SlotBounds | null) => void
+
+  // Dimensions reporting - slots report their measured content size
+  setContentDimensions: (dimensions: SlotDimensions | null) => void
+  setNavDimensions: (dimensions: SlotDimensions | null) => void
+  contentDimensions: SlotDimensions | null
+  navDimensions: SlotDimensions | null
+
+  // Visibility reporting - content slot reports when scrolled out of view
+  setContentSlotVisible: (visible: boolean) => void
 
   // Current target bounds for the banner (from active slot)
   targetBounds: SlotBounds | null
@@ -92,14 +106,22 @@ export function SessionModeBannerProvider({
   const [contentBounds, setContentBoundsState] = useState<SlotBounds | null>(null)
   const [navBounds, setNavBoundsState] = useState<SlotBounds | null>(null)
 
+  // Track measured dimensions from each slot's content
+  const [contentDimensions, setContentDimensionsState] = useState<SlotDimensions | null>(null)
+  const [navDimensions, setNavDimensionsState] = useState<SlotDimensions | null>(null)
+
+  // Track content slot visibility (for scroll-based projection)
+  const [isContentSlotVisible, setContentSlotVisibleState] = useState(true)
+
   // Track last slot change time for animation skipping
   const lastSlotChangeRef = useRef<number>(0)
   const [shouldAnimate, setShouldAnimate] = useState(true)
 
-  // Compute active slot based on which slots are registered
-  // Priority: content > nav > hidden
+  // Compute active slot based on which slots are registered AND visibility
+  // Priority: content (if visible) > nav > hidden
+  // When content slot scrolls under nav, project to nav slot
   const activeSlot: BannerSlot =
-    contentSlotCount > 0 ? 'content' : navSlotCount > 0 ? 'nav' : 'hidden'
+    contentSlotCount > 0 && isContentSlotVisible ? 'content' : navSlotCount > 0 ? 'nav' : 'hidden'
 
   // Compute target bounds based on active slot
   const targetBounds =
@@ -145,6 +167,20 @@ export function SessionModeBannerProvider({
     setNavBoundsState(bounds)
   }, [])
 
+  // Dimensions setters (for measured content size)
+  const setContentDimensions = useCallback((dimensions: SlotDimensions | null) => {
+    setContentDimensionsState(dimensions)
+  }, [])
+
+  const setNavDimensions = useCallback((dimensions: SlotDimensions | null) => {
+    setNavDimensionsState(dimensions)
+  }, [])
+
+  // Visibility setter (for scroll-based projection)
+  const setContentSlotVisible = useCallback((visible: boolean) => {
+    setContentSlotVisibleState(visible)
+  }, [])
+
   // Action callback refs (to avoid re-renders when callbacks change)
   const onActionRef = useRef<() => void>(() => {})
   const onResumeRef = useRef<() => void>(() => {})
@@ -183,6 +219,11 @@ export function SessionModeBannerProvider({
       unregisterNavSlot,
       setContentBounds,
       setNavBounds,
+      setContentDimensions,
+      setNavDimensions,
+      contentDimensions,
+      navDimensions,
+      setContentSlotVisible,
       targetBounds,
       sessionMode,
       isLoading,
@@ -203,6 +244,11 @@ export function SessionModeBannerProvider({
       unregisterNavSlot,
       setContentBounds,
       setNavBounds,
+      setContentDimensions,
+      setNavDimensions,
+      contentDimensions,
+      navDimensions,
+      setContentSlotVisible,
       targetBounds,
       sessionMode,
       isLoading,

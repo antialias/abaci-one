@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useSpring } from 'framer-motion'
+import useMeasure from 'react-use-measure'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
   useSessionModeBanner,
   useSessionModeBannerOptional,
   type SlotBounds,
+  type SlotDimensions,
 } from '@/contexts/SessionModeBannerContext'
 import { SessionModeBanner } from './SessionModeBanner'
 import { CompactBanner } from './CompactBanner'
@@ -27,18 +29,27 @@ const ANIMATION_DURATION_MS = 400 // Approximate spring duration
 
 interface ContentBannerSlotProps {
   className?: string
+  /**
+   * Height of sticky elements above the content area (e.g., nav bar).
+   * When the banner scrolls under this offset, it projects to the nav slot.
+   * Default: 0 (no sticky offset)
+   */
+  stickyOffset?: number
 }
 
 /**
  * ContentBannerSlot - Renders the full banner in document flow.
  * When active, the banner is visible and takes up space in the layout.
  * During transitions, a temporary overlay animates while this slot is hidden.
+ * Uses IntersectionObserver to detect when scrolled under sticky nav.
  */
-export function ContentBannerSlot({ className }: ContentBannerSlotProps) {
+export function ContentBannerSlot({ className, stickyOffset = 0 }: ContentBannerSlotProps) {
   const {
     registerContentSlot,
     unregisterContentSlot,
     setContentBounds,
+    setContentDimensions,
+    setContentSlotVisible,
     activeSlot,
     sessionMode,
     isLoading,
@@ -49,6 +60,17 @@ export function ContentBannerSlot({ className }: ContentBannerSlotProps) {
   } = useSessionModeBanner()
 
   const slotRef = useRef<HTMLDivElement>(null)
+
+  // Measure the banner content dimensions
+  const [measureRef, { width: measuredWidth, height: measuredHeight }] = useMeasure()
+
+  // Report dimensions to context when they change
+  useEffect(() => {
+    if (measuredWidth > 0 && measuredHeight > 0) {
+      setContentDimensions({ width: measuredWidth, height: measuredHeight })
+    }
+    return () => setContentDimensions(null)
+  }, [measuredWidth, measuredHeight, setContentDimensions])
 
   // Register on mount
   useEffect(() => {
@@ -86,6 +108,36 @@ export function ContentBannerSlot({ className }: ContentBannerSlotProps) {
     }
   }, [setContentBounds])
 
+  // Use IntersectionObserver to detect when banner scrolls under sticky nav
+  useEffect(() => {
+    if (!slotRef.current) return
+
+    // rootMargin: negative top margin accounts for sticky nav height
+    // When top of element is at/above the sticky nav bottom, it's "not visible"
+    const rootMargin = `-${stickyOffset}px 0px 0px 0px`
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          // isIntersecting = true when any part of the element is visible below the sticky nav
+          setContentSlotVisible(entry.isIntersecting)
+        }
+      },
+      {
+        rootMargin,
+        threshold: 0, // Trigger as soon as any part enters/exits
+      }
+    )
+
+    observer.observe(slotRef.current)
+
+    return () => {
+      observer.disconnect()
+      // Reset visibility when unmounting
+      setContentSlotVisible(true)
+    }
+  }, [stickyOffset, setContentSlotVisible])
+
   if (!hasContent) {
     return null
   }
@@ -108,9 +160,20 @@ export function ContentBannerSlot({ className }: ContentBannerSlotProps) {
   ) : null
 
   return (
-    <div ref={slotRef} data-slot="content-banner" data-active={isActive} className={className}>
-      {/* Only render content when this slot is active */}
-      {isActive && bannerContent}
+    <div
+      ref={slotRef}
+      data-slot="content-banner"
+      data-active={isActive}
+      className={className}
+      style={{
+        // When projecting to nav, hide visually but preserve space
+        visibility: isActive ? undefined : 'hidden',
+        // Prevent interaction when hidden
+        pointerEvents: isActive ? undefined : 'none',
+      }}
+    >
+      {/* Wrapper for measurement - always render content to preserve space */}
+      <div ref={measureRef}>{bannerContent}</div>
     </div>
   )
 }
@@ -125,6 +188,7 @@ interface NavBannerSlotProps {
 
 /**
  * NavBannerSlot - Renders the compact banner in document flow.
+ * Always renders content for measurement, uses visibility to show/hide.
  */
 export function NavBannerSlot({ className }: NavBannerSlotProps) {
   const context = useSessionModeBannerOptional()
@@ -133,22 +197,40 @@ export function NavBannerSlot({ className }: NavBannerSlotProps) {
 
   const slotRef = useRef<HTMLDivElement>(null)
 
+  // Extract stable callbacks from context to avoid dependency on entire context object
+  const setNavDimensions = context?.setNavDimensions
+  const setNavBounds = context?.setNavBounds
+  const registerNavSlot = context?.registerNavSlot
+  const unregisterNavSlot = context?.unregisterNavSlot
+
+  // Measure the banner content dimensions
+  const [measureRef, { width: measuredWidth, height: measuredHeight }] = useMeasure()
+
+  // Report dimensions to context when they change
+  useEffect(() => {
+    if (!setNavDimensions) return
+    if (measuredWidth > 0 && measuredHeight > 0) {
+      setNavDimensions({ width: measuredWidth, height: measuredHeight })
+    }
+    return () => setNavDimensions(null)
+  }, [setNavDimensions, measuredWidth, measuredHeight])
+
   // Register on mount
   useEffect(() => {
-    if (context) {
-      context.registerNavSlot()
-      return () => context.unregisterNavSlot()
+    if (registerNavSlot && unregisterNavSlot) {
+      registerNavSlot()
+      return () => unregisterNavSlot()
     }
-  }, [context])
+  }, [registerNavSlot, unregisterNavSlot])
 
   // Report bounds to context
   useEffect(() => {
-    if (!slotRef.current || !context) return
+    if (!slotRef.current || !setNavBounds) return
 
     const updateBounds = () => {
       if (slotRef.current) {
         const rect = slotRef.current.getBoundingClientRect()
-        context.setNavBounds({
+        setNavBounds({
           x: rect.x,
           y: rect.y,
           width: rect.width,
@@ -164,9 +246,9 @@ export function NavBannerSlot({ className }: NavBannerSlotProps) {
     return () => {
       window.removeEventListener('resize', updateBounds)
       window.removeEventListener('scroll', updateBounds)
-      context.setNavBounds(null)
+      setNavBounds(null)
     }
-  }, [context])
+  }, [setNavBounds])
 
   if (!context) {
     return null
@@ -200,9 +282,29 @@ export function NavBannerSlot({ className }: NavBannerSlotProps) {
   ) : null
 
   return (
-    <div ref={slotRef} data-slot="nav-banner" data-active={isActive} className={className}>
-      {/* Only render content when this slot is active */}
-      {isActive && bannerContent}
+    <div
+      ref={slotRef}
+      data-slot="nav-banner"
+      data-active={isActive}
+      className={className}
+      style={{
+        // When content slot is active, collapse this completely
+        // We use a hidden measurement container instead
+        height: isActive ? undefined : 0,
+        overflow: isActive ? undefined : 'hidden',
+        pointerEvents: isActive ? undefined : 'none',
+      }}
+    >
+      {/* Wrapper for measurement - always render for dimension tracking */}
+      <div
+        ref={measureRef}
+        style={{
+          // When collapsed, make content invisible but still measurable
+          visibility: isActive ? undefined : 'hidden',
+        }}
+      >
+        {bannerContent}
+      </div>
     </div>
   )
 }
@@ -226,13 +328,12 @@ export function ProjectingBanner() {
   const [mounted, setMounted] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [animationFrom, setAnimationFrom] = useState<SlotBounds | null>(null)
-  const [animationTo, setAnimationTo] = useState<SlotBounds | null>(null)
   const [animatingSlot, setAnimatingSlot] = useState<'content' | 'nav'>('content')
+  const [fromDimensions, setFromDimensions] = useState<SlotDimensions | null>(null)
+  const [toDimensions, setToDimensions] = useState<SlotDimensions | null>(null)
 
   // Track previous slot for detecting transitions
   const previousSlotRef = useRef<'content' | 'nav' | 'hidden'>('hidden')
-  const previousContentBoundsRef = useRef<SlotBounds | null>(null)
-  const previousNavBoundsRef = useRef<SlotBounds | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -242,29 +343,35 @@ export function ProjectingBanner() {
   useEffect(() => {
     if (!context || !mounted) return
 
-    const { activeSlot, targetBounds, shouldAnimate } = context
+    const { activeSlot, shouldAnimate, contentDimensions, navDimensions } = context
     const prevSlot = previousSlotRef.current
-
-    // Update cached bounds
-    if (activeSlot === 'content' && targetBounds) {
-      previousContentBoundsRef.current = targetBounds
-    } else if (activeSlot === 'nav' && targetBounds) {
-      previousNavBoundsRef.current = targetBounds
-    }
 
     // Detect slot change
     if (prevSlot !== activeSlot && activeSlot !== 'hidden' && prevSlot !== 'hidden') {
-      // Get the "from" bounds (where we're coming from)
-      const fromBounds =
-        prevSlot === 'content' ? previousContentBoundsRef.current : previousNavBoundsRef.current
+      // Get FRESH bounds directly from DOM to avoid stale state from React batching
+      const fromSelector =
+        prevSlot === 'content' ? '[data-slot="content-banner"]' : '[data-slot="nav-banner"]'
 
-      // Get the "to" bounds (where we're going)
-      const toBounds = targetBounds
+      const fromEl = document.querySelector(fromSelector)
 
-      if (fromBounds && toBounds && shouldAnimate) {
-        // Start animation
+      // Get dimensions for both slots
+      const fromDims = prevSlot === 'content' ? contentDimensions : navDimensions
+      const toDims = activeSlot === 'content' ? contentDimensions : navDimensions
+
+      if (fromEl && shouldAnimate && fromDims && toDims) {
+        const fromRect = fromEl.getBoundingClientRect()
+
+        const fromBounds: SlotBounds = {
+          x: fromRect.x,
+          y: fromRect.y,
+          width: fromRect.width,
+          height: fromRect.height,
+        }
+
+        // Start animation - target bounds will be tracked dynamically
         setAnimationFrom(fromBounds)
-        setAnimationTo(toBounds)
+        setFromDimensions(fromDims)
+        setToDimensions(toDims)
         setAnimatingSlot(activeSlot as 'content' | 'nav')
         setIsAnimating(true)
 
@@ -272,7 +379,8 @@ export function ProjectingBanner() {
         setTimeout(() => {
           setIsAnimating(false)
           setAnimationFrom(null)
-          setAnimationTo(null)
+          setFromDimensions(null)
+          setToDimensions(null)
         }, ANIMATION_DURATION_MS)
       }
     }
@@ -290,16 +398,22 @@ export function ProjectingBanner() {
           ;(el as HTMLElement).style.visibility = 'hidden'
         })
     } else {
-      // Show all slots after animation
-      document
-        .querySelectorAll('[data-slot="content-banner"], [data-slot="nav-banner"]')
-        .forEach((el) => {
+      // After animation, reset the ACTIVE slot so it becomes visible.
+      // The inactive content slot keeps React's visibility:hidden to preserve space.
+      // The nav slot is always reset since it doesn't need to preserve space.
+      document.querySelectorAll('[data-slot="nav-banner"]').forEach((el) => {
+        ;(el as HTMLElement).style.visibility = ''
+      })
+      // If content is now active, reset its visibility too
+      if (animatingSlot === 'content') {
+        document.querySelectorAll('[data-slot="content-banner"]').forEach((el) => {
           ;(el as HTMLElement).style.visibility = ''
         })
+      }
     }
-  }, [isAnimating])
+  }, [isAnimating, animatingSlot])
 
-  if (!context || !mounted || !isAnimating || !animationFrom || !animationTo) {
+  if (!context || !mounted || !isAnimating || !animationFrom || !fromDimensions || !toDimensions) {
     return null
   }
 
@@ -339,8 +453,16 @@ export function ProjectingBanner() {
       />
     ) : null
 
+  const targetSelector =
+    animatingSlot === 'content' ? '[data-slot="content-banner"]' : '[data-slot="nav-banner"]'
+
   return createPortal(
-    <AnimatingOverlay from={animationFrom} to={animationTo}>
+    <AnimatingOverlay
+      from={animationFrom}
+      fromDimensions={fromDimensions}
+      toDimensions={toDimensions}
+      targetSelector={targetSelector}
+    >
       {bannerContent}
     </AnimatingOverlay>,
     document.body
@@ -353,21 +475,54 @@ export function ProjectingBanner() {
 
 interface AnimatingOverlayProps {
   from: SlotBounds
-  to: SlotBounds
+  fromDimensions: SlotDimensions
+  toDimensions: SlotDimensions
+  targetSelector: string
   children: React.ReactNode
 }
 
-function AnimatingOverlay({ from, to, children }: AnimatingOverlayProps) {
+function AnimatingOverlay({
+  from,
+  fromDimensions,
+  toDimensions,
+  targetSelector,
+  children,
+}: AnimatingOverlayProps) {
   const x = useSpring(from.x, springConfig)
   const y = useSpring(from.y, springConfig)
-  const width = useSpring(from.width, springConfig)
+  const width = useSpring(fromDimensions.width, springConfig)
+  const height = useSpring(fromDimensions.height, springConfig)
 
-  // Trigger animation to target on mount
+  // Animate to target dimensions on mount
   useEffect(() => {
-    x.set(to.x)
-    y.set(to.y)
-    width.set(to.width)
-  }, [to.x, to.y, to.width, x, y, width])
+    width.set(toDimensions.width)
+    height.set(toDimensions.height)
+  }, [toDimensions.width, toDimensions.height, width, height])
+
+  // Continuously track the target element's position during animation
+  // This handles the case where user is still scrolling during the transition
+  useEffect(() => {
+    const updateTarget = () => {
+      const targetEl = document.querySelector(targetSelector)
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect()
+        x.set(rect.x)
+        y.set(rect.y)
+      }
+    }
+
+    // Initial update
+    updateTarget()
+
+    // Track scroll and resize to follow moving target
+    window.addEventListener('scroll', updateTarget, { passive: true })
+    window.addEventListener('resize', updateTarget)
+
+    return () => {
+      window.removeEventListener('scroll', updateTarget)
+      window.removeEventListener('resize', updateTarget)
+    }
+  }, [targetSelector, x, y])
 
   return (
     <motion.div
@@ -377,7 +532,9 @@ function AnimatingOverlay({ from, to, children }: AnimatingOverlayProps) {
         left: x,
         top: y,
         width: width,
-        zIndex: Z_INDEX.SESSION_MODE_BANNER,
+        height: height,
+        overflow: 'hidden', // Clip content during size transition
+        zIndex: Z_INDEX.SESSION_MODE_BANNER_ANIMATING,
         pointerEvents: 'none', // Don't capture clicks during animation
       }}
     >

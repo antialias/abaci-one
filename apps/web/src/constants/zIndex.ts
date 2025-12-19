@@ -15,6 +15,7 @@ export const Z_INDEX = {
   STICKY_HEADER: 100,
   SUB_NAV: 90,
   SESSION_MODE_BANNER: 85, // Below sub-nav, but above content
+  SESSION_MODE_BANNER_ANIMATING: 150, // Above all nav during FLIP animation
 
   // Overlays and dropdowns (1000-9999)
   DROPDOWN: 1000,
@@ -45,20 +46,20 @@ export const Z_INDEX = {
     OVERLAY: 1000,
     PLAYER_AVATAR: 1000, // Multiplayer presence indicators
   },
-} as const
+} as const;
 
 // Helper function to get z-index value
 export function getZIndex(path: string): number {
-  const parts = path.split('.')
-  let value: any = Z_INDEX
+  const parts = path.split(".");
+  let value: any = Z_INDEX;
 
   for (const part of parts) {
-    value = value[part]
+    value = value[part];
     if (value === undefined) {
-      console.warn(`[zIndex] Unknown path: ${path}`)
-      return 0
+      console.warn(`[zIndex] Unknown path: ${path}`);
+      return 0;
     }
   }
 
-  return typeof value === 'number' ? value : 0
+  return typeof value === "number" ? value : 0;
 }

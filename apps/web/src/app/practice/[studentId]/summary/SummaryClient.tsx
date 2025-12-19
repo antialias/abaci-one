@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useState } from 'react'
-import { PageWithNav } from '@/components/PageWithNav'
+import { useCallback, useEffect, useState } from "react";
+import { PageWithNav } from "@/components/PageWithNav";
 import {
   ContentBannerSlot,
   PracticeSubNav,
@@ -9,17 +9,21 @@ import {
   SessionOverview,
   SessionSummary,
   StartPracticeModal,
-} from '@/components/practice'
-import { useTheme } from '@/contexts/ThemeContext'
+} from "@/components/practice";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   SessionModeBannerProvider,
   useSessionModeBanner,
-} from '@/contexts/SessionModeBannerContext'
-import type { Player } from '@/db/schema/players'
-import type { SessionPlan } from '@/db/schema/session-plans'
-import { useSessionMode } from '@/hooks/useSessionMode'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
-import { css } from '../../../../../styled-system/css'
+} from "@/contexts/SessionModeBannerContext";
+import type { Player } from "@/db/schema/players";
+import type { SessionPlan } from "@/db/schema/session-plans";
+import { useSessionMode } from "@/hooks/useSessionMode";
+import type { ProblemResultWithContext } from "@/lib/curriculum/session-planner";
+import { css } from "../../../../../styled-system/css";
+
+// Combined height of sticky elements above content area
+// Main nav (80px) + Sub-nav (~56px with padding)
+const STICKY_HEADER_OFFSET = 136;
 
 // ============================================================================
 // Helper Component for Banner Action Registration
@@ -30,23 +34,23 @@ import { css } from '../../../../../styled-system/css'
  * Must be inside SessionModeBannerProvider to access context.
  */
 function BannerActionRegistrar({ onAction }: { onAction: () => void }) {
-  const { setOnAction } = useSessionModeBanner()
+  const { setOnAction } = useSessionModeBanner();
 
   useEffect(() => {
-    setOnAction(onAction)
-  }, [onAction, setOnAction])
+    setOnAction(onAction);
+  }, [onAction, setOnAction]);
 
-  return null
+  return null;
 }
 
 interface SummaryClientProps {
-  studentId: string
-  player: Player
-  session: SessionPlan | null
+  studentId: string;
+  player: Player;
+  session: SessionPlan | null;
   /** Average seconds per problem from recent sessions */
-  avgSecondsPerProblem?: number
+  avgSecondsPerProblem?: number;
   /** Problem history for BKT computation in weak skills targeting */
-  problemHistory?: ProblemResultWithContext[]
+  problemHistory?: ProblemResultWithContext[];
 }
 
 /**
@@ -65,37 +69,41 @@ export function SummaryClient({
   avgSecondsPerProblem = 40,
   problemHistory,
 }: SummaryClientProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
-  const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
-  const [viewMode, setViewMode] = useState<'summary' | 'debug'>('summary')
+  const [showStartPracticeModal, setShowStartPracticeModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"summary" | "debug">("summary");
 
   // Session mode - single source of truth for session planning decisions
-  const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  const { data: sessionMode, isLoading: isLoadingSessionMode } =
+    useSessionMode(studentId);
 
-  const isInProgress = session?.startedAt && !session?.completedAt
+  const isInProgress = session?.startedAt && !session?.completedAt;
 
   // Handle practice again - show the start practice modal
   const handlePracticeAgain = useCallback(() => {
-    setShowStartPracticeModal(true)
-  }, [])
+    setShowStartPracticeModal(true);
+  }, []);
 
   // Determine header text based on session state
   const headerTitle = isInProgress
-    ? 'Session In Progress'
+    ? "Session In Progress"
     : session
-      ? 'Session Complete'
-      : 'No Sessions Yet'
+      ? "Session Complete"
+      : "No Sessions Yet";
 
   const headerSubtitle = isInProgress
     ? `${player.name} is currently practicing`
     : session
-      ? 'Great work on your practice session!'
-      : `${player.name} hasn't completed any sessions yet`
+      ? "Great work on your practice session!"
+      : `${player.name} hasn't completed any sessions yet`;
 
   return (
-    <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoadingSessionMode}>
+    <SessionModeBannerProvider
+      sessionMode={sessionMode ?? null}
+      isLoading={isLoadingSessionMode}
+    >
       <BannerActionRegistrar onAction={handlePracticeAgain} />
       {/* Single ProjectingBanner renders at provider level */}
       <ProjectingBanner />
@@ -106,78 +114,94 @@ export function SummaryClient({
         <main
           data-component="practice-summary-page"
           className={css({
-            minHeight: '100vh',
-            backgroundColor: isDark ? 'gray.900' : 'gray.50',
-            paddingTop: '2rem',
-            paddingLeft: '2rem',
-            paddingRight: '2rem',
-            paddingBottom: '2rem',
+            minHeight: "100vh",
+            backgroundColor: isDark ? "gray.900" : "gray.50",
+            paddingTop: "2rem",
+            paddingLeft: "2rem",
+            paddingRight: "2rem",
+            paddingBottom: "2rem",
           })}
         >
           <div
             className={css({
-              maxWidth: '800px',
-              margin: '0 auto',
+              maxWidth: "800px",
+              margin: "0 auto",
             })}
           >
             {/* Header */}
             <header
               className={css({
-                textAlign: 'center',
-                marginBottom: '2rem',
+                textAlign: "center",
+                marginBottom: "2rem",
               })}
             >
               <h1
                 className={css({
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  color: isDark ? 'white' : 'gray.800',
-                  marginBottom: '0.5rem',
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: isDark ? "white" : "gray.800",
+                  marginBottom: "0.5rem",
                 })}
               >
                 {headerTitle}
               </h1>
               <p
                 className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.400' : 'gray.600',
+                  fontSize: "0.875rem",
+                  color: isDark ? "gray.400" : "gray.600",
                 })}
               >
                 {headerSubtitle}
               </p>
             </header>
 
-            {/* Session mode banner - renders in-flow after session completion */}
-            <ContentBannerSlot className={css({ marginBottom: '1.5rem' })} />
+            {/* Session mode banner - renders in-flow, projects to nav on scroll */}
+            <ContentBannerSlot
+              stickyOffset={STICKY_HEADER_OFFSET}
+              className={css({ marginBottom: "1.5rem" })}
+            />
 
             {/* View Mode Toggle (only show when there's a session) */}
             {session && (
               <div
                 data-element="view-mode-toggle"
                 className={css({
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  marginBottom: '1.5rem',
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  marginBottom: "1.5rem",
                 })}
               >
                 <button
                   type="button"
                   data-action="view-summary"
-                  onClick={() => setViewMode('summary')}
+                  onClick={() => setViewMode("summary")}
                   className={css({
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: viewMode === 'summary' ? 'bold' : 'normal',
-                    color: viewMode === 'summary' ? 'white' : isDark ? 'gray.300' : 'gray.600',
+                    padding: "0.5rem 1rem",
+                    fontSize: "0.875rem",
+                    fontWeight: viewMode === "summary" ? "bold" : "normal",
+                    color:
+                      viewMode === "summary"
+                        ? "white"
+                        : isDark
+                          ? "gray.300"
+                          : "gray.600",
                     backgroundColor:
-                      viewMode === 'summary' ? 'blue.500' : isDark ? 'gray.700' : 'gray.200',
-                    borderRadius: '6px 0 0 6px',
-                    border: 'none',
-                    cursor: 'pointer',
+                      viewMode === "summary"
+                        ? "blue.500"
+                        : isDark
+                          ? "gray.700"
+                          : "gray.200",
+                    borderRadius: "6px 0 0 6px",
+                    border: "none",
+                    cursor: "pointer",
                     _hover: {
                       backgroundColor:
-                        viewMode === 'summary' ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                        viewMode === "summary"
+                          ? "blue.600"
+                          : isDark
+                            ? "gray.600"
+                            : "gray.300",
                     },
                   })}
                 >
@@ -186,20 +210,33 @@ export function SummaryClient({
                 <button
                   type="button"
                   data-action="view-debug"
-                  onClick={() => setViewMode('debug')}
+                  onClick={() => setViewMode("debug")}
                   className={css({
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: viewMode === 'debug' ? 'bold' : 'normal',
-                    color: viewMode === 'debug' ? 'white' : isDark ? 'gray.300' : 'gray.600',
+                    padding: "0.5rem 1rem",
+                    fontSize: "0.875rem",
+                    fontWeight: viewMode === "debug" ? "bold" : "normal",
+                    color:
+                      viewMode === "debug"
+                        ? "white"
+                        : isDark
+                          ? "gray.300"
+                          : "gray.600",
                     backgroundColor:
-                      viewMode === 'debug' ? 'blue.500' : isDark ? 'gray.700' : 'gray.200',
-                    borderRadius: '0 6px 6px 0',
-                    border: 'none',
-                    cursor: 'pointer',
+                      viewMode === "debug"
+                        ? "blue.500"
+                        : isDark
+                          ? "gray.700"
+                          : "gray.200",
+                    borderRadius: "0 6px 6px 0",
+                    border: "none",
+                    cursor: "pointer",
                     _hover: {
                       backgroundColor:
-                        viewMode === 'debug' ? 'blue.600' : isDark ? 'gray.600' : 'gray.300',
+                        viewMode === "debug"
+                          ? "blue.600"
+                          : isDark
+                            ? "gray.600"
+                            : "gray.300",
                     },
                   })}
                 >
@@ -210,7 +247,7 @@ export function SummaryClient({
 
             {/* Session Summary/Overview or Empty State */}
             {session ? (
-              viewMode === 'summary' ? (
+              viewMode === "summary" ? (
                 <SessionSummary
                   plan={session}
                   studentId={studentId}
@@ -223,19 +260,19 @@ export function SummaryClient({
             ) : (
               <div
                 className={css({
-                  padding: '3rem',
-                  textAlign: 'center',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '16px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  padding: "3rem",
+                  textAlign: "center",
+                  backgroundColor: isDark ? "gray.800" : "white",
+                  borderRadius: "16px",
+                  border: "1px solid",
+                  borderColor: isDark ? "gray.700" : "gray.200",
                 })}
               >
                 <p
                   className={css({
-                    fontSize: '1.125rem',
-                    color: isDark ? 'gray.400' : 'gray.600',
-                    marginBottom: '1.5rem',
+                    fontSize: "1.125rem",
+                    color: isDark ? "gray.400" : "gray.600",
+                    marginBottom: "1.5rem",
                   })}
                 >
                   Start a practice session to see results here.
@@ -244,15 +281,15 @@ export function SummaryClient({
                   type="button"
                   onClick={handlePracticeAgain}
                   className={css({
-                    padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    backgroundColor: 'blue.500',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    _hover: { backgroundColor: 'blue.600' },
+                    padding: "0.75rem 1.5rem",
+                    fontSize: "1rem",
+                    fontWeight: "bold",
+                    color: "white",
+                    backgroundColor: "blue.500",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    _hover: { backgroundColor: "blue.600" },
                   })}
                 >
                   Start Practice
@@ -278,5 +315,5 @@ export function SummaryClient({
         )}
       </PageWithNav>
     </SessionModeBannerProvider>
-  )
+  );
 }
