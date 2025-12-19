@@ -337,8 +337,8 @@ export function StartPracticeModal({
               width: 'auto',
               minWidth: '360px',
             },
-            // Full-screen on short viewports
-            '@media (max-height: 700px)': {
+            // Full-screen on mobile phones (narrow widths OR short viewports)
+            '@media (max-width: 480px), (max-height: 700px)': {
               top: 0,
               left: 0,
               transform: 'none',
@@ -381,7 +381,7 @@ export function StartPracticeModal({
                   backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
                   color: isDark ? 'gray.300' : 'gray.600',
                 },
-                '@media (max-height: 700px)': {
+                '@media (max-width: 480px), (max-height: 700px)': {
                   top: '0.375rem',
                   right: '0.375rem',
                   width: '24px',
@@ -401,7 +401,7 @@ export function StartPracticeModal({
             className={css({
               padding: '1.5rem',
               // Full-screen mode: center content vertically
-              '@media (max-height: 700px)': {
+              '@media (max-width: 480px), (max-height: 700px)': {
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
@@ -425,7 +425,7 @@ export function StartPracticeModal({
                 textAlign: 'center',
                 marginBottom: '1.25rem',
                 // Minimal header on full-screen mobile
-                '@media (max-height: 700px)': {
+                '@media (max-width: 480px), (max-height: 700px)': {
                   marginBottom: '0.5rem',
                 },
                 // Landscape: even more compact header
@@ -440,7 +440,7 @@ export function StartPracticeModal({
                   fontSize: '2rem',
                   marginBottom: '0.375rem',
                   // Hide icon on small screens to save vertical space
-                  '@media (max-height: 700px)': {
+                  '@media (max-width: 480px), (max-height: 700px)': {
                     display: 'none',
                   },
                 })}
@@ -453,7 +453,7 @@ export function StartPracticeModal({
                   fontWeight: 'bold',
                   marginBottom: '0.25rem',
                   // Smaller title on full-screen mobile
-                  '@media (max-height: 700px)': {
+                  '@media (max-width: 480px), (max-height: 700px)': {
                     fontSize: '1.125rem',
                     marginBottom: '0.125rem',
                   },
@@ -474,7 +474,7 @@ export function StartPracticeModal({
                   fontSize: '0.875rem',
                   color: isDark ? 'gray.400' : 'gray.500',
                   // Hide description on small portrait screens to save space
-                  '@media (max-height: 700px)': {
+                  '@media (max-width: 480px), (max-height: 700px)': {
                     display: 'none',
                   },
                   // Also hidden in landscape
@@ -509,7 +509,7 @@ export function StartPracticeModal({
                   marginBottom: '1rem',
                   overflow: 'hidden',
                   transition: 'all 0.3s ease',
-                  '@media (max-height: 700px)': {
+                  '@media (max-width: 480px), (max-height: 700px)': {
                     marginBottom: '0.5rem',
                     borderRadius: '8px',
                   },
@@ -549,7 +549,7 @@ export function StartPracticeModal({
                       _hover: {
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                       },
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.75rem',
                         gap: '0.5rem',
                       },
@@ -564,7 +564,7 @@ export function StartPracticeModal({
                           fontWeight: 'bold',
                           color: isDark ? 'blue.300' : 'blue.600',
                           lineHeight: 1,
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '1.25rem',
                           },
                         })}
@@ -601,7 +601,7 @@ export function StartPracticeModal({
                           fontWeight: 'bold',
                           color: isDark ? 'green.300' : 'green.600',
                           lineHeight: 1,
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '1.25rem',
                           },
                         })}
@@ -614,7 +614,7 @@ export function StartPracticeModal({
                           fontSize: '0.6875rem',
                           color: isDark ? 'gray.500' : 'gray.500',
                           marginTop: '0.125rem',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.625rem',
                           },
                         })}
@@ -627,7 +627,7 @@ export function StartPracticeModal({
                       className={css({
                         fontSize: '0.875rem',
                         color: isDark ? 'gray.600' : 'gray.300',
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '0.75rem',
                         },
                       })}
@@ -642,7 +642,7 @@ export function StartPracticeModal({
                         display: 'flex',
                         justifyContent: 'center',
                         gap: '0.5rem',
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           gap: '0.375rem',
                         },
                       })}
@@ -663,7 +663,7 @@ export function StartPracticeModal({
                             className={css({
                               fontSize: '1.25rem',
                               lineHeight: 1,
-                              '@media (max-height: 700px)': {
+                              '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '1rem',
                               },
                             })}
@@ -677,7 +677,7 @@ export function StartPracticeModal({
                               fontWeight: '600',
                               lineHeight: 1,
                               marginTop: '0.125rem',
-                              '@media (max-height: 700px)': {
+                              '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '0.625rem',
                               },
                             })}
@@ -696,7 +696,7 @@ export function StartPracticeModal({
                         marginLeft: '0.25rem',
                         fontSize: '0.625rem',
                         color: isDark ? 'gray.500' : 'gray.400',
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '0.5rem',
                           marginLeft: '0.125rem',
                         },
@@ -729,7 +729,7 @@ export function StartPracticeModal({
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.875rem',
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.5rem',
                         gap: '0.375rem',
                       },
@@ -742,7 +742,7 @@ export function StartPracticeModal({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         marginBottom: '-0.25rem',
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           marginBottom: '-0.125rem',
                         },
                       })}
@@ -754,7 +754,7 @@ export function StartPracticeModal({
                           color: isDark ? 'gray.400' : 'gray.500',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.625rem',
                           },
                         })}
@@ -782,7 +782,7 @@ export function StartPracticeModal({
                             backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
                             color: isDark ? 'gray.300' : 'gray.600',
                           },
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             padding: '0.125rem 0.375rem',
                             fontSize: '0.5625rem',
                           },
@@ -800,7 +800,7 @@ export function StartPracticeModal({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.875rem',
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           gap: '0.375rem',
                         },
                         '@media (max-height: 500px) and (min-width: 500px)': {
@@ -821,7 +821,7 @@ export function StartPracticeModal({
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             marginBottom: '0.5rem',
-                            '@media (max-height: 700px)': {
+                            '@media (max-width: 480px), (max-height: 700px)': {
                               marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
@@ -834,7 +834,7 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.375rem',
-                            '@media (max-height: 700px)': { gap: '0.25rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
                           })}
                         >
                           {[5, 10, 15, 20].map((min) => {
@@ -872,7 +872,7 @@ export function StartPracticeModal({
                                   border: '2px solid',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
-                                  '@media (max-height: 700px)': {
+                                  '@media (max-width: 480px), (max-height: 700px)': {
                                     padding: '0.375rem 0.125rem',
                                     borderRadius: '6px',
                                     gap: '0',
@@ -897,7 +897,7 @@ export function StartPracticeModal({
                                   className={css({
                                     fontSize: '0.9375rem',
                                     fontWeight: '600',
-                                    '@media (max-height: 700px)': {
+                                    '@media (max-width: 480px), (max-height: 700px)': {
                                       fontSize: '0.8125rem',
                                     },
                                   })}
@@ -916,7 +916,7 @@ export function StartPracticeModal({
                                 <span
                                   className={css({
                                     fontSize: '0.625rem',
-                                    '@media (max-height: 700px)': {
+                                    '@media (max-width: 480px), (max-height: 700px)': {
                                       fontSize: '0.5625rem',
                                     },
                                   })}
@@ -941,7 +941,7 @@ export function StartPracticeModal({
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             marginBottom: '0.5rem',
-                            '@media (max-height: 700px)': {
+                            '@media (max-width: 480px), (max-height: 700px)': {
                               marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
@@ -954,7 +954,7 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.375rem',
-                            '@media (max-height: 700px)': { gap: '0.25rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
                           })}
                         >
                           {PART_TYPES.map(({ type, emoji, label }) => {
@@ -979,7 +979,7 @@ export function StartPracticeModal({
                                   border: '2px solid',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
-                                  '@media (max-height: 700px)': {
+                                  '@media (max-width: 480px), (max-height: 700px)': {
                                     padding: '0.375rem 0.125rem 0.25rem',
                                     borderRadius: '6px',
                                     gap: '0.125rem',
@@ -1021,7 +1021,7 @@ export function StartPracticeModal({
                                       borderRadius: '50%',
                                       padding: '2px',
                                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                      '@media (max-height: 700px)': {
+                                      '@media (max-width: 480px), (max-height: 700px)': {
                                         top: '-6px',
                                         right: '-6px',
                                         minWidth: '18px',
@@ -1038,7 +1038,7 @@ export function StartPracticeModal({
                                   className={css({
                                     fontSize: '1.5rem',
                                     lineHeight: 1,
-                                    '@media (max-height: 700px)': {
+                                    '@media (max-width: 480px), (max-height: 700px)': {
                                       fontSize: '1.25rem',
                                     },
                                   })}
@@ -1049,7 +1049,7 @@ export function StartPracticeModal({
                                   className={css({
                                     fontSize: '0.6875rem',
                                     fontWeight: '500',
-                                    '@media (max-height: 700px)': {
+                                    '@media (max-width: 480px), (max-height: 700px)': {
                                       fontSize: '0.5625rem',
                                     },
                                   })}
@@ -1074,7 +1074,7 @@ export function StartPracticeModal({
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             marginBottom: '0.5rem',
-                            '@media (max-height: 700px)': {
+                            '@media (max-width: 480px), (max-height: 700px)': {
                               marginBottom: '0.25rem',
                               fontSize: '0.625rem',
                             },
@@ -1087,7 +1087,7 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.25rem',
-                            '@media (max-height: 700px)': { gap: '0.125rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.125rem' },
                           })}
                         >
                           {[3, 4, 5, 6, 7, 8].map((terms) => {
@@ -1108,7 +1108,7 @@ export function StartPracticeModal({
                                   border: 'none',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
-                                  '@media (max-height: 700px)': {
+                                  '@media (max-width: 480px), (max-height: 700px)': {
                                     padding: '0.3125rem 0.125rem',
                                     fontSize: '0.75rem',
                                     borderRadius: '4px',
@@ -1144,7 +1144,7 @@ export function StartPracticeModal({
                   className={css({
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    '@media (max-height: 700px)': {
+                    '@media (max-width: 480px), (max-height: 700px)': {
                       borderRadius: '10px',
                       marginTop: 'auto',
                     },
@@ -1163,7 +1163,7 @@ export function StartPracticeModal({
                       display: 'flex',
                       gap: '0.625rem',
                       alignItems: 'center',
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.5rem 0.75rem',
                         gap: '0.5rem',
                       },
@@ -1173,7 +1173,7 @@ export function StartPracticeModal({
                       className={css({
                         fontSize: '1.5rem',
                         lineHeight: 1,
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '1.25rem',
                         },
                       })}
@@ -1185,7 +1185,7 @@ export function StartPracticeModal({
                         className={css({
                           fontSize: '0.875rem',
                           fontWeight: '600',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.8125rem',
                           },
                         })}
@@ -1197,7 +1197,7 @@ export function StartPracticeModal({
                         className={css({
                           fontSize: '0.75rem',
                           marginTop: '0.125rem',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.6875rem',
                           },
                         })}
@@ -1231,7 +1231,7 @@ export function StartPracticeModal({
                       _hover: {
                         filter: isStarting ? 'none' : 'brightness(1.05)',
                       },
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.75rem',
                         fontSize: '0.9375rem',
                       },
@@ -1263,7 +1263,7 @@ export function StartPracticeModal({
                   className={css({
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    '@media (max-height: 700px)': {
+                    '@media (max-width: 480px), (max-height: 700px)': {
                       borderRadius: '10px',
                       marginTop: 'auto',
                     },
@@ -1282,7 +1282,7 @@ export function StartPracticeModal({
                       display: 'flex',
                       gap: '0.625rem',
                       alignItems: 'flex-start',
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.5rem 0.75rem',
                         gap: '0.5rem',
                       },
@@ -1292,7 +1292,7 @@ export function StartPracticeModal({
                       className={css({
                         fontSize: '1.5rem',
                         lineHeight: 1,
-                        '@media (max-height: 700px)': {
+                        '@media (max-width: 480px), (max-height: 700px)': {
                           fontSize: '1.25rem',
                         },
                       })}
@@ -1304,7 +1304,7 @@ export function StartPracticeModal({
                         className={css({
                           fontSize: '0.875rem',
                           fontWeight: '600',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.8125rem',
                           },
                         })}
@@ -1316,7 +1316,7 @@ export function StartPracticeModal({
                         className={css({
                           fontSize: '0.75rem',
                           marginTop: '0.125rem',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             fontSize: '0.6875rem',
                           },
                         })}
@@ -1332,7 +1332,7 @@ export function StartPracticeModal({
                           flexWrap: 'wrap',
                           gap: '0.25rem',
                           marginTop: '0.5rem',
-                          '@media (max-height: 700px)': {
+                          '@media (max-width: 480px), (max-height: 700px)': {
                             marginTop: '0.375rem',
                             gap: '0.1875rem',
                           },
@@ -1346,7 +1346,7 @@ export function StartPracticeModal({
                               fontSize: '0.625rem',
                               padding: '0.125rem 0.375rem',
                               borderRadius: '4px',
-                              '@media (max-height: 700px)': {
+                              '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '0.5625rem',
                                 padding: '0.0625rem 0.25rem',
                               },
@@ -1369,7 +1369,7 @@ export function StartPracticeModal({
                             className={css({
                               fontSize: '0.625rem',
                               padding: '0.125rem 0.375rem',
-                              '@media (max-height: 700px)': {
+                              '@media (max-width: 480px), (max-height: 700px)': {
                                 fontSize: '0.5625rem',
                                 padding: '0.0625rem 0.25rem',
                               },
@@ -1406,7 +1406,7 @@ export function StartPracticeModal({
                       _hover: {
                         filter: isStarting ? 'none' : 'brightness(1.05)',
                       },
-                      '@media (max-height: 700px)': {
+                      '@media (max-width: 480px), (max-height: 700px)': {
                         padding: '0.75rem',
                         fontSize: '0.9375rem',
                       },
@@ -1441,7 +1441,7 @@ export function StartPracticeModal({
                     padding: '0.75rem',
                     borderRadius: '8px',
                     textAlign: 'center',
-                    '@media (max-height: 700px)': {
+                    '@media (max-width: 480px), (max-height: 700px)': {
                       marginBottom: '0.5rem',
                       padding: '0.375rem',
                       borderRadius: '6px',
@@ -1517,7 +1517,7 @@ export function StartPracticeModal({
                     _active: {
                       transform: 'translateY(0)',
                     },
-                    '@media (max-height: 700px)': {
+                    '@media (max-width: 480px), (max-height: 700px)': {
                       padding: '0.75rem',
                       fontSize: '1rem',
                       borderRadius: '10px',
