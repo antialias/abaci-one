@@ -7,6 +7,7 @@ import { type Bounds, useSessionModeBanner } from '@/contexts/SessionModeBannerC
 import { useTheme } from '@/contexts/ThemeContext'
 import { Z_INDEX } from '@/constants/zIndex'
 import { MorphingBanner } from './MorphingBanner'
+import { ActiveSessionBanner } from './ActiveSessionBanner'
 
 // ============================================================================
 // Types
@@ -57,6 +58,9 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
     onAction,
     isInitialRender,
     previousSlot,
+    activeSession,
+    onResume,
+    onStartFresh,
   } = useSessionModeBanner()
 
   const { resolvedTheme } = useTheme()
@@ -128,8 +132,13 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
     config: { tension: 170, friction: 26 }, // Slower, smoother animation
   })
 
-  // Don't render if no session mode or hidden
-  if (!sessionMode || activeSlot === 'hidden') {
+  // Don't render if hidden
+  if (activeSlot === 'hidden') {
+    return null
+  }
+
+  // Don't render if no session mode AND no active session
+  if (!sessionMode && !activeSession) {
     return null
   }
 
@@ -138,11 +147,16 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
     return null
   }
 
+  // Determine which banner to render
+  // Active session takes priority over session mode
+  const hasActiveSession = activeSession !== null
+
   // Portal to body for fixed positioning
   return createPortal(
     <animated.div
       data-component="projecting-banner"
       data-slot={activeSlot}
+      data-has-active-session={hasActiveSession}
       style={{
         position: 'fixed',
         left: springProps.x,
@@ -155,15 +169,25 @@ export function ProjectingBanner({ isLoading = false }: ProjectingBannerProps) {
         overflow: 'hidden',
       }}
     >
-      <MorphingBanner
-        sessionMode={sessionMode}
-        onAction={onAction}
-        isLoading={isLoading || isLoadingSessionMode}
-        isDark={isDark}
-        progress={springProps.progress}
-        containerWidth={springProps.width}
-        containerHeight={springProps.height}
-      />
+      {hasActiveSession ? (
+        <ActiveSessionBanner
+          session={activeSession}
+          onResume={onResume}
+          onStartFresh={onStartFresh}
+          isLoading={isLoading || isLoadingSessionMode}
+          variant={activeSlot === 'nav' ? 'nav' : 'dashboard'}
+        />
+      ) : sessionMode ? (
+        <MorphingBanner
+          sessionMode={sessionMode}
+          onAction={onAction}
+          isLoading={isLoading || isLoadingSessionMode}
+          isDark={isDark}
+          progress={springProps.progress}
+          containerWidth={springProps.width}
+          containerHeight={springProps.height}
+        />
+      ) : null}
     </animated.div>,
     document.body
   )

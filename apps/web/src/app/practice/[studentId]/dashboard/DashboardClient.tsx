@@ -37,7 +37,7 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
-import { useAbandonSession, useActiveSessionPlan } from '@/hooks/useSessionPlan'
+import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
   type BktComputeOptions,
   computeBktFromHistory,
@@ -51,6 +51,7 @@ import {
   MASTERY_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
+import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
 import { computeMasteryState } from '@/utils/skillComplexity'
@@ -884,12 +885,7 @@ function SkillDetailDrawer({
 function OverviewTab({
   student,
   currentPhase,
-  activeSession,
-  isDark,
   onStartPractice,
-  onResumePractice,
-  onStartOver,
-  isStartingOver,
   onViewFullProgress,
   onGenerateWorksheet,
   onRunPlacementTest,
@@ -897,12 +893,7 @@ function OverviewTab({
 }: {
   student: StudentWithProgress
   currentPhase: CurrentPhaseInfo
-  activeSession: ActiveSessionState | null
-  isDark: boolean
   onStartPractice: () => void
-  onResumePractice: () => void
-  onStartOver: () => void
-  isStartingOver: boolean
   onViewFullProgress: () => void
   onGenerateWorksheet: () => void
   onRunPlacementTest: () => void
@@ -912,11 +903,7 @@ function OverviewTab({
     <ProgressDashboard
       student={student}
       currentPhase={currentPhase}
-      activeSession={activeSession}
       onStartPractice={onStartPractice}
-      onResumePractice={onResumePractice}
-      onStartOver={onStartOver}
-      isStartingOver={isStartingOver}
       onViewFullProgress={onViewFullProgress}
       onGenerateWorksheet={onGenerateWorksheet}
       onRunPlacementTest={onRunPlacementTest}
@@ -1735,16 +1722,30 @@ function NotesTab({
 // Banner Action Helper
 // ============================================================================
 
+interface BannerActionRegistrarProps {
+  onAction: () => void
+  onResume: () => void
+  onStartFresh: () => void
+}
+
 /**
- * Helper component that registers the banner action and renders ProjectingBanner.
+ * Helper component that registers the banner actions and renders ProjectingBanner.
  * Must be used inside SessionModeBannerProvider.
  */
-function BannerActionRegistrar({ onAction }: { onAction: () => void }) {
-  const { setOnAction } = useSessionModeBanner()
+function BannerActionRegistrar({ onAction, onResume, onStartFresh }: BannerActionRegistrarProps) {
+  const { setOnAction, setOnResume, setOnStartFresh } = useSessionModeBanner()
 
   useEffect(() => {
     setOnAction(onAction)
   }, [onAction, setOnAction])
+
+  useEffect(() => {
+    setOnResume(onResume)
+  }, [onResume, setOnResume])
+
+  useEffect(() => {
+    setOnStartFresh(onStartFresh)
+  }, [onStartFresh, setOnStartFresh])
 
   return <ProjectingBanner />
 }
@@ -1789,7 +1790,6 @@ export function DashboardClient({
   const liveSkills: PlayerSkillMastery[] = skillsQueryData?.skills ?? skills
 
   // React Query mutations
-  const abandonMutation = useAbandonSession()
   const setMasteredSkillsMutation = useSetMasteredSkills()
   const refreshSkillMutation = useRefreshSkillRecency()
 
@@ -1820,7 +1820,6 @@ export function DashboardClient({
   const [showOfflineSessionModal, setShowOfflineSessionModal] = useState(false)
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
-  const [isStartingOver, setIsStartingOver] = useState(false)
 
   // Notes state (local, updated when saved)
   const [currentNotes, setCurrentNotes] = useState<string | null>(player.notes ?? null)
@@ -1852,25 +1851,48 @@ export function DashboardClient({
     [liveSkills]
   )
 
-  // Build active session state
-  const activeSessionState: ActiveSessionState | null = activeSession
-    ? (() => {
-        const sessionSkillIds = activeSession.masteredSkillIds || []
-        const sessionSet = new Set(sessionSkillIds)
-        const currentSet = new Set(livePracticingSkillIds)
-        return {
-          id: activeSession.id,
-          status: activeSession.status as 'draft' | 'approved' | 'in_progress',
-          completedCount: activeSession.results.length,
-          totalCount: activeSession.summary.totalProblemCount,
-          hasSkillMismatch:
-            livePracticingSkillIds.some((id) => !sessionSet.has(id)) ||
-            sessionSkillIds.some((id) => !currentSet.has(id)),
-          skillsAdded: livePracticingSkillIds.filter((id) => !sessionSet.has(id)).length,
-          skillsRemoved: sessionSkillIds.filter((id) => !currentSet.has(id)).length,
-        }
-      })()
-    : null
+  // Compute BKT results for skill changes calculation
+  const bktResultsMap = useMemo(() => {
+    const result = computeBktFromHistory(problemHistory, {
+      confidenceThreshold: 0.5,
+      applyDecay: false,
+    })
+    const map = new Map<string, SkillBktResult>()
+    for (const skill of result.skills) {
+      map.set(skill.skillId, skill)
+    }
+    return map
+  }, [problemHistory])
+
+  // Build active session state for the banner
+  const activeSessionState: ActiveSessionState | null = useMemo(() => {
+    if (!activeSession) return null
+
+    const sessionSkillIds = activeSession.masteredSkillIds || []
+
+    // Compute skill changes
+    const skillChanges = computeSkillChanges(sessionSkillIds, livePracticingSkillIds, bktResultsMap)
+
+    // Determine last activity - use the last result's timestamp if available
+    const lastResult = activeSession.results[activeSession.results.length - 1]
+    const lastActivityAt = lastResult
+      ? new Date(lastResult.timestamp || activeSession.startedAt || activeSession.createdAt)
+      : activeSession.startedAt
+        ? new Date(activeSession.startedAt)
+        : null
+
+    return {
+      id: activeSession.id,
+      completedCount: activeSession.results.length,
+      totalCount: activeSession.summary.totalProblemCount,
+      createdAt: new Date(activeSession.createdAt),
+      startedAt: activeSession.startedAt ? new Date(activeSession.startedAt) : null,
+      lastActivityAt,
+      focusDescription: activeSession.summary?.focusDescription ?? 'Practice session',
+      sessionSkillIds,
+      skillChanges,
+    }
+  }, [activeSession, livePracticingSkillIds, bktResultsMap])
 
   // Calculate avg seconds per problem
   const avgSecondsPerProblem = (() => {
@@ -1898,22 +1920,6 @@ export function DashboardClient({
     },
     []
   )
-
-  const handleStartOver = useCallback(async () => {
-    if (!activeSession) return
-    setIsStartingOver(true)
-    try {
-      await abandonMutation.mutateAsync({
-        playerId: studentId,
-        planId: activeSession.id,
-      })
-      router.push(`/practice/${studentId}/configure`)
-    } catch (error) {
-      console.error('Failed to start over:', error)
-    } finally {
-      setIsStartingOver(false)
-    }
-  }, [activeSession, studentId, abandonMutation, router])
 
   const handleResumeSession = useCallback(
     () => router.push(`/practice/${studentId}`),
@@ -1943,8 +1949,16 @@ export function DashboardClient({
   )
 
   return (
-    <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoadingSessionMode}>
-      <BannerActionRegistrar onAction={handleStartPractice} />
+    <SessionModeBannerProvider
+      sessionMode={sessionMode ?? null}
+      isLoading={isLoadingSessionMode}
+      activeSession={activeSessionState}
+    >
+      <BannerActionRegistrar
+        onAction={handleStartPractice}
+        onResume={handleResumeSession}
+        onStartFresh={handleStartPractice}
+      />
       <PageWithNav>
         <PracticeSubNav student={selectedStudent} pageContext="dashboard" />
 
@@ -1969,12 +1983,7 @@ export function DashboardClient({
               <OverviewTab
                 student={selectedStudent}
                 currentPhase={currentPhase}
-                activeSession={activeSessionState}
-                isDark={isDark}
                 onStartPractice={handleStartPractice}
-                onResumePractice={handleResumeSession}
-                onStartOver={handleStartOver}
-                isStartingOver={isStartingOver}
                 onViewFullProgress={handleViewFullProgress}
                 onGenerateWorksheet={handleGenerateWorksheet}
                 onRunPlacementTest={handleRunPlacementTest}

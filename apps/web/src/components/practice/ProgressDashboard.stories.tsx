@@ -230,54 +230,5 @@ export const WithFocusAreas: Story = {
   ),
 }
 
-/**
- * With Active Session - shows resume button instead of start
- */
-export const WithActiveSession: Story = {
-  render: () => (
-    <DashboardWrapper>
-      <ProgressDashboard
-        student={sampleStudent}
-        currentPhase={intermediatePhase}
-        activeSession={{
-          id: 'session-123',
-          status: 'in_progress',
-          completedCount: 12,
-          totalCount: 30,
-          hasSkillMismatch: false,
-          skillsAdded: 0,
-          skillsRemoved: 0,
-        }}
-        onResumePractice={() => alert('Resume Practice clicked!')}
-        onStartOver={() => alert('Start over clicked!')}
-        {...handlers}
-      />
-    </DashboardWrapper>
-  ),
-}
-
-/**
- * With Active Session and Skill Mismatch - shows warning
- */
-export const WithActiveSessionMismatch: Story = {
-  render: () => (
-    <DashboardWrapper>
-      <ProgressDashboard
-        student={sampleStudent}
-        currentPhase={intermediatePhase}
-        activeSession={{
-          id: 'session-123',
-          status: 'in_progress',
-          completedCount: 5,
-          totalCount: 30,
-          hasSkillMismatch: true,
-          skillsAdded: 2,
-          skillsRemoved: 1,
-        }}
-        onResumePractice={() => alert('Resume Practice clicked!')}
-        onStartOver={() => alert('Start over clicked!')}
-        {...handlers}
-      />
-    </DashboardWrapper>
-  ),
-}
+// Note: Active session resume/start functionality has been moved to the
+// SessionModeBanner system (see ActiveSessionBanner.tsx and ProjectingBanner.tsx)

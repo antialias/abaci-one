@@ -12,12 +12,16 @@ import {
 } from 'react'
 import useMeasure from 'react-use-measure'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { ActiveSessionState } from '@/components/practice/ActiveSessionBanner'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export type BannerSlot = 'content' | 'nav' | 'hidden'
+
+// Re-export for convenience
+export type { ActiveSessionState } from '@/components/practice/ActiveSessionBanner'
 
 export interface Bounds {
   x: number
@@ -51,6 +55,17 @@ interface SessionModeBannerContextValue {
 
   // Previous slot (for animation direction)
   previousSlot: BannerSlot | null
+
+  // Active session state (if there's an in-progress session)
+  activeSession: ActiveSessionState | null
+
+  // Resume session callback
+  onResume: () => void
+  setOnResume: (callback: () => void) => void
+
+  // Start fresh callback (opens modal while session is still active)
+  onStartFresh: () => void
+  setOnStartFresh: (callback: () => void) => void
 }
 
 // ============================================================================
@@ -67,12 +82,15 @@ interface SessionModeBannerProviderProps {
   children: ReactNode
   sessionMode: SessionMode | null
   isLoading: boolean
+  /** Active session state (if there's an in-progress session) */
+  activeSession?: ActiveSessionState | null
 }
 
 export function SessionModeBannerProvider({
   children,
   sessionMode,
   isLoading,
+  activeSession = null,
 }: SessionModeBannerProviderProps) {
   // Track which slots are currently registered
   const [contentSlotRegistered, setContentSlotRegistered] = useState(false)
@@ -143,6 +161,28 @@ export function SessionModeBannerProvider({
     onActionRef.current = callback
   }, [])
 
+  // Resume session callback ref
+  const onResumeRef = useRef<() => void>(() => {})
+
+  const onResume = useCallback(() => {
+    onResumeRef.current()
+  }, [])
+
+  const setOnResume = useCallback((callback: () => void) => {
+    onResumeRef.current = callback
+  }, [])
+
+  // Start fresh callback ref
+  const onStartFreshRef = useRef<() => void>(() => {})
+
+  const onStartFresh = useCallback(() => {
+    onStartFreshRef.current()
+  }, [])
+
+  const setOnStartFresh = useCallback((callback: () => void) => {
+    onStartFreshRef.current = callback
+  }, [])
+
   // Convert bounds to our format (null if not registered or zero-sized)
   const processedContentBounds: Bounds | null = useMemo(() => {
     if (!contentBounds || contentBounds.width === 0 || contentBounds.height === 0) {
@@ -181,6 +221,11 @@ export function SessionModeBannerProvider({
       setOnAction,
       isInitialRender,
       previousSlot,
+      activeSession,
+      onResume,
+      setOnResume,
+      onStartFresh,
+      setOnStartFresh,
     }),
     [
       activeSlot,
@@ -194,6 +239,11 @@ export function SessionModeBannerProvider({
       setOnAction,
       isInitialRender,
       previousSlot,
+      activeSession,
+      onResume,
+      setOnResume,
+      onStartFresh,
+      setOnStartFresh,
     ]
   )
 
