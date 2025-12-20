@@ -6,20 +6,57 @@
  * skill tagging. Each profile declares its INTENTION, and after generation
  * the ACTUAL outcomes are appended to the student notes.
  *
- * Creates students with realistic curriculum progressions:
- * - "🔴 Multi-Skill Deficient" - Early L1, struggling with basics
- * - "🟡 Single-Skill Blocker" - Mid L1, one five-complement blocking
- * - "🟢 Progressing Nicely" - Mid L1, healthy mix
- * - "⭐ Ready to Level Up" - End of L1 addition, all strong
- * - "🚀 Overdue for Promotion" - Has mastered L1, ready for L2
+ * =============================================================================
+ * CLI OPTIONS
+ * =============================================================================
  *
- * Session Mode Test Profiles:
- * - "🎯 Remediation Test" - REMEDIATION mode (weak skills blocking promotion)
- * - "📚 Progression Tutorial Test" - PROGRESSION mode (tutorial required)
- * - "🚀 Progression Ready Test" - PROGRESSION mode (tutorial done)
- * - "🏆 Maintenance Test" - MAINTENANCE mode (all skills strong)
+ * Usage:
+ *   npm run seed:test-students [options]
  *
- * Usage: npm run seed:test-students
+ * Options:
+ *   --help, -h              Show this help message
+ *   --list, -l              List all available students and categories
+ *   --name, -n <name>       Seed specific student(s) by name (can use multiple times)
+ *   --category, -c <cat>    Seed all students in a category (can use multiple times)
+ *   --dry-run               Show what would be seeded without creating students
+ *
+ * Categories:
+ *   bkt          Core BKT scenarios (deficient, blocker, progressing, etc.)
+ *   session      Session mode tests (remediation, progression, maintenance)
+ *   edge         Edge cases (empty, single skill, high volume, NaN stress test)
+ *
+ * Examples:
+ *   npm run seed:test-students                     # Seed all students
+ *   npm run seed:test-students -- --list           # List available options
+ *   npm run seed:test-students -- -n "💥 NaN Stress Test"
+ *   npm run seed:test-students -- -c edge          # Seed all edge case students
+ *   npm run seed:test-students -- -c bkt -c session
+ *   npm run seed:test-students -- -n "🔴 Multi-Skill Deficient" -n "🟢 Progressing Nicely"
+ *
+ * =============================================================================
+ * STUDENT PROFILES
+ * =============================================================================
+ *
+ * BKT Scenarios (--category bkt):
+ *   🔴 Multi-Skill Deficient  - Early L1, struggling with basics
+ *   🟡 Single-Skill Blocker   - Mid L1, one five-complement blocking
+ *   🟢 Progressing Nicely     - Mid L1, healthy mix
+ *   ⭐ Ready to Level Up      - End of L1 addition, all strong
+ *   🚀 Overdue for Promotion  - Has mastered L1, ready for L2
+ *
+ * Session Mode Tests (--category session):
+ *   🎯 Remediation Test           - REMEDIATION mode (weak skills blocking)
+ *   📚 Progression Tutorial Test  - PROGRESSION mode (tutorial required)
+ *   🚀 Progression Ready Test     - PROGRESSION mode (tutorial done)
+ *   🏆 Maintenance Test           - MAINTENANCE mode (all skills strong)
+ *
+ * Edge Cases (--category edge):
+ *   🆕 Brand New Student      - Zero practicing skills, empty state
+ *   🔢 Single Skill Only      - Only one skill practicing
+ *   📊 High Volume Learner    - Many skills with lots of practice history
+ *   ⚖️ Multi-Weak Remediation - Many weak skills needing remediation
+ *   🕰️ Stale Skills Test      - Skills at various staleness levels
+ *   💥 NaN Stress Test        - Stress tests BKT NaN handling
  */
 
 import { createId } from '@paralleldrive/cuid2'
@@ -295,10 +332,15 @@ interface TuningAdjustment {
   problemsMultiplier?: number
 }
 
+/** Profile category for CLI filtering */
+type ProfileCategory = 'bkt' | 'session' | 'edge'
+
 interface TestStudentProfile {
   name: string
   emoji: string
   color: string
+  /** Category for CLI filtering: 'bkt', 'session', or 'edge' */
+  category: ProfileCategory
   description: string
   /** Intention notes - what this profile is TRYING to achieve */
   intentionNotes: string
@@ -376,6 +418,7 @@ const TEST_PROFILES: TestStudentProfile[] = [
     name: '🔴 Multi-Skill Deficient',
     emoji: '😰',
     color: '#ef4444', // red
+    category: 'bkt',
     description: 'Struggling with many skills - needs intervention',
     currentPhaseId: 'L1.add.+3.direct',
     practicingSkills: EARLY_L1_SKILLS,
@@ -406,6 +449,7 @@ Use this student to test how the UI handles intervention alerts for foundational
     name: '🟡 Single-Skill Blocker',
     emoji: '🤔',
     color: '#f59e0b', // amber
+    category: 'bkt',
     description: 'One weak skill blocking progress, others are fine',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
@@ -444,6 +488,7 @@ Use this student to test targeted intervention recommendations.`,
     name: '🟢 Progressing Nicely',
     emoji: '😊',
     color: '#22c55e', // green
+    category: 'bkt',
     description: 'Healthy progression - mostly strong with one skill in progress',
     currentPhaseId: 'L1.add.+3.five',
     practicingSkills: MID_L1_SKILLS,
@@ -483,6 +528,7 @@ Use this student to verify:
     name: '⭐ Ready to Level Up',
     emoji: '🌟',
     color: '#8b5cf6', // violet
+    category: 'bkt',
     description: 'All skills strong - ready for next curriculum phase',
     currentPhaseId: 'L1.add.+1.five',
     practicingSkills: LATE_L1_ADD_SKILLS,
@@ -522,6 +568,7 @@ Use this student to test:
     name: '🚀 Overdue for Promotion',
     emoji: '🏆',
     color: '#06b6d4', // cyan
+    category: 'bkt',
     description: 'All skills mastered long ago - should have leveled up already',
     currentPhaseId: 'L2.add.+9.ten',
     practicingSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
@@ -610,6 +657,7 @@ Use this student to test:
     name: '🎯 Remediation Test',
     emoji: '🎯',
     color: '#dc2626', // red-600
+    category: 'session',
     description: 'REMEDIATION MODE - Weak skills blocking promotion',
     currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
@@ -659,6 +707,7 @@ Use this to test the remediation UI in dashboard and modal.`,
     name: '📚 Progression Tutorial Test',
     emoji: '📚',
     color: '#7c3aed', // violet-600
+    category: 'session',
     description: 'PROGRESSION MODE - Ready for new skill, tutorial required',
     currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
@@ -709,6 +758,7 @@ Use this to test the progression UI and tutorial gate flow.`,
     name: '🚀 Progression Ready Test',
     emoji: '🚀',
     color: '#059669', // emerald-600
+    category: 'session',
     description: 'PROGRESSION MODE - Tutorial done, ready to practice',
     currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
@@ -759,6 +809,7 @@ Use this to test the progression UI when tutorial is already satisfied.`,
     name: '🏆 Maintenance Test',
     emoji: '🏆',
     color: '#0891b2', // cyan-600
+    category: 'session',
     description: 'MAINTENANCE MODE - All skills strong, mixed practice',
     currentPhaseId: 'L1.add.+4.five',
     practicingSkills: [
@@ -831,6 +882,7 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
     name: '🆕 Brand New Student',
     emoji: '🌱',
     color: '#84cc16', // lime-500
+    category: 'edge',
     description: 'EDGE CASE - Zero practicing skills, empty state',
     currentPhaseId: 'L1.add.+1.direct',
     practicingSkills: [], // No skills practicing yet!
@@ -852,6 +904,7 @@ Use this to verify the dashboard handles zero practicing skills gracefully.`,
     name: '🔢 Single Skill Only',
     emoji: '1️⃣',
     color: '#a855f7', // purple-500
+    category: 'edge',
     description: 'EDGE CASE - Only one skill practicing',
     currentPhaseId: 'L1.add.+1.direct',
     practicingSkills: ['basic.directAddition'],
@@ -872,6 +925,7 @@ Use this to verify the dashboard handles single-skill students correctly.`,
     name: '📊 High Volume Learner',
     emoji: '📈',
     color: '#3b82f6', // blue-500
+    category: 'edge',
     description: 'EDGE CASE - Many skills with lots of practice history',
     currentPhaseId: 'L1.sub.-3.five',
     practicingSkills: [
@@ -929,6 +983,7 @@ Use this to verify:
     name: '⚖️ Multi-Weak Remediation',
     emoji: '⚖️',
     color: '#f97316', // orange-500
+    category: 'edge',
     description: 'EDGE CASE - Many weak skills needing remediation',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
@@ -982,6 +1037,7 @@ Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     name: '🕰️ Stale Skills Test',
     emoji: '⏰',
     color: '#6b7280', // gray-500
+    category: 'edge',
     description: 'EDGE CASE - Skills at various staleness levels',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
@@ -1028,6 +1084,69 @@ Use this to test:
       { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.78, problems: 18, ageDays: 20 },
       // "Very stale" (30+ days)
       { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.75, problems: 16, ageDays: 45 },
+    ],
+  },
+  {
+    name: '💥 NaN Stress Test',
+    emoji: '💥',
+    color: '#dc2626', // red-600
+    category: 'edge',
+    description: 'EDGE CASE - Stress tests BKT NaN handling with extreme data',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+    ],
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+    ],
+    intentionNotes: `INTENTION: NaN Stress Test
+
+This student is specifically designed to stress test the BKT NaN handling code.
+
+The profile includes:
+• Skills with EXTREME accuracy values (0.01 and 0.99)
+• Very high problem counts (100+ per skill)
+• Mixed recent and very old practice dates
+• Boundary conditions that could trigger floating point edge cases
+
+The BKT calculation should handle all of these gracefully:
+• No NaN values in the output
+• Console warnings for any edge cases
+• UI should display valid percentages for all skills
+
+If you see "⚠️ Data Error" or NaN values in the dashboard:
+1. Check browser console for [BKT] warnings
+2. Investigate the specific skill that failed
+3. Check the problem history for that skill
+
+Use this profile to verify:
+• BKT core calculations handle extreme pKnown values
+• Conjunctive BKT blame attribution works with edge cases
+• Evidence quality weights don't produce NaN
+• UI gracefully shows errors for any corrupted data`,
+    skillHistory: [
+      // EXTREME values - very high accuracy with many problems
+      { skillId: 'basic.directAddition', targetAccuracy: 0.99, problems: 100 },
+      // EXTREME values - very low accuracy with many problems
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.01, problems: 100 },
+      // Boundary case - exactly 50% accuracy (develops into developing or weak)
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.5, problems: 50 },
+      // Normal case for contrast
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.75, problems: 25 },
+      // Few problems with extreme accuracy (low confidence but extreme pKnown)
+      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.02, problems: 5 },
+      // Very old skill with high accuracy (tests decay handling)
+      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.95, problems: 40, ageDays: 90 },
     ],
   },
 ]
