@@ -1,17 +1,6 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-// Import tunable constants from centralized config
-import { FLUENCY_RECENCY, FLUENCY_THRESHOLDS } from '@/lib/curriculum/config'
 import { players } from './players'
-
-/**
- * Fluency state - computed from practice history, NOT stored in database
- * - practicing: isPracticing=true but hasn't achieved fluency criteria yet
- * - effortless: fluent + practiced within 14 days
- * - fluent: high accuracy (85%+), 5+ consecutive correct, practiced within 30 days
- * - rusty: was fluent but >30 days since practice
- */
-export type FluencyState = 'practicing' | 'effortless' | 'fluent' | 'rusty'
 
 /**
  * Player skill mastery table - tracks per-skill progress for each player
@@ -59,8 +48,7 @@ export const playerSkillMastery = sqliteTable(
     /**
      * Whether this skill is in the student's active practice rotation.
      * Set by teacher via ManualSkillSelector checkbox.
-     * Fluency state (effortless/fluent/rusty/practicing) is computed from
-     * attempts, correct, consecutiveCorrect, and lastPracticedAt.
+     * Mastery is tracked via BKT (Bayesian Knowledge Tracing) using session history.
      */
     isPracticing: integer('is_practicing', { mode: 'boolean' }).notNull().default(false),
 
@@ -128,65 +116,3 @@ export const playerSkillMastery = sqliteTable(
 
 export type PlayerSkillMastery = typeof playerSkillMastery.$inferSelect
 export type NewPlayerSkillMastery = typeof playerSkillMastery.$inferInsert
-
-/**
- * Fluency configuration constants
- * Used to determine if a student has achieved fluency in a skill
- *
- * Composed from centralized config values.
- * See @/lib/curriculum/config/fluency-thresholds.ts for tuning.
- */
-export const FLUENCY_CONFIG = {
-  ...FLUENCY_THRESHOLDS,
-  ...FLUENCY_RECENCY,
-} as const
-
-/**
- * Check if a student has achieved fluency in a skill based on their practice history.
- * Fluency = high accuracy + consistent performance (consecutive correct answers)
- */
-export function hasFluency(attempts: number, correct: number, consecutiveCorrect: number): boolean {
-  const accuracy = attempts > 0 ? correct / attempts : 0
-  return (
-    consecutiveCorrect >= FLUENCY_CONFIG.consecutiveForFluency &&
-    attempts >= FLUENCY_CONFIG.minimumAttempts &&
-    accuracy >= FLUENCY_CONFIG.accuracyThreshold
-  )
-}
-
-/**
- * Calculate the fluency state for a skill based on practice history and recency.
- * Only call this for skills where isPracticing=true.
- *
- * @param attempts - Total number of attempts
- * @param correct - Number of correct answers
- * @param consecutiveCorrect - Current consecutive correct streak
- * @param daysSinceLastPractice - Days since lastPracticedAt (undefined if never practiced)
- * @returns FluencyState: 'practicing' | 'effortless' | 'fluent' | 'rusty'
- */
-export function calculateFluencyState(
-  attempts: number,
-  correct: number,
-  consecutiveCorrect: number,
-  daysSinceLastPractice?: number
-): FluencyState {
-  // Not yet fluent - still practicing
-  if (!hasFluency(attempts, correct, consecutiveCorrect)) {
-    return 'practicing'
-  }
-
-  // Fluent - now check recency
-  if (daysSinceLastPractice === undefined) {
-    return 'fluent' // Never practiced = assume fluent (teacher marked it)
-  }
-
-  if (daysSinceLastPractice <= FLUENCY_CONFIG.effortlessDays) {
-    return 'effortless'
-  }
-
-  if (daysSinceLastPractice <= FLUENCY_CONFIG.fluentDays) {
-    return 'fluent'
-  }
-
-  return 'rusty'
-}

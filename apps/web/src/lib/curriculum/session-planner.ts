@@ -220,10 +220,10 @@ export async function generateSessionPlan(
     const practicingIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
     for (const skillId of practicingIds.slice(0, 5)) {
       const multiplier = costCalculator.getMultiplier(skillId)
-      const masteryState = costCalculator.getMasteryState(skillId)
+      const isPracticing = costCalculator.getIsPracticing(skillId)
       const bkt = costCalculator.getBktResult(skillId)
       console.log(
-        `  ${skillId}: mult=${multiplier.toFixed(2)} mastery=${masteryState} ` +
+        `  ${skillId}: mult=${multiplier.toFixed(2)} inRotation=${isPracticing} ` +
           `bkt_pKnown=${bkt?.pKnown.toFixed(2) ?? 'N/A'} bkt_conf=${bkt?.confidence.toFixed(2) ?? 'N/A'}`
       )
     }
@@ -303,7 +303,13 @@ export async function generateSessionPlan(
         partType,
         durationMinutes,
         avgTimeSeconds,
-        { ...config, partTimeWeights: { ...config.partTimeWeights, [partType]: normalizedWeight } },
+        {
+          ...config,
+          partTimeWeights: {
+            ...config.partTimeWeights,
+            [partType]: normalizedWeight,
+          },
+        },
         practicingSkillConstraints,
         struggling,
         needsReview,
@@ -1003,8 +1009,12 @@ function createSlot(
     termCount: getTermCountForPartType(partType, config),
     digitRange: { min: 1, max: 2 },
     // Add complexity budget constraints based on purpose
-    ...(complexityBounds.min !== undefined && { minComplexityBudgetPerTerm: complexityBounds.min }),
-    ...(complexityBounds.max !== undefined && { maxComplexityBudgetPerTerm: complexityBounds.max }),
+    ...(complexityBounds.min !== undefined && {
+      minComplexityBudgetPerTerm: complexityBounds.min,
+    }),
+    ...(complexityBounds.max !== undefined && {
+      maxComplexityBudgetPerTerm: complexityBounds.max,
+    }),
   }
 
   // Pre-generate the problem so it's persisted with the plan

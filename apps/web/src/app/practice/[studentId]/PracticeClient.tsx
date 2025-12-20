@@ -192,7 +192,11 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         <PracticeErrorBoundary studentName={player.name}>
           <ActiveSession
             plan={currentPlan}
-            student={{ name: player.name, emoji: player.emoji, color: player.color }}
+            student={{
+              name: player.name,
+              emoji: player.emoji,
+              color: player.color,
+            }}
             onAnswer={handleAnswer}
             onEndEarly={handleEndEarly}
             onPause={handlePause}

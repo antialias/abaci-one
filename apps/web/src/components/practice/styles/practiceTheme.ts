@@ -182,26 +182,37 @@ export function getAccuracyColors(
 }
 
 /**
- * Mastery level to semantic color mapping
+ * BKT-based mastery classification to semantic color mapping
+ *
+ * Maps BKT classifications to visual treatment:
+ * - "strong" (pKnown >= 0.8) → success (green)
+ * - "developing" (0.5 <= pKnown < 0.8) → warning (yellow)
+ * - "weak" (pKnown < 0.5) → error (red)
  */
-export type MasteryLevel = 'mastered' | 'practicing' | 'learning'
+export type BktClassification = 'strong' | 'developing' | 'weak'
 
 export function getMasteryColors(
-  level: MasteryLevel,
+  classification: BktClassification | null,
   isDark: boolean
 ): { bg: string; text: string } {
-  switch (level) {
-    case 'mastered':
+  switch (classification) {
+    case 'strong':
       return {
         bg: themed('success', isDark),
         text: themed('successText', isDark),
       }
-    case 'practicing':
+    case 'developing':
       return {
         bg: themed('warning', isDark),
         text: themed('warningText', isDark),
       }
+    case 'weak':
+      return {
+        bg: themed('error', isDark),
+        text: themed('errorText', isDark),
+      }
     default:
+      // null = insufficient data for classification
       return {
         bg: themed('surfaceMuted', isDark),
         text: themed('textMuted', isDark),

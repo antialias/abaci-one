@@ -151,7 +151,12 @@ function fireConfettiCelebration(): void {
 // =============================================================================
 
 // Helper to create RGBA
-const rgba = (r: number, g: number, b: number, a: number): RGBA => ({ r, g, b, a })
+const rgba = (r: number, g: number, b: number, a: number): RGBA => ({
+  r,
+  g,
+  b,
+  a,
+})
 
 // --- Container Background Gradients ---
 const CELEBRATION_BG_LIGHT: GradientStop[] = [

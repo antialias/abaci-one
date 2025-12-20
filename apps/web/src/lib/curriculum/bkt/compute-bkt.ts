@@ -78,7 +78,10 @@ export function computeBktFromHistory(
   options: Partial<BktComputeExtendedOptions> = {}
 ): BktComputeResult {
   // Merge with defaults so callers can override just what they need
-  const opts: BktComputeExtendedOptions = { ...DEFAULT_BKT_OPTIONS, ...options }
+  const opts: BktComputeExtendedOptions = {
+    ...DEFAULT_BKT_OPTIONS,
+    ...options,
+  }
   // Sort by timestamp to replay in chronological order
   // Note: timestamp may be a Date or a string (from JSON serialization)
   const sorted = [...results].sort((a, b) => {

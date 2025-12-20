@@ -5,7 +5,8 @@ import { css } from '../../../styled-system/css'
 
 interface SkillPerformance {
   skillId: string
-  masteryLevel: 'learning' | 'practicing' | 'mastered'
+  /** BKT-based mastery classification */
+  bktClassification: 'strong' | 'developing' | 'weak' | null
   attempts: number
   accuracy: number
   avgResponseTimeMs: number | null
@@ -68,8 +69,11 @@ function formatTime(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`
 }
 
-// Get mastery level badge style
-function getMasteryBadgeStyle(level: string, isDark: boolean) {
+// Get BKT classification badge style
+function getBktBadgeStyle(
+  classification: 'strong' | 'developing' | 'weak' | null,
+  isDark: boolean
+) {
   const baseStyle = {
     display: 'inline-block',
     padding: '2px 8px',
@@ -78,18 +82,24 @@ function getMasteryBadgeStyle(level: string, isDark: boolean) {
     fontWeight: 'bold',
   }
 
-  switch (level) {
-    case 'mastered':
+  switch (classification) {
+    case 'strong':
       return {
         ...baseStyle,
         backgroundColor: isDark ? 'green.800' : 'green.100',
         color: isDark ? 'green.200' : 'green.800',
       }
-    case 'practicing':
+    case 'developing':
       return {
         ...baseStyle,
         backgroundColor: isDark ? 'yellow.800' : 'yellow.100',
         color: isDark ? 'yellow.200' : 'yellow.800',
+      }
+    case 'weak':
+      return {
+        ...baseStyle,
+        backgroundColor: isDark ? 'red.800' : 'red.100',
+        color: isDark ? 'red.200' : 'red.800',
       }
     default:
       return {
@@ -144,8 +154,8 @@ function SkillCard({
         >
           {formatSkillName(skill.skillId)}
         </span>
-        <span className={css(getMasteryBadgeStyle(skill.masteryLevel, isDark))}>
-          {skill.masteryLevel}
+        <span className={css(getBktBadgeStyle(skill.bktClassification, isDark))}>
+          {skill.bktClassification ?? 'New'}
         </span>
       </div>
 

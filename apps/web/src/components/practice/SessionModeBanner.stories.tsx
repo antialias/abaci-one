@@ -19,7 +19,11 @@ const mockRemediationMode: RemediationMode = {
   ],
   focusDescription: 'Strengthening: +3 and +5 - 2',
   blockedPromotion: {
-    nextSkill: { skillId: 'sub-5-complement-4', displayName: '+5 - 4', pKnown: 0 },
+    nextSkill: {
+      skillId: 'sub-5-complement-4',
+      displayName: '+5 - 4',
+      pKnown: 0,
+    },
     reason: 'Strengthen +3 and +5 - 2 first',
     phase: {
       id: 'L1.sub.-4.five',
@@ -49,7 +53,11 @@ const mockRemediationModeNoBlockedPromotion: RemediationMode = {
 
 const mockProgressionModeWithTutorial: ProgressionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'sub-5-complement-4', displayName: '+5 - 4', pKnown: 0 },
+  nextSkill: {
+    skillId: 'sub-5-complement-4',
+    displayName: '+5 - 4',
+    pKnown: 0,
+  },
   phase: {
     id: 'L1.sub.-4.five',
     levelId: 1,
@@ -239,7 +247,13 @@ export const MaintenanceLoading: Story = {
 
 export const AllModesDashboard: Story = {
   render: () => (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+    <div
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      })}
+    >
       <div>
         <h3
           className={css({
@@ -305,7 +319,13 @@ export const AllModesDashboard: Story = {
 
 export const AllModesModal: Story = {
   render: () => (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+    <div
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      })}
+    >
       <div>
         <h3
           className={css({

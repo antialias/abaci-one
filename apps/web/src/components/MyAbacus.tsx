@@ -48,7 +48,12 @@ function measureDockedAbacus(
 
   // Measure the rendered size and position (dock element now has content, so transforms apply correctly)
   const rect = measureWrapper.getBoundingClientRect()
-  const result = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  const result = {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+  }
 
   // Clean up
   root.unmount()
@@ -328,7 +333,12 @@ export function MyAbacus() {
     if (dockedAbacus) {
       // Measure the actual docked abacus position
       const rect = dockedAbacus.getBoundingClientRect()
-      sourceRect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+      sourceRect = {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      }
     } else {
       // Fallback: measure what it would be
       sourceRect = measureDockedAbacus(dock.element, dockColumns, dockScale, structuralStyles)

@@ -374,7 +374,11 @@ export function SessionProgressIndicator({
           return (
             <div
               key={part.partNumber}
-              className={css({ display: 'flex', alignItems: 'center', gap: '0.25rem' })}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              })}
             >
               {/* Part separator for non-first parts */}
               {partIndex > 0 && (

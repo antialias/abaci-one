@@ -130,7 +130,11 @@ function createSessionHud(config: {
       results.push({
         partNumber: (pIdx + 1) as 1 | 2 | 3,
         slotIndex: sIdx,
-        problem: { terms: [3, 4], answer: 7, skillsRequired: ['basic.directAddition'] },
+        problem: {
+          terms: [3, 4],
+          answer: 7,
+          skillsRequired: ['basic.directAddition'],
+        },
         studentAnswer: 7,
         isCorrect: Math.random() > 0.15,
         responseTimeMs: 2500 + Math.random() * 3000,
@@ -206,7 +210,10 @@ function NavWrapper({
           })}
         >
           <span
-            className={css({ color: darkMode ? 'gray.400' : 'gray.500', fontSize: '0.875rem' })}
+            className={css({
+              color: darkMode ? 'gray.400' : 'gray.500',
+              fontSize: '0.875rem',
+            })}
           >
             Main Navigation Bar
           </span>

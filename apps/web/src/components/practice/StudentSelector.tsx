@@ -177,7 +177,12 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
 
         {/* Mastery progress bar (if available) */}
         {student.masteryPercent !== undefined && (
-          <div className={css({ ...progressBarContainerStyles(isDark, 'sm'), width: '100%' })}>
+          <div
+            className={css({
+              ...progressBarContainerStyles(isDark, 'sm'),
+              width: '100%',
+            })}
+          >
             <div
               className={css(progressBarFillStyles(isDark, 'success'))}
               style={{ width: `${student.masteryPercent}%` }}

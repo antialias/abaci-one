@@ -62,7 +62,9 @@ export function useUpdateBktSettings() {
     // Optimistic update
     onMutate: async (newThreshold) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: bktSettingsKeys.threshold() })
+      await queryClient.cancelQueries({
+        queryKey: bktSettingsKeys.threshold(),
+      })
 
       // Snapshot the previous value
       const previousSettings = queryClient.getQueryData<BktSettingsResponse>(

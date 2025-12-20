@@ -10,7 +10,11 @@ import { CelebrationProgressionBanner } from './CelebrationProgressionBanner'
 
 const mockProgressionMode: ProgressionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'add-5-complement-3', displayName: '+5 − 3', pKnown: 0 },
+  nextSkill: {
+    skillId: 'add-5-complement-3',
+    displayName: '+5 − 3',
+    pKnown: 0,
+  },
   phase: {
     id: 'L1.add.+5-3.five',
     levelId: 1,
@@ -168,7 +172,13 @@ function ProgressSnapshot({
         <span className={css({ fontSize: '0.875rem', fontWeight: '600' })}>
           Progress: {Math.round(progress * 100)}%
         </span>
-        <span className={css({ fontSize: '0.75rem', marginLeft: '0.5rem', opacity: 0.7 })}>
+        <span
+          className={css({
+            fontSize: '0.75rem',
+            marginLeft: '0.5rem',
+            opacity: 0.7,
+          })}
+        >
           (
           {progress === 0 ? 'Full celebration' : progress === 1 ? 'Normal banner' : 'Transitioning'}
           )
@@ -451,10 +461,22 @@ const PROGRESS_LABELS: { value: number; label: string; description: string }[] =
   },
   { value: 0.05, label: '5%', description: 'Barely perceptible change' },
   { value: 0.1, label: '10%', description: 'Still very celebratory' },
-  { value: 0.2, label: '20%', description: 'Subtle reduction in glow, button expanding' },
-  { value: 0.3, label: '30%', description: 'Emoji shrinking, colors shifting' },
+  {
+    value: 0.2,
+    label: '20%',
+    description: 'Subtle reduction in glow, button expanding',
+  },
+  {
+    value: 0.3,
+    label: '30%',
+    description: 'Emoji shrinking, colors shifting',
+  },
   { value: 0.4, label: '40%', description: 'Colors shifting toward green' },
-  { value: 0.5, label: '50%', description: 'Halfway - moderate size and glow' },
+  {
+    value: 0.5,
+    label: '50%',
+    description: 'Halfway - moderate size and glow',
+  },
   { value: 0.6, label: '60%', description: 'Wiggle diminishing' },
   { value: 0.7, label: '70%', description: 'Button nearly full width' },
   { value: 0.8, label: '80%', description: 'Mostly normal appearance' },
@@ -489,7 +511,11 @@ function ProgressScrubber({ isDark = false }: { isDark?: boolean }) {
         })}
       >
         <h2
-          className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
           style={{ color: isDark ? '#f3f4f6' : '#111827' }}
         >
           Progress Scrubber
@@ -686,7 +712,13 @@ function ProgressScrubber({ isDark = false }: { isDark?: boolean }) {
         <div className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
           Key values at {(progress * 100).toFixed(0)}%:
         </div>
-        <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem' })}>
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '0.25rem',
+          })}
+        >
           <span>Emoji size:</span>
           <span style={{ color: isDark ? '#fbbf24' : '#d97706' }}>
             {Math.round(64 - 32 * progress)}px

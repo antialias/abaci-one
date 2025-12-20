@@ -13,8 +13,16 @@ import { MorphingBanner } from './MorphingBanner'
 
 const mockProgressionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
-  phase: { id: 'level1-phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
+  nextSkill: {
+    skillId: 'heaven.5',
+    displayName: '+5 (Heaven Bead)',
+    pKnown: 0,
+  },
+  phase: {
+    id: 'level1-phase2',
+    name: 'Heaven Bead',
+    primarySkillId: 'heaven.5',
+  } as any,
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Ready to learn +5 (Heaven Bead)',
@@ -310,7 +318,13 @@ function TwoAxisDemo({ sessionMode, darkMode = false }: ScrubberDemoProps) {
       >
         {/* Celebration Progress */}
         <div className={css({ marginBottom: '1rem' })}>
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '1rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+            })}
+          >
             <label
               className={css({
                 fontSize: '0.875rem',
@@ -348,7 +362,13 @@ function TwoAxisDemo({ sessionMode, darkMode = false }: ScrubberDemoProps) {
 
         {/* Layout Progress */}
         <div>
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '1rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+            })}
+          >
             <label
               className={css({
                 fontSize: '0.875rem',

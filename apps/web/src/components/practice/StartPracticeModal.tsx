@@ -45,7 +45,11 @@ interface StartPracticeModalProps {
   open?: boolean
 }
 
-type EnabledParts = { abacus: boolean; visualization: boolean; linear: boolean }
+type EnabledParts = {
+  abacus: boolean
+  visualization: boolean
+  linear: boolean
+}
 
 const PART_TYPES = [
   { type: 'abacus' as const, emoji: '🧮', label: 'Abacus' },
@@ -240,7 +244,9 @@ export function StartPracticeModal({
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false)
     // Invalidate the session mode query to refresh state
-    queryClient.invalidateQueries({ queryKey: sessionModeKeys.forPlayer(studentId) })
+    queryClient.invalidateQueries({
+      queryKey: sessionModeKeys.forPlayer(studentId),
+    })
     // Proceed with starting practice
     handleStart()
   }, [queryClient, studentId, handleStart])
@@ -760,7 +766,9 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.375rem',
-                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': {
+                              gap: '0.25rem',
+                            },
                           })}
                         >
                           {[5, 10, 15, 20].map((min) => {
@@ -846,7 +854,9 @@ export function StartPracticeModal({
                                       fontSize: '0.5625rem',
                                     },
                                   })}
-                                  style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+                                  style={{
+                                    color: isDark ? '#64748b' : '#94a3b8',
+                                  }}
                                 >
                                   ~{problems}
                                 </span>
@@ -880,7 +890,9 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.375rem',
-                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.25rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': {
+                              gap: '0.25rem',
+                            },
                           })}
                         >
                           {PART_TYPES.map(({ type, emoji, label }) => {
@@ -979,7 +991,9 @@ export function StartPracticeModal({
                                       fontSize: '0.5625rem',
                                     },
                                   })}
-                                  style={{ color: isDark ? '#e2e8f0' : '#334155' }}
+                                  style={{
+                                    color: isDark ? '#e2e8f0' : '#334155',
+                                  }}
                                 >
                                   {label}
                                 </span>
@@ -1013,7 +1027,9 @@ export function StartPracticeModal({
                           className={css({
                             display: 'flex',
                             gap: '0.25rem',
-                            '@media (max-width: 480px), (max-height: 700px)': { gap: '0.125rem' },
+                            '@media (max-width: 480px), (max-height: 700px)': {
+                              gap: '0.125rem',
+                            },
                           })}
                         >
                           {[3, 4, 5, 6, 7, 8].map((terms) => {
@@ -1090,13 +1106,19 @@ export function StartPracticeModal({
                     <span className={css({ fontSize: '1.5rem', lineHeight: 1 })}>🌟</span>
                     <div className={css({ flex: 1 })}>
                       <p
-                        className={css({ fontSize: '0.875rem', fontWeight: '600' })}
+                        className={css({
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                        })}
                         style={{ color: isDark ? '#86efac' : '#166534' }}
                       >
                         You've unlocked: <strong>{tutorialConfig.title}</strong>
                       </p>
                       <p
-                        className={css({ fontSize: '0.75rem', marginTop: '0.125rem' })}
+                        className={css({
+                          fontSize: '0.75rem',
+                          marginTop: '0.125rem',
+                        })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
                       >
                         Start with a quick tutorial
@@ -1175,13 +1197,19 @@ export function StartPracticeModal({
                     <span className={css({ fontSize: '1.5rem', lineHeight: 1 })}>💪</span>
                     <div className={css({ flex: 1 })}>
                       <p
-                        className={css({ fontSize: '0.875rem', fontWeight: '600' })}
+                        className={css({
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                        })}
                         style={{ color: isDark ? '#fcd34d' : '#b45309' }}
                       >
                         Time to build strength!
                       </p>
                       <p
-                        className={css({ fontSize: '0.75rem', marginTop: '0.125rem' })}
+                        className={css({
+                          fontSize: '0.75rem',
+                          marginTop: '0.125rem',
+                        })}
                         style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
                       >
                         Focusing on {sessionMode.weakSkills.length} skill
@@ -1309,7 +1337,10 @@ export function StartPracticeModal({
                   {isNoSkillsError ? (
                     <>
                       <p
-                        className={css({ fontSize: '0.875rem', marginBottom: '0.5rem' })}
+                        className={css({
+                          fontSize: '0.875rem',
+                          marginBottom: '0.5rem',
+                        })}
                         style={{ color: isDark ? '#fcd34d' : '#b45309' }}
                       >
                         ⚠️ No skills enabled

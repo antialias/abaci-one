@@ -298,14 +298,26 @@ export const DocumentationNote: Story = {
           margin: '0 auto',
         })}
       >
-        <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' })}>
+        <h2
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '1rem',
+          })}
+        >
           Session Mode System
         </h2>
         <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
           The StartPracticeModal receives a <strong>sessionMode</strong> prop that determines the
           type of session:
         </p>
-        <ul className={css({ paddingLeft: '1.5rem', marginBottom: '1rem', lineHeight: 1.8 })}>
+        <ul
+          className={css({
+            paddingLeft: '1.5rem',
+            marginBottom: '1rem',
+            lineHeight: 1.8,
+          })}
+        >
           <li>
             <strong>Maintenance:</strong> All skills are strong, mixed practice
           </li>
@@ -316,7 +328,13 @@ export const DocumentationNote: Story = {
             <strong>Progression:</strong> Ready to learn new skill, may include tutorial gate
           </li>
         </ul>
-        <p className={css({ fontSize: '0.875rem', color: 'gray.600', fontStyle: 'italic' })}>
+        <p
+          className={css({
+            fontSize: '0.875rem',
+            color: 'gray.600',
+            fontStyle: 'italic',
+          })}
+        >
           The sessionMode is fetched via useSessionMode() hook and passed to the modal. See
           SessionModeBanner stories for the dashboard banner component.
         </p>

@@ -82,7 +82,11 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
-export { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
+export {
+  getAllSkillMastery,
+  getPlayerCurriculum,
+  getRecentSessions,
+} from './progress-manager'
 export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,

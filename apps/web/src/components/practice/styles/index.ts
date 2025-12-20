@@ -126,12 +126,12 @@ export {
 // Theme - colors and semantic helpers
 export {
   ACCURACY_THRESHOLDS,
+  type BktClassification,
   getAccuracyColors,
   getAccuracyLevel,
   getMasteryColors,
   getPartTypeColors,
   getPurposeColors,
-  type MasteryLevel,
   type PracticeColorKey,
   type ProblemPurpose,
   practiceColors,

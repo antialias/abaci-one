@@ -10,7 +10,7 @@ import type {
 } from '@/db/schema/session-plans'
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
-import { SessionOverview } from './SessionOverview'
+import { AllProblemsSection } from './AllProblemsSection'
 
 interface PlanReviewProps {
   plan: SessionPlan
@@ -532,7 +532,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             overflow: 'auto',
           })}
         >
-          <SessionOverview plan={plan} studentName={studentName} />
+          <AllProblemsSection plan={plan} isDark={isDark} />
         </div>
       )}
 

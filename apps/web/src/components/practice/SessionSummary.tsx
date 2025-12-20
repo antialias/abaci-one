@@ -1,9 +1,12 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
-import { CompactLinearProblem, CompactVerticalProblem } from './CompactProblemDisplay'
+import { AllProblemsSection } from './AllProblemsSection'
+import { calculateAutoPauseInfo, formatMs, getAutoPauseExplanation } from './autoPauseCalculator'
+import { ProblemToReview } from './ProblemToReview'
+import { filterProblemsNeedingAttention, getProblemsWithContext } from './sessionSummaryUtils'
 
 interface SessionSummaryProps {
   plan: SessionPlan
@@ -90,6 +93,16 @@ export function SessionSummary({
   // Check if abacus was used
   const abacusUsageCount = results.filter((r) => r.usedOnScreenAbacus).length
   const abacusUsagePercent = totalProblems > 0 ? (abacusUsageCount / totalProblems) * 100 : 0
+
+  // Calculate auto-pause info for timing summary
+  const autoPauseInfo = calculateAutoPauseInfo(results)
+
+  // Get problems that need attention (incorrect, slow, or used heavy help)
+  const problemsWithContext = getProblemsWithContext(plan)
+  const problemsNeedingAttention = filterProblemsNeedingAttention(
+    problemsWithContext,
+    autoPauseInfo.threshold
+  )
 
   return (
     <div
@@ -304,7 +317,12 @@ export function SessionSummary({
           <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
             Average time per problem
           </span>
-          <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
+          <span
+            className={css({
+              fontWeight: 'bold',
+              color: isDark ? 'gray.200' : 'gray.800',
+            })}
+          >
             {Math.round(avgTimeMs / 1000)}s
           </span>
         </div>
@@ -319,7 +337,12 @@ export function SessionSummary({
           <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
             On-screen abacus used
           </span>
-          <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
+          <span
+            className={css({
+              fontWeight: 'bold',
+              color: isDark ? 'gray.200' : 'gray.800',
+            })}
+          >
             {abacusUsageCount} times ({Math.round(abacusUsagePercent)}%)
           </span>
         </div>
@@ -527,198 +550,174 @@ export function SessionSummary({
         </div>
       )}
 
-      {/* Problems by part - always visible */}
-      <div
-        data-section="problems-by-part"
+      {/* Auto-Pause Timing Summary */}
+      <section
+        data-section="auto-pause-summary"
         className={css({
           padding: '1rem',
+          borderRadius: '8px',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
-          borderRadius: '12px',
           border: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        <div
+        <h3
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.200' : 'gray.700',
+            marginBottom: '0.5rem',
           })}
         >
-          {plan.parts.map((part) => (
-            <div key={part.partNumber} data-element="part-section">
-              <h4
-                className={css({
-                  fontSize: '0.8125rem',
-                  fontWeight: 'bold',
-                  color: isDark ? 'gray.400' : 'gray.600',
-                  marginBottom: '0.5rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                })}
-              >
-                Part {part.partNumber}: {getPartTypeName(part.type)}
-                <span
-                  className={css({
-                    fontWeight: 'normal',
-                    marginLeft: '0.5rem',
-                    textTransform: 'none',
-                  })}
-                >
-                  ({part.slots.length} problems)
-                </span>
-              </h4>
-
-              {/* Vertical parts: grid layout for compact problem cards */}
-              {isVerticalPart(part.type) ? (
-                <div
-                  className={css({
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem',
-                  })}
-                >
-                  {part.slots.map((slot) => {
-                    const result = results.find(
-                      (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
-                    )
-                    const problem = result?.problem ?? slot.problem
-
-                    return (
-                      <div
-                        key={slot.index}
-                        data-element="vertical-problem-item"
-                        className={css({
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.5rem',
-                          backgroundColor: result
-                            ? isDark
-                              ? result.isCorrect
-                                ? 'green.900'
-                                : 'red.900'
-                              : result.isCorrect
-                                ? 'green.50'
-                                : 'red.50'
-                            : isDark
-                              ? 'gray.700'
-                              : 'white',
-                          borderRadius: '6px',
-                          minWidth: '3.5rem',
-                        })}
-                      >
-                        {/* Status indicator */}
-                        <span
-                          className={css({
-                            fontSize: '0.75rem',
-                          })}
-                        >
-                          {result ? (result.isCorrect ? '✓' : '✗') : '○'}
-                        </span>
-
-                        {/* Problem display */}
-                        {problem ? (
-                          <CompactVerticalProblem
-                            terms={problem.terms}
-                            answer={problem.answer}
-                            studentAnswer={result?.studentAnswer}
-                            isCorrect={result?.isCorrect}
-                            isDark={isDark}
-                          />
-                        ) : (
-                          <span
-                            className={css({
-                              fontSize: '0.625rem',
-                              fontStyle: 'italic',
-                              color: isDark ? 'gray.500' : 'gray.400',
-                            })}
-                          >
-                            ?
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                /* Linear parts: list layout for horizontal equations */
-                <div
-                  className={css({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.375rem',
-                  })}
-                >
-                  {part.slots.map((slot) => {
-                    const result = results.find(
-                      (r) => r.partNumber === part.partNumber && r.slotIndex === slot.index
-                    )
-                    const problem = result?.problem ?? slot.problem
-
-                    return (
-                      <div
-                        key={slot.index}
-                        data-element="linear-problem-item"
-                        className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.375rem 0.5rem',
-                          backgroundColor: result
-                            ? isDark
-                              ? result.isCorrect
-                                ? 'green.900'
-                                : 'red.900'
-                              : result.isCorrect
-                                ? 'green.50'
-                                : 'red.50'
-                            : isDark
-                              ? 'gray.700'
-                              : 'white',
-                          borderRadius: '6px',
-                        })}
-                      >
-                        {/* Status indicator */}
-                        <span
-                          className={css({
-                            width: '1.25rem',
-                            textAlign: 'center',
-                          })}
-                        >
-                          {result ? (result.isCorrect ? '✓' : '✗') : '○'}
-                        </span>
-
-                        {/* Problem content */}
-                        {problem ? (
-                          <CompactLinearProblem
-                            terms={problem.terms}
-                            answer={problem.answer}
-                            studentAnswer={result?.studentAnswer}
-                            isCorrect={result?.isCorrect}
-                            isDark={isDark}
-                          />
-                        ) : (
-                          <span
-                            className={css({
-                              flex: 1,
-                              fontStyle: 'italic',
-                              color: isDark ? 'gray.500' : 'gray.400',
-                            })}
-                          >
-                            (not yet generated)
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+          ⏱️ Response Timing
+        </h3>
+        <div
+          className={css({
+            display: 'grid',
+            gap: '0.5rem',
+            fontSize: '0.875rem',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+            })}
+          >
+            <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
+              Auto-pause threshold:
+            </span>
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isDark ? 'gray.200' : 'gray.800',
+              })}
+            >
+              {formatMs(autoPauseInfo.threshold)}
+            </span>
+          </div>
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.500' : 'gray.500',
+              fontStyle: 'italic',
+            })}
+          >
+            {getAutoPauseExplanation(autoPauseInfo.stats)}
+          </div>
+          {autoPauseInfo.stats.sampleCount > 0 && (
+            <div
+              className={css({
+                display: 'flex',
+                gap: '1rem',
+                marginTop: '0.25rem',
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              <span>Mean: {formatMs(autoPauseInfo.stats.meanMs)}</span>
+              <span>Std Dev: {formatMs(autoPauseInfo.stats.stdDevMs)}</span>
+              <span>Samples: {autoPauseInfo.stats.sampleCount}</span>
             </div>
-          ))}
+          )}
         </div>
-      </div>
+      </section>
+
+      {/* Problems Worth Attention */}
+      {problemsNeedingAttention.length > 0 ? (
+        <section
+          data-section="problems-to-review"
+          className={css({
+            padding: '1rem',
+            borderRadius: '12px',
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.200' : 'gray.700',
+              marginBottom: '0.5rem',
+            })}
+          >
+            📋 Problems to Review
+          </h3>
+          <p
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '1rem',
+            })}
+          >
+            {problemsNeedingAttention.length} of {totalProblems} problems need attention
+          </p>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            })}
+          >
+            {problemsNeedingAttention.map((problem) => {
+              // Get all results before this problem for auto-pause calculation
+              const resultsBeforeThis = results.slice(
+                0,
+                results.findIndex(
+                  (r) =>
+                    r.partNumber === problem.result.partNumber &&
+                    r.slotIndex === problem.result.slotIndex
+                )
+              )
+
+              return (
+                <ProblemToReview
+                  key={`${problem.part.partNumber}-${problem.slot.index}`}
+                  problem={problem}
+                  allResultsBeforeThis={resultsBeforeThis}
+                  isDark={isDark}
+                />
+              )
+            })}
+          </div>
+        </section>
+      ) : (
+        <div
+          data-section="all-correct"
+          className={css({
+            padding: '1.5rem',
+            borderRadius: '12px',
+            backgroundColor: isDark ? 'green.900/30' : 'green.50',
+            border: '1px solid',
+            borderColor: isDark ? 'green.700' : 'green.200',
+            textAlign: 'center',
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '2rem',
+              display: 'block',
+              marginBottom: '0.5rem',
+            })}
+          >
+            🎉
+          </span>
+          <h3
+            className={css({
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: isDark ? 'green.300' : 'green.700',
+            })}
+          >
+            Perfect! All problems answered correctly.
+          </h3>
+        </div>
+      )}
+
+      {/* All Problems (collapsed by default) */}
+      <AllProblemsSection plan={plan} isDark={isDark} />
 
       {/* Action buttons */}
       <div
@@ -776,7 +775,11 @@ function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategory
 
   for (const [skillId, stats] of skillMap.entries()) {
     const categoryId = skillId.split('.')[0] || 'other'
-    const current = categoryMap.get(categoryId) || { skills: [], correct: 0, total: 0 }
+    const current = categoryMap.get(categoryId) || {
+      skills: [],
+      correct: 0,
+      total: 0,
+    }
 
     current.skills.push({
       skillId,
@@ -844,24 +847,6 @@ function getPerformanceMessage(accuracy: number): string {
   if (accuracy >= 0.7) return "Good effort! You're getting stronger!"
   if (accuracy >= 0.6) return 'Nice try! Practice makes perfect!'
   return "Keep practicing! You'll get better with each session!"
-}
-
-function getPartTypeName(type: SessionPart['type']): string {
-  switch (type) {
-    case 'abacus':
-      return 'Abacus'
-    case 'visualization':
-      return 'Visualize'
-    case 'linear':
-      return 'Mental Math'
-    default:
-      return type
-  }
-}
-
-/** Check if part type uses vertical layout (abacus/visualization) vs linear */
-function isVerticalPart(type: SessionPart['type']): boolean {
-  return type === 'abacus' || type === 'visualization'
 }
 
 export default SessionSummary

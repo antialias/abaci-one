@@ -1,10 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { analyzeStepSkills, generateSingleProblem } from "../problemGenerator";
-import {
-  createSkillCostCalculator,
-  type StudentSkillHistory,
-} from "../skillComplexity";
-import type { SkillSet } from "../../types/tutorial";
+import { describe, it, expect } from 'vitest'
+import { analyzeStepSkills, generateSingleProblem } from '../problemGenerator'
+import { createSkillCostCalculator, type StudentSkillHistory } from '../skillComplexity'
+import type { SkillSet } from '../../types/tutorial'
 
 /**
  * Creates a SkillSet with all skills enabled for testing
@@ -20,44 +17,44 @@ function createFullSkillSet(): SkillSet {
       simpleCombinationsSub: true,
     },
     fiveComplements: {
-      "4=5-1": true,
-      "3=5-2": true,
-      "2=5-3": true,
-      "1=5-4": true,
+      '4=5-1': true,
+      '3=5-2': true,
+      '2=5-3': true,
+      '1=5-4': true,
     },
     fiveComplementsSub: {
-      "-4=-5+1": true,
-      "-3=-5+2": true,
-      "-2=-5+3": true,
-      "-1=-5+4": true,
+      '-4=-5+1': true,
+      '-3=-5+2': true,
+      '-2=-5+3': true,
+      '-1=-5+4': true,
     },
     tenComplements: {
-      "9=10-1": true,
-      "8=10-2": true,
-      "7=10-3": true,
-      "6=10-4": true,
-      "5=10-5": true,
-      "4=10-6": true,
-      "3=10-7": true,
-      "2=10-8": true,
-      "1=10-9": true,
+      '9=10-1': true,
+      '8=10-2': true,
+      '7=10-3': true,
+      '6=10-4': true,
+      '5=10-5': true,
+      '4=10-6': true,
+      '3=10-7': true,
+      '2=10-8': true,
+      '1=10-9': true,
     },
     tenComplementsSub: {
-      "-9=+1-10": true,
-      "-8=+2-10": true,
-      "-7=+3-10": true,
-      "-6=+4-10": true,
-      "-5=+5-10": true,
-      "-4=+6-10": true,
-      "-3=+7-10": true,
-      "-2=+8-10": true,
-      "-1=+9-10": true,
+      '-9=+1-10': true,
+      '-8=+2-10': true,
+      '-7=+3-10': true,
+      '-6=+4-10': true,
+      '-5=+5-10': true,
+      '-4=+6-10': true,
+      '-3=+7-10': true,
+      '-2=+8-10': true,
+      '-1=+9-10': true,
     },
     advanced: {
       cascadingCarry: true,
       cascadingBorrow: true,
     },
-  };
+  }
 }
 
 /**
@@ -69,174 +66,174 @@ function createFullSkillSet(): SkillSet {
  * - If maxComplexityBudgetPerTerm is set, terms exceeding the budget are rejected
  */
 
-describe("Problem Generator Budget Integration", () => {
-  describe("analyzeStepSkills produces correct skills for budget calculation", () => {
-    it("should identify basic.directAddition for simple additions", () => {
+describe('Problem Generator Budget Integration', () => {
+  describe('analyzeStepSkills produces correct skills for budget calculation', () => {
+    it('should identify basic.directAddition for simple additions', () => {
       // 0 + 3 = 3 (direct addition)
-      const skills = analyzeStepSkills(0, 3, 3);
-      expect(skills).toContain("basic.directAddition");
-    });
+      const skills = analyzeStepSkills(0, 3, 3)
+      expect(skills).toContain('basic.directAddition')
+    })
 
-    it("should identify heaven bead usage for adding 5", () => {
+    it('should identify heaven bead usage for adding 5', () => {
       // 0 + 5 = 5 (heaven bead)
-      const skills = analyzeStepSkills(0, 5, 5);
-      expect(skills).toContain("basic.heavenBead");
-    });
+      const skills = analyzeStepSkills(0, 5, 5)
+      expect(skills).toContain('basic.heavenBead')
+    })
 
-    it("should identify ten complement for carry-producing additions", () => {
+    it('should identify ten complement for carry-producing additions', () => {
       // 5 + 9 = 14 (ten complement: +9 = +10 - 1)
-      const skills = analyzeStepSkills(5, 9, 14);
-      expect(skills).toContain("tenComplements.9=10-1");
-    });
-  });
+      const skills = analyzeStepSkills(5, 9, 14)
+      expect(skills).toContain('tenComplements.9=10-1')
+    })
+  })
 
-  describe("term costs vary by student mastery", () => {
-    it("should have moderate cost for practicing skills", () => {
+  describe('term costs vary by student mastery', () => {
+    it('should have moderate cost for practicing skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          "fiveComplements.4=5-1": {
-            skillId: "fiveComplements.4=5-1",
-            masteryState: "practicing",
+          'fiveComplements.4=5-1': {
+            skillId: 'fiveComplements.4=5-1',
+            isPracticing: true,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(history);
+      }
+      const calculator = createSkillCostCalculator(history)
 
       // 3 + 4 = 7 (five complement: +5 -1)
-      const skills = analyzeStepSkills(3, 4, 7);
-      const cost = calculator.calculateTermCost(skills);
+      const skills = analyzeStepSkills(3, 4, 7)
+      const cost = calculator.calculateTermCost(skills)
 
       // fiveComplements.4=5-1 has base cost 1, practicing multiplier 3
       // Note: may also include basic.heavenBead (base 0) and basic.simpleCombinations (base 0)
-      expect(cost).toBe(3); // base 1 × practicing 3 = 3
-    });
+      expect(cost).toBe(3) // base 1 × practicing 3 = 3
+    })
 
-    it("should have high cost for not_practicing skills", () => {
+    it('should have high cost for not_practicing skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          "fiveComplements.4=5-1": {
-            skillId: "fiveComplements.4=5-1",
-            masteryState: "not_practicing",
+          'fiveComplements.4=5-1': {
+            skillId: 'fiveComplements.4=5-1',
+            isPracticing: false,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(history);
+      }
+      const calculator = createSkillCostCalculator(history)
 
       // Same operation: 3 + 4 = 7 (five complement)
-      const skills = analyzeStepSkills(3, 4, 7);
-      const cost = calculator.calculateTermCost(skills);
+      const skills = analyzeStepSkills(3, 4, 7)
+      const cost = calculator.calculateTermCost(skills)
 
       // fiveComplements.4=5-1 has base cost 1, not_practicing multiplier 4
       // Note: basic.heavenBead and basic.simpleCombinations have base 0
-      expect(cost).toBe(4); // base 1 × not_practicing 4 = 4
-    });
+      expect(cost).toBe(4) // base 1 × not_practicing 4 = 4
+    })
 
-    it("should have higher cost for ten complement than basic skills", () => {
+    it('should have higher cost for ten complement than basic skills', () => {
       const history: StudentSkillHistory = {
         skills: {
-          "tenComplements.9=10-1": {
-            skillId: "tenComplements.9=10-1",
-            masteryState: "practicing",
+          'tenComplements.9=10-1': {
+            skillId: 'tenComplements.9=10-1',
+            isPracticing: true,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(history);
+      }
+      const calculator = createSkillCostCalculator(history)
 
       // 5 + 9 = 14 (ten complement)
-      const skills = analyzeStepSkills(5, 9, 14);
-      const cost = calculator.calculateTermCost(skills);
+      const skills = analyzeStepSkills(5, 9, 14)
+      const cost = calculator.calculateTermCost(skills)
 
       // Ten complement: base 2 × practicing 3 = 6
-      expect(cost).toBeGreaterThanOrEqual(6);
-    });
-  });
+      expect(cost).toBeGreaterThanOrEqual(6)
+    })
+  })
 
-  describe("budget filtering scenarios", () => {
-    const fullSkillSet = createFullSkillSet();
+  describe('budget filtering scenarios', () => {
+    const fullSkillSet = createFullSkillSet()
 
-    it("beginner: same skill costs more than practicing student", () => {
+    it('beginner: same skill costs more than practicing student', () => {
       // Beginner: all skills unknown (not_practicing = learning)
-      const beginnerHistory: StudentSkillHistory = { skills: {} };
-      const beginnerCalc = createSkillCostCalculator(beginnerHistory);
+      const beginnerHistory: StudentSkillHistory = { skills: {} }
+      const beginnerCalc = createSkillCostCalculator(beginnerHistory)
 
       // Practicing student: ten complement in rotation
       const practicingHistory: StudentSkillHistory = {
         skills: {
-          "tenComplements.9=10-1": {
-            skillId: "tenComplements.9=10-1",
-            masteryState: "practicing",
+          'tenComplements.9=10-1': {
+            skillId: 'tenComplements.9=10-1',
+            isPracticing: true,
           },
         },
-      };
-      const practicingCalc = createSkillCostCalculator(practicingHistory);
+      }
+      const practicingCalc = createSkillCostCalculator(practicingHistory)
 
       // 5 + 9 = 14 (needs ten complement)
-      const skills = analyzeStepSkills(5, 9, 14);
+      const skills = analyzeStepSkills(5, 9, 14)
 
-      const beginnerCost = beginnerCalc.calculateTermCost(skills);
-      const practicingCost = practicingCalc.calculateTermCost(skills);
+      const beginnerCost = beginnerCalc.calculateTermCost(skills)
+      const practicingCost = practicingCalc.calculateTermCost(skills)
 
-      expect(beginnerCost).toBeGreaterThan(practicingCost);
-      expect(beginnerCost).toBe(8); // base 2 × not_practicing 4 = 8
-      expect(practicingCost).toBe(6); // base 2 × practicing 3 = 6
-    });
+      expect(beginnerCost).toBeGreaterThan(practicingCost)
+      expect(beginnerCost).toBe(8) // base 2 × not_practicing 4 = 8
+      expect(practicingCost).toBe(6) // base 2 × practicing 3 = 6
+    })
 
-    it("practicing student has lower cost than beginner for same skill", () => {
+    it('practicing student has lower cost than beginner for same skill', () => {
       const practicingHistory: StudentSkillHistory = {
         skills: {
-          "tenComplements.9=10-1": {
-            skillId: "tenComplements.9=10-1",
-            masteryState: "practicing",
+          'tenComplements.9=10-1': {
+            skillId: 'tenComplements.9=10-1',
+            isPracticing: true,
           },
-          "basic.heavenBead": {
-            skillId: "basic.heavenBead",
-            masteryState: "practicing",
+          'basic.heavenBead': {
+            skillId: 'basic.heavenBead',
+            isPracticing: true,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(practicingHistory);
+      }
+      const calculator = createSkillCostCalculator(practicingHistory)
 
-      const skills = analyzeStepSkills(5, 9, 14);
-      const cost = calculator.calculateTermCost(skills);
+      const skills = analyzeStepSkills(5, 9, 14)
+      const cost = calculator.calculateTermCost(skills)
 
       // Ten complement: base 2 × practicing 3 = 6 (vs beginner's 8)
-      expect(cost).toBe(6);
-    });
+      expect(cost).toBe(6)
+    })
 
-    it("beginner cannot fit same term in tight budget", () => {
-      const beginnerHistory: StudentSkillHistory = { skills: {} };
-      const calculator = createSkillCostCalculator(beginnerHistory);
+    it('beginner cannot fit same term in tight budget', () => {
+      const beginnerHistory: StudentSkillHistory = { skills: {} }
+      const calculator = createSkillCostCalculator(beginnerHistory)
 
-      const skills = analyzeStepSkills(5, 9, 14);
-      const cost = calculator.calculateTermCost(skills);
+      const skills = analyzeStepSkills(5, 9, 14)
+      const cost = calculator.calculateTermCost(skills)
 
       // With budget 3, beginner cannot fit this
-      expect(cost > 3).toBe(true);
-    });
-  });
+      expect(cost > 3).toBe(true)
+    })
+  })
 
-  describe("generateSingleProblem with budget", () => {
-    const fullSkillSet = createFullSkillSet();
+  describe('generateSingleProblem with budget', () => {
+    const fullSkillSet = createFullSkillSet()
 
-    it("should respect budget constraint when generating problems", () => {
+    it('should respect budget constraint when generating problems', () => {
       // Create a calculator where ten complements are expensive (not_practicing)
       const beginnerHistory: StudentSkillHistory = {
         skills: {
-          "basic.directAddition": {
-            skillId: "basic.directAddition",
-            masteryState: "practicing",
+          'basic.directAddition': {
+            skillId: 'basic.directAddition',
+            isPracticing: true,
           },
-          "basic.heavenBead": {
-            skillId: "basic.heavenBead",
-            masteryState: "practicing",
+          'basic.heavenBead': {
+            skillId: 'basic.heavenBead',
+            isPracticing: true,
           },
-          "basic.simpleCombinations": {
-            skillId: "basic.simpleCombinations",
-            masteryState: "practicing",
+          'basic.simpleCombinations': {
+            skillId: 'basic.simpleCombinations',
+            isPracticing: true,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(beginnerHistory);
+      }
+      const calculator = createSkillCostCalculator(beginnerHistory)
 
       // Generate a problem with tight budget (2)
       // This should only allow simple operations
@@ -250,49 +247,47 @@ describe("Problem Generator Budget Integration", () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 200,
-      });
+      })
 
       // With a tight budget, the problem should avoid expensive skills
       // or return null if impossible
       if (problem) {
         // Verify no ten complements (which would cost 8 for a beginner)
-        const hasTenComplement = problem.skillsUsed.some((s) =>
-          s.includes("tenComplements"),
-        );
-        expect(hasTenComplement).toBe(false);
+        const hasTenComplement = problem.skillsUsed.some((s) => s.includes('tenComplements'))
+        expect(hasTenComplement).toBe(false)
       }
-    });
+    })
 
-    it("should allow more complex operations with higher budget", () => {
+    it('should allow more complex operations with higher budget', () => {
       // All skills in practice rotation
       const practicingHistory: StudentSkillHistory = {
         skills: {
-          "basic.directAddition": {
-            skillId: "basic.directAddition",
-            masteryState: "practicing",
+          'basic.directAddition': {
+            skillId: 'basic.directAddition',
+            isPracticing: true,
           },
-          "basic.heavenBead": {
-            skillId: "basic.heavenBead",
-            masteryState: "practicing",
+          'basic.heavenBead': {
+            skillId: 'basic.heavenBead',
+            isPracticing: true,
           },
-          "basic.simpleCombinations": {
-            skillId: "basic.simpleCombinations",
-            masteryState: "practicing",
+          'basic.simpleCombinations': {
+            skillId: 'basic.simpleCombinations',
+            isPracticing: true,
           },
-          "tenComplements.9=10-1": {
-            skillId: "tenComplements.9=10-1",
-            masteryState: "practicing",
+          'tenComplements.9=10-1': {
+            skillId: 'tenComplements.9=10-1',
+            isPracticing: true,
           },
-          "tenComplements.8=10-2": {
-            skillId: "tenComplements.8=10-2",
-            masteryState: "practicing",
+          'tenComplements.8=10-2': {
+            skillId: 'tenComplements.8=10-2',
+            isPracticing: true,
           },
         },
-      };
-      const calculator = createSkillCostCalculator(practicingHistory);
+      }
+      const calculator = createSkillCostCalculator(practicingHistory)
 
       // Generate multiple problems with higher budget
-      let hasComplexSkill = false;
+      let hasComplexSkill = false
       for (let i = 0; i < 20; i++) {
         const problem = generateSingleProblem({
           constraints: {
@@ -304,25 +299,23 @@ describe("Problem Generator Budget Integration", () => {
           allowedSkills: fullSkillSet,
           costCalculator: calculator,
           attempts: 50,
-        });
+        })
 
         if (problem) {
-          const hasTenComplement = problem.skillsUsed.some((s) =>
-            s.includes("tenComplements"),
-          );
+          const hasTenComplement = problem.skillsUsed.some((s) => s.includes('tenComplements'))
           if (hasTenComplement) {
-            hasComplexSkill = true;
-            break;
+            hasComplexSkill = true
+            break
           }
         }
       }
 
       // With a higher budget and expert status, ten complements should sometimes appear
       // (This test may be flaky due to randomness, but with 20 attempts it should succeed)
-      expect(hasComplexSkill).toBe(true);
-    });
+      expect(hasComplexSkill).toBe(true)
+    })
 
-    it("should work without budget constraint (backward compatibility)", () => {
+    it('should work without budget constraint (backward compatibility)', () => {
       // Without costCalculator, should work as before
       const problem = generateSingleProblem(
         {
@@ -330,13 +323,13 @@ describe("Problem Generator Budget Integration", () => {
           maxTerms: 5,
           problemCount: 1,
         },
-        fullSkillSet,
-      );
+        fullSkillSet
+      )
 
-      expect(problem).not.toBeNull();
-    });
+      expect(problem).not.toBeNull()
+    })
 
-    it("should work with new options API", () => {
+    it('should work with new options API', () => {
       const problem = generateSingleProblem({
         constraints: {
           numberRange: { min: 1, max: 9 },
@@ -345,9 +338,9 @@ describe("Problem Generator Budget Integration", () => {
         },
         allowedSkills: fullSkillSet,
         attempts: 100,
-      });
+      })
 
-      expect(problem).not.toBeNull();
-    });
-  });
-});
+      expect(problem).not.toBeNull()
+    })
+  })
+})

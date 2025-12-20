@@ -349,7 +349,9 @@ export function NotesModal({
                     fontWeight: 'medium',
                     border: 'none',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -369,7 +371,9 @@ export function NotesModal({
                     fontWeight: 'medium',
                     border: 'none',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'green.600' : 'green.600' },
+                    _hover: {
+                      backgroundColor: isDark ? 'green.600' : 'green.600',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -407,7 +411,14 @@ export function NotesModal({
                       color: isDark ? 'gray.500' : 'gray.400',
                     })}
                   >
-                    <div className={css({ fontSize: '3rem', marginBottom: '1rem' })}>📝</div>
+                    <div
+                      className={css({
+                        fontSize: '3rem',
+                        marginBottom: '1rem',
+                      })}
+                    >
+                      📝
+                    </div>
                     <p className={css({ fontStyle: 'italic' })}>
                       No notes yet. Click "Edit Notes" to add observations about this student.
                     </p>
@@ -438,7 +449,9 @@ export function NotesModal({
                     fontWeight: 'medium',
                     border: 'none',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'blue.800' : 'blue.600' },
+                    _hover: {
+                      backgroundColor: isDark ? 'blue.800' : 'blue.600',
+                    },
                   })}
                 >
                   {student.notes ? 'Edit Notes' : 'Add Notes'}

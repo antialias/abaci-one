@@ -101,8 +101,8 @@ export interface PracticeHelpConfig {
   settings: StudentHelpSettings
   /** Whether this student is a beginner (free help without penalty) */
   isBeginnerMode: boolean
-  /** Current skill level of the student (affects auto-escalation) */
-  studentMasteryLevel?: 'learning' | 'practicing' | 'mastered'
+  /** BKT-based skill classification of the student (affects auto-escalation) */
+  studentBktClassification?: 'strong' | 'developing' | 'weak' | null
   /** Callback when help level changes (for tracking) */
   onHelpLevelChange?: (level: HelpLevel, trigger: PracticeHelpState['trigger']) => void
   /** Callback when max help level updates */

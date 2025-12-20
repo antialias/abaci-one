@@ -3,6 +3,7 @@
 ## Problem Statement
 
 The current architecture has three independent BKT computations:
+
 1. Dashboard computes BKT locally for skill cards
 2. Modal computes BKT locally for "Targeting: X" preview
 3. Session planner computes BKT when generating problems
@@ -10,6 +11,7 @@ The current architecture has three independent BKT computations:
 This creates potential mismatches where the modal shows one thing but the session planner does another ("rug-pulling").
 
 Additionally, students see conflicting signals:
+
 - Header: "Addition: +1 (Direct Method)"
 - Tutorial notice: "You've unlocked: +1 = +5 - 4"
 - Targeting: "+3 = +5 - 2"
@@ -17,6 +19,7 @@ Additionally, students see conflicting signals:
 ## Solution: Unified SessionMode
 
 A single `SessionMode` object computed once and used everywhere:
+
 - Dashboard (what banner to show)
 - Modal (what CTA to display)
 - Session planner (what problems to generate)
@@ -31,32 +34,32 @@ A single `SessionMode` object computed once and used everywhere:
 
 ```typescript
 interface SkillInfo {
-  skillId: string
-  displayName: string
-  pKnown: number  // 0-1 probability
+  skillId: string;
+  displayName: string;
+  pKnown: number; // 0-1 probability
 }
 
 type SessionMode =
   | {
-      type: 'remediation'
-      weakSkills: SkillInfo[]
-      focusDescription: string
+      type: "remediation";
+      weakSkills: SkillInfo[];
+      focusDescription: string;
       // What promotion is being blocked
       blockedPromotion?: {
-        nextSkill: SkillInfo
-        reason: string  // "Strengthen +3 and +5-2 first"
-      }
+        nextSkill: SkillInfo;
+        reason: string; // "Strengthen +3 and +5-2 first"
+      };
     }
   | {
-      type: 'progression'
-      nextSkill: SkillInfo
-      tutorialRequired: boolean
-      focusDescription: string
+      type: "progression";
+      nextSkill: SkillInfo;
+      tutorialRequired: boolean;
+      focusDescription: string;
     }
   | {
-      type: 'maintenance'
-      focusDescription: string  // "All skills strong - mixed practice"
-    }
+      type: "maintenance";
+      focusDescription: string; // "All skills strong - mixed practice"
+    };
 ```
 
 ## UI States
@@ -64,6 +67,7 @@ type SessionMode =
 ### Dashboard Banner Area
 
 **Progression Mode:**
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ 🌟 New Skill Unlocked!                                     │
@@ -73,6 +77,7 @@ type SessionMode =
 ```
 
 **Remediation Mode (with blocked promotion):**
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ 🔒 Almost there!                                           │
@@ -83,6 +88,7 @@ type SessionMode =
 ```
 
 **Maintenance Mode:**
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ ✨ All skills strong!                                      │
@@ -94,6 +100,7 @@ type SessionMode =
 ### Modal CTA Area
 
 **Progression Mode:**
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ 🌟 You've unlocked: +5 - 4                                 │
@@ -105,6 +112,7 @@ type SessionMode =
 ```
 
 **Remediation Mode:**
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ 💪 Strengthening weak skills                               │
@@ -135,6 +143,7 @@ type SessionMode =
 ## Implementation Files
 
 ### New Files
+
 - `src/lib/curriculum/session-mode.ts` - Core `getSessionMode()` function
 - `src/hooks/useSessionMode.ts` - React Query hook
 - `src/app/api/curriculum/[playerId]/session-mode/route.ts` - API endpoint
@@ -142,6 +151,7 @@ type SessionMode =
 - `src/stories/SessionModeBanner.stories.tsx` - Storybook stories
 
 ### Modified Files
+
 - `src/components/practice/StartPracticeModal.tsx` - Use SessionMode instead of local BKT
 - `src/app/practice/[studentId]/dashboard/DashboardClient.tsx` - Use SessionModeBanner
 - `src/lib/curriculum/session-planner.ts` - Accept SessionMode as input

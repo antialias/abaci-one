@@ -42,7 +42,13 @@ async function fetchAggregateBktStats(threshold: number): Promise<{
 }> {
   const res = await api(`settings/bkt/aggregate?threshold=${threshold}`)
   if (!res.ok) {
-    return { totalStudents: 0, totalSkills: 0, struggling: 0, learning: 0, mastered: 0 }
+    return {
+      totalStudents: 0,
+      totalSkills: 0,
+      struggling: 0,
+      learning: 0,
+      mastered: 0,
+    }
   }
   return res.json()
 }
@@ -136,7 +142,12 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
             >
               BKT Confidence Threshold
             </h1>
-            <p className={css({ color: isDark ? 'gray.400' : 'gray.600', marginTop: '0.5rem' })}>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.600',
+                marginTop: '0.5rem',
+              })}
+            >
               Configure how much evidence is required before trusting skill classifications.
             </p>
           </header>
@@ -166,12 +177,21 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
                   Confidence Threshold
                 </span>
                 <span
-                  className={css({ fontSize: '0.875rem', color: isDark ? 'gray.400' : 'gray.600' })}
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
                 >
                   Higher values require more practice data before classifying skills.
                 </span>
               </label>
-              <div className={css({ display: 'flex', alignItems: 'center', gap: '1rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                })}
+              >
                 <input
                   type="range"
                   min="0.1"
@@ -180,7 +200,10 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
                   value={effectiveThreshold}
                   onChange={(e) => handleSliderChange(Number(e.target.value))}
                   disabled={isLoadingSettings}
-                  className={css({ flex: 1, accentColor: isDark ? 'blue.400' : 'blue.600' })}
+                  className={css({
+                    flex: 1,
+                    accentColor: isDark ? 'blue.400' : 'blue.600',
+                  })}
                 />
                 <span
                   className={css({
@@ -209,7 +232,13 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
             </div>
 
             {/* Save/Reset buttons */}
-            <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'center' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'center',
+              })}
+            >
               <button
                 type="button"
                 onClick={handleSave}
@@ -274,7 +303,13 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
             </h2>
 
             {/* View mode toggle */}
-            <div className={css({ display: 'flex', gap: '0.5rem', marginBottom: '1rem' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '0.5rem',
+                marginBottom: '1rem',
+              })}
+            >
               <button
                 type="button"
                 onClick={() => setViewMode('aggregate')}
@@ -352,7 +387,12 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
                 />
               </BktProvider>
             ) : (
-              <p className={css({ color: isDark ? 'gray.500' : 'gray.500', fontStyle: 'italic' })}>
+              <p
+                className={css({
+                  color: isDark ? 'gray.500' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
                 Select a student to preview their skill classifications.
               </p>
             )}
@@ -442,14 +482,25 @@ function AggregatePreview({
 
   if (!stats || stats.totalStudents === 0) {
     return (
-      <p className={css({ color: isDark ? 'gray.500' : 'gray.500', fontStyle: 'italic' })}>
+      <p
+        className={css({
+          color: isDark ? 'gray.500' : 'gray.500',
+          fontStyle: 'italic',
+        })}
+      >
         No students with practice data found.
       </p>
     )
   }
 
   return (
-    <div className={css({ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' })}>
+    <div
+      className={css({
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '1rem',
+      })}
+    >
       <StatCard label="Total Skills" value={stats.totalSkills} color="blue" isDark={isDark} />
       <StatCard label="Weak" value={stats.struggling} color="red" isDark={isDark} />
       <StatCard label="Developing" value={stats.learning} color="yellow" isDark={isDark} />
@@ -490,7 +541,12 @@ function StudentPreview({
 
   if (!hasData) {
     return (
-      <p className={css({ color: isDark ? 'gray.500' : 'gray.500', fontStyle: 'italic' })}>
+      <p
+        className={css({
+          color: isDark ? 'gray.500' : 'gray.500',
+          fontStyle: 'italic',
+        })}
+      >
         {studentName} has no practice data yet.
       </p>
     )
@@ -498,10 +554,21 @@ function StudentPreview({
 
   return (
     <div>
-      <p className={css({ marginBottom: '1rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+      <p
+        className={css({
+          marginBottom: '1rem',
+          color: isDark ? 'gray.300' : 'gray.700',
+        })}
+      >
         {studentName}'s skills at {(previewThreshold * 100).toFixed(0)}% confidence:
       </p>
-      <div className={css({ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' })}>
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '1rem',
+        })}
+      >
         <StatCard label="Weak" value={struggling.length} color="red" isDark={isDark} />
         <StatCard label="Developing" value={learning.length} color="yellow" isDark={isDark} />
         <StatCard label="Strong" value={mastered.length} color="green" isDark={isDark} />
@@ -555,13 +622,22 @@ function StatCard({
   isDark: boolean
 }) {
   const colorMap = {
-    blue: { bg: isDark ? 'blue.900/50' : 'blue.50', text: isDark ? 'blue.300' : 'blue.700' },
-    red: { bg: isDark ? 'red.900/50' : 'red.50', text: isDark ? 'red.300' : 'red.700' },
+    blue: {
+      bg: isDark ? 'blue.900/50' : 'blue.50',
+      text: isDark ? 'blue.300' : 'blue.700',
+    },
+    red: {
+      bg: isDark ? 'red.900/50' : 'red.50',
+      text: isDark ? 'red.300' : 'red.700',
+    },
     yellow: {
       bg: isDark ? 'yellow.900/50' : 'yellow.50',
       text: isDark ? 'yellow.300' : 'yellow.700',
     },
-    green: { bg: isDark ? 'green.900/50' : 'green.50', text: isDark ? 'green.300' : 'green.700' },
+    green: {
+      bg: isDark ? 'green.900/50' : 'green.50',
+      text: isDark ? 'green.300' : 'green.700',
+    },
   }
 
   return (
@@ -582,7 +658,12 @@ function StatCard({
       >
         {value}
       </div>
-      <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.600' })}>
+      <div
+        className={css({
+          fontSize: '0.75rem',
+          color: isDark ? 'gray.400' : 'gray.600',
+        })}
+      >
         {label}
       </div>
     </div>

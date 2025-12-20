@@ -12,24 +12,30 @@ export type { AttemptTimingData, StudentInfo } from './ActiveSession'
 export { ActiveSession } from './ActiveSession'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
-export { useHasPhysicalKeyboard, useIsTouchDevice } from './hooks/useDeviceDetection'
+export {
+  useHasPhysicalKeyboard,
+  useIsTouchDevice,
+} from './hooks/useDeviceDetection'
 export { NotesModal } from './NotesModal'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export type { SessionHudData } from './PracticeSubNav'
 export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'
-export { ContentBannerSlot, NavBannerSlot, ProjectingBanner } from './BannerSlots'
+export {
+  ContentBannerSlot,
+  NavBannerSlot,
+  ProjectingBanner,
+} from './BannerSlots'
 export { CompactBanner } from './CompactBanner'
 export type { ActiveSessionState } from './ActiveSessionBanner'
-export type { CurrentPhaseInfo, SkillProgress } from './ProgressDashboard'
+export type { CurrentPhaseInfo, SkillHealthSummary, SkillProgress } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
-// Re-export MasteryLevel type for display purposes
-export type { MasteryLevel } from './styles/practiceTheme'
+// Re-export BktClassification type for display color mapping
+export type { BktClassification } from './styles/practiceTheme'
 export type { SessionMoodIndicatorProps } from './SessionMoodIndicator'
 export { SessionMoodIndicator } from './SessionMoodIndicator'
 export { SessionModeBanner } from './SessionModeBanner'
-export { SessionOverview } from './SessionOverview'
 export type { AutoPauseStats, PauseInfo } from './SessionPausedModal'
 export { SessionPausedModal } from './SessionPausedModal'
 export type { SessionProgressIndicatorProps } from './SessionProgressIndicator'

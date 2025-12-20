@@ -37,12 +37,15 @@ import {
   getStalenessWarning,
   type SkillBktResult,
 } from '@/lib/curriculum/bkt'
-import { calculateBktMultiplier, isBktConfident } from '@/lib/curriculum/config'
+import {
+  calculateBktMultiplier,
+  isBktConfident,
+  ROTATION_MULTIPLIERS,
+} from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
-import { ROTATION_MULTIPLIERS } from '@/utils/skillComplexity'
 import { css } from '../../../../../styled-system/css'
 
 // ============================================================================

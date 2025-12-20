@@ -42,7 +42,8 @@ When `sessionMode.type === 'remediation'`:
 
 ```typescript
 // Derive whether to show remediation CTA
-const showRemediationCta = sessionMode.type === 'remediation' && sessionMode.weakSkills.length > 0
+const showRemediationCta =
+  sessionMode.type === "remediation" && sessionMode.weakSkills.length > 0;
 ```
 
 ### Step 2: Create RemediationCta component section
@@ -107,26 +108,28 @@ Add after the Tutorial CTA section (line ~1428), or restructure to have a single
 ### Step 3: Update start button visibility logic
 
 Change from:
+
 ```tsx
-{!showTutorialGate && (
-  <button>Let's Go! →</button>
-)}
+{
+  !showTutorialGate && <button>Let's Go! →</button>;
+}
 ```
 
 To:
+
 ```tsx
-{!showTutorialGate && !showRemediationCta && (
-  <button>Let's Go! →</button>
-)}
+{
+  !showTutorialGate && !showRemediationCta && <button>Let's Go! →</button>;
+}
 ```
 
 ## Visual Comparison
 
-| Mode | Icon | Color Theme | Heading | Button Text |
-|------|------|-------------|---------|-------------|
-| Tutorial | 🌟 | Green | "You've unlocked: [skill]" | "🎓 Begin Tutorial →" |
-| Remediation | 💪 | Amber | "Time to build strength!" | "💪 Start Focus Practice →" |
-| Normal | - | Blue | "Ready to practice?" | "Let's Go! →" |
+| Mode        | Icon | Color Theme | Heading                    | Button Text                 |
+| ----------- | ---- | ----------- | -------------------------- | --------------------------- |
+| Tutorial    | 🌟   | Green       | "You've unlocked: [skill]" | "🎓 Begin Tutorial →"       |
+| Remediation | 💪   | Amber       | "Time to build strength!"  | "💪 Start Focus Practice →" |
+| Normal      | -    | Blue        | "Ready to practice?"       | "Let's Go! →"               |
 
 ## Files to Modify
 

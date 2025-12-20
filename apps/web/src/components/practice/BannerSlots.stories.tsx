@@ -34,17 +34,33 @@ const mockRemediationBlockedMode: SessionMode = {
   ],
   focusDescription: 'Strengthen prerequisites to unlock +5',
   blockedPromotion: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+    },
     reason: 'Strengthen +3 and +4 first',
-    phase: { id: 'level1-phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
+    phase: {
+      id: 'level1-phase2',
+      name: 'Heaven Bead',
+      primarySkillId: 'heaven.5',
+    } as any,
     tutorialReady: false,
   },
 }
 
 const mockProgressionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
-  phase: { id: 'level1-phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
+  nextSkill: {
+    skillId: 'heaven.5',
+    displayName: '+5 (Heaven Bead)',
+    pKnown: 0,
+  },
+  phase: {
+    id: 'level1-phase2',
+    name: 'Heaven Bead',
+    primarySkillId: 'heaven.5',
+  } as any,
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Ready to learn +5 (Heaven Bead)',
@@ -53,7 +69,11 @@ const mockProgressionMode: SessionMode = {
 const mockProgressionPracticeMode: SessionMode = {
   type: 'progression',
   nextSkill: { skillId: 'add.6', displayName: '+6', pKnown: 0 },
-  phase: { id: 'level1-phase3', name: 'Addition 6-9', primarySkillId: 'add.6' } as any,
+  phase: {
+    id: 'level1-phase3',
+    name: 'Addition 6-9',
+    primarySkillId: 'add.6',
+  } as any,
   tutorialRequired: false,
   skipCount: 2,
   focusDescription: 'Practice +6',
@@ -324,4 +344,200 @@ export const DarkModeProgression: Story = {
 export const DarkModeMaintenance: Story = {
   name: 'Dark Mode (Maintenance)',
   render: () => <BannerSlotsDemo sessionMode={mockMaintenanceMode} darkMode />,
+}
+
+// =============================================================================
+// Scroll-Based Projection Demo
+// =============================================================================
+
+const STICKY_NAV_HEIGHT = 60
+
+interface ScrollDemoProps {
+  sessionMode: SessionMode
+  darkMode?: boolean
+}
+
+function ScrollProjectionDemo({ sessionMode, darkMode = false }: ScrollDemoProps) {
+  return (
+    <ThemeProvider>
+      <SessionModeBannerProvider sessionMode={sessionMode} isLoading={false}>
+        <ActionRegistrar />
+        <ProjectingBanner />
+
+        <div
+          data-component="scroll-demo"
+          className={css({
+            minHeight: '200vh', // Make page scrollable
+            backgroundColor: darkMode ? '#1a1a2e' : 'gray.50',
+          })}
+        >
+          {/* Sticky Navigation Bar */}
+          <nav
+            data-element="sticky-nav"
+            className={css({
+              position: 'sticky',
+              top: 0,
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              padding: '0 1rem',
+              height: `${STICKY_NAV_HEIGHT}px`,
+              backgroundColor: darkMode ? 'gray.900' : 'white',
+              borderBottom: '1px solid',
+              borderColor: darkMode ? 'gray.700' : 'gray.200',
+              boxShadow: 'sm',
+            })}
+          >
+            <span className={css({ fontSize: '1.25rem' })}>🧮</span>
+            <span
+              className={css({
+                fontWeight: '600',
+                color: darkMode ? 'white' : 'gray.800',
+              })}
+            >
+              Practice Dashboard
+            </span>
+            <span className={css({ flex: 1 })} />
+            <span className={css({ fontSize: '1.25rem' })}>🦄</span>
+            <span
+              className={css({
+                fontWeight: '500',
+                color: darkMode ? 'gray.300' : 'gray.600',
+              })}
+            >
+              Sonia
+            </span>
+
+            {/* Nav Banner Slot - always present */}
+            <NavBannerSlot
+              className={css({
+                marginLeft: '1rem',
+              })}
+            />
+          </nav>
+
+          {/* Main Content Area */}
+          <main
+            className={css({
+              padding: '2rem',
+              maxWidth: '800px',
+              margin: '0 auto',
+            })}
+          >
+            {/* Header */}
+            <h1
+              className={css({
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: darkMode ? 'white' : 'gray.800',
+                marginBottom: '1rem',
+              })}
+            >
+              Sonia's Progress
+            </h1>
+
+            {/* Content Banner Slot - with sticky offset */}
+            <ContentBannerSlot
+              stickyOffset={STICKY_NAV_HEIGHT}
+              className={css({ marginBottom: '1.5rem' })}
+            />
+
+            {/* Instruction */}
+            <div
+              className={css({
+                padding: '1rem',
+                marginBottom: '1.5rem',
+                backgroundColor: darkMode ? 'blue.900' : 'blue.50',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: darkMode ? 'blue.700' : 'blue.200',
+              })}
+            >
+              <p
+                className={css({
+                  fontSize: '0.875rem',
+                  color: darkMode ? 'blue.200' : 'blue.700',
+                  fontWeight: '500',
+                })}
+              >
+                👆 Scroll down to see the banner project into the sticky nav!
+              </p>
+            </div>
+
+            {/* Filler content to enable scrolling */}
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div
+                key={i}
+                className={css({
+                  padding: '1.5rem',
+                  marginBottom: '1rem',
+                  backgroundColor: darkMode ? 'gray.800' : 'white',
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: darkMode ? 'gray.700' : 'gray.200',
+                })}
+              >
+                <h3
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: darkMode ? 'white' : 'gray.800',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  Section {i + 1}
+                </h3>
+                <p
+                  className={css({
+                    color: darkMode ? 'gray.400' : 'gray.600',
+                    fontSize: '0.875rem',
+                  })}
+                >
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                  incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+                  exercitation ullamco laboris.
+                </p>
+              </div>
+            ))}
+          </main>
+        </div>
+      </SessionModeBannerProvider>
+    </ThemeProvider>
+  )
+}
+
+export const ScrollProjection: Story = {
+  name: 'Scroll Projection',
+  render: () => <ScrollProjectionDemo sessionMode={mockRemediationMode} />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Demonstrates scroll-based banner projection.
+
+**How it works:**
+1. The banner starts in the content area (full variant)
+2. As you scroll down, when the banner goes under the sticky nav, it projects to the nav slot
+3. Scrolling back up returns the banner to the content area
+4. Uses IntersectionObserver for efficient scroll detection
+
+**Try it:**
+1. Scroll down until the banner disappears under the nav
+2. Watch it smoothly animate into the nav bar
+3. Scroll back up to see it return to the content area
+        `,
+      },
+    },
+  },
+}
+
+export const ScrollProjectionDark: Story = {
+  name: 'Scroll Projection (Dark)',
+  render: () => <ScrollProjectionDemo sessionMode={mockRemediationMode} darkMode />,
+}
+
+export const ScrollProjectionProgression: Story = {
+  name: 'Scroll Projection (Progression)',
+  render: () => <ScrollProjectionDemo sessionMode={mockProgressionMode} />,
 }

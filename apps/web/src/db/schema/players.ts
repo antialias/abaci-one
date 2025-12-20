@@ -84,7 +84,9 @@ export const players = sqliteTable(
      * Help settings for practice sessions
      * Controls how help is triggered and escalated
      */
-    helpSettings: text('help_settings', { mode: 'json' }).$type<StudentHelpSettings>(),
+    helpSettings: text('help_settings', {
+      mode: 'json',
+    }).$type<StudentHelpSettings>(),
 
     /**
      * Teacher notes about this student

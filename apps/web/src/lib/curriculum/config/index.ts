@@ -9,8 +9,9 @@
  * - session-timing.ts - Session duration, timing, review intervals
  * - slot-distribution.ts - Problem distribution across purposes and parts
  * - complexity-budgets.ts - Cognitive load budget system
- * - skill-costs.ts - Base skill complexity and mastery multipliers
- * - fluency-thresholds.ts - When skills become fluent, reinforcement rules
+ * - skill-costs.ts - Base skill complexity and rotation multipliers
+ * - reinforcement-config.ts - Help system feedback loop rules
+ * - bkt-integration.ts - Bayesian Knowledge Tracing integration
  */
 
 // Session Timing
@@ -45,19 +46,14 @@ export {
   BASE_SKILL_COMPLEXITY,
   DEFAULT_BASE_COMPLEXITY,
   getBaseComplexity,
-  MASTERY_MULTIPLIERS,
-  type MasteryState,
+  ROTATION_MULTIPLIERS,
 } from './skill-costs'
 
-// Fluency Thresholds
+// Reinforcement System (help feedback loop)
 export {
-  FLUENCY_RECENCY,
-  FLUENCY_THRESHOLDS,
   REINFORCEMENT_CONFIG,
-  type FluencyRecency,
-  type FluencyThresholds,
   type ReinforcementConfig,
-} from './fluency-thresholds'
+} from './reinforcement-config'
 
 // BKT Integration
 export {

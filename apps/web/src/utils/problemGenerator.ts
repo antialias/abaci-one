@@ -592,7 +592,7 @@ function generateSequence(
     skillMasteryContext = {}
     for (const skillId of allSkills) {
       skillMasteryContext[skillId] = {
-        masteryState: costCalculator.getMasteryState(skillId),
+        isPracticing: costCalculator.getIsPracticing(skillId),
         baseCost: getBaseComplexity(skillId),
         effectiveCost: costCalculator.calculateSkillCost(skillId),
       }
