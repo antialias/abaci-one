@@ -298,6 +298,8 @@ interface SkillConfig {
   problems: number
   /** Days ago this skill was practiced (default: 1 day) */
   ageDays?: number
+  /** Simulate legacy data by omitting helpLevelUsed field (tests NaN handling) */
+  simulateLegacyData?: boolean
 }
 
 /**
@@ -1113,7 +1115,12 @@ Use this to test:
 
 This student is specifically designed to stress test the BKT NaN handling code.
 
+ROOT CAUSE TESTED: The production NaN bug was caused by legacy data missing
+the 'helpLevelUsed' field. The helpLevelWeight() switch had no default case,
+returning undefined, which caused 'undefined * rtWeight = NaN' to propagate.
+
 The profile includes:
+• LEGACY DATA: Skills missing 'helpLevelUsed' (tests the actual root cause)
 • Skills with EXTREME accuracy values (0.01 and 0.99)
 • Very high problem counts (100+ per skill)
 • Mixed recent and very old practice dates
@@ -1121,7 +1128,7 @@ The profile includes:
 
 The BKT calculation should handle all of these gracefully:
 • No NaN values in the output
-• Console warnings for any edge cases
+• Legacy data should be processed with weight 1.0 (neutral)
 • UI should display valid percentages for all skills
 
 If you see "⚠️ Data Error" or NaN values in the dashboard:
@@ -1130,23 +1137,34 @@ If you see "⚠️ Data Error" or NaN values in the dashboard:
 3. Check the problem history for that skill
 
 Use this profile to verify:
+• Legacy data without helpLevelUsed is handled (weight defaults to 1.0)
 • BKT core calculations handle extreme pKnown values
 • Conjunctive BKT blame attribution works with edge cases
 • Evidence quality weights don't produce NaN
 • UI gracefully shows errors for any corrupted data`,
     skillHistory: [
+      // LEGACY DATA TEST - missing helpLevelUsed (the actual root cause)
+      {
+        skillId: 'basic.directAddition',
+        targetAccuracy: 0.85,
+        problems: 30,
+        simulateLegacyData: true,
+      },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.7, problems: 25, simulateLegacyData: true },
       // EXTREME values - very high accuracy with many problems
-      { skillId: 'basic.directAddition', targetAccuracy: 0.99, problems: 100 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.99, problems: 100 },
       // EXTREME values - very low accuracy with many problems
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.01, problems: 100 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.01, problems: 100 },
       // Boundary case - exactly 50% accuracy (develops into developing or weak)
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.5, problems: 50 },
-      // Normal case for contrast
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.75, problems: 25 },
-      // Few problems with extreme accuracy (low confidence but extreme pKnown)
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.02, problems: 5 },
-      // Very old skill with high accuracy (tests decay handling)
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.95, problems: 40, ageDays: 90 },
+      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.5, problems: 50 },
+      // Very old skill with legacy data (tests decay + legacy handling)
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetAccuracy: 0.8,
+        problems: 40,
+        ageDays: 90,
+        simulateLegacyData: true,
+      },
     ],
   },
 ]
@@ -1194,7 +1212,7 @@ function generateSlotResults(
     const wrongAnswer =
       realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
-    return {
+    const baseResult = {
       partNumber: 1 as const,
       slotIndex: startIndex + i,
       problem,
@@ -1204,8 +1222,18 @@ function generateSlotResults(
       skillsExercised: realistic.skillsUsed, // ALL skills used, not just target
       usedOnScreenAbacus: false,
       timestamp: new Date(sessionStartTime.getTime() + (startIndex + i) * 10000),
-      helpLevelUsed: 0 as const,
       incorrectAttempts: isCorrect ? 0 : 1,
+    }
+
+    // If simulating legacy data, omit helpLevelUsed and helpTrigger
+    // This tests the NaN handling code path for old data missing these fields
+    if (config.simulateLegacyData) {
+      return baseResult as SlotResult
+    }
+
+    return {
+      ...baseResult,
+      helpLevelUsed: 0 as const,
       helpTrigger: 'none' as const,
     }
   })
