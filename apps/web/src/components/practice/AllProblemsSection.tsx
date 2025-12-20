@@ -118,7 +118,7 @@ function CompactProblemItem({
               : 'gray.400',
         })}
       >
-        {result ? (result.isCorrect ? '✓' : '✗') : '○'}
+        {result ? (result.isCorrect ? '✓' : '❌') : '○'}
       </span>
 
       {/* Problem display */}

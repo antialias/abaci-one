@@ -1,143 +1,68 @@
 /**
  * Problem To Review Component
  *
- * A compact problem summary row that can expand to show full details.
- * Used in the "Problems Worth Attention" section of the session summary.
+ * A unified problem summary component with progressive disclosure.
+ * Shows a single problem representation that can be expanded to reveal
+ * skill annotations, purpose explanation, and timing details.
+ *
+ * Key features:
+ * - Single problem representation (never duplicated between collapsed/expanded)
+ * - In collapsed mode: shows problem + weak skills (up to 3, ordered by BKT severity)
+ * - In expanded mode: annotates the SAME problem with skill breakdown per term
+ * - Part type indicator (🧮 Abacus, 🧠 Visualize, 💭 Mental)
+ * - Purpose explanation (focus, reinforce, review, challenge)
+ * - Attention reason badges (incorrect, slow, help-used)
  */
 
 'use client'
 
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
-import { calculateAutoPauseInfo } from './autoPauseCalculator'
-import { DetailedProblemCard } from './DetailedProblemCard'
+import type { SkillBktResult } from '@/lib/curriculum/bkt'
+import { AnnotatedProblem } from './AnnotatedProblem'
+import { calculateAutoPauseInfo, formatMs } from './autoPauseCalculator'
+import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 import {
   type AttentionReason,
-  formatProblemAsEquation,
-  isVerticalPart,
+  getPartTypeLabel,
   type ProblemNeedingAttention,
 } from './sessionSummaryUtils'
+import { getWeakSkillsForProblem } from './weakSkillUtils'
+import { WeakSkillsSummary } from './WeakSkillsSummary'
 
 export interface ProblemToReviewProps {
   /** The problem that needs attention */
   problem: ProblemNeedingAttention
   /** All results up to this problem (for auto-pause calculation) */
   allResultsBeforeThis: import('@/db/schema/session-plans').SlotResult[]
+  /** BKT mastery data for skills */
+  skillMasteries?: Map<string, SkillBktResult> | Record<string, SkillBktResult>
   /** Dark mode */
   isDark: boolean
 }
 
 /**
- * Format a compact problem display for vertical layout
+ * Get emoji for part type
  */
-function CompactVerticalDisplay({
-  terms,
-  answer,
-  studentAnswer,
-  isCorrect,
-  isDark,
-}: {
-  terms: number[]
-  answer: number
-  studentAnswer: number
-  isCorrect: boolean
-  isDark: boolean
-}) {
-  const maxDigits = Math.max(
-    ...terms.map((t) => Math.abs(t).toString().length),
-    Math.abs(answer).toString().length
-  )
-
-  return (
-    <div
-      data-element="compact-vertical"
-      className={css({
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        fontFamily: 'var(--font-mono, monospace)',
-        fontSize: '0.875rem',
-        fontWeight: 'bold',
-        lineHeight: 1.2,
-      })}
-    >
-      {terms.map((term, i) => (
-        <div key={i} className={css({ display: 'flex', alignItems: 'center' })}>
-          <span
-            className={css({
-              width: '1rem',
-              textAlign: 'center',
-              color:
-                i === 0
-                  ? 'transparent'
-                  : term < 0
-                    ? isDark
-                      ? 'red.400'
-                      : 'red.600'
-                    : isDark
-                      ? 'green.400'
-                      : 'green.600',
-            })}
-          >
-            {i === 0 ? '' : term < 0 ? '−' : '+'}
-          </span>
-          <span
-            className={css({
-              minWidth: `${maxDigits}ch`,
-              textAlign: 'right',
-              color: isDark ? 'gray.200' : 'gray.800',
-            })}
-          >
-            {Math.abs(term)}
-          </span>
-        </div>
-      ))}
-      <div
-        className={css({
-          width: '100%',
-          height: '1px',
-          backgroundColor: isDark ? 'gray.500' : 'gray.400',
-          marginY: '0.125rem',
-        })}
-      />
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.25rem' })}>
-        <span
-          className={css({
-            color: isCorrect
-              ? isDark
-                ? 'green.300'
-                : 'green.700'
-              : isDark
-                ? 'red.300'
-                : 'red.700',
-            minWidth: `${maxDigits}ch`,
-            textAlign: 'right',
-          })}
-        >
-          {answer}
-        </span>
-        {!isCorrect && (
-          <span
-            className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'red.400' : 'red.500',
-              textDecoration: 'line-through',
-            })}
-          >
-            ({studentAnswer})
-          </span>
-        )}
-      </div>
-    </div>
-  )
+function getPartTypeEmoji(type: string): string {
+  switch (type) {
+    case 'abacus':
+      return '🧮'
+    case 'visualization':
+      return '🧠'
+    case 'linear':
+      return '💭'
+    default:
+      return '📝'
+  }
 }
 
 /**
- * Get reason badge content
+ * Attention reason badge
  */
 function ReasonBadge({ reason, isDark }: { reason: AttentionReason; isDark: boolean }) {
   const config = {
-    incorrect: { label: 'Incorrect', color: 'red', emoji: '✗' },
+    incorrect: { label: 'Incorrect', color: 'red', emoji: '❌' },
     slow: { label: 'Slow', color: 'yellow', emoji: '⏱️' },
     'help-used': { label: 'Help used', color: 'orange', emoji: '💡' },
   }[reason]
@@ -163,40 +88,82 @@ function ReasonBadge({ reason, isDark }: { reason: AttentionReason; isDark: bool
 }
 
 /**
- * Format skills as a comma-separated list
+ * Purpose badge with explanation (shown in expanded mode)
  */
-function formatSkillsList(skillIds: string[]): string {
-  return skillIds
-    .map((id) => {
-      const parts = id.split('.')
-      if (parts.length === 2) {
-        const category = parts[0]
-        const specific = parts[1]
-        if (category === 'fiveComplements' || category === 'fiveComplementsSub') {
-          return `5's: ${specific}`
-        }
-        if (category === 'tenComplements' || category === 'tenComplementsSub') {
-          return `10's: ${specific}`
-        }
-        if (category === 'basic') {
-          return specific.replace(/([A-Z])/g, ' $1').toLowerCase()
-        }
-        return specific
-      }
-      return id
-    })
-    .join(', ')
+function PurposeBadge({
+  purpose,
+  isDark,
+  showExplanation,
+}: {
+  purpose: string
+  isDark: boolean
+  showExplanation?: boolean
+}) {
+  const config = getPurposeConfig(purpose as 'focus' | 'reinforce' | 'review' | 'challenge')
+  const colors = getPurposeColors(purpose as 'focus' | 'reinforce' | 'review' | 'challenge', isDark)
+
+  return (
+    <div
+      data-element="purpose-badge"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem',
+      })}
+    >
+      <span
+        className={css({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          padding: '0.125rem 0.5rem',
+          borderRadius: '4px',
+          fontSize: '0.6875rem',
+          fontWeight: '500',
+          backgroundColor: colors.background,
+          color: colors.text,
+          width: 'fit-content',
+        })}
+      >
+        {config.emoji} {config.shortLabel}
+      </span>
+      {showExplanation && (
+        <span
+          className={css({
+            fontSize: '0.6875rem',
+            color: isDark ? 'gray.400' : 'gray.500',
+            fontStyle: 'italic',
+            lineHeight: 1.3,
+          })}
+        >
+          {config.shortExplanation}
+        </span>
+      )}
+    </div>
+  )
 }
 
-export function ProblemToReview({ problem, allResultsBeforeThis, isDark }: ProblemToReviewProps) {
+export function ProblemToReview({
+  problem,
+  allResultsBeforeThis,
+  skillMasteries,
+  isDark,
+}: ProblemToReviewProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const { result, slot, part, problemNumber, reasons } = problem
   const { problem: generatedProblem } = slot
   const isIncorrect = !result.isCorrect
 
-  // Calculate auto-pause stats for the detailed view
+  // Calculate auto-pause stats for timing info
   const autoPauseInfo = calculateAutoPauseInfo(allResultsBeforeThis)
+
+  // Get weak skills for this problem based on BKT
+  const weakSkillsResult = getWeakSkillsForProblem(
+    result.skillsExercised,
+    skillMasteries ?? {},
+    3 // Max display in collapsed mode
+  )
 
   if (!generatedProblem) return null
 
@@ -226,143 +193,285 @@ export function ProblemToReview({ problem, allResultsBeforeThis, isDark }: Probl
         overflow: 'hidden',
       })}
     >
-      {/* Compact summary row */}
-      <div
-        data-element="problem-summary"
+      {/* Header row with problem number, part type, reasons, and toggle */}
+      <button
+        type="button"
+        data-element="problem-header"
+        onClick={() => setIsExpanded(!isExpanded)}
         className={css({
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.5rem 1rem',
+          backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)',
+          border: 'none',
+          borderBottom: '1px solid',
+          borderColor: isDark ? 'gray.700/50' : 'gray.200/50',
+          width: '100%',
+          cursor: 'pointer',
+          textAlign: 'left',
+          _hover: {
+            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)',
+          },
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
+          {/* Problem number */}
+          <span
+            className={css({
+              fontWeight: 'bold',
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.300' : 'gray.700',
+            })}
+          >
+            #{problemNumber}
+          </span>
+
+          {/* Part type indicator */}
+          <span
+            data-element="part-type"
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.125rem 0.375rem',
+              borderRadius: '4px',
+              fontSize: '0.625rem',
+              fontWeight: '500',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              color: isDark ? 'gray.300' : 'gray.600',
+            })}
+          >
+            {getPartTypeEmoji(part.type)} {getPartTypeLabel(part.type)}
+          </span>
+        </div>
+
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
+          {/* Reason badges */}
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.375rem',
+              flexWrap: 'wrap',
+            })}
+          >
+            {reasons.map((reason) => (
+              <ReasonBadge key={reason} reason={reason} isDark={isDark} />
+            ))}
+          </div>
+
+          {/* Expand/collapse indicator */}
+          <span
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '1.25rem',
+              height: '1.25rem',
+              fontSize: '0.625rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.25s ease-out',
+            })}
+          >
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {/* Main content: single problem representation */}
+      <div
+        data-element="problem-content"
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
           gap: '0.75rem',
           padding: '0.75rem 1rem',
         })}
       >
-        {/* Problem number */}
-        <span
-          className={css({
-            fontWeight: 'bold',
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.300' : 'gray.700',
-            minWidth: '2.5rem',
-          })}
-        >
-          #{problemNumber}
-        </span>
-
-        {/* Problem display */}
+        {/* The problem - uses AnnotatedProblem for unified collapsed/expanded display */}
         <div
           className={css({
-            flex: 1,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: '1rem',
           })}
         >
-          {isVerticalPart(part.type) ? (
-            <CompactVerticalDisplay
-              terms={generatedProblem.terms}
-              answer={generatedProblem.answer}
-              studentAnswer={result.studentAnswer}
-              isCorrect={result.isCorrect}
-              isDark={isDark}
-            />
-          ) : (
-            <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+          {/* Problem display - always vertical, annotated when expanded */}
+          <AnnotatedProblem
+            terms={generatedProblem.terms}
+            answer={generatedProblem.answer}
+            studentAnswer={result.studentAnswer}
+            isCorrect={result.isCorrect}
+            trace={generatedProblem.generationTrace}
+            skillMasteries={skillMasteries}
+            expanded={isExpanded}
+            isDark={isDark}
+          />
+
+          {/* Collapsed mode: show weak skills summary next to problem */}
+          {weakSkillsResult.weakSkills.length > 0 && (
+            <div
+              className={css({
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+                paddingTop: '0.25rem',
+                opacity: isExpanded ? 0 : 1,
+                transform: isExpanded ? 'translateX(-8px)' : 'translateX(0)',
+                transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+                pointerEvents: isExpanded ? 'none' : 'auto',
+              })}
+            >
               <span
                 className={css({
-                  fontFamily: 'var(--font-mono, monospace)',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  color: isDark ? 'gray.200' : 'gray.800',
+                  fontSize: '0.625rem',
+                  fontWeight: '600',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                 })}
               >
-                {formatProblemAsEquation(generatedProblem.terms, generatedProblem.answer)}
+                Weak Skills
               </span>
-              {!result.isCorrect && (
-                <span
-                  className={css({
-                    fontSize: '0.875rem',
-                    color: isDark ? 'red.400' : 'red.500',
-                  })}
-                >
-                  (answered: {result.studentAnswer})
-                </span>
-              )}
+              <WeakSkillsSummary weakSkills={weakSkillsResult} isDark={isDark} />
             </div>
           )}
+        </div>
 
-          {/* Skills used (compact) */}
-          <span
+        {/* Expanded mode: additional details with smooth animation */}
+        <div
+          data-element="expanded-details-wrapper"
+          className={css({
+            display: 'grid',
+            gridTemplateRows: isExpanded ? '1fr' : '0fr',
+            transition: 'grid-template-rows 0.25s ease-out',
+          })}
+        >
+          <div
+            data-element="expanded-details"
             className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-              whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '200px',
             })}
           >
-            {formatSkillsList(result.skillsExercised)}
-          </span>
-        </div>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                paddingTop: '0.5rem',
+                borderTop: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                opacity: isExpanded ? 1 : 0,
+                transition: 'opacity 0.2s ease-out',
+              })}
+            >
+              {/* Purpose explanation */}
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                })}
+              >
+                <span
+                  className={css({
+                    fontSize: '0.6875rem',
+                    fontWeight: '600',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  })}
+                >
+                  Purpose
+                </span>
+                <PurposeBadge purpose={slot.purpose} isDark={isDark} showExplanation />
+              </div>
 
-        {/* Reason badges */}
-        <div
-          className={css({
-            display: 'flex',
-            gap: '0.375rem',
-            flexWrap: 'wrap',
-          })}
-        >
-          {reasons.map((reason) => (
-            <ReasonBadge key={reason} reason={reason} isDark={isDark} />
-          ))}
-        </div>
+              {/* Timing info */}
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: '1rem',
+                  fontSize: '0.75rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                })}
+              >
+                <span>Response time: {formatMs(result.responseTimeMs)}</span>
+                {result.usedOnScreenAbacus && (
+                  <span
+                    className={css({
+                      color: isDark ? 'blue.400' : 'blue.600',
+                    })}
+                  >
+                    🧮 Used on-screen abacus
+                  </span>
+                )}
+                {result.helpLevelUsed > 0 && (
+                  <span
+                    className={css({
+                      color: isDark ? 'orange.400' : 'orange.600',
+                    })}
+                  >
+                    💡 Help level: {result.helpLevelUsed}
+                  </span>
+                )}
+              </div>
 
-        {/* Expand/collapse button */}
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className={css({
-            padding: '0.375rem 0.75rem',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            color: isDark ? 'blue.300' : 'blue.600',
-            backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.700' : 'blue.200',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            _hover: {
-              backgroundColor: isDark ? 'blue.800' : 'blue.100',
-            },
-          })}
-        >
-          {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
-        </button>
+              {/* Threshold comparison for slow responses */}
+              {reasons.includes('slow') && autoPauseInfo.threshold > 0 && (
+                <span
+                  className={css({
+                    fontSize: '0.6875rem',
+                    fontStyle: 'italic',
+                    color: isDark ? 'yellow.400' : 'yellow.600',
+                  })}
+                >
+                  ⏱️ Response time exceeded auto-pause threshold of {formatMs(autoPauseInfo.threshold)}
+                </span>
+              )}
+
+              {/* Weak skills full list (if more than shown in collapsed) */}
+              {weakSkillsResult.weakSkills.length > 0 && (
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontSize: '0.6875rem',
+                      fontWeight: '600',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    })}
+                  >
+                    Weak Skills ({weakSkillsResult.weakSkills.length})
+                  </span>
+                  <WeakSkillsSummary weakSkills={weakSkillsResult} expanded isDark={isDark} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Expanded detail view */}
-      {isExpanded && (
-        <div
-          data-element="problem-details"
-          className={css({
-            padding: '0.5rem',
-            borderTop: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-            backgroundColor: isDark ? 'gray.800/50' : 'white',
-          })}
-        >
-          <DetailedProblemCard
-            slot={slot}
-            part={part}
-            result={result}
-            autoPauseStats={autoPauseInfo.stats}
-            isDark={isDark}
-            problemNumber={problemNumber}
-          />
-        </div>
-      )}
     </div>
   )
 }

@@ -120,13 +120,15 @@ export function CompactVerticalProblem({
         {isCorrect === false && studentAnswer !== undefined && (
           <span
             className={css({
-              marginLeft: '0.25rem',
-              color: isDark ? 'red.400' : 'red.500',
-              textDecoration: 'line-through',
+              marginLeft: '0.375rem',
+              padding: '0 0.25rem',
+              borderRadius: '2px',
               fontSize: '0.625rem',
+              backgroundColor: isDark ? 'red.900/60' : 'red.100',
+              color: isDark ? 'red.300' : 'red.700',
             })}
           >
-            {studentAnswer}
+            said {studentAnswer}
           </span>
         )}
       </div>
@@ -185,11 +187,14 @@ export function CompactLinearProblem({
         <span
           className={css({
             marginLeft: '0.375rem',
-            color: isDark ? 'red.400' : 'red.500',
-            textDecoration: 'line-through',
+            padding: '0.0625rem 0.375rem',
+            borderRadius: '3px',
+            fontSize: '0.75rem',
+            backgroundColor: isDark ? 'red.900/60' : 'red.100',
+            color: isDark ? 'red.300' : 'red.700',
           })}
         >
-          {studentAnswer}
+          said {studentAnswer}
         </span>
       )}
     </span>

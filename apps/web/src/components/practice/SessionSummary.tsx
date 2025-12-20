@@ -1,7 +1,10 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
 import { AllProblemsSection } from './AllProblemsSection'
 import { calculateAutoPauseInfo, formatMs, getAutoPauseExplanation } from './autoPauseCalculator'
@@ -14,6 +17,8 @@ interface SessionSummaryProps {
   studentName: string
   /** Called when user wants to practice again */
   onPracticeAgain: () => void
+  /** Problem history for BKT computation (optional - if not provided, weak skills won't be shown) */
+  problemHistory?: ProblemResultWithContext[]
 }
 
 interface SkillBreakdown {
@@ -65,10 +70,21 @@ export function SessionSummary({
   studentId: _studentId,
   studentName,
   onPracticeAgain,
+  problemHistory,
 }: SessionSummaryProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const results = plan.results as SlotResult[]
+
+  // Compute BKT from problem history to get skill masteries
+  const skillMasteries = useMemo<Record<string, SkillBktResult>>(() => {
+    if (!problemHistory || problemHistory.length === 0) {
+      return {}
+    }
+    const bktResult = computeBktFromHistory(problemHistory)
+    // Convert array to record for easy lookup
+    return Object.fromEntries(bktResult.skills.map((skill) => [skill.skillId, skill]))
+  }, [problemHistory])
 
   const totalProblems = results.length
   const correctProblems = results.filter((r) => r.isCorrect).length
@@ -677,6 +693,7 @@ export function SessionSummary({
                   key={`${problem.part.partNumber}-${problem.slot.index}`}
                   problem={problem}
                   allResultsBeforeThis={resultsBeforeThis}
+                  skillMasteries={skillMasteries}
                   isDark={isDark}
                 />
               )

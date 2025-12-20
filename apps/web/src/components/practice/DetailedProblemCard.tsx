@@ -608,29 +608,29 @@ function DetailedVerticalProblem({
         >
           {result && (
             <>
-              <span
-                className={css({
-                  fontSize: '1rem',
-                  color: result.isCorrect
-                    ? isDark
-                      ? 'green.400'
-                      : 'green.600'
-                    : isDark
-                      ? 'red.400'
-                      : 'red.600',
-                })}
-              >
-                {result.isCorrect ? '✓' : '✗'}
-              </span>
-              {!result.isCorrect && (
+              {result.isCorrect ? (
                 <span
                   className={css({
-                    fontSize: '0.875rem',
-                    color: isDark ? 'red.400' : 'red.500',
-                    textDecoration: 'line-through',
+                    fontSize: '1rem',
+                    color: isDark ? 'green.400' : 'green.600',
                   })}
                 >
-                  {result.studentAnswer}
+                  ✓
+                </span>
+              ) : (
+                <span
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    backgroundColor: isDark ? 'red.900/60' : 'red.100',
+                    color: isDark ? 'red.300' : 'red.700',
+                  })}
+                >
+                  You said {result.studentAnswer}
                 </span>
               )}
             </>
@@ -757,33 +757,39 @@ function DetailedLinearProblem({
 
         {/* Result indicator */}
         {result && (
-          <>
-            <span
-              className={css({
-                fontSize: '1rem',
-                color: result.isCorrect
-                  ? isDark
-                    ? 'green.400'
-                    : 'green.600'
-                  : isDark
-                    ? 'red.400'
-                    : 'red.600',
-              })}
-            >
-              {result.isCorrect ? '✓' : '✗'}
-            </span>
-            {!result.isCorrect && (
+          <span
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
+            })}
+          >
+            {result.isCorrect ? (
               <span
                 className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'red.400' : 'red.500',
-                  textDecoration: 'line-through',
+                  color: isDark ? 'green.400' : 'green.600',
+                  fontSize: '1rem',
                 })}
               >
-                {result.studentAnswer}
+                ✓
+              </span>
+            ) : (
+              <span
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '4px',
+                  backgroundColor: isDark ? 'red.900/60' : 'red.100',
+                  color: isDark ? 'red.300' : 'red.700',
+                })}
+              >
+                You said {result.studentAnswer}
               </span>
             )}
-          </>
+          </span>
         )}
       </div>
 

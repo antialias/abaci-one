@@ -28,7 +28,7 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
+import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
   type BktComputeOptions,
@@ -1014,9 +1014,9 @@ function SkillsTab({
   onManageSkills: () => void
   studentId: string
 }) {
-  const router = useRouter()
   const [selectedSkill, setSelectedSkill] = useState<ProcessedSkill | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState<string | null>(null)
+  const refreshSkillRecency = useRefreshSkillRecency()
+  const isRefreshing = refreshSkillRecency.isPending ? refreshSkillRecency.variables?.skillId ?? null : null
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.5)
   const [applyDecay, setApplyDecay] = useState(false)
 
@@ -1107,26 +1107,9 @@ function SkillsTab({
 
   const handleRefreshSkill = useCallback(
     async (skillId: string): Promise<void> => {
-      setIsRefreshing(skillId)
-      try {
-        const response = await fetch(`/api/curriculum/${studentId}/skills`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            skillId,
-            action: 'refresh_recency',
-          }),
-        })
-        if (!response.ok) {
-          const errorData = (await response.json()) as { error?: string }
-          throw new Error(errorData.error ?? 'Failed to refresh skill')
-        }
-        router.refresh()
-      } finally {
-        setIsRefreshing(null)
-      }
+      await refreshSkillRecency.mutateAsync({ playerId: studentId, skillId })
     },
-    [studentId, router]
+    [studentId, refreshSkillRecency]
   )
 
   return (

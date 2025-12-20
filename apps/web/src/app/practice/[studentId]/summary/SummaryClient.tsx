@@ -162,6 +162,7 @@ export function SummaryClient({
                 studentId={studentId}
                 studentName={player.name}
                 onPracticeAgain={handlePracticeAgain}
+                problemHistory={problemHistory}
               />
             ) : (
               <div
