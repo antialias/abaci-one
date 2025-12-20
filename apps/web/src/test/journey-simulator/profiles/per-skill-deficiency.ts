@@ -14,8 +14,51 @@
  * - Adaptive mode should target and improve it faster than classic
  */
 
-import { SKILL_ORDER } from '@/lib/curriculum/placement-test'
 import type { StudentProfile } from '../types'
+
+/**
+ * Order of skills in curriculum progression
+ */
+const SKILL_ORDER = [
+  // Basic addition
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
+  // Basic subtraction
+  'basic.directSubtraction',
+  'basic.heavenBeadSubtraction',
+  'basic.simpleCombinationsSub',
+  // Five complements addition
+  'fiveComplements.4=5-1',
+  'fiveComplements.3=5-2',
+  'fiveComplements.2=5-3',
+  'fiveComplements.1=5-4',
+  // Five complements subtraction
+  'fiveComplementsSub.-4=-5+1',
+  'fiveComplementsSub.-3=-5+2',
+  'fiveComplementsSub.-2=-5+3',
+  'fiveComplementsSub.-1=-5+4',
+  // Ten complements addition
+  'tenComplements.9=10-1',
+  'tenComplements.8=10-2',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
+  'tenComplements.4=10-6',
+  'tenComplements.3=10-7',
+  'tenComplements.2=10-8',
+  'tenComplements.1=10-9',
+  // Ten complements subtraction
+  'tenComplementsSub.-9=+1-10',
+  'tenComplementsSub.-8=+2-10',
+  'tenComplementsSub.-7=+3-10',
+  'tenComplementsSub.-6=+4-10',
+  'tenComplementsSub.-5=+5-10',
+  'tenComplementsSub.-4=+6-10',
+  'tenComplementsSub.-3=+7-10',
+  'tenComplementsSub.-2=+8-10',
+  'tenComplementsSub.-1=+9-10',
+] as const
 
 /**
  * Learner type configurations.

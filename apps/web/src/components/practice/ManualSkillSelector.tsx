@@ -8,8 +8,8 @@ import useMeasure from 'react-use-measure'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { FLUENCY_CONFIG, type FluencyState } from '@/db/schema/player-skill-mastery'
-import { BASE_SKILL_COMPLEXITY, computeMasteryState } from '@/utils/skillComplexity'
+import type { MasteryClassification, SkillBktResult } from '@/lib/curriculum/bkt/types'
+import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -216,94 +216,87 @@ function ComplexityLegend({ isDark }: { isDark: boolean }) {
 }
 
 /**
- * FluencyStateBadge - Shows the recency-based fluency state for a skill
+ * BktStatusBadge - Shows BKT mastery status for a skill
  *
- * For practicing skills, shows how fluent they are:
- * - effortless: Fluent + recently practiced (within 14 days) - automatic recall
- * - fluent: Fluent + practiced 14-30 days ago - solid but warming up
- * - rusty: Fluent but >30 days since practice - needs rebuilding
- * - practicing: In rotation but not yet fluent
+ * Shows pKnown percentage with color indicating classification:
+ * - Green (strong): pKnown >= 0.8
+ * - Yellow (developing): 0.5 <= pKnown < 0.8
+ * - Red (weak): pKnown < 0.5
+ *
+ * When skill is unchecked, shows faded gray badge.
+ * When skill has no BKT data, shows nothing.
  */
-function FluencyStateBadge({
-  fluencyState,
+function BktStatusBadge({
+  bktResult,
+  isSelected,
   isDark,
-  compact = false,
 }: {
-  fluencyState: FluencyState
+  bktResult: SkillBktResult | undefined
+  isSelected: boolean
   isDark: boolean
-  compact?: boolean
 }) {
-  // Show badges for all fluency states
-  const styles: Record<FluencyState, { bg: string; text: string; label: string; icon: string }> = {
-    effortless: {
-      bg: isDark ? 'green.900' : 'green.100',
-      text: isDark ? 'green.300' : 'green.700',
-      label: 'Effortless',
-      icon: '✓',
-    },
-    fluent: {
-      bg: isDark ? 'blue.900' : 'blue.100',
-      text: isDark ? 'blue.300' : 'blue.700',
-      label: 'Fluent',
-      icon: '○',
-    },
-    rusty: {
-      bg: isDark ? 'amber.900' : 'amber.100',
-      text: isDark ? 'amber.300' : 'amber.700',
-      label: 'Rusty',
-      icon: '⚠',
-    },
-    practicing: {
-      bg: isDark ? 'purple.900' : 'purple.100',
-      text: isDark ? 'purple.300' : 'purple.700',
-      label: 'Practicing',
-      icon: '◐',
-    },
+  if (!bktResult) return null
+
+  const { pKnown, masteryClassification } = bktResult
+  const percentage = Math.round(pKnown * 100)
+
+  // Style based on classification and selection state
+  const getStyle = (classification: MasteryClassification, selected: boolean) => {
+    if (!selected) {
+      // Faded gray for unchecked skills
+      return {
+        bg: isDark ? 'gray.800' : 'gray.100',
+        color: isDark ? 'gray.500' : 'gray.500',
+        label: `~${percentage}%`,
+      }
+    }
+
+    switch (classification) {
+      case 'strong':
+        return {
+          bg: isDark ? 'green.900' : 'green.100',
+          color: isDark ? 'green.400' : 'green.700',
+          label: `Strong ~${percentage}%`,
+        }
+      case 'developing':
+        return {
+          bg: isDark ? 'yellow.900' : 'yellow.100',
+          color: isDark ? 'yellow.400' : 'yellow.700',
+          label: `~${percentage}%`,
+        }
+      case 'weak':
+        return {
+          bg: isDark ? 'red.900' : 'red.100',
+          color: isDark ? 'red.400' : 'red.700',
+          label: `Weak ~${percentage}%`,
+        }
+    }
   }
 
-  const style = styles[fluencyState]
-  if (!style) return null
+  const style = getStyle(masteryClassification, isSelected)
 
   return (
     <span
-      data-element="fluency-state-badge"
-      data-state={fluencyState}
-      title={
-        fluencyState === 'effortless'
-          ? `Fluent + recently practiced (within ${FLUENCY_CONFIG.effortlessDays} days)`
-          : fluencyState === 'fluent'
-            ? `Fluent, practiced ${FLUENCY_CONFIG.effortlessDays}-${FLUENCY_CONFIG.fluentDays} days ago`
-            : fluencyState === 'rusty'
-              ? `Fluent but not practiced for ${FLUENCY_CONFIG.fluentDays}+ days`
-              : 'In practice rotation, building fluency'
-      }
+      data-element="bkt-status-badge"
+      data-classification={masteryClassification}
+      data-pknown={pKnown}
+      title={`P(known) ≈ ${percentage}% - ${masteryClassification}`}
       className={css({
-        fontSize: compact ? '9px' : '10px',
+        fontSize: '10px',
         fontWeight: 'medium',
-        px: compact ? '1' : '1.5',
+        px: '1.5',
         py: '0.5',
         borderRadius: 'sm',
         bg: style.bg,
-        color: style.text,
+        color: style.color,
         whiteSpace: 'nowrap',
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '1',
       })}
     >
-      <span>{style.icon}</span>
-      {!compact && <span>{style.label}</span>}
+      {style.label}
     </span>
   )
-}
-
-/**
- * Calculate days since a date
- */
-function daysSince(date: Date | null | undefined): number | undefined {
-  if (!date) return undefined
-  const now = new Date()
-  return Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
 }
 
 /**
@@ -448,8 +441,8 @@ export interface ManualSkillSelectorProps {
   skillMasteryData?: PlayerSkillMastery[]
   /** Callback when save is clicked */
   onSave: (masteredSkillIds: string[]) => Promise<void>
-  /** Callback to refresh a skill's lastPracticedAt (marks as recently practiced) */
-  onRefreshSkill?: (skillId: string) => Promise<void>
+  /** BKT results map for showing skill mastery status */
+  bktResultsMap?: Map<string, SkillBktResult>
 }
 
 /**
@@ -468,13 +461,12 @@ export function ManualSkillSelector({
   currentMasteredSkills = [],
   skillMasteryData = [],
   onSave,
-  onRefreshSkill,
+  bktResultsMap,
 }: ManualSkillSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set(currentMasteredSkills))
   const [isSaving, setIsSaving] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState<string | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
 
   // Scroll state for showing/hiding scroll indicators
@@ -556,46 +548,6 @@ export function ManualSkillSelector({
 
     return () => clearTimeout(timer)
   }, [expandedCategories])
-
-  // Build a map from skill ID to mastery data for quick lookup
-  const skillMasteryMap = new Map(skillMasteryData.map((s) => [s.skillId, s]))
-
-  /**
-   * Get the fluency state for a skill (effortless/fluent/rusty/practicing)
-   * Returns undefined if the skill is not in the practice rotation
-   */
-  const getFluencyStateForSkill = (skillId: string): FluencyState | undefined => {
-    const mastery = skillMasteryMap.get(skillId)
-    if (!mastery || !mastery.isPracticing) return undefined
-    const days = daysSince(mastery.lastPracticedAt)
-    const state = computeMasteryState(
-      mastery.isPracticing,
-      mastery.attempts,
-      mastery.correct,
-      mastery.consecutiveCorrect,
-      days
-    )
-    // computeMasteryState returns MasteryState which includes 'not_practicing'
-    // But we already checked isPracticing, so we know it's a FluencyState
-    return state as FluencyState
-  }
-
-  /**
-   * Handle refreshing a skill (sets lastPracticedAt to today)
-   */
-  const handleRefreshSkill = async (skillId: string, e: React.MouseEvent) => {
-    e.stopPropagation() // Don't toggle the checkbox
-    if (!onRefreshSkill || isRefreshing) return
-
-    setIsRefreshing(skillId)
-    try {
-      await onRefreshSkill(skillId)
-    } catch (error) {
-      console.error('Failed to refresh skill:', error)
-    } finally {
-      setIsRefreshing(null)
-    }
-  }
 
   // Track previous open state to detect open transition
   const wasOpenRef = useRef(open)
@@ -1015,11 +967,7 @@ export function ManualSkillSelector({
                           {Object.entries(category.skills).map(([skillKey, skillName]) => {
                             const skillId = `${categoryKey}.${skillKey}`
                             const isSelected = selectedSkills.has(skillId)
-                            const fluencyState = getFluencyStateForSkill(skillId)
-                            const isRustyOrOlder =
-                              fluencyState === 'rusty' ||
-                              (isSelected && !skillMasteryMap.has(skillId))
-                            const showRefreshButton = isSelected && onRefreshSkill && isRustyOrOlder
+                            const bktResult = bktResultsMap?.get(skillId)
 
                             return (
                               <label
@@ -1032,7 +980,9 @@ export function ManualSkillSelector({
                                   padding: '8px 12px',
                                   borderRadius: 'md',
                                   cursor: 'pointer',
-                                  _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
+                                  _hover: {
+                                    bg: isDark ? 'gray.700' : 'gray.50',
+                                  },
                                 })}
                               >
                                 <input
@@ -1064,51 +1014,12 @@ export function ManualSkillSelector({
                                 >
                                   {skillName}
                                 </span>
-                                {/* Show fluency state badge for practicing skills */}
-                                {isSelected && fluencyState && (
-                                  <FluencyStateBadge fluencyState={fluencyState} isDark={isDark} />
-                                )}
-                                {/* Show "Mastered" if selected but no mastery data (newly added) */}
-                                {isSelected && !skillMasteryMap.has(skillId) && (
-                                  <span
-                                    className={css({
-                                      fontSize: 'xs',
-                                      color: isDark ? 'gray.400' : 'gray.500',
-                                      bg: isDark ? 'gray.700' : 'gray.100',
-                                      px: '2',
-                                      py: '0.5',
-                                      borderRadius: 'full',
-                                    })}
-                                  >
-                                    New
-                                  </span>
-                                )}
-                                {/* Refresh button for rusty skills */}
-                                {showRefreshButton && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleRefreshSkill(skillId, e)}
-                                    disabled={isRefreshing === skillId}
-                                    title="Mark as recently practiced (sets to Fluent)"
-                                    data-action="refresh-skill"
-                                    className={css({
-                                      fontSize: '10px',
-                                      fontWeight: 'medium',
-                                      px: '2',
-                                      py: '1',
-                                      border: '1px solid',
-                                      borderColor: isDark ? 'blue.700' : 'blue.300',
-                                      borderRadius: 'md',
-                                      bg: isDark ? 'blue.900' : 'blue.50',
-                                      color: isDark ? 'blue.300' : 'blue.700',
-                                      cursor: 'pointer',
-                                      _hover: { bg: isDark ? 'blue.800' : 'blue.100' },
-                                      _disabled: { opacity: 0.5, cursor: 'wait' },
-                                    })}
-                                  >
-                                    {isRefreshing === skillId ? '...' : '↻ Refresh'}
-                                  </button>
-                                )}
+                                {/* Show BKT status badge when data exists */}
+                                <BktStatusBadge
+                                  bktResult={bktResult}
+                                  isSelected={isSelected}
+                                  isDark={isDark}
+                                />
                               </label>
                             )
                           })}

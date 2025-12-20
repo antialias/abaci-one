@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { css } from '../../../styled-system/css'
-import { type CurrentPhaseInfo, ProgressDashboard } from './ProgressDashboard'
+import {
+  type CurrentPhaseInfo,
+  ProgressDashboard,
+  type SkillHealthSummary,
+} from './ProgressDashboard'
 import type { StudentWithProgress } from './StudentSelector'
 
 const meta: Meta<typeof ProgressDashboard> = {
@@ -69,10 +73,94 @@ const advancedPhase: CurrentPhaseInfo = {
   totalSkills: 5,
 }
 
+// =============================================================================
+// BKT-based SkillHealthSummary examples (new system)
+// =============================================================================
+
+const remediationHealth: SkillHealthSummary = {
+  mode: 'remediation',
+  counts: {
+    strong: 2,
+    developing: 1,
+    weak: 2,
+    total: 5,
+  },
+  context: {
+    headline: 'Strengthening Skills',
+    detail: 'Focus: +3 and +4 five-complements',
+  },
+  weakestSkill: {
+    displayName: '+3 (five-complement)',
+    pKnown: 0.28,
+  },
+}
+
+const progressionTutorialHealth: SkillHealthSummary = {
+  mode: 'progression',
+  counts: {
+    strong: 4,
+    developing: 0,
+    weak: 0,
+    total: 4,
+  },
+  context: {
+    headline: 'Learning: +3 (five-complement)',
+    detail: 'Tutorial available',
+  },
+  nextSkill: {
+    displayName: '+3 (five-complement)',
+    tutorialRequired: true,
+  },
+}
+
+const progressionReadyHealth: SkillHealthSummary = {
+  mode: 'progression',
+  counts: {
+    strong: 4,
+    developing: 0,
+    weak: 0,
+    total: 4,
+  },
+  context: {
+    headline: 'Learning: +3 (five-complement)',
+    detail: 'Ready to practice',
+  },
+  nextSkill: {
+    displayName: '+3 (five-complement)',
+    tutorialRequired: false,
+  },
+}
+
+const maintenanceHealth: SkillHealthSummary = {
+  mode: 'maintenance',
+  counts: {
+    strong: 7,
+    developing: 0,
+    weak: 0,
+    total: 7,
+  },
+  context: {
+    headline: 'Great progress!',
+    detail: 'All Level 1 addition skills mastered',
+  },
+}
+
+const mixedDevelopingHealth: SkillHealthSummary = {
+  mode: 'maintenance',
+  counts: {
+    strong: 2,
+    developing: 4,
+    weak: 1,
+    total: 7,
+  },
+  context: {
+    headline: 'Great progress!',
+    detail: 'Keep practicing to strengthen skills',
+  },
+}
+
 const handlers = {
   onStartPractice: () => alert('Start Practice clicked!'),
-  onViewFullProgress: () => alert('View Full Progress clicked!'),
-  onGenerateWorksheet: () => alert('Generate Worksheet clicked!'),
   onChangeStudent: () => alert('Change Student clicked!'),
 }
 
@@ -202,7 +290,7 @@ export const WithFocusAreas: Story = {
           {
             skillId: 'fiveComplements.3=5-2',
             skillName: '+3 Five Complement',
-            masteryLevel: 'practicing',
+            bktClassification: 'developing',
             attempts: 15,
             correct: 10,
             consecutiveCorrect: 1,
@@ -213,7 +301,7 @@ export const WithFocusAreas: Story = {
           {
             skillId: 'tenComplements.8=10-2',
             skillName: '+8 Ten Complement',
-            masteryLevel: 'learning',
+            bktClassification: 'weak',
             attempts: 8,
             correct: 4,
             consecutiveCorrect: 0,
@@ -232,3 +320,145 @@ export const WithFocusAreas: Story = {
 
 // Note: Active session resume/start functionality has been moved to the
 // SessionModeBanner system (see ActiveSessionBanner.tsx and ProjectingBanner.tsx)
+
+// =============================================================================
+// BKT-based SkillHealth Stories (new system)
+// =============================================================================
+
+/**
+ * Remediation Mode - Student has weak skills that need strengthening
+ * Orange accent, shows progress toward 0.5 threshold
+ */
+export const RemediationMode: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard student={sampleStudent} skillHealth={remediationHealth} {...handlers} />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * Progression Mode - Ready for new skill, tutorial required
+ * Blue accent, shows next skill to learn
+ */
+export const ProgressionTutorialRequired: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        skillHealth={progressionTutorialHealth}
+        {...handlers}
+      />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * Progression Mode - Tutorial done, ready to practice
+ * Blue accent, shows next skill to learn
+ */
+export const ProgressionReadyToPractice: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        skillHealth={progressionReadyHealth}
+        {...handlers}
+      />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * Maintenance Mode - All skills strong
+ * Green accent, shows strong/total ratio
+ */
+export const MaintenanceMode: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard student={sampleStudent} skillHealth={maintenanceHealth} {...handlers} />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * Mixed Developing - Most skills developing, few strong/weak
+ */
+export const MixedDeveloping: Story = {
+  render: () => (
+    <DashboardWrapper>
+      <ProgressDashboard
+        student={sampleStudent}
+        skillHealth={mixedDevelopingHealth}
+        {...handlers}
+      />
+    </DashboardWrapper>
+  ),
+}
+
+/**
+ * All Three Modes side by side for comparison
+ */
+export const AllModeComparison: Story = {
+  render: () => (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '2rem' })}>
+      <div>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'orange.600',
+          })}
+        >
+          Remediation Mode (Orange)
+        </h3>
+        <DashboardWrapper>
+          <ProgressDashboard
+            student={sampleStudent}
+            skillHealth={remediationHealth}
+            {...handlers}
+          />
+        </DashboardWrapper>
+      </div>
+      <div>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'blue.600',
+          })}
+        >
+          Progression Mode (Blue)
+        </h3>
+        <DashboardWrapper>
+          <ProgressDashboard
+            student={sampleStudent}
+            skillHealth={progressionTutorialHealth}
+            {...handlers}
+          />
+        </DashboardWrapper>
+      </div>
+      <div>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'green.600',
+          })}
+        >
+          Maintenance Mode (Green)
+        </h3>
+        <DashboardWrapper>
+          <ProgressDashboard
+            student={sampleStudent}
+            skillHealth={maintenanceHealth}
+            {...handlers}
+          />
+        </DashboardWrapper>
+      </div>
+    </div>
+  ),
+}

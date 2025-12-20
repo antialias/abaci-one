@@ -1,9 +1,11 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import type { MasteryLevel } from './styles/practiceTheme'
 import { css } from '../../../styled-system/css'
 import type { StudentWithProgress } from './StudentSelector'
+
+/** BKT-based mastery classification */
+export type BktClassification = 'strong' | 'developing' | 'weak' | null
 
 /**
  * Skill mastery data for display
@@ -11,7 +13,8 @@ import type { StudentWithProgress } from './StudentSelector'
 export interface SkillProgress {
   skillId: string
   skillName: string
-  masteryLevel: MasteryLevel
+  /** BKT-based mastery classification */
+  bktClassification: BktClassification
   attempts: number
   correct: number
   consecutiveCorrect: number
@@ -25,6 +28,7 @@ export interface SkillProgress {
 
 /**
  * Current phase information
+ * @deprecated Use SkillHealthSummary instead - this is legacy level/phase based
  */
 export interface CurrentPhaseInfo {
   phaseId: string
@@ -36,23 +40,101 @@ export interface CurrentPhaseInfo {
   totalSkills: number
 }
 
+/**
+ * BKT-based skill health summary for dashboard display
+ */
+export interface SkillHealthSummary {
+  /** Session mode type for visual treatment */
+  mode: 'remediation' | 'progression' | 'maintenance'
+
+  /** Skill counts by BKT classification */
+  counts: {
+    strong: number // pKnown >= 0.8
+    developing: number // 0.5 <= pKnown < 0.8
+    weak: number // pKnown < 0.5
+    total: number
+  }
+
+  /** Mode-specific context */
+  context: {
+    /** Primary message (e.g., "Focus: Addition +4") */
+    headline: string
+    /** Secondary detail (e.g., "2 skills need more practice") */
+    detail: string
+  }
+
+  /** For remediation: weakest skill info */
+  weakestSkill?: { displayName: string; pKnown: number }
+
+  /** For progression: next skill to learn */
+  nextSkill?: { displayName: string; tutorialRequired: boolean }
+}
+
 interface ProgressDashboardProps {
   student: StudentWithProgress
-  currentPhase: CurrentPhaseInfo
+  /** @deprecated Use skillHealth instead */
+  currentPhase?: CurrentPhaseInfo
+  /** BKT-based skill health summary */
+  skillHealth?: SkillHealthSummary
   /** Skills that need extra practice (used heavy help recently) */
   focusAreas?: SkillProgress[]
   /** Callback when no active session - start new practice */
   onStartPractice: () => void
-  onViewFullProgress: () => void
-  onGenerateWorksheet: () => void
-  /** Callback to run placement test */
-  onRunPlacementTest?: () => void
-  /** Callback to record offline practice */
-  onRecordOfflinePractice?: () => void
   /** Callback to clear reinforcement for a skill (teacher only) */
   onClearReinforcement?: (skillId: string) => void
   /** Callback to clear all reinforcement flags (teacher only) */
   onClearAllReinforcement?: () => void
+}
+
+// Helper: Compute progress percent based on mode
+function computeProgressPercent(health: SkillHealthSummary): number {
+  switch (health.mode) {
+    case 'remediation':
+      // Progress toward exiting remediation (weakest skill reaching 0.5)
+      if (health.weakestSkill) {
+        return Math.min(100, Math.round((health.weakestSkill.pKnown / 0.5) * 100))
+      }
+      return 0
+    case 'progression':
+      // Just starting a new skill
+      return 0
+    case 'maintenance':
+      // Strong skills / total
+      if (health.counts.total > 0) {
+        return Math.round((health.counts.strong / health.counts.total) * 100)
+      }
+      return 100
+  }
+}
+
+// Helper: Get mode-specific colors
+function getModeColors(
+  mode: SkillHealthSummary['mode'],
+  isDark: boolean
+): { accent: string; bg: string; border: string; progressBar: string } {
+  switch (mode) {
+    case 'remediation':
+      return {
+        accent: isDark ? 'orange.400' : 'orange.600',
+        bg: isDark ? 'gray.800' : 'white',
+        border: isDark ? 'orange.700' : 'orange.200',
+        progressBar: isDark ? 'orange.400' : 'orange.500',
+      }
+    case 'progression':
+      return {
+        accent: isDark ? 'blue.400' : 'blue.600',
+        bg: isDark ? 'gray.800' : 'white',
+        border: isDark ? 'blue.700' : 'blue.200',
+        progressBar: isDark ? 'blue.400' : 'blue.500',
+      }
+    case 'maintenance':
+      return {
+        accent: isDark ? 'green.400' : 'green.600',
+        bg: isDark ? 'gray.800' : 'white',
+        border: isDark ? 'green.700' : 'green.200',
+        progressBar: isDark ? 'green.400' : 'green.500',
+      }
+  }
 }
 
 /**
@@ -62,27 +144,36 @@ interface ProgressDashboardProps {
  * - Greeting with avatar
  * - Current curriculum position
  * - Progress visualization
- * - Action buttons (Continue, Worksheet, View Progress)
+ * - Action button (Continue Practice)
  */
 export function ProgressDashboard({
   student,
   currentPhase,
+  skillHealth,
   focusAreas = [],
   onStartPractice,
-  onViewFullProgress,
-  onGenerateWorksheet,
-  onRunPlacementTest,
-  onRecordOfflinePractice,
   onClearReinforcement,
   onClearAllReinforcement,
 }: ProgressDashboardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const progressPercent =
-    currentPhase.totalSkills > 0
+  // Compute progress percent based on mode
+  const progressPercent = skillHealth
+    ? computeProgressPercent(skillHealth)
+    : currentPhase?.totalSkills && currentPhase.totalSkills > 0
       ? Math.round((currentPhase.masteredSkills / currentPhase.totalSkills) * 100)
       : 0
+
+  // Mode-specific styling
+  const modeColors = skillHealth
+    ? getModeColors(skillHealth.mode, isDark)
+    : {
+        accent: isDark ? 'blue.400' : 'blue.600',
+        bg: isDark ? 'gray.800' : 'white',
+        border: isDark ? 'gray.700' : 'gray.200',
+        progressBar: isDark ? 'green.400' : 'green.500',
+      }
 
   return (
     <div
@@ -124,140 +215,215 @@ export function ProgressDashboard({
         </p>
       </div>
 
-      {/* Current level card */}
+      {/* Current level card - BKT-based when skillHealth available */}
       <div
         data-section="current-level"
+        data-mode={skillHealth?.mode}
         className={css({
           width: '100%',
           padding: '1.5rem',
           borderRadius: '12px',
-          backgroundColor: isDark ? 'gray.800' : 'white',
+          backgroundColor: modeColors.bg,
           boxShadow: 'md',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
+          border: '2px solid',
+          borderColor: modeColors.border,
         })}
       >
-        <div
-          className={css({
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: '1rem',
-          })}
-        >
-          <div>
-            <h2
+        {skillHealth ? (
+          <>
+            {/* BKT-based header */}
+            <div
               className={css({
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: isDark ? 'gray.100' : 'gray.800',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '1rem',
               })}
             >
-              {currentPhase.levelName}
-            </h2>
+              <div>
+                <h2
+                  className={css({
+                    fontSize: '1.25rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                  })}
+                >
+                  {skillHealth.context.headline}
+                </h2>
+                <p
+                  className={css({
+                    fontSize: '1rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  {skillHealth.context.detail}
+                </p>
+              </div>
+            </div>
+
+            {/* Skill counts badges */}
+            <div
+              className={css({
+                display: 'flex',
+                gap: '0.75rem',
+                marginBottom: '1rem',
+                flexWrap: 'wrap',
+              })}
+            >
+              {skillHealth.counts.strong > 0 && (
+                <span
+                  data-skill-status="strong"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: '500',
+                    color: isDark ? 'green.300' : 'green.700',
+                    backgroundColor: isDark ? 'green.900' : 'green.100',
+                    padding: '0.25rem 0.625rem',
+                    borderRadius: '9999px',
+                  })}
+                >
+                  ✓ {skillHealth.counts.strong} Strong
+                </span>
+              )}
+              {skillHealth.counts.developing > 0 && (
+                <span
+                  data-skill-status="developing"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: '500',
+                    color: isDark ? 'blue.300' : 'blue.700',
+                    backgroundColor: isDark ? 'blue.900' : 'blue.100',
+                    padding: '0.25rem 0.625rem',
+                    borderRadius: '9999px',
+                  })}
+                >
+                  📚 {skillHealth.counts.developing} Developing
+                </span>
+              )}
+              {skillHealth.counts.weak > 0 && (
+                <span
+                  data-skill-status="weak"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: '500',
+                    color: isDark ? 'orange.300' : 'orange.700',
+                    backgroundColor: isDark ? 'orange.900' : 'orange.100',
+                    padding: '0.25rem 0.625rem',
+                    borderRadius: '9999px',
+                  })}
+                >
+                  ⚠ {skillHealth.counts.weak} Weak
+                </span>
+              )}
+            </div>
+
+            {/* Progress bar (mode-specific) */}
+            <div
+              className={css({
+                width: '100%',
+                height: '12px',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                borderRadius: '6px',
+                overflow: 'hidden',
+              })}
+            >
+              <div
+                className={css({
+                  height: '100%',
+                  backgroundColor: modeColors.progressBar,
+                  borderRadius: '6px',
+                  transition: 'width 0.5s ease',
+                })}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </>
+        ) : currentPhase ? (
+          <>
+            {/* Legacy phase-based display (fallback) */}
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '1rem',
+              })}
+            >
+              <div>
+                <h2
+                  className={css({
+                    fontSize: '1.25rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                  })}
+                >
+                  {currentPhase.levelName}
+                </h2>
+                <p
+                  className={css({
+                    fontSize: '1rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  {currentPhase.phaseName}
+                </p>
+              </div>
+              <span
+                className={css({
+                  fontSize: '0.875rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'blue.400' : 'blue.600',
+                })}
+              >
+                {progressPercent}% mastered
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div
+              className={css({
+                width: '100%',
+                height: '12px',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                marginBottom: '1rem',
+              })}
+            >
+              <div
+                className={css({
+                  height: '100%',
+                  backgroundColor: isDark ? 'green.400' : 'green.500',
+                  borderRadius: '6px',
+                  transition: 'width 0.5s ease',
+                })}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
             <p
               className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.400' : 'gray.600',
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
               })}
             >
-              {currentPhase.phaseName}
+              {currentPhase.description}
             </p>
-          </div>
-          <span
-            className={css({
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.400' : 'blue.600',
-            })}
-          >
-            {progressPercent}% mastered
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div
-          className={css({
-            width: '100%',
-            height: '12px',
-            backgroundColor: isDark ? 'gray.700' : 'gray.200',
-            borderRadius: '6px',
-            overflow: 'hidden',
-            marginBottom: '1rem',
-          })}
-        >
-          <div
-            className={css({
-              height: '100%',
-              backgroundColor: isDark ? 'green.400' : 'green.500',
-              borderRadius: '6px',
-              transition: 'width 0.5s ease',
-            })}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        <p
-          className={css({
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.400' : 'gray.500',
-          })}
-        >
-          {currentPhase.description}
-        </p>
-      </div>
-
-      {/* Secondary action buttons */}
-      <div
-        className={css({
-          display: 'flex',
-          gap: '0.75rem',
-          width: '100%',
-        })}
-      >
-        <button
-          type="button"
-          data-action="view-progress"
-          onClick={onViewFullProgress}
-          className={css({
-            flex: 1,
-            padding: '0.75rem',
-            fontSize: '1rem',
-            color: isDark ? 'gray.200' : 'gray.700',
-            backgroundColor: isDark ? 'gray.700' : 'gray.100',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s ease',
-            _hover: {
-              backgroundColor: isDark ? 'gray.600' : 'gray.200',
-            },
-          })}
-        >
-          View Progress
-        </button>
-
-        <button
-          type="button"
-          data-action="generate-worksheet"
-          onClick={onGenerateWorksheet}
-          className={css({
-            flex: 1,
-            padding: '0.75rem',
-            fontSize: '1rem',
-            color: isDark ? 'gray.200' : 'gray.700',
-            backgroundColor: isDark ? 'gray.700' : 'gray.100',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s ease',
-            _hover: {
-              backgroundColor: isDark ? 'gray.600' : 'gray.200',
-            },
-          })}
-        >
-          Worksheet
-        </button>
+          </>
+        ) : (
+          <p className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
+            No skill data available
+          </p>
+        )}
       </div>
 
       {/* Focus Areas - Skills needing extra practice */}
@@ -396,88 +562,6 @@ export function ProgressDashboard({
                 )}
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Onboarding & Assessment Tools */}
-      {(onRunPlacementTest || onRecordOfflinePractice) && (
-        <div
-          data-section="onboarding-tools"
-          className={css({
-            width: '100%',
-            padding: '1rem',
-            backgroundColor: isDark ? 'gray.800' : 'gray.50',
-            borderRadius: '12px',
-            border: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-          })}
-        >
-          <h3
-            className={css({
-              fontSize: '0.875rem',
-              fontWeight: 'semibold',
-              color: isDark ? 'gray.400' : 'gray.600',
-              marginBottom: '0.75rem',
-            })}
-          >
-            Assessment & Sync
-          </h3>
-          <div
-            className={css({
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-            })}
-          >
-            {onRunPlacementTest && (
-              <button
-                type="button"
-                data-action="run-placement-test"
-                onClick={onRunPlacementTest}
-                className={css({
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.875rem',
-                  color: isDark ? 'blue.300' : 'blue.700',
-                  backgroundColor: isDark ? 'blue.900' : 'blue.50',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'blue.700' : 'blue.200',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'blue.800' : 'blue.100',
-                    borderColor: isDark ? 'blue.600' : 'blue.300',
-                  },
-                })}
-              >
-                Placement Test
-              </button>
-            )}
-            {onRecordOfflinePractice && (
-              <button
-                type="button"
-                data-action="record-offline-practice"
-                onClick={onRecordOfflinePractice}
-                className={css({
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.875rem',
-                  color: isDark ? 'green.300' : 'green.700',
-                  backgroundColor: isDark ? 'green.900' : 'green.50',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'green.700' : 'green.200',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'green.800' : 'green.100',
-                    borderColor: isDark ? 'green.600' : 'green.300',
-                  },
-                })}
-              >
-                Record Offline Practice
-              </button>
-            )}
           </div>
         </div>
       )}
