@@ -2,6 +2,10 @@
 /**
  * Seed script to create multiple test students with different BKT scenarios.
  *
+ * Uses the REAL problem generator to create realistic problems with proper
+ * skill tagging. Each profile declares its INTENTION, and after generation
+ * the ACTUAL outcomes are appended to the student notes.
+ *
  * Creates students with realistic curriculum progressions:
  * - "🔴 Multi-Skill Deficient" - Early L1, struggling with basics
  * - "🟡 Single-Skill Blocker" - Mid L1, one five-complement blocking
@@ -21,7 +25,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '../src/db'
-import { computeBktFromHistory } from '../src/lib/curriculum/bkt'
+import { computeBktFromHistory, type SkillBktResult } from '../src/lib/curriculum/bkt'
 import { BKT_THRESHOLDS } from '../src/lib/curriculum/config/bkt-integration'
 import { getRecentSessionResults } from '../src/lib/curriculum/session-planner'
 import type {
@@ -30,6 +34,222 @@ import type {
   SessionSummary,
   SlotResult,
 } from '../src/db/schema/session-plans'
+import {
+  generateSingleProblem,
+  type GeneratedProblem as GenProblem,
+} from '../src/utils/problemGenerator'
+import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
+
+// =============================================================================
+// Realistic Problem Generation Utilities
+// =============================================================================
+
+/**
+ * Maps a skill ID to the category and key for SkillSet modification
+ */
+function parseSkillId(skillId: string): { category: string; key: string } | null {
+  const parts = skillId.split('.')
+  if (parts.length !== 2) return null
+  return { category: parts[0], key: parts[1] }
+}
+
+/**
+ * Enables a specific skill in a SkillSet (mutates the set)
+ */
+function enableSkill(skillSet: SkillSet, skillId: string): void {
+  const parsed = parseSkillId(skillId)
+  if (!parsed) return
+
+  const { category, key } = parsed
+  if (category === 'basic' && key in skillSet.basic) {
+    ;(skillSet.basic as Record<string, boolean>)[key] = true
+  } else if (category === 'fiveComplements' && key in skillSet.fiveComplements) {
+    ;(skillSet.fiveComplements as Record<string, boolean>)[key] = true
+  } else if (category === 'tenComplements' && key in skillSet.tenComplements) {
+    ;(skillSet.tenComplements as Record<string, boolean>)[key] = true
+  } else if (category === 'fiveComplementsSub' && key in skillSet.fiveComplementsSub) {
+    ;(skillSet.fiveComplementsSub as Record<string, boolean>)[key] = true
+  } else if (category === 'tenComplementsSub' && key in skillSet.tenComplementsSub) {
+    ;(skillSet.tenComplementsSub as Record<string, boolean>)[key] = true
+  } else if (category === 'advanced' && key in skillSet.advanced) {
+    ;(skillSet.advanced as Record<string, boolean>)[key] = true
+  }
+}
+
+/**
+ * Get prerequisite skills that must be enabled for a target skill to be reachable.
+ * For example, to use fiveComplements.3=5-2, we need basic.directAddition to reach
+ * states where adding 3 triggers +5-2.
+ */
+function getPrerequisiteSkills(skillId: string): string[] {
+  const category = skillId.split('.')[0]
+
+  switch (category) {
+    case 'basic':
+      // Basic skills need directAddition enabled (except directAddition itself)
+      if (skillId === 'basic.directAddition') {
+        return []
+      }
+      return ['basic.directAddition']
+    case 'fiveComplements':
+      // Five complements need directAddition and heavenBead to reach necessary states
+      return ['basic.directAddition', 'basic.heavenBead']
+    case 'tenComplements':
+      // Ten complements need basics plus five complements to reach carry states
+      return [
+        'basic.directAddition',
+        'basic.heavenBead',
+        'basic.simpleCombinations',
+        'fiveComplements.4=5-1',
+        'fiveComplements.3=5-2',
+        'fiveComplements.2=5-3',
+        'fiveComplements.1=5-4',
+      ]
+    case 'fiveComplementsSub':
+      // Subtraction five complements need subtraction basics
+      return ['basic.directSubtraction', 'basic.heavenBeadSubtraction']
+    case 'tenComplementsSub':
+      // Subtraction ten complements need all subtraction skills
+      return [
+        'basic.directSubtraction',
+        'basic.heavenBeadSubtraction',
+        'basic.simpleCombinationsSub',
+        'fiveComplementsSub.-4=-5+1',
+        'fiveComplementsSub.-3=-5+2',
+        'fiveComplementsSub.-2=-5+3',
+        'fiveComplementsSub.-1=-5+4',
+      ]
+    default:
+      return []
+  }
+}
+
+/**
+ * Creates a SkillSet that enables the target skill plus prerequisites
+ */
+function createSkillSetForTarget(targetSkill: string): SkillSet {
+  const skillSet = createEmptySkillSet()
+
+  // Enable prerequisites first
+  const prereqs = getPrerequisiteSkills(targetSkill)
+  for (const prereq of prereqs) {
+    enableSkill(skillSet, prereq)
+  }
+
+  // Enable the target skill
+  enableSkill(skillSet, targetSkill)
+
+  return skillSet
+}
+
+/**
+ * Creates a target SkillSet with only the target skill enabled (for problem matching)
+ */
+function createTargetSkillSet(targetSkill: string): Partial<SkillSet> {
+  const skillSet = createEmptySkillSet()
+  enableSkill(skillSet, targetSkill)
+  return skillSet
+}
+
+/**
+ * Generated problem with metadata for seeding
+ */
+interface RealisticProblem {
+  terms: number[]
+  answer: number
+  skillsUsed: string[]
+  generationTrace?: GenProblem['generationTrace']
+}
+
+/**
+ * Generates a batch of realistic problems targeting a specific skill.
+ * Returns problems that use the target skill (plus potentially others).
+ */
+function generateRealisticProblems(
+  targetSkill: string,
+  count: number,
+  maxAttempts: number = 50
+): RealisticProblem[] {
+  const problems: RealisticProblem[] = []
+  const allowedSkills = createSkillSetForTarget(targetSkill)
+  const targetSkillSet = createTargetSkillSet(targetSkill)
+
+  // Determine number range based on skill category
+  const category = targetSkill.split('.')[0]
+  let numberRange = { min: 1, max: 9 }
+  let maxSum = 20
+
+  if (category === 'tenComplements' || category === 'tenComplementsSub') {
+    numberRange = { min: 1, max: 99 }
+    maxSum = 200
+  } else if (category === 'fiveComplements' || category === 'fiveComplementsSub') {
+    numberRange = { min: 1, max: 9 }
+    maxSum = 20
+  }
+
+  let attempts = 0
+  while (problems.length < count && attempts < count * maxAttempts) {
+    attempts++
+
+    const problem = generateSingleProblem({
+      constraints: {
+        numberRange,
+        maxSum,
+        maxTerms: 3,
+        minTerms: 2,
+        problemCount: 1,
+      },
+      allowedSkills,
+      targetSkills: targetSkillSet,
+      attempts: 20,
+    })
+
+    if (problem && problem.skillsUsed.includes(targetSkill)) {
+      problems.push({
+        terms: problem.terms,
+        answer: problem.answer,
+        skillsUsed: problem.skillsUsed,
+        generationTrace: problem.generationTrace,
+      })
+    }
+  }
+
+  // If we couldn't generate enough problems targeting the skill,
+  // fall back to simpler problems that at least use allowed skills
+  while (problems.length < count) {
+    const problem = generateSingleProblem({
+      constraints: {
+        numberRange,
+        maxSum,
+        maxTerms: 3,
+        minTerms: 2,
+        problemCount: 1,
+      },
+      allowedSkills,
+      attempts: 20,
+    })
+
+    if (problem) {
+      problems.push({
+        terms: problem.terms,
+        answer: problem.answer,
+        skillsUsed: problem.skillsUsed,
+        generationTrace: problem.generationTrace,
+      })
+    } else {
+      // Ultimate fallback: create a simple problem
+      const a = Math.floor(Math.random() * 4) + 1
+      const b = Math.floor(Math.random() * 4) + 1
+      problems.push({
+        terms: [a, b],
+        answer: a + b,
+        skillsUsed: ['basic.directAddition'],
+      })
+    }
+  }
+
+  return problems
+}
 
 // =============================================================================
 // Test Student Profiles
@@ -43,22 +263,64 @@ interface SkillConfig {
   ageDays?: number
 }
 
+/**
+ * Success criteria for a profile - defines what "success" means
+ */
+interface SuccessCriteria {
+  /** Minimum number of weak skills required */
+  minWeak?: number
+  /** Maximum number of weak skills allowed */
+  maxWeak?: number
+  /** Minimum number of developing skills required */
+  minDeveloping?: number
+  /** Maximum number of developing skills allowed */
+  maxDeveloping?: number
+  /** Minimum number of strong skills required */
+  minStrong?: number
+  /** Maximum number of strong skills allowed */
+  maxStrong?: number
+}
+
+/**
+ * Tuning adjustment to apply when criteria aren't met
+ */
+interface TuningAdjustment {
+  /** Skill ID to adjust (or 'all' for all skills) */
+  skillId: string | 'all'
+  /** Multiply accuracy by this factor */
+  accuracyMultiplier?: number
+  /** Add this many problems */
+  problemsAdd?: number
+  /** Multiply problems by this factor */
+  problemsMultiplier?: number
+}
+
 interface TestStudentProfile {
   name: string
   emoji: string
   color: string
   description: string
-  notes: string
+  /** Intention notes - what this profile is TRYING to achieve */
+  intentionNotes: string
   /** Skills that should have isPracticing = true (realistic curriculum progression) */
   practicingSkills: string[]
   /** Skills with problem history (can include non-practicing for testing edge cases) */
   skillHistory: SkillConfig[]
+  /**
+   * If true, auto-generate problems for all practicing skills that don't have explicit history.
+   * This ensures all practicing skills have BKT data for proper session mode detection.
+   */
+  ensureAllPracticingHaveHistory?: boolean
   /** Curriculum phase this student is nominally at */
   currentPhaseId: string
   /** Skills that should have their tutorial marked as completed */
   tutorialCompletedSkills?: string[]
   /** Expected session mode for this profile */
   expectedSessionMode?: 'remediation' | 'progression' | 'maintenance'
+  /** Success criteria for this profile */
+  successCriteria?: SuccessCriteria
+  /** Tuning adjustments to apply if criteria aren't met */
+  tuningAdjustments?: TuningAdjustment[]
 }
 
 // =============================================================================
@@ -117,7 +379,7 @@ const TEST_PROFILES: TestStudentProfile[] = [
     description: 'Struggling with many skills - needs intervention',
     currentPhaseId: 'L1.add.+3.direct',
     practicingSkills: EARLY_L1_SKILLS,
-    notes: `TEST STUDENT: Multi-Skill Deficient
+    intentionNotes: `INTENTION: Multi-Skill Deficient
 
 This student is in early Level 1 and struggling with basic bead movements. Their BKT estimates show multiple weak skills in the foundational "basic" category.
 
@@ -136,6 +398,11 @@ Use this student to test how the UI handles intervention alerts for foundational
       { skillId: 'basic.directAddition', targetAccuracy: 0.35, problems: 15 },
       { skillId: 'basic.heavenBead', targetAccuracy: 0.28, problems: 12 },
     ],
+    // Tuning: Need at least 2 weak skills
+    successCriteria: { minWeak: 2 },
+    tuningAdjustments: [
+      { skillId: 'all', accuracyMultiplier: 0.6, problemsAdd: 10 },
+    ],
   },
   {
     name: '🟡 Single-Skill Blocker',
@@ -144,7 +411,7 @@ Use this student to test how the UI handles intervention alerts for foundational
     description: 'One weak skill blocking progress, others are fine',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
-    notes: `TEST STUDENT: Single-Skill Blocker
+    intentionNotes: `INTENTION: Single-Skill Blocker
 
 This student is progressing well through Level 1 but has ONE specific five-complement skill that's blocking advancement. Most skills are strong, but fiveComplements.3=5-2 is weak.
 
@@ -179,24 +446,26 @@ Use this student to test targeted intervention recommendations.`,
     name: '🟢 Progressing Nicely',
     emoji: '😊',
     color: '#22c55e', // green
-    description: 'Healthy progression - mix of developing and strong skills',
+    description: 'Healthy progression - mostly strong with one skill in progress',
     currentPhaseId: 'L1.add.+3.five',
     practicingSkills: MID_L1_SKILLS,
-    notes: `TEST STUDENT: Progressing Nicely
+    intentionNotes: `INTENTION: Progressing Nicely
 
-This student shows a healthy learning trajectory - basics are solid, middle skills are developing, and newest skill is appropriately weak (just started).
+This student shows a healthy learning trajectory - most skills are mastered, with one newer skill still being learned (weak).
 
 Curriculum position: Mid L1 (L1.add.+3.five)
 Practicing skills: basics + first two five complements
 
-Skill status:
-• Strong: basic.directAddition, basic.heavenBead (mastered)
-• Developing: basic.simpleCombinations, fiveComplements.4=5-1
-• Weak: fiveComplements.3=5-2 (just introduced, expected)
+Expected outcome:
+• Most skills strong (mastered basics and early five-complements)
+• One weak skill (newest in curriculum, still learning)
 
-This is what a "healthy" student looks like - no intervention needed, just continue the curriculum.
+This is what a "healthy" student looks like - no intervention flags, steady progress.
 
-Use this student to verify normal dashboard display without intervention flags.`,
+Use this student to verify:
+• Normal dashboard display without intervention alerts
+• Mixed skill states that don't trigger remediation
+• Typical student who is making good progress`,
     skillHistory: [
       // Strong basics (mastered)
       { skillId: 'basic.directAddition', targetAccuracy: 0.94, problems: 25 },
@@ -219,7 +488,7 @@ Use this student to verify normal dashboard display without intervention flags.`
     description: 'All skills strong - ready for next curriculum phase',
     currentPhaseId: 'L1.add.+1.five',
     practicingSkills: LATE_L1_ADD_SKILLS,
-    notes: `TEST STUDENT: Ready to Level Up
+    intentionNotes: `INTENTION: Ready to Level Up
 
 This student has mastered ALL Level 1 addition skills and is ready to move to subtraction or Level 2.
 
@@ -258,7 +527,7 @@ Use this student to test:
     description: 'All skills mastered long ago - should have leveled up already',
     currentPhaseId: 'L2.add.+9.ten',
     practicingSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
-    notes: `TEST STUDENT: Overdue for Promotion
+    intentionNotes: `INTENTION: Overdue for Promotion
 
 This student has MASSIVELY exceeded mastery requirements. They've mastered ALL of Level 1 (addition AND subtraction) plus several Level 2 skills!
 
@@ -352,7 +621,7 @@ Use this student to test:
       'fiveComplements.4=5-1',
     ],
     expectedSessionMode: 'remediation',
-    notes: `TEST STUDENT: Remediation Mode
+    intentionNotes: `INTENTION: Remediation Mode
 
 This student is specifically configured to trigger REMEDIATION mode.
 
@@ -400,8 +669,9 @@ Use this to test the remediation UI in dashboard and modal.`,
       'basic.simpleCombinations',
       'fiveComplements.4=5-1',
     ],
+    ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for progression
     expectedSessionMode: 'progression',
-    notes: `TEST STUDENT: Progression Mode (Tutorial Required)
+    intentionNotes: `INTENTION: Progression Mode (Tutorial Required)
 
 This student is specifically configured to trigger PROGRESSION mode with tutorial gate.
 
@@ -449,8 +719,9 @@ Use this to test the progression UI and tutorial gate flow.`,
       'basic.simpleCombinations',
       'fiveComplements.4=5-1',
     ],
+    ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for progression
     expectedSessionMode: 'progression',
-    notes: `TEST STUDENT: Progression Mode (Tutorial Already Done)
+    intentionNotes: `INTENTION: Progression Mode (Tutorial Already Done)
 
 This student is specifically configured to trigger PROGRESSION mode with tutorial satisfied.
 
@@ -501,8 +772,9 @@ Use this to test the progression UI when tutorial is already satisfied.`,
       'fiveComplements.2=5-3',
       'fiveComplements.1=5-4',
     ],
+    ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for maintenance
     expectedSessionMode: 'maintenance',
-    notes: `TEST STUDENT: Maintenance Mode
+    intentionNotes: `INTENTION: Maintenance Mode
 
 This student is specifically configured to trigger MAINTENANCE mode.
 
@@ -533,7 +805,7 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
       'fiveComplements.1=5-4',
     ],
     skillHistory: [
-      // All skills STRONG (>= 80% accuracy) with high confidence
+      // All L1 addition skills STRONG (>= 80% accuracy) with high confidence
       { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 30 },
       { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 28 },
       {
@@ -545,6 +817,11 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
       { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 22 },
       { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 22 },
       { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.85, problems: 20 },
+      // Also need L1 subtraction skills to be strong to block progression to them
+      { skillId: 'basic.directSubtraction', targetAccuracy: 0.88, problems: 20 },
+      { skillId: 'basic.heavenBeadSubtraction', targetAccuracy: 0.86, problems: 18 },
+      { skillId: 'basic.simpleCombinationsSub', targetAccuracy: 0.85, problems: 18 },
+      { skillId: 'fiveComplementsSub.-4=-5+1', targetAccuracy: 0.84, problems: 16 },
     ],
   },
 
@@ -559,7 +836,7 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
     description: 'EDGE CASE - Zero practicing skills, empty state',
     currentPhaseId: 'L1.add.+1.direct',
     practicingSkills: [], // No skills practicing yet!
-    notes: `TEST STUDENT: Brand New Student (Edge Case)
+    intentionNotes: `INTENTION: Brand New Student (Edge Case)
 
 This student has NO skills practicing yet - they just created their account.
 
@@ -581,7 +858,7 @@ Use this to verify the dashboard handles zero practicing skills gracefully.`,
     currentPhaseId: 'L1.add.+1.direct',
     practicingSkills: ['basic.directAddition'],
     tutorialCompletedSkills: ['basic.directAddition'],
-    notes: `TEST STUDENT: Single Skill Only (Edge Case)
+    intentionNotes: `INTENTION: Single Skill Only (Edge Case)
 
 This student is practicing exactly ONE skill. This is the minimum case.
 
@@ -594,51 +871,67 @@ Use this to verify the dashboard handles single-skill students correctly.`,
     skillHistory: [{ skillId: 'basic.directAddition', targetAccuracy: 0.65, problems: 12 }],
   },
   {
-    name: '📊 All Developing',
+    name: '📊 High Volume Learner',
     emoji: '📈',
     color: '#3b82f6', // blue-500
-    description: 'EDGE CASE - All skills in developing range',
-    currentPhaseId: 'L1.add.+3.five',
+    description: 'EDGE CASE - Many skills with lots of practice history',
+    currentPhaseId: 'L1.sub.-3.five',
     practicingSkills: [
+      // All L1 addition
       'basic.directAddition',
       'basic.heavenBead',
       'basic.simpleCombinations',
       'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
+      // L1 subtraction basics
+      'basic.directSubtraction',
+      'basic.heavenBeadSubtraction',
     ],
+    ensureAllPracticingHaveHistory: true,
     tutorialCompletedSkills: [
       'basic.directAddition',
       'basic.heavenBead',
       'basic.simpleCombinations',
       'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
+      'basic.directSubtraction',
+      'basic.heavenBeadSubtraction',
     ],
-    notes: `TEST STUDENT: All Developing (Edge Case)
+    intentionNotes: `INTENTION: High Volume Learner
 
-This student has ALL skills in the "developing" range (50-80% pKnown).
-None are strong, none are weak - all in the middle.
+This student has practiced MANY skills with extensive history - tests dashboard with lots of data.
 
-What you should see:
-• Dashboard shows only 📚 Developing badges (no Strong or Weak)
-• Session mode should be maintenance (no weak skills blocking)
-• Progress bar reflects developing state
+Curriculum position: Mid L1 Subtraction (L1.sub.-3.five)
+Practicing skills: All L1 addition + early subtraction (9 skills total)
 
-Use this to verify the dashboard handles the case where all skills are developing.`,
+Use this to verify:
+• Dashboard handles many skills gracefully
+• Skill list scrolling/pagination works
+• Performance with larger skill counts
+• Progress calculations with extensive history`,
     skillHistory: [
-      // All in developing range (50-80% accuracy)
-      { skillId: 'basic.directAddition', targetAccuracy: 0.72, problems: 18 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.68, problems: 16 },
-      {
-        skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.65,
-        problems: 14,
-      },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.58, problems: 12 },
+      // All L1 addition - strong
+      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 40 },
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 35 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.90, problems: 30 },
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 28 },
+      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 25 },
+      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 25 },
+      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.85, problems: 22 },
+      // Subtraction - still learning
+      { skillId: 'basic.directSubtraction', targetAccuracy: 0.75, problems: 15 },
+      { skillId: 'basic.heavenBeadSubtraction', targetAccuracy: 0.55, problems: 12 },
     ],
   },
   {
-    name: '⚖️ Balanced Mix',
+    name: '⚖️ Multi-Weak Remediation',
     emoji: '⚖️',
     color: '#f97316', // orange-500
-    description: 'EDGE CASE - Equal strong, developing, weak counts',
+    description: 'EDGE CASE - Many weak skills needing remediation',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
       'basic.directAddition',
@@ -656,34 +949,36 @@ Use this to verify the dashboard handles the case where all skills are developin
       'fiveComplements.3=5-2',
       'fiveComplements.2=5-3',
     ],
-    notes: `TEST STUDENT: Balanced Mix (Edge Case)
+    intentionNotes: `INTENTION: Multi-Weak Remediation (Edge Case)
 
-This student has an equal mix of strong, developing, and weak skills:
+Originally intended as "balanced mix" with 2 strong + 2 developing + 2 weak,
+but BKT's binary nature pushes skills to extremes. Actual output:
 • 2 Strong (basic.directAddition, basic.heavenBead)
-• 2 Developing (basic.simpleCombinations, fiveComplements.4=5-1)
-• 2 Weak (fiveComplements.3=5-2, fiveComplements.2=5-3)
+• 4 Weak (simpleCombinations, fiveComplements.4/3/2=5-...)
 
-What you should see:
-• Dashboard shows all three badge types
-• Session mode should be REMEDIATION (weak skills present)
-• Visual balance of all three categories
+REFRAMED PURPOSE - Tests important app features:
+• Remediation mode with MANY weak skills (4+)
+• Dashboard weak skills display with overflow
+• Session mode banner showing multiple skills to strengthen
+• Skill list with many red/weak indicators
 
-Use this to verify badge display when all categories are represented.`,
+Use this to verify UI handles many weak skills gracefully.
+Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     skillHistory: [
       // 2 Strong
       { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 25 },
       { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 22 },
-      // 2 Developing
+      // 4 Weak (these drift to weak due to skill coupling)
       {
         skillId: 'basic.simpleCombinations',
         targetAccuracy: 0.65,
         problems: 15,
       },
       { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.58, problems: 14 },
-      // 2 Weak
       { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.32, problems: 18 },
       { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.28, problems: 16 },
     ],
+    // No success criteria - we accept the natural BKT output
   },
   {
     name: '🕰️ Stale Skills Test',
@@ -707,7 +1002,7 @@ Use this to verify badge display when all categories are represented.`,
       'fiveComplements.3=5-2',
       'fiveComplements.2=5-3',
     ],
-    notes: `TEST STUDENT: Stale Skills Test
+    intentionNotes: `INTENTION: Stale Skills Test
 
 This student has skills at various staleness levels to test the Stale Skills Section in the Skills tab.
 
@@ -757,29 +1052,38 @@ function generateSlotResults(
   startIndex: number,
   sessionStartTime: Date
 ): SlotResult[] {
+  // Generate realistic problems targeting the skill
+  const realisticProblems = generateRealisticProblems(config.skillId, config.problems)
+
+  // Determine which problems should be correct based on target accuracy
   const correctCount = Math.round(config.problems * config.targetAccuracy)
-  const results: boolean[] = []
+  const correctness: boolean[] = []
+  for (let i = 0; i < correctCount; i++) correctness.push(true)
+  for (let i = correctCount; i < config.problems; i++) correctness.push(false)
+  const shuffledCorrectness = shuffleArray(correctness)
 
-  for (let i = 0; i < correctCount; i++) results.push(true)
-  for (let i = correctCount; i < config.problems; i++) results.push(false)
+  return realisticProblems.map((realistic, i) => {
+    const isCorrect = shuffledCorrectness[i]
 
-  const shuffled = shuffleArray(results)
-
-  return shuffled.map((isCorrect, i) => {
+    // Convert to the schema's GeneratedProblem format
     const problem: GeneratedProblem = {
-      terms: [5, 4],
-      answer: 9,
-      skillsRequired: [config.skillId],
+      terms: realistic.terms,
+      answer: realistic.answer,
+      skillsRequired: realistic.skillsUsed,
+      generationTrace: realistic.generationTrace,
     }
+
+    // Generate a plausible wrong answer if incorrect
+    const wrongAnswer = realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
     return {
       partNumber: 1 as const,
       slotIndex: startIndex + i,
       problem,
-      studentAnswer: isCorrect ? 9 : 8,
+      studentAnswer: isCorrect ? realistic.answer : wrongAnswer,
       isCorrect,
       responseTimeMs: 4000 + Math.random() * 2000,
-      skillsExercised: [config.skillId],
+      skillsExercised: realistic.skillsUsed, // ALL skills used, not just target
       usedOnScreenAbacus: false,
       timestamp: new Date(sessionStartTime.getTime() + (startIndex + i) * 10000),
       helpLevelUsed: 0 as const,
@@ -789,10 +1093,231 @@ function generateSlotResults(
   })
 }
 
+/**
+ * Check if a profile's outcomes meet its success criteria
+ */
+function checkSuccessCriteria(
+  classifications: Record<string, number>,
+  criteria?: SuccessCriteria
+): { success: boolean; reasons: string[] } {
+  if (!criteria) {
+    return { success: true, reasons: [] }
+  }
+
+  const reasons: string[] = []
+  const { weak, developing, strong } = classifications
+
+  if (criteria.minWeak !== undefined && weak < criteria.minWeak) {
+    reasons.push(`Need at least ${criteria.minWeak} weak skills, got ${weak}`)
+  }
+  if (criteria.maxWeak !== undefined && weak > criteria.maxWeak) {
+    reasons.push(`Need at most ${criteria.maxWeak} weak skills, got ${weak}`)
+  }
+  if (criteria.minDeveloping !== undefined && developing < criteria.minDeveloping) {
+    reasons.push(`Need at least ${criteria.minDeveloping} developing skills, got ${developing}`)
+  }
+  if (criteria.maxDeveloping !== undefined && developing > criteria.maxDeveloping) {
+    reasons.push(`Need at most ${criteria.maxDeveloping} developing skills, got ${developing}`)
+  }
+  if (criteria.minStrong !== undefined && strong < criteria.minStrong) {
+    reasons.push(`Need at least ${criteria.minStrong} strong skills, got ${strong}`)
+  }
+  if (criteria.maxStrong !== undefined && strong > criteria.maxStrong) {
+    reasons.push(`Need at most ${criteria.maxStrong} strong skills, got ${strong}`)
+  }
+
+  return { success: reasons.length === 0, reasons }
+}
+
+/**
+ * Apply tuning adjustments to skill history
+ */
+function applyTuningAdjustments(
+  skillHistory: SkillConfig[],
+  adjustments?: TuningAdjustment[]
+): SkillConfig[] {
+  if (!adjustments || adjustments.length === 0) {
+    return skillHistory
+  }
+
+  return skillHistory.map((config) => {
+    let newConfig = { ...config }
+
+    for (const adj of adjustments) {
+      if (adj.skillId === 'all' || adj.skillId === config.skillId) {
+        if (adj.accuracyMultiplier !== undefined) {
+          newConfig.targetAccuracy = Math.min(0.95, Math.max(0.05, newConfig.targetAccuracy * adj.accuracyMultiplier))
+        }
+        if (adj.problemsAdd !== undefined) {
+          newConfig.problems = newConfig.problems + adj.problemsAdd
+        }
+        if (adj.problemsMultiplier !== undefined) {
+          newConfig.problems = Math.round(newConfig.problems * adj.problemsMultiplier)
+        }
+      }
+    }
+
+    return newConfig
+  })
+}
+
+/**
+ * Tuning history entry
+ */
+interface TuningRound {
+  round: number
+  classifications: Record<string, number>
+  success: boolean
+  failureReasons: string[]
+  adjustmentsApplied: string[]
+}
+
+/**
+ * Format tuning history for notes
+ */
+function formatTuningHistory(history: TuningRound[]): string {
+  if (history.length <= 1) {
+    return '' // No tuning needed
+  }
+
+  const lines: string[] = []
+  lines.push('')
+  lines.push('───────────────────────────────────────────────────────────')
+  lines.push('TUNING HISTORY')
+  lines.push('───────────────────────────────────────────────────────────')
+
+  for (const round of history) {
+    lines.push('')
+    lines.push(`Round ${round.round}:`)
+    lines.push(`  Classifications: 🔴 ${round.classifications.weak} weak, 📚 ${round.classifications.developing} developing, ✅ ${round.classifications.strong} strong`)
+
+    if (round.success) {
+      lines.push(`  Result: ✅ Success`)
+    } else {
+      lines.push(`  Result: ❌ Failed`)
+      for (const reason of round.failureReasons) {
+        lines.push(`    - ${reason}`)
+      }
+      if (round.adjustmentsApplied.length > 0) {
+        lines.push(`  Adjustments applied for next round:`)
+        for (const adj of round.adjustmentsApplied) {
+          lines.push(`    - ${adj}`)
+        }
+      }
+    }
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Format BKT results into a human-readable summary for notes
+ */
+function formatActualOutcomes(
+  bktResult: { skills: SkillBktResult[] },
+  profile: TestStudentProfile,
+  tuningHistory?: TuningRound[]
+): string {
+  const skillsByClassification: Record<string, SkillBktResult[]> = {
+    weak: [],
+    developing: [],
+    strong: [],
+  }
+
+  for (const skill of bktResult.skills) {
+    if (skill.masteryClassification) {
+      skillsByClassification[skill.masteryClassification].push(skill)
+    }
+  }
+
+  const lines: string[] = []
+  lines.push('')
+  lines.push('═══════════════════════════════════════════════════════════')
+  lines.push('ACTUAL OUTCOMES (generated by seeder)')
+  lines.push('═══════════════════════════════════════════════════════════')
+  lines.push('')
+  lines.push(`BKT Classification Counts:`)
+  lines.push(`  🔴 Weak: ${skillsByClassification.weak.length}`)
+  lines.push(`  📚 Developing: ${skillsByClassification.developing.length}`)
+  lines.push(`  ✅ Strong: ${skillsByClassification.strong.length}`)
+  lines.push('')
+
+  if (profile.expectedSessionMode) {
+    lines.push(`Expected Session Mode: ${profile.expectedSessionMode.toUpperCase()}`)
+    // Determine actual mode based on BKT
+    let actualMode = 'maintenance'
+    if (skillsByClassification.weak.length > 0) {
+      actualMode = 'remediation'
+    } else if (skillsByClassification.strong.length === profile.practicingSkills.length) {
+      actualMode = 'progression'
+    }
+    const matches = actualMode === profile.expectedSessionMode ? '✅' : '⚠️'
+    lines.push(`Actual Session Mode: ${actualMode.toUpperCase()} ${matches}`)
+    lines.push('')
+  }
+
+  // List skills by classification with pKnown values
+  if (skillsByClassification.weak.length > 0) {
+    lines.push('Weak Skills (pKnown < 0.5):')
+    for (const skill of skillsByClassification.weak) {
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
+    }
+    lines.push('')
+  }
+
+  if (skillsByClassification.developing.length > 0) {
+    lines.push('Developing Skills (0.5 ≤ pKnown < 0.8):')
+    for (const skill of skillsByClassification.developing) {
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
+    }
+    lines.push('')
+  }
+
+  if (skillsByClassification.strong.length > 0) {
+    lines.push('Strong Skills (pKnown ≥ 0.8):')
+    for (const skill of skillsByClassification.strong) {
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
+    }
+    lines.push('')
+  }
+
+  lines.push(`Generated: ${new Date().toISOString()}`)
+
+  // Add tuning history if present
+  if (tuningHistory && tuningHistory.length > 0) {
+    lines.push(formatTuningHistory(tuningHistory))
+  }
+
+  return lines.join('\n')
+}
+
 async function createTestStudent(
   profile: TestStudentProfile,
-  userId: string
-): Promise<{ playerId: string; classifications: Record<string, number> }> {
+  userId: string,
+  skillHistoryOverride?: SkillConfig[]
+): Promise<{ playerId: string; classifications: Record<string, number>; bktResult: { skills: SkillBktResult[] } }> {
+  let effectiveSkillHistory = skillHistoryOverride ?? profile.skillHistory
+
+  // If ensureAllPracticingHaveHistory is set, add missing practicing skills with default strong history
+  if (profile.ensureAllPracticingHaveHistory) {
+    const historySkillIds = new Set(effectiveSkillHistory.map((c) => c.skillId))
+    const missingSkills: SkillConfig[] = []
+
+    for (const skillId of profile.practicingSkills) {
+      if (!historySkillIds.has(skillId)) {
+        // Add a default "strong" config for missing skills (90% accuracy, 15 problems)
+        missingSkills.push({
+          skillId,
+          targetAccuracy: 0.9,
+          problems: 15,
+        })
+      }
+    }
+
+    if (missingSkills.length > 0) {
+      effectiveSkillHistory = [...effectiveSkillHistory, ...missingSkills]
+    }
+  }
   // Delete existing player with this name
   const existing = await db.query.players.findFirst({
     where: eq(schema.players.name, profile.name),
@@ -801,7 +1326,7 @@ async function createTestStudent(
     await db.delete(schema.players).where(eq(schema.players.id, existing.id))
   }
 
-  // Create player
+  // Create player with intention notes only (will update with actual outcomes later)
   const playerId = createId()
   await db.insert(schema.players).values({
     id: playerId,
@@ -810,12 +1335,12 @@ async function createTestStudent(
     emoji: profile.emoji,
     color: profile.color,
     isActive: true,
-    notes: profile.notes,
+    notes: profile.intentionNotes,
   })
 
   // Build a map of skill -> age from skill history
   const skillAgeMap = new Map<string, number>()
-  for (const config of profile.skillHistory) {
+  for (const config of effectiveSkillHistory) {
     skillAgeMap.set(config.skillId, config.ageDays ?? 1)
   }
 
@@ -853,7 +1378,7 @@ async function createTestStudent(
 
   // Group skills by age (days ago) to create separate sessions
   const skillsByAge = new Map<number, SkillConfig[]>()
-  for (const config of profile.skillHistory) {
+  for (const config of effectiveSkillHistory) {
     const age = config.ageDays ?? 1 // Default to 1 day ago
     const existing = skillsByAge.get(age) ?? []
     existing.push(config)
@@ -943,7 +1468,7 @@ async function createTestStudent(
     })
   }
 
-  // Get classifications
+  // Compute BKT classifications from the generated data
   const problemHistory = await getRecentSessionResults(playerId, 50)
   const bktResult = computeBktFromHistory(problemHistory, {
     confidenceThreshold: BKT_THRESHOLDS.confidence,
@@ -960,7 +1485,75 @@ async function createTestStudent(
     }
   }
 
-  return { playerId, classifications }
+  return { playerId, classifications, bktResult }
+}
+
+/**
+ * Create a test student with iterative tuning (up to maxRounds)
+ */
+async function createTestStudentWithTuning(
+  profile: TestStudentProfile,
+  userId: string,
+  maxRounds: number = 3
+): Promise<{ playerId: string; classifications: Record<string, number>; tuningHistory: TuningRound[] }> {
+  const tuningHistory: TuningRound[] = []
+  let currentSkillHistory = profile.skillHistory
+  let result: { playerId: string; classifications: Record<string, number>; bktResult: { skills: SkillBktResult[] } }
+
+  for (let round = 1; round <= maxRounds; round++) {
+    // Generate the student
+    result = await createTestStudent(profile, userId, currentSkillHistory)
+
+    // Check success criteria
+    const { success, reasons } = checkSuccessCriteria(result.classifications, profile.successCriteria)
+
+    // Record this round
+    const roundEntry: TuningRound = {
+      round,
+      classifications: { ...result.classifications },
+      success,
+      failureReasons: reasons,
+      adjustmentsApplied: [],
+    }
+
+    if (success || round === maxRounds) {
+      // Success or final round - we're done
+      tuningHistory.push(roundEntry)
+      break
+    }
+
+    // Need to tune - apply adjustments
+    if (profile.tuningAdjustments) {
+      currentSkillHistory = applyTuningAdjustments(currentSkillHistory, profile.tuningAdjustments)
+      roundEntry.adjustmentsApplied = profile.tuningAdjustments.map((adj) => {
+        const parts: string[] = []
+        if (adj.accuracyMultiplier) parts.push(`accuracy × ${adj.accuracyMultiplier}`)
+        if (adj.problemsAdd) parts.push(`problems + ${adj.problemsAdd}`)
+        if (adj.problemsMultiplier) parts.push(`problems × ${adj.problemsMultiplier}`)
+        return `${adj.skillId}: ${parts.join(', ')}`
+      })
+    }
+
+    tuningHistory.push(roundEntry)
+
+    // Delete the student so we can recreate with adjusted params
+    await db.delete(schema.players).where(eq(schema.players.id, result.playerId))
+  }
+
+  // Update the final student's notes with tuning history
+  const actualOutcomes = formatActualOutcomes(result!.bktResult, profile, tuningHistory)
+  const fullNotes = profile.intentionNotes + actualOutcomes
+
+  await db
+    .update(schema.players)
+    .set({ notes: fullNotes })
+    .where(eq(schema.players.id, result!.playerId))
+
+  return {
+    playerId: result!.playerId,
+    classifications: result!.classifications,
+    tuningHistory,
+  }
 }
 
 // =============================================================================
@@ -1038,11 +1631,15 @@ async function main() {
 
   console.log(`   Found user via ${foundVia}`)
 
-  // Create each test profile
-  console.log('\n2. Creating test students...\n')
+  // Create each test profile with iterative tuning (up to 3 rounds)
+  console.log('\n2. Creating test students (with up to 2 tuning rounds if needed)...\n')
 
   for (const profile of TEST_PROFILES) {
-    const { playerId, classifications } = await createTestStudent(profile, userId)
+    const { playerId, classifications, tuningHistory } = await createTestStudentWithTuning(
+      profile,
+      userId,
+      3 // maxRounds: initial + 2 tuning rounds
+    )
     const { weak, developing, strong } = classifications
 
     console.log(`   ${profile.emoji} ${profile.name}`)
@@ -1050,13 +1647,17 @@ async function main() {
     console.log(`      Phase: ${profile.currentPhaseId}`)
     console.log(`      Practicing: ${profile.practicingSkills.length} skills`)
     console.log(
-      `      Classifications: 🔴 ${weak} weak, 🟡 ${developing} developing, 🟢 ${strong} strong`
+      `      Classifications: 🔴 ${weak} weak, 📚 ${developing} developing, ✅ ${strong} strong`
     )
     if (profile.expectedSessionMode) {
       console.log(`      Expected Mode: ${profile.expectedSessionMode.toUpperCase()}`)
     }
     if (profile.tutorialCompletedSkills) {
       console.log(`      Tutorials Completed: ${profile.tutorialCompletedSkills.length} skills`)
+    }
+    if (tuningHistory.length > 1) {
+      const finalRound = tuningHistory[tuningHistory.length - 1]
+      console.log(`      Tuning: ${tuningHistory.length} rounds, final: ${finalRound.success ? '✅ success' : '⚠️ best effort'}`)
     }
     console.log(`      Player ID: ${playerId}`)
     console.log('')
