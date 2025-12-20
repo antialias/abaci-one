@@ -12,6 +12,7 @@ import {
   getRecentSessions,
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
+import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -28,11 +29,42 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
-    const [curriculum, skills, recentSessions] = await Promise.all([
+    const [curriculum, rawSkills, recentSessions, sessionResults] = await Promise.all([
       getPlayerCurriculum(playerId),
       getAllSkillMastery(playerId),
       getRecentSessions(playerId, 10),
+      getRecentSessionResults(playerId, 100),
     ])
+
+    // Compute skill stats from session results (single source of truth)
+    const skillStats = new Map<string, { attempts: number; correct: number; responseTimes: number[] }>()
+    for (const result of sessionResults) {
+      for (const skillId of result.skillsExercised) {
+        if (!skillStats.has(skillId)) {
+          skillStats.set(skillId, { attempts: 0, correct: 0, responseTimes: [] })
+        }
+        const stats = skillStats.get(skillId)!
+        stats.attempts++
+        if (result.isCorrect) {
+          stats.correct++
+        }
+        if (result.responseTimeMs > 0) {
+          stats.responseTimes.push(result.responseTimeMs)
+        }
+      }
+    }
+
+    // Enrich skills with computed stats
+    const skills = rawSkills.map((skill) => {
+      const stats = skillStats.get(skill.skillId)
+      return {
+        ...skill,
+        attempts: stats?.attempts ?? 0,
+        correct: stats?.correct ?? 0,
+        totalResponseTimeMs: stats?.responseTimes.reduce((a, b) => a + b, 0) ?? 0,
+        responseTimeCount: stats?.responseTimes.length ?? 0,
+      }
+    })
 
     return NextResponse.json({
       curriculum,
