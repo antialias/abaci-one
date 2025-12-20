@@ -28,10 +28,33 @@ export type BlameMethod = 'heuristic' | 'bayesian'
 export function updateOnCorrect(
   skills: SkillBktRecord[]
 ): { skillId: string; updatedPKnown: number }[] {
-  return skills.map((skill) => ({
-    skillId: skill.skillId,
-    updatedPKnown: applyLearning(bktUpdate(skill.pKnown, true, skill.params), skill.params.pLearn),
-  }))
+  return skills.map((skill) => {
+    // Surface data issues - log warning and let NaN propagate for UI error boundaries
+    if (!Number.isFinite(skill.pKnown)) {
+      console.warn(
+        '[BKT] updateOnCorrect: Invalid pKnown for skill:',
+        skill.skillId,
+        skill.pKnown,
+        '- letting NaN propagate'
+      )
+      return {
+        skillId: skill.skillId,
+        updatedPKnown: Number.NaN, // Let NaN propagate for UI error state
+      }
+    }
+    const updated = applyLearning(bktUpdate(skill.pKnown, true, skill.params), skill.params.pLearn)
+    if (!Number.isFinite(updated)) {
+      console.warn(
+        '[BKT] updateOnCorrect: Calculation produced NaN for skill:',
+        skill.skillId,
+        '- letting NaN propagate'
+      )
+    }
+    return {
+      skillId: skill.skillId,
+      updatedPKnown: updated, // Let NaN propagate if it occurred
+    }
+  })
 }
 
 /**
@@ -49,6 +72,21 @@ export function updateOnCorrect(
  * the error receive less negative evidence.
  */
 export function updateOnIncorrect(skills: SkillBktRecord[]): BlameDistribution[] {
+  // Surface data issues - log warning for any skills with invalid pKnown
+  const invalidSkills = skills.filter((s) => !Number.isFinite(s.pKnown))
+  if (invalidSkills.length > 0) {
+    console.warn(
+      '[BKT] updateOnIncorrect: Found skills with invalid pKnown - letting NaN propagate:',
+      invalidSkills.map((s) => ({ id: s.skillId, pKnown: s.pKnown }))
+    )
+    // Return NaN for all skills so UI shows error state for the whole calculation
+    return skills.map((skill) => ({
+      skillId: skill.skillId,
+      blameWeight: Number.NaN,
+      updatedPKnown: Number.NaN,
+    }))
+  }
+
   // Calculate total "unknown-ness" across all skills
   const totalUnknown = skills.reduce((sum, s) => sum + (1 - s.pKnown), 0)
 
@@ -78,7 +116,7 @@ export function updateOnIncorrect(skills: SkillBktRecord[]): BlameDistribution[]
     return {
       skillId: skill.skillId,
       blameWeight,
-      updatedPKnown: weightedPKnown,
+      updatedPKnown: weightedPKnown, // Let NaN propagate if it occurred
     }
   })
 }

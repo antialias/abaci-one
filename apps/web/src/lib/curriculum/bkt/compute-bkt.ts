@@ -136,6 +136,20 @@ export function computeBktFromHistory(
       ? updateOnCorrect(skillRecords)
       : updateOnIncorrectWithMethod(skillRecords, blameMethod)
 
+    // Check if any update produced NaN (indicates invalid input data)
+    const hasInvalidUpdate = updates.some((u) => !Number.isFinite(u.updatedPKnown))
+    if (hasInvalidUpdate) {
+      console.warn(
+        '[BKT] Skipping problem result due to invalid data - skills:',
+        skillIds.join(', '),
+        'timestamp:',
+        result.timestamp,
+        'Updates with NaN:',
+        updates.filter((u) => !Number.isFinite(u.updatedPKnown)).map((u) => u.skillId)
+      )
+      continue // Skip this problem, don't corrupt skill states
+    }
+
     // Apply updates with evidence weighting
     for (const update of updates) {
       const state = skillStates.get(update.skillId)!
@@ -144,6 +158,20 @@ export function computeBktFromHistory(
       // When evidenceWeight = 1.0, use full update
       // When evidenceWeight < 1.0, stay closer to prior
       const newPKnown = state.pKnown * (1 - evidenceWeight) + update.updatedPKnown * evidenceWeight
+
+      // Final safety check - if blending still produces NaN, preserve prior state
+      if (!Number.isFinite(newPKnown)) {
+        console.warn(
+          '[BKT] Evidence blending produced NaN for skill:',
+          update.skillId,
+          'evidenceWeight:',
+          evidenceWeight,
+          'updatedPKnown:',
+          update.updatedPKnown,
+          '- preserving prior state'
+        )
+        continue
+      }
 
       state.pKnown = newPKnown
       state.opportunities += 1
@@ -178,6 +206,16 @@ export function computeBktFromHistory(
 
     // Classify mastery based on P(known) and confidence
     const masteryClassification = classifyMastery(finalPKnown, confidence, opts.confidenceThreshold)
+
+    // Final safety check - this should not happen after skipping invalid updates
+    // If it does, warn and let UI show error state for this specific skill
+    if (!Number.isFinite(finalPKnown)) {
+      console.warn(
+        `[BKT] UNEXPECTED: Skill ${skillId} has corrupted pKnown after processing: ${finalPKnown}. ` +
+          `Opportunities: ${state.opportunities}, SuccessCount: ${state.successCount}. ` +
+          'This should not happen - invalid updates should have been skipped.'
+      )
+    }
 
     skills.push({
       skillId,

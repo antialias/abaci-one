@@ -509,34 +509,48 @@ function SkillCard({
             marginBottom: '0.25rem',
           })}
         >
-          <span
-            className={css({
-              fontWeight: 'bold',
-              color:
-                skill.pKnown >= 0.8
-                  ? isDark
-                    ? 'green.400'
-                    : 'green.600'
-                  : skill.pKnown < 0.5
-                    ? isDark
-                      ? 'red.400'
-                      : 'red.600'
-                    : isDark
-                      ? 'yellow.400'
-                      : 'yellow.600',
-            })}
-          >
-            ~{Math.round(skill.pKnown * 100)}%
-          </span>
-          {confidenceLabel && (
+          {!Number.isFinite(skill.pKnown) ? (
             <span
               className={css({
-                color: isDark ? 'gray.500' : 'gray.500',
-                fontSize: '0.625rem',
+                fontWeight: 'bold',
+                color: isDark ? 'orange.400' : 'orange.600',
               })}
+              title="BKT calculation error - check browser console for details"
             >
-              ({confidenceLabel})
+              ⚠️ Data Error
             </span>
+          ) : (
+            <>
+              <span
+                className={css({
+                  fontWeight: 'bold',
+                  color:
+                    skill.pKnown >= 0.8
+                      ? isDark
+                        ? 'green.400'
+                        : 'green.600'
+                      : skill.pKnown < 0.5
+                        ? isDark
+                          ? 'red.400'
+                          : 'red.600'
+                        : isDark
+                          ? 'yellow.400'
+                          : 'yellow.600',
+                })}
+              >
+                ~{Math.round(skill.pKnown * 100)}%
+              </span>
+              {confidenceLabel && (
+                <span
+                  className={css({
+                    color: isDark ? 'gray.500' : 'gray.500',
+                    fontSize: '0.625rem',
+                  })}
+                >
+                  ({confidenceLabel})
+                </span>
+              )}
+            </>
           )}
         </div>
       )}
@@ -777,8 +791,11 @@ function SkillDetailDrawer({
               padding: '1rem',
               borderBottom: '1px solid',
               borderColor: isDark ? 'gray.700' : 'gray.200',
-              backgroundColor:
-                skill.pKnown >= 0.8
+              backgroundColor: !Number.isFinite(skill.pKnown)
+                ? isDark
+                  ? 'orange.900/20'
+                  : 'orange.50'
+                : skill.pKnown >= 0.8
                   ? isDark
                     ? 'green.900/20'
                     : 'green.50'
@@ -800,55 +817,85 @@ function SkillDetailDrawer({
             >
               Estimated Mastery
             </div>
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: '0.5rem',
-              })}
-            >
-              <span
+            {!Number.isFinite(skill.pKnown) ? (
+              <div
                 className={css({
-                  fontSize: '2rem',
-                  fontWeight: 'bold',
-                  color:
-                    skill.pKnown >= 0.8
-                      ? isDark
-                        ? 'green.400'
-                        : 'green.600'
-                      : skill.pKnown < 0.5
-                        ? isDark
-                          ? 'red.400'
-                          : 'red.600'
-                        : isDark
-                          ? 'yellow.400'
-                          : 'yellow.600',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
                 })}
               >
-                ~{Math.round(skill.pKnown * 100)}%
-              </span>
-              {skill.confidence !== null && (
                 <span
                   className={css({
-                    fontSize: '0.875rem',
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'orange.400' : 'orange.600',
+                  })}
+                >
+                  ⚠️ Data Error
+                </span>
+                <span
+                  className={css({
+                    fontSize: '0.75rem',
                     color: isDark ? 'gray.400' : 'gray.600',
                   })}
                 >
-                  ({getConfidenceLabel(skill.confidence)} confidence)
+                  BKT calculation failed. Check browser console for details.
                 </span>
-              )}
-            </div>
-            {skill.uncertaintyRange && (
-              <div
-                className={css({
-                  fontSize: '0.75rem',
-                  color: isDark ? 'gray.500' : 'gray.500',
-                  marginTop: '0.25rem',
-                })}
-              >
-                Range: {Math.round(skill.uncertaintyRange.low * 100)}% -{' '}
-                {Math.round(skill.uncertaintyRange.high * 100)}%
               </div>
+            ) : (
+              <>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '0.5rem',
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontSize: '2rem',
+                      fontWeight: 'bold',
+                      color:
+                        skill.pKnown >= 0.8
+                          ? isDark
+                            ? 'green.400'
+                            : 'green.600'
+                          : skill.pKnown < 0.5
+                            ? isDark
+                              ? 'red.400'
+                              : 'red.600'
+                            : isDark
+                              ? 'yellow.400'
+                              : 'yellow.600',
+                    })}
+                  >
+                    ~{Math.round(skill.pKnown * 100)}%
+                  </span>
+                  {skill.confidence !== null && (
+                    <span
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.400' : 'gray.600',
+                      })}
+                    >
+                      ({getConfidenceLabel(skill.confidence)} confidence)
+                    </span>
+                  )}
+                </div>
+                {skill.uncertaintyRange && Number.isFinite(skill.uncertaintyRange.low) && (
+                  <div
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.500' : 'gray.500',
+                      marginTop: '0.25rem',
+                    })}
+                  >
+                    Range: {Math.round(skill.uncertaintyRange.low * 100)}% -{' '}
+                    {Math.round(skill.uncertaintyRange.high * 100)}%
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

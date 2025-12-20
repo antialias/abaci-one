@@ -24,6 +24,9 @@ export function helpLevelWeight(helpLevel: 0 | 1 | 2 | 3): number {
       return 0.5 // Significant help - halve evidence
     case 3:
       return 0.5 // Full help - halve evidence
+    default:
+      // Guard against unexpected values (e.g., null, undefined, or invalid numbers from JSON parsing)
+      return 1.0
   }
 }
 
@@ -46,6 +49,15 @@ export function responseTimeWeight(
   isCorrect: boolean,
   expectedTimeMs: number = 5000
 ): number {
+  // Guard against invalid values that would produce NaN
+  if (
+    typeof responseTimeMs !== 'number' ||
+    !Number.isFinite(responseTimeMs) ||
+    responseTimeMs <= 0
+  ) {
+    return 1.0 // Neutral weight for invalid data
+  }
+
   const ratio = responseTimeMs / expectedTimeMs
 
   if (isCorrect) {

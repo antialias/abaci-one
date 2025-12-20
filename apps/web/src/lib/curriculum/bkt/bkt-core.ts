@@ -37,6 +37,16 @@ import type { BktParams } from './types'
 export function bktUpdate(priorPKnown: number, isCorrect: boolean, params: BktParams): number {
   const { pSlip, pGuess } = params
 
+  // Surface data issues - log warning and let NaN propagate so UI can show error state
+  if (!Number.isFinite(priorPKnown)) {
+    console.warn('[BKT] Invalid priorPKnown detected:', priorPKnown, '- letting NaN propagate')
+    return Number.NaN // Let NaN propagate for UI error boundaries
+  }
+  if (!Number.isFinite(pSlip) || !Number.isFinite(pGuess)) {
+    console.warn('[BKT] Invalid params detected:', { pSlip, pGuess }, '- letting NaN propagate')
+    return Number.NaN // Let NaN propagate for UI error boundaries
+  }
+
   // Guard against division by zero
   const safeSlip = Math.max(0.001, Math.min(0.999, pSlip))
   const safeGuess = Math.max(0.001, Math.min(0.999, pGuess))
@@ -71,5 +81,15 @@ export function bktUpdate(priorPKnown: number, isCorrect: boolean, params: BktPa
  * @returns P(known) after learning transition
  */
 export function applyLearning(pKnown: number, pLearn: number): number {
+  // Surface data issues - log warning and let NaN propagate
+  if (!Number.isFinite(pKnown)) {
+    console.warn('[BKT] applyLearning: Invalid pKnown:', pKnown, '- letting NaN propagate')
+    return Number.NaN
+  }
+  if (!Number.isFinite(pLearn)) {
+    console.warn('[BKT] applyLearning: Invalid pLearn:', pLearn, '- letting NaN propagate')
+    return Number.NaN
+  }
+
   return pKnown + (1 - pKnown) * pLearn
 }

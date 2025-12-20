@@ -193,6 +193,18 @@ export const BKT_INTEGRATION_CONFIG = {
 export function calculateBktMultiplier(pKnown: number): number {
   const { minMultiplier, maxMultiplier } = BKT_INTEGRATION_CONFIG
 
+  // Guard against NaN/invalid pKnown - this is a "consumer" of BKT data, not a producer
+  // We log the warning (surfacing the issue) and return maxMultiplier (conservative fallback)
+  // This allows problem generation to continue while indicating an unknown mastery level
+  if (!Number.isFinite(pKnown)) {
+    console.warn(
+      '[BKT] calculateBktMultiplier: Invalid pKnown:',
+      pKnown,
+      '- using maxMultiplier as fallback'
+    )
+    return maxMultiplier // Conservative: harder problems, allows system to continue
+  }
+
   // Non-linear (square) interpolation: pKnown²=0 → max, pKnown²=1 → min
   // This spreads out the high P(known) range for better differentiation
   const effectivePKnown = pKnown * pKnown
