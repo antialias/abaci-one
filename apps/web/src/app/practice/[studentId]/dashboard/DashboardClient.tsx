@@ -594,10 +594,14 @@ function SkillDetailDrawer({
   skill,
   isDark,
   onClose,
+  onMarkCurrent,
+  isMarkingCurrent,
 }: {
   skill: ProcessedSkill | null
   isDark: boolean
   onClose: () => void
+  onMarkCurrent?: (skillId: string) => void
+  isMarkingCurrent?: boolean
 }) {
   if (!skill) return null
 
@@ -683,6 +687,88 @@ function SkillDetailDrawer({
             ✕
           </button>
         </div>
+
+        {/* Staleness Alert with Mark Current action */}
+        {skill.stalenessWarning && onMarkCurrent && (
+          <div
+            className={css({
+              padding: '1rem',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              backgroundColor: isDark ? 'orange.900/30' : 'orange.50',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              })}
+            >
+              <span className={css({ fontSize: '1.25rem' })}>⏰</span>
+              <div>
+                <div
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'orange.300' : 'orange.700',
+                  })}
+                >
+                  Not Practiced Recently
+                </div>
+                <div
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'orange.400' : 'orange.600',
+                  })}
+                >
+                  {skill.stalenessWarning}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onMarkCurrent(skill.skillId)}
+              disabled={isMarkingCurrent}
+              data-action="mark-current"
+              className={css({
+                alignSelf: 'flex-start',
+                fontSize: '0.875rem',
+                fontWeight: 'medium',
+                px: '1rem',
+                py: '0.5rem',
+                border: '1px solid',
+                borderColor: isDark ? 'blue.600' : 'blue.400',
+                borderRadius: 'md',
+                bg: isDark ? 'blue.800' : 'blue.100',
+                color: isDark ? 'blue.200' : 'blue.700',
+                cursor: 'pointer',
+                _hover: {
+                  bg: isDark ? 'blue.700' : 'blue.200',
+                },
+                _disabled: {
+                  opacity: 0.5,
+                  cursor: 'wait',
+                },
+              })}
+            >
+              {isMarkingCurrent ? 'Marking...' : 'Mark as Current'}
+            </button>
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+                lineHeight: '1.4',
+              })}
+            >
+              If the student has practiced this skill offline, mark it as current to reset the
+              staleness timer.
+            </p>
+          </div>
+        )}
 
         {/* BKT Mastery Estimate */}
         {skill.pKnown !== null && (
@@ -1347,7 +1433,7 @@ function SkillsTab({
         </div>
       )}
 
-      {/* Stale skills with refresh buttons */}
+      {/* Stale skills - using consistent SkillCard presentation */}
       {rustySkills.length > 0 && (
         <div
           className={css({
@@ -1399,148 +1485,27 @@ function SkillsTab({
               lineHeight: '1.4',
             })}
           >
-            If the student has practiced offline, you can mark them as current.
+            Click any skill for details and to mark as current if practiced offline.
           </p>
 
           <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: {
+                base: 'repeat(auto-fill, minmax(140px, 1fr))',
+                sm: 'repeat(auto-fill, minmax(160px, 1fr))',
+              },
               gap: '0.5rem',
             })}
           >
-            {rustySkills.map((skill) => {
-              const isThisRefreshing = isRefreshing === skill.skillId
-              const bktData = bktResultsMap.get(skill.skillId)
-              const pKnown = bktData?.pKnown ?? skill.pKnown
-              const classification = bktData?.masteryClassification ?? skill.bktClassification
-
-              const getBadgeStyle = () => {
-                if (pKnown === null) return null
-                const percentage = Math.round(pKnown * 100)
-                switch (classification) {
-                  case 'strong':
-                    return {
-                      bg: isDark ? 'green.900' : 'green.100',
-                      color: isDark ? 'green.400' : 'green.700',
-                      label: `Strong ~${percentage}%`,
-                    }
-                  case 'developing':
-                    return {
-                      bg: isDark ? 'yellow.900' : 'yellow.100',
-                      color: isDark ? 'yellow.400' : 'yellow.700',
-                      label: `~${percentage}%`,
-                    }
-                  case 'weak':
-                    return {
-                      bg: isDark ? 'red.900' : 'red.100',
-                      color: isDark ? 'red.400' : 'red.700',
-                      label: `Weak ~${percentage}%`,
-                    }
-                  default:
-                    return null
-                }
-              }
-              const badgeStyle = getBadgeStyle()
-
-              return (
-                <div
-                  key={skill.id}
-                  data-skill={skill.skillId}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    backgroundColor: isDark ? 'gray.750' : 'gray.50',
-                    flexWrap: 'wrap',
-                  })}
-                >
-                  {/* Skill name */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSkill(skill)}
-                    className={css({
-                      fontSize: '0.875rem',
-                      fontWeight: 'medium',
-                      color: isDark ? 'gray.100' : 'gray.900',
-                      flex: '1',
-                      minWidth: '120px',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
-                      _hover: {
-                        textDecoration: 'underline',
-                      },
-                    })}
-                  >
-                    {skill.displayName}
-                  </button>
-
-                  {/* BKT status badge */}
-                  {badgeStyle && (
-                    <span
-                      className={css({
-                        fontSize: '0.6875rem',
-                        fontWeight: 'medium',
-                        px: '0.5rem',
-                        py: '0.125rem',
-                        borderRadius: 'sm',
-                        bg: badgeStyle.bg,
-                        color: badgeStyle.color,
-                        whiteSpace: 'nowrap',
-                      })}
-                    >
-                      {badgeStyle.label}
-                    </span>
-                  )}
-
-                  {/* Days since practiced */}
-                  <span
-                    className={css({
-                      fontSize: '0.75rem',
-                      color: isDark ? 'orange.400' : 'orange.600',
-                      whiteSpace: 'nowrap',
-                    })}
-                  >
-                    {skill.stalenessWarning || `${skill.daysSinceLastPractice}d ago`}
-                  </span>
-
-                  {/* Mark as Current button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRefreshSkill(skill.skillId)}
-                    disabled={isThisRefreshing}
-                    data-action="mark-current"
-                    className={css({
-                      fontSize: '0.75rem',
-                      fontWeight: 'medium',
-                      px: '0.75rem',
-                      py: '0.375rem',
-                      border: '1px solid',
-                      borderColor: isDark ? 'blue.700' : 'blue.300',
-                      borderRadius: 'md',
-                      bg: isDark ? 'blue.900' : 'blue.50',
-                      color: isDark ? 'blue.300' : 'blue.700',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      _hover: {
-                        bg: isDark ? 'blue.800' : 'blue.100',
-                      },
-                      _disabled: {
-                        opacity: 0.5,
-                        cursor: 'wait',
-                      },
-                    })}
-                  >
-                    {isThisRefreshing ? '...' : 'Mark Current'}
-                  </button>
-                </div>
-              )
-            })}
+            {rustySkills.map((skill) => (
+              <SkillCard
+                key={skill.id}
+                skill={skill}
+                isDark={isDark}
+                onClick={() => setSelectedSkill(skill)}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -1632,6 +1597,8 @@ function SkillsTab({
         skill={selectedSkill}
         isDark={isDark}
         onClose={() => setSelectedSkill(null)}
+        onMarkCurrent={handleRefreshSkill}
+        isMarkingCurrent={isRefreshing === selectedSkill?.skillId}
       />
     </div>
   )
