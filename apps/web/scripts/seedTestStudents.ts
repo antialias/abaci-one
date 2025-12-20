@@ -1345,6 +1345,7 @@ async function createTestStudent(
   }
 
   // Create skill mastery records for practicing skills
+  // Note: attempts/correct are computed on-the-fly from session results
   for (const skillId of profile.practicingSkills) {
     const ageDays = skillAgeMap.get(skillId) ?? 1
     const lastPracticedAt = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000)
@@ -1469,7 +1470,9 @@ async function createTestStudent(
   }
 
   // Compute BKT classifications from the generated data
-  const problemHistory = await getRecentSessionResults(playerId, 50)
+  // Note: Skill stats (attempts/correct) are computed on-the-fly from session results
+  // so we don't need to update playerSkillMastery aggregate columns
+  const problemHistory = await getRecentSessionResults(playerId, 200)
   const bktResult = computeBktFromHistory(problemHistory, {
     confidenceThreshold: BKT_THRESHOLDS.confidence,
   })

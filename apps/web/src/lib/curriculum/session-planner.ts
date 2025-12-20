@@ -253,7 +253,8 @@ export async function generateSessionPlan(
   const practicingSkillConstraints = buildConstraintsFromPracticingSkills(practicingSkills)
 
   // Categorize skills for review/reinforcement purposes
-  const struggling = findStrugglingSkills(skillMastery)
+  // Note: struggling skills computed from session results (single source of truth)
+  const struggling = findStrugglingSkills(skillMastery, problemHistory)
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
   // Identify weak skills for targeting
@@ -1045,10 +1046,33 @@ function calculateAvgTimePerProblem(
   return Math.round(weightedSum / totalProblems / 1000) // Convert ms to seconds
 }
 
-function findStrugglingSkills(mastery: PlayerSkillMastery[]): PlayerSkillMastery[] {
+/**
+ * Find skills where the student is struggling (accuracy < 70%)
+ * Computes accuracy from session results (single source of truth).
+ */
+function findStrugglingSkills(
+  mastery: PlayerSkillMastery[],
+  sessionResults: ProblemResultWithContext[]
+): PlayerSkillMastery[] {
+  // Compute accuracy per skill from session results
+  const skillStats = new Map<string, { attempts: number; correct: number }>()
+  for (const result of sessionResults) {
+    for (const skillId of result.skillsExercised) {
+      if (!skillStats.has(skillId)) {
+        skillStats.set(skillId, { attempts: 0, correct: 0 })
+      }
+      const stats = skillStats.get(skillId)!
+      stats.attempts++
+      if (result.isCorrect) {
+        stats.correct++
+      }
+    }
+  }
+
   return mastery.filter((s) => {
-    if (s.attempts < 5) return false // Not enough data
-    const accuracy = s.correct / s.attempts
+    const stats = skillStats.get(s.skillId)
+    if (!stats || stats.attempts < 5) return false // Not enough data
+    const accuracy = stats.correct / stats.attempts
     return accuracy < 0.7 // Less than 70% accuracy
   })
 }

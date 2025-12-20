@@ -15,6 +15,7 @@ import {
   type NewSkillTutorialProgress,
   type SkillTutorialProgress,
 } from '@/db/schema/skill-tutorial-progress'
+import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -688,21 +689,56 @@ const PERFORMANCE_THRESHOLDS = {
  *
  * Note: BKT classification is computed client-side from session plan data,
  * so we return null here. The client enriches this with BKT data.
+ *
+ * Stats (attempts, correct, responseTime) are computed from session results,
+ * not from the playerSkillMastery table, ensuring single source of truth.
  */
 export async function analyzeSkillPerformance(playerId: string): Promise<SkillPerformanceAnalysis> {
   const allSkills = await getAllSkillMastery(playerId)
+  const sessionResults = await getRecentSessionResults(playerId, 100)
+
+  // Aggregate stats per skill from session results
+  const skillStats = new Map<
+    string,
+    { attempts: number; correct: number; responseTimes: number[] }
+  >()
+
+  for (const result of sessionResults) {
+    for (const skillId of result.skillsExercised) {
+      if (!skillStats.has(skillId)) {
+        skillStats.set(skillId, { attempts: 0, correct: 0, responseTimes: [] })
+      }
+      const stats = skillStats.get(skillId)!
+      stats.attempts++
+      if (result.isCorrect) {
+        stats.correct++
+      }
+      if (result.responseTimeMs > 0) {
+        stats.responseTimes.push(result.responseTimeMs)
+      }
+    }
+  }
 
   // Calculate performance data for each skill
   // Note: bktClassification is computed client-side from session history
-  const skills: SkillPerformance[] = allSkills.map((s) => ({
-    skillId: s.skillId,
-    bktClassification: null, // Computed client-side from session plans
-    attempts: s.attempts,
-    accuracy: s.attempts > 0 ? s.correct / s.attempts : 0,
-    avgResponseTimeMs:
-      s.responseTimeCount > 0 ? Math.round(s.totalResponseTimeMs / s.responseTimeCount) : null,
-    responseTimeCount: s.responseTimeCount,
-  }))
+  const skills: SkillPerformance[] = allSkills.map((s) => {
+    const stats = skillStats.get(s.skillId)
+    const attempts = stats?.attempts ?? 0
+    const correct = stats?.correct ?? 0
+    const responseTimes = stats?.responseTimes ?? []
+
+    return {
+      skillId: s.skillId,
+      bktClassification: null, // Computed client-side from session plans
+      attempts,
+      accuracy: attempts > 0 ? correct / attempts : 0,
+      avgResponseTimeMs:
+        responseTimes.length > 0
+          ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+          : null,
+      responseTimeCount: responseTimes.length,
+    }
+  })
 
   // Calculate overall average response time (only from skills with sufficient data)
   const skillsWithTiming = skills.filter(
