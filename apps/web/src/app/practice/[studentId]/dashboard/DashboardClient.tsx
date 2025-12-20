@@ -265,12 +265,32 @@ function processSkills(
   bktResults: Map<string, SkillBktResult>
 ): ProcessedSkill[] {
   const now = new Date()
-  const problemsBySkill = new Map<string, ProblemResultWithContext[]>()
+
+  // Group problems by skill and compute stats on-the-fly
+  const skillStats = new Map<
+    string,
+    {
+      problems: ProblemResultWithContext[]
+      attempts: number
+      correct: number
+      responseTimes: number[]
+    }
+  >()
+
   for (const problem of problemHistory) {
     for (const skillId of problem.skillsExercised) {
-      const existing = problemsBySkill.get(skillId) ?? []
-      existing.push(problem)
-      problemsBySkill.set(skillId, existing)
+      if (!skillStats.has(skillId)) {
+        skillStats.set(skillId, { problems: [], attempts: 0, correct: 0, responseTimes: [] })
+      }
+      const stats = skillStats.get(skillId)!
+      stats.problems.push(problem)
+      stats.attempts++
+      if (problem.isCorrect) {
+        stats.correct++
+      }
+      if (problem.responseTimeMs > 0) {
+        stats.responseTimes.push(problem.responseTimeMs)
+      }
     }
   }
 
@@ -282,10 +302,17 @@ function processSkills(
         )
       : null
 
-    const accuracy = skill.attempts > 0 ? skill.correct / skill.attempts : 0
+    // Get computed stats from problem history
+    const stats = skillStats.get(skill.skillId)
+    const attempts = stats?.attempts ?? 0
+    const correct = stats?.correct ?? 0
+    const accuracy = attempts > 0 ? correct / attempts : 0
     const avgResponseTimeMs =
-      skill.responseTimeCount > 0 ? skill.totalResponseTimeMs / skill.responseTimeCount : null
-    const problems = problemsBySkill.get(skill.skillId) ?? []
+      stats && stats.responseTimes.length > 0
+        ? stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length
+        : null
+    const problems = stats?.problems ?? []
+
     const bkt = bktResults.get(skill.skillId)
     const stalenessWarning = getStalenessWarning(daysSinceLastPractice)
     const usingBktMultiplier = bkt !== undefined && isBktConfident(bkt.confidence)
@@ -307,9 +334,9 @@ function processSkills(
       category: category.name,
       categoryOrder: category.order,
       accuracy,
-      attempts: skill.attempts,
-      correct: skill.correct,
-      consecutiveCorrect: skill.consecutiveCorrect,
+      attempts,
+      correct,
+      consecutiveCorrect: 0, // No longer tracked - would need session history analysis
       isPracticing: skill.isPracticing,
       needsReinforcement: skill.needsReinforcement,
       lastPracticedAt: skill.lastPracticedAt,
@@ -1016,7 +1043,9 @@ function SkillsTab({
 }) {
   const [selectedSkill, setSelectedSkill] = useState<ProcessedSkill | null>(null)
   const refreshSkillRecency = useRefreshSkillRecency()
-  const isRefreshing = refreshSkillRecency.isPending ? refreshSkillRecency.variables?.skillId ?? null : null
+  const isRefreshing = refreshSkillRecency.isPending
+    ? (refreshSkillRecency.variables?.skillId ?? null)
+    : null
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.5)
   const [applyDecay, setApplyDecay] = useState(false)
 

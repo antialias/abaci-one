@@ -440,7 +440,8 @@ export function ProblemToReview({
                     color: isDark ? 'yellow.400' : 'yellow.600',
                   })}
                 >
-                  ⏱️ Response time exceeded auto-pause threshold of {formatMs(autoPauseInfo.threshold)}
+                  ⏱️ Response time exceeded auto-pause threshold of{' '}
+                  {formatMs(autoPauseInfo.threshold)}
                 </span>
               )}
 
@@ -471,7 +472,6 @@ export function ProblemToReview({
           </div>
         </div>
       </div>
-
     </div>
   )
 }

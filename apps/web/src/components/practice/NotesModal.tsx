@@ -14,6 +14,7 @@ interface NotesModalProps {
     emoji: string
     color: string
     notes: string | null
+    isArchived?: boolean
   }
   /** Bounding rect of the source tile for zoom animation */
   sourceBounds: DOMRect | null
@@ -21,6 +22,8 @@ interface NotesModalProps {
   onClose: () => void
   /** Called when notes are saved */
   onSave: (notes: string) => Promise<void>
+  /** Called when archive status is toggled */
+  onToggleArchive?: () => Promise<void>
   /** Dark mode */
   isDark: boolean
 }
@@ -40,6 +43,7 @@ export function NotesModal({
   sourceBounds,
   onClose,
   onSave,
+  onToggleArchive,
   isDark,
 }: NotesModalProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -426,16 +430,67 @@ export function NotesModal({
                 )}
               </div>
 
-              {/* View mode action button */}
+              {/* View mode action buttons */}
               <div
                 className={css({
                   padding: '1rem',
                   borderTop: '1px solid',
                   borderColor: isDark ? 'gray.700' : 'gray.200',
                   display: 'flex',
-                  justifyContent: 'flex-end',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 })}
               >
+                {/* Archive button on the left */}
+                {onToggleArchive && (
+                  <button
+                    type="button"
+                    data-action="toggle-archive"
+                    onClick={onToggleArchive}
+                    className={css({
+                      padding: '0.625rem 1rem',
+                      borderRadius: '8px',
+                      backgroundColor: student.isArchived
+                        ? isDark
+                          ? 'green.900'
+                          : 'green.100'
+                        : isDark
+                          ? 'gray.700'
+                          : 'gray.100',
+                      color: student.isArchived
+                        ? isDark
+                          ? 'green.300'
+                          : 'green.700'
+                        : isDark
+                          ? 'gray.300'
+                          : 'gray.600',
+                      fontSize: '0.875rem',
+                      fontWeight: 'medium',
+                      border: '1px solid',
+                      borderColor: student.isArchived
+                        ? isDark
+                          ? 'green.700'
+                          : 'green.300'
+                        : isDark
+                          ? 'gray.600'
+                          : 'gray.300',
+                      cursor: 'pointer',
+                      _hover: {
+                        backgroundColor: student.isArchived
+                          ? isDark
+                            ? 'green.800'
+                            : 'green.200'
+                          : isDark
+                            ? 'gray.600'
+                            : 'gray.200',
+                      },
+                    })}
+                  >
+                    {student.isArchived ? '📦 Unarchive' : '📦 Archive'}
+                  </button>
+                )}
+
+                {/* Edit notes button on the right */}
                 <button
                   type="button"
                   data-action="edit-notes"
@@ -449,6 +504,7 @@ export function NotesModal({
                     fontWeight: 'medium',
                     border: 'none',
                     cursor: 'pointer',
+                    marginLeft: 'auto',
                     _hover: {
                       backgroundColor: isDark ? 'blue.800' : 'blue.600',
                     },

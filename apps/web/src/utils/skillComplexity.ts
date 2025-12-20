@@ -219,13 +219,13 @@ export function calculateMaxSkillCost(calculator: SkillCostCalculator, skillIds:
 
 /**
  * Database record shape for skill practice status
+ *
+ * NOTE: attempts/correct/consecutiveCorrect were removed.
+ * Stats are now computed on-the-fly from session results.
  */
 export interface DbSkillRecord {
   skillId: string
   isPracticing: boolean
-  attempts: number
-  correct: number
-  consecutiveCorrect: number
   lastPracticedAt?: Date | null
 }
 

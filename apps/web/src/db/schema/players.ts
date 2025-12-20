@@ -93,6 +93,12 @@ export const players = sqliteTable(
      * Free-form text for observations, reminders, etc.
      */
     notes: text('notes'),
+
+    /**
+     * Whether this student is archived (hidden from default view)
+     * Archived students are not deleted but don't appear in normal lists
+     */
+    isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => ({
     /** Index for fast lookups by userId */

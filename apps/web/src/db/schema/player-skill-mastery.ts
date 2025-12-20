@@ -32,18 +32,9 @@ export const playerSkillMastery = sqliteTable(
      */
     skillId: text('skill_id').notNull(),
 
-    /** Total number of problems where this skill was required */
-    attempts: integer('attempts').notNull().default(0),
-
-    /** Number of problems solved correctly */
-    correct: integer('correct').notNull().default(0),
-
-    /**
-     * Current consecutive correct streak
-     * Resets to 0 on any incorrect answer
-     * Used for mastery determination
-     */
-    consecutiveCorrect: integer('consecutive_correct').notNull().default(0),
+    // NOTE: attempts, correct, consecutiveCorrect columns REMOVED
+    // These are now computed on-the-fly from session results (single source of truth)
+    // See: getRecentSessionResults() in session-planner.ts
 
     /**
      * Whether this skill is in the student's active practice rotation.
@@ -88,19 +79,9 @@ export const playerSkillMastery = sqliteTable(
      */
     reinforcementStreak: integer('reinforcement_streak').notNull().default(0),
 
-    // ---- Response Time Tracking (for skill-level performance analysis) ----
-
-    /**
-     * Total response time in milliseconds across all attempts
-     * Used with responseTimeCount to calculate average: totalResponseTimeMs / responseTimeCount
-     */
-    totalResponseTimeMs: integer('total_response_time_ms').notNull().default(0),
-
-    /**
-     * Number of attempts with recorded response times
-     * May differ from `attempts` if some early data didn't track time
-     */
-    responseTimeCount: integer('response_time_count').notNull().default(0),
+    // NOTE: totalResponseTimeMs, responseTimeCount columns REMOVED
+    // These are now computed on-the-fly from session results (single source of truth)
+    // See: getRecentSessionResults() in session-planner.ts
   },
   (table) => ({
     /** Index for fast lookups by playerId */

@@ -1,4 +1,4 @@
-import { getPlayersForViewer } from '@/lib/curriculum/server'
+import { getPlayersWithSkillData } from '@/lib/curriculum/server'
 import { PracticeClient } from './PracticeClient'
 
 /**
@@ -10,8 +10,8 @@ import { PracticeClient } from './PracticeClient'
  * URL: /practice
  */
 export default async function PracticePage() {
-  // Fetch players directly on server - no HTTP round-trip
-  const players = await getPlayersForViewer()
+  // Fetch players with skill data directly on server - no HTTP round-trip
+  const players = await getPlayersWithSkillData()
 
   return <PracticeClient initialPlayers={players} />
 }

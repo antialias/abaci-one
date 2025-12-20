@@ -267,6 +267,20 @@
       "when": 1766068695014,
       "tag": "0037_drop_practice_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1766246063026,
+      "tag": "0038_drop_skill_stat_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1766275200000,
+      "tag": "0039_add_player_archived",
+      "breakpoints": true
     }
   ]
 }

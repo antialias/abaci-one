@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { animated, useSpring } from '@react-spring/web'
 import useMeasure from 'react-use-measure'
+import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -12,77 +13,17 @@ import type { MasteryClassification, SkillBktResult } from '@/lib/curriculum/bkt
 import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
-/**
- * Skill categories and their human-readable names
- */
-const SKILL_CATEGORIES = {
-  basic: {
-    name: 'Basic Skills',
-    skills: {
-      directAddition: 'Direct Addition (1-4)',
-      heavenBead: 'Heaven Bead (5)',
-      simpleCombinations: 'Simple Combinations (6-9)',
-      directSubtraction: 'Direct Subtraction (1-4)',
-      heavenBeadSubtraction: 'Heaven Bead Subtraction (5)',
-      simpleCombinationsSub: 'Simple Combinations Subtraction (6-9)',
-    },
-  },
-  fiveComplements: {
-    name: 'Five Complements (Addition)',
-    skills: {
-      '4=5-1': '+4 = +5 - 1',
-      '3=5-2': '+3 = +5 - 2',
-      '2=5-3': '+2 = +5 - 3',
-      '1=5-4': '+1 = +5 - 4',
-    },
-  },
-  fiveComplementsSub: {
-    name: 'Five Complements (Subtraction)',
-    skills: {
-      '-4=-5+1': '-4 = -5 + 1',
-      '-3=-5+2': '-3 = -5 + 2',
-      '-2=-5+3': '-2 = -5 + 3',
-      '-1=-5+4': '-1 = -5 + 4',
-    },
-  },
-  tenComplements: {
-    name: 'Ten Complements (Addition)',
-    skills: {
-      '9=10-1': '+9 = +10 - 1',
-      '8=10-2': '+8 = +10 - 2',
-      '7=10-3': '+7 = +10 - 3',
-      '6=10-4': '+6 = +10 - 4',
-      '5=10-5': '+5 = +10 - 5',
-      '4=10-6': '+4 = +10 - 6',
-      '3=10-7': '+3 = +10 - 7',
-      '2=10-8': '+2 = +10 - 8',
-      '1=10-9': '+1 = +10 - 9',
-    },
-  },
-  tenComplementsSub: {
-    name: 'Ten Complements (Subtraction)',
-    skills: {
-      '-9=+1-10': '-9 = +1 - 10',
-      '-8=+2-10': '-8 = +2 - 10',
-      '-7=+3-10': '-7 = +3 - 10',
-      '-6=+4-10': '-6 = +4 - 10',
-      '-5=+5-10': '-5 = +5 - 10',
-      '-4=+6-10': '-4 = +6 - 10',
-      '-3=+7-10': '-3 = +7 - 10',
-      '-2=+8-10': '-2 = +8 - 10',
-      '-1=+9-10': '-1 = +9 - 10',
-    },
-  },
-  advanced: {
-    name: 'Advanced Multi-Column Operations',
-    skills: {
-      cascadingCarry: 'Cascading Carry (e.g., 999 + 1 = 1000)',
-      cascadingBorrow: 'Cascading Borrow (e.g., 1000 - 1 = 999)',
-    },
-  },
-} as const
+// Use the same order as the original component for UI display
+const DISPLAY_ORDER: SkillCategoryKey[] = [
+  'basic',
+  'fiveComplements',
+  'fiveComplementsSub',
+  'tenComplements',
+  'tenComplementsSub',
+  'advanced',
+]
 
-type CategoryKey = keyof typeof SKILL_CATEGORIES
+type CategoryKey = SkillCategoryKey
 
 /**
  * ComplexityBadge - Shows the base complexity cost for a skill
@@ -833,12 +774,10 @@ export function ManualSkillSelector({
                 value={expandedCategories}
                 onValueChange={setExpandedCategories}
               >
-                {(
-                  Object.entries(SKILL_CATEGORIES) as [
-                    CategoryKey,
-                    (typeof SKILL_CATEGORIES)[CategoryKey],
-                  ][]
-                ).map(([categoryKey, category]) => {
+                {DISPLAY_ORDER.map((categoryKey) => {
+                  const category = SKILL_CATEGORIES[categoryKey]
+                  return { categoryKey, category }
+                }).map(({ categoryKey, category }) => {
                   const categorySkillIds = Object.keys(category.skills).map(
                     (skill) => `${categoryKey}.${skill}`
                   )

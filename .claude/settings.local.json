@@ -250,7 +250,8 @@
       "Bash(\"apps/web/src/components/practice/ProgressDashboard.stories.tsx\" )",
       "Bash(\"apps/web/src/lib/curriculum/placement-test.ts\" )",
       "Bash(\"apps/web/src/test/journey-simulator/profiles/per-skill-deficiency.ts\")",
-      "Bash(mcp__sqlite__read_query:*)"
+      "Bash(mcp__sqlite__read_query:*)",
+      "Bash(mcp__sqlite__describe_table:*)"
     ],
     "deny": [],
     "ask": []

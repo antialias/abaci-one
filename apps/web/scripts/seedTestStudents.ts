@@ -400,9 +400,7 @@ Use this student to test how the UI handles intervention alerts for foundational
     ],
     // Tuning: Need at least 2 weak skills
     successCriteria: { minWeak: 2 },
-    tuningAdjustments: [
-      { skillId: 'all', accuracyMultiplier: 0.6, problemsAdd: 10 },
-    ],
+    tuningAdjustments: [{ skillId: 'all', accuracyMultiplier: 0.6, problemsAdd: 10 }],
   },
   {
     name: '🟡 Single-Skill Blocker',
@@ -917,7 +915,7 @@ Use this to verify:
       // All L1 addition - strong
       { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 40 },
       { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 35 },
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.90, problems: 30 },
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.9, problems: 30 },
       { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 28 },
       { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 25 },
       { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 25 },
@@ -1074,7 +1072,8 @@ function generateSlotResults(
     }
 
     // Generate a plausible wrong answer if incorrect
-    const wrongAnswer = realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
+    const wrongAnswer =
+      realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
     return {
       partNumber: 1 as const,
@@ -1141,12 +1140,15 @@ function applyTuningAdjustments(
   }
 
   return skillHistory.map((config) => {
-    let newConfig = { ...config }
+    const newConfig = { ...config }
 
     for (const adj of adjustments) {
       if (adj.skillId === 'all' || adj.skillId === config.skillId) {
         if (adj.accuracyMultiplier !== undefined) {
-          newConfig.targetAccuracy = Math.min(0.95, Math.max(0.05, newConfig.targetAccuracy * adj.accuracyMultiplier))
+          newConfig.targetAccuracy = Math.min(
+            0.95,
+            Math.max(0.05, newConfig.targetAccuracy * adj.accuracyMultiplier)
+          )
         }
         if (adj.problemsAdd !== undefined) {
           newConfig.problems = newConfig.problems + adj.problemsAdd
@@ -1189,7 +1191,9 @@ function formatTuningHistory(history: TuningRound[]): string {
   for (const round of history) {
     lines.push('')
     lines.push(`Round ${round.round}:`)
-    lines.push(`  Classifications: 🔴 ${round.classifications.weak} weak, 📚 ${round.classifications.developing} developing, ✅ ${round.classifications.strong} strong`)
+    lines.push(
+      `  Classifications: 🔴 ${round.classifications.weak} weak, 📚 ${round.classifications.developing} developing, ✅ ${round.classifications.strong} strong`
+    )
 
     if (round.success) {
       lines.push(`  Result: ✅ Success`)
@@ -1295,7 +1299,11 @@ async function createTestStudent(
   profile: TestStudentProfile,
   userId: string,
   skillHistoryOverride?: SkillConfig[]
-): Promise<{ playerId: string; classifications: Record<string, number>; bktResult: { skills: SkillBktResult[] } }> {
+): Promise<{
+  playerId: string
+  classifications: Record<string, number>
+  bktResult: { skills: SkillBktResult[] }
+}> {
   let effectiveSkillHistory = skillHistoryOverride ?? profile.skillHistory
 
   // If ensureAllPracticingHaveHistory is set, add missing practicing skills with default strong history
@@ -1355,9 +1363,6 @@ async function createTestStudent(
       playerId,
       skillId,
       isPracticing: true,
-      attempts: 0,
-      correct: 0,
-      consecutiveCorrect: 0,
       lastPracticedAt,
     })
   }
@@ -1498,17 +1503,28 @@ async function createTestStudentWithTuning(
   profile: TestStudentProfile,
   userId: string,
   maxRounds: number = 3
-): Promise<{ playerId: string; classifications: Record<string, number>; tuningHistory: TuningRound[] }> {
+): Promise<{
+  playerId: string
+  classifications: Record<string, number>
+  tuningHistory: TuningRound[]
+}> {
   const tuningHistory: TuningRound[] = []
   let currentSkillHistory = profile.skillHistory
-  let result: { playerId: string; classifications: Record<string, number>; bktResult: { skills: SkillBktResult[] } }
+  let result: {
+    playerId: string
+    classifications: Record<string, number>
+    bktResult: { skills: SkillBktResult[] }
+  }
 
   for (let round = 1; round <= maxRounds; round++) {
     // Generate the student
     result = await createTestStudent(profile, userId, currentSkillHistory)
 
     // Check success criteria
-    const { success, reasons } = checkSuccessCriteria(result.classifications, profile.successCriteria)
+    const { success, reasons } = checkSuccessCriteria(
+      result.classifications,
+      profile.successCriteria
+    )
 
     // Record this round
     const roundEntry: TuningRound = {
@@ -1660,7 +1676,9 @@ async function main() {
     }
     if (tuningHistory.length > 1) {
       const finalRound = tuningHistory[tuningHistory.length - 1]
-      console.log(`      Tuning: ${tuningHistory.length} rounds, final: ${finalRound.success ? '✅ success' : '⚠️ best effort'}`)
+      console.log(
+        `      Tuning: ${tuningHistory.length} rounds, final: ${finalRound.success ? '✅ success' : '⚠️ best effort'}`
+      )
     }
     console.log(`      Player ID: ${playerId}`)
     console.log('')

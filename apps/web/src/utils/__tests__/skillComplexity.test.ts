@@ -187,25 +187,16 @@ describe('buildStudentSkillHistoryFromRecords', () => {
       {
         skillId: 'fiveComplements.4=5-1',
         isPracticing: true,
-        attempts: 10,
-        correct: 9,
-        consecutiveCorrect: 5,
         lastPracticedAt: new Date('2024-02-25'),
       },
       {
         skillId: 'tenComplements.9=10-1',
         isPracticing: true,
-        attempts: 5,
-        correct: 4,
-        consecutiveCorrect: 2,
         lastPracticedAt: null,
       },
       {
         skillId: 'basic.directAddition',
         isPracticing: false,
-        attempts: 0,
-        correct: 0,
-        consecutiveCorrect: 0,
         lastPracticedAt: null,
       },
     ]

@@ -14,6 +14,7 @@ import { db, schema } from '@/db'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
+import { computeSkillCategory, type StudentWithSkillData } from '@/utils/studentGrouping'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
@@ -23,6 +24,7 @@ export type { Player } from '@/db/schema/players'
 export type { PracticeSession } from '@/db/schema/practice-sessions'
 // Re-export types that consumers might need
 export type { SessionPlan } from '@/db/schema/session-plans'
+export type { StudentWithSkillData } from '@/utils/studentGrouping'
 
 /**
  * Prefetch all data needed for the practice page
@@ -78,6 +80,71 @@ export async function getPlayersForViewer(): Promise<Player[]> {
   })
 
   return players
+}
+
+/**
+ * Get all players for the current viewer with enhanced skill data.
+ *
+ * Includes:
+ * - practicingSkills: List of skill IDs being practiced
+ * - lastPracticedAt: Most recent practice timestamp (max of all skill lastPracticedAt)
+ * - skillCategory: Computed highest-level skill category
+ */
+export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
+  const viewerId = await getViewerId()
+
+  // Get or create user record
+  let user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, viewerId),
+  })
+
+  if (!user) {
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
+    user = newUser
+  }
+
+  // Get all players for this user
+  const players = await db.query.players.findMany({
+    where: eq(schema.players.userId, user.id),
+    orderBy: (players, { desc }) => [desc(players.createdAt)],
+  })
+
+  // Fetch skill mastery for all players in parallel
+  const playersWithSkills = await Promise.all(
+    players.map(async (player) => {
+      const skills = await db.query.playerSkillMastery.findMany({
+        where: eq(schema.playerSkillMastery.playerId, player.id),
+      })
+
+      // Get practicing skills and compute lastPracticedAt
+      const practicingSkills: string[] = []
+      let lastPracticedAt: Date | null = null
+
+      for (const skill of skills) {
+        if (skill.isPracticing) {
+          practicingSkills.push(skill.skillId)
+        }
+        // Track the most recent practice date across all skills
+        if (skill.lastPracticedAt) {
+          if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
+            lastPracticedAt = skill.lastPracticedAt
+          }
+        }
+      }
+
+      // Compute skill category
+      const skillCategory = computeSkillCategory(practicingSkills)
+
+      return {
+        ...player,
+        practicingSkills,
+        lastPracticedAt,
+        skillCategory,
+      }
+    })
+  )
+
+  return playersWithSkills
 }
 
 // Re-export the individual functions for granular prefetching

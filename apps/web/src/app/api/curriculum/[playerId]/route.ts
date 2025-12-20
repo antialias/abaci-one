@@ -37,7 +37,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
     ])
 
     // Compute skill stats from session results (single source of truth)
-    const skillStats = new Map<string, { attempts: number; correct: number; responseTimes: number[] }>()
+    const skillStats = new Map<
+      string,
+      { attempts: number; correct: number; responseTimes: number[] }
+    >()
     for (const result of sessionResults) {
       for (const skillId of result.skillsExercised) {
         if (!skillStats.has(skillId)) {

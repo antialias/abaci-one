@@ -165,9 +165,6 @@ export async function setPracticingSkills(
       const newRecord: NewPlayerSkillMastery = {
         playerId,
         skillId,
-        attempts: 0,
-        correct: 0,
-        consecutiveCorrect: 0,
         isPracticing: true,
         lastPracticedAt: now,
       }
@@ -225,28 +222,25 @@ export async function refreshSkillRecency(
 
 /**
  * Record a skill attempt (correct or incorrect)
- * Updates the skill mastery record and recalculates mastery level
+ * Updates the lastPracticedAt timestamp on the skill mastery record.
+ *
+ * NOTE: Attempt/correct statistics are now computed on-the-fly from session results.
+ * This function only updates metadata fields (lastPracticedAt) and ensures the
+ * skill record exists.
  */
 export async function recordSkillAttempt(
   playerId: string,
   skillId: string,
-  isCorrect: boolean
+  _isCorrect: boolean
 ): Promise<PlayerSkillMastery> {
   const existing = await getSkillMastery(playerId, skillId)
   const now = new Date()
 
   if (existing) {
-    // Update existing record
-    const newAttempts = existing.attempts + 1
-    const newCorrect = existing.correct + (isCorrect ? 1 : 0)
-    const newConsecutive = isCorrect ? existing.consecutiveCorrect + 1 : 0
-
+    // Update lastPracticedAt timestamp
     await db
       .update(schema.playerSkillMastery)
       .set({
-        attempts: newAttempts,
-        correct: newCorrect,
-        consecutiveCorrect: newConsecutive,
         lastPracticedAt: now,
         updatedAt: now,
       })
@@ -259,9 +253,6 @@ export async function recordSkillAttempt(
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
-    attempts: 1,
-    correct: isCorrect ? 1 : 0,
-    consecutiveCorrect: isCorrect ? 1 : 0,
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
   }
@@ -271,53 +262,30 @@ export async function recordSkillAttempt(
 }
 
 /**
- * Record a skill attempt with help level tracking and response time
- * Applies credit multipliers based on help used and manages reinforcement
- *
- * Credit multipliers:
- * - L0 (no help) or L1 (hint): Full credit (1.0)
- * - L2 (decomposition): Half credit (0.5)
- * - L3 (bead arrows): Quarter credit (0.25)
+ * Record a skill attempt with help level tracking
  *
  * Reinforcement logic:
  * - If help level >= threshold, mark skill as needing reinforcement
  * - If correct answer without heavy help, increment reinforcement streak
  * - After N consecutive correct answers, clear reinforcement flag
  *
- * Response time tracking:
- * - Accumulates total response time for calculating per-skill averages
- * - Only recorded if responseTimeMs is provided (> 0)
+ * NOTE: Attempt/correct statistics and response times are now computed on-the-fly
+ * from session results. This function only updates metadata and reinforcement tracking.
  */
 export async function recordSkillAttemptWithHelp(
   playerId: string,
   skillId: string,
   isCorrect: boolean,
   helpLevel: HelpLevel,
-  responseTimeMs?: number
+  _responseTimeMs?: number
 ): Promise<PlayerSkillMastery> {
   const existing = await getSkillMastery(playerId, skillId)
   const now = new Date()
-
-  // Calculate effective credit based on help level
-  const creditMultiplier = REINFORCEMENT_CONFIG.creditMultipliers[helpLevel]
 
   // Determine if this help level triggers reinforcement tracking
   const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold
 
   if (existing) {
-    // Update existing record with help-adjusted progress
-    const newAttempts = existing.attempts + 1
-
-    // Apply credit multiplier - only count fraction of correct answer
-    // For simplicity, we round: 1.0 = full credit, 0.5+ = credit, <0.5 = no credit
-    const effectiveCorrect = isCorrect && creditMultiplier >= 0.5 ? 1 : 0
-    const newCorrect = existing.correct + effectiveCorrect
-
-    // Consecutive streak logic with help consideration
-    // Heavy help (L2, L3) breaks the streak even if correct
-    const newConsecutive =
-      isCorrect && !isHeavyHelp ? existing.consecutiveCorrect + 1 : isCorrect ? 1 : 0
-
     // Reinforcement tracking
     let needsReinforcement = existing.needsReinforcement
     let reinforcementStreak = existing.reinforcementStreak
@@ -340,51 +308,29 @@ export async function recordSkillAttemptWithHelp(
       reinforcementStreak = 0
     }
 
-    // Calculate response time updates (only if provided)
-    const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
-    const newTotalResponseTimeMs = hasResponseTime
-      ? existing.totalResponseTimeMs + responseTimeMs
-      : existing.totalResponseTimeMs
-    const newResponseTimeCount = hasResponseTime
-      ? existing.responseTimeCount + 1
-      : existing.responseTimeCount
-
     await db
       .update(schema.playerSkillMastery)
       .set({
-        attempts: newAttempts,
-        correct: newCorrect,
-        consecutiveCorrect: newConsecutive,
         lastPracticedAt: now,
         updatedAt: now,
         needsReinforcement,
         lastHelpLevel: helpLevel,
         reinforcementStreak,
-        totalResponseTimeMs: newTotalResponseTimeMs,
-        responseTimeCount: newResponseTimeCount,
       })
       .where(eq(schema.playerSkillMastery.id, existing.id))
 
     return (await getSkillMastery(playerId, skillId))!
   }
 
-  // Calculate response time for new record (only if provided)
-  const hasResponseTime = responseTimeMs !== undefined && responseTimeMs > 0
-
   // Create new record with help tracking - skill is being practiced
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
-    attempts: 1,
-    correct: isCorrect && creditMultiplier >= 0.5 ? 1 : 0,
-    consecutiveCorrect: isCorrect && !isHeavyHelp ? 1 : 0,
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
     needsReinforcement: isHeavyHelp,
     lastHelpLevel: helpLevel,
     reinforcementStreak: 0,
-    totalResponseTimeMs: hasResponseTime ? responseTimeMs : 0,
-    responseTimeCount: hasResponseTime ? 1 : 0,
   }
 
   await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -1035,9 +981,6 @@ export async function enableSkillForPractice(
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
-    attempts: 0,
-    correct: 0,
-    consecutiveCorrect: 0,
     isPracticing: true,
     lastPracticedAt: now,
   }

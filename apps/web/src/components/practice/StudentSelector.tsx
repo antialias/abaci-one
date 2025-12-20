@@ -32,23 +32,30 @@ export interface StudentWithProgress extends Player {
   currentLevel?: number
   currentPhaseId?: string
   masteryPercent?: number
+  isArchived?: boolean
+  practicingSkills?: string[]
+  lastPracticedAt?: Date | null
+  skillCategory?: string | null
 }
 
 interface StudentCardProps {
   student: StudentWithProgress
   onSelect: (student: StudentWithProgress) => void
   onOpenNotes: (student: StudentWithProgress, bounds: DOMRect) => void
+  editMode?: boolean
+  isSelected?: boolean
 }
 
 /**
  * Individual student card showing avatar, name, and progress
- * Clicking navigates to the student's practice page
+ * Clicking navigates to the student's practice page (or toggles selection in edit mode)
  */
-function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
+function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: StudentCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const levelLabel = student.currentLevel ? `Lv.${student.currentLevel}` : 'New'
   const cardRef = useRef<HTMLDivElement>(null)
+  const isArchived = student.isArchived ?? false
 
   const handleNotesClick = useCallback(
     (e: React.MouseEvent) => {
@@ -65,6 +72,8 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
     <div
       ref={cardRef}
       data-component="student-card"
+      data-archived={isArchived}
+      data-selected={isSelected}
       className={css({
         ...centerStack,
         ...gapSm,
@@ -72,12 +81,69 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
         ...roundedLg,
         ...transitionNormal,
         border: '2px solid',
-        borderColor: themed('border', isDark),
-        backgroundColor: themed('surface', isDark),
+        borderColor: isSelected
+          ? 'blue.500'
+          : isArchived
+            ? isDark
+              ? 'gray.700'
+              : 'gray.300'
+            : themed('border', isDark),
+        backgroundColor: isArchived
+          ? isDark
+            ? 'gray.800/50'
+            : 'gray.100'
+          : themed('surface', isDark),
         minWidth: '100px',
         position: 'relative',
+        opacity: isArchived ? 0.6 : 1,
       })}
     >
+      {/* Edit mode checkbox */}
+      {editMode && (
+        <div
+          data-element="checkbox"
+          className={css({
+            position: 'absolute',
+            top: '6px',
+            left: '6px',
+            width: '22px',
+            height: '22px',
+            borderRadius: '4px',
+            border: '2px solid',
+            borderColor: isSelected ? 'blue.500' : isDark ? 'gray.500' : 'gray.400',
+            backgroundColor: isSelected ? 'blue.500' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold',
+          })}
+        >
+          {isSelected && '✓'}
+        </div>
+      )}
+
+      {/* Archived badge */}
+      {isArchived && (
+        <div
+          data-element="archived-badge"
+          className={css({
+            position: 'absolute',
+            top: '6px',
+            left: editMode ? '32px' : '6px',
+            padding: '2px 6px',
+            bg: isDark ? 'gray.700' : 'gray.300',
+            color: isDark ? 'gray.400' : 'gray.600',
+            fontSize: '10px',
+            fontWeight: 'medium',
+            borderRadius: '4px',
+          })}
+        >
+          Archived
+        </div>
+      )}
+
       {/* Notes button */}
       <button
         type="button"
@@ -141,7 +207,7 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
           border: 'none',
           cursor: 'pointer',
           padding: '0.5rem',
-          paddingTop: '1.5rem', // Extra space for the notes button
+          paddingTop: '1.5rem', // Extra space for the notes/checkbox
           width: '100%',
           _hover: {
             '& > div:first-child': {
@@ -155,6 +221,7 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
           className={css({
             ...avatarStyles('md'),
             transition: 'transform 0.15s ease',
+            filter: isArchived ? 'grayscale(0.5)' : 'none',
           })}
           style={{ backgroundColor: student.color }}
         >
@@ -166,7 +233,7 @@ function StudentCard({ student, onSelect, onOpenNotes }: StudentCardProps) {
           className={css({
             ...fontBold,
             ...textBase,
-            color: themed('text', isDark),
+            color: isArchived ? (isDark ? 'gray.500' : 'gray.500') : themed('text', isDark),
           })}
         >
           {student.name}
@@ -250,6 +317,8 @@ interface StudentSelectorProps {
   students: StudentWithProgress[]
   onSelectStudent: (student: StudentWithProgress) => void
   title?: string
+  editMode?: boolean
+  selectedIds?: Set<string>
 }
 
 /**
@@ -258,11 +327,15 @@ interface StudentSelectorProps {
  * Displays all available students (players) with their current
  * curriculum level and progress. Clicking a student navigates
  * to their practice page at /practice/[studentId].
+ *
+ * In edit mode, clicking toggles selection for bulk operations.
  */
 export function StudentSelector({
   students,
   onSelectStudent,
   title = 'Who is practicing today?',
+  editMode = false,
+  selectedIds = new Set(),
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -316,6 +389,32 @@ export function StudentSelector({
     [selectedStudentForNotes]
   )
 
+  const handleToggleArchive = useCallback(async () => {
+    if (!selectedStudentForNotes) return
+
+    const newArchivedState = !selectedStudentForNotes.isArchived
+
+    const response = await fetch(`/api/players/${selectedStudentForNotes.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isArchived: newArchivedState }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to toggle archive status')
+    }
+
+    // Optimistically update local state
+    setLocalStudents((prev) =>
+      prev.map((s) =>
+        s.id === selectedStudentForNotes.id ? { ...s, isArchived: newArchivedState } : s
+      )
+    )
+
+    // Update the selected student for modal
+    setSelectedStudentForNotes((prev) => (prev ? { ...prev, isArchived: newArchivedState } : null))
+  }, [selectedStudentForNotes])
+
   return (
     <>
       <div
@@ -351,6 +450,8 @@ export function StudentSelector({
               student={student}
               onSelect={onSelectStudent}
               onOpenNotes={handleOpenNotes}
+              editMode={editMode}
+              isSelected={selectedIds.has(student.id)}
             />
           ))}
 
@@ -368,10 +469,12 @@ export function StudentSelector({
             emoji: selectedStudentForNotes.emoji,
             color: selectedStudentForNotes.color,
             notes: selectedStudentForNotes.notes ?? null,
+            isArchived: selectedStudentForNotes.isArchived,
           }}
           sourceBounds={sourceBounds}
           onClose={handleCloseNotes}
           onSave={handleSaveNotes}
+          onToggleArchive={handleToggleArchive}
           isDark={isDark}
         />
       )}
