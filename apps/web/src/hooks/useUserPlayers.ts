@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tansta
 import type { Player } from '@/db/schema/players'
 import { api } from '@/lib/queryClient'
 import { playerKeys } from '@/lib/queryKeys'
+import type { StudentWithSkillData } from '@/utils/studentGrouping'
 
 // Re-export query keys for consumers
 export { playerKeys } from '@/lib/queryKeys'
@@ -14,6 +15,16 @@ export { playerKeys } from '@/lib/queryKeys'
 async function fetchPlayers(): Promise<Player[]> {
   const res = await api('players')
   if (!res.ok) throw new Error('Failed to fetch players')
+  const data = await res.json()
+  return data.players
+}
+
+/**
+ * Fetch all players with skill data for the current user
+ */
+async function fetchPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
+  const res = await api('players/with-skill-data')
+  if (!res.ok) throw new Error('Failed to fetch players with skill data')
   const data = await res.json()
   return data.players
 }
@@ -42,7 +53,7 @@ async function updatePlayer({
   updates,
 }: {
   id: string
-  updates: Partial<Pick<Player, 'name' | 'emoji' | 'color' | 'isActive'>>
+  updates: Partial<Pick<Player, 'name' | 'emoji' | 'color' | 'isActive' | 'isArchived' | 'notes'>>
 }): Promise<Player> {
   const res = await api(`players/${id}`, {
     method: 'PATCH',
@@ -93,6 +104,20 @@ export function useUserPlayersSuspense() {
 }
 
 /**
+ * Hook: Fetch all players with skill data
+ * Used by the practice page for grouping/filtering
+ */
+export function usePlayersWithSkillData(options?: { initialData?: StudentWithSkillData[] }) {
+  return useQuery({
+    queryKey: playerKeys.listWithSkillData(),
+    queryFn: fetchPlayersWithSkillData,
+    initialData: options?.initialData,
+    // Keep data fresh but don't refetch too aggressively
+    staleTime: 30_000, // 30 seconds
+  })
+}
+
+/**
  * Hook: Fetch a single player with Suspense (for SSR contexts)
  */
 export function usePlayerSuspense(playerId: string) {
@@ -129,6 +154,7 @@ export function useCreatePlayer() {
           ...newPlayer,
           createdAt: new Date(),
           isActive: newPlayer.isActive ?? false,
+          isArchived: false,
           userId: 'temp-user', // Temporary userId, will be replaced by server response
           helpSettings: null, // Will be set by server with default values
           notes: null,
@@ -163,13 +189,16 @@ export function useUpdatePlayer() {
   return useMutation({
     mutationFn: updatePlayer,
     onMutate: async ({ id, updates }) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+      // Cancel outgoing refetches for all player lists
+      await queryClient.cancelQueries({ queryKey: playerKeys.all })
 
-      // Snapshot previous value
+      // Snapshot previous values
       const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+      const previousPlayersWithSkillData = queryClient.getQueryData<StudentWithSkillData[]>(
+        playerKeys.listWithSkillData()
+      )
 
-      // Optimistically update
+      // Optimistically update player list
       if (previousPlayers) {
         const optimisticPlayers = previousPlayers.map((player) =>
           player.id === id ? { ...player, ...updates } : player
@@ -177,7 +206,18 @@ export function useUpdatePlayer() {
         queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
       }
 
-      return { previousPlayers }
+      // Optimistically update players with skill data
+      if (previousPlayersWithSkillData) {
+        const optimisticPlayers = previousPlayersWithSkillData.map((player) =>
+          player.id === id ? { ...player, ...updates } : player
+        )
+        queryClient.setQueryData<StudentWithSkillData[]>(
+          playerKeys.listWithSkillData(),
+          optimisticPlayers
+        )
+      }
+
+      return { previousPlayers, previousPlayersWithSkillData }
     },
     onError: (err, _variables, context) => {
       // Log error for debugging
@@ -187,10 +227,16 @@ export function useUpdatePlayer() {
       if (context?.previousPlayers) {
         queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
       }
+      if (context?.previousPlayersWithSkillData) {
+        queryClient.setQueryData(
+          playerKeys.listWithSkillData(),
+          context.previousPlayersWithSkillData
+        )
+      }
     },
     onSettled: (_data, _error, { id }) => {
-      // Refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      // Refetch after error or success - invalidate all player queries
+      queryClient.invalidateQueries({ queryKey: playerKeys.all })
       if (_data) {
         queryClient.setQueryData(playerKeys.detail(id), _data)
       }

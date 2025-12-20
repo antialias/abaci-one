@@ -1,7 +1,9 @@
 'use client'
 
+import * as Checkbox from '@radix-ui/react-checkbox'
 import { useCallback, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { Player } from '@/types/player'
 import { css } from '../../../styled-system/css'
 import { NotesModal } from './NotesModal'
@@ -100,8 +102,10 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
     >
       {/* Edit mode checkbox */}
       {editMode && (
-        <div
+        <Checkbox.Root
           data-element="checkbox"
+          checked={isSelected}
+          onCheckedChange={() => onSelect(student)}
           className={css({
             position: 'absolute',
             top: '6px',
@@ -115,13 +119,24 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold',
+            cursor: 'pointer',
+            padding: 0,
+            zIndex: 1,
+            _hover: {
+              borderColor: 'blue.400',
+            },
           })}
         >
-          {isSelected && '✓'}
-        </div>
+          <Checkbox.Indicator
+            className={css({
+              color: 'white',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            })}
+          >
+            ✓
+          </Checkbox.Indicator>
+        </Checkbox.Root>
       )}
 
       {/* Archived badge */}
@@ -261,17 +276,22 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
   )
 }
 
+interface AddStudentButtonProps {
+  onClick: () => void
+}
+
 /**
- * Link to manage students page
+ * Button to add a new student
  */
-function ManageStudentsLink() {
+function AddStudentButton({ onClick }: AddStudentButtonProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   return (
-    <a
-      href="/students"
-      data-action="manage-students"
+    <button
+      type="button"
+      onClick={onClick}
+      data-action="add-student"
       className={css({
         ...centerStack,
         justifyContent: 'center',
@@ -285,17 +305,16 @@ function ManageStudentsLink() {
         cursor: 'pointer',
         minWidth: '100px',
         minHeight: '140px',
-        textDecoration: 'none',
         _hover: {
-          borderColor: 'blue.400',
-          backgroundColor: themed('info', isDark),
+          borderColor: 'green.400',
+          backgroundColor: isDark ? 'green.900/30' : 'green.50',
         },
       })}
     >
       <span
         className={css({
-          fontSize: '1.5rem',
-          color: themed('textSubtle', isDark),
+          fontSize: '2rem',
+          color: isDark ? 'green.400' : 'green.600',
         })}
       >
         +
@@ -307,18 +326,21 @@ function ManageStudentsLink() {
           textAlign: 'center',
         })}
       >
-        Manage Students
+        Add Student
       </span>
-    </a>
+    </button>
   )
 }
 
 interface StudentSelectorProps {
   students: StudentWithProgress[]
   onSelectStudent: (student: StudentWithProgress) => void
+  onAddStudent?: () => void
   title?: string
   editMode?: boolean
   selectedIds?: Set<string>
+  /** Hide the add student button (e.g., when showing filtered subsets) */
+  hideAddButton?: boolean
 }
 
 /**
@@ -333,9 +355,11 @@ interface StudentSelectorProps {
 export function StudentSelector({
   students,
   onSelectStudent,
+  onAddStudent,
   title = 'Who is practicing today?',
   editMode = false,
   selectedIds = new Set(),
+  hideAddButton = false,
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -346,13 +370,8 @@ export function StudentSelector({
     useState<StudentWithProgress | null>(null)
   const [sourceBounds, setSourceBounds] = useState<DOMRect | null>(null)
 
-  // Track students with local state for optimistic updates
-  const [localStudents, setLocalStudents] = useState(students)
-
-  // Update local students when props change
-  if (students !== localStudents && !notesModalOpen) {
-    setLocalStudents(students)
-  }
+  // Use React Query mutation for updates
+  const updatePlayer = useUpdatePlayer()
 
   const handleOpenNotes = useCallback((student: StudentWithProgress, bounds: DOMRect) => {
     setSelectedStudentForNotes(student)
@@ -368,25 +387,15 @@ export function StudentSelector({
     async (notes: string) => {
       if (!selectedStudentForNotes) return
 
-      const response = await fetch(`/api/players/${selectedStudentForNotes.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notes || null }),
+      await updatePlayer.mutateAsync({
+        id: selectedStudentForNotes.id,
+        updates: { notes: notes || null },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to save notes')
-      }
-
-      // Optimistically update local state
-      setLocalStudents((prev) =>
-        prev.map((s) => (s.id === selectedStudentForNotes.id ? { ...s, notes: notes || null } : s))
-      )
-
-      // Update the selected student for modal
+      // Update the selected student for modal display
       setSelectedStudentForNotes((prev) => (prev ? { ...prev, notes: notes || null } : null))
     },
-    [selectedStudentForNotes]
+    [selectedStudentForNotes, updatePlayer]
   )
 
   const handleToggleArchive = useCallback(async () => {
@@ -394,26 +403,14 @@ export function StudentSelector({
 
     const newArchivedState = !selectedStudentForNotes.isArchived
 
-    const response = await fetch(`/api/players/${selectedStudentForNotes.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isArchived: newArchivedState }),
+    await updatePlayer.mutateAsync({
+      id: selectedStudentForNotes.id,
+      updates: { isArchived: newArchivedState },
     })
 
-    if (!response.ok) {
-      throw new Error('Failed to toggle archive status')
-    }
-
-    // Optimistically update local state
-    setLocalStudents((prev) =>
-      prev.map((s) =>
-        s.id === selectedStudentForNotes.id ? { ...s, isArchived: newArchivedState } : s
-      )
-    )
-
-    // Update the selected student for modal
+    // Update the selected student for modal display
     setSelectedStudentForNotes((prev) => (prev ? { ...prev, isArchived: newArchivedState } : null))
-  }, [selectedStudentForNotes])
+  }, [selectedStudentForNotes, updatePlayer])
 
   return (
     <>
@@ -444,7 +441,7 @@ export function StudentSelector({
             ...gapMd,
           })}
         >
-          {localStudents.map((student) => (
+          {students.map((student) => (
             <StudentCard
               key={student.id}
               student={student}
@@ -455,7 +452,7 @@ export function StudentSelector({
             />
           ))}
 
-          <ManageStudentsLink />
+          {!hideAddButton && onAddStudent && <AddStudentButton onClick={onAddStudent} />}
         </div>
       </div>
 

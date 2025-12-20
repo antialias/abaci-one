@@ -30,6 +30,12 @@ interface StudentFilterBarProps {
   onEditModeChange: (editing: boolean) => void
   /** Number of archived students (for badge) */
   archivedCount: number
+  /** Callback when add student button is clicked */
+  onAddStudent?: () => void
+  /** Number of selected students in edit mode */
+  selectedCount?: number
+  /** Callback when bulk archive is clicked */
+  onBulkArchive?: () => void
 }
 
 /**
@@ -52,6 +58,9 @@ export function StudentFilterBar({
   editMode,
   onEditModeChange,
   archivedCount,
+  onAddStudent,
+  selectedCount = 0,
+  onBulkArchive,
 }: StudentFilterBarProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -125,6 +134,10 @@ export function StudentFilterBar({
     <div
       data-component="student-filter-bar"
       className={css({
+        position: 'fixed',
+        top: '80px', // Below nav
+        left: 0,
+        right: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
@@ -132,9 +145,10 @@ export function StudentFilterBar({
         bg: isDark ? 'gray.800' : 'white',
         borderBottom: '1px solid',
         borderColor: isDark ? 'gray.700' : 'gray.200',
+        zIndex: Z_INDEX.FILTER_BAR,
       })}
     >
-      {/* Top row: Search input and buttons */}
+      {/* Top row: Search/bulk actions and buttons */}
       <div
         className={css({
           display: 'flex',
@@ -143,220 +157,274 @@ export function StudentFilterBar({
           flexWrap: 'wrap',
         })}
       >
-        {/* Search input with dropdown */}
-        <div
-          className={css({
-            position: 'relative',
-            flex: '1',
-            minWidth: '200px',
-          })}
-        >
+        {editMode ? (
+          /* Edit mode: Show bulk actions */
           <div
+            data-element="bulk-actions"
             className={css({
+              flex: '1',
+              minWidth: '200px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '12px',
               padding: '8px 12px',
-              bg: isDark ? 'gray.700' : 'gray.50',
+              bg: isDark ? 'amber.900/50' : 'amber.50',
               border: '1px solid',
-              borderColor: isDark ? 'gray.600' : 'gray.300',
+              borderColor: isDark ? 'amber.700' : 'amber.200',
               borderRadius: '8px',
-              _focusWithin: {
-                borderColor: 'blue.500',
-                boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.2)',
-              },
             })}
           >
-            <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>🔍</span>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search students or skills..."
-              value={localQuery}
-              onChange={(e) => setLocalQuery(e.target.value)}
-              onFocus={() => {
-                if (skillResults.length > 0) {
-                  setShowDropdown(true)
-                }
-              }}
-              data-element="search-input"
+            <span
               className={css({
-                flex: 1,
-                bg: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: isDark ? 'gray.100' : 'gray.900',
                 fontSize: '14px',
-                _placeholder: {
-                  color: isDark ? 'gray.500' : 'gray.400',
-                },
+                fontWeight: 'medium',
+                color: isDark ? 'amber.200' : 'amber.700',
               })}
-            />
-            {localQuery && (
+            >
+              {selectedCount} selected
+            </span>
+            {selectedCount > 0 && onBulkArchive && (
               <button
                 type="button"
-                onClick={() => setLocalQuery('')}
-                data-action="clear-search"
+                onClick={onBulkArchive}
+                data-action="bulk-archive"
                 className={css({
-                  color: isDark ? 'gray.400' : 'gray.500',
+                  padding: '6px 12px',
+                  bg: isDark ? 'red.700' : 'red.500',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 'medium',
                   cursor: 'pointer',
-                  padding: '2px',
-                  _hover: { color: isDark ? 'gray.300' : 'gray.700' },
+                  _hover: {
+                    bg: isDark ? 'red.600' : 'red.600',
+                  },
                 })}
               >
-                ✕
+                Archive Selected
               </button>
             )}
           </div>
-
-          {/* Skill autocomplete dropdown */}
-          {showDropdown && (
+        ) : (
+          /* Normal mode: Show search and archive toggle */
+          <>
+            {/* Search input with dropdown */}
             <div
-              ref={dropdownRef}
-              data-element="skill-dropdown"
               className={css({
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: '4px',
-                bg: isDark ? 'gray.800' : 'white',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.200',
-                borderRadius: '8px',
-                boxShadow: 'lg',
-                zIndex: Z_INDEX.DROPDOWN,
-                maxHeight: '300px',
-                overflowY: 'auto',
+                position: 'relative',
+                flex: '1',
+                minWidth: '200px',
               })}
             >
               <div
                 className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                   padding: '8px 12px',
-                  fontSize: '11px',
-                  fontWeight: 'medium',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  borderBottom: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.100',
+                  bg: isDark ? 'gray.700' : 'gray.50',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  borderRadius: '8px',
+                  _focusWithin: {
+                    borderColor: 'blue.500',
+                    boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.2)',
+                  },
                 })}
               >
-                Add skill filter (AND logic)
-              </div>
-              {skillResults.slice(0, 10).map((skill) => (
-                <button
-                  key={skill.skillId}
-                  type="button"
-                  onClick={() => handleAddSkillFilter(skill.skillId)}
-                  data-action="add-skill-filter"
-                  data-skill-id={skill.skillId}
+                <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>🔍</span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search students or skills..."
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
+                  onFocus={() => {
+                    if (skillResults.length > 0) {
+                      setShowDropdown(true)
+                    }
+                  }}
+                  data-element="search-input"
                   className={css({
-                    width: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '2px',
-                    padding: '10px 12px',
+                    flex: 1,
                     bg: 'transparent',
                     border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
+                    outline: 'none',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    fontSize: '14px',
+                    _placeholder: {
+                      color: isDark ? 'gray.500' : 'gray.400',
+                    },
+                  })}
+                />
+                {localQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setLocalQuery('')}
+                    data-action="clear-search"
+                    className={css({
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      _hover: { color: isDark ? 'gray.300' : 'gray.700' },
+                    })}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Skill autocomplete dropdown */}
+              {showDropdown && (
+                <div
+                  ref={dropdownRef}
+                  data-element="skill-dropdown"
+                  className={css({
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '4px',
+                    bg: isDark ? 'gray.800' : 'white',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.600' : 'gray.200',
+                    borderRadius: '8px',
+                    boxShadow: 'lg',
+                    zIndex: Z_INDEX.DROPDOWN,
+                    maxHeight: '300px',
+                    overflowY: 'auto',
                   })}
                 >
-                  <span
+                  <div
                     className={css({
-                      fontSize: '14px',
-                      color: isDark ? 'gray.100' : 'gray.900',
+                      padding: '8px 12px',
+                      fontSize: '11px',
+                      fontWeight: 'medium',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      borderBottom: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.100',
                     })}
                   >
-                    {skill.displayName}
-                  </span>
-                  <span
-                    className={css({
-                      fontSize: '12px',
-                      color: isDark ? 'gray.500' : 'gray.500',
-                    })}
-                  >
-                    {skill.categoryName}
-                  </span>
-                </button>
-              ))}
+                    Add skill filter (AND logic)
+                  </div>
+                  {skillResults.slice(0, 10).map((skill) => (
+                    <button
+                      key={skill.skillId}
+                      type="button"
+                      onClick={() => handleAddSkillFilter(skill.skillId)}
+                      data-action="add-skill-filter"
+                      data-skill-id={skill.skillId}
+                      className={css({
+                        width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '2px',
+                        padding: '10px 12px',
+                        bg: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        _hover: { bg: isDark ? 'gray.700' : 'gray.50' },
+                      })}
+                    >
+                      <span
+                        className={css({
+                          fontSize: '14px',
+                          color: isDark ? 'gray.100' : 'gray.900',
+                        })}
+                      >
+                        {skill.displayName}
+                      </span>
+                      <span
+                        className={css({
+                          fontSize: '12px',
+                          color: isDark ? 'gray.500' : 'gray.500',
+                        })}
+                      >
+                        {skill.categoryName}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Archive toggle button */}
-        <button
-          type="button"
-          onClick={() => onShowArchivedChange(!showArchived)}
-          data-action="toggle-archived"
-          data-status={showArchived ? 'showing' : 'hiding'}
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            bg: showArchived
-              ? isDark
-                ? 'blue.900'
-                : 'blue.100'
-              : isDark
-                ? 'gray.700'
-                : 'gray.100',
-            border: '1px solid',
-            borderColor: showArchived
-              ? isDark
-                ? 'blue.700'
-                : 'blue.300'
-              : isDark
-                ? 'gray.600'
-                : 'gray.300',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            color: showArchived
-              ? isDark
-                ? 'blue.300'
-                : 'blue.700'
-              : isDark
-                ? 'gray.300'
-                : 'gray.700',
-            transition: 'all 0.15s ease',
-            _hover: {
-              borderColor: showArchived
-                ? isDark
-                  ? 'blue.600'
-                  : 'blue.400'
-                : isDark
-                  ? 'gray.500'
-                  : 'gray.400',
-            },
-          })}
-        >
-          <span>{showArchived ? '👁' : '👁‍🗨'}</span>
-          <span>Archived</span>
-          {archivedCount > 0 && (
-            <span
+            {/* Archive toggle button */}
+            <button
+              type="button"
+              onClick={() => onShowArchivedChange(!showArchived)}
+              data-action="toggle-archived"
+              data-status={showArchived ? 'showing' : 'hiding'}
               className={css({
-                fontSize: '12px',
-                fontWeight: 'medium',
-                padding: '2px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
                 bg: showArchived
                   ? isDark
-                    ? 'blue.800'
-                    : 'blue.200'
+                    ? 'blue.900'
+                    : 'blue.100'
+                  : isDark
+                    ? 'gray.700'
+                    : 'gray.100',
+                border: '1px solid',
+                borderColor: showArchived
+                  ? isDark
+                    ? 'blue.700'
+                    : 'blue.300'
                   : isDark
                     ? 'gray.600'
-                    : 'gray.200',
-                borderRadius: '10px',
+                    : 'gray.300',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                color: showArchived
+                  ? isDark
+                    ? 'blue.300'
+                    : 'blue.700'
+                  : isDark
+                    ? 'gray.300'
+                    : 'gray.700',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  borderColor: showArchived
+                    ? isDark
+                      ? 'blue.600'
+                      : 'blue.400'
+                    : isDark
+                      ? 'gray.500'
+                      : 'gray.400',
+                },
               })}
             >
-              {archivedCount}
-            </span>
-          )}
-        </button>
+              <span>{showArchived ? '👁' : '👁‍🗨'}</span>
+              <span>Archived</span>
+              {archivedCount > 0 && (
+                <span
+                  className={css({
+                    fontSize: '12px',
+                    fontWeight: 'medium',
+                    padding: '2px 6px',
+                    bg: showArchived
+                      ? isDark
+                        ? 'blue.800'
+                        : 'blue.200'
+                      : isDark
+                        ? 'gray.600'
+                        : 'gray.200',
+                    borderRadius: '10px',
+                  })}
+                >
+                  {archivedCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
 
-        {/* Edit mode toggle button */}
+        {/* Edit mode toggle button - always visible */}
         <button
           type="button"
           onClick={() => onEditModeChange(!editMode)}
@@ -401,6 +469,44 @@ export function StudentFilterBar({
           <span>{editMode ? '✓' : '✏️'}</span>
           <span>{editMode ? 'Done' : 'Edit'}</span>
         </button>
+
+        {/* Add Student FAB - only in normal mode */}
+        {!editMode && onAddStudent && (
+          <button
+            type="button"
+            onClick={onAddStudent}
+            data-action="add-student-fab"
+            title="Add Student"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '48px',
+              height: '48px',
+              bg: isDark ? 'green.600' : 'green.500',
+              border: 'none',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              fontSize: '24px',
+              color: 'white',
+              boxShadow:
+                '0 3px 5px -1px rgba(0,0,0,0.2), 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12)',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              flexShrink: 0,
+              _hover: {
+                bg: isDark ? 'green.500' : 'green.600',
+                boxShadow:
+                  '0 5px 5px -3px rgba(0,0,0,0.2), 0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12)',
+                transform: 'scale(1.05)',
+              },
+              _active: {
+                transform: 'scale(0.95)',
+              },
+            })}
+          >
+            +
+          </button>
+        )}
       </div>
 
       {/* Skill filter pills */}

@@ -13,6 +13,9 @@ export const Z_INDEX = {
   // Navigation and UI chrome (100-999)
   NAV_BAR: 100,
   STICKY_HEADER: 100,
+  FILTER_BAR: 99, // Fixed filter bar, just below nav
+  STICKY_BUCKET_HEADER: 98, // Recency bucket headers (Today, This Week, etc.)
+  STICKY_CATEGORY_HEADER: 97, // Skill category headers within buckets
   SUB_NAV: 90,
   SESSION_MODE_BANNER: 85, // Below sub-nav, but above content
   SESSION_MODE_BANNER_ANIMATING: 150, // Above all nav during FLIP animation
