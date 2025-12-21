@@ -104,7 +104,7 @@ describe('Session Targeting Trace', () => {
           await recordSlotResult(plan1.id, part.partNumber, slot.index, {
             isCorrect: answer.isCorrect,
             responseTimeMs: answer.responseTimeMs,
-            helpLevelUsed: answer.helpLevelUsed,
+            hadHelp: answer.hadHelp,
             skillsExercised: answer.skillsChallenged,
           })
         }
@@ -189,7 +189,7 @@ describe('Session Targeting Trace', () => {
           await recordSlotResult(classicPlan1.id, part.partNumber, slot.index, {
             isCorrect: answer.isCorrect,
             responseTimeMs: answer.responseTimeMs,
-            helpLevelUsed: answer.helpLevelUsed,
+            hadHelp: answer.hadHelp,
             skillsExercised: answer.skillsChallenged,
           })
         }

@@ -1136,7 +1136,7 @@ export function DetailedProblemCard({
                 result.responseTimeMs > autoPauseStats.thresholdMs &&
                 ' (over threshold)'}
             </span>
-            {result.helpLevelUsed > 0 && <span>Help level: {result.helpLevelUsed}</span>}
+            {result.hadHelp && <span>Used help</span>}
           </div>
         )}
       </div>

@@ -805,7 +805,7 @@ export async function recordSlotResult(
       await recordSkillAttemptsWithHelp(
         plan.playerId,
         skillResults,
-        result.helpLevelUsed,
+        result.hadHelp,
         result.responseTimeMs
       )
     } catch (skillError) {

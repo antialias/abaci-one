@@ -420,13 +420,13 @@ export function ProblemToReview({
                     🧮 Used on-screen abacus
                   </span>
                 )}
-                {result.helpLevelUsed > 0 && (
+                {result.hadHelp && (
                   <span
                     className={css({
                       color: isDark ? 'orange.400' : 'orange.600',
                     })}
                   >
-                    💡 Help level: {result.helpLevelUsed}
+                    💡 Used help
                   </span>
                 )}
               </div>

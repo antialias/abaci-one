@@ -49,7 +49,7 @@ function createResult(
     skillsExercised,
     usedOnScreenAbacus: false,
     timestamp,
-    helpLevelUsed: 0,
+    hadHelp: false,
     incorrectAttempts: 0,
     sessionCompletedAt: timestamp,
     partType: 'abacus',
@@ -174,7 +174,7 @@ function generateSyntheticResults(
       isCorrect,
       responseTimeMs: containsWeakSkill ? 8000 : 3000, // Slower on weak skill
       usedOnScreenAbacus: false,
-      helpLevelUsed: 0,
+      hadHelp: false,
       incorrectAttempts: 0,
       sessionCompletedAt: new Date(baseTime + i * 5000),
       partType: 'abacus',

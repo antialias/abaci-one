@@ -68,7 +68,7 @@ export interface SlotResult {
   timestamp: number;
   responseTimeMs: number;
   userAnswer: number | null;
-  helpLevel: 0 | 1; // Boolean: 0 = no help, 1 = used help
+  hadHelp: boolean; // Whether student used help during this problem
 }
 ```
 
@@ -223,13 +223,13 @@ export function updateOnIncorrect(
  * Adjust observation weight based on whether help was used.
  * Using help = less confident the student really knows it.
  *
- * Note: Help is binary (0 = no help, 1 = used help).
+ * Note: Help is a boolean (hadHelp: true = used help, false = no help).
  * We can't determine which skill needed help for multi-skill problems,
  * so we apply the discount uniformly and let conjunctive BKT identify
  * weak skills from aggregated evidence.
  */
-export function helpLevelWeight(helpLevel: 0 | 1): number {
-  return helpLevel === 0 ? 1.0 : 0.5; // 50% weight for helped answers
+export function helpWeight(hadHelp: boolean): number {
+  return hadHelp ? 0.5 : 1.0; // 50% weight for helped answers
 }
 
 /**
@@ -345,7 +345,7 @@ export function getUncertaintyRange(
 import type { ProblemResultWithContext } from "../session-planner";
 import { getDefaultParams, type BktParams } from "./skill-priors";
 import { updateOnCorrect, updateOnIncorrect } from "./conjunctive-bkt";
-import { helpLevelWeight, responseTimeWeight } from "./evidence-quality";
+import { helpWeight, responseTimeWeight } from "./evidence-quality";
 import { calculateConfidence, getUncertaintyRange } from "./confidence";
 
 export interface BktComputeOptions {
@@ -428,12 +428,12 @@ export function computeBktFromHistory(
     });
 
     // Calculate evidence weight
-    const helpWeight = helpLevelWeight(result.helpLevel);
+    const helpW = helpWeight(result.hadHelp);
     const rtWeight = responseTimeWeight(
       result.responseTimeMs,
       result.isCorrect,
     );
-    const evidenceWeight = helpWeight * rtWeight;
+    const evidenceWeight = helpW * rtWeight;
 
     // Compute updates
     const updates = result.isCorrect

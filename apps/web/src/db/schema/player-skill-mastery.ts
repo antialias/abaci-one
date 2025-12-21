@@ -57,9 +57,9 @@ export const playerSkillMastery = sqliteTable(
       .$defaultFn(() => new Date()),
 
     /**
-     * Last help level used on this skill (0 = no help, 1 = used help)
+     * Whether help was used the last time this skill was practiced
      */
-    lastHelpLevel: integer('last_help_level').notNull().default(0),
+    lastHadHelp: integer('last_had_help', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => ({
     /** Index for fast lookups by playerId */

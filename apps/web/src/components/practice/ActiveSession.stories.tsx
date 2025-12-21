@@ -388,7 +388,7 @@ function InteractiveSessionDemo() {
         partNumber: (plan.currentPartIndex + 1) as 1 | 2 | 3,
         timestamp: new Date(),
         // Default help tracking fields if not provided
-        helpLevelUsed: result.helpLevelUsed ?? 0,
+        hadHelp: result.hadHelp ?? false,
         incorrectAttempts: result.incorrectAttempts ?? 0,
         helpTrigger: result.helpTrigger ?? 'none',
       }

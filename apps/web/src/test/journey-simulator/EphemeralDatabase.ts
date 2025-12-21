@@ -142,9 +142,7 @@ export async function initializeSkillMastery(
       playerId,
       skillId,
       isPracticing,
-      needsReinforcement: false,
-      lastHelpLevel: 0,
-      reinforcementStreak: 0,
+      lastHadHelp: false,
       createdAt: now,
       lastPracticedAt: null,
     })

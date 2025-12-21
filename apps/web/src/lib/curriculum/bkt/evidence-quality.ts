@@ -3,26 +3,19 @@
  *
  * Not all observations are equally informative. We adjust the weight
  * of evidence based on:
- * - Help level: Using help = less confident the student really knows it
+ * - Help usage: Using help = less confident the student really knows it
  * - Response time: Fast correct = strong mastery, slow correct = struggled
  */
-
-import type { HelpLevel } from '@/db/schema/session-plans'
 
 /**
  * Adjust observation weight based on whether help was used.
  * Using help = less confident the student really knows it.
  *
- * @param helpLevel - 0 = no help, 1 = help used
+ * @param hadHelp - true if help was used, false otherwise
  * @returns Weight multiplier [0.5, 1.0]
  */
-export function helpLevelWeight(helpLevel: HelpLevel): number {
-  // Guard against unexpected values (legacy data, JSON parsing issues)
-  if (helpLevel !== 0 && helpLevel !== 1) {
-    return 1.0
-  }
-  // 0 = no help (full evidence), 1 = used help (50% evidence)
-  return helpLevel === 0 ? 1.0 : 0.5
+export function helpWeight(hadHelp: boolean): number {
+  return hadHelp ? 0.5 : 1.0
 }
 
 /**
@@ -67,13 +60,13 @@ export function responseTimeWeight(
 }
 
 /**
- * Combined evidence weight from help and response time.
+ * Combined evidence weight from help usage and response time.
  */
 export function combinedEvidenceWeight(
-  helpLevel: HelpLevel,
+  hadHelp: boolean,
   responseTimeMs: number,
   isCorrect: boolean,
   expectedTimeMs: number = 5000
 ): number {
-  return helpLevelWeight(helpLevel) * responseTimeWeight(responseTimeMs, isCorrect, expectedTimeMs)
+  return helpWeight(hadHelp) * responseTimeWeight(responseTimeMs, isCorrect, expectedTimeMs)
 }

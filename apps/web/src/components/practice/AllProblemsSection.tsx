@@ -463,14 +463,14 @@ function ProblemDetailPopover({
             </span>
           </div>
 
-          {/* Help level */}
-          {result && result.helpLevelUsed > 0 && (
+          {/* Help used */}
+          {result?.hadHelp && (
             <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
               <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>Help used:</span>
               <span
                 className={css({ fontWeight: 'bold', color: isDark ? 'orange.300' : 'orange.600' })}
               >
-                Level {result.helpLevelUsed}
+                Yes
               </span>
             </div>
           )}

@@ -4,7 +4,6 @@
  * Type definitions for the BKT validation test infrastructure.
  */
 
-import type { HelpLevel } from '@/db/schema/session-plans'
 import type { BlameMethod } from '@/lib/curriculum/bkt'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config/bkt-integration'
 
@@ -114,8 +113,8 @@ export interface SimulatedAnswer {
   isCorrect: boolean
   /** Time taken to answer in milliseconds */
   responseTimeMs: number
-  /** Help level used (0 = no help, 1 = used help) */
-  helpLevelUsed: HelpLevel
+  /** Whether help was used during this problem */
+  hadHelp: boolean
   /** Skills that were actually challenged by this problem */
   skillsChallenged: string[]
   /**

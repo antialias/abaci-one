@@ -18,8 +18,8 @@ export interface SkillProgress {
   attempts: number
   correct: number
   consecutiveCorrect: number
-  /** Last help level used on this skill (0 or 1) */
-  lastHelpLevel?: number
+  /** Whether help was used when this skill was last practiced */
+  lastHadHelp?: boolean
 }
 
 /**

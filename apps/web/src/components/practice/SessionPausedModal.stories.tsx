@@ -103,7 +103,7 @@ function createMockSessionPlan(config: {
     skillsExercised: ['basic.directAddition'],
     usedOnScreenAbacus: i < 5,
     timestamp: new Date(Date.now() - (completedCount - i) * 30000),
-    helpLevelUsed: 0,
+    hadHelp: false,
     incorrectAttempts: 0,
   }))
 

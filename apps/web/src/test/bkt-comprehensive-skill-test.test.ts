@@ -169,7 +169,7 @@ function createResultFromProblem(
     skillsExercised: problem.skillsUsed,
     usedOnScreenAbacus: false,
     timestamp,
-    helpLevelUsed: 0,
+    hadHelp: false,
     incorrectAttempts: 0,
     sessionCompletedAt: timestamp,
     partType: 'abacus',

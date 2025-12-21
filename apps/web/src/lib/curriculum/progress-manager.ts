@@ -8,7 +8,6 @@ import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
-import type { HelpLevel } from '@/db/schema/session-plans'
 import {
   isTutorialSatisfied,
   type NewSkillTutorialProgress,
@@ -261,20 +260,18 @@ export async function recordSkillAttempt(
 }
 
 /**
- * Record a skill attempt with help level tracking
+ * Record a skill attempt with help tracking
  *
  * Updates the lastPracticedAt timestamp and tracks whether help was used.
  * BKT handles mastery estimation via evidence weighting (helped answers get 0.5x weight).
  *
- * NOTE: The old reinforcement system (based on help levels 2+) has been removed.
- * Only boolean help (0 or 1) is recorded. BKT's conjunctive blame attribution
- * identifies weak skills from multi-skill problems.
+ * NOTE: BKT's conjunctive blame attribution identifies weak skills from multi-skill problems.
  */
 export async function recordSkillAttemptWithHelp(
   playerId: string,
   skillId: string,
   _isCorrect: boolean,
-  helpLevel: HelpLevel,
+  hadHelp: boolean,
   _responseTimeMs?: number
 ): Promise<PlayerSkillMastery> {
   const existing = await getSkillMastery(playerId, skillId)
@@ -286,7 +283,7 @@ export async function recordSkillAttemptWithHelp(
       .set({
         lastPracticedAt: now,
         updatedAt: now,
-        lastHelpLevel: helpLevel,
+        lastHadHelp: hadHelp,
       })
       .where(eq(schema.playerSkillMastery.id, existing.id))
 
@@ -299,7 +296,7 @@ export async function recordSkillAttemptWithHelp(
     skillId,
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
-    lastHelpLevel: helpLevel,
+    lastHadHelp: hadHelp,
   }
 
   await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -314,7 +311,7 @@ export async function recordSkillAttemptWithHelp(
 export async function recordSkillAttemptsWithHelp(
   playerId: string,
   skillResults: Array<{ skillId: string; isCorrect: boolean }>,
-  helpLevel: HelpLevel,
+  hadHelp: boolean,
   responseTimeMs?: number
 ): Promise<PlayerSkillMastery[]> {
   const results: PlayerSkillMastery[] = []
@@ -324,7 +321,7 @@ export async function recordSkillAttemptsWithHelp(
       playerId,
       skillId,
       isCorrect,
-      helpLevel,
+      hadHelp,
       responseTimeMs
     )
     results.push(result)

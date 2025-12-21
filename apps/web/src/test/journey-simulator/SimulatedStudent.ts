@@ -20,7 +20,7 @@
  *   - Help provides additive bonus to probability
  */
 
-import type { GeneratedProblem, HelpLevel } from '@/db/schema/session-plans'
+import type { GeneratedProblem } from '@/db/schema/session-plans'
 import type { SeededRandom } from './SeededRandom'
 import type { SimulatedAnswer, StudentProfile } from './types'
 
@@ -175,20 +175,20 @@ export class SimulatedStudent {
     }
 
     // Determine if student uses help (binary)
-    const helpLevelUsed = this.selectHelpLevel()
+    const hadHelp = this.selectHelpUsage()
 
     // Calculate answer probability using Hill function + conjunctive model
-    const answerProbability = this.calculateAnswerProbability(skillsChallenged, helpLevelUsed)
+    const answerProbability = this.calculateAnswerProbability(skillsChallenged, hadHelp)
 
     const isCorrect = this.rng.chance(answerProbability)
 
     // Calculate response time
-    const responseTimeMs = this.calculateResponseTime(skillsChallenged, helpLevelUsed, isCorrect)
+    const responseTimeMs = this.calculateResponseTime(skillsChallenged, hadHelp, isCorrect)
 
     return {
       isCorrect,
       responseTimeMs,
-      helpLevelUsed,
+      hadHelp,
       skillsChallenged,
       fatigue,
     }
@@ -202,7 +202,7 @@ export class SimulatedStudent {
    *
    * Help bonus is additive (applied after the product).
    */
-  private calculateAnswerProbability(skillIds: string[], helpLevel: HelpLevel): number {
+  private calculateAnswerProbability(skillIds: string[], hadHelp: boolean): number {
     if (skillIds.length === 0) {
       // Basic problems (no special skills) almost always correct
       return 0.95
@@ -220,7 +220,8 @@ export class SimulatedStudent {
     }
 
     // Add help bonus (additive, not multiplicative)
-    const helpBonus = this.profile.helpBonuses[helpLevel]
+    // helpBonuses[0] = no help, helpBonuses[1] = with help
+    const helpBonus = this.profile.helpBonuses[hadHelp ? 1 : 0]
     probability += helpBonus
 
     // Clamp to valid probability range
@@ -229,12 +230,12 @@ export class SimulatedStudent {
   }
 
   /**
-   * Select whether student uses help (binary).
+   * Select whether student uses help.
    * Based on profile's helpUsageProbabilities [P(no help), P(help)].
    */
-  private selectHelpLevel(): HelpLevel {
+  private selectHelpUsage(): boolean {
     const [pNoHelp] = this.profile.helpUsageProbabilities
-    return this.rng.next() < pNoHelp ? 0 : 1
+    return this.rng.next() >= pNoHelp
   }
 
   /**
@@ -242,7 +243,7 @@ export class SimulatedStudent {
    */
   private calculateResponseTime(
     skillIds: string[],
-    helpLevel: HelpLevel,
+    hadHelp: boolean,
     isCorrect: boolean
   ): number {
     const base = this.profile.baseResponseTimeMs
@@ -258,7 +259,7 @@ export class SimulatedStudent {
     const exposureFactor = 2.0 - Math.min(1.0, avgExposure / (this.profile.halfMaxExposure * 2))
 
     // Help usage adds time (reading hints, etc.)
-    const helpFactor = 1.0 + helpLevel * 0.25
+    const helpFactor = hadHelp ? 1.25 : 1.0
 
     // Incorrect answers: sometimes faster (gave up), sometimes slower (struggled)
     const correctnessFactor = isCorrect ? 1.0 : this.rng.chance(0.5) ? 0.7 : 1.4

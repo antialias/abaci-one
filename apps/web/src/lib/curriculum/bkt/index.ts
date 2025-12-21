@@ -58,7 +58,7 @@ export { getDefaultParams, getSkillCategory } from './skill-priors'
 // Evidence quality (for advanced use cases)
 export {
   combinedEvidenceWeight,
-  helpLevelWeight,
+  helpWeight,
   responseTimeWeight,
 } from './evidence-quality'
 

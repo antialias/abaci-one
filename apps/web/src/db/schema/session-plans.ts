@@ -214,16 +214,6 @@ export interface SessionAdjustment {
 }
 
 /**
- * Help level used during a problem (boolean)
- * - 0: No help requested
- * - 1: Help was used (interactive abacus overlay shown)
- *
- * Note: The system previously defined levels 0-3, but only 0/1 are ever recorded.
- * BKT uses conjunctive blame attribution to identify weak skills.
- */
-export type HelpLevel = 0 | 1
-
-/**
  * Result of a single problem slot
  */
 export interface SlotResult {
@@ -241,8 +231,8 @@ export interface SlotResult {
 
   // ---- Help Tracking (for feedback loop) ----
 
-  /** Maximum help level used during this problem (0 = no help) */
-  helpLevelUsed: HelpLevel
+  /** Whether the student used help during this problem */
+  hadHelp: boolean
 
   /** Number of incorrect attempts before getting the right answer */
   incorrectAttempts: number

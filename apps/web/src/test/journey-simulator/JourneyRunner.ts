@@ -158,9 +158,9 @@ export class JourneyRunner {
           responseTimeMs: answer.responseTimeMs,
           skillsExercised: answer.skillsChallenged,
           usedOnScreenAbacus: false,
-          helpLevelUsed: answer.helpLevelUsed,
+          hadHelp: answer.hadHelp,
           incorrectAttempts: answer.isCorrect ? 0 : 1,
-          helpTrigger: answer.helpLevelUsed > 0 ? 'manual' : 'none',
+          helpTrigger: answer.hadHelp ? 'manual' : 'none',
         })
       }
     }

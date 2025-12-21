@@ -90,7 +90,7 @@ function createMockResults(
     skillsExercised: ['basic.directAddition'],
     usedOnScreenAbacus: partType === 'abacus',
     timestamp: new Date(Date.now() - (count - i) * 30000),
-    helpLevelUsed: 0,
+    hadHelp: false,
     incorrectAttempts: 0,
   }))
 }
@@ -141,7 +141,7 @@ function createSessionHud(config: {
         skillsExercised: ['basic.directAddition'],
         usedOnScreenAbacus: pIdx === 0,
         timestamp: new Date(),
-        helpLevelUsed: 0,
+        hadHelp: false,
         incorrectAttempts: 0,
       })
     }

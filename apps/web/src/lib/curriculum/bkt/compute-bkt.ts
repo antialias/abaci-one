@@ -10,7 +10,7 @@ import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import type { ProblemResultWithContext } from '../session-planner'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
-import { helpLevelWeight, responseTimeWeight } from './evidence-quality'
+import { helpWeight, responseTimeWeight } from './evidence-quality'
 import { getDefaultParams } from './skill-priors'
 import type {
   BktComputeOptions,
@@ -125,10 +125,10 @@ export function computeBktFromHistory(
       }
     })
 
-    // Calculate evidence weight based on help level and response time
-    const helpWeight = helpLevelWeight(result.helpLevelUsed)
+    // Calculate evidence weight based on help usage and response time
+    const helpW = helpWeight(result.hadHelp)
     const rtWeight = responseTimeWeight(result.responseTimeMs, result.isCorrect)
-    const evidenceWeight = helpWeight * rtWeight
+    const evidenceWeight = helpW * rtWeight
 
     // Compute BKT updates (conjunctive model)
     const blameMethod = opts.blameMethod ?? 'heuristic'

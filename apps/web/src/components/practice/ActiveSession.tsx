@@ -899,7 +899,7 @@ export function ActiveSession({
       skillsExercised: attemptData.problem.skillsRequired,
       usedOnScreenAbacus: phase.phase === 'helpMode',
       incorrectAttempts: 0, // TODO: track this properly
-      helpLevelUsed: phase.phase === 'helpMode' ? 1 : 0,
+      hadHelp: phase.phase === 'helpMode',
     }
 
     await onAnswer(result)

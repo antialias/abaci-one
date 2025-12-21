@@ -281,6 +281,13 @@
       "when": 1766275200000,
       "tag": "0039_add_player_archived",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1766320890578,
+      "tag": "0040_rename_last_help_level_to_last_had_help",
+      "breakpoints": true
     }
   ]
 }
