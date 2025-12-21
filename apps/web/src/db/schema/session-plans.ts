@@ -214,6 +214,16 @@ export interface SessionAdjustment {
 }
 
 /**
+ * Source of a slot result record.
+ *
+ * - 'practice': Normal practice session result (default when undefined)
+ * - 'recency-refresh': Teacher marked skill as recently practiced offline.
+ *   These records update lastPracticedAt but are ZERO-WEIGHT for BKT mastery.
+ *   They don't affect pKnown calculation - they only reset staleness.
+ */
+export type SlotResultSource = 'practice' | 'recency-refresh'
+
+/**
  * Result of a single problem slot
  */
 export interface SlotResult {
@@ -239,9 +249,26 @@ export interface SlotResult {
 
   /** How help was triggered */
   helpTrigger?: 'none' | 'manual' | 'auto-time' | 'auto-errors' | 'teacher-approved'
+
+  // ---- Record Source (for sentinel records) ----
+
+  /**
+   * Source of this record. Defaults to 'practice' when undefined.
+   *
+   * 'recency-refresh' records are sentinels inserted when a teacher clicks
+   * "Mark Current" to indicate offline practice. BKT uses these for
+   * lastPracticedAt but skips them for pKnown calculation (zero-weight).
+   */
+  source?: SlotResultSource
 }
 
-export type SessionStatus = 'draft' | 'approved' | 'in_progress' | 'completed' | 'abandoned'
+export type SessionStatus =
+  | 'draft'
+  | 'approved'
+  | 'in_progress'
+  | 'completed'
+  | 'abandoned'
+  | 'recency-refresh'
 
 // ============================================================================
 // Database Table

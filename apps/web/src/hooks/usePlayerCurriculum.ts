@@ -217,7 +217,7 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
           if (!old) return old
           return {
             ...old,
-            recentSessions: [session, ...old.recentSessions].slice(0, 10),
+            recentSessions: [session, ...old.recentSessions].slice(0, 200),
           }
         })
       }

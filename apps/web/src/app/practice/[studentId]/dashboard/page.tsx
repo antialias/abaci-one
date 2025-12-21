@@ -40,9 +40,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       getPlayer(studentId),
       getPlayerCurriculum(studentId),
       getAllSkillMastery(studentId),
-      getRecentSessions(studentId, 10),
+      getRecentSessions(studentId, 200),
       getActiveSessionPlan(studentId),
-      getRecentSessionResults(studentId, 50), // For Skills tab BKT analysis
+      getRecentSessionResults(studentId, 2000), // For Skills tab BKT analysis
     ])
 
   // 404 if player doesn't exist

@@ -1,18 +1,22 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
+  getSkillClassification,
   PracticeSubNav,
   ProgressDashboard,
+  type SkillClassification,
+  type SkillDistribution,
   type SkillHealthSummary,
+  SkillProgressChart,
   StartPracticeModal,
   type StudentWithProgress,
+  VirtualizedSessionList,
 } from '@/components/practice'
 import { ContentBannerSlot, ProjectingBanner } from '@/components/practice/BannerSlots'
 import {
@@ -312,11 +316,6 @@ function processSkills(
 
   return skills.map((skill) => {
     const category = getCategoryFromSkillId(skill.skillId)
-    const daysSinceLastPractice = skill.lastPracticedAt
-      ? Math.floor(
-          (now.getTime() - new Date(skill.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24)
-        )
-      : null
 
     // Get computed stats from problem history
     const stats = skillStats.get(skill.skillId)
@@ -329,6 +328,13 @@ function processSkills(
     const problems = stats?.problems ?? []
 
     const bkt = bktResults.get(skill.skillId)
+
+    // Use BKT's lastPracticedAt (from problem history) as single source of truth
+    // This ensures consistency with the chart's staleness calculation
+    const lastPracticedAt = bkt?.lastPracticedAt ?? null
+    const daysSinceLastPractice = lastPracticedAt
+      ? Math.floor((now.getTime() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24))
+      : null
     const stalenessWarning = getStalenessWarning(daysSinceLastPractice)
     const usingBktMultiplier = bkt !== undefined && isBktConfident(bkt.confidence)
 
@@ -371,7 +377,7 @@ function processSkills(
       attempts,
       correct,
       isPracticing: skill.isPracticing,
-      lastPracticedAt: skill.lastPracticedAt,
+      lastPracticedAt, // Use BKT value (single source of truth from problem history)
       daysSinceLastPractice,
       avgResponseTimeMs,
       problems,
@@ -503,14 +509,18 @@ function getInsufficientDataBadge(reason: InsufficientDataReason): string {
   }
 }
 
+type AttentionBadge = 'weak' | 'stale'
+
 function SkillCard({
   skill,
   isDark,
   onClick,
+  badges,
 }: {
   skill: ProcessedSkill
   isDark: boolean
   onClick: () => void
+  badges?: AttentionBadge[]
 }) {
   const errorCount = skill.attempts - skill.correct
 
@@ -564,6 +574,57 @@ function SkillCard({
       >
         {skill.displayName}
       </span>
+
+      {/* Attention badges (shown in consolidated "Needs Attention" section) */}
+      {badges && badges.length > 0 && (
+        <div
+          className={css({
+            display: 'flex',
+            gap: '0.25rem',
+            marginBottom: '0.25rem',
+            flexWrap: 'wrap',
+          })}
+        >
+          {badges.includes('weak') && (
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.125rem',
+                padding: '0.0625rem 0.375rem',
+                borderRadius: '999px',
+                fontSize: '0.625rem',
+                fontWeight: 'medium',
+                backgroundColor: isDark ? 'red.900' : 'red.100',
+                color: isDark ? 'red.300' : 'red.700',
+                border: '1px solid',
+                borderColor: isDark ? 'red.700' : 'red.300',
+              })}
+            >
+              Weak <span>🔴</span>
+            </span>
+          )}
+          {badges.includes('stale') && (
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.125rem',
+                padding: '0.0625rem 0.375rem',
+                borderRadius: '999px',
+                fontSize: '0.625rem',
+                fontWeight: 'medium',
+                backgroundColor: isDark ? 'orange.900' : 'orange.100',
+                color: isDark ? 'orange.300' : 'orange.700',
+                border: '1px solid',
+                borderColor: isDark ? 'orange.700' : 'orange.300',
+              })}
+            >
+              Stale <span>🕐</span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Show BKT estimate if available and valid */}
       {skill.pKnown !== null && Number.isFinite(skill.pKnown) && skill.bktClassification && (
@@ -656,8 +717,8 @@ function SkillCard({
         )}
       </div>
 
-      {/* Staleness warning */}
-      {skill.stalenessWarning && (
+      {/* Staleness proof - show days since practice */}
+      {skill.stalenessWarning && skill.daysSinceLastPractice !== null && (
         <span
           className={css({
             marginTop: '0.25rem',
@@ -666,7 +727,7 @@ function SkillCard({
             fontStyle: 'italic',
           })}
         >
-          {skill.stalenessWarning}
+          {Math.round(skill.daysSinceLastPractice)}d since practice
         </span>
       )}
 
@@ -834,16 +895,23 @@ function SkillDetailDrawer({
                     color: isDark ? 'orange.300' : 'orange.700',
                   })}
                 >
-                  Not Practiced Recently
-                </div>
-                <div
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'orange.400' : 'orange.600',
-                  })}
-                >
                   {skill.stalenessWarning}
                 </div>
+                {skill.lastPracticedAt && skill.daysSinceLastPractice !== null && (
+                  <div
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'orange.400' : 'orange.600',
+                    })}
+                  >
+                    Last practiced{' '}
+                    {new Date(skill.lastPracticedAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                    })}{' '}
+                    ({Math.round(skill.daysSinceLastPractice)} days ago)
+                  </div>
+                )}
               </div>
             </div>
             <button
@@ -1463,17 +1531,20 @@ function OverviewTab({
 function SkillsTab({
   skills,
   problemHistory,
+  recentSessions,
   isDark,
   onManageSkills,
   studentId,
 }: {
   skills: PlayerSkillMastery[]
   problemHistory: ProblemResultWithContext[]
+  recentSessions: PracticeSession[]
   isDark: boolean
   onManageSkills: () => void
   studentId: string
 }) {
   const [selectedSkill, setSelectedSkill] = useState<ProcessedSkill | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Set<SkillClassification>>(new Set())
   const refreshSkillRecency = useRefreshSkillRecency()
   const isRefreshing = refreshSkillRecency.isPending
     ? (refreshSkillRecency.variables?.skillId ?? null)
@@ -1481,15 +1552,19 @@ function SkillsTab({
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.5)
   const [applyDecay, setApplyDecay] = useState(false)
 
-  const bktResult = useMemo(() => {
-    const options: BktComputeOptions = {
+  const bktOptions = useMemo<BktComputeOptions>(
+    () => ({
       confidenceThreshold,
       applyDecay,
       decayHalfLifeDays: 30,
       useCrossStudentPriors: false,
-    }
-    return computeBktFromHistory(problemHistory, options)
-  }, [problemHistory, confidenceThreshold, applyDecay])
+    }),
+    [confidenceThreshold, applyDecay]
+  )
+
+  const bktResult = useMemo(() => {
+    return computeBktFromHistory(problemHistory, bktOptions)
+  }, [problemHistory, bktOptions])
 
   const bktResultsMap = useMemo(() => {
     const map = new Map<string, SkillBktResult>()
@@ -1537,9 +1612,76 @@ function SkillsTab({
     [practicingSkills]
   )
 
+  // Consolidated list of skills needing attention (weak, stale, or both)
+  // Deduplicated with priority sorting: weak+stale first, then weak only, then stale only
+  const skillsNeedingAttention = useMemo(() => {
+    const weakSkillIds = new Set(interventionNeeded.map((s) => s.skillId))
+    const staleSkillIds = new Set(rustySkills.map((s) => s.skillId))
+
+    // Collect unique skills with their badge flags
+    const skillMap = new Map<string, { skill: ProcessedSkill; isWeak: boolean; isStale: boolean }>()
+
+    for (const skill of interventionNeeded) {
+      skillMap.set(skill.skillId, {
+        skill,
+        isWeak: true,
+        isStale: staleSkillIds.has(skill.skillId),
+      })
+    }
+
+    for (const skill of rustySkills) {
+      if (!skillMap.has(skill.skillId)) {
+        skillMap.set(skill.skillId, {
+          skill,
+          isWeak: false,
+          isStale: true,
+        })
+      }
+    }
+
+    // Sort by priority: weak+stale > weak only > stale only
+    return Array.from(skillMap.values()).sort((a, b) => {
+      const priorityA = (a.isWeak ? 2 : 0) + (a.isStale ? 1 : 0)
+      const priorityB = (b.isWeak ? 2 : 0) + (b.isStale ? 1 : 0)
+      return priorityB - priorityA // Higher priority first
+    })
+  }, [interventionNeeded, rustySkills])
+
+  // Skills shown in higher-priority sections, grouped by category and section
+  const shownElsewhereByCategory = useMemo(() => {
+    const byCategory = new Map<string, { attention: number; assessment: number }>()
+    for (const { skill } of skillsNeedingAttention) {
+      const category = getCategoryFromSkillId(skill.skillId)
+      const current = byCategory.get(category.id) ?? { attention: 0, assessment: 0 }
+      current.attention++
+      byCategory.set(category.id, current)
+    }
+    for (const skill of needsAssessment) {
+      const category = getCategoryFromSkillId(skill.skillId)
+      const current = byCategory.get(category.id) ?? { attention: 0, assessment: 0 }
+      current.assessment++
+      byCategory.set(category.id, current)
+    }
+    return byCategory
+  }, [skillsNeedingAttention, needsAssessment])
+
+  // Set of skill IDs shown elsewhere (for filtering)
+  const shownElsewhereIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const { skill } of skillsNeedingAttention) {
+      ids.add(skill.skillId)
+    }
+    for (const skill of needsAssessment) {
+      ids.add(skill.skillId)
+    }
+    return ids
+  }, [skillsNeedingAttention, needsAssessment])
+
+  // "All Skills by Category" only shows skills NOT in Needs Attention or Needs Assessment
   const skillsByCategory = useMemo(() => {
+    const remainingSkills = practicingSkills.filter((s) => !shownElsewhereIds.has(s.skillId))
     const groups = new Map<string, ProcessedSkill[]>()
-    for (const skill of practicingSkills) {
+    for (const skill of remainingSkills) {
       const category = getCategoryFromSkillId(skill.skillId)
       const existing = groups.get(category.id) ?? []
       existing.push(skill)
@@ -1556,13 +1698,80 @@ function SkillsTab({
         skills: skills.sort((a, b) => a.displayName.localeCompare(b.displayName)),
       }))
       .sort((a, b) => a.category.order - b.category.order)
-  }, [practicingSkills])
+  }, [practicingSkills, shownElsewhereIds])
 
   const handleRefreshSkill = useCallback(
     async (skillId: string): Promise<void> => {
       await refreshSkillRecency.mutateAsync({ playerId: studentId, skillId })
     },
     [studentId, refreshSkillRecency]
+  )
+
+  // Compute current skill distribution for the chart
+  const currentDistribution = useMemo<SkillDistribution>(() => {
+    const dist: SkillDistribution = {
+      strong: 0,
+      stale: 0,
+      developing: 0,
+      weak: 0,
+      unassessed: 0,
+      total: practicingSkills.length,
+    }
+
+    for (const skill of practicingSkills) {
+      const classification = getSkillClassification(skill.bktClassification, skill.stalenessWarning)
+      dist[classification]++
+    }
+
+    return dist
+  }, [practicingSkills])
+
+  // All skill IDs for chart computation
+  const allSkillIds = useMemo(() => practicingSkills.map((s) => s.skillId), [practicingSkills])
+
+  // Filter toggle handler
+  const handleFilterToggle = useCallback((classification: SkillClassification) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(classification)) {
+        next.delete(classification)
+      } else {
+        next.add(classification)
+      }
+      return next
+    })
+  }, [])
+
+  // Check if a skill passes the active filters
+  const passesFilter = useCallback(
+    (skill: ProcessedSkill): boolean => {
+      if (activeFilters.size === 0) return true
+      const classification = getSkillClassification(skill.bktClassification, skill.stalenessWarning)
+      return activeFilters.has(classification)
+    },
+    [activeFilters]
+  )
+
+  // Filtered versions of skill lists
+  const filteredSkillsNeedingAttention = useMemo(
+    () => skillsNeedingAttention.filter(({ skill }) => passesFilter(skill)),
+    [skillsNeedingAttention, passesFilter]
+  )
+
+  const filteredNeedsAssessment = useMemo(
+    () => needsAssessment.filter(passesFilter),
+    [needsAssessment, passesFilter]
+  )
+
+  const filteredSkillsByCategory = useMemo(
+    () =>
+      skillsByCategory
+        .map(({ category, skills }) => ({
+          category,
+          skills: skills.filter(passesFilter),
+        }))
+        .filter(({ skills }) => skills.length > 0),
+    [skillsByCategory, passesFilter]
   )
 
   return (
@@ -1663,60 +1872,22 @@ function SkillsTab({
         </label>
       </div>
 
-      {/* Summary cards */}
-      <div
-        className={css({
-          display: 'grid',
-          gridTemplateColumns: { base: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-          gap: { base: '0.5rem', sm: '0.75rem' },
-          marginBottom: { base: '1rem', sm: '1.5rem' },
-        })}
-      >
-        {[
-          { label: 'Weak', count: interventionNeeded.length, color: 'red' },
-          {
-            label: 'Developing',
-            count: learningSkills.length,
-            color: 'yellow',
-          },
-          { label: 'Stale', count: rustySkills.length, color: 'orange' },
-          { label: 'Strong', count: readyToAdvance.length, color: 'green' },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className={css({
-              padding: '0.75rem',
-              borderRadius: '10px',
-              backgroundColor: isDark ? `${item.color}.900/30` : `${item.color}.50`,
-              border: '2px solid',
-              borderColor: isDark ? `${item.color}.700/50` : `${item.color}.200`,
-              textAlign: 'center',
-            })}
-          >
-            <div
-              className={css({
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: isDark ? `${item.color}.300` : `${item.color}.600`,
-              })}
-            >
-              {item.count}
-            </div>
-            <div
-              className={css({
-                fontSize: '0.75rem',
-                color: isDark ? `${item.color}.400` : `${item.color}.700`,
-              })}
-            >
-              {item.label}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Skill Progress Chart with interactive legend */}
+      <SkillProgressChart
+        sessions={recentSessions}
+        problemHistory={problemHistory}
+        allSkillIds={allSkillIds}
+        currentDistribution={currentDistribution}
+        activeFilters={activeFilters}
+        onFilterToggle={handleFilterToggle}
+        isDark={isDark}
+        bktOptions={bktOptions}
+      />
 
-      {/* Attention needed */}
-      {interventionNeeded.length > 0 && (
+      {/* Consolidated: Skills needing attention (weak, stale, or both) */}
+      {filteredSkillsNeedingAttention.length > 0 && (
         <div
+          data-section="needs-attention"
           className={css({
             padding: { base: '0.75rem', sm: '1rem' },
             borderRadius: '12px',
@@ -1736,7 +1907,7 @@ function SkillsTab({
               flexWrap: 'wrap',
             })}
           >
-            <span>🔴</span> May Need Attention{' '}
+            <span>⚠️</span> Needs Attention{' '}
             <span
               className={css({
                 padding: '0.125rem 0.5rem',
@@ -1746,33 +1917,50 @@ function SkillsTab({
                 color: isDark ? 'gray.300' : 'gray.600',
               })}
             >
-              {interventionNeeded.length}
+              {filteredSkillsNeedingAttention.length}
             </span>
           </h3>
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              marginBottom: '0.75rem',
+              lineHeight: '1.4',
+            })}
+          >
+            Skills that are weak or haven't been practiced recently.
+          </p>
           <div
+            data-element="skill-grid"
             className={css({
               display: 'grid',
               gridTemplateColumns: {
-                base: 'repeat(auto-fill, minmax(120px, 1fr))',
-                sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+                base: 'repeat(auto-fill, minmax(140px, 1fr))',
+                sm: 'repeat(auto-fill, minmax(160px, 1fr))',
               },
               gap: { base: '0.5rem', sm: '0.75rem' },
             })}
           >
-            {interventionNeeded.map((skill) => (
-              <SkillCard
-                key={skill.id}
-                skill={skill}
-                isDark={isDark}
-                onClick={() => setSelectedSkill(skill)}
-              />
-            ))}
+            {filteredSkillsNeedingAttention.map(({ skill, isWeak, isStale }) => {
+              const badges: AttentionBadge[] = []
+              if (isWeak) badges.push('weak')
+              if (isStale) badges.push('stale')
+              return (
+                <SkillCard
+                  key={skill.id}
+                  skill={skill}
+                  isDark={isDark}
+                  onClick={() => setSelectedSkill(skill)}
+                  badges={badges}
+                />
+              )
+            })}
           </div>
         </div>
       )}
 
       {/* Needs Assessment - skills without enough data to classify */}
-      {needsAssessment.length > 0 && (
+      {filteredNeedsAssessment.length > 0 && (
         <div
           data-section="needs-assessment"
           className={css({
@@ -1806,7 +1994,7 @@ function SkillsTab({
                 color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
-              {needsAssessment.length}
+              {filteredNeedsAssessment.length}
             </span>
           </h3>
           <p
@@ -1820,6 +2008,7 @@ function SkillsTab({
             These skills need more practice before we can assess mastery.
           </p>
           <div
+            data-element="skill-grid"
             className={css({
               display: 'grid',
               gridTemplateColumns: {
@@ -1829,7 +2018,7 @@ function SkillsTab({
               gap: { base: '0.5rem', sm: '0.75rem' },
             })}
           >
-            {needsAssessment.map((skill) => (
+            {filteredNeedsAssessment.map((skill) => (
               <SkillCard
                 key={skill.id}
                 skill={skill}
@@ -1841,165 +2030,111 @@ function SkillsTab({
         </div>
       )}
 
-      {/* Stale skills - using consistent SkillCard presentation */}
-      {rustySkills.length > 0 && (
-        <div
-          className={css({
-            padding: { base: '0.75rem', sm: '1rem' },
-            borderRadius: '12px',
-            backgroundColor: isDark ? 'gray.800' : 'white',
-            border: '1px solid',
-            borderColor: isDark ? 'orange.800' : 'orange.200',
-            marginBottom: '1rem',
-          })}
-        >
-          <div
+      {/* On Track - skills not needing attention, organized by category */}
+      {filteredSkillsByCategory.length > 0 && (
+        <div data-section="on-track" className={css({ marginTop: { base: '1rem', sm: '1.5rem' } })}>
+          <h2
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.5rem',
+              fontSize: { base: '1rem', sm: '1.125rem' },
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+              marginBottom: { base: '0.75rem', sm: '1rem' },
             })}
           >
-            <span className={css({ fontSize: '1.25rem' })}>⏰</span>
-            <h3
-              className={css({
-                fontSize: { base: '0.875rem', sm: '1rem' },
-                fontWeight: 'bold',
-                color: isDark ? 'gray.100' : 'gray.900',
-              })}
-            >
-              Skills Not Practiced Recently
-            </h3>
-            <span
-              className={css({
-                fontSize: '0.75rem',
-                backgroundColor: isDark ? 'orange.900' : 'orange.100',
-                color: isDark ? 'orange.300' : 'orange.700',
-                padding: '0.125rem 0.5rem',
-                borderRadius: 'full',
-                fontWeight: 'medium',
-              })}
-            >
-              {rustySkills.length}
-            </span>
-          </div>
-
-          <p
-            className={css({
-              fontSize: '0.8125rem',
-              color: isDark ? 'gray.400' : 'gray.600',
-              marginBottom: '0.75rem',
-              lineHeight: '1.4',
-            })}
-          >
-            Click any skill for details and to mark as current if practiced offline.
-          </p>
-
-          <div
-            className={css({
-              display: 'grid',
-              gridTemplateColumns: {
-                base: 'repeat(auto-fill, minmax(140px, 1fr))',
-                sm: 'repeat(auto-fill, minmax(160px, 1fr))',
-              },
-              gap: '0.5rem',
-            })}
-          >
-            {rustySkills.map((skill) => (
-              <SkillCard
-                key={skill.id}
-                skill={skill}
-                isDark={isDark}
-                onClick={() => setSelectedSkill(skill)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* All by category */}
-      <div className={css({ marginTop: { base: '1rem', sm: '1.5rem' } })}>
-        <h2
-          className={css({
-            fontSize: { base: '1rem', sm: '1.125rem' },
-            fontWeight: 'bold',
-            color: isDark ? 'gray.100' : 'gray.900',
-            marginBottom: { base: '0.75rem', sm: '1rem' },
-          })}
-        >
-          All Skills by Category
-        </h2>
-        {skillsByCategory.length === 0 ? (
-          <p
-            className={css({
-              padding: { base: '1.5rem', sm: '2rem' },
-              textAlign: 'center',
-              color: isDark ? 'gray.500' : 'gray.500',
-              fontStyle: 'italic',
-            })}
-          >
-            No skills in practice. Click "Manage Skills" to add some.
-          </p>
-        ) : (
-          skillsByCategory.map(({ category, skills }) => (
-            <div
-              key={category.id}
-              className={css({
-                padding: { base: '0.75rem', sm: '1rem' },
-                borderRadius: '12px',
-                backgroundColor: isDark ? 'gray.800' : 'gray.50',
-                marginBottom: '1rem',
-              })}
-            >
-              <h3
+            On Track
+          </h2>
+          {filteredSkillsByCategory.map(({ category, skills }) => {
+            const elsewhere = shownElsewhereByCategory.get(category.id)
+            const hasElsewhere = elsewhere && (elsewhere.attention > 0 || elsewhere.assessment > 0)
+            return (
+              <div
+                key={category.id}
+                data-category={category.id}
                 className={css({
-                  fontSize: { base: '0.875rem', sm: '1rem' },
-                  fontWeight: 'bold',
-                  color: isDark ? 'gray.100' : 'gray.900',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  flexWrap: 'wrap',
+                  padding: { base: '0.75rem', sm: '1rem' },
+                  borderRadius: '12px',
+                  backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                  marginBottom: '1rem',
                 })}
               >
-                <span>{category.emoji}</span> {category.name}{' '}
-                <span
+                <h3
                   className={css({
-                    padding: '0.125rem 0.5rem',
-                    borderRadius: '999px',
-                    fontSize: '0.75rem',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                    color: isDark ? 'gray.300' : 'gray.600',
+                    fontSize: { base: '0.875rem', sm: '1rem' },
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.100' : 'gray.900',
+                    marginBottom: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap',
                   })}
                 >
-                  {skills.length}
-                </span>
-              </h3>
-              <div
-                className={css({
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    base: 'repeat(auto-fill, minmax(120px, 1fr))',
-                    sm: 'repeat(auto-fill, minmax(140px, 1fr))',
-                  },
-                  gap: { base: '0.5rem', sm: '0.75rem' },
-                })}
-              >
-                {skills.map((skill) => (
-                  <SkillCard
-                    key={skill.id}
-                    skill={skill}
-                    isDark={isDark}
-                    onClick={() => setSelectedSkill(skill)}
-                  />
-                ))}
+                  <span>{category.emoji}</span> {category.name}{' '}
+                  <span
+                    className={css({
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '999px',
+                      fontSize: '0.75rem',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      color: isDark ? 'gray.300' : 'gray.600',
+                    })}
+                  >
+                    {skills.length}
+                  </span>
+                </h3>
+                <div
+                  data-element="skill-grid"
+                  className={css({
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      base: 'repeat(auto-fill, minmax(120px, 1fr))',
+                      sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    },
+                    gap: { base: '0.5rem', sm: '0.75rem' },
+                  })}
+                >
+                  {skills.map((skill) => (
+                    <SkillCard
+                      key={skill.id}
+                      skill={skill}
+                      isDark={isDark}
+                      onClick={() => setSelectedSkill(skill)}
+                    />
+                  ))}
+                  {hasElsewhere && (
+                    <div
+                      data-element="elsewhere-placeholder"
+                      data-attention-count={elsewhere.attention}
+                      data-assessment-count={elsewhere.assessment}
+                      className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        border: '2px dashed',
+                        borderColor: isDark ? 'gray.600' : 'gray.300',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                        fontSize: '0.6875rem',
+                        textAlign: 'center',
+                        gap: '0.125rem',
+                      })}
+                    >
+                      {elsewhere.attention > 0 && (
+                        <span>+{elsewhere.attention} in Needs Attention</span>
+                      )}
+                      {elsewhere.assessment > 0 && (
+                        <span>+{elsewhere.assessment} in Needs Assessment</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       <SkillDetailDrawer
         skill={selectedSkill}
@@ -2012,159 +2147,51 @@ function SkillsTab({
   )
 }
 
-function HistoryTab({
-  isDark,
-  recentSessions,
-  studentId,
-}: {
-  isDark: boolean
-  recentSessions: PracticeSession[]
-  studentId: string
-}) {
+function HistoryTab({ isDark, studentId }: { isDark: boolean; studentId: string }) {
   return (
     <div data-tab-content="history">
       <div
         className={css({
           padding: { base: '1.25rem', sm: '2rem' },
-          textAlign: 'center',
           borderRadius: '12px',
           backgroundColor: isDark ? 'gray.800' : 'gray.50',
         })}
       >
         <div
           className={css({
-            fontSize: { base: '2.5rem', sm: '3rem' },
-            marginBottom: '1rem',
-          })}
-        >
-          📈
-        </div>
-        <h2
-          className={css({
-            fontSize: { base: '1.125rem', sm: '1.25rem' },
-            fontWeight: 'bold',
-            color: isDark ? 'gray.100' : 'gray.900',
-            marginBottom: '0.5rem',
-          })}
-        >
-          Session History
-        </h2>
-        <p
-          className={css({
-            fontSize: { base: '0.8125rem', sm: '0.875rem' },
-            color: isDark ? 'gray.400' : 'gray.600',
+            textAlign: 'center',
             marginBottom: { base: '1rem', sm: '1.5rem' },
           })}
         >
-          Track your practice sessions over time
-        </p>
-
-        {recentSessions.length === 0 ? (
-          <p
-            className={css({
-              color: isDark ? 'gray.500' : 'gray.500',
-              fontStyle: 'italic',
-            })}
-          >
-            No sessions recorded yet. Start practicing!
-          </p>
-        ) : (
           <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              textAlign: 'left',
+              fontSize: { base: '2.5rem', sm: '3rem' },
+              marginBottom: '1rem',
             })}
           >
-            {recentSessions.slice(0, 10).map((session) => (
-              <Link
-                key={session.id}
-                href={`/practice/${studentId}/session/${session.id}`}
-                data-element="session-history-item"
-                data-session-id={session.id}
-                className={css({
-                  display: 'block',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  backgroundColor: isDark ? 'gray.700' : 'white',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.600' : 'gray.200',
-                  textDecoration: 'none',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.650' : 'gray.50',
-                    borderColor: isDark ? 'gray.500' : 'gray.300',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  },
-                })}
-              >
-                <div
-                  className={css({
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem',
-                  })}
-                >
-                  <span
-                    className={css({
-                      fontWeight: 'bold',
-                      color: isDark ? 'gray.100' : 'gray.900',
-                    })}
-                  >
-                    {new Date(session.completedAt || session.startedAt).toLocaleDateString()}
-                  </span>
-                  <span
-                    className={css({
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'medium',
-                      backgroundColor:
-                        session.problemsAttempted > 0 &&
-                        session.problemsCorrect / session.problemsAttempted >= 0.8
-                          ? isDark
-                            ? 'green.900'
-                            : 'green.100'
-                          : isDark
-                            ? 'yellow.900'
-                            : 'yellow.100',
-                      color:
-                        session.problemsAttempted > 0 &&
-                        session.problemsCorrect / session.problemsAttempted >= 0.8
-                          ? isDark
-                            ? 'green.300'
-                            : 'green.700'
-                          : isDark
-                            ? 'yellow.300'
-                            : 'yellow.700',
-                    })}
-                  >
-                    {session.problemsCorrect}/{session.problemsAttempted} correct
-                  </span>
-                </div>
-                <div
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'gray.400' : 'gray.600',
-                    display: 'flex',
-                    gap: '1rem',
-                  })}
-                >
-                  <span>{Math.round((session.totalTimeMs || 0) / 60000)} min</span>
-                  <span>
-                    {session.problemsAttempted > 0
-                      ? Math.round((session.problemsCorrect / session.problemsAttempted) * 100)
-                      : 0}
-                    % accuracy
-                  </span>
-                </div>
-              </Link>
-            ))}
+            📈
           </div>
-        )}
+          <h2
+            className={css({
+              fontSize: { base: '1.125rem', sm: '1.25rem' },
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+              marginBottom: '0.5rem',
+            })}
+          >
+            Session History
+          </h2>
+          <p
+            className={css({
+              fontSize: { base: '0.8125rem', sm: '0.875rem' },
+              color: isDark ? 'gray.400' : 'gray.600',
+            })}
+          >
+            Track your practice sessions over time
+          </p>
+        </div>
+
+        <VirtualizedSessionList studentId={studentId} isDark={isDark} height={400} />
       </div>
     </div>
   )
@@ -2653,15 +2680,14 @@ export function DashboardClient({
               <SkillsTab
                 skills={liveSkills}
                 problemHistory={problemHistory}
+                recentSessions={recentSessions}
                 isDark={isDark}
                 onManageSkills={() => setShowManualSkillModal(true)}
                 studentId={studentId}
               />
             )}
 
-            {activeTab === 'history' && (
-              <HistoryTab isDark={isDark} recentSessions={recentSessions} studentId={studentId} />
-            )}
+            {activeTab === 'history' && <HistoryTab isDark={isDark} studentId={studentId} />}
 
             {activeTab === 'notes' && (
               <NotesTab

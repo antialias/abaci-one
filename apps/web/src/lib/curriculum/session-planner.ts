@@ -610,10 +610,13 @@ export async function getRecentSessionResults(
   playerId: string,
   sessionCount = 50
 ): Promise<ProblemResultWithContext[]> {
+  // Include both 'completed' sessions and 'recency-refresh' sentinels
+  // Recency-refresh sessions contain sentinel records that update lastPracticedAt
+  // but are zero-weight for BKT mastery calculation
   const sessions = await db.query.sessionPlans.findMany({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      eq(schema.sessionPlans.status, 'completed')
+      inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
     ),
     orderBy: (plans, { desc }) => [desc(plans.completedAt)],
     limit: sessionCount,

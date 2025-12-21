@@ -28,3 +28,9 @@ export const sessionPlanKeys = {
   active: (playerId: string) => [...sessionPlanKeys.all, 'active', playerId] as const,
   detail: (planId: string) => [...sessionPlanKeys.all, 'detail', planId] as const,
 }
+
+// Session history query keys (for paginated history)
+export const sessionHistoryKeys = {
+  all: ['sessionHistory'] as const,
+  list: (playerId: string) => [...sessionHistoryKeys.all, playerId] as const,
+}

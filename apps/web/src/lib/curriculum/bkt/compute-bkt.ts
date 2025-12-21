@@ -101,6 +101,10 @@ export function computeBktFromHistory(
     const skillIds = result.skillsExercised ?? []
     if (skillIds.length === 0) continue
 
+    // Check if this is a recency-refresh sentinel record
+    // These update lastPracticedAt but are ZERO-WEIGHT for BKT mastery (pKnown)
+    const isRecencyRefresh = result.source === 'recency-refresh'
+
     // Ensure all skills have state initialized
     for (const skillId of skillIds) {
       if (!skillStates.has(skillId)) {
@@ -113,6 +117,20 @@ export function computeBktFromHistory(
           params,
         })
       }
+    }
+
+    // For recency-refresh sentinels, only update lastPracticedAt - skip BKT calculation
+    if (isRecencyRefresh) {
+      const timestamp =
+        result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)
+      for (const skillId of skillIds) {
+        const state = skillStates.get(skillId)!
+        // Update lastPracticedAt if this is more recent
+        if (!state.lastPracticedAt || timestamp > state.lastPracticedAt) {
+          state.lastPracticedAt = timestamp
+        }
+      }
+      continue // Skip pKnown updates for sentinel records
     }
 
     // Build skill records for BKT update

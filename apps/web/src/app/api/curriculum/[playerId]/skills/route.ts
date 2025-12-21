@@ -82,12 +82,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
 }
 
 /**
- * PATCH - Refresh skill recency (sets lastPracticedAt to now)
+ * PATCH - Refresh skill recency by inserting a sentinel record
  * Body: { skillId: string }
  *
  * Use this when a teacher wants to mark a skill as "recently practiced"
- * (e.g., student did offline workbooks). This updates the lastPracticedAt
- * timestamp without changing BKT mastery statistics.
+ * (e.g., student did offline workbooks).
+ *
+ * This inserts a "recency-refresh" sentinel record that:
+ * - Updates lastPracticedAt in BKT (resets staleness)
+ * - Does NOT affect pKnown (zero-weight for mastery calculation)
+ *
+ * Returns: { sessionId: string, timestamp: Date } or 404 if skill not found
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {

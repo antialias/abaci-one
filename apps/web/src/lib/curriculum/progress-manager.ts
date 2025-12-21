@@ -3,7 +3,7 @@
  * Handles CRUD operations for student curriculum progress and skill mastery
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -184,20 +184,25 @@ export async function setMasteredSkills(
 }
 
 /**
- * Refresh skill recency by updating lastPracticedAt to now
+ * Refresh skill recency by inserting a sentinel record
  *
  * Use this when a teacher wants to mark a skill as "recently practiced"
- * (e.g., student did offline workbooks). This updates the lastPracticedAt
- * timestamp without changing BKT mastery statistics.
+ * (e.g., student did offline workbooks). This inserts a "recency-refresh"
+ * sentinel record that BKT sees for lastPracticedAt but ignores for pKnown.
+ *
+ * The sentinel approach means:
+ * - Single source of truth: all lastPracticedAt comes from problem history
+ * - No abstraction gap: BKT naturally handles recency from the same data source
+ * - Clear semantics: sentinel records are clearly marked with source='recency-refresh'
  *
  * @param playerId - The player's ID
  * @param skillId - The skill to refresh
- * @returns Updated skill mastery record, or null if skill not found
+ * @returns The created session plan containing the sentinel, or null if skill not found
  */
 export async function refreshSkillRecency(
   playerId: string,
   skillId: string
-): Promise<PlayerSkillMastery | null> {
+): Promise<{ sessionId: string; timestamp: Date } | null> {
   const existing = await getSkillMastery(playerId, skillId)
 
   if (!existing) {
@@ -206,16 +211,51 @@ export async function refreshSkillRecency(
 
   const now = new Date()
 
-  const [updated] = await db
-    .update(schema.playerSkillMastery)
-    .set({
-      lastPracticedAt: now,
-      updatedAt: now,
-    })
-    .where(eq(schema.playerSkillMastery.id, existing.id))
-    .returning()
+  // Create a minimal session plan with status='recency-refresh'
+  // This contains a single sentinel SlotResult
+  const sentinelResult: schema.SlotResult = {
+    partNumber: 1,
+    slotIndex: 0,
+    problem: {
+      terms: [0],
+      answer: 0,
+      skillsRequired: [skillId],
+    },
+    studentAnswer: 0,
+    isCorrect: true, // Doesn't matter - BKT ignores for recency-refresh
+    responseTimeMs: 0,
+    skillsExercised: [skillId],
+    usedOnScreenAbacus: false,
+    timestamp: now,
+    hadHelp: false,
+    incorrectAttempts: 0,
+    source: 'recency-refresh', // This marks it as a sentinel record
+  }
 
-  return updated
+  const sessionPlan: schema.NewSessionPlan = {
+    playerId,
+    targetDurationMinutes: 0,
+    estimatedProblemCount: 0,
+    avgTimePerProblemSeconds: 0,
+    parts: [], // No actual parts - just the sentinel result
+    summary: {
+      focusDescription: 'Recency refresh',
+      totalProblemCount: 0,
+      estimatedMinutes: 0,
+      parts: [],
+    },
+    status: 'recency-refresh',
+    results: [sentinelResult],
+    createdAt: now,
+    completedAt: now,
+  }
+
+  const [inserted] = await db.insert(schema.sessionPlans).values(sessionPlan).returning()
+
+  return {
+    sessionId: inserted.id,
+    timestamp: now,
+  }
 }
 
 /**
@@ -429,6 +469,113 @@ export async function getRecentSessions(
       completedAt: session.completedAt,
     } as PracticeSession
   })
+}
+
+/**
+ * Response type for paginated sessions
+ */
+export interface PaginatedSessionsResponse {
+  sessions: PracticeSession[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+/**
+ * Get paginated sessions with cursor-based pagination
+ * Cursor is the session ID to start after (for "load more" functionality)
+ */
+export async function getPaginatedSessions(
+  playerId: string,
+  limit: number = 20,
+  cursor?: string
+): Promise<PaginatedSessionsResponse> {
+  console.log(`[getPaginatedSessions] playerId=${playerId}, limit=${limit}, cursor=${cursor}`)
+
+  // If we have a cursor, we need to find sessions older than that cursor's completedAt
+  let cursorSession: typeof schema.sessionPlans.$inferSelect | null = null
+  if (cursor) {
+    cursorSession =
+      (await db.query.sessionPlans.findFirst({
+        where: eq(schema.sessionPlans.id, cursor),
+      })) ?? null
+    console.log(
+      `[getPaginatedSessions] cursorSession found: ${!!cursorSession}, completedAt=${cursorSession?.completedAt}`
+    )
+  }
+
+  // Build the query conditions - include cursor condition in SQL for proper pagination
+  const conditions = [
+    eq(schema.sessionPlans.playerId, playerId),
+    inArray(schema.sessionPlans.status, ['completed', 'abandoned']),
+  ]
+
+  // Add cursor condition to SQL query (sessions older than cursor)
+  if (cursorSession?.completedAt) {
+    // Sessions with earlier completedAt, OR same completedAt but smaller ID (for tie-breaking)
+    conditions.push(
+      or(
+        lt(schema.sessionPlans.completedAt, cursorSession.completedAt),
+        and(
+          eq(schema.sessionPlans.completedAt, cursorSession.completedAt),
+          lt(schema.sessionPlans.id, cursorSession.id)
+        )
+      )!
+    )
+  }
+
+  // Query one extra to check if there are more
+  const sessions = await db.query.sessionPlans.findMany({
+    where: and(...conditions),
+    orderBy: desc(schema.sessionPlans.completedAt),
+    limit: limit + 1,
+  })
+
+  console.log(`[getPaginatedSessions] Raw query returned ${sessions.length} sessions`)
+
+  // Check if there are more results
+  const hasMore = sessions.length > limit
+  const resultSessions = hasMore ? sessions.slice(0, limit) : sessions
+  console.log(`[getPaginatedSessions] Final: ${resultSessions.length} sessions, hasMore=${hasMore}`)
+
+  // Transform to PracticeSession format
+  const practiceSessionsResult = resultSessions.map((session) => {
+    const results =
+      (session.results as Array<{
+        isCorrect: boolean
+        responseTimeMs: number
+        skillsExercised: string[]
+      }>) || []
+
+    const problemsAttempted = results.length
+    const problemsCorrect = results.filter((r) => r.isCorrect).length
+    const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
+    const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
+    const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
+
+    return {
+      id: session.id,
+      playerId: session.playerId,
+      phaseId: 'session',
+      problemsAttempted,
+      problemsCorrect,
+      averageTimeMs,
+      totalTimeMs,
+      skillsUsed,
+      visualizationMode: false,
+      startedAt: session.startedAt || session.createdAt,
+      completedAt: session.completedAt,
+    } as PracticeSession
+  })
+
+  // Next cursor is the last session's ID
+  const nextCursor =
+    hasMore && resultSessions.length > 0 ? resultSessions[resultSessions.length - 1].id : null
+
+  return {
+    sessions: practiceSessionsResult,
+    nextCursor,
+    hasMore,
+  }
 }
 
 // ============================================================================

@@ -15,7 +15,12 @@ import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
 import { computeSkillCategory, type StudentWithSkillData } from '@/utils/studentGrouping'
-import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
+import {
+  getAllSkillMastery,
+  getPaginatedSessions,
+  getPlayerCurriculum,
+  getRecentSessions,
+} from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
@@ -151,9 +156,11 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
 export { getPlayer } from '@/lib/arcade/player-manager'
 export {
   getAllSkillMastery,
+  getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
+export type { PaginatedSessionsResponse } from './progress-manager'
 export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,

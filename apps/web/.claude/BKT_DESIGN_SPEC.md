@@ -673,6 +673,123 @@ This ensures complete transparency about what drives problem generation.
 
 ---
 
+## 8. Recency Refresh (Sentinel Records)
+
+**Implemented in December 2024**
+
+### 8.1 The Problem: Abstraction Gap
+
+Teachers need to mark skills as "recently practiced" when students do offline work
+(e.g., workbooks, tutoring sessions). This resets the staleness indicator without
+changing the BKT mastery estimate.
+
+**Original (broken) approach:**
+
+- Database field `player_skill_mastery.lastPracticedAt` for manual override
+- BKT computed `lastPracticedAt` from problem history
+- **Two separate sources** created an abstraction gap:
+  - UI sometimes used database field (stale)
+  - Chart used BKT computed value (correct)
+  - Inconsistency caused confusion and bugs
+
+### 8.2 The Sentinel Approach
+
+**Single source of truth:** All `lastPracticedAt` values come from problem history.
+
+When a teacher clicks "Mark Current" for a skill:
+
+1. A **sentinel record** is inserted into session history
+2. The sentinel has `source: 'recency-refresh'`
+3. BKT naturally processes it and updates `lastPracticedAt`
+4. BKT skips the sentinel for P(known) calculation (zero-weight)
+
+**Benefits:**
+
+- No abstraction gap - BKT is the single source of truth
+- No MAX logic to combine two data sources
+- Clear semantics - sentinels are explicitly marked
+- Natural integration - flows through existing query paths
+
+### 8.3 Implementation Details
+
+**SlotResult schema** (`session-plans.ts`):
+
+```typescript
+export type SlotResultSource = 'practice' | 'recency-refresh'
+
+export interface SlotResult {
+  // ... other fields ...
+
+  /**
+   * Source of this record. Defaults to 'practice' when undefined.
+   *
+   * 'recency-refresh' records are sentinels inserted when a teacher clicks
+   * "Mark Current" to indicate offline practice. BKT uses these for
+   * lastPracticedAt but skips them for pKnown calculation (zero-weight).
+   */
+  source?: SlotResultSource
+}
+```
+
+**Session status** (`session-plans.ts`):
+
+```typescript
+export type SessionStatus =
+  | 'draft'
+  | 'approved'
+  | 'in_progress'
+  | 'completed'
+  | 'abandoned'
+  | 'recency-refresh'  // Sessions containing only sentinel records
+```
+
+**BKT handling** (`compute-bkt.ts`):
+
+```typescript
+// Check if this is a recency-refresh sentinel record
+const isRecencyRefresh = result.source === 'recency-refresh'
+
+if (isRecencyRefresh) {
+  // Only update lastPracticedAt - skip pKnown calculation
+  for (const skillId of skillIds) {
+    const state = skillStates.get(skillId)!
+    if (!state.lastPracticedAt || timestamp > state.lastPracticedAt) {
+      state.lastPracticedAt = timestamp
+    }
+  }
+  continue // Skip BKT updates for sentinel records
+}
+```
+
+**Query inclusion** (`session-planner.ts`):
+
+```typescript
+const sessions = await db.query.sessionPlans.findMany({
+  where: and(
+    eq(schema.sessionPlans.playerId, playerId),
+    inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
+  ),
+  // ...
+})
+```
+
+### 8.4 API Usage
+
+**Mark skill as recently practiced:**
+
+```
+PATCH /api/curriculum/[playerId]/skills
+Body: { skillId: string }
+
+Returns: { sessionId: string, timestamp: Date }
+```
+
+The endpoint inserts a recency-refresh sentinel session. The next time BKT is
+computed, the skill's `lastPracticedAt` will reflect the refresh timestamp,
+removing the staleness warning.
+
+---
+
 ## References
 
 - Corbett, A. T., & Anderson, J. R. (1994). Knowledge tracing: Modeling the acquisition of procedural knowledge.

@@ -594,6 +594,18 @@ interface TestStudentProfile {
   successCriteria?: SuccessCriteria
   /** Tuning adjustments to apply if criteria aren't met */
   tuningAdjustments?: TuningAdjustment[]
+  /**
+   * Minimum number of practice sessions to create.
+   * Problems will be distributed across sessions over time.
+   * Default: 5
+   */
+  minSessions?: number
+  /**
+   * Number of days to spread sessions across.
+   * Sessions will be distributed evenly across this period.
+   * Default: 30
+   */
+  sessionSpreadDays?: number
 }
 
 // =============================================================================
@@ -1495,6 +1507,202 @@ are both - the forgotten weaknesses that need urgent attention.`,
     // Need at least 3 weak for this profile
     successCriteria: { minWeak: 3 },
   },
+
+  // =============================================================================
+  // Chart Edge Case Profiles
+  // =============================================================================
+  // These profiles specifically test the SkillProgressChart component behavior
+
+  {
+    name: '📉 Chart: 1 Session Only',
+    emoji: '📉',
+    color: '#64748b', // slate-500
+    category: 'edge',
+    description: 'CHART EDGE - Only 1 session, chart shows legend only (no area chart)',
+    currentPhaseId: 'L1.add.+2.five',
+    practicingSkills: MID_L1_SKILLS,
+    minSessions: 1, // Force exactly 1 session
+    sessionSpreadDays: 1,
+    tutorialCompletedSkills: MID_L1_SKILLS,
+    intentionNotes: `INTENTION: Chart Edge Case - 1 Session Only
+
+This student has exactly ONE completed practice session.
+
+What you should see:
+• SkillProgressChart shows legend cards ONLY (no stacked area chart)
+• Legend cards show current skill distribution
+• Filter functionality still works
+• Motivational message prompts for more practice
+
+Use this to verify the chart gracefully handles the minimum history case.`,
+    skillHistory: [
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 8 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 6 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'developing', problems: 5 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 4 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 3 },
+    ],
+  },
+  {
+    name: '📊 Chart: 2 Sessions (Min)',
+    emoji: '📊',
+    color: '#0ea5e9', // sky-500
+    category: 'edge',
+    description: 'CHART EDGE - Exactly 2 sessions, minimum to show stacked area chart',
+    currentPhaseId: 'L1.add.+2.five',
+    practicingSkills: MID_L1_SKILLS,
+    minSessions: 2, // Force exactly 2 sessions
+    sessionSpreadDays: 7,
+    tutorialCompletedSkills: MID_L1_SKILLS,
+    intentionNotes: `INTENTION: Chart Edge Case - 2 Sessions (Minimum for Chart)
+
+This student has exactly TWO completed practice sessions.
+
+What you should see:
+• SkillProgressChart shows stacked area chart with 2 data points
+• Chart shows progression from session 1 to session 2
+• Legend cards show current skill distribution
+• Filter functionality works on both chart and skill lists
+
+Use this to verify the chart renders correctly at the minimum viable history.`,
+    skillHistory: [
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 12 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 10 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'developing', problems: 8 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 6 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 5 },
+    ],
+  },
+  {
+    name: '📈 Chart: 25 Sessions',
+    emoji: '📈',
+    color: '#10b981', // emerald-500
+    category: 'edge',
+    description: 'CHART EDGE - 25 sessions, tests the 20-session display limit',
+    currentPhaseId: 'L1.add.+1.five',
+    practicingSkills: LATE_L1_ADD_SKILLS,
+    minSessions: 25, // More than the 20-session limit
+    sessionSpreadDays: 60,
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: LATE_L1_ADD_SKILLS,
+    intentionNotes: `INTENTION: Chart Edge Case - 25 Sessions (Tests 20-Limit)
+
+This student has 25 completed practice sessions over 60 days.
+The chart only shows the LAST 20 sessions.
+
+What you should see:
+• SkillProgressChart shows stacked area chart with 20 data points (not 25)
+• Chart shows smooth progression over 2 months
+• Skills transition from weak → developing → strong over time
+• Legend cards accurately reflect current state
+• X-axis dates span ~40 days (the last 20 sessions)
+
+Use this to verify:
+• The 20-session limit is enforced correctly
+• Chart handles medium-length histories well
+• Date labels are readable and not overcrowded`,
+    skillHistory: [
+      // Higher problem counts to distribute across 25 sessions
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 50 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 45 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 40 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 35 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 30 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'developing', problems: 25 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'developing', problems: 20 },
+    ],
+  },
+  {
+    name: '🏋️ Chart: 150 Sessions',
+    emoji: '🏋️',
+    color: '#8b5cf6', // violet-500
+    category: 'edge',
+    description: 'CHART EDGE - 150 sessions, stress test for high-volume history',
+    currentPhaseId: 'L2.add.+9.ten',
+    practicingSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
+    minSessions: 150, // Very high session count
+    sessionSpreadDays: 180, // 6 months of history
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
+    intentionNotes: `INTENTION: Chart Edge Case - 150 Sessions (Stress Test)
+
+This student has 150 completed practice sessions over 6 months.
+This is a STRESS TEST for database queries and chart performance.
+
+What you should see:
+• SkillProgressChart shows stacked area chart with exactly 20 data points
+• Chart only shows most recent 20 sessions (not all 150)
+• Page loads without noticeable delay
+• All skills are mastered (strong) after this much practice
+• Motivational message reflects the extensive progress
+
+Use this to verify:
+• Database query performance with large history
+• Chart rendering doesn't slow down with lots of data
+• The 20-session limit keeps the UI responsive
+• Memory usage stays reasonable`,
+    skillHistory: [
+      // Very high problem counts for 150 sessions
+      // Total ~2000 problems across all skills
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 150 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 140 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 130 },
+      { skillId: 'basic.directSubtraction', targetClassification: 'strong', problems: 120 },
+      { skillId: 'basic.heavenBeadSubtraction', targetClassification: 'strong', problems: 110 },
+      { skillId: 'basic.simpleCombinationsSub', targetClassification: 'strong', problems: 100 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 90 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 85 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 80 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 75 },
+      { skillId: 'fiveComplementsSub.-4=-5+1', targetClassification: 'strong', problems: 70 },
+      { skillId: 'fiveComplementsSub.-3=-5+2', targetClassification: 'strong', problems: 65 },
+      { skillId: 'fiveComplementsSub.-2=-5+3', targetClassification: 'strong', problems: 60 },
+      { skillId: 'fiveComplementsSub.-1=-5+4', targetClassification: 'strong', problems: 55 },
+      { skillId: 'tenComplements.9=10-1', targetClassification: 'strong', problems: 50 },
+      { skillId: 'tenComplements.8=10-2', targetClassification: 'strong', problems: 45 },
+      { skillId: 'tenComplements.7=10-3', targetClassification: 'strong', problems: 40 },
+      { skillId: 'tenComplements.6=10-4', targetClassification: 'strong', problems: 35 },
+    ],
+  },
+  {
+    name: '🌈 Chart: Dramatic Progress',
+    emoji: '🌈',
+    color: '#f43f5e', // rose-500
+    category: 'edge',
+    description: 'CHART EDGE - Shows dramatic improvement trajectory for motivational display',
+    currentPhaseId: 'L1.add.+1.five',
+    practicingSkills: LATE_L1_ADD_SKILLS,
+    minSessions: 15, // Good number for visible progression
+    sessionSpreadDays: 45, // 6 weeks of progress
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: LATE_L1_ADD_SKILLS,
+    intentionNotes: `INTENTION: Chart Edge Case - Dramatic Progress
+
+This student shows a clear learning trajectory where skills go from
+mostly weak → developing → mostly strong over 15 sessions.
+
+What you should see:
+• SkillProgressChart shows beautiful upward progress
+• Early sessions: lots of red (weak) and blue (developing)
+• Middle sessions: transition happening
+• Recent sessions: mostly green (strong)
+• Motivational message celebrates the progress
+
+Use this to verify:
+• Chart visually shows the learning journey
+• Color transitions are smooth and readable
+• Motivational message correctly detects improvement`,
+    skillHistory: [
+      // Mix that should show progression when computed at each session point
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 35 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 32 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 28 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 25 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'developing', problems: 18 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'developing', problems: 15 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'weak', problems: 10 },
+    ],
+  },
 ]
 
 // =============================================================================
@@ -1916,105 +2124,191 @@ async function createTestStudent(
     }
   }
 
-  // Group skills by age (days ago) to create separate sessions
-  const skillsByAge = new Map<number, SkillConfig[]>()
-  for (const config of effectiveSkillHistory) {
-    const age = config.ageDays ?? 1 // Default to 1 day ago
-    const existing = skillsByAge.get(age) ?? []
-    existing.push(config)
-    skillsByAge.set(age, existing)
+  // ==========================================================================
+  // MULTI-SESSION DISTRIBUTION
+  // ==========================================================================
+  // We need to balance two requirements:
+  // 1. Honor explicit `ageDays` for staleness testing profiles
+  // 2. Create multiple sessions for chart testing profiles
+  //
+  // Strategy:
+  // - Group skills by their ageDays to preserve staleness intentions
+  // - Within each age group, distribute problems across multiple mini-sessions
+  // - This ensures skills practiced "45 days ago" actually have their last
+  //   problem 45 days ago, while still creating enough sessions for the chart
+  // ==========================================================================
+
+  const minSessions = profile.minSessions ?? 5
+  const sessionSpreadDays = profile.sessionSpreadDays ?? 30
+
+  // Group problems by their skill's ageDays (for staleness preservation)
+  interface ProblemWithMeta {
+    result: SlotResult
+    skillId: string
+    skillAgeDays: number
   }
 
-  // Create a session for each age group
-  for (const [ageDays, skills] of skillsByAge) {
-    const sessionStartTime = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000)
-    const allResults: SlotResult[] = []
-    let currentIndex = 0
+  const problemsByAge = new Map<number, ProblemWithMeta[]>()
+  for (const config of effectiveSkillHistory) {
+    const ageDays = config.ageDays ?? 1
+    const sessionStartTime = new Date() // Placeholder, will be updated per-session
+    const results = generateSlotResults(config, 0, sessionStartTime)
 
-    for (const config of skills) {
-      const results = generateSlotResults(config, currentIndex, sessionStartTime)
-      allResults.push(...results)
-      currentIndex += config.problems
+    const existing = problemsByAge.get(ageDays) ?? []
+    for (const result of results) {
+      existing.push({
+        result,
+        skillId: config.skillId,
+        skillAgeDays: ageDays,
+      })
     }
+    problemsByAge.set(ageDays, existing)
+  }
 
-    // IMPORTANT: Do NOT shuffle results - we need to preserve the designed sequence order
-    // for predictable BKT outcomes. The order of correct/incorrect matters significantly
-    // because BKT applies learning transitions only after correct answers.
-    const orderedResults = allResults.map((r, i) => ({
-      ...r,
-      slotIndex: i,
-      timestamp: new Date(sessionStartTime.getTime() + i * 10000),
-    }))
+  // Count total problems
+  let totalProblems = 0
+  for (const problems of problemsByAge.values()) {
+    totalProblems += problems.length
+  }
 
-    // Create session
-    const sessionId = createId()
-    const sessionEndTime = new Date(sessionStartTime.getTime() + orderedResults.length * 10000)
+  // If no problems, skip session creation
+  if (totalProblems === 0) {
+    // No sessions to create - empty history
+  } else {
+    // Determine the actual spread: use explicit sessionSpreadDays or the max ageDays
+    const maxAgeDays = Math.max(...Array.from(problemsByAge.keys()))
+    const actualSpreadDays = Math.max(sessionSpreadDays, maxAgeDays)
 
-    const slots = orderedResults.map((r, i) => ({
-      index: i,
-      purpose: 'focus' as const,
-      constraints: {},
-      problem: r.problem,
-    }))
+    // Calculate target sessions per age group
+    // We want at least minSessions total, distributed proportionally
+    const ageGroups = Array.from(problemsByAge.keys()).sort((a, b) => b - a) // oldest first
+    const totalAgeGroups = ageGroups.length
 
-    const parts: SessionPart[] = [
-      {
-        partNumber: 1,
-        type: 'linear',
-        format: 'linear',
-        useAbacus: false,
-        slots,
-        estimatedMinutes: 30,
-      },
-    ]
+    // Minimum sessions per age group (at least 1, more if we have many problems)
+    const baseSessionsPerGroup = Math.max(1, Math.floor(minSessions / totalAgeGroups))
 
-    const summary: SessionSummary = {
-      focusDescription: `Test session for ${profile.name} (${ageDays} days ago)`,
-      totalProblemCount: orderedResults.length,
-      estimatedMinutes: 30,
-      parts: [
-        {
-          partNumber: 1,
-          type: 'linear',
-          description: 'Mental Math (Linear)',
-          problemCount: orderedResults.length,
+    // Track all sessions we create for final count
+    let sessionNumber = 0
+
+    for (const ageDays of ageGroups) {
+      const groupProblems = problemsByAge.get(ageDays)!
+
+      // Determine how many sessions for this age group
+      // More problems = more sessions, but at least baseSessionsPerGroup
+      const problemsPerSession = Math.max(3, Math.ceil(groupProblems.length / baseSessionsPerGroup))
+      const sessionsForGroup = Math.max(
+        baseSessionsPerGroup,
+        Math.ceil(groupProblems.length / problemsPerSession)
+      )
+
+      // Distribute sessions across a time window ending at ageDays
+      // If ageDays is 45, sessions might be at 49, 48, 47, 46, 45 days ago
+      // This preserves staleness (most recent at ageDays) while creating multiple sessions
+      // IMPORTANT: First problems go to OLDEST sessions so BKT sees them first
+      let problemIndex = 0
+      for (let i = 0; i < sessionsForGroup; i++) {
+        // Calculate session date: FIRST problems go to OLDEST session
+        // so that BKT (which processes chronologically) sees the learning sequence correctly
+        const sessionAgeDays = ageDays + (sessionsForGroup - 1 - i)
+        const sessionStartTime = new Date(Date.now() - sessionAgeDays * 24 * 60 * 60 * 1000)
+
+        // Calculate how many problems in this session
+        const remainingProblems = groupProblems.length - problemIndex
+        const remainingSessions = sessionsForGroup - i
+        const isLastSession = i === sessionsForGroup - 1
+        const problemsThisSession = isLastSession
+          ? remainingProblems
+          : Math.ceil(remainingProblems / remainingSessions)
+
+        if (problemsThisSession === 0) continue
+
+        // Get problems for this session
+        const sessionProblems = groupProblems.slice(
+          problemIndex,
+          problemIndex + problemsThisSession
+        )
+        problemIndex += problemsThisSession
+        sessionNumber++
+
+        // Update timestamps
+        const orderedResults: SlotResult[] = sessionProblems.map((p, idx) => ({
+          ...p.result,
+          slotIndex: idx,
+          timestamp: new Date(sessionStartTime.getTime() + idx * 10000),
+        }))
+
+        // Create session
+        const sessionId = createId()
+        const sessionEndTime = new Date(sessionStartTime.getTime() + orderedResults.length * 10000)
+
+        const slots = orderedResults.map((r, idx) => ({
+          index: idx,
+          purpose: 'focus' as const,
+          constraints: {},
+          problem: r.problem,
+        }))
+
+        const parts: SessionPart[] = [
+          {
+            partNumber: 1,
+            type: 'linear',
+            format: 'linear',
+            useAbacus: false,
+            slots,
+            estimatedMinutes: 30,
+          },
+        ]
+
+        const summary: SessionSummary = {
+          focusDescription: `Test session ${sessionNumber} for ${profile.name} (${sessionAgeDays} days ago)`,
+          totalProblemCount: orderedResults.length,
           estimatedMinutes: 30,
-        },
-      ],
-    }
+          parts: [
+            {
+              partNumber: 1,
+              type: 'linear',
+              description: 'Mental Math (Linear)',
+              problemCount: orderedResults.length,
+              estimatedMinutes: 30,
+            },
+          ],
+        }
 
-    await db.insert(schema.sessionPlans).values({
-      id: sessionId,
-      playerId,
-      targetDurationMinutes: 30,
-      estimatedProblemCount: orderedResults.length,
-      avgTimePerProblemSeconds: 5,
-      parts,
-      summary,
-      masteredSkillIds: profile.practicingSkills,
-      status: 'completed',
-      currentPartIndex: 1,
-      currentSlotIndex: 0,
-      sessionHealth: {
-        overall: 'good',
-        accuracy: 0.6,
-        pacePercent: 100,
-        currentStreak: 0,
-        avgResponseTimeMs: 5000,
-      },
-      adjustments: [],
-      results: orderedResults,
-      createdAt: sessionStartTime,
-      approvedAt: sessionStartTime,
-      startedAt: sessionStartTime,
-      completedAt: sessionEndTime,
-    })
+        await db.insert(schema.sessionPlans).values({
+          id: sessionId,
+          playerId,
+          targetDurationMinutes: 30,
+          estimatedProblemCount: orderedResults.length,
+          avgTimePerProblemSeconds: 5,
+          parts,
+          summary,
+          masteredSkillIds: profile.practicingSkills,
+          status: 'completed',
+          currentPartIndex: 1,
+          currentSlotIndex: 0,
+          sessionHealth: {
+            overall: 'good',
+            accuracy: 0.6,
+            pacePercent: 100,
+            currentStreak: 0,
+            avgResponseTimeMs: 5000,
+          },
+          adjustments: [],
+          results: orderedResults,
+          createdAt: sessionStartTime,
+          approvedAt: sessionStartTime,
+          startedAt: sessionStartTime,
+          completedAt: sessionEndTime,
+        })
+      }
+    }
   }
 
   // Compute BKT classifications from the generated data
   // Note: Skill stats (attempts/correct) are computed on-the-fly from session results
   // so we don't need to update playerSkillMastery aggregate columns
-  const problemHistory = await getRecentSessionResults(playerId, 200)
+  // Use a high limit to ensure BKT includes all problems for high-volume test profiles
+  const problemHistory = await getRecentSessionResults(playerId, 5000)
   const bktResult = computeBktFromHistory(problemHistory, {
     confidenceThreshold: BKT_THRESHOLDS.confidence,
   })

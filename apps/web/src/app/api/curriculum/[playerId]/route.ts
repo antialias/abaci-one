@@ -32,8 +32,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const [curriculum, rawSkills, recentSessions, sessionResults] = await Promise.all([
       getPlayerCurriculum(playerId),
       getAllSkillMastery(playerId),
-      getRecentSessions(playerId, 10),
-      getRecentSessionResults(playerId, 100),
+      getRecentSessions(playerId, 200),
+      getRecentSessionResults(playerId, 2000),
     ])
 
     // Compute skill stats from session results (single source of truth)
