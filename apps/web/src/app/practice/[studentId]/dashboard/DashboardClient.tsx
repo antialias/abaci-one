@@ -11,13 +11,13 @@ import {
   PracticeSubNav,
   ProgressDashboard,
   type SkillClassification,
-  type SkillDistribution,
   type SkillHealthSummary,
   SkillProgressChart,
   StartPracticeModal,
   type StudentWithProgress,
   VirtualizedSessionList,
 } from '@/components/practice'
+import { getExtendedClassification, type SkillDistribution } from '@/contexts/BktContext'
 import { ContentBannerSlot, ProjectingBanner } from '@/components/practice/BannerSlots'
 import {
   SessionModeBannerProvider,
@@ -220,18 +220,43 @@ function getPhaseInfo(phaseId: string): CurrentPhaseInfo {
   }
 }
 
+/** Skill data needed for computing health summary */
+interface SkillForHealthSummary {
+  bktClassification: string | null
+  stalenessWarning: string | null
+}
+
 /**
- * Compute skill health summary from session mode and BKT results
+ * Compute skill health summary from session mode and BKT results.
+ * Uses the shared getExtendedClassification for 5-category classification.
  */
 function computeSkillHealthSummary(
   sessionMode: SessionMode,
-  practicingSkills: { bktClassification: string | null }[]
+  practicingSkills: SkillForHealthSummary[]
 ): SkillHealthSummary {
-  // Count skills by BKT classification
+  // Count skills by extended 5-category classification
+  const distribution: SkillDistribution = {
+    strong: 0,
+    stale: 0,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: practicingSkills.length,
+  }
+
+  for (const skill of practicingSkills) {
+    const extClass = getExtendedClassification(
+      skill.bktClassification as 'strong' | 'developing' | 'weak' | null,
+      skill.stalenessWarning
+    )
+    distribution[extClass]++
+  }
+
+  // Legacy counts (deprecated, for backwards compatibility)
   const counts = {
-    strong: practicingSkills.filter((s) => s.bktClassification === 'strong').length,
-    developing: practicingSkills.filter((s) => s.bktClassification === 'developing').length,
-    weak: practicingSkills.filter((s) => s.bktClassification === 'weak').length,
+    strong: distribution.strong + distribution.stale, // Legacy: stale was part of strong
+    developing: distribution.developing,
+    weak: distribution.weak,
     total: practicingSkills.length,
   }
 
@@ -240,6 +265,7 @@ function computeSkillHealthSummary(
       const weakest = sessionMode.weakSkills[0]
       return {
         mode: 'remediation',
+        distribution,
         counts,
         context: {
           headline: 'Strengthening Skills',
@@ -254,6 +280,7 @@ function computeSkillHealthSummary(
     case 'progression': {
       return {
         mode: 'progression',
+        distribution,
         counts,
         context: {
           headline: `Learning: ${sessionMode.nextSkill.displayName}`,
@@ -269,6 +296,7 @@ function computeSkillHealthSummary(
     case 'maintenance': {
       return {
         mode: 'maintenance',
+        distribution,
         counts,
         context: {
           headline: 'Great progress!',

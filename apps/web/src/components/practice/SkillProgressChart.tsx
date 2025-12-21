@@ -2,6 +2,11 @@
 
 import ReactECharts from 'echarts-for-react'
 import { useCallback, useMemo, useState } from 'react'
+import {
+  getExtendedClassification,
+  type ExtendedSkillClassification,
+  type SkillDistribution,
+} from '@/contexts/BktContext'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import {
   type BktComputeOptions,
@@ -26,19 +31,14 @@ interface TimeWindowPreset {
 }
 
 // ============================================================================
-// Types
+// Types (re-exported from BktContext for convenience)
 // ============================================================================
 
-export type SkillClassification = 'strong' | 'stale' | 'developing' | 'weak' | 'unassessed'
+/** @deprecated Use ExtendedSkillClassification from BktContext */
+export type SkillClassification = ExtendedSkillClassification
 
-export interface SkillDistribution {
-  strong: number
-  stale: number
-  developing: number
-  weak: number
-  unassessed: number
-  total: number
-}
+// Re-export SkillDistribution for backwards compatibility
+export type { SkillDistribution } from '@/contexts/BktContext'
 
 interface SessionSnapshot {
   sessionId: string
@@ -1385,12 +1385,15 @@ export function SkillProgressChart({
   )
 }
 
-// Export helper for use in parent component
+/**
+ * Get the 5-category skill classification from BKT classification and staleness.
+ * Delegates to the shared getExtendedClassification from BktContext.
+ *
+ * @deprecated Import getExtendedClassification directly from @/contexts/BktContext
+ */
 export function getSkillClassification(
   bktClassification: 'strong' | 'developing' | 'weak' | null,
   stalenessWarning: string | null
 ): SkillClassification {
-  if (bktClassification === null) return 'unassessed'
-  if (bktClassification === 'strong' && stalenessWarning) return 'stale'
-  return bktClassification
+  return getExtendedClassification(bktClassification, stalenessWarning)
 }

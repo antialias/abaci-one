@@ -79,6 +79,14 @@ const advancedPhase: CurrentPhaseInfo = {
 
 const remediationHealth: SkillHealthSummary = {
   mode: 'remediation',
+  distribution: {
+    strong: 1,
+    stale: 1,
+    developing: 1,
+    weak: 2,
+    unassessed: 0,
+    total: 5,
+  },
   counts: {
     strong: 2,
     developing: 1,
@@ -97,6 +105,14 @@ const remediationHealth: SkillHealthSummary = {
 
 const progressionTutorialHealth: SkillHealthSummary = {
   mode: 'progression',
+  distribution: {
+    strong: 3,
+    stale: 1,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: 4,
+  },
   counts: {
     strong: 4,
     developing: 0,
@@ -115,6 +131,14 @@ const progressionTutorialHealth: SkillHealthSummary = {
 
 const progressionReadyHealth: SkillHealthSummary = {
   mode: 'progression',
+  distribution: {
+    strong: 4,
+    stale: 0,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: 4,
+  },
   counts: {
     strong: 4,
     developing: 0,
@@ -133,6 +157,14 @@ const progressionReadyHealth: SkillHealthSummary = {
 
 const maintenanceHealth: SkillHealthSummary = {
   mode: 'maintenance',
+  distribution: {
+    strong: 5,
+    stale: 2,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: 7,
+  },
   counts: {
     strong: 7,
     developing: 0,
@@ -147,6 +179,14 @@ const maintenanceHealth: SkillHealthSummary = {
 
 const mixedDevelopingHealth: SkillHealthSummary = {
   mode: 'maintenance',
+  distribution: {
+    strong: 1,
+    stale: 1,
+    developing: 4,
+    weak: 1,
+    unassessed: 0,
+    total: 7,
+  },
   counts: {
     strong: 2,
     developing: 4,

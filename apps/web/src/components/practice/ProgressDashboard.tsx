@@ -1,5 +1,6 @@
 'use client'
 
+import type { ExtendedSkillClassification, SkillDistribution } from '@/contexts/BktContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 import type { StudentWithProgress } from './StudentSelector'
@@ -23,12 +24,18 @@ export interface CurrentPhaseInfo {
 
 /**
  * BKT-based skill health summary for dashboard display
+ * Now uses SkillDistribution for full 5-category support
  */
 export interface SkillHealthSummary {
   /** Session mode type for visual treatment */
   mode: 'remediation' | 'progression' | 'maintenance'
 
-  /** Skill counts by BKT classification */
+  /** Full 5-category skill distribution */
+  distribution: SkillDistribution
+
+  /**
+   * @deprecated Use distribution instead - kept for backwards compatibility
+   */
   counts: {
     strong: number // pKnown >= 0.8
     developing: number // 0.5 <= pKnown < 0.8
@@ -50,6 +57,256 @@ export interface SkillHealthSummary {
   /** For progression: next skill to learn */
   nextSkill?: { displayName: string; tutorialRequired: boolean }
 }
+
+// ============================================================================
+// Category Configuration (matches SkillProgressChart)
+// ============================================================================
+
+const CLASSIFICATION_CONFIG: Record<
+  ExtendedSkillClassification,
+  {
+    label: string
+    emoji: string
+    color: string
+    bgColor: { light: string; dark: string }
+    textColor: { light: string; dark: string }
+    hasPattern?: boolean
+    descriptor?: string
+  }
+> = {
+  strong: {
+    label: 'Strong',
+    emoji: '🟢',
+    color: '#22c55e',
+    bgColor: { light: 'green.100', dark: 'green.900' },
+    textColor: { light: 'green.700', dark: 'green.300' },
+  },
+  stale: {
+    label: 'Stale',
+    emoji: '🌿',
+    color: '#84cc16',
+    bgColor: { light: 'lime.100', dark: 'lime.900/50' },
+    textColor: { light: 'lime.700', dark: 'lime.400' },
+    hasPattern: true,
+    descriptor: '7+ days ago',
+  },
+  developing: {
+    label: 'Developing',
+    emoji: '🔵',
+    color: '#3b82f6',
+    bgColor: { light: 'blue.100', dark: 'blue.900' },
+    textColor: { light: 'blue.700', dark: 'blue.300' },
+  },
+  weak: {
+    label: 'Weak',
+    emoji: '🔴',
+    color: '#f87171',
+    bgColor: { light: 'red.100', dark: 'red.900/50' },
+    textColor: { light: 'red.700', dark: 'red.400' },
+    hasPattern: true,
+  },
+  unassessed: {
+    label: 'Unassessed',
+    emoji: '⚪',
+    color: 'transparent',
+    bgColor: { light: 'gray.100', dark: 'gray.800' },
+    textColor: { light: 'gray.500', dark: 'gray.500' },
+  },
+}
+
+// ============================================================================
+// Skill Distribution Display Component
+// ============================================================================
+
+interface SkillDistributionDisplayProps {
+  distribution: SkillDistribution
+  isDark: boolean
+}
+
+/**
+ * Displays skill distribution with visual hierarchy matching SkillProgressChart.
+ * Groups categories: MASTERED (Strong, Stale), IN PROGRESS (Developing, Weak), NOT STARTED (Unassessed)
+ */
+function SkillDistributionDisplay({ distribution, isDark }: SkillDistributionDisplayProps) {
+  // Helper to generate stripe pattern for stale/weak categories
+  const getStripePattern = (baseColor: string) => {
+    const stripeColor = isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.4)'
+    return `repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 3px,
+      ${stripeColor} 3px,
+      ${stripeColor} 5px
+    ), ${baseColor}`
+  }
+
+  // Render a category badge
+  const renderBadge = (
+    category: ExtendedSkillClassification,
+    count: number,
+    showIfZero = false
+  ) => {
+    if (count === 0 && !showIfZero) return null
+    const config = CLASSIFICATION_CONFIG[category]
+    const bgColor = isDark ? config.bgColor.dark : config.bgColor.light
+    const textColor = isDark ? config.textColor.dark : config.textColor.light
+
+    return (
+      <span
+        key={category}
+        data-skill-status={category}
+        data-count={count}
+        className={css({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          fontSize: '0.75rem',
+          fontWeight: '500',
+          color: textColor,
+          backgroundColor: config.hasPattern ? undefined : bgColor,
+          padding: '0.25rem 0.5rem',
+          borderRadius: '6px',
+          position: 'relative',
+          overflow: 'hidden',
+        })}
+        style={
+          config.hasPattern
+            ? {
+                background: getStripePattern(
+                  `color-mix(in srgb, ${config.color} ${isDark ? '30%' : '20%'}, transparent)`
+                ),
+              }
+            : undefined
+        }
+      >
+        <span>{config.emoji}</span>
+        <span>
+          {count} {config.label}
+        </span>
+      </span>
+    )
+  }
+
+  // Check if we have any data in each group
+  const hasMastered = distribution.strong > 0 || distribution.stale > 0
+  const hasInProgress = distribution.developing > 0 || distribution.weak > 0
+  const hasUnassessed = distribution.unassessed > 0
+
+  // If no practicing skills at all, show a simple message
+  if (distribution.total === 0) {
+    return (
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: isDark ? 'gray.500' : 'gray.400',
+          marginBottom: '1rem',
+          textAlign: 'center',
+        })}
+      >
+        No skills being practiced yet
+      </p>
+    )
+  }
+
+  return (
+    <div
+      data-component="skill-distribution-display"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.75rem',
+        marginBottom: '1rem',
+      })}
+    >
+      {/* Mastered group */}
+      {hasMastered && (
+        <div
+          data-group="mastered"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.375rem',
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: isDark ? 'gray.500' : 'gray.400',
+            })}
+          >
+            Mastered
+          </span>
+          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+            {renderBadge('strong', distribution.strong)}
+            {renderBadge('stale', distribution.stale)}
+          </div>
+        </div>
+      )}
+
+      {/* In Progress group */}
+      {hasInProgress && (
+        <div
+          data-group="in-progress"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.375rem',
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: isDark ? 'gray.500' : 'gray.400',
+            })}
+          >
+            In Progress
+          </span>
+          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+            {renderBadge('developing', distribution.developing)}
+            {renderBadge('weak', distribution.weak)}
+          </div>
+        </div>
+      )}
+
+      {/* Not Started group */}
+      {hasUnassessed && (
+        <div
+          data-group="not-started"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.375rem',
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: isDark ? 'gray.500' : 'gray.400',
+            })}
+          >
+            Not Started
+          </span>
+          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+            {renderBadge('unassessed', distribution.unassessed)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Progress Dashboard Component
+// ============================================================================
 
 interface ProgressDashboardProps {
   student: StudentWithProgress
@@ -233,70 +490,8 @@ export function ProgressDashboard({
               </div>
             </div>
 
-            {/* Skill counts badges */}
-            <div
-              className={css({
-                display: 'flex',
-                gap: '0.75rem',
-                marginBottom: '1rem',
-                flexWrap: 'wrap',
-              })}
-            >
-              {skillHealth.counts.strong > 0 && (
-                <span
-                  data-skill-status="strong"
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: '500',
-                    color: isDark ? 'green.300' : 'green.700',
-                    backgroundColor: isDark ? 'green.900' : 'green.100',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '9999px',
-                  })}
-                >
-                  ✓ {skillHealth.counts.strong} Strong
-                </span>
-              )}
-              {skillHealth.counts.developing > 0 && (
-                <span
-                  data-skill-status="developing"
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: '500',
-                    color: isDark ? 'blue.300' : 'blue.700',
-                    backgroundColor: isDark ? 'blue.900' : 'blue.100',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '9999px',
-                  })}
-                >
-                  📚 {skillHealth.counts.developing} Developing
-                </span>
-              )}
-              {skillHealth.counts.weak > 0 && (
-                <span
-                  data-skill-status="weak"
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: '500',
-                    color: isDark ? 'orange.300' : 'orange.700',
-                    backgroundColor: isDark ? 'orange.900' : 'orange.100',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '9999px',
-                  })}
-                >
-                  ⚠ {skillHealth.counts.weak} Weak
-                </span>
-              )}
-            </div>
+            {/* Skill distribution - grouped by mastery level */}
+            <SkillDistributionDisplay distribution={skillHealth.distribution} isDark={isDark} />
 
             {/* Progress bar (mode-specific) */}
             <div

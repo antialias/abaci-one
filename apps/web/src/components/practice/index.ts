@@ -42,7 +42,12 @@ export type { SessionProgressIndicatorProps } from './SessionProgressIndicator'
 export { SessionProgressIndicator } from './SessionProgressIndicator'
 export { SessionSummary } from './SessionSummary'
 export { SkillPerformanceReports } from './SkillPerformanceReports'
-export type { SkillClassification, SkillDistribution } from './SkillProgressChart'
+// Re-export shared types from BktContext for convenience
+export type {
+  ExtendedSkillClassification as SkillClassification,
+  SkillDistribution,
+} from '@/contexts/BktContext'
+// Re-export classification function (uses shared getExtendedClassification internally)
 export { getSkillClassification, SkillProgressChart } from './SkillProgressChart'
 export type { SpeedMeterProps } from './SpeedMeter'
 export { SpeedMeter } from './SpeedMeter'
