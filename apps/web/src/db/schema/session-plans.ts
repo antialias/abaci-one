@@ -214,13 +214,14 @@ export interface SessionAdjustment {
 }
 
 /**
- * Help level used during a problem
+ * Help level used during a problem (boolean)
  * - 0: No help requested
- * - 1: Coach hint only (e.g., "Add the tens digit first")
- * - 2: Decomposition shown (e.g., "45 + 27 = 45 + 20 + 7")
- * - 3: Bead highlighting (arrows showing which beads to move)
+ * - 1: Help was used (interactive abacus overlay shown)
+ *
+ * Note: The system previously defined levels 0-3, but only 0/1 are ever recorded.
+ * BKT uses conjunctive blame attribution to identify weak skills.
  */
-export type HelpLevel = 0 | 1 | 2 | 3
+export type HelpLevel = 0 | 1
 
 /**
  * Result of a single problem slot

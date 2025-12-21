@@ -18,12 +18,8 @@ export interface SkillProgress {
   attempts: number
   correct: number
   consecutiveCorrect: number
-  /** Whether this skill needs reinforcement (used heavy help recently) */
-  needsReinforcement?: boolean
-  /** Last help level used on this skill (0-3) */
+  /** Last help level used on this skill (0 or 1) */
   lastHelpLevel?: number
-  /** Progress toward clearing reinforcement (0-3) */
-  reinforcementStreak?: number
 }
 
 /**
@@ -76,14 +72,8 @@ interface ProgressDashboardProps {
   currentPhase?: CurrentPhaseInfo
   /** BKT-based skill health summary */
   skillHealth?: SkillHealthSummary
-  /** Skills that need extra practice (used heavy help recently) */
-  focusAreas?: SkillProgress[]
   /** Callback when no active session - start new practice */
   onStartPractice: () => void
-  /** Callback to clear reinforcement for a skill (teacher only) */
-  onClearReinforcement?: (skillId: string) => void
-  /** Callback to clear all reinforcement flags (teacher only) */
-  onClearAllReinforcement?: () => void
 }
 
 // Helper: Compute progress percent based on mode
@@ -150,10 +140,7 @@ export function ProgressDashboard({
   student,
   currentPhase,
   skillHealth,
-  focusAreas = [],
   onStartPractice,
-  onClearReinforcement,
-  onClearAllReinforcement,
 }: ProgressDashboardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -425,146 +412,6 @@ export function ProgressDashboard({
           </p>
         )}
       </div>
-
-      {/* Focus Areas - Skills needing extra practice */}
-      {focusAreas.length > 0 && (
-        <div
-          data-section="focus-areas"
-          className={css({
-            width: '100%',
-            padding: '1rem',
-            backgroundColor: isDark ? 'orange.900' : 'orange.50',
-            borderRadius: '12px',
-            border: '1px solid',
-            borderColor: isDark ? 'orange.700' : 'orange.200',
-          })}
-        >
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '0.75rem',
-            })}
-          >
-            <h3
-              className={css({
-                fontSize: '0.875rem',
-                fontWeight: 'bold',
-                color: isDark ? 'orange.200' : 'orange.700',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              })}
-            >
-              <span>🎯</span>
-              Focus Areas
-            </h3>
-            {onClearAllReinforcement && focusAreas.length > 1 && (
-              <button
-                type="button"
-                data-action="clear-all-reinforcement"
-                onClick={onClearAllReinforcement}
-                className={css({
-                  fontSize: '0.75rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  _hover: {
-                    color: isDark ? 'gray.200' : 'gray.700',
-                    textDecoration: 'underline',
-                  },
-                })}
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-          <p
-            className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'orange.300' : 'orange.600',
-              marginBottom: '0.75rem',
-            })}
-          >
-            These skills need extra practice:
-          </p>
-          <div
-            className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-            })}
-          >
-            {focusAreas.map((skill) => (
-              <div
-                key={skill.skillId}
-                className={css({
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'orange.800' : 'orange.100',
-                })}
-              >
-                <div
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  })}
-                >
-                  <span
-                    className={css({
-                      fontSize: '0.875rem',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                      fontWeight: 'medium',
-                    })}
-                  >
-                    {skill.skillName}
-                  </span>
-                  {skill.reinforcementStreak !== undefined && skill.reinforcementStreak > 0 && (
-                    <span
-                      className={css({
-                        fontSize: '0.75rem',
-                        color: isDark ? 'green.400' : 'green.600',
-                      })}
-                      title={`${skill.reinforcementStreak} correct answers toward clearing`}
-                    >
-                      ({skill.reinforcementStreak}/3)
-                    </span>
-                  )}
-                </div>
-                {onClearReinforcement && (
-                  <button
-                    type="button"
-                    data-action="clear-reinforcement"
-                    onClick={() => onClearReinforcement(skill.skillId)}
-                    className={css({
-                      fontSize: '0.75rem',
-                      color: isDark ? 'gray.500' : 'gray.400',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '0.25rem',
-                      _hover: {
-                        color: isDark ? 'gray.300' : 'gray.600',
-                      },
-                    })}
-                    title="Mark as mastered (teacher only)"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

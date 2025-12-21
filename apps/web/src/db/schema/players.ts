@@ -4,7 +4,7 @@ import { users } from './users'
 
 /**
  * Help mode for practice sessions
- * - 'auto': Help automatically appears after time thresholds
+ * - 'auto': Help automatically appears after timeout
  * - 'manual': Help only appears when student clicks for it
  * - 'teacher-approved': Student can request help, but teacher must approve
  */
@@ -12,22 +12,18 @@ export type HelpMode = 'auto' | 'manual' | 'teacher-approved'
 
 /**
  * Settings that control help behavior during practice sessions
+ *
+ * Note: Help is now boolean (used or not used). BKT uses 0.5x evidence weight
+ * for problems where help was used.
  */
 export interface StudentHelpSettings {
   /** How help is triggered */
   helpMode: HelpMode
 
-  /** For 'auto' mode: milliseconds before each help level appears */
-  autoEscalationTimingMs: {
-    level1: number // Default: 30000 (30s)
-    level2: number // Default: 60000 (60s)
-    level3: number // Default: 90000 (90s)
-  }
-
-  /** For beginners: unlimited L1-L2 help without mastery penalty */
+  /** For beginners: help doesn't count against mastery */
   beginnerFreeHelp: boolean
 
-  /** For advanced: L2+ help requires teacher approval */
+  /** For advanced students: help requires teacher approval */
   advancedRequiresApproval: boolean
 }
 
@@ -36,11 +32,6 @@ export interface StudentHelpSettings {
  */
 export const DEFAULT_HELP_SETTINGS: StudentHelpSettings = {
   helpMode: 'auto',
-  autoEscalationTimingMs: {
-    level1: 30000,
-    level2: 60000,
-    level3: 90000,
-  },
   beginnerFreeHelp: true,
   advancedRequiresApproval: false,
 }

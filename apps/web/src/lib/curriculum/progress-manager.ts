@@ -7,7 +7,6 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { REINFORCEMENT_CONFIG } from '@/lib/curriculum/config'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { HelpLevel } from '@/db/schema/session-plans'
 import {
@@ -264,58 +263,30 @@ export async function recordSkillAttempt(
 /**
  * Record a skill attempt with help level tracking
  *
- * Reinforcement logic:
- * - If help level >= threshold, mark skill as needing reinforcement
- * - If correct answer without heavy help, increment reinforcement streak
- * - After N consecutive correct answers, clear reinforcement flag
+ * Updates the lastPracticedAt timestamp and tracks whether help was used.
+ * BKT handles mastery estimation via evidence weighting (helped answers get 0.5x weight).
  *
- * NOTE: Attempt/correct statistics and response times are now computed on-the-fly
- * from session results. This function only updates metadata and reinforcement tracking.
+ * NOTE: The old reinforcement system (based on help levels 2+) has been removed.
+ * Only boolean help (0 or 1) is recorded. BKT's conjunctive blame attribution
+ * identifies weak skills from multi-skill problems.
  */
 export async function recordSkillAttemptWithHelp(
   playerId: string,
   skillId: string,
-  isCorrect: boolean,
+  _isCorrect: boolean,
   helpLevel: HelpLevel,
   _responseTimeMs?: number
 ): Promise<PlayerSkillMastery> {
   const existing = await getSkillMastery(playerId, skillId)
   const now = new Date()
 
-  // Determine if this help level triggers reinforcement tracking
-  const isHeavyHelp = helpLevel >= REINFORCEMENT_CONFIG.helpLevelThreshold
-
   if (existing) {
-    // Reinforcement tracking
-    let needsReinforcement = existing.needsReinforcement
-    let reinforcementStreak = existing.reinforcementStreak
-
-    if (isHeavyHelp) {
-      // Heavy help triggers reinforcement flag
-      needsReinforcement = true
-      reinforcementStreak = 0
-    } else if (isCorrect && existing.needsReinforcement) {
-      // Correct answer without heavy help - increment streak toward clearing
-      reinforcementStreak = existing.reinforcementStreak + 1
-
-      // Clear reinforcement if streak reaches threshold
-      if (reinforcementStreak >= REINFORCEMENT_CONFIG.streakToClear) {
-        needsReinforcement = false
-        reinforcementStreak = 0
-      }
-    } else if (!isCorrect) {
-      // Incorrect answer resets reinforcement streak
-      reinforcementStreak = 0
-    }
-
     await db
       .update(schema.playerSkillMastery)
       .set({
         lastPracticedAt: now,
         updatedAt: now,
-        needsReinforcement,
         lastHelpLevel: helpLevel,
-        reinforcementStreak,
       })
       .where(eq(schema.playerSkillMastery.id, existing.id))
 
@@ -328,9 +299,7 @@ export async function recordSkillAttemptWithHelp(
     skillId,
     isPracticing: true, // skill is being practiced
     lastPracticedAt: now,
-    needsReinforcement: isHeavyHelp,
     lastHelpLevel: helpLevel,
-    reinforcementStreak: 0,
   }
 
   await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -362,54 +331,6 @@ export async function recordSkillAttemptsWithHelp(
   }
 
   return results
-}
-
-/**
- * Get skills that need reinforcement for a player
- */
-export async function getSkillsNeedingReinforcement(
-  playerId: string
-): Promise<PlayerSkillMastery[]> {
-  return db.query.playerSkillMastery.findMany({
-    where: and(
-      eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.needsReinforcement, true)
-    ),
-    orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
-  })
-}
-
-/**
- * Clear reinforcement for a specific skill (teacher override)
- */
-export async function clearSkillReinforcement(playerId: string, skillId: string): Promise<void> {
-  await db
-    .update(schema.playerSkillMastery)
-    .set({
-      needsReinforcement: false,
-      reinforcementStreak: 0,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(schema.playerSkillMastery.playerId, playerId),
-        eq(schema.playerSkillMastery.skillId, skillId)
-      )
-    )
-}
-
-/**
- * Clear all reinforcement flags for a player (teacher override)
- */
-export async function clearAllReinforcement(playerId: string): Promise<void> {
-  await db
-    .update(schema.playerSkillMastery)
-    .set({
-      needsReinforcement: false,
-      reinforcementStreak: 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.playerSkillMastery.playerId, playerId))
 }
 
 /**
@@ -613,8 +534,6 @@ export interface SkillPerformanceAnalysis {
   slowSkills: SkillPerformance[]
   /** Skills with low accuracy that may need intervention */
   lowAccuracySkills: SkillPerformance[]
-  /** Skills needing reinforcement (from help system) */
-  reinforcementSkills: SkillPerformance[]
 }
 
 /**
@@ -729,18 +648,12 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
       s.accuracy < PERFORMANCE_THRESHOLDS.minAccuracyThreshold
   )
 
-  // Get skills needing reinforcement
-  const reinforcementRecords = await getSkillsNeedingReinforcement(playerId)
-  const reinforcementSkillIds = new Set(reinforcementRecords.map((r) => r.skillId))
-  const reinforcementSkills = skills.filter((s) => reinforcementSkillIds.has(s.skillId))
-
   return {
     skills,
     overallAvgResponseTimeMs,
     fastSkills,
     slowSkills,
     lowAccuracySkills,
-    reinforcementSkills,
   }
 }
 

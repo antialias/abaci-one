@@ -55,17 +55,17 @@ export interface StudentProfile {
   initialExposures: Record<string, number>
 
   /**
-   * Probability distribution for help level usage [none, hint, decomp, highlight]
+   * Probability of using help: [P(no help), P(help)]
    * Must sum to 1.0
+   * Example: [0.7, 0.3] means 70% no help, 30% uses help
    */
-  helpUsageProbabilities: [number, number, number, number]
+  helpUsageProbabilities: [number, number]
 
   /**
-   * Additive bonus to P(correct) per help level [none, hint, decomp, highlight]
-   * These are additive to the base probability, not multiplicative.
-   * Example: [0, 0.05, 0.12, 0.25] means full help adds 25% to success chance
+   * Additive bonus to P(correct) when help is used: [no help bonus, help bonus]
+   * Example: [0, 0.15] means using help adds 15% to success chance
    */
-  helpBonuses: [number, number, number, number]
+  helpBonuses: [number, number]
 
   /** Base response time in milliseconds */
   baseResponseTimeMs: number
@@ -114,7 +114,7 @@ export interface SimulatedAnswer {
   isCorrect: boolean
   /** Time taken to answer in milliseconds */
   responseTimeMs: number
-  /** Help level used (0 = none, 3 = full) */
+  /** Help level used (0 = no help, 1 = used help) */
   helpLevelUsed: HelpLevel
   /** Skills that were actually challenged by this problem */
   skillsChallenged: string[]

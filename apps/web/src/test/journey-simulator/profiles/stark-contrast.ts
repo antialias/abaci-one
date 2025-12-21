@@ -55,11 +55,11 @@ export const starkContrastProfile: StudentProfile = {
   initialExposures,
 
   // Uses less help to make weakness more apparent
-  // 70% no help, 20% hint, 8% decomp, 2% full
-  helpUsageProbabilities: [0.7, 0.2, 0.08, 0.02],
+  // 70% no help, 30% uses help
+  helpUsageProbabilities: [0.7, 0.3],
 
-  // Lower help bonuses (weakness is more visible)
-  helpBonuses: [0, 0.05, 0.12, 0.25],
+  // Help bonus: 12% additive when help is used
+  helpBonuses: [0, 0.12],
 
   // Average response time
   baseResponseTimeMs: 5000,

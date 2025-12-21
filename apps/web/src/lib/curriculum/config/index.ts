@@ -10,7 +10,6 @@
  * - slot-distribution.ts - Problem distribution across purposes and parts
  * - complexity-budgets.ts - Cognitive load budget system
  * - skill-costs.ts - Base skill complexity and rotation multipliers
- * - reinforcement-config.ts - Help system feedback loop rules
  * - bkt-integration.ts - Bayesian Knowledge Tracing integration
  */
 
@@ -48,12 +47,6 @@ export {
   getBaseComplexity,
   ROTATION_MULTIPLIERS,
 } from './skill-costs'
-
-// Reinforcement System (help feedback loop)
-export {
-  REINFORCEMENT_CONFIG,
-  type ReinforcementConfig,
-} from './reinforcement-config'
 
 // BKT Integration
 export {

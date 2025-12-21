@@ -159,14 +159,14 @@ function TutorialPlayer({ step, currentMultiStep }) {
 }
 ```
 
-### Practice Help Panel
+### With Help Mode
 
 ```typescript
 import { DecompositionProvider, DecompositionDisplay } from '@/components/decomposition'
 
-function PracticeHelpPanel({ currentValue, targetValue, helpLevel }) {
-  // Show decomposition at help level 2+
-  if (helpLevel < 2) return null
+function HelpOverlay({ currentValue, targetValue, showHelp }) {
+  // Show decomposition when help is requested
+  if (!showHelp) return null
 
   return (
     <DecompositionProvider

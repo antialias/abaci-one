@@ -24,8 +24,8 @@ function createTestProfile(overrides: Partial<StudentProfile> = {}): StudentProf
     halfMaxExposure: 10, // K = 10: 50% at 10 exposures
     hillCoefficient: 2, // n = 2: x² curve shape
     initialExposures: {},
-    helpUsageProbabilities: [1.0, 0, 0, 0], // Always no help for deterministic tests
-    helpBonuses: [0, 0.1, 0.2, 0.3],
+    helpUsageProbabilities: [1.0, 0], // Always no help for deterministic tests
+    helpBonuses: [0, 0],
     baseResponseTimeMs: 5000,
     responseTimeVariance: 0,
     ...overrides,
@@ -384,8 +384,8 @@ describe('SimulatedStudent Hill Function', () => {
     it('should clamp probability to valid range', () => {
       // Even with 0 skills and max help, probability shouldn't exceed 0.98
       const profile = createTestProfile({
-        helpUsageProbabilities: [0, 0, 0, 1.0], // Always max help
-        helpBonuses: [0, 0.1, 0.2, 0.5], // Large bonus
+        helpUsageProbabilities: [0, 1.0], // Always uses help
+        helpBonuses: [0, 0.5], // Large bonus
       })
       const student = new SimulatedStudent(profile, new SeededRandom(12345))
 

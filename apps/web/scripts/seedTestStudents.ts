@@ -57,7 +57,55 @@
  *   ⚖️ Multi-Weak Remediation - Many weak skills needing remediation
  *   🕰️ Stale Skills Test      - Skills at various staleness levels
  *   💥 NaN Stress Test        - Stress tests BKT NaN handling
+ *   🧊 Forgotten Weaknesses   - Weak skills that are also stale
  */
+
+import { parseArgs } from 'node:util'
+
+// =============================================================================
+// CLI Argument Parsing
+// =============================================================================
+
+const { values: cliArgs } = parseArgs({
+  options: {
+    help: { type: 'boolean', short: 'h', default: false },
+    list: { type: 'boolean', short: 'l', default: false },
+    name: { type: 'string', short: 'n', multiple: true, default: [] },
+    category: { type: 'string', short: 'c', multiple: true, default: [] },
+    'dry-run': { type: 'boolean', default: false },
+  },
+  strict: true,
+  allowPositionals: false,
+})
+
+function showHelp(): void {
+  console.log(`
+Usage:
+  npm run seed:test-students [options]
+
+Options:
+  --help, -h              Show this help message
+  --list, -l              List all available students and categories
+  --name, -n <name>       Seed specific student(s) by name (can use multiple times)
+  --category, -c <cat>    Seed all students in a category (can use multiple times)
+  --dry-run               Show what would be seeded without creating students
+
+Categories:
+  bkt          Core BKT scenarios (deficient, blocker, progressing, etc.)
+  session      Session mode tests (remediation, progression, maintenance)
+  edge         Edge cases (empty, single skill, high volume, NaN stress test)
+
+Examples:
+  npm run seed:test-students                     # Seed all students
+  npm run seed:test-students -- --list           # List available options
+  npm run seed:test-students -- -n "💥 NaN Stress Test"
+  npm run seed:test-students -- -c edge          # Seed all edge case students
+  npm run seed:test-students -- -c bkt -c session
+  npm run seed:test-students -- -n "🔴 Multi-Skill Deficient" -n "🟢 Progressing Nicely"
+`)
+}
+
+// Note: listProfiles is defined after TEST_PROFILES (below)
 
 import { createId } from '@paralleldrive/cuid2'
 import { desc, eq } from 'drizzle-orm'
@@ -1167,7 +1215,141 @@ Use this profile to verify:
       },
     ],
   },
+  {
+    name: '🧊 Forgotten Weaknesses',
+    emoji: '🧊',
+    color: '#3b82f6', // blue-500
+    category: 'edge',
+    description: 'EDGE CASE - Weak skills that are also stale (urgent remediation needed)',
+    currentPhaseId: 'L1.add.+2.five',
+    practicingSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+    ],
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+    ],
+    intentionNotes: `INTENTION: Forgotten Weaknesses
+
+This student has a realistic mix of weak and stale skills - NOT the same set.
+
+Session Mode: Should trigger REMEDIATION.
+
+Skill breakdown:
+• 1 skill STRONG + recent (healthy baseline)
+• 1 skill STRONG + stale 20 days (stale-only, should refresh easily)
+• 1 skill WEAK + recent (weak-only, actively struggling)
+• 1 skill WEAK + stale 14 days (overlap: weak AND stale)
+• 1 skill WEAK + stale 35 days (overlap: urgent forgotten weakness)
+• 1 skill DEVELOPING + stale 25 days (borderline, needs attention)
+
+This tests:
+• Different combinations of weak/stale indicators
+• UI distinguishing "stale but strong" from "stale AND weak"
+• Session planning prioritizing weak+stale over strong+stale
+• BKT decay effects on skills at different mastery levels
+
+Real-world scenario: Student has been practicing inconsistently. Some skills
+are rusty from neglect (stale), others they just can't get (weak), and some
+are both - the forgotten weaknesses that need urgent attention.`,
+    skillHistory: [
+      // STRONG + recent (healthy baseline)
+      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20, ageDays: 1 },
+      // STRONG + stale 20 days (stale-only - "Getting rusty" but should be fine)
+      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18, ageDays: 20 },
+      // WEAK + recent (weak-only - actively struggling with this)
+      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.28, problems: 15, ageDays: 2 },
+      // WEAK + stale 14 days (overlap: weak AND "Not practiced recently")
+      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.32, problems: 14, ageDays: 14 },
+      // WEAK + stale 35 days (overlap: urgent - weak AND "Very stale")
+      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.22, problems: 18, ageDays: 35 },
+      // DEVELOPING + stale 25 days (borderline - needs practice)
+      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.55, problems: 16, ageDays: 25 },
+    ],
+  },
 ]
+
+// =============================================================================
+// CLI Helper Functions
+// =============================================================================
+
+function listProfiles(): void {
+  console.log('\n📋 Available Test Students:\n')
+
+  const categories: Record<ProfileCategory, TestStudentProfile[]> = {
+    bkt: [],
+    session: [],
+    edge: [],
+  }
+
+  for (const profile of TEST_PROFILES) {
+    categories[profile.category].push(profile)
+  }
+
+  console.log('BKT Scenarios (--category bkt):')
+  for (const p of categories.bkt) {
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
+  }
+
+  console.log('\nSession Mode Tests (--category session):')
+  for (const p of categories.session) {
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
+  }
+
+  console.log('\nEdge Cases (--category edge):')
+  for (const p of categories.edge) {
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
+  }
+
+  console.log(`\nTotal: ${TEST_PROFILES.length} students\n`)
+}
+
+/**
+ * Filter profiles based on CLI args (name and category filters)
+ */
+function filterProfiles(profiles: TestStudentProfile[]): TestStudentProfile[] {
+  const names = cliArgs.name as string[]
+  const categories = cliArgs.category as string[]
+
+  // If no filters, return all
+  if (names.length === 0 && categories.length === 0) {
+    return profiles
+  }
+
+  return profiles.filter((profile) => {
+    // Check name filter (partial match, case-insensitive)
+    const matchesName =
+      names.length === 0 ||
+      names.some(
+        (n) =>
+          profile.name.toLowerCase().includes(n.toLowerCase()) ||
+          n.toLowerCase().includes(profile.name.toLowerCase())
+      )
+
+    // Check category filter
+    const matchesCategory = categories.length === 0 || categories.includes(profile.category)
+
+    // If both filters specified, must match at least one
+    if (names.length > 0 && categories.length > 0) {
+      return matchesName || matchesCategory
+    }
+
+    // If only one filter type, must match that one
+    return matchesName && matchesCategory
+  })
+}
 
 // =============================================================================
 // Helpers
@@ -1727,7 +1909,49 @@ async function createTestStudentWithTuning(
 // =============================================================================
 
 async function main() {
+  // Handle --help
+  if (cliArgs.help) {
+    showHelp()
+    process.exit(0)
+  }
+
+  // Handle --list
+  if (cliArgs.list) {
+    listProfiles()
+    process.exit(0)
+  }
+
+  // Filter profiles based on CLI args
+  const profilesToSeed = filterProfiles(TEST_PROFILES)
+
+  if (profilesToSeed.length === 0) {
+    console.log('❌ No students match the specified filters.')
+    console.log('   Use --list to see available students.')
+    process.exit(1)
+  }
+
+  // Handle --dry-run
+  if (cliArgs['dry-run']) {
+    console.log('🧪 DRY RUN - Would seed the following students:\n')
+    for (const profile of profilesToSeed) {
+      console.log(`   ${profile.name} [${profile.category}]`)
+      console.log(`      ${profile.description}`)
+    }
+    console.log(`\nTotal: ${profilesToSeed.length} students`)
+    process.exit(0)
+  }
+
   console.log('🧪 Seeding Test Students for BKT Testing...\n')
+
+  // Show filter info if applicable
+  const names = cliArgs.name as string[]
+  const categories = cliArgs.category as string[]
+  if (names.length > 0 || categories.length > 0) {
+    console.log(`   Filtering: ${profilesToSeed.length} of ${TEST_PROFILES.length} students`)
+    if (names.length > 0) console.log(`   Names: ${names.join(', ')}`)
+    if (categories.length > 0) console.log(`   Categories: ${categories.join(', ')}`)
+    console.log('')
+  }
 
   // Find the most recent browser session by looking at recent session activity
   // This is more reliable than player creation time
@@ -1800,7 +2024,7 @@ async function main() {
   // Create each test profile with iterative tuning (up to 3 rounds)
   console.log('\n2. Creating test students (with up to 2 tuning rounds if needed)...\n')
 
-  for (const profile of TEST_PROFILES) {
+  for (const profile of profilesToSeed) {
     const { playerId, classifications, tuningHistory } = await createTestStudentWithTuning(
       profile,
       userId,
@@ -1808,7 +2032,7 @@ async function main() {
     )
     const { weak, developing, strong } = classifications
 
-    console.log(`   ${profile.emoji} ${profile.name}`)
+    console.log(`   ${profile.name}`)
     console.log(`      ${profile.description}`)
     console.log(`      Phase: ${profile.currentPhaseId}`)
     console.log(`      Practicing: ${profile.practicingSkills.length} skills`)

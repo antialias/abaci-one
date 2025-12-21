@@ -90,8 +90,8 @@ export const LEARNER_TYPES = {
      * - 75 exposures → 90% (mastered)
      */
     masteredExposure: 75,
-    helpUsageProbabilities: [0.7, 0.2, 0.08, 0.02] as [number, number, number, number],
-    helpBonuses: [0, 0.05, 0.12, 0.25] as [number, number, number, number],
+    helpUsageProbabilities: [0.7, 0.3] as [number, number],
+    helpBonuses: [0, 0.12] as [number, number],
     baseResponseTimeMs: 4000,
     responseTimeVariance: 0.25,
   },
@@ -108,8 +108,8 @@ export const LEARNER_TYPES = {
      * - 120 exposures → 94% (mastered)
      */
     masteredExposure: 120,
-    helpUsageProbabilities: [0.55, 0.25, 0.15, 0.05] as [number, number, number, number],
-    helpBonuses: [0, 0.06, 0.15, 0.3] as [number, number, number, number],
+    helpUsageProbabilities: [0.55, 0.45] as [number, number],
+    helpBonuses: [0, 0.15] as [number, number],
     baseResponseTimeMs: 5500,
     responseTimeVariance: 0.35,
   },
@@ -126,8 +126,8 @@ export const LEARNER_TYPES = {
      * - 150 exposures → 94% (mastered)
      */
     masteredExposure: 150,
-    helpUsageProbabilities: [0.4, 0.3, 0.2, 0.1] as [number, number, number, number],
-    helpBonuses: [0, 0.08, 0.18, 0.35] as [number, number, number, number],
+    helpUsageProbabilities: [0.4, 0.6] as [number, number],
+    helpBonuses: [0, 0.2] as [number, number],
     baseResponseTimeMs: 7000,
     responseTimeVariance: 0.4,
   },

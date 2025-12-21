@@ -68,7 +68,7 @@ export interface SlotResult {
   timestamp: number;
   responseTimeMs: number;
   userAnswer: number | null;
-  helpLevel: 0 | 1 | 2 | 3;
+  helpLevel: 0 | 1; // Boolean: 0 = no help, 1 = used help
 }
 ```
 
@@ -220,20 +220,16 @@ export function updateOnIncorrect(
 // src/lib/curriculum/bkt/evidence-quality.ts
 
 /**
- * Adjust observation weight based on help level.
- * More help = less confident the student really knows it.
+ * Adjust observation weight based on whether help was used.
+ * Using help = less confident the student really knows it.
+ *
+ * Note: Help is binary (0 = no help, 1 = used help).
+ * We can't determine which skill needed help for multi-skill problems,
+ * so we apply the discount uniformly and let conjunctive BKT identify
+ * weak skills from aggregated evidence.
  */
-export function helpLevelWeight(helpLevel: 0 | 1 | 2 | 3): number {
-  switch (helpLevel) {
-    case 0:
-      return 1.0; // No help - full evidence
-    case 1:
-      return 0.8; // Minor hint - slight reduction
-    case 2:
-      return 0.5; // Significant help - halve evidence
-    case 3:
-      return 0.5; // Full help - halve evidence
-  }
+export function helpLevelWeight(helpLevel: 0 | 1): number {
+  return helpLevel === 0 ? 1.0 : 0.5; // 50% weight for helped answers
 }
 
 /**

@@ -277,47 +277,6 @@ export const DifferentStudents: Story = {
   ),
 }
 
-/**
- * With Focus Areas - showing skills needing reinforcement
- */
-export const WithFocusAreas: Story = {
-  render: () => (
-    <DashboardWrapper>
-      <ProgressDashboard
-        student={sampleStudent}
-        currentPhase={intermediatePhase}
-        focusAreas={[
-          {
-            skillId: 'fiveComplements.3=5-2',
-            skillName: '+3 Five Complement',
-            bktClassification: 'developing',
-            attempts: 15,
-            correct: 10,
-            consecutiveCorrect: 1,
-            needsReinforcement: true,
-            lastHelpLevel: 2,
-            reinforcementStreak: 1,
-          },
-          {
-            skillId: 'tenComplements.8=10-2',
-            skillName: '+8 Ten Complement',
-            bktClassification: 'weak',
-            attempts: 8,
-            correct: 4,
-            consecutiveCorrect: 0,
-            needsReinforcement: true,
-            lastHelpLevel: 3,
-            reinforcementStreak: 0,
-          },
-        ]}
-        onClearReinforcement={(skillId) => alert(`Clear reinforcement for ${skillId}`)}
-        onClearAllReinforcement={() => alert('Clear all reinforcement')}
-        {...handlers}
-      />
-    </DashboardWrapper>
-  ),
-}
-
 // Note: Active session resume/start functionality has been moved to the
 // SessionModeBanner system (see ActiveSessionBanner.tsx and ProjectingBanner.tsx)
 

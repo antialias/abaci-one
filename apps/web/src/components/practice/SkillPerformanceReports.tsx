@@ -19,7 +19,6 @@ interface SkillPerformanceAnalysis {
   fastSkills: SkillPerformance[]
   slowSkills: SkillPerformance[]
   lowAccuracySkills: SkillPerformance[]
-  reinforcementSkills: SkillPerformance[]
 }
 
 interface SkillPerformanceReportsProps {
@@ -291,7 +290,6 @@ export function SkillPerformanceReports({
   const hasTimingData = analysis.skills.some((s) => s.responseTimeCount > 0)
   const hasSlowSkills = analysis.slowSkills.length > 0
   const hasLowAccuracySkills = analysis.lowAccuracySkills.length > 0
-  const hasReinforcementSkills = analysis.reinforcementSkills.length > 0
 
   // No data yet
   if (analysis.skills.length === 0) {
@@ -376,7 +374,7 @@ export function SkillPerformanceReports({
       )}
 
       {/* Skills appearing frequently in errors or slow responses */}
-      {(hasSlowSkills || hasLowAccuracySkills || hasReinforcementSkills) && (
+      {(hasSlowSkills || hasLowAccuracySkills) && (
         <div className={css({ marginBottom: '20px' })}>
           <h4
             className={css({
@@ -416,20 +414,6 @@ export function SkillPerformanceReports({
             ))}
             {analysis.lowAccuracySkills
               .filter((s) => !analysis.slowSkills.some((slow) => slow.skillId === s.skillId))
-              .map((skill) => (
-                <SkillCard
-                  key={skill.skillId}
-                  skill={skill}
-                  isDark={isDark}
-                  overallAvgMs={analysis.overallAvgResponseTimeMs}
-                />
-              ))}
-            {analysis.reinforcementSkills
-              .filter(
-                (s) =>
-                  !analysis.slowSkills.some((slow) => slow.skillId === s.skillId) &&
-                  !analysis.lowAccuracySkills.some((low) => low.skillId === s.skillId)
-              )
               .map((skill) => (
                 <SkillCard
                   key={skill.skillId}

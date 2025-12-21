@@ -64,11 +64,11 @@ export const averageLearnerProfile: StudentProfile = {
 
   initialExposures,
 
-  // Moderate help usage: 55% no help, 25% hint, 15% decomp, 5% full
-  helpUsageProbabilities: [0.55, 0.25, 0.15, 0.05],
+  // Moderate help usage: 55% no help, 45% uses help
+  helpUsageProbabilities: [0.55, 0.45],
 
-  // Standard help bonuses
-  helpBonuses: [0, 0.06, 0.15, 0.3],
+  // Help bonus: 15% additive when help is used
+  helpBonuses: [0, 0.15],
 
   // Average response time
   baseResponseTimeMs: 5500,

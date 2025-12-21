@@ -104,8 +104,8 @@ export function filterProblemsNeedingAttention(
       reasons.push('slow')
     }
 
-    // Check if used significant help
-    if (problem.result.helpLevelUsed >= 3) {
+    // Check if used help (helpLevelUsed is binary: 0 = no help, 1 = help used)
+    if (problem.result.helpLevelUsed >= 1) {
       reasons.push('help-used')
     }
 

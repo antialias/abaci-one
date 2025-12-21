@@ -11,13 +11,13 @@ import * as schema from '@/db/schema'
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from './EphemeralDatabase'
 import { JourneyRunner } from './JourneyRunner'
 import { SeededRandom } from './SeededRandom'
-import { SimulatedStudent, getTrueMultiplier } from './SimulatedStudent'
+import { getTrueMultiplier, SimulatedStudent } from './SimulatedStudent'
 import type { JourneyConfig, JourneyResult, StudentProfile } from './types'
 
 // Mock the @/db module to use our ephemeral database
@@ -39,8 +39,8 @@ const STANDARD_PROFILE: StudentProfile = {
   halfMaxExposure: 10, // Base K=10, multiplied by skill difficulty
   hillCoefficient: 2.0, // Standard curve shape
   initialExposures: {}, // Start from scratch
-  helpUsageProbabilities: [1.0, 0, 0, 0], // No help for clean measurements
-  helpBonuses: [0, 0, 0, 0],
+  helpUsageProbabilities: [1.0, 0], // No help for clean measurements
+  helpBonuses: [0, 0],
   baseResponseTimeMs: 5000,
   responseTimeVariance: 0.3,
 }
@@ -460,8 +460,8 @@ describe('A/B Mastery Trajectories', () => {
           .filter((s) => s !== deficientSkillId)
           .map((s) => [s, 25]) // 25 exposures = ~86% mastery for basic, ~73% for five-comp
       ),
-      helpUsageProbabilities: [0.7, 0.2, 0.08, 0.02],
-      helpBonuses: [0, 0.05, 0.12, 0.25],
+      helpUsageProbabilities: [0.7, 0.3], // 70% no help, 30% uses help
+      helpBonuses: [0, 0.25], // Help bonus when used
       baseResponseTimeMs: 5000,
       responseTimeVariance: 0.3,
     })

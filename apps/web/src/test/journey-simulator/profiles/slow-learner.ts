@@ -69,11 +69,11 @@ export const slowLearnerProfile: StudentProfile = {
 
   initialExposures,
 
-  // Uses help often: 40% no help, 30% hint, 20% decomp, 10% full
-  helpUsageProbabilities: [0.4, 0.3, 0.2, 0.1],
+  // Uses help often: 40% no help, 60% uses help
+  helpUsageProbabilities: [0.4, 0.6],
 
-  // Higher help bonuses (helps more when used)
-  helpBonuses: [0, 0.08, 0.18, 0.35],
+  // Help bonus: 20% additive when help is used
+  helpBonuses: [0, 0.2],
 
   // Takes longer to respond
   baseResponseTimeMs: 8000,

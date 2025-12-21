@@ -56,32 +56,10 @@ export const playerSkillMastery = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
 
-    // ---- Reinforcement Tracking (for help system feedback loop) ----
-
     /**
-     * Whether this skill needs reinforcement
-     * Set to true when student uses heavy help (level 2+) or has multiple incorrect attempts
-     * Cleared after N consecutive correct answers without help
-     */
-    needsReinforcement: integer('needs_reinforcement', { mode: 'boolean' })
-      .notNull()
-      .default(false),
-
-    /**
-     * Last help level used on this skill (0-3)
-     * Used to track struggling patterns
+     * Last help level used on this skill (0 = no help, 1 = used help)
      */
     lastHelpLevel: integer('last_help_level').notNull().default(0),
-
-    /**
-     * Consecutive correct answers without heavy help since reinforcement was flagged
-     * Resets to 0 when reinforcement is cleared or when help level 2+ is used
-     */
-    reinforcementStreak: integer('reinforcement_streak').notNull().default(0),
-
-    // NOTE: totalResponseTimeMs, responseTimeCount columns REMOVED
-    // These are now computed on-the-fly from session results (single source of truth)
-    // See: getRecentSessionResults() in session-planner.ts
   },
   (table) => ({
     /** Index for fast lookups by playerId */

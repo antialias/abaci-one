@@ -174,21 +174,21 @@ export class SimulatedStudent {
       this.skillExposures.set(skillId, current + 1)
     }
 
-    // Determine help level (probabilistic based on profile)
-    const helpLevel = this.selectHelpLevel()
+    // Determine if student uses help (binary)
+    const helpLevelUsed = this.selectHelpLevel()
 
     // Calculate answer probability using Hill function + conjunctive model
-    const answerProbability = this.calculateAnswerProbability(skillsChallenged, helpLevel)
+    const answerProbability = this.calculateAnswerProbability(skillsChallenged, helpLevelUsed)
 
     const isCorrect = this.rng.chance(answerProbability)
 
     // Calculate response time
-    const responseTimeMs = this.calculateResponseTime(skillsChallenged, helpLevel, isCorrect)
+    const responseTimeMs = this.calculateResponseTime(skillsChallenged, helpLevelUsed, isCorrect)
 
     return {
       isCorrect,
       responseTimeMs,
-      helpLevelUsed: helpLevel,
+      helpLevelUsed,
       skillsChallenged,
       fatigue,
     }
@@ -200,7 +200,7 @@ export class SimulatedStudent {
    * For multi-skill problems, each skill must be applied correctly:
    *   P(correct) = P(skill_A) × P(skill_B) × P(skill_C) × ...
    *
-   * Help bonuses are additive (applied after the product).
+   * Help bonus is additive (applied after the product).
    */
   private calculateAnswerProbability(skillIds: string[], helpLevel: HelpLevel): number {
     if (skillIds.length === 0) {
@@ -229,17 +229,12 @@ export class SimulatedStudent {
   }
 
   /**
-   * Select a help level based on the student's profile probabilities.
+   * Select whether student uses help (binary).
+   * Based on profile's helpUsageProbabilities [P(no help), P(help)].
    */
   private selectHelpLevel(): HelpLevel {
-    const [p0, p1, p2, p3] = this.profile.helpUsageProbabilities
-    const roll = this.rng.next()
-
-    // Cumulative probability check
-    if (roll < p0) return 0
-    if (roll < p0 + p1) return 1
-    if (roll < p0 + p1 + p2) return 2
-    return 3
+    const [pNoHelp] = this.profile.helpUsageProbabilities
+    return this.rng.next() < pNoHelp ? 0 : 1
   }
 
   /**
