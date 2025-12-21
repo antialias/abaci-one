@@ -116,9 +116,9 @@ const CLASSIFICATION_CONFIG: Record<
   unassessed: {
     label: 'Unassessed',
     emoji: '⚪',
-    color: 'rgba(156, 163, 175, 0.4)', // gray-400 at 40% opacity - fades into background
-    lightColor: 'gray.300',
-    darkColor: 'gray.500',
+    color: 'transparent', // No color - just empty space
+    lightColor: 'gray.200',
+    darkColor: 'gray.700',
   },
 }
 
@@ -721,19 +721,18 @@ function LegendCard({
   const descriptor = CLASSIFICATION_DESCRIPTORS[classification]
   const textColors = getTextColors(classification, isDark)
 
-  // Unassessed is special: transparent/borderless to fade into background
+  // Unassessed gets special treatment - subtle border instead of fill
   const isUnassessed = classification === 'unassessed'
 
-  // Background styling
-  const getBackgroundStyle = () => {
-    if (isUnassessed) {
-      // Transparent with subtle border
-      return isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(209, 213, 219, 0.4)'
-    }
-    // Other categories get their full color
-    const bgOpacity = isDark ? 0.85 : 0.8
-    return `color-mix(in srgb, ${config.color} ${bgOpacity * 100}%, transparent)`
-  }
+  // Background color handling
+  const bgStyle = isUnassessed
+    ? {
+        backgroundColor: isDark ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.5)',
+        border: `2px dashed ${isDark ? '#6b7280' : '#d1d5db'}`,
+      }
+    : {
+        backgroundColor: `color-mix(in srgb, ${config.color} ${isDark ? 85 : 80}%, transparent)`,
+      }
 
   return (
     <button
@@ -750,16 +749,8 @@ function LegendCard({
         padding: '0.75rem 1rem',
         minWidth: '90px',
         borderRadius: '12px',
-        border: isUnassessed ? '1px dashed' : '2px solid',
-        borderColor: isActive
-          ? isDark
-            ? 'white'
-            : 'gray.800'
-          : isUnassessed
-            ? isDark
-              ? 'gray.600'
-              : 'gray.300'
-            : 'transparent',
+        border: isUnassessed ? 'none' : '2px solid',
+        borderColor: isActive ? (isDark ? 'white' : 'gray.800') : 'transparent',
         cursor: 'pointer',
         transition: 'all 0.2s',
         position: 'relative',
@@ -769,9 +760,7 @@ function LegendCard({
           boxShadow: `0 0 0 2px ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)'}`,
         },
       })}
-      style={{
-        backgroundColor: getBackgroundStyle(),
-      }}
+      style={bgStyle}
     >
       {/* Stripe pattern overlay for hasPattern categories */}
       {config.hasPattern && (
@@ -946,10 +935,18 @@ export function SkillProgressChart({
     const series = CLASSIFICATION_ORDER.map((classification) => {
       const config = CLASSIFICATION_CONFIG[classification]
 
-      // Decal pattern for "needs attention" categories (Stale, Weak)
-      // Applied via areaStyle for stacked area charts
-      // Must explicitly set 'none' for series without patterns when aria.decal is enabled
-      const decalPattern = config.hasPattern
+      // Determine the fill color
+      // Unassessed is transparent (shows chart background)
+      const fillColor =
+        classification === 'unassessed'
+          ? isDark
+            ? 'rgba(55, 65, 81, 0.3)' // very subtle gray in dark mode
+            : 'rgba(229, 231, 235, 0.4)' // very subtle gray in light mode
+          : config.color
+
+      // Decal pattern ONLY for "needs attention" categories (Stale, Weak)
+      // Other categories get no decal (solid fill)
+      const decalConfig = config.hasPattern
         ? {
             symbol: 'rect',
             symbolSize: 1,
@@ -958,7 +955,7 @@ export function SkillProgressChart({
             dashArrayX: [1, 0],
             dashArrayY: [4, 3], // stripe pattern matching legend cards
           }
-        : { symbol: 'none' } // Explicitly disable pattern for non-attention categories
+        : null // Explicitly null to prevent any default patterns
 
       // Base series configuration
       const seriesConfig: Record<string, unknown> = {
@@ -966,8 +963,7 @@ export function SkillProgressChart({
         type: 'line',
         stack: 'total',
         areaStyle: {
-          opacity: classification === 'unassessed' ? 0.4 : 0.85,
-          decal: decalPattern,
+          opacity: classification === 'unassessed' ? 1 : 0.9,
         },
         emphasis: {
           focus: 'series',
@@ -978,7 +974,8 @@ export function SkillProgressChart({
           width: 0,
         },
         itemStyle: {
-          color: config.color,
+          color: fillColor,
+          decal: decalConfig,
         },
         data: snapshots.map((s) => toPercent(s.distribution[classification], s.distribution.total)),
       }
@@ -988,21 +985,11 @@ export function SkillProgressChart({
 
     return {
       backgroundColor: 'transparent',
-      // Enable decal patterns (required for patterns to render)
-      aria: {
-        enabled: true,
-        decal: {
-          show: true,
-        },
-      },
+      // Note: We apply decal patterns per-series, not globally via aria
+      // aria.decal.show would apply default patterns to ALL series
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
-        backgroundColor: isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        borderColor: isDark ? '#374151' : '#e5e7eb',
-        textStyle: {
-          color: isDark ? '#e5e7eb' : '#1f2937',
-        },
         formatter: (
           params: Array<{ seriesName: string; value: number; color: string; marker: string }>
         ) => {
@@ -1010,106 +997,13 @@ export function SkillProgressChart({
           const snapshot = snapshots[idx]
           if (!snapshot) return ''
 
-          const dist = snapshot.distribution
-          const groupHeaderStyle = `color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;`
-          const branchStyle = `color: ${isDark ? '#4b5563' : '#d1d5db'}; font-family: monospace;`
-          const labelStyle = `color: ${isDark ? '#e5e7eb' : '#374151'};`
-          const countStyle = `color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 11px;`
-          const descriptorStyle = `color: ${isDark ? '#6b7280' : '#9ca3af'}; font-size: 10px;`
-
-          // Helper to create a row with branch characters
-          const row = (
-            branch: string,
-            marker: string,
-            label: string,
-            count: number,
-            percent: number,
-            descriptor?: string
-          ) => {
-            const descHtml = descriptor
-              ? ` <span style="${descriptorStyle}">(${descriptor})</span>`
-              : ''
-            return `<div style="display: flex; align-items: center; gap: 4px; margin: 2px 0;">
-              <span style="${branchStyle}">${branch}</span>
-              <span>${marker}</span>
-              <span style="${labelStyle}">${label}</span>
-              <span style="${countStyle}">${count} (${percent}%)</span>${descHtml}
-            </div>`
+          let html = `<strong>${dates[idx]}</strong><br/>`
+          // Reverse order for tooltip (show from top of stack to bottom)
+          for (const p of [...params].reverse()) {
+            const count =
+              snapshot.distribution[p.seriesName.toLowerCase() as SkillClassification] ?? 0
+            html += `${p.marker} ${p.seriesName}: ${count} (${p.value}%)<br/>`
           }
-
-          // Find params by series name
-          const getParam = (name: string) => params.find((p) => p.seriesName === name)
-          const strongParam = getParam('Strong')
-          const staleParam = getParam('Stale')
-          const devParam = getParam('Developing')
-          const weakParam = getParam('Weak')
-          const unassessedParam = getParam('Unassessed')
-
-          let html = `<div style="font-size: 12px; line-height: 1.4;">
-            <div style="font-weight: 600; margin-bottom: 8px; border-bottom: 1px solid ${isDark ? '#374151' : '#e5e7eb'}; padding-bottom: 4px;">${dates[idx]}</div>`
-
-          // MASTERED group (if either Strong or Stale has data)
-          if ((dist.strong > 0 || dist.stale > 0) && (strongParam || staleParam)) {
-            html += `<div style="margin-bottom: 6px;">
-              <div style="${groupHeaderStyle}">MASTERED</div>`
-            if (strongParam && dist.strong > 0) {
-              html += row(
-                '├─',
-                strongParam.marker,
-                'Strong',
-                dist.strong,
-                strongParam.value as number
-              )
-            }
-            if (staleParam && dist.stale > 0) {
-              const branch = dist.strong > 0 ? '└─' : '──'
-              html += row(
-                branch,
-                staleParam.marker,
-                'Stale',
-                dist.stale,
-                staleParam.value as number,
-                '7+ days ago'
-              )
-            }
-            html += '</div>'
-          }
-
-          // IN PROGRESS group (if either Developing or Weak has data)
-          if ((dist.developing > 0 || dist.weak > 0) && (devParam || weakParam)) {
-            html += `<div style="margin-bottom: 6px;">
-              <div style="${groupHeaderStyle}">IN PROGRESS</div>`
-            if (devParam && dist.developing > 0) {
-              html += row(
-                '├─',
-                devParam.marker,
-                'Developing',
-                dist.developing,
-                devParam.value as number
-              )
-            }
-            if (weakParam && dist.weak > 0) {
-              const branch = dist.developing > 0 ? '└─' : '──'
-              html += row(branch, weakParam.marker, 'Weak', dist.weak, weakParam.value as number)
-            }
-            html += '</div>'
-          }
-
-          // NOT STARTED group (if Unassessed has data)
-          if (dist.unassessed > 0 && unassessedParam) {
-            html += `<div>
-              <div style="${groupHeaderStyle}">NOT STARTED</div>`
-            html += row(
-              '──',
-              unassessedParam.marker,
-              'Unassessed',
-              dist.unassessed,
-              unassessedParam.value as number
-            )
-            html += '</div>'
-          }
-
-          html += '</div>'
           return html
         },
       },
