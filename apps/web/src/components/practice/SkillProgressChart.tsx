@@ -990,6 +990,11 @@ export function SkillProgressChart({
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
+        backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderColor: isDark ? '#374151' : '#e5e7eb',
+        textStyle: {
+          color: isDark ? '#e5e7eb' : '#1f2937',
+        },
         formatter: (
           params: Array<{ seriesName: string; value: number; color: string; marker: string }>
         ) => {
@@ -997,13 +1002,53 @@ export function SkillProgressChart({
           const snapshot = snapshots[idx]
           if (!snapshot) return ''
 
-          let html = `<strong>${dates[idx]}</strong><br/>`
-          // Reverse order for tooltip (show from top of stack to bottom)
-          for (const p of [...params].reverse()) {
-            const count =
-              snapshot.distribution[p.seriesName.toLowerCase() as SkillClassification] ?? 0
-            html += `${p.marker} ${p.seriesName}: ${count} (${p.value}%)<br/>`
+          // Helper to find param by series name
+          const findParam = (name: string) => params.find((p) => p.seriesName === name)
+
+          // Helper to format a row
+          const formatRow = (name: string, classification: SkillClassification) => {
+            const p = findParam(name)
+            if (!p) return ''
+            const count = snapshot.distribution[classification] ?? 0
+            if (count === 0 && p.value === 0) return '' // Skip if zero
+            return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">
+              ${p.marker}
+              <span>${name}</span>
+              <span style="margin-left:auto;font-weight:600;">${count}</span>
+              <span style="color:${isDark ? '#9ca3af' : '#6b7280'};font-size:0.85em;">(${p.value}%)</span>
+            </div>`
           }
+
+          // Group header style
+          const headerStyle = `font-size:0.7em;font-weight:600;color:${isDark ? '#6b7280' : '#9ca3af'};text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;margin-bottom:2px;`
+
+          let html = `<div style="min-width:160px;">
+            <div style="font-weight:bold;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid ${isDark ? '#374151' : '#e5e7eb'};">${dates[idx]}</div>`
+
+          // MASTERED group
+          const strongRow = formatRow('Strong', 'strong')
+          const staleRow = formatRow('Stale', 'stale')
+          if (strongRow || staleRow) {
+            html += `<div style="${headerStyle}">Mastered</div>`
+            html += strongRow + staleRow
+          }
+
+          // IN PROGRESS group
+          const developingRow = formatRow('Developing', 'developing')
+          const weakRow = formatRow('Weak', 'weak')
+          if (developingRow || weakRow) {
+            html += `<div style="${headerStyle}">In Progress</div>`
+            html += developingRow + weakRow
+          }
+
+          // NOT STARTED group
+          const unassessedRow = formatRow('Unassessed', 'unassessed')
+          if (unassessedRow) {
+            html += `<div style="${headerStyle}">Not Started</div>`
+            html += unassessedRow
+          }
+
+          html += '</div>'
           return html
         },
       },
