@@ -8,7 +8,7 @@ interface SkillPerformance {
   /** BKT-based mastery classification */
   bktClassification: 'strong' | 'developing' | 'weak' | null
   attempts: number
-  accuracy: number
+  correct: number
   avgResponseTimeMs: number | null
   responseTimeCount: number
 }
@@ -18,7 +18,6 @@ interface SkillPerformanceAnalysis {
   overallAvgResponseTimeMs: number | null
   fastSkills: SkillPerformance[]
   slowSkills: SkillPerformance[]
-  lowAccuracySkills: SkillPerformance[]
 }
 
 interface SkillPerformanceReportsProps {
@@ -175,7 +174,7 @@ function SkillCard({
               fontWeight: 'medium',
             })}
           >
-            {Math.round(skill.attempts * skill.accuracy)}
+            {skill.correct}
           </span>
         </div>
         <div>
@@ -183,7 +182,7 @@ function SkillCard({
           <span
             className={css({
               color:
-                skill.attempts - Math.round(skill.attempts * skill.accuracy) > 0
+                skill.attempts - skill.correct > 0
                   ? isDark
                     ? 'orange.400'
                     : 'orange.600'
@@ -193,7 +192,7 @@ function SkillCard({
               fontWeight: 'medium',
             })}
           >
-            {skill.attempts - Math.round(skill.attempts * skill.accuracy)}
+            {skill.attempts - skill.correct}
           </span>
         </div>
         {skill.avgResponseTimeMs && (
@@ -289,7 +288,6 @@ export function SkillPerformanceReports({
 
   const hasTimingData = analysis.skills.some((s) => s.responseTimeCount > 0)
   const hasSlowSkills = analysis.slowSkills.length > 0
-  const hasLowAccuracySkills = analysis.lowAccuracySkills.length > 0
 
   // No data yet
   if (analysis.skills.length === 0) {
@@ -373,8 +371,8 @@ export function SkillPerformanceReports({
         </div>
       )}
 
-      {/* Skills appearing frequently in errors or slow responses */}
-      {(hasSlowSkills || hasLowAccuracySkills) && (
+      {/* Skills with slow response times */}
+      {hasSlowSkills && (
         <div className={css({ marginBottom: '20px' })}>
           <h4
             className={css({
@@ -384,7 +382,7 @@ export function SkillPerformanceReports({
               marginBottom: '12px',
             })}
           >
-            🔍 Appear in Frequent Errors
+            🐢 Slow Response Times
           </h4>
           <p
             className={css({
@@ -394,8 +392,7 @@ export function SkillPerformanceReports({
               fontStyle: 'italic',
             })}
           >
-            Note: These skills appeared in problems with errors. The error may have been caused by
-            other skills in the same problem.
+            These skills take longer than average. More practice may help build fluency.
           </p>
           <div
             className={css({
@@ -412,16 +409,6 @@ export function SkillPerformanceReports({
                 overallAvgMs={analysis.overallAvgResponseTimeMs}
               />
             ))}
-            {analysis.lowAccuracySkills
-              .filter((s) => !analysis.slowSkills.some((slow) => slow.skillId === s.skillId))
-              .map((skill) => (
-                <SkillCard
-                  key={skill.skillId}
-                  skill={skill}
-                  isDark={isDark}
-                  overallAvgMs={analysis.overallAvgResponseTimeMs}
-                />
-              ))}
           </div>
         </div>
       )}

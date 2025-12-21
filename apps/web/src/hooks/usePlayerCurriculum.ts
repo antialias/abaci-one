@@ -32,7 +32,6 @@ export interface SkillMasteryData {
   skillId: string
   attempts: number
   correct: number
-  consecutiveCorrect: number
   /** Whether this skill is in the student's active practice rotation */
   isPracticing: boolean
   lastPracticedAt: Date | null

@@ -166,8 +166,8 @@ function PurposeTooltipContent({ slot }: { slot: ProblemSlot }) {
             <span>Reinforcement</span>
           </div>
           <p className={tooltipStyles.description}>
-            Extra practice for skills that need more work. These problems target areas where
-            accuracy has been below 70%.
+            Extra practice for skills identified as needing more work. These problems target areas
+            where mastery is still developing.
           </p>
           {skillName && (
             <div className={tooltipStyles.detail}>
@@ -175,10 +175,6 @@ function PurposeTooltipContent({ slot }: { slot: ProblemSlot }) {
               <span className={tooltipStyles.detailValue}>{skillName}</span>
             </div>
           )}
-          <div className={tooltipStyles.detail}>
-            <span className={tooltipStyles.detailLabel}>Threshold:</span>
-            <span className={tooltipStyles.percentage}>&lt;70% accuracy</span>
-          </div>
         </div>
       )
 

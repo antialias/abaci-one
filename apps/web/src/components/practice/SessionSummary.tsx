@@ -25,7 +25,6 @@ interface SkillBreakdown {
   skillId: string
   correct: number
   total: number
-  accuracy: number
 }
 
 interface SkillCategoryGroup {
@@ -35,7 +34,6 @@ interface SkillCategoryGroup {
   /** Aggregate stats for the category */
   correct: number
   total: number
-  accuracy: number
 }
 
 /** Ordered list of skill categories (pedagogical progression) */
@@ -441,37 +439,20 @@ export function SessionSummary({
                     <div
                       className={css({
                         height: '100%',
-                        backgroundColor: isDark
-                          ? category.accuracy >= 0.8
-                            ? 'green.400'
-                            : category.accuracy >= 0.6
-                              ? 'yellow.400'
-                              : 'red.400'
-                          : category.accuracy >= 0.8
-                            ? 'green.500'
-                            : category.accuracy >= 0.6
-                              ? 'yellow.500'
-                              : 'red.500',
+                        // Neutral blue color - not implying skill-level judgment
+                        backgroundColor: isDark ? 'blue.400' : 'blue.500',
                         borderRadius: '3px',
                       })}
-                      style={{ width: `${category.accuracy * 100}%` }}
+                      style={{
+                        width: `${category.total > 0 ? (category.correct / category.total) * 100 : 0}%`,
+                      }}
                     />
                   </div>
                   <div
                     className={css({
                       fontSize: '0.75rem',
                       fontWeight: 'bold',
-                      color: isDark
-                        ? category.accuracy >= 0.8
-                          ? 'green.400'
-                          : category.accuracy >= 0.6
-                            ? 'yellow.400'
-                            : 'red.400'
-                        : category.accuracy >= 0.8
-                          ? 'green.600'
-                          : category.accuracy >= 0.6
-                            ? 'yellow.600'
-                            : 'red.600',
+                      color: isDark ? 'blue.400' : 'blue.600',
                       minWidth: '36px',
                       textAlign: 'right',
                     })}
@@ -521,36 +502,19 @@ export function SessionSummary({
                         <div
                           className={css({
                             height: '100%',
-                            backgroundColor: isDark
-                              ? skill.accuracy >= 0.8
-                                ? 'green.400'
-                                : skill.accuracy >= 0.6
-                                  ? 'yellow.400'
-                                  : 'red.400'
-                              : skill.accuracy >= 0.8
-                                ? 'green.500'
-                                : skill.accuracy >= 0.6
-                                  ? 'yellow.500'
-                                  : 'red.500',
+                            // Neutral blue color - not implying skill-level judgment
+                            backgroundColor: isDark ? 'blue.400' : 'blue.500',
                             borderRadius: '2px',
                           })}
-                          style={{ width: `${skill.accuracy * 100}%` }}
+                          style={{
+                            width: `${skill.total > 0 ? (skill.correct / skill.total) * 100 : 0}%`,
+                          }}
                         />
                       </div>
                       <div
                         className={css({
                           fontSize: '0.6875rem',
-                          color: isDark
-                            ? skill.accuracy >= 0.8
-                              ? 'green.400'
-                              : skill.accuracy >= 0.6
-                                ? 'yellow.400'
-                                : 'red.400'
-                            : skill.accuracy >= 0.8
-                              ? 'green.600'
-                              : skill.accuracy >= 0.6
-                                ? 'yellow.600'
-                                : 'red.600',
+                          color: isDark ? 'blue.400' : 'blue.600',
                           minWidth: '28px',
                           textAlign: 'right',
                         })}
@@ -801,7 +765,6 @@ function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategory
     current.skills.push({
       skillId,
       ...stats,
-      accuracy: stats.total > 0 ? stats.correct / stats.total : 0,
     })
     current.correct += stats.correct
     current.total += stats.total
@@ -824,7 +787,6 @@ function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategory
         skills: categoryData.skills,
         correct: categoryData.correct,
         total: categoryData.total,
-        accuracy: categoryData.total > 0 ? categoryData.correct / categoryData.total : 0,
       })
     }
   }
@@ -840,7 +802,6 @@ function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategory
         skills: categoryData.skills,
         correct: categoryData.correct,
         total: categoryData.total,
-        accuracy: categoryData.total > 0 ? categoryData.correct / categoryData.total : 0,
       })
     }
   }

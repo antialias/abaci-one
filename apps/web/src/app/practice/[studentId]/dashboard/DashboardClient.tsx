@@ -54,6 +54,16 @@ import { css } from '../../../../../styled-system/css'
 
 type TabId = 'overview' | 'skills' | 'history' | 'notes'
 
+/**
+ * Reason why BKT classification is unavailable.
+ * Used to provide honest, specific explanations to users.
+ */
+type InsufficientDataReason =
+  | { type: 'never-practiced' }
+  | { type: 'too-few-attempts'; attempts: number; needed: number }
+  | { type: 'low-confidence'; confidence: number; threshold: number }
+  | null
+
 interface DashboardClientProps {
   studentId: string
   player: Player
@@ -73,12 +83,9 @@ interface ProcessedSkill {
   displayName: string
   category: string
   categoryOrder: number
-  accuracy: number
   attempts: number
   correct: number
-  consecutiveCorrect: number
   isPracticing: boolean
-  needsReinforcement: boolean
   lastPracticedAt: Date | null
   daysSinceLastPractice: number | null
   avgResponseTimeMs: number | null
@@ -87,6 +94,8 @@ interface ProcessedSkill {
   confidence: number | null
   uncertaintyRange: { low: number; high: number } | null
   bktClassification: 'strong' | 'developing' | 'weak' | null
+  /** Why BKT classification is unavailable (null if classification exists) */
+  insufficientDataReason: InsufficientDataReason
   stalenessWarning: string | null
   complexityMultiplier: number
   usingBktMultiplier: boolean
@@ -106,6 +115,13 @@ interface SkillCategory {
 // Combined height of sticky elements above content area
 // Main nav (80px) + Sub-nav (~56px with padding)
 const STICKY_HEADER_OFFSET = 136
+
+// Minimum attempts needed for reliable BKT assessment
+// Based on confidence calculation: ~10-15 opportunities gives ~40-50% data confidence
+const MIN_ATTEMPTS_FOR_ASSESSMENT = 10
+
+// Confidence threshold for BKT classification
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
 const SKILL_CATEGORIES: Record<string, SkillCategory> = {
   basic: { id: 'basic', name: 'Basic', emoji: '🔢', order: 1 },
@@ -306,7 +322,6 @@ function processSkills(
     const stats = skillStats.get(skill.skillId)
     const attempts = stats?.attempts ?? 0
     const correct = stats?.correct ?? 0
-    const accuracy = attempts > 0 ? correct / attempts : 0
     const avgResponseTimeMs =
       stats && stats.responseTimes.length > 0
         ? stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length
@@ -327,18 +342,35 @@ function processSkills(
         : ROTATION_MULTIPLIERS.outOfRotation
     }
 
+    // Determine why BKT classification is unavailable (if applicable)
+    let insufficientDataReason: InsufficientDataReason = null
+    if (bkt?.masteryClassification === undefined || bkt?.masteryClassification === null) {
+      if (attempts === 0) {
+        insufficientDataReason = { type: 'never-practiced' }
+      } else if (attempts < MIN_ATTEMPTS_FOR_ASSESSMENT) {
+        insufficientDataReason = {
+          type: 'too-few-attempts',
+          attempts,
+          needed: MIN_ATTEMPTS_FOR_ASSESSMENT,
+        }
+      } else if (bkt && bkt.confidence < DEFAULT_CONFIDENCE_THRESHOLD) {
+        insufficientDataReason = {
+          type: 'low-confidence',
+          confidence: bkt.confidence,
+          threshold: DEFAULT_CONFIDENCE_THRESHOLD,
+        }
+      }
+    }
+
     return {
       id: skill.id,
       skillId: skill.skillId,
       displayName: formatSkillDisplayName(skill.skillId),
       category: category.name,
       categoryOrder: category.order,
-      accuracy,
       attempts,
       correct,
-      consecutiveCorrect: 0, // No longer tracked - would need session history analysis
       isPracticing: skill.isPracticing,
-      needsReinforcement: skill.needsReinforcement,
       lastPracticedAt: skill.lastPracticedAt,
       daysSinceLastPractice,
       avgResponseTimeMs,
@@ -347,6 +379,7 @@ function processSkills(
       confidence: bkt?.confidence ?? null,
       uncertaintyRange: bkt?.uncertaintyRange ?? null,
       bktClassification: bkt?.masteryClassification ?? null,
+      insufficientDataReason,
       stalenessWarning,
       complexityMultiplier,
       usingBktMultiplier,
@@ -441,6 +474,35 @@ function TabNavigation({
 // Skills Tab Components
 // ============================================================================
 
+/**
+ * Get short display text for insufficient data reason (for skill card)
+ */
+function getInsufficientDataShortText(reason: InsufficientDataReason): string {
+  if (!reason) return ''
+  switch (reason.type) {
+    case 'never-practiced':
+      return 'Not yet practiced'
+    case 'too-few-attempts':
+      return `${reason.attempts}/${reason.needed} attempts`
+    case 'low-confidence':
+      return 'Inconclusive'
+  }
+}
+
+/**
+ * Get badge label for insufficient data (for skill card)
+ */
+function getInsufficientDataBadge(reason: InsufficientDataReason): string {
+  if (!reason) return ''
+  switch (reason.type) {
+    case 'never-practiced':
+      return 'New'
+    case 'too-few-attempts':
+    case 'low-confidence':
+      return '?'
+  }
+}
+
 function SkillCard({
   skill,
   isDark,
@@ -459,18 +521,21 @@ function SkillCard({
       return { bg: 'red.100', border: 'red.400', text: 'red.700' }
     if (skill.bktClassification === 'developing')
       return { bg: 'yellow.100', border: 'yellow.400', text: 'yellow.700' }
-    // null = insufficient data, show as neutral
+    // null = insufficient data, show as neutral gray
     return { bg: 'gray.100', border: 'gray.400', text: 'gray.600' }
   }
 
   const colors = getStatusColor()
   const confidenceLabel = skill.confidence !== null ? getConfidenceLabel(skill.confidence) : null
+  const hasInsufficientData =
+    skill.bktClassification === null && skill.insufficientDataReason !== null
 
   return (
     <button
       type="button"
       data-element="skill-card"
       data-skill-id={skill.skillId}
+      data-insufficient-data={hasInsufficientData ? 'true' : undefined}
       onClick={onClick}
       className={css({
         display: 'flex',
@@ -499,7 +564,9 @@ function SkillCard({
       >
         {skill.displayName}
       </span>
-      {skill.pKnown !== null && (
+
+      {/* Show BKT estimate if available and valid */}
+      {skill.pKnown !== null && Number.isFinite(skill.pKnown) && skill.bktClassification && (
         <div
           className={css({
             display: 'flex',
@@ -509,51 +576,68 @@ function SkillCard({
             marginBottom: '0.25rem',
           })}
         >
-          {!Number.isFinite(skill.pKnown) ? (
+          <span
+            className={css({
+              fontWeight: 'bold',
+              color:
+                skill.pKnown >= 0.8
+                  ? isDark
+                    ? 'green.400'
+                    : 'green.600'
+                  : skill.pKnown < 0.5
+                    ? isDark
+                      ? 'red.400'
+                      : 'red.600'
+                    : isDark
+                      ? 'yellow.400'
+                      : 'yellow.600',
+            })}
+          >
+            ~{Math.round(skill.pKnown * 100)}%
+          </span>
+          {confidenceLabel && (
             <span
               className={css({
-                fontWeight: 'bold',
-                color: isDark ? 'orange.400' : 'orange.600',
+                color: isDark ? 'gray.500' : 'gray.500',
+                fontSize: '0.625rem',
               })}
-              title="BKT calculation error - check browser console for details"
             >
-              ⚠️ Data Error
+              ({confidenceLabel})
             </span>
-          ) : (
-            <>
-              <span
-                className={css({
-                  fontWeight: 'bold',
-                  color:
-                    skill.pKnown >= 0.8
-                      ? isDark
-                        ? 'green.400'
-                        : 'green.600'
-                      : skill.pKnown < 0.5
-                        ? isDark
-                          ? 'red.400'
-                          : 'red.600'
-                        : isDark
-                          ? 'yellow.400'
-                          : 'yellow.600',
-                })}
-              >
-                ~{Math.round(skill.pKnown * 100)}%
-              </span>
-              {confidenceLabel && (
-                <span
-                  className={css({
-                    color: isDark ? 'gray.500' : 'gray.500',
-                    fontSize: '0.625rem',
-                  })}
-                >
-                  ({confidenceLabel})
-                </span>
-              )}
-            </>
           )}
         </div>
       )}
+
+      {/* Show insufficient data reason instead of BKT estimate */}
+      {hasInsufficientData && (
+        <div
+          className={css({
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.400' : 'gray.500',
+            marginBottom: '0.25rem',
+            fontStyle: 'italic',
+          })}
+        >
+          {getInsufficientDataShortText(skill.insufficientDataReason)}
+        </div>
+      )}
+
+      {/* Show data error if BKT calculation failed */}
+      {skill.pKnown !== null && !Number.isFinite(skill.pKnown) && (
+        <span
+          className={css({
+            fontWeight: 'bold',
+            color: isDark ? 'orange.400' : 'orange.600',
+            fontSize: '0.75rem',
+            marginBottom: '0.25rem',
+          })}
+          title="BKT calculation error - check browser console for details"
+        >
+          ⚠️ Data Error
+        </span>
+      )}
+
+      {/* Stats row */}
       <div
         className={css({
           display: 'flex',
@@ -571,6 +655,8 @@ function SkillCard({
           </>
         )}
       </div>
+
+      {/* Staleness warning */}
       {skill.stalenessWarning && (
         <span
           className={css({
@@ -583,7 +669,9 @@ function SkillCard({
           {skill.stalenessWarning}
         </span>
       )}
-      {skill.bktClassification && (
+
+      {/* Classification badge - either BKT classification or insufficient data indicator */}
+      {skill.bktClassification ? (
         <span
           className={css({
             marginTop: '0.375rem',
@@ -599,7 +687,22 @@ function SkillCard({
         >
           {skill.bktClassification}
         </span>
-      )}
+      ) : hasInsufficientData ? (
+        <span
+          className={css({
+            marginTop: '0.375rem',
+            padding: '0.125rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.625rem',
+            fontWeight: 'bold',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
+            color: isDark ? 'gray.400' : 'gray.600',
+            alignSelf: 'flex-start',
+          })}
+        >
+          {getInsufficientDataBadge(skill.insufficientDataReason)}
+        </span>
+      ) : null}
     </button>
   )
 }
@@ -784,8 +887,204 @@ function SkillDetailDrawer({
           </div>
         )}
 
-        {/* BKT Mastery Estimate */}
-        {skill.pKnown !== null && (
+        {/* Insufficient Data Alert - shown when we can't classify the skill */}
+        {skill.insufficientDataReason && (
+          <div
+            data-section="insufficient-data-alert"
+            className={css({
+              padding: '1rem',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              backgroundColor: isDark ? 'gray.800' : 'gray.50',
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                marginBottom: '1rem',
+              })}
+            >
+              <span className={css({ fontSize: '1.5rem' })}>ℹ️</span>
+              <div>
+                <div
+                  className={css({
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                    marginBottom: '0.25rem',
+                  })}
+                >
+                  Not Enough Data to Assess Mastery
+                </div>
+                <div
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                    lineHeight: '1.5',
+                  })}
+                >
+                  {skill.insufficientDataReason.type === 'never-practiced' && (
+                    <>
+                      This skill hasn&apos;t been practiced yet. We can&apos;t assess mastery
+                      without practice data.
+                    </>
+                  )}
+                  {skill.insufficientDataReason.type === 'too-few-attempts' && (
+                    <>
+                      Only {skill.insufficientDataReason.attempts} attempts recorded. Reliable
+                      assessment requires approximately {skill.insufficientDataReason.needed}+
+                      attempts.
+                    </>
+                  )}
+                  {skill.insufficientDataReason.type === 'low-confidence' && (
+                    <>
+                      Results have been mixed ({skill.correct}/{skill.attempts} correct). We
+                      can&apos;t confidently classify this skill yet.
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* What we know */}
+            {skill.attempts > 0 && (
+              <div
+                className={css({
+                  backgroundColor: isDark ? 'gray.900' : 'white',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: '0.75rem',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  What we know:
+                </div>
+                <div
+                  className={css({
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                  })}
+                >
+                  <div className={css({ textAlign: 'center' })}>
+                    <div
+                      className={css({
+                        fontWeight: 'bold',
+                        color: isDark ? 'gray.200' : 'gray.800',
+                      })}
+                    >
+                      {skill.attempts}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '0.6875rem',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    >
+                      Attempts
+                    </div>
+                  </div>
+                  <div className={css({ textAlign: 'center' })}>
+                    <div
+                      className={css({
+                        fontWeight: 'bold',
+                        color: isDark ? 'gray.200' : 'gray.800',
+                      })}
+                    >
+                      {skill.correct}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '0.6875rem',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    >
+                      Correct
+                    </div>
+                  </div>
+                  <div className={css({ textAlign: 'center' })}>
+                    <div
+                      className={css({
+                        fontWeight: 'bold',
+                        color: isDark ? 'gray.200' : 'gray.800',
+                      })}
+                    >
+                      {skill.confidence !== null ? `${Math.round(skill.confidence * 100)}%` : '—'}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '0.6875rem',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    >
+                      Confidence
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Remediation guidance */}
+            <div
+              className={css({
+                backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.5rem',
+              })}
+            >
+              <span className={css({ fontSize: '1rem' })}>📝</span>
+              <div>
+                <div
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 'medium',
+                    color: isDark ? 'blue.200' : 'blue.700',
+                    marginBottom: '0.25rem',
+                  })}
+                >
+                  Recommendation
+                </div>
+                <div
+                  className={css({
+                    fontSize: '0.8125rem',
+                    color: isDark ? 'blue.300' : 'blue.600',
+                    lineHeight: '1.4',
+                  })}
+                >
+                  {skill.insufficientDataReason.type === 'never-practiced' && (
+                    <>Start practicing this skill to build mastery.</>
+                  )}
+                  {skill.insufficientDataReason.type === 'too-few-attempts' && (
+                    <>
+                      Practice{' '}
+                      {skill.insufficientDataReason.needed - skill.insufficientDataReason.attempts}{' '}
+                      more problems to get a reliable assessment.
+                    </>
+                  )}
+                  {skill.insufficientDataReason.type === 'low-confidence' && (
+                    <>Keep practicing — consistent results will help us assess your mastery.</>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BKT Mastery Estimate - only show if we have confident classification */}
+        {skill.pKnown !== null && skill.bktClassification !== null && (
           <div
             className={css({
               padding: '1rem',
@@ -1207,36 +1506,28 @@ function SkillsTab({
     [processedSkills]
   )
 
+  // Group skills by BKT classification - NO fallback to accuracy heuristics
+  // Skills without confident BKT classification go in "needs assessment" group
   const interventionNeeded = useMemo(
-    () =>
-      practicingSkills.filter(
-        (s) =>
-          s.bktClassification === 'weak' ||
-          s.needsReinforcement ||
-          // Insufficient BKT data + low accuracy = likely needs help
-          (s.bktClassification === null && s.accuracy < 0.7 && s.attempts >= 5)
-      ),
+    () => practicingSkills.filter((s) => s.bktClassification === 'weak'),
     [practicingSkills]
   )
 
   const readyToAdvance = useMemo(
-    () =>
-      practicingSkills.filter(
-        (s) =>
-          s.bktClassification === 'strong' ||
-          // Insufficient BKT data + high accuracy = likely strong
-          (s.bktClassification === null && s.accuracy >= 0.85 && s.attempts >= 10)
-      ),
+    () => practicingSkills.filter((s) => s.bktClassification === 'strong'),
     [practicingSkills]
   )
 
   const learningSkills = useMemo(
+    () => practicingSkills.filter((s) => s.bktClassification === 'developing'),
+    [practicingSkills]
+  )
+
+  // NEW: Skills that need more practice data before we can assess them
+  const needsAssessment = useMemo(
     () =>
       practicingSkills.filter(
-        (s) =>
-          s.bktClassification === 'developing' ||
-          // Insufficient BKT data + moderate accuracy = developing
-          (s.bktClassification === null && s.accuracy >= 0.5 && s.accuracy < 0.85)
+        (s) => s.bktClassification === null && s.insufficientDataReason !== null
       ),
     [practicingSkills]
   )
@@ -1469,6 +1760,76 @@ function SkillsTab({
             })}
           >
             {interventionNeeded.map((skill) => (
+              <SkillCard
+                key={skill.id}
+                skill={skill}
+                isDark={isDark}
+                onClick={() => setSelectedSkill(skill)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Needs Assessment - skills without enough data to classify */}
+      {needsAssessment.length > 0 && (
+        <div
+          data-section="needs-assessment"
+          className={css({
+            padding: { base: '0.75rem', sm: '1rem' },
+            borderRadius: '12px',
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            marginBottom: '1rem',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: { base: '0.875rem', sm: '1rem' },
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+              marginBottom: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            })}
+          >
+            <span>📊</span> Needs Assessment{' '}
+            <span
+              className={css({
+                padding: '0.125rem 0.5rem',
+                borderRadius: '999px',
+                fontSize: '0.75rem',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
+              {needsAssessment.length}
+            </span>
+          </h3>
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              marginBottom: '0.75rem',
+              lineHeight: '1.4',
+            })}
+          >
+            These skills need more practice before we can assess mastery.
+          </p>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: {
+                base: 'repeat(auto-fill, minmax(120px, 1fr))',
+                sm: 'repeat(auto-fill, minmax(140px, 1fr))',
+              },
+              gap: { base: '0.5rem', sm: '0.75rem' },
+            })}
+          >
+            {needsAssessment.map((skill) => (
               <SkillCard
                 key={skill.id}
                 skill={skill}

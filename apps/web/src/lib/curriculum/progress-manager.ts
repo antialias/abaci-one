@@ -512,7 +512,7 @@ export interface SkillPerformance {
   /** BKT-based mastery classification (null = insufficient data, computed client-side) */
   bktClassification: 'strong' | 'developing' | 'weak' | null
   attempts: number
-  accuracy: number // 0-1
+  correct: number
   avgResponseTimeMs: number | null // null if no timing data
   responseTimeCount: number
 }
@@ -529,8 +529,6 @@ export interface SkillPerformanceAnalysis {
   fastSkills: SkillPerformance[]
   /** Skills where student is significantly slower than average (struggling) */
   slowSkills: SkillPerformance[]
-  /** Skills with low accuracy that may need intervention */
-  lowAccuracySkills: SkillPerformance[]
 }
 
 /**
@@ -539,8 +537,6 @@ export interface SkillPerformanceAnalysis {
 const PERFORMANCE_THRESHOLDS = {
   /** Speed deviation threshold (percentage faster/slower than average to flag) */
   speedDeviationPercent: 0.3, // 30% faster/slower
-  /** Minimum accuracy to not flag as low */
-  minAccuracyThreshold: 0.7, // 70%
   /** Minimum responses needed for timing analysis */
   minResponsesForTiming: 3,
 } as const
@@ -593,7 +589,7 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
       skillId: s.skillId,
       bktClassification: null, // Computed client-side from session plans
       attempts,
-      accuracy: attempts > 0 ? correct / attempts : 0,
+      correct,
       avgResponseTimeMs:
         responseTimes.length > 0
           ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
@@ -638,19 +634,11 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
         )
       : []
 
-  // Identify low accuracy skills
-  const lowAccuracySkills = skills.filter(
-    (s) =>
-      s.attempts >= PERFORMANCE_THRESHOLDS.minResponsesForTiming &&
-      s.accuracy < PERFORMANCE_THRESHOLDS.minAccuracyThreshold
-  )
-
   return {
     skills,
     overallAvgResponseTimeMs,
     fastSkills,
     slowSkills,
-    lowAccuracySkills,
   }
 }
 

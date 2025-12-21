@@ -241,11 +241,7 @@ export class SimulatedStudent {
   /**
    * Calculate response time based on skill exposure and other factors.
    */
-  private calculateResponseTime(
-    skillIds: string[],
-    hadHelp: boolean,
-    isCorrect: boolean
-  ): number {
+  private calculateResponseTime(skillIds: string[], hadHelp: boolean, isCorrect: boolean): number {
     const base = this.profile.baseResponseTimeMs
     const variance = this.profile.responseTimeVariance
 

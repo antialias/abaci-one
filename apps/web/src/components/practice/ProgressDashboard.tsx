@@ -8,21 +8,6 @@ import type { StudentWithProgress } from './StudentSelector'
 export type BktClassification = 'strong' | 'developing' | 'weak' | null
 
 /**
- * Skill mastery data for display
- */
-export interface SkillProgress {
-  skillId: string
-  skillName: string
-  /** BKT-based mastery classification */
-  bktClassification: BktClassification
-  attempts: number
-  correct: number
-  consecutiveCorrect: number
-  /** Whether help was used when this skill was last practiced */
-  lastHadHelp?: boolean
-}
-
-/**
  * Current phase information
  * @deprecated Use SkillHealthSummary instead - this is legacy level/phase based
  */

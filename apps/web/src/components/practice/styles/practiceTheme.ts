@@ -140,48 +140,6 @@ export function themedColors<T extends Record<string, PracticeColorKey>>(
 // ============================================================================
 
 /**
- * Accuracy thresholds for performance feedback
- */
-export const ACCURACY_THRESHOLDS = {
-  good: 0.8,
-  warning: 0.6,
-} as const
-
-/**
- * Get semantic level based on accuracy (0-1)
- *
- * @example
- * getAccuracyLevel(0.85) // 'success'
- * getAccuracyLevel(0.65) // 'warning'
- * getAccuracyLevel(0.45) // 'error'
- */
-export function getAccuracyLevel(accuracy: number): 'success' | 'warning' | 'error' {
-  if (accuracy >= ACCURACY_THRESHOLDS.good) return 'success'
-  if (accuracy >= ACCURACY_THRESHOLDS.warning) return 'warning'
-  return 'error'
-}
-
-/**
- * Get themed colors for an accuracy value
- *
- * @example
- * const colors = getAccuracyColors(0.85, isDark)
- * // { bg: 'green.50', text: 'green.700', border: 'green.200' }
- */
-export function getAccuracyColors(
-  accuracy: number,
-  isDark: boolean
-): { bg: string; text: string; border: string; solid: string } {
-  const level = getAccuracyLevel(accuracy)
-  return {
-    bg: themed(level, isDark),
-    text: themed(`${level}Text` as PracticeColorKey, isDark),
-    border: themed(`${level}Border` as PracticeColorKey, isDark),
-    solid: themed(`${level}Solid` as PracticeColorKey, isDark),
-  }
-}
-
-/**
  * BKT-based mastery classification to semantic color mapping
  *
  * Maps BKT classifications to visual treatment:

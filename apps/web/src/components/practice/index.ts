@@ -29,7 +29,7 @@ export {
 } from './BannerSlots'
 export { CompactBanner } from './CompactBanner'
 export type { ActiveSessionState } from './ActiveSessionBanner'
-export type { CurrentPhaseInfo, SkillHealthSummary, SkillProgress } from './ProgressDashboard'
+export type { CurrentPhaseInfo, SkillHealthSummary } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
 // Re-export BktClassification type for display color mapping
 export type { BktClassification } from './styles/practiceTheme'

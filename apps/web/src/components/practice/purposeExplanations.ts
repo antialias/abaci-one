@@ -46,7 +46,7 @@ export const purposeConfigs: Record<PurposeType, PurposeConfig> = {
     emoji: '💪',
     color: 'orange',
     explanation:
-      'Extra practice for skills that need more work. These problems target areas where accuracy has been below 70%.',
+      'Extra practice for skills identified as needing more work. These problems target areas where mastery is still developing.',
     shortExplanation: 'Extra practice for a skill that needs more work.',
   },
   review: {

@@ -153,35 +153,6 @@ export function groupProblemsByPart(
 }
 
 /**
- * Get the skills that need the most work based on session results.
- * Returns skills with their accuracy, sorted by accuracy (lowest first).
- */
-export function getSkillsNeedingWork(
-  results: SlotResult[]
-): Array<{ skillId: string; correct: number; total: number; accuracy: number }> {
-  const skillStats = new Map<string, { correct: number; total: number }>()
-
-  for (const result of results) {
-    for (const skillId of result.skillsExercised) {
-      const current = skillStats.get(skillId) ?? { correct: 0, total: 0 }
-      current.total++
-      if (result.isCorrect) current.correct++
-      skillStats.set(skillId, current)
-    }
-  }
-
-  const skills = Array.from(skillStats.entries()).map(([skillId, stats]) => ({
-    skillId,
-    correct: stats.correct,
-    total: stats.total,
-    accuracy: stats.total > 0 ? stats.correct / stats.total : 0,
-  }))
-
-  // Sort by accuracy (lowest first = needs most work)
-  return skills.sort((a, b) => a.accuracy - b.accuracy)
-}
-
-/**
  * Check if a problem is from a vertical part (abacus/visualization)
  */
 export function isVerticalPart(type: SessionPart['type']): boolean {

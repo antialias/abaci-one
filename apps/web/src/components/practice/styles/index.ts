@@ -125,10 +125,7 @@ export {
 } from './practiceStyles'
 // Theme - colors and semantic helpers
 export {
-  ACCURACY_THRESHOLDS,
   type BktClassification,
-  getAccuracyColors,
-  getAccuracyLevel,
   getMasteryColors,
   getPartTypeColors,
   getPurposeColors,

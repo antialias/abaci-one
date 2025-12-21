@@ -252,9 +252,7 @@ export async function generateSessionPlan(
 
   const practicingSkillConstraints = buildConstraintsFromPracticingSkills(practicingSkills)
 
-  // Categorize skills for review/reinforcement purposes
-  // Note: struggling skills computed from session results (single source of truth)
-  const struggling = findStrugglingSkills(skillMastery, problemHistory)
+  // Find skills needing spaced repetition review
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
   // Identify weak skills for targeting
@@ -312,7 +310,6 @@ export async function generateSessionPlan(
           },
         },
         practicingSkillConstraints,
-        struggling,
         needsReview,
         currentPhase,
         normalizedWeight,
@@ -357,7 +354,7 @@ export async function generateSessionPlan(
  * Build a single session part with the appropriate slots
  *
  * @param weakSkills - Skills identified by BKT as weak (low P(known)).
- *   These are added to targetSkills for focus slots to prioritize practice.
+ *   These are used for both focus and reinforce slots to prioritize practice.
  */
 function buildSessionPart(
   partNumber: 1 | 2 | 3,
@@ -366,7 +363,6 @@ function buildSessionPart(
   avgTimeSeconds: number,
   config: PlanGenerationConfig,
   phaseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
-  struggling: PlayerSkillMastery[],
   needsReview: PlayerSkillMastery[],
   currentPhase: CurriculumPhase | undefined,
   normalizedWeight?: number,
@@ -442,14 +438,14 @@ function buildSessionPart(
     )
   }
 
-  // Reinforce slots: struggling skills get extra practice
+  // Reinforce slots: weak skills (from BKT) get extra practice
+  // Uses same targeting as focus slots - problems that exercise weak skills
   for (let i = 0; i < reinforceCount; i++) {
-    const skill = struggling[i % Math.max(1, struggling.length)]
     slots.push(
       createSlot(
         slots.length,
         'reinforce',
-        skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints,
+        focusConstraints, // Same weak skill targeting as focus slots
         type,
         config,
         costCalculator,
@@ -1044,37 +1040,6 @@ function calculateAvgTimePerProblem(
   )
 
   return Math.round(weightedSum / totalProblems / 1000) // Convert ms to seconds
-}
-
-/**
- * Find skills where the student is struggling (accuracy < 70%)
- * Computes accuracy from session results (single source of truth).
- */
-function findStrugglingSkills(
-  mastery: PlayerSkillMastery[],
-  sessionResults: ProblemResultWithContext[]
-): PlayerSkillMastery[] {
-  // Compute accuracy per skill from session results
-  const skillStats = new Map<string, { attempts: number; correct: number }>()
-  for (const result of sessionResults) {
-    for (const skillId of result.skillsExercised) {
-      if (!skillStats.has(skillId)) {
-        skillStats.set(skillId, { attempts: 0, correct: 0 })
-      }
-      const stats = skillStats.get(skillId)!
-      stats.attempts++
-      if (result.isCorrect) {
-        stats.correct++
-      }
-    }
-  }
-
-  return mastery.filter((s) => {
-    const stats = skillStats.get(s.skillId)
-    if (!stats || stats.attempts < 5) return false // Not enough data
-    const accuracy = stats.correct / stats.attempts
-    return accuracy < 0.7 // Less than 70% accuracy
-  })
 }
 
 function findSkillsNeedingReview(
