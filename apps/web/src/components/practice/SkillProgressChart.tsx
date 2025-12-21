@@ -61,43 +61,63 @@ interface SkillProgressChartProps {
 // Constants
 // ============================================================================
 
+/**
+ * Color design rationale:
+ * - Strong & Stale are both "mastered" skills, so they share the green family
+ *   - Strong: Vibrant emerald green (healthy, fresh)
+ *   - Stale: Sage/olive green with gold undertone (aged, needs refresh)
+ * - Developing & Weak are both "in progress", so they share the blue-violet family
+ *   - Developing: Clear blue (learning, progressing)
+ *   - Weak: Warm coral-red (struggling, needs attention)
+ * - Unassessed: Neutral gray (not yet engaged)
+ */
 const CLASSIFICATION_CONFIG: Record<
   SkillClassification,
-  { label: string; emoji: string; color: string; lightColor: string; darkColor: string }
+  {
+    label: string
+    emoji: string
+    color: string
+    lightColor: string
+    darkColor: string
+    /** Whether to show a subtle pattern in the chart (indicates warning/attention state) */
+    hasPattern?: boolean
+  }
 > = {
   strong: {
     label: 'Strong',
     emoji: '🟢',
-    color: '#22c55e',
+    color: '#22c55e', // emerald-500
     lightColor: 'green.500',
     darkColor: 'green.400',
   },
   stale: {
     label: 'Stale',
-    emoji: '🟡',
-    color: '#eab308',
-    lightColor: 'yellow.500',
-    darkColor: 'yellow.400',
+    emoji: '🌿', // leaf emoji to suggest "aging green"
+    color: '#84cc16', // lime-500 - green trending toward yellow
+    lightColor: 'lime.500',
+    darkColor: 'lime.400',
+    hasPattern: true, // subtle stripes to indicate "needs attention"
   },
   developing: {
     label: 'Developing',
     emoji: '🔵',
-    color: '#3b82f6',
+    color: '#3b82f6', // blue-500
     lightColor: 'blue.500',
     darkColor: 'blue.400',
   },
   weak: {
     label: 'Weak',
     emoji: '🔴',
-    color: '#ef4444',
-    lightColor: 'red.500',
+    color: '#f87171', // red-400 - slightly softer red
+    lightColor: 'red.400',
     darkColor: 'red.400',
+    hasPattern: true, // subtle stripes to indicate "needs attention"
   },
   unassessed: {
     label: 'Unassessed',
     emoji: '⚪',
-    color: '#9ca3af',
-    lightColor: 'gray.400',
+    color: 'rgba(156, 163, 175, 0.4)', // gray-400 at 40% opacity - fades into background
+    lightColor: 'gray.300',
     darkColor: 'gray.500',
   },
 }
@@ -379,7 +399,7 @@ function analyzeSessionTiming(snapshots: SessionSnapshot[]): TimingAnalysis | nu
 
   // Check for high variance (sporadic)
   if (gaps.length >= 3) {
-    const variance = gaps.reduce((acc, g) => acc + Math.pow(g - averageGapDays, 2), 0) / gaps.length
+    const variance = gaps.reduce((acc, g) => acc + (g - averageGapDays) ** 2, 0) / gaps.length
     const stdDev = Math.sqrt(variance)
     // High coefficient of variation indicates sporadic practice
     if (stdDev / averageGapDays > 0.8) {
@@ -504,10 +524,14 @@ function getMotivationalMessage(
   const achievedTrendSlope = calculateTrendSlope(achievedCounts)
   const achievedTrend = classifyTrend(achievedTrendSlope, totalSkills)
 
-  // Track weak skill reduction
+  // Track weak skill changes
   const weakCounts = snapshots.map((s) => s.distribution.weak)
   const weakTrendSlope = calculateTrendSlope(weakCounts)
   const weakImproving = weakTrendSlope < -totalSkills * 0.03 // Declining weak is good
+  const weakWorsening = weakTrendSlope > totalSkills * 0.03 // Growing weak is bad
+  const currentWeak = currentDistribution.weak
+  const firstWeak = first.distribution.weak
+  const weakGrowth = currentWeak - firstWeak
 
   // === Current State Analysis ===
   const peakStrong = Math.max(...strongCounts)
@@ -542,23 +566,33 @@ function getMotivationalMessage(
     return `⏰ Practice gaps are growing. ${currentStale} skill${currentStale > 1 ? 's' : ''} became stale during the break.`
   }
 
-  // PRIORITY 3: Strong positive momentum (both trend and recent gains)
-  if (achievedTrend === 'improving' && achievedGain > 0) {
+  // PRIORITY 3: Growing weak skills - this is a problem, don't celebrate
+  if (weakWorsening && weakGrowth > 0 && currentWeak >= 2) {
+    // If weak skills are outpacing mastery gains, that's concerning
+    if (achievedGain > 0 && weakGrowth > achievedGain) {
+      return `⚠️ ${currentWeak} weak skill${currentWeak > 1 ? 's' : ''} need${currentWeak === 1 ? 's' : ''} attention. Weak skills are growing faster than mastery.`
+    }
+    return `⚠️ ${currentWeak} skill${currentWeak > 1 ? 's are' : ' is'} weak ${scope}. Focus on these before adding new skills.`
+  }
+
+  // PRIORITY 4: Strong positive momentum (both trend and recent gains)
+  // Only celebrate if weak skills aren't also growing
+  if (achievedTrend === 'improving' && achievedGain > 0 && !weakWorsening) {
     if (weakImproving && weakReduction > 0) {
       return `📈 Excellent momentum ${scope}! Gained ${achievedGain} strong skill${achievedGain > 1 ? 's' : ''} while reducing weak skills by ${weakReduction}.`
     }
     return `📈 Strong upward trend ${scope}! You've mastered ${achievedGain} more skill${achievedGain > 1 ? 's' : ''}.`
   }
 
-  // PRIORITY 4: Recent gains even if trend is stable
-  if (achievedGain > 0) {
+  // PRIORITY 5: Recent gains even if trend is stable (but not if weak is growing)
+  if (achievedGain > 0 && !weakWorsening) {
     if (currentStale > 0) {
       return `📈 Gained ${achievedGain} skill${achievedGain > 1 ? 's' : ''} ${scope}, but ${currentStale} ${currentStale > 1 ? 'are' : 'is'} now stale. A quick review will refresh them!`
     }
     return `📈 Great progress ${scope}! ${achievedGain} more skill${achievedGain > 1 ? 's' : ''} mastered.`
   }
 
-  // PRIORITY 5: Skills becoming stale (lost freshness but not mastery)
+  // PRIORITY 6: Skills becoming stale (lost freshness but not mastery)
   if (lostToStaleness > 0 && currentStale > 0) {
     if (timing && timing.isRecentGapLarger) {
       return `⏰ ${currentStale} skill${currentStale > 1 ? 's' : ''} became stale during the longer gap between sessions.`
@@ -566,17 +600,22 @@ function getMotivationalMessage(
     return `⏰ ${currentStale} skill${currentStale > 1 ? 's' : ''} became stale. Practice soon to keep them fresh!`
   }
 
-  // PRIORITY 6: Weak skill improvement
+  // PRIORITY 7: Weak skill improvement
   if (weakImproving && weakReduction > 0) {
     return `💪 ${weakReduction} fewer weak skill${weakReduction > 1 ? 's' : ''} ${scope}. Keep building!`
   }
 
-  // PRIORITY 7: Current stale skills (even without recent loss)
+  // PRIORITY 8: Current weak skills that need attention (fallback if not caught by PRIORITY 3)
+  if (currentWeak > 0) {
+    return `⚠️ ${currentWeak} skill${currentWeak > 1 ? 's are' : ' is'} weak. Practice these to build mastery!`
+  }
+
+  // PRIORITY 9: Current stale skills (even without recent loss)
   if (currentStale > 0) {
     return `⏰ ${currentStale} skill${currentStale > 1 ? 's are' : ' is'} stale. A quick practice session will refresh them!`
   }
 
-  // PRIORITY 8: Stable trend with good state
+  // PRIORITY 10: Stable trend with good state
   if (strongTrend === 'stable' && currentStrong > 0) {
     if (timing && timing.practiceFrequency === 'regular') {
       return `🎯 Consistent practice ${scope} is paying off. Keep up the steady rhythm!`
@@ -597,6 +636,74 @@ function getMotivationalMessage(
 // Components
 // ============================================================================
 
+/**
+ * Descriptors explain the classification criteria.
+ * Stale needs special clarification since it's a time-based warning on Strong, not a mastery level.
+ */
+const CLASSIFICATION_DESCRIPTORS: Partial<Record<SkillClassification, string>> = {
+  stale: '7+ days ago',
+}
+
+/**
+ * Generate CSS for diagonal stripe pattern overlay.
+ * Used for Stale and Weak to indicate "needs attention" state.
+ */
+function getStripePattern(isDark: boolean): string {
+  const stripeColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.35)'
+  return `repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    ${stripeColor} 3px,
+    ${stripeColor} 6px
+  )`
+}
+
+/**
+ * Get text colors that ensure readability against the colored background.
+ */
+function getTextColors(
+  classification: SkillClassification,
+  isDark: boolean
+): { count: string; label: string; descriptor: string } {
+  // For colored backgrounds, we need good contrast
+  // Light mode: darker shades of the color
+  // Dark mode: lighter shades or white
+  switch (classification) {
+    case 'strong':
+      return {
+        count: isDark ? '#bbf7d0' : '#14532d', // green-200 / green-900
+        label: isDark ? '#86efac' : '#166534', // green-300 / green-800
+        descriptor: isDark ? '#4ade80' : '#15803d', // green-400 / green-700
+      }
+    case 'stale':
+      return {
+        count: isDark ? '#ecfccb' : '#365314', // lime-100 / lime-900
+        label: isDark ? '#d9f99d' : '#3f6212', // lime-200 / lime-800
+        descriptor: isDark ? '#bef264' : '#4d7c0f', // lime-300 / lime-700
+      }
+    case 'developing':
+      return {
+        count: isDark ? '#bfdbfe' : '#1e3a5f', // blue-200 / custom dark blue
+        label: isDark ? '#93c5fd' : '#1e40af', // blue-300 / blue-800
+        descriptor: isDark ? '#60a5fa' : '#1d4ed8', // blue-400 / blue-700
+      }
+    case 'weak':
+      return {
+        count: isDark ? '#fecaca' : '#7f1d1d', // red-200 / red-900
+        label: isDark ? '#fca5a5' : '#991b1b', // red-300 / red-800
+        descriptor: isDark ? '#f87171' : '#b91c1c', // red-400 / red-700
+      }
+    case 'unassessed':
+    default:
+      return {
+        count: isDark ? '#e5e7eb' : '#374151', // gray-200 / gray-700
+        label: isDark ? '#d1d5db' : '#4b5563', // gray-300 / gray-600
+        descriptor: isDark ? '#9ca3af' : '#6b7280', // gray-400 / gray-500
+      }
+  }
+}
+
 function LegendCard({
   classification,
   count,
@@ -611,6 +718,22 @@ function LegendCard({
   isDark: boolean
 }) {
   const config = CLASSIFICATION_CONFIG[classification]
+  const descriptor = CLASSIFICATION_DESCRIPTORS[classification]
+  const textColors = getTextColors(classification, isDark)
+
+  // Unassessed is special: transparent/borderless to fade into background
+  const isUnassessed = classification === 'unassessed'
+
+  // Background styling
+  const getBackgroundStyle = () => {
+    if (isUnassessed) {
+      // Transparent with subtle border
+      return isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(209, 213, 219, 0.4)'
+    }
+    // Other categories get their full color
+    const bgOpacity = isDark ? 0.85 : 0.8
+    return `color-mix(in srgb, ${config.color} ${bgOpacity * 100}%, transparent)`
+  }
 
   return (
     <button
@@ -627,39 +750,55 @@ function LegendCard({
         padding: '0.75rem 1rem',
         minWidth: '90px',
         borderRadius: '12px',
-        border: '2px solid',
+        border: isUnassessed ? '1px dashed' : '2px solid',
         borderColor: isActive
           ? isDark
-            ? config.darkColor
-            : config.lightColor
-          : isDark
-            ? 'gray.600'
-            : 'gray.200',
-        backgroundColor: isActive
-          ? isDark
-            ? `${config.lightColor}/20`
-            : `${config.lightColor}/10`
-          : isDark
-            ? 'gray.800'
-            : 'white',
+            ? 'white'
+            : 'gray.800'
+          : isUnassessed
+            ? isDark
+              ? 'gray.600'
+              : 'gray.300'
+            : 'transparent',
         cursor: 'pointer',
         transition: 'all 0.2s',
         position: 'relative',
+        overflow: 'hidden',
+        // Ring effect on hover
         _hover: {
-          borderColor: isDark ? config.darkColor : config.lightColor,
-          backgroundColor: isDark ? 'gray.700' : 'gray.50',
+          boxShadow: `0 0 0 2px ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)'}`,
         },
       })}
+      style={{
+        backgroundColor: getBackgroundStyle(),
+      }}
     >
+      {/* Stripe pattern overlay for hasPattern categories */}
+      {config.hasPattern && (
+        <div
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            borderRadius: '10px', // slightly less than parent for clean edges
+          })}
+          style={{
+            background: getStripePattern(isDark),
+          }}
+        />
+      )}
+
       {/* Active indicator */}
       {isActive && (
         <span
           className={css({
             position: 'absolute',
             top: '4px',
-            right: '4px',
-            fontSize: '0.625rem',
+            right: '6px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
           })}
+          style={{ color: textColors.count }}
         >
           ✓
         </span>
@@ -670,9 +809,11 @@ function LegendCard({
         className={css({
           fontSize: '1.5rem',
           fontWeight: 'bold',
-          color: isDark ? config.darkColor : config.lightColor,
           lineHeight: 1,
+          position: 'relative', // Above pattern
+          textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 1px rgba(255,255,255,0.5)',
         })}
+        style={{ color: textColors.count }}
       >
         {count}
       </span>
@@ -681,16 +822,33 @@ function LegendCard({
       <span
         className={css({
           fontSize: '0.75rem',
-          color: isDark ? 'gray.300' : 'gray.600',
+          fontWeight: 'medium',
           marginTop: '0.25rem',
           display: 'flex',
           alignItems: 'center',
           gap: '0.25rem',
+          position: 'relative', // Above pattern
         })}
+        style={{ color: textColors.label }}
       >
         <span>{config.emoji}</span>
         <span>{config.label}</span>
       </span>
+
+      {/* Descriptor (explains classification criteria) */}
+      {descriptor && (
+        <span
+          className={css({
+            fontSize: '0.625rem',
+            fontWeight: 'medium',
+            marginTop: '0.125rem',
+            position: 'relative', // Above pattern
+          })}
+          style={{ color: textColors.descriptor }}
+        >
+          {descriptor}
+        </span>
+      )}
     </button>
   )
 }
@@ -787,12 +945,29 @@ export function SkillProgressChart({
 
     const series = CLASSIFICATION_ORDER.map((classification) => {
       const config = CLASSIFICATION_CONFIG[classification]
-      return {
+
+      // Decal pattern for "needs attention" categories (Stale, Weak)
+      // Applied via areaStyle for stacked area charts
+      // Must explicitly set 'none' for series without patterns when aria.decal is enabled
+      const decalPattern = config.hasPattern
+        ? {
+            symbol: 'rect',
+            symbolSize: 1,
+            rotation: Math.PI / 4, // 45 degree diagonal
+            color: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
+            dashArrayX: [1, 0],
+            dashArrayY: [4, 3], // stripe pattern matching legend cards
+          }
+        : { symbol: 'none' } // Explicitly disable pattern for non-attention categories
+
+      // Base series configuration
+      const seriesConfig: Record<string, unknown> = {
         name: config.label,
         type: 'line',
         stack: 'total',
         areaStyle: {
-          opacity: 0.8,
+          opacity: classification === 'unassessed' ? 0.4 : 0.85,
+          decal: decalPattern,
         },
         emphasis: {
           focus: 'series',
@@ -807,13 +982,27 @@ export function SkillProgressChart({
         },
         data: snapshots.map((s) => toPercent(s.distribution[classification], s.distribution.total)),
       }
+
+      return seriesConfig
     })
 
     return {
       backgroundColor: 'transparent',
+      // Enable decal patterns (required for patterns to render)
+      aria: {
+        enabled: true,
+        decal: {
+          show: true,
+        },
+      },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
+        backgroundColor: isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderColor: isDark ? '#374151' : '#e5e7eb',
+        textStyle: {
+          color: isDark ? '#e5e7eb' : '#1f2937',
+        },
         formatter: (
           params: Array<{ seriesName: string; value: number; color: string; marker: string }>
         ) => {
@@ -821,13 +1010,106 @@ export function SkillProgressChart({
           const snapshot = snapshots[idx]
           if (!snapshot) return ''
 
-          let html = `<strong>${dates[idx]}</strong><br/>`
-          // Reverse order for tooltip (show from top of stack to bottom)
-          for (const p of [...params].reverse()) {
-            const count =
-              snapshot.distribution[p.seriesName.toLowerCase() as SkillClassification] ?? 0
-            html += `${p.marker} ${p.seriesName}: ${count} (${p.value}%)<br/>`
+          const dist = snapshot.distribution
+          const groupHeaderStyle = `color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;`
+          const branchStyle = `color: ${isDark ? '#4b5563' : '#d1d5db'}; font-family: monospace;`
+          const labelStyle = `color: ${isDark ? '#e5e7eb' : '#374151'};`
+          const countStyle = `color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 11px;`
+          const descriptorStyle = `color: ${isDark ? '#6b7280' : '#9ca3af'}; font-size: 10px;`
+
+          // Helper to create a row with branch characters
+          const row = (
+            branch: string,
+            marker: string,
+            label: string,
+            count: number,
+            percent: number,
+            descriptor?: string
+          ) => {
+            const descHtml = descriptor
+              ? ` <span style="${descriptorStyle}">(${descriptor})</span>`
+              : ''
+            return `<div style="display: flex; align-items: center; gap: 4px; margin: 2px 0;">
+              <span style="${branchStyle}">${branch}</span>
+              <span>${marker}</span>
+              <span style="${labelStyle}">${label}</span>
+              <span style="${countStyle}">${count} (${percent}%)</span>${descHtml}
+            </div>`
           }
+
+          // Find params by series name
+          const getParam = (name: string) => params.find((p) => p.seriesName === name)
+          const strongParam = getParam('Strong')
+          const staleParam = getParam('Stale')
+          const devParam = getParam('Developing')
+          const weakParam = getParam('Weak')
+          const unassessedParam = getParam('Unassessed')
+
+          let html = `<div style="font-size: 12px; line-height: 1.4;">
+            <div style="font-weight: 600; margin-bottom: 8px; border-bottom: 1px solid ${isDark ? '#374151' : '#e5e7eb'}; padding-bottom: 4px;">${dates[idx]}</div>`
+
+          // MASTERED group (if either Strong or Stale has data)
+          if ((dist.strong > 0 || dist.stale > 0) && (strongParam || staleParam)) {
+            html += `<div style="margin-bottom: 6px;">
+              <div style="${groupHeaderStyle}">MASTERED</div>`
+            if (strongParam && dist.strong > 0) {
+              html += row(
+                '├─',
+                strongParam.marker,
+                'Strong',
+                dist.strong,
+                strongParam.value as number
+              )
+            }
+            if (staleParam && dist.stale > 0) {
+              const branch = dist.strong > 0 ? '└─' : '──'
+              html += row(
+                branch,
+                staleParam.marker,
+                'Stale',
+                dist.stale,
+                staleParam.value as number,
+                '7+ days ago'
+              )
+            }
+            html += '</div>'
+          }
+
+          // IN PROGRESS group (if either Developing or Weak has data)
+          if ((dist.developing > 0 || dist.weak > 0) && (devParam || weakParam)) {
+            html += `<div style="margin-bottom: 6px;">
+              <div style="${groupHeaderStyle}">IN PROGRESS</div>`
+            if (devParam && dist.developing > 0) {
+              html += row(
+                '├─',
+                devParam.marker,
+                'Developing',
+                dist.developing,
+                devParam.value as number
+              )
+            }
+            if (weakParam && dist.weak > 0) {
+              const branch = dist.developing > 0 ? '└─' : '──'
+              html += row(branch, weakParam.marker, 'Weak', dist.weak, weakParam.value as number)
+            }
+            html += '</div>'
+          }
+
+          // NOT STARTED group (if Unassessed has data)
+          if (dist.unassessed > 0 && unassessedParam) {
+            html += `<div>
+              <div style="${groupHeaderStyle}">NOT STARTED</div>`
+            html += row(
+              '──',
+              unassessedParam.marker,
+              'Unassessed',
+              dist.unassessed,
+              unassessedParam.value as number
+            )
+            html += '</div>'
+          }
+
+          html += '</div>'
           return html
         },
       },
@@ -959,7 +1241,7 @@ export function SkillProgressChart({
         </div>
       )}
 
-      {/* Legend cards */}
+      {/* Legend cards - grouped by mastery level to show hierarchy */}
       <div
         data-element="legend-cards"
         className={css({
@@ -967,19 +1249,152 @@ export function SkillProgressChart({
           flexWrap: 'wrap',
           gap: '0.5rem',
           justifyContent: 'center',
+          alignItems: 'flex-start',
           marginBottom: '0.75rem',
         })}
       >
-        {legendClassifications.map((classification) => (
-          <LegendCard
-            key={classification}
-            classification={classification}
-            count={currentDistribution[classification]}
-            isActive={activeFilters.has(classification)}
-            onToggle={() => handleToggle(classification)}
-            isDark={isDark}
-          />
-        ))}
+        {/* Mastered group (Strong + Stale) */}
+        {(legendClassifications.includes('strong') || legendClassifications.includes('stale')) && (
+          <div
+            data-element="legend-group-mastered"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.25rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.500' : 'gray.400',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              })}
+            >
+              Mastered
+            </span>
+            <div className={css({ display: 'flex', gap: '0.5rem' })}>
+              {legendClassifications
+                .filter((c) => c === 'strong' || c === 'stale')
+                .map((classification) => (
+                  <LegendCard
+                    key={classification}
+                    classification={classification}
+                    count={currentDistribution[classification]}
+                    isActive={activeFilters.has(classification)}
+                    onToggle={() => handleToggle(classification)}
+                    isDark={isDark}
+                  />
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider between Mastered and In Progress */}
+        {(legendClassifications.includes('strong') || legendClassifications.includes('stale')) &&
+          (legendClassifications.includes('developing') ||
+            legendClassifications.includes('weak')) && (
+            <div
+              data-element="legend-divider"
+              className={css({
+                width: '1px',
+                alignSelf: 'stretch',
+                marginTop: '1rem', // Skip the header height
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+              })}
+            />
+          )}
+
+        {/* In Progress group (Developing + Weak) */}
+        {(legendClassifications.includes('developing') ||
+          legendClassifications.includes('weak')) && (
+          <div
+            data-element="legend-group-in-progress"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.25rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.500' : 'gray.400',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              })}
+            >
+              In Progress
+            </span>
+            <div className={css({ display: 'flex', gap: '0.5rem' })}>
+              {legendClassifications
+                .filter((c) => c === 'developing' || c === 'weak')
+                .map((classification) => (
+                  <LegendCard
+                    key={classification}
+                    classification={classification}
+                    count={currentDistribution[classification]}
+                    isActive={activeFilters.has(classification)}
+                    onToggle={() => handleToggle(classification)}
+                    isDark={isDark}
+                  />
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider before Not Started */}
+        {(legendClassifications.includes('developing') ||
+          legendClassifications.includes('weak') ||
+          legendClassifications.includes('strong') ||
+          legendClassifications.includes('stale')) &&
+          legendClassifications.includes('unassessed') && (
+            <div
+              data-element="legend-divider"
+              className={css({
+                width: '1px',
+                alignSelf: 'stretch',
+                marginTop: '1rem', // Skip the header height
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+              })}
+            />
+          )}
+
+        {/* Not Started group (Unassessed) */}
+        {legendClassifications.includes('unassessed') && (
+          <div
+            data-element="legend-group-not-started"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.25rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.500' : 'gray.400',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              })}
+            >
+              Not Started
+            </span>
+            <LegendCard
+              classification="unassessed"
+              count={currentDistribution.unassessed}
+              isActive={activeFilters.has('unassessed')}
+              onToggle={() => handleToggle('unassessed')}
+              isDark={isDark}
+            />
+          </div>
+        )}
       </div>
 
       {/* Clear filters button */}

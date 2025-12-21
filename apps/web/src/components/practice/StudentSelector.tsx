@@ -28,6 +28,16 @@ import {
 } from './styles'
 
 /**
+ * Intervention data for students needing attention
+ */
+export interface StudentIntervention {
+  type: 'struggling' | 'declining' | 'stale' | 'absent' | 'plateau'
+  severity: 'high' | 'medium' | 'low'
+  message: string
+  icon: string
+}
+
+/**
  * Student data with curriculum info for display
  */
 export interface StudentWithProgress extends Player {
@@ -38,6 +48,7 @@ export interface StudentWithProgress extends Player {
   practicingSkills?: string[]
   lastPracticedAt?: Date | null
   skillCategory?: string | null
+  intervention?: StudentIntervention | null
 }
 
 interface StudentCardProps {
@@ -269,6 +280,52 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
               className={css(progressBarFillStyles(isDark, 'success'))}
               style={{ width: `${student.masteryPercent}%` }}
             />
+          </div>
+        )}
+
+        {/* Intervention badge (if needing attention) */}
+        {student.intervention && (
+          <div
+            data-element="intervention-badge"
+            data-intervention-type={student.intervention.type}
+            data-intervention-severity={student.intervention.severity}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              fontSize: '0.6875rem',
+              fontWeight: 'medium',
+              backgroundColor:
+                student.intervention.severity === 'high'
+                  ? isDark
+                    ? 'red.900/60'
+                    : 'red.100'
+                  : student.intervention.severity === 'medium'
+                    ? isDark
+                      ? 'orange.900/60'
+                      : 'orange.100'
+                    : isDark
+                      ? 'blue.900/60'
+                      : 'blue.100',
+              color:
+                student.intervention.severity === 'high'
+                  ? isDark
+                    ? 'red.300'
+                    : 'red.700'
+                  : student.intervention.severity === 'medium'
+                    ? isDark
+                      ? 'orange.300'
+                      : 'orange.700'
+                    : isDark
+                      ? 'blue.300'
+                      : 'blue.700',
+              marginTop: '4px',
+            })}
+          >
+            <span>{student.intervention.icon}</span>
+            <span>{student.intervention.message}</span>
           </div>
         )}
       </button>

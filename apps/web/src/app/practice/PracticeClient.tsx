@@ -9,7 +9,7 @@ import { StudentSelector, type StudentWithProgress } from '@/components/practice
 import { useTheme } from '@/contexts/ThemeContext'
 import { usePlayersWithSkillData, useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
-import { filterStudents, groupStudents } from '@/utils/studentGrouping'
+import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
 import { css } from '../../../styled-system/css'
 import { AddStudentModal } from './AddStudentModal'
 
@@ -57,6 +57,59 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
   )
 
   const groupedStudents = useMemo(() => groupStudents(filteredStudents), [filteredStudents])
+
+  // Students needing intervention (only from non-archived, filtered set)
+  const studentsNeedingAttention = useMemo(
+    () => getStudentsNeedingAttention(filteredStudents),
+    [filteredStudents]
+  )
+
+  // Set of student IDs shown in attention section (for filtering)
+  const attentionStudentIds = useMemo(
+    () => new Set(studentsNeedingAttention.map((s) => s.id)),
+    [studentsNeedingAttention]
+  )
+
+  // Track attention counts per bucket/category for placeholder display
+  const attentionCountsByBucket = useMemo(() => {
+    const counts = new Map<string, Map<string | null, number>>()
+    for (const student of studentsNeedingAttention) {
+      // Find which bucket/category this student would be in
+      for (const bucket of groupedStudents) {
+        for (const category of bucket.categories) {
+          if (category.students.some((s) => s.id === student.id)) {
+            const bucketKey = bucket.bucket
+            if (!counts.has(bucketKey)) {
+              counts.set(bucketKey, new Map())
+            }
+            const categoryKey = category.category
+            const categoryMap = counts.get(bucketKey)!
+            categoryMap.set(categoryKey, (categoryMap.get(categoryKey) ?? 0) + 1)
+          }
+        }
+      }
+    }
+    return counts
+  }, [studentsNeedingAttention, groupedStudents])
+
+  // Filter grouped students to exclude those in attention section
+  const filteredGroupedStudents = useMemo(() => {
+    return groupedStudents
+      .map((bucket) => ({
+        ...bucket,
+        categories: bucket.categories
+          .map((category) => ({
+            ...category,
+            students: category.students.filter((s) => !attentionStudentIds.has(s.id)),
+          }))
+          .filter(
+            (category) =>
+              category.students.length > 0 ||
+              (attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0) > 0
+          ),
+      }))
+      .filter((bucket) => bucket.categories.length > 0)
+  }, [groupedStudents, attentionStudentIds, attentionCountsByBucket])
 
   // Handle student selection - navigate to student's resume page
   const handleSelectStudent = useCallback(
@@ -182,8 +235,67 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
             </p>
           </header>
 
+          {/* Needs Attention Section - uses same bucket styling as other sections */}
+          {studentsNeedingAttention.length > 0 && (
+            <div data-bucket="attention" data-component="needs-attention-bucket">
+              {/* Bucket header - sticky below filter bar */}
+              <h2
+                data-element="bucket-header"
+                className={css({
+                  position: 'sticky',
+                  top: '160px', // Nav (80px) + Filter bar (~80px)
+                  zIndex: Z_INDEX.STICKY_BUCKET_HEADER,
+                  fontSize: '0.875rem',
+                  fontWeight: 'semibold',
+                  color: isDark ? 'orange.400' : 'orange.600',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '12px',
+                  paddingTop: '8px',
+                  paddingBottom: '8px',
+                  borderBottom: '2px solid',
+                  borderColor: isDark ? 'orange.700' : 'orange.300',
+                  bg: isDark ? 'gray.900' : 'gray.50',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                })}
+              >
+                <span>⚠️</span>
+                <span>Needs Attention</span>
+                <span
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '20px',
+                    height: '20px',
+                    padding: '0 6px',
+                    borderRadius: '10px',
+                    backgroundColor: isDark ? 'orange.700' : 'orange.500',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                  })}
+                >
+                  {studentsNeedingAttention.length}
+                </span>
+              </h2>
+
+              {/* Student cards - intervention badges will show on each card */}
+              <StudentSelector
+                students={studentsNeedingAttention as StudentWithProgress[]}
+                onSelectStudent={handleSelectStudent}
+                title=""
+                editMode={editMode}
+                selectedIds={selectedIds}
+                hideAddButton
+              />
+            </div>
+          )}
+
           {/* Grouped Student List */}
-          {groupedStudents.length === 0 ? (
+          {filteredGroupedStudents.length === 0 && studentsNeedingAttention.length === 0 ? (
             <div
               className={css({
                 textAlign: 'center',
@@ -237,7 +349,7 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
                 gap: '24px',
               })}
             >
-              {groupedStudents.map((bucket) => (
+              {filteredGroupedStudents.map((bucket) => (
                 <div key={bucket.bucket} data-bucket={bucket.bucket}>
                   {/* Bucket header - sticky below filter bar */}
                   <h2
@@ -270,42 +382,82 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
                       gap: '16px',
                     })}
                   >
-                    {bucket.categories.map((category) => (
-                      <div
-                        key={category.category ?? 'null'}
-                        data-category={category.category ?? 'new'}
-                      >
-                        {/* Category header - sticky below bucket header */}
-                        <h3
-                          data-element="category-header"
-                          className={css({
-                            position: 'sticky',
-                            top: '195px', // Nav (80px) + Filter bar (~80px) + Bucket header (~35px)
-                            zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
-                            fontSize: '0.8125rem',
-                            fontWeight: 'medium',
-                            color: isDark ? 'gray.500' : 'gray.400',
-                            marginBottom: '8px',
-                            paddingTop: '4px',
-                            paddingBottom: '4px',
-                            paddingLeft: '4px',
-                            bg: isDark ? 'gray.900' : 'gray.50',
-                          })}
+                    {bucket.categories.map((category) => {
+                      const attentionCount =
+                        attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0
+                      return (
+                        <div
+                          key={category.category ?? 'null'}
+                          data-category={category.category ?? 'new'}
                         >
-                          {category.categoryName}
-                        </h3>
+                          {/* Category header - sticky below bucket header */}
+                          <h3
+                            data-element="category-header"
+                            className={css({
+                              position: 'sticky',
+                              top: '195px', // Nav (80px) + Filter bar (~80px) + Bucket header (~35px)
+                              zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
+                              fontSize: '0.8125rem',
+                              fontWeight: 'medium',
+                              color: isDark ? 'gray.500' : 'gray.400',
+                              marginBottom: '8px',
+                              paddingTop: '4px',
+                              paddingBottom: '4px',
+                              paddingLeft: '4px',
+                              bg: isDark ? 'gray.900' : 'gray.50',
+                            })}
+                          >
+                            {category.categoryName}
+                          </h3>
 
-                        {/* Student cards */}
-                        <StudentSelector
-                          students={category.students as StudentWithProgress[]}
-                          onSelectStudent={handleSelectStudent}
-                          title=""
-                          editMode={editMode}
-                          selectedIds={selectedIds}
-                          hideAddButton
-                        />
-                      </div>
-                    ))}
+                          {/* Student cards wrapper */}
+                          <div
+                            className={css({
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '8px',
+                              alignItems: 'stretch',
+                            })}
+                          >
+                            {/* Student cards */}
+                            {category.students.length > 0 && (
+                              <StudentSelector
+                                students={category.students as StudentWithProgress[]}
+                                onSelectStudent={handleSelectStudent}
+                                title=""
+                                editMode={editMode}
+                                selectedIds={selectedIds}
+                                hideAddButton
+                              />
+                            )}
+
+                            {/* Attention placeholder */}
+                            {attentionCount > 0 && (
+                              <div
+                                data-element="attention-placeholder"
+                                data-attention-count={attentionCount}
+                                className={css({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '12px 16px',
+                                  borderRadius: '8px',
+                                  border: '2px dashed',
+                                  borderColor: isDark ? 'orange.700' : 'orange.300',
+                                  color: isDark ? 'orange.400' : 'orange.600',
+                                  fontSize: '0.8125rem',
+                                  textAlign: 'center',
+                                  minHeight: '60px',
+                                  flexShrink: 0,
+                                })}
+                              >
+                                +{attentionCount} in Needs Attention
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               ))}

@@ -14,14 +14,20 @@ import { db, schema } from '@/db'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
-import { computeSkillCategory, type StudentWithSkillData } from '@/utils/studentGrouping'
+import {
+  computeIntervention,
+  computeSkillCategory,
+  type SkillDistribution,
+  type StudentWithSkillData,
+} from '@/utils/studentGrouping'
+import { computeBktFromHistory, getStalenessWarning } from './bkt'
 import {
   getAllSkillMastery,
   getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
-import { getActiveSessionPlan } from './session-planner'
+import { getActiveSessionPlan, getRecentSessionResults } from './session-planner'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -88,12 +94,77 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 }
 
 /**
+ * Compute skill distribution for a player from their problem history.
+ * Uses BKT to determine mastery levels and staleness.
+ */
+async function computePlayerSkillDistribution(
+  playerId: string,
+  practicingSkillIds: string[]
+): Promise<SkillDistribution> {
+  const distribution: SkillDistribution = {
+    strong: 0,
+    stale: 0,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: practicingSkillIds.length,
+  }
+
+  if (practicingSkillIds.length === 0) return distribution
+
+  // Fetch recent problem history (last 100 problems is enough for BKT)
+  const problemHistory = await getRecentSessionResults(playerId, 100)
+
+  if (problemHistory.length === 0) {
+    // No history = all unassessed
+    distribution.unassessed = practicingSkillIds.length
+    return distribution
+  }
+
+  // Compute BKT
+  const now = new Date()
+  const bktResult = computeBktFromHistory(problemHistory, {})
+  const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
+
+  for (const skillId of practicingSkillIds) {
+    const bkt = bktMap.get(skillId)
+
+    if (!bkt || bkt.opportunities === 0) {
+      distribution.unassessed++
+      continue
+    }
+
+    const classification = bkt.masteryClassification ?? 'developing'
+
+    if (classification === 'strong') {
+      // Check staleness
+      const lastPracticed = bkt.lastPracticedAt
+      if (lastPracticed) {
+        const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
+        if (getStalenessWarning(daysSince)) {
+          distribution.stale++
+        } else {
+          distribution.strong++
+        }
+      } else {
+        distribution.strong++
+      }
+    } else {
+      distribution[classification]++
+    }
+  }
+
+  return distribution
+}
+
+/**
  * Get all players for the current viewer with enhanced skill data.
  *
  * Includes:
  * - practicingSkills: List of skill IDs being practiced
  * - lastPracticedAt: Most recent practice timestamp (max of all skill lastPracticedAt)
  * - skillCategory: Computed highest-level skill category
+ * - intervention: Intervention data if student needs attention
  */
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
   const viewerId = await getViewerId()
@@ -140,11 +211,27 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
       // Compute skill category
       const skillCategory = computeSkillCategory(practicingSkills)
 
+      // Compute intervention data (only for non-archived students with skills)
+      let intervention = null
+      if (!player.isArchived && practicingSkills.length > 0) {
+        const distribution = await computePlayerSkillDistribution(player.id, practicingSkills)
+        const daysSinceLastPractice = lastPracticedAt
+          ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
+          : Infinity
+
+        intervention = computeIntervention(
+          distribution,
+          daysSinceLastPractice,
+          practicingSkills.length > 0
+        )
+      }
+
       return {
         ...player,
         practicingSkills,
         lastPracticedAt,
         skillCategory,
+        intervention,
       }
     })
   )

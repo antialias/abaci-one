@@ -18,6 +18,48 @@ import type { Player } from '@/db/schema/players'
  */
 export type RecencyBucket = 'today' | 'thisWeek' | 'older' | 'new'
 
+// ============================================================================
+// Intervention Types
+// ============================================================================
+
+/**
+ * Types of intervention signals that indicate a student needs attention.
+ * Ordered by severity (struggling is most severe).
+ */
+export type InterventionType = 'struggling' | 'declining' | 'stale' | 'absent' | 'plateau'
+
+/**
+ * Severity level for intervention signals.
+ */
+export type InterventionSeverity = 'high' | 'medium' | 'low'
+
+/**
+ * Skill distribution at a point in time.
+ */
+export interface SkillDistribution {
+  strong: number
+  stale: number
+  developing: number
+  weak: number
+  unassessed: number
+  total: number
+}
+
+/**
+ * Intervention data for a student.
+ * Null if the student doesn't need intervention.
+ */
+export interface StudentIntervention {
+  /** Type of intervention needed */
+  type: InterventionType
+  /** Severity level */
+  severity: InterventionSeverity
+  /** Human-readable message (e.g., "4 skills are stale") */
+  message: string
+  /** Icon/emoji for the intervention type */
+  icon: string
+}
+
 /**
  * Extended student type with skill data for grouping
  */
@@ -28,6 +70,99 @@ export interface StudentWithSkillData extends Player {
   lastPracticedAt: Date | null
   /** Computed skill category (highest level) */
   skillCategory: SkillCategoryKey | null
+  /** Intervention data if student needs attention (null = no intervention needed) */
+  intervention: StudentIntervention | null
+}
+
+// ============================================================================
+// Intervention Configuration
+// ============================================================================
+
+const INTERVENTION_CONFIG: Record<
+  InterventionType,
+  { severity: InterventionSeverity; icon: string }
+> = {
+  struggling: { severity: 'high', icon: '🆘' },
+  declining: { severity: 'medium', icon: '📉' },
+  stale: { severity: 'medium', icon: '⏰' },
+  absent: { severity: 'medium', icon: '👻' },
+  plateau: { severity: 'low', icon: '📊' },
+}
+
+/**
+ * Compute intervention status for a student based on their skill distribution.
+ *
+ * Priority order (first match wins):
+ * 1. Struggling: ≥50% weak skills
+ * 2. Stale: ≥3 stale skills OR >50% of strong+stale are stale
+ * 3. Absent: No practice in >14 days (with active skills)
+ *
+ * Note: "Declining" and "Plateau" require historical trend data,
+ * which is more expensive to compute. They're handled separately.
+ */
+export function computeIntervention(
+  distribution: SkillDistribution,
+  daysSinceLastPractice: number,
+  hasPracticingSkills: boolean
+): StudentIntervention | null {
+  const { strong, stale, weak, total } = distribution
+
+  // Skip students with no skills to assess
+  if (total === 0) return null
+
+  // PRIORITY 1: Struggling (≥50% weak skills)
+  const weakPercent = (weak / total) * 100
+  if (weakPercent >= 50) {
+    return {
+      type: 'struggling',
+      ...INTERVENTION_CONFIG.struggling,
+      message: `${Math.round(weakPercent)}% weak skills`,
+    }
+  }
+
+  // PRIORITY 2: Stale (≥3 stale skills OR >50% of mastered skills are stale)
+  const masteredTotal = strong + stale
+  if (stale >= 3 || (masteredTotal > 0 && stale / masteredTotal > 0.5)) {
+    return {
+      type: 'stale',
+      ...INTERVENTION_CONFIG.stale,
+      message: `${stale} stale skill${stale !== 1 ? 's' : ''}`,
+    }
+  }
+
+  // PRIORITY 3: Absent (>14 days without practice, with active skills)
+  if (hasPracticingSkills && daysSinceLastPractice > 14) {
+    const weeks = Math.floor(daysSinceLastPractice / 7)
+    return {
+      type: 'absent',
+      ...INTERVENTION_CONFIG.absent,
+      message: weeks >= 2 ? `${weeks} weeks absent` : `${daysSinceLastPractice} days absent`,
+    }
+  }
+
+  return null
+}
+
+/**
+ * Get students who need intervention, sorted by severity.
+ */
+export function getStudentsNeedingAttention(
+  students: StudentWithSkillData[]
+): StudentWithSkillData[] {
+  const needsAttention = students.filter((s) => s.intervention !== null && !s.isArchived)
+
+  // Sort by severity (high → medium → low)
+  const severityOrder: Record<InterventionSeverity, number> = {
+    high: 0,
+    medium: 1,
+    low: 2,
+  }
+
+  return needsAttention.sort((a, b) => {
+    const aSeverity = a.intervention?.severity ?? 'low'
+    const bSeverity = b.intervention?.severity ?? 'low'
+    return severityOrder[aSeverity] - severityOrder[bSeverity]
+  })
 }
 
 /**
