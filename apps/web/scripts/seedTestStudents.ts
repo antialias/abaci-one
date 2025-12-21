@@ -111,6 +111,8 @@ import { createId } from '@paralleldrive/cuid2'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '../src/db'
 import { computeBktFromHistory, type SkillBktResult } from '../src/lib/curriculum/bkt'
+import { applyLearning, bktUpdate } from '../src/lib/curriculum/bkt/bkt-core'
+import { getDefaultParams } from '../src/lib/curriculum/bkt/skill-priors'
 import { BKT_THRESHOLDS } from '../src/lib/curriculum/config/bkt-integration'
 import { getRecentSessionResults } from '../src/lib/curriculum/session-planner'
 import type {
@@ -124,6 +126,192 @@ import {
   type GeneratedProblem as GenProblem,
 } from '../src/utils/problemGenerator'
 import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
+
+// =============================================================================
+// BKT Simulation Utilities
+// =============================================================================
+
+/**
+ * Simulate BKT computation for a sequence of correct/incorrect answers.
+ * Used to predict what pKnown will result from a given sequence.
+ *
+ * IMPORTANT: This matches the actual BKT computation behavior:
+ * - CORRECT: bktUpdate + applyLearning (student may have learned from this)
+ * - INCORRECT: bktUpdate only (no learning transition on failure)
+ */
+function simulateBktSequence(skillId: string, sequence: boolean[]): number {
+  const params = getDefaultParams(skillId)
+  let pKnown = params.pInit
+
+  for (const isCorrect of sequence) {
+    const updated = bktUpdate(pKnown, isCorrect, params)
+    // Only apply learning transition on CORRECT answers
+    // (matches updateOnCorrect vs updateOnIncorrect behavior)
+    pKnown = isCorrect ? applyLearning(updated, params.pLearn) : updated
+  }
+
+  return pKnown
+}
+
+/**
+ * Target classification for a skill
+ */
+type TargetClassification = 'weak' | 'developing' | 'strong'
+
+/**
+ * Design a sequence of correct/incorrect answers that will reliably produce
+ * the target BKT classification.
+ *
+ * Key insight: The ORDER of correct/incorrect matters more than the ratio.
+ * - Ending with correct answers → higher pKnown
+ * - Ending with incorrect answers → lower pKnown
+ *
+ * IMPORTANT: BKT dynamics are "swingy" - a single correct can push pKnown
+ * from 0.3 to ~0.7, and a single incorrect can drop from 0.7 to ~0.3.
+ * The "developing" range (0.5-0.8) is narrow and requires careful calibration.
+ */
+function designSequenceForClassification(
+  skillId: string,
+  problemCount: number,
+  target: TargetClassification
+): boolean[] {
+  // For very few problems, use simple patterns
+  if (problemCount <= 3) {
+    switch (target) {
+      case 'strong':
+        return Array(problemCount).fill(true)
+      case 'weak':
+        return Array(problemCount).fill(false)
+      case 'developing':
+        // All correct for tiny counts since multi-skill coupling pulls down
+        return Array(problemCount).fill(true)
+    }
+  }
+
+  // For longer sequences, use empirically-tuned patterns
+  switch (target) {
+    case 'strong': {
+      // 85% correct, ending with streak of correct
+      const incorrectCount = Math.max(1, Math.floor(problemCount * 0.15))
+      return [
+        ...Array(incorrectCount).fill(false),
+        ...Array(problemCount - incorrectCount).fill(true),
+      ]
+    }
+
+    case 'weak': {
+      // 90% incorrect, ending with long streak of incorrect
+      const correctCount = Math.max(1, Math.floor(problemCount * 0.1))
+      return [...Array(correctCount).fill(true), ...Array(problemCount - correctCount).fill(false)]
+    }
+
+    case 'developing': {
+      // The developing range (0.5-0.8) is narrow and BKT is swingy.
+      // Try multiple pattern types to find one that lands in range.
+
+      // Pattern generators to try (in order of preference)
+      const patternGenerators = [
+        // Pattern 1: End with exactly 1 correct after many incorrect
+        // This leverages BKT's swingy nature - one correct from low pKnown lands ~0.65-0.75
+        (n: number, correct: number) => {
+          const endCorrect = 1
+          const startCorrect = correct - endCorrect
+          return [
+            ...Array(startCorrect).fill(true),
+            ...Array(n - correct).fill(false),
+            ...Array(endCorrect).fill(true),
+          ]
+        },
+
+        // Pattern 2: Alternating ending with correct
+        // Creates "oscillating" pKnown that can land in middle
+        (n: number, correct: number) => {
+          const seq: boolean[] = []
+          let remainingCorrect = correct
+          let remainingIncorrect = n - correct
+          // Interleave with bias toward incorrect first
+          while (remainingCorrect > 0 || remainingIncorrect > 0) {
+            if (
+              remainingIncorrect > 0 &&
+              (remainingIncorrect > remainingCorrect || remainingCorrect === 0)
+            ) {
+              seq.push(false)
+              remainingIncorrect--
+            } else if (remainingCorrect > 0) {
+              seq.push(true)
+              remainingCorrect--
+            }
+          }
+          return seq
+        },
+
+        // Pattern 3: Front-loaded correct, then incorrect, ending with 1 correct
+        (n: number, correct: number) => {
+          const endCorrect = 1
+          const frontCorrect = correct - endCorrect
+          return [
+            ...Array(frontCorrect).fill(true),
+            ...Array(n - correct).fill(false),
+            ...Array(endCorrect).fill(true),
+          ]
+        },
+
+        // Pattern 4: Sandwich - incorrect, correct, incorrect
+        (n: number, correct: number) => {
+          const thirdIncorrect = Math.floor((n - correct) / 2)
+          return [
+            ...Array(thirdIncorrect).fill(false),
+            ...Array(correct).fill(true),
+            ...Array(n - correct - thirdIncorrect).fill(false),
+          ]
+        },
+      ]
+
+      // Try different correct counts with each pattern
+      // For developing, we want something between strong (>80%) and weak (<50%)
+      // Try 40-70% correct with various patterns
+      for (const correctRatio of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7]) {
+        const correctCount = Math.max(1, Math.round(problemCount * correctRatio))
+
+        for (const generatePattern of patternGenerators) {
+          const sequence = generatePattern(problemCount, correctCount)
+
+          // Verify sequence length is correct
+          if (sequence.length !== problemCount) continue
+
+          const pKnown = simulateBktSequence(skillId, sequence)
+
+          // Check if it lands in developing range
+          if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
+            return sequence
+          }
+        }
+      }
+
+      // If we still can't find a pattern, try edge cases
+      // Sometimes a specific count lands in range
+      for (let correct = 1; correct < problemCount; correct++) {
+        // Try ending with 1 correct after all incorrect
+        const sequence = [
+          ...Array(correct - 1).fill(true),
+          ...Array(problemCount - correct).fill(false),
+          true, // End with one correct
+        ]
+        const pKnown = simulateBktSequence(skillId, sequence)
+        if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
+          return sequence
+        }
+      }
+
+      // Ultimate fallback: Just end with 1 correct after all incorrect
+      // This typically lands around 0.65-0.70 from pInit
+      return [
+        ...Array(problemCount - 1).fill(false),
+        true, // Single correct at end
+      ]
+    }
+  }
+}
 
 // =============================================================================
 // Realistic Problem Generation Utilities
@@ -248,12 +436,13 @@ interface RealisticProblem {
 
 /**
  * Generates a batch of realistic problems targeting a specific skill.
- * Returns problems that use the target skill (plus potentially others).
+ * IMPORTANT: Only returns problems that actually exercise the target skill.
+ * This ensures BKT sees the correct skill in skillsExercised.
  */
 function generateRealisticProblems(
   targetSkill: string,
   count: number,
-  maxAttempts: number = 50
+  maxAttempts: number = 100
 ): RealisticProblem[] {
   const problems: RealisticProblem[] = []
   const allowedSkills = createSkillSetForTarget(targetSkill)
@@ -289,46 +478,38 @@ function generateRealisticProblems(
       attempts: 20,
     })
 
+    // STRICT: Only accept problems that actually use the target skill
     if (problem && problem.skillsUsed.includes(targetSkill)) {
       problems.push({
         terms: problem.terms,
         answer: problem.answer,
-        skillsUsed: problem.skillsUsed,
+        // IMPORTANT: Force single-skill annotation for predictable BKT outcomes.
+        // Multi-skill problems cause blame distribution which our simulation doesn't model.
+        // This ensures the generated patterns reliably produce target classifications.
+        skillsUsed: [targetSkill],
         generationTrace: problem.generationTrace,
       })
     }
   }
 
-  // If we couldn't generate enough problems targeting the skill,
-  // fall back to simpler problems that at least use allowed skills
-  while (problems.length < count) {
-    const problem = generateSingleProblem({
-      constraints: {
-        numberRange,
-        maxSum,
-        maxTerms: 3,
-        minTerms: 2,
-        problemCount: 1,
-      },
-      allowedSkills,
-      attempts: 20,
-    })
+  // If we couldn't generate enough problems, log a warning and synthesize
+  // problems that claim to use the target skill (for testing purposes)
+  if (problems.length < count) {
+    console.warn(
+      `[Seed] Could only generate ${problems.length}/${count} problems for ${targetSkill}. ` +
+        `Synthesizing ${count - problems.length} more.`
+    )
 
-    if (problem) {
-      problems.push({
-        terms: problem.terms,
-        answer: problem.answer,
-        skillsUsed: problem.skillsUsed,
-        generationTrace: problem.generationTrace,
-      })
-    } else {
-      // Ultimate fallback: create a simple problem
-      const a = Math.floor(Math.random() * 4) + 1
-      const b = Math.floor(Math.random() * 4) + 1
+    while (problems.length < count) {
+      // Synthesize a problem that uses the target skill
+      // The actual math doesn't matter for BKT - only skillsUsed matters
+      const a = Math.floor(Math.random() * 8) + 1
+      const b = Math.floor(Math.random() * 8) + 1
       problems.push({
         terms: [a, b],
         answer: a + b,
-        skillsUsed: ['basic.directAddition'],
+        // IMPORTANT: Include the target skill so BKT processes it
+        skillsUsed: [targetSkill],
       })
     }
   }
@@ -342,11 +523,13 @@ function generateRealisticProblems(
 
 interface SkillConfig {
   skillId: string
-  targetAccuracy: number
+  /** Target BKT classification - sequences will be designed to achieve this */
+  targetClassification: TargetClassification
+  /** Number of problems to generate */
   problems: number
   /** Days ago this skill was practiced (default: 1 day) */
   ageDays?: number
-  /** Simulate legacy data by omitting helpLevelUsed field (tests NaN handling) */
+  /** Simulate legacy data by omitting hadHelp field (tests NaN handling) */
   simulateLegacyData?: boolean
 }
 
@@ -374,8 +557,6 @@ interface SuccessCriteria {
 interface TuningAdjustment {
   /** Skill ID to adjust (or 'all' for all skills) */
   skillId: string | 'all'
-  /** Multiply accuracy by this factor */
-  accuracyMultiplier?: number
   /** Add this many problems */
   problemsAdd?: number
   /** Multiply problems by this factor */
@@ -488,12 +669,12 @@ This profile represents a student who:
 Use this student to test how the UI handles intervention alerts for foundational skill deficits.`,
     skillHistory: [
       // Weak in basics - this is concerning at this stage
-      { skillId: 'basic.directAddition', targetAccuracy: 0.35, problems: 15 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.28, problems: 12 },
+      { skillId: 'basic.directAddition', targetClassification: 'weak', problems: 15 },
+      { skillId: 'basic.heavenBead', targetClassification: 'weak', problems: 12 },
     ],
     // Tuning: Need at least 2 weak skills
     successCriteria: { minWeak: 2 },
-    tuningAdjustments: [{ skillId: 'all', accuracyMultiplier: 0.6, problemsAdd: 10 }],
+    tuningAdjustments: [{ skillId: 'all', problemsAdd: 10 }],
   },
   {
     name: '🟡 Single-Skill Blocker',
@@ -521,17 +702,17 @@ This profile represents a student who:
 Use this student to test targeted intervention recommendations.`,
     skillHistory: [
       // Strong basics
-      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.85,
+        targetClassification: 'strong',
         problems: 15,
       },
       // Strong in first five complement
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.87, problems: 16 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 16 },
       // THE BLOCKER - weak despite practice
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.22, problems: 18 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18 },
     ],
   },
   {
@@ -561,18 +742,20 @@ Use this student to verify:
 • Typical student who is making good progress`,
     skillHistory: [
       // Strong basics (mastered)
-      { skillId: 'basic.directAddition', targetAccuracy: 0.94, problems: 25 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.91, problems: 22 },
-      // Developing
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      // Developing - in the middle zone
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.55,
-        problems: 10,
+        targetClassification: 'developing',
+        problems: 12,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.52, problems: 8 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 10 },
       // Just started (expected to be weak)
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.25, problems: 6 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 8 },
     ],
+    // Success criteria: Need at least 1 developing to prove the system works
+    successCriteria: { minDeveloping: 1 },
   },
   {
     name: '⭐ Ready to Level Up',
@@ -601,17 +784,17 @@ Use this student to test:
 - Session planning when all skills are strong`,
     skillHistory: [
       // All strong
-      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 25 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 25 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 25 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.9,
+        targetClassification: 'strong',
         problems: 22,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 20 },
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.86, problems: 20 },
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.85, problems: 18 },
-      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.84, problems: 18 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 20 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 18 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 18 },
     ],
   },
   {
@@ -643,59 +826,59 @@ Use this student to test:
 - Over-mastery warnings`,
     skillHistory: [
       // Extremely strong basics
-      { skillId: 'basic.directAddition', targetAccuracy: 0.98, problems: 35 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.97, problems: 35 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 35 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.96,
+        targetClassification: 'strong',
         problems: 30,
       },
       {
         skillId: 'basic.directSubtraction',
-        targetAccuracy: 0.95,
+        targetClassification: 'strong',
         problems: 30,
       },
       {
         skillId: 'basic.heavenBeadSubtraction',
-        targetAccuracy: 0.94,
+        targetClassification: 'strong',
         problems: 28,
       },
       {
         skillId: 'basic.simpleCombinationsSub',
-        targetAccuracy: 0.93,
+        targetClassification: 'strong',
         problems: 28,
       },
       // All five complements mastered
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.95, problems: 30 },
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.94, problems: 30 },
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.93, problems: 28 },
-      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.92, problems: 28 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 30 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 30 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 28 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 28 },
       // Subtraction five complements too
       {
         skillId: 'fiveComplementsSub.-4=-5+1',
-        targetAccuracy: 0.91,
+        targetClassification: 'strong',
         problems: 25,
       },
       {
         skillId: 'fiveComplementsSub.-3=-5+2',
-        targetAccuracy: 0.9,
+        targetClassification: 'strong',
         problems: 25,
       },
       {
         skillId: 'fiveComplementsSub.-2=-5+3',
-        targetAccuracy: 0.89,
+        targetClassification: 'strong',
         problems: 22,
       },
       {
         skillId: 'fiveComplementsSub.-1=-5+4',
-        targetAccuracy: 0.88,
+        targetClassification: 'strong',
         problems: 22,
       },
       // Even L2 ten complements
-      { skillId: 'tenComplements.9=10-1', targetAccuracy: 0.9, problems: 20 },
-      { skillId: 'tenComplements.8=10-2', targetAccuracy: 0.88, problems: 20 },
-      { skillId: 'tenComplements.7=10-3', targetAccuracy: 0.87, problems: 18 },
-      { skillId: 'tenComplements.6=10-4', targetAccuracy: 0.85, problems: 18 },
+      { skillId: 'tenComplements.9=10-1', targetClassification: 'strong', problems: 20 },
+      { skillId: 'tenComplements.8=10-2', targetClassification: 'strong', problems: 20 },
+      { skillId: 'tenComplements.7=10-3', targetClassification: 'strong', problems: 18 },
+      { skillId: 'tenComplements.6=10-4', targetClassification: 'strong', problems: 18 },
     ],
   },
 
@@ -742,15 +925,15 @@ Use this to test the remediation UI in dashboard and modal.`,
     ],
     skillHistory: [
       // Strong skills
-      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18 },
       // WEAK skills - will trigger remediation
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.35,
+        targetClassification: 'weak',
         problems: 15,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.28, problems: 18 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 18 },
     ],
   },
   {
@@ -793,15 +976,15 @@ Use this to test the progression UI and tutorial gate flow.`,
       // NOTE: fiveComplements.3=5-2 tutorial NOT completed - triggers tutorial gate
     ],
     skillHistory: [
-      // All skills STRONG (>= 80% accuracy)
-      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 25 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.92, problems: 22 },
+      // All skills STRONG
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.88,
+        targetClassification: 'strong',
         problems: 20,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.85, problems: 20 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
     ],
   },
   {
@@ -844,15 +1027,15 @@ Use this to test the progression UI when tutorial is already satisfied.`,
       'fiveComplements.3=5-2', // Tutorial already completed!
     ],
     skillHistory: [
-      // All skills STRONG (>= 80% accuracy)
-      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 25 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.92, problems: 22 },
+      // All skills STRONG
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.88,
+        targetClassification: 'strong',
         problems: 20,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.85, problems: 20 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
     ],
   },
   {
@@ -904,23 +1087,18 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
       'fiveComplements.1=5-4',
     ],
     skillHistory: [
-      // All L1 addition skills STRONG (>= 80% accuracy) with high confidence
-      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 30 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 28 },
+      // All L1 addition skills STRONG with high confidence
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 30 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 28 },
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.9,
+        targetClassification: 'strong',
         problems: 25,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 25 },
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 22 },
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 22 },
-      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.85, problems: 20 },
-      // Also need L1 subtraction skills to be strong to block progression to them
-      { skillId: 'basic.directSubtraction', targetAccuracy: 0.88, problems: 20 },
-      { skillId: 'basic.heavenBeadSubtraction', targetAccuracy: 0.86, problems: 18 },
-      { skillId: 'basic.simpleCombinationsSub', targetAccuracy: 0.85, problems: 18 },
-      { skillId: 'fiveComplementsSub.-4=-5+1', targetAccuracy: 0.84, problems: 16 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 25 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 22 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 22 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 20 },
     ],
   },
 
@@ -969,7 +1147,9 @@ What you should see:
 • Progress calculations work with minimal data
 
 Use this to verify the dashboard handles single-skill students correctly.`,
-    skillHistory: [{ skillId: 'basic.directAddition', targetAccuracy: 0.65, problems: 12 }],
+    skillHistory: [
+      { skillId: 'basic.directAddition', targetClassification: 'developing', problems: 12 },
+    ],
   },
   {
     name: '📊 High Volume Learner',
@@ -1017,16 +1197,16 @@ Use this to verify:
 • Progress calculations with extensive history`,
     skillHistory: [
       // All L1 addition - strong
-      { skillId: 'basic.directAddition', targetAccuracy: 0.95, problems: 40 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.93, problems: 35 },
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.9, problems: 30 },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.88, problems: 28 },
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.87, problems: 25 },
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.86, problems: 25 },
-      { skillId: 'fiveComplements.1=5-4', targetAccuracy: 0.85, problems: 22 },
-      // Subtraction - still learning
-      { skillId: 'basic.directSubtraction', targetAccuracy: 0.75, problems: 15 },
-      { skillId: 'basic.heavenBeadSubtraction', targetAccuracy: 0.55, problems: 12 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 40 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
+      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 30 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 28 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 25 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 25 },
+      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 22 },
+      // Subtraction - developing
+      { skillId: 'basic.directSubtraction', targetClassification: 'developing', problems: 15 },
+      { skillId: 'basic.heavenBeadSubtraction', targetClassification: 'developing', problems: 12 },
     ],
   },
   {
@@ -1069,19 +1249,21 @@ Use this to verify UI handles many weak skills gracefully.
 Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     skillHistory: [
       // 2 Strong
-      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 25 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 22 },
-      // 4 Weak (these drift to weak due to skill coupling)
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      // 2 Developing
       {
         skillId: 'basic.simpleCombinations',
-        targetAccuracy: 0.65,
+        targetClassification: 'developing',
         problems: 15,
       },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.58, problems: 14 },
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.32, problems: 18 },
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.28, problems: 16 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 14 },
+      // 2 Weak
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18 },
+      { skillId: 'fiveComplements.2=5-3', targetClassification: 'weak', problems: 16 },
     ],
-    // No success criteria - we accept the natural BKT output
+    // Need at least 2 weak for remediation testing
+    successCriteria: { minWeak: 2 },
   },
   {
     name: '🕰️ Stale Skills Test',
@@ -1125,15 +1307,35 @@ Use this to test:
 • BKT decay effects on old skills`,
     skillHistory: [
       // Recent skills (1 day ago) - NOT stale
-      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20, ageDays: 1 },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18, ageDays: 1 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20, ageDays: 1 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18, ageDays: 1 },
       // "Not practiced recently" (7-14 days)
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.85, problems: 15, ageDays: 10 },
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.82, problems: 16, ageDays: 10 },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 15,
+        ageDays: 10,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 16,
+        ageDays: 10,
+      },
       // "Getting rusty" (14-30 days)
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.78, problems: 18, ageDays: 20 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 18,
+        ageDays: 20,
+      },
       // "Very stale" (30+ days)
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.75, problems: 16, ageDays: 45 },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 16,
+        ageDays: 45,
+      },
     ],
   },
   {
@@ -1164,11 +1366,11 @@ Use this to test:
 This student is specifically designed to stress test the BKT NaN handling code.
 
 ROOT CAUSE TESTED: The production NaN bug was caused by legacy data missing
-the 'helpLevelUsed' field. The helpLevelWeight() switch had no default case,
+the 'hadHelp' field. The helpWeight() function had no default case,
 returning undefined, which caused 'undefined * rtWeight = NaN' to propagate.
 
 The profile includes:
-• LEGACY DATA: Skills missing 'helpLevelUsed' (tests the actual root cause)
+• LEGACY DATA: Skills missing 'hadHelp' (tests the actual root cause)
 • Skills with EXTREME accuracy values (0.01 and 0.99)
 • Very high problem counts (100+ per skill)
 • Mixed recent and very old practice dates
@@ -1185,30 +1387,35 @@ If you see "⚠️ Data Error" or NaN values in the dashboard:
 3. Check the problem history for that skill
 
 Use this profile to verify:
-• Legacy data without helpLevelUsed is handled (weight defaults to 1.0)
+• Legacy data without hadHelp is handled (weight defaults to 1.0)
 • BKT core calculations handle extreme pKnown values
 • Conjunctive BKT blame attribution works with edge cases
 • Evidence quality weights don't produce NaN
 • UI gracefully shows errors for any corrupted data`,
     skillHistory: [
-      // LEGACY DATA TEST - missing helpLevelUsed (the actual root cause)
+      // LEGACY DATA TEST - missing hadHelp (the actual root cause)
       {
         skillId: 'basic.directAddition',
-        targetAccuracy: 0.85,
+        targetClassification: 'strong',
         problems: 30,
         simulateLegacyData: true,
       },
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.7, problems: 25, simulateLegacyData: true },
-      // EXTREME values - very high accuracy with many problems
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.99, problems: 100 },
-      // EXTREME values - very low accuracy with many problems
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.01, problems: 100 },
-      // Boundary case - exactly 50% accuracy (develops into developing or weak)
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.5, problems: 50 },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'developing',
+        problems: 25,
+        simulateLegacyData: true,
+      },
+      // STRONG with many problems
+      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 100 },
+      // WEAK with many problems
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 100 },
+      // DEVELOPING
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'developing', problems: 50 },
       // Very old skill with legacy data (tests decay + legacy handling)
       {
         skillId: 'fiveComplements.2=5-3',
-        targetAccuracy: 0.8,
+        targetClassification: 'strong',
         problems: 40,
         ageDays: 90,
         simulateLegacyData: true,
@@ -1263,18 +1470,30 @@ are rusty from neglect (stale), others they just can't get (weak), and some
 are both - the forgotten weaknesses that need urgent attention.`,
     skillHistory: [
       // STRONG + recent (healthy baseline)
-      { skillId: 'basic.directAddition', targetAccuracy: 0.92, problems: 20, ageDays: 1 },
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20, ageDays: 1 },
       // STRONG + stale 20 days (stale-only - "Getting rusty" but should be fine)
-      { skillId: 'basic.heavenBead', targetAccuracy: 0.88, problems: 18, ageDays: 20 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18, ageDays: 20 },
       // WEAK + recent (weak-only - actively struggling with this)
-      { skillId: 'basic.simpleCombinations', targetAccuracy: 0.28, problems: 15, ageDays: 2 },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'weak',
+        problems: 15,
+        ageDays: 2,
+      },
       // WEAK + stale 14 days (overlap: weak AND "Not practiced recently")
-      { skillId: 'fiveComplements.4=5-1', targetAccuracy: 0.32, problems: 14, ageDays: 14 },
+      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 14, ageDays: 14 },
       // WEAK + stale 35 days (overlap: urgent - weak AND "Very stale")
-      { skillId: 'fiveComplements.3=5-2', targetAccuracy: 0.22, problems: 18, ageDays: 35 },
+      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18, ageDays: 35 },
       // DEVELOPING + stale 25 days (borderline - needs practice)
-      { skillId: 'fiveComplements.2=5-3', targetAccuracy: 0.55, problems: 16, ageDays: 25 },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
+        problems: 16,
+        ageDays: 25,
+      },
     ],
+    // Need at least 3 weak for this profile
+    successCriteria: { minWeak: 3 },
   },
 ]
 
@@ -1355,15 +1574,6 @@ function filterProfiles(profiles: TestStudentProfile[]): TestStudentProfile[] {
 // Helpers
 // =============================================================================
 
-function shuffleArray<T>(array: T[]): T[] {
-  const result = [...array]
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[result[i], result[j]] = [result[j], result[i]]
-  }
-  return result
-}
-
 function generateSlotResults(
   config: SkillConfig,
   startIndex: number,
@@ -1372,15 +1582,16 @@ function generateSlotResults(
   // Generate realistic problems targeting the skill
   const realisticProblems = generateRealisticProblems(config.skillId, config.problems)
 
-  // Determine which problems should be correct based on target accuracy
-  const correctCount = Math.round(config.problems * config.targetAccuracy)
-  const correctness: boolean[] = []
-  for (let i = 0; i < correctCount; i++) correctness.push(true)
-  for (let i = correctCount; i < config.problems; i++) correctness.push(false)
-  const shuffledCorrectness = shuffleArray(correctness)
+  // Design a sequence that will reliably produce the target BKT classification
+  // This replaces random shuffling with deterministic patterns
+  const correctnessSequence = designSequenceForClassification(
+    config.skillId,
+    config.problems,
+    config.targetClassification
+  )
 
   return realisticProblems.map((realistic, i) => {
-    const isCorrect = shuffledCorrectness[i]
+    const isCorrect = correctnessSequence[i]
 
     // Convert to the schema's GeneratedProblem format
     const problem: GeneratedProblem = {
@@ -1407,7 +1618,7 @@ function generateSlotResults(
       incorrectAttempts: isCorrect ? 0 : 1,
     }
 
-    // If simulating legacy data, omit helpLevelUsed and helpTrigger
+    // If simulating legacy data, omit hadHelp and helpTrigger
     // This tests the NaN handling code path for old data missing these fields
     if (config.simulateLegacyData) {
       return baseResult as SlotResult
@@ -1415,7 +1626,7 @@ function generateSlotResults(
 
     return {
       ...baseResult,
-      helpLevelUsed: 0 as const,
+      hadHelp: false,
       helpTrigger: 'none' as const,
     }
   })
@@ -1473,12 +1684,6 @@ function applyTuningAdjustments(
 
     for (const adj of adjustments) {
       if (adj.skillId === 'all' || adj.skillId === config.skillId) {
-        if (adj.accuracyMultiplier !== undefined) {
-          newConfig.targetAccuracy = Math.min(
-            0.95,
-            Math.max(0.05, newConfig.targetAccuracy * adj.accuracyMultiplier)
-          )
-        }
         if (adj.problemsAdd !== undefined) {
           newConfig.problems = newConfig.problems + adj.problemsAdd
         }
@@ -1642,10 +1847,10 @@ async function createTestStudent(
 
     for (const skillId of profile.practicingSkills) {
       if (!historySkillIds.has(skillId)) {
-        // Add a default "strong" config for missing skills (90% accuracy, 15 problems)
+        // Add a default "strong" config for missing skills
         missingSkills.push({
           skillId,
-          targetAccuracy: 0.9,
+          targetClassification: 'strong',
           problems: 15,
         })
       }
@@ -1732,7 +1937,10 @@ async function createTestStudent(
       currentIndex += config.problems
     }
 
-    const shuffledResults = shuffleArray(allResults).map((r, i) => ({
+    // IMPORTANT: Do NOT shuffle results - we need to preserve the designed sequence order
+    // for predictable BKT outcomes. The order of correct/incorrect matters significantly
+    // because BKT applies learning transitions only after correct answers.
+    const orderedResults = allResults.map((r, i) => ({
       ...r,
       slotIndex: i,
       timestamp: new Date(sessionStartTime.getTime() + i * 10000),
@@ -1740,9 +1948,9 @@ async function createTestStudent(
 
     // Create session
     const sessionId = createId()
-    const sessionEndTime = new Date(sessionStartTime.getTime() + shuffledResults.length * 10000)
+    const sessionEndTime = new Date(sessionStartTime.getTime() + orderedResults.length * 10000)
 
-    const slots = shuffledResults.map((r, i) => ({
+    const slots = orderedResults.map((r, i) => ({
       index: i,
       purpose: 'focus' as const,
       constraints: {},
@@ -1762,14 +1970,14 @@ async function createTestStudent(
 
     const summary: SessionSummary = {
       focusDescription: `Test session for ${profile.name} (${ageDays} days ago)`,
-      totalProblemCount: shuffledResults.length,
+      totalProblemCount: orderedResults.length,
       estimatedMinutes: 30,
       parts: [
         {
           partNumber: 1,
           type: 'linear',
           description: 'Mental Math (Linear)',
-          problemCount: shuffledResults.length,
+          problemCount: orderedResults.length,
           estimatedMinutes: 30,
         },
       ],
@@ -1779,7 +1987,7 @@ async function createTestStudent(
       id: sessionId,
       playerId,
       targetDurationMinutes: 30,
-      estimatedProblemCount: shuffledResults.length,
+      estimatedProblemCount: orderedResults.length,
       avgTimePerProblemSeconds: 5,
       parts,
       summary,
@@ -1795,7 +2003,7 @@ async function createTestStudent(
         avgResponseTimeMs: 5000,
       },
       adjustments: [],
-      results: shuffledResults,
+      results: orderedResults,
       createdAt: sessionStartTime,
       approvedAt: sessionStartTime,
       startedAt: sessionStartTime,
