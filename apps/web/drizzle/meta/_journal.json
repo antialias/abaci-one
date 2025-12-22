@@ -288,6 +288,20 @@
       "when": 1766320890578,
       "tag": "0040_rename_last_help_level_to_last_had_help",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1766404380000,
+      "tag": "0041_classroom-system",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1766406120000,
+      "tag": "0042_classroom-system-indexes",
+      "breakpoints": true
     }
   ]
 }
