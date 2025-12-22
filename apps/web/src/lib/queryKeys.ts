@@ -34,3 +34,13 @@ export const sessionHistoryKeys = {
   all: ['sessionHistory'] as const,
   list: (playerId: string) => [...sessionHistoryKeys.all, playerId] as const,
 }
+
+// Classroom query keys
+export const classroomKeys = {
+  all: ['classrooms'] as const,
+  mine: () => [...classroomKeys.all, 'mine'] as const,
+  byCode: (code: string) => [...classroomKeys.all, 'byCode', code] as const,
+  detail: (id: string) => [...classroomKeys.all, 'detail', id] as const,
+  enrollments: (id: string) => [...classroomKeys.all, 'enrollments', id] as const,
+  presence: (id: string) => [...classroomKeys.all, 'presence', id] as const,
+}

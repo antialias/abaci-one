@@ -3,10 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
+import { ClassroomDashboard, CreateClassroomForm } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudentFilterBar } from '@/components/practice/StudentFilterBar'
 import { StudentSelector, type StudentWithProgress } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useMyClassroom } from '@/hooks/useClassroom'
 import { usePlayersWithSkillData, useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
@@ -28,6 +30,10 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Classroom state - check if user is a teacher
+  const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom()
+  const [showCreateClassroom, setShowCreateClassroom] = useState(false)
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('')
@@ -175,6 +181,61 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
       .length
   }, [players, searchQuery, skillFilters, showArchived])
 
+  // Handle classroom creation
+  const handleBecomeTeacher = useCallback(() => {
+    setShowCreateClassroom(true)
+  }, [])
+
+  const handleCloseCreateClassroom = useCallback(() => {
+    setShowCreateClassroom(false)
+  }, [])
+
+  // If user is a teacher, show the classroom dashboard
+  if (classroom) {
+    return (
+      <PageWithNav>
+        <main
+          data-component="practice-page"
+          className={css({
+            minHeight: '100vh',
+            backgroundColor: isDark ? 'gray.900' : 'gray.50',
+          })}
+        >
+          <ClassroomDashboard classroom={classroom} ownChildren={players} />
+        </main>
+      </PageWithNav>
+    )
+  }
+
+  // Show create classroom modal if requested
+  if (showCreateClassroom) {
+    return (
+      <PageWithNav>
+        <main
+          data-component="practice-page"
+          className={css({
+            minHeight: '100vh',
+            backgroundColor: isDark ? 'gray.900' : 'gray.50',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+          })}
+        >
+          <div
+            className={css({
+              maxWidth: '500px',
+              width: '100%',
+            })}
+          >
+            <CreateClassroomForm onCancel={handleCloseCreateClassroom} />
+          </div>
+        </main>
+      </PageWithNav>
+    )
+  }
+
+  // Parent view - show student list with filter bar
   return (
     <PageWithNav>
       <main
@@ -233,6 +294,33 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
             >
               Build your soroban skills one step at a time
             </p>
+
+            {/* Become a Teacher option */}
+            {!isLoadingClassroom && !classroom && (
+              <button
+                type="button"
+                onClick={handleBecomeTeacher}
+                data-action="become-teacher"
+                className={css({
+                  marginTop: '16px',
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  color: isDark ? 'blue.400' : 'blue.600',
+                  border: '1px solid',
+                  borderColor: isDark ? 'blue.700' : 'blue.300',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
+                    borderColor: isDark ? 'blue.500' : 'blue.400',
+                  },
+                })}
+              >
+                🏫 Are you a teacher? Create a classroom
+              </button>
+            )}
           </header>
 
           {/* Needs Attention Section - uses same bucket styling as other sections */}

@@ -32,7 +32,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         ? {
             id: classroom.teacher.id,
             name: classroom.teacher.name,
-            image: classroom.teacher.image,
           }
         : null,
     })

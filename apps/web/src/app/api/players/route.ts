@@ -26,10 +26,7 @@ export async function GET() {
     let players
     if (linkedIds.length > 0) {
       players = await db.query.players.findMany({
-        where: or(
-          eq(schema.players.userId, user.id),
-          inArray(schema.players.id, linkedIds)
-        ),
+        where: or(eq(schema.players.userId, user.id), inArray(schema.players.id, linkedIds)),
         orderBy: (players, { desc }) => [desc(players.createdAt)],
       })
     } else {

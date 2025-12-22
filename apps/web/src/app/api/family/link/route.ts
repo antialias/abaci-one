@@ -13,10 +13,7 @@ async function getOrCreateUser(viewerId: string) {
   })
 
   if (!user) {
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({ guestId: viewerId })
-      .returning()
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
     user = newUser
   }
 
