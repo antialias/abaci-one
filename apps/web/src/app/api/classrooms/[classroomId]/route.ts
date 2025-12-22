@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import { db, schema } from '@/db'
 import {
   deleteClassroom,
   getClassroom,
@@ -6,6 +8,22 @@ import {
   regenerateClassroomCode,
 } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+
+/**
+ * Get or create user record for a viewerId (guestId)
+ */
+async function getOrCreateUser(viewerId: string) {
+  let user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, viewerId),
+  })
+
+  if (!user) {
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
+    user = newUser
+  }
+
+  return user
+}
 
 interface RouteParams {
   params: Promise<{ classroomId: string }>
@@ -45,11 +63,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const { classroomId } = await params
     const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
     const body = await req.json()
 
     // Handle code regeneration separately
     if (body.regenerateCode) {
-      const newCode = await regenerateClassroomCode(classroomId, viewerId)
+      const newCode = await regenerateClassroomCode(classroomId, user.id)
       if (!newCode) {
         return NextResponse.json(
           { error: 'Not authorized or classroom not found' },
@@ -69,7 +88,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 })
     }
 
-    const classroom = await updateClassroom(classroomId, viewerId, updates)
+    const classroom = await updateClassroom(classroomId, user.id, updates)
 
     if (!classroom) {
       return NextResponse.json({ error: 'Not authorized or classroom not found' }, { status: 403 })
@@ -92,8 +111,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const { classroomId } = await params
     const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
 
-    const success = await deleteClassroom(classroomId, viewerId)
+    const success = await deleteClassroom(classroomId, user.id)
 
     if (!success) {
       return NextResponse.json({ error: 'Not authorized or classroom not found' }, { status: 403 })

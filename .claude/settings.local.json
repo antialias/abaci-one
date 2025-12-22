@@ -254,7 +254,13 @@
       "Bash(mcp__sqlite__describe_table:*)",
       "Bash(git diff:*)",
       "Bash(git show:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(xargs ls:*)",
+      "Bash(mcp__sqlite__list_tables)",
+      "WebFetch(domain:developer.chrome.com)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(git rev-parse:*)"
     ],
     "deny": [],
     "ask": []

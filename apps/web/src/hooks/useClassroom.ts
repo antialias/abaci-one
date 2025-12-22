@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Classroom, User } from '@/db/schema'
+import type { Classroom, EnrollmentRequest, Player, User } from '@/db/schema'
 import { api } from '@/lib/queryClient'
 import { classroomKeys } from '@/lib/queryKeys'
 
@@ -14,6 +14,11 @@ export { classroomKeys } from '@/lib/queryKeys'
 
 export interface ClassroomWithTeacher extends Classroom {
   teacher?: User
+}
+
+export interface EnrollmentRequestWithRelations extends EnrollmentRequest {
+  player?: Player
+  classroom?: Classroom
 }
 
 // ============================================================================
@@ -117,4 +122,204 @@ export function useIsTeacher() {
     isTeacher: classroom !== null,
     isLoading,
   }
+}
+
+// ============================================================================
+// Enrollment API Functions
+// ============================================================================
+
+/**
+ * Fetch enrolled students for a classroom
+ */
+async function fetchEnrolledStudents(classroomId: string): Promise<Player[]> {
+  const res = await api(`classrooms/${classroomId}/enrollments`)
+  if (!res.ok) throw new Error('Failed to fetch enrolled students')
+  const data = await res.json()
+  return data.students
+}
+
+/**
+ * Fetch pending enrollment requests for a classroom
+ */
+async function fetchPendingRequests(
+  classroomId: string
+): Promise<EnrollmentRequestWithRelations[]> {
+  const res = await api(`classrooms/${classroomId}/enrollment-requests`)
+  if (!res.ok) throw new Error('Failed to fetch enrollment requests')
+  const data = await res.json()
+  return data.requests
+}
+
+/**
+ * Create enrollment request
+ */
+async function createEnrollmentRequest(params: {
+  classroomId: string
+  playerId: string
+}): Promise<EnrollmentRequest> {
+  const res = await api(`classrooms/${params.classroomId}/enrollment-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: params.playerId }),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to create enrollment request')
+  }
+  const data = await res.json()
+  return data.request
+}
+
+/**
+ * Approve enrollment request
+ */
+async function approveRequest(params: {
+  classroomId: string
+  requestId: string
+}): Promise<{ request: EnrollmentRequest; fullyApproved: boolean }> {
+  const res = await api(
+    `classrooms/${params.classroomId}/enrollment-requests/${params.requestId}/approve`,
+    { method: 'POST' }
+  )
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to approve request')
+  }
+  return res.json()
+}
+
+/**
+ * Deny enrollment request
+ */
+async function denyRequest(params: {
+  classroomId: string
+  requestId: string
+}): Promise<EnrollmentRequest> {
+  const res = await api(
+    `classrooms/${params.classroomId}/enrollment-requests/${params.requestId}/deny`,
+    { method: 'POST' }
+  )
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to deny request')
+  }
+  const data = await res.json()
+  return data.request
+}
+
+/**
+ * Unenroll student from classroom
+ */
+async function unenrollStudent(params: { classroomId: string; playerId: string }): Promise<void> {
+  const res = await api(`classrooms/${params.classroomId}/enrollments/${params.playerId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to unenroll student')
+  }
+}
+
+// ============================================================================
+// Enrollment Hooks
+// ============================================================================
+
+/**
+ * Get enrolled students in a classroom
+ */
+export function useEnrolledStudents(classroomId: string | undefined) {
+  return useQuery({
+    queryKey: classroomKeys.enrollments(classroomId ?? ''),
+    queryFn: () => fetchEnrolledStudents(classroomId!),
+    enabled: !!classroomId,
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+
+/**
+ * Get pending enrollment requests for a classroom
+ */
+export function usePendingEnrollmentRequests(classroomId: string | undefined) {
+  return useQuery({
+    queryKey: [...classroomKeys.detail(classroomId ?? ''), 'pending-requests'],
+    queryFn: () => fetchPendingRequests(classroomId!),
+    enabled: !!classroomId,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+/**
+ * Create enrollment request mutation
+ *
+ * Used by parents to request enrollment of their child in a classroom.
+ */
+export function useCreateEnrollmentRequest() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createEnrollmentRequest,
+    onSuccess: (_, { classroomId }) => {
+      // Invalidate pending requests for this classroom
+      queryClient.invalidateQueries({
+        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+      })
+    },
+  })
+}
+
+/**
+ * Approve enrollment request mutation (for teachers)
+ */
+export function useApproveEnrollmentRequest() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: approveRequest,
+    onSuccess: (result, { classroomId }) => {
+      // Invalidate pending requests
+      queryClient.invalidateQueries({
+        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+      })
+      // If fully approved, also invalidate enrollments
+      if (result.fullyApproved) {
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.enrollments(classroomId),
+        })
+      }
+    },
+  })
+}
+
+/**
+ * Deny enrollment request mutation (for teachers)
+ */
+export function useDenyEnrollmentRequest() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: denyRequest,
+    onSuccess: (_, { classroomId }) => {
+      // Invalidate pending requests
+      queryClient.invalidateQueries({
+        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+      })
+    },
+  })
+}
+
+/**
+ * Unenroll student mutation
+ */
+export function useUnenrollStudent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: unenrollStudent,
+    onSuccess: (_, { classroomId }) => {
+      // Invalidate enrollments
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.enrollments(classroomId),
+      })
+    },
+  })
 }

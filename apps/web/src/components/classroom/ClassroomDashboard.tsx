@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
 import { ClassroomTab } from './ClassroomTab'
+import { EnrollChildFlow } from './EnrollChildFlow'
 import { StudentManagerTab } from './StudentManagerTab'
 
 type TabId = 'classroom' | 'students'
@@ -29,6 +30,7 @@ export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDas
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
+  const [showEnrollChild, setShowEnrollChild] = useState(false)
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'classroom', label: 'Classroom', icon: '🏫' },
@@ -95,16 +97,45 @@ export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDas
             borderColor: isDark ? 'green.800' : 'green.200',
           })}
         >
-          <h2
+          <div
             className={css({
-              fontSize: '0.9375rem',
-              fontWeight: 'bold',
-              color: isDark ? 'green.300' : 'green.700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               marginBottom: '12px',
             })}
           >
-            Your Children
-          </h2>
+            <h2
+              className={css({
+                fontSize: '0.9375rem',
+                fontWeight: 'bold',
+                color: isDark ? 'green.300' : 'green.700',
+              })}
+            >
+              Your Children
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowEnrollChild(true)}
+              data-action="enroll-child-in-other-classroom"
+              className={css({
+                padding: '6px 12px',
+                backgroundColor: 'transparent',
+                color: isDark ? 'green.400' : 'green.700',
+                border: '1px solid',
+                borderColor: isDark ? 'green.700' : 'green.400',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: isDark ? 'green.900/50' : 'green.100',
+                },
+              })}
+            >
+              📚 Enroll in another classroom
+            </button>
+          </div>
           <div
             className={css({
               display: 'flex',
@@ -153,6 +184,34 @@ export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDas
             ))}
           </div>
         </section>
+      )}
+
+      {/* Enroll child modal */}
+      {showEnrollChild && (
+        <div
+          data-component="enroll-child-modal"
+          className={css({
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            zIndex: 1000,
+          })}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEnrollChild(false)
+            }
+          }}
+        >
+          <EnrollChildFlow
+            children={ownChildren}
+            onSuccess={() => setShowEnrollChild(false)}
+            onCancel={() => setShowEnrollChild(false)}
+          />
+        </div>
       )}
 
       {/* Tab navigation */}

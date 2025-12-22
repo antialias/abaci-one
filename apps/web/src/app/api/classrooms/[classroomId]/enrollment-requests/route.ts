@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import { db, schema } from '@/db'
 import {
   createEnrollmentRequest,
   getPendingRequestsForClassroom,
@@ -6,6 +8,22 @@ import {
   isParent,
 } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+
+/**
+ * Get or create user record for a viewerId (guestId)
+ */
+async function getOrCreateUser(viewerId: string) {
+  let user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, viewerId),
+  })
+
+  if (!user) {
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
+    user = newUser
+  }
+
+  return user
+}
 
 interface RouteParams {
   params: Promise<{ classroomId: string }>
@@ -21,9 +39,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { classroomId } = await params
     const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
 
     // Verify user is the teacher of this classroom
-    const classroom = await getTeacherClassroom(viewerId)
+    const classroom = await getTeacherClassroom(user.id)
     if (!classroom || classroom.id !== classroomId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
@@ -48,6 +67,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
     const { classroomId } = await params
     const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
     const body = await req.json()
 
     if (!body.playerId) {
@@ -55,9 +75,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // Determine role: is user the teacher or a parent?
-    const classroom = await getTeacherClassroom(viewerId)
+    const classroom = await getTeacherClassroom(user.id)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(viewerId, body.playerId)
+    const parentCheck = await isParent(user.id, body.playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(
@@ -71,7 +91,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const request = await createEnrollmentRequest({
       classroomId,
       playerId: body.playerId,
-      requestedBy: viewerId,
+      requestedBy: user.id,
       requestedByRole,
     })
 
