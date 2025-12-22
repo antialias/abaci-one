@@ -720,6 +720,100 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Classroom: Join classroom channel (for teachers to receive presence updates)
+    socket.on('join-classroom', async ({ classroomId }: { classroomId: string }) => {
+      try {
+        await socket.join(`classroom:${classroomId}`)
+        console.log(`🏫 User joined classroom channel: ${classroomId}`)
+      } catch (error) {
+        console.error('Error joining classroom channel:', error)
+      }
+    })
+
+    // Classroom: Leave classroom channel
+    socket.on('leave-classroom', async ({ classroomId }: { classroomId: string }) => {
+      try {
+        await socket.leave(`classroom:${classroomId}`)
+        console.log(`🏫 User left classroom channel: ${classroomId}`)
+      } catch (error) {
+        console.error('Error leaving classroom channel:', error)
+      }
+    })
+
+    // Session Observation: Start observing a practice session
+    socket.on(
+      'observe-session',
+      async ({ sessionId, observerId }: { sessionId: string; observerId: string }) => {
+        try {
+          await socket.join(`session:${sessionId}`)
+          console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
+
+          // Notify session that an observer joined
+          socket.to(`session:${sessionId}`).emit('observer-joined', { observerId })
+        } catch (error) {
+          console.error('Error starting session observation:', error)
+        }
+      }
+    )
+
+    // Session Observation: Stop observing a practice session
+    socket.on('stop-observing', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.leave(`session:${sessionId}`)
+        console.log(`👁️ Observer stopped watching session: ${sessionId}`)
+      } catch (error) {
+        console.error('Error stopping session observation:', error)
+      }
+    })
+
+    // Session Observation: Broadcast practice state (from student's client)
+    socket.on(
+      'practice-state',
+      (data: {
+        sessionId: string
+        currentProblem: unknown
+        phase: 'problem' | 'feedback' | 'tutorial'
+        studentAnswer: number | null
+        isCorrect: boolean | null
+        timing: { startedAt: number; elapsed: number }
+      }) => {
+        // Broadcast to all observers in the session channel
+        socket.to(`session:${data.sessionId}`).emit('practice-state', data)
+      }
+    )
+
+    // Session Observation: Broadcast tutorial state (from student's client)
+    socket.on(
+      'tutorial-state',
+      (data: { sessionId: string; currentStep: number; totalSteps: number; content: unknown }) => {
+        // Broadcast to all observers in the session channel
+        socket.to(`session:${data.sessionId}`).emit('tutorial-state', data)
+      }
+    )
+
+    // Session Observation: Tutorial control from observer
+    socket.on(
+      'tutorial-control',
+      (data: { sessionId: string; action: 'skip' | 'next' | 'previous' }) => {
+        // Send control command to student's client
+        io!.to(`session:${data.sessionId}`).emit('tutorial-control', data)
+      }
+    )
+
+    // Session Observation: Abacus control from observer
+    socket.on(
+      'abacus-control',
+      (data: {
+        sessionId: string
+        target: 'help' | 'hero'
+        action: 'show' | 'hide' | 'set-value'
+        value?: number
+      }) => {
+        // Send control command to student's client
+        io!.to(`session:${data.sessionId}`).emit('abacus-control', data)
+      }
+    )
+
     socket.on('disconnect', () => {
       // Don't delete session on disconnect - it persists across devices
     })

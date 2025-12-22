@@ -90,6 +90,12 @@ export const players = sqliteTable(
      * Archived students are not deleted but don't appear in normal lists
      */
     isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+
+    /**
+     * Family code for sharing access to this player with other parents
+     * Format: FAM-XXXXXX (6 alphanumeric chars)
+     */
+    familyCode: text('family_code').unique(),
   },
   (table) => ({
     /** Index for fast lookups by userId */
@@ -99,3 +105,16 @@ export const players = sqliteTable(
 
 export type Player = typeof players.$inferSelect
 export type NewPlayer = typeof players.$inferInsert
+
+/**
+ * Generate a unique family code for sharing player access with other parents
+ * Format: FAM-XXXXXX (6 alphanumeric characters, no confusing chars like 0/O, 1/I)
+ */
+export function generateFamilyCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = 'FAM-'
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return code
+}

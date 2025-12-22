@@ -2,6 +2,7 @@
 
 import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FamilyCodeDisplay } from '@/components/family'
 import { css } from '../../../styled-system/css'
 
 interface NotesModalProps {
@@ -49,6 +50,7 @@ export function NotesModal({
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(student.notes ?? '')
   const [isSaving, setIsSaving] = useState(false)
+  const [showFamilyCode, setShowFamilyCode] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -439,56 +441,83 @@ export function NotesModal({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  gap: '0.5rem',
                 })}
               >
-                {/* Archive button on the left */}
-                {onToggleArchive && (
+                {/* Left side buttons */}
+                <div className={css({ display: 'flex', gap: '0.5rem' })}>
+                  {/* Archive button */}
+                  {onToggleArchive && (
+                    <button
+                      type="button"
+                      data-action="toggle-archive"
+                      onClick={onToggleArchive}
+                      className={css({
+                        padding: '0.625rem 1rem',
+                        borderRadius: '8px',
+                        backgroundColor: student.isArchived
+                          ? isDark
+                            ? 'green.900'
+                            : 'green.100'
+                          : isDark
+                            ? 'gray.700'
+                            : 'gray.100',
+                        color: student.isArchived
+                          ? isDark
+                            ? 'green.300'
+                            : 'green.700'
+                          : isDark
+                            ? 'gray.300'
+                            : 'gray.600',
+                        fontSize: '0.875rem',
+                        fontWeight: 'medium',
+                        border: '1px solid',
+                        borderColor: student.isArchived
+                          ? isDark
+                            ? 'green.700'
+                            : 'green.300'
+                          : isDark
+                            ? 'gray.600'
+                            : 'gray.300',
+                        cursor: 'pointer',
+                        _hover: {
+                          backgroundColor: student.isArchived
+                            ? isDark
+                              ? 'green.800'
+                              : 'green.200'
+                            : isDark
+                              ? 'gray.600'
+                              : 'gray.200',
+                        },
+                      })}
+                    >
+                      {student.isArchived ? '📦 Unarchive' : '📦 Archive'}
+                    </button>
+                  )}
+
+                  {/* Share Access button */}
                   <button
                     type="button"
-                    data-action="toggle-archive"
-                    onClick={onToggleArchive}
+                    data-action="share-access"
+                    onClick={() => setShowFamilyCode(true)}
                     className={css({
                       padding: '0.625rem 1rem',
                       borderRadius: '8px',
-                      backgroundColor: student.isArchived
-                        ? isDark
-                          ? 'green.900'
-                          : 'green.100'
-                        : isDark
-                          ? 'gray.700'
-                          : 'gray.100',
-                      color: student.isArchived
-                        ? isDark
-                          ? 'green.300'
-                          : 'green.700'
-                        : isDark
-                          ? 'gray.300'
-                          : 'gray.600',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      color: isDark ? 'gray.300' : 'gray.600',
                       fontSize: '0.875rem',
                       fontWeight: 'medium',
                       border: '1px solid',
-                      borderColor: student.isArchived
-                        ? isDark
-                          ? 'green.700'
-                          : 'green.300'
-                        : isDark
-                          ? 'gray.600'
-                          : 'gray.300',
+                      borderColor: isDark ? 'gray.600' : 'gray.300',
                       cursor: 'pointer',
                       _hover: {
-                        backgroundColor: student.isArchived
-                          ? isDark
-                            ? 'green.800'
-                            : 'green.200'
-                          : isDark
-                            ? 'gray.600'
-                            : 'gray.200',
+                        backgroundColor: isDark ? 'gray.600' : 'gray.200',
                       },
                     })}
                   >
-                    {student.isArchived ? '📦 Unarchive' : '📦 Archive'}
+                    🔗 Share Access
                   </button>
-                )}
+                </div>
 
                 {/* Edit notes button on the right */}
                 <button
@@ -517,6 +546,14 @@ export function NotesModal({
           )}
         </div>
       </animated.div>
+
+      {/* Family Code Modal */}
+      <FamilyCodeDisplay
+        playerId={student.id}
+        playerName={student.name}
+        isOpen={showFamilyCode}
+        onClose={() => setShowFamilyCode(false)}
+      />
     </>
   )
 }

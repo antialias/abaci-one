@@ -1,11 +1,13 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray, or } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { generateFamilyCode, parentChild } from '@/db/schema'
 import { getViewerId } from '@/lib/viewer'
 
 /**
  * GET /api/players
  * List all players for the current viewer (guest or user)
+ * Includes both created players and linked children via parent_child
  */
 export async function GET() {
   try {
@@ -14,11 +16,29 @@ export async function GET() {
     // Get or create user record
     const user = await getOrCreateUser(viewerId)
 
-    // Get all players for this user
-    const players = await db.query.players.findMany({
-      where: eq(schema.players.userId, user.id),
-      orderBy: (players, { desc }) => [desc(players.createdAt)],
+    // Get player IDs linked via parent_child table
+    const linkedPlayerIds = await db.query.parentChild.findMany({
+      where: eq(parentChild.parentUserId, user.id),
     })
+    const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
+
+    // Get all players: created by this user OR linked via parent_child
+    let players
+    if (linkedIds.length > 0) {
+      players = await db.query.players.findMany({
+        where: or(
+          eq(schema.players.userId, user.id),
+          inArray(schema.players.id, linkedIds)
+        ),
+        orderBy: (players, { desc }) => [desc(players.createdAt)],
+      })
+    } else {
+      // No linked players, just get created players
+      players = await db.query.players.findMany({
+        where: eq(schema.players.userId, user.id),
+        orderBy: (players, { desc }) => [desc(players.createdAt)],
+      })
+    }
 
     return NextResponse.json({ players })
   } catch (error) {
@@ -47,7 +67,10 @@ export async function POST(req: NextRequest) {
     // Get or create user record
     const user = await getOrCreateUser(viewerId)
 
-    // Create player
+    // Generate a unique family code for the new player
+    const familyCode = generateFamilyCode()
+
+    // Create player with family code
     const [player] = await db
       .insert(schema.players)
       .values({
@@ -56,8 +79,15 @@ export async function POST(req: NextRequest) {
         emoji: body.emoji,
         color: body.color,
         isActive: body.isActive ?? false,
+        familyCode,
       })
       .returning()
+
+    // Create parent-child relationship
+    await db.insert(parentChild).values({
+      parentUserId: user.id,
+      childPlayerId: player.id,
+    })
 
     return NextResponse.json({ player }, { status: 201 })
   } catch (error) {

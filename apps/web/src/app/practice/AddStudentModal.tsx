@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { EmojiPicker } from '@/components/EmojiPicker'
+import { LinkChildForm } from '@/components/family'
 import { PLAYER_EMOJIS } from '@/constants/playerEmojis'
 import { useCreatePlayer } from '@/hooks/useUserPlayers'
 import { css } from '../../../styled-system/css'
@@ -38,6 +39,7 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
   const [formEmoji, setFormEmoji] = useState(PLAYER_EMOJIS[0])
   const [formColor, setFormColor] = useState(AVAILABLE_COLORS[0])
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showLinkForm, setShowLinkForm] = useState(false)
 
   // React Query mutation
   const createPlayer = useCreatePlayer()
@@ -49,6 +51,7 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
       setFormEmoji(PLAYER_EMOJIS[Math.floor(Math.random() * PLAYER_EMOJIS.length)])
       setFormColor(AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)])
       setShowEmojiPicker(false)
+      setShowLinkForm(false)
     }
   }, [isOpen])
 
@@ -392,7 +395,57 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
             {createPlayer.isPending ? 'Adding...' : 'Add Student'}
           </button>
         </div>
+
+        {/* Link existing child option */}
+        <div
+          className={css({
+            marginTop: '1.5rem',
+            paddingTop: '1.5rem',
+            borderTop: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            textAlign: 'center',
+          })}
+        >
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '0.5rem',
+            })}
+          >
+            Have a family code from another parent?
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowLinkForm(true)}
+            data-action="show-link-form"
+            className={css({
+              padding: '8px 16px',
+              fontSize: '0.875rem',
+              color: isDark ? 'blue.400' : 'blue.600',
+              backgroundColor: 'transparent',
+              border: '1px solid',
+              borderColor: isDark ? 'blue.700' : 'blue.300',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                borderColor: isDark ? 'blue.600' : 'blue.400',
+              },
+            })}
+          >
+            Link Existing Child
+          </button>
+        </div>
       </div>
+
+      {/* Link Child Form Modal */}
+      <LinkChildForm
+        isOpen={showLinkForm}
+        onClose={() => setShowLinkForm(false)}
+        onSuccess={onClose}
+      />
     </div>
   )
 }

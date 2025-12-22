@@ -9,8 +9,9 @@
 
 import 'server-only'
 
-import { eq } from 'drizzle-orm'
+import { eq, inArray, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { parentChild } from '@/db/schema'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
@@ -179,11 +180,25 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     user = newUser
   }
 
-  // Get all players for this user
-  const players = await db.query.players.findMany({
-    where: eq(schema.players.userId, user.id),
-    orderBy: (players, { desc }) => [desc(players.createdAt)],
+  // Get player IDs linked via parent_child table
+  const linkedPlayerIds = await db.query.parentChild.findMany({
+    where: eq(parentChild.parentUserId, user.id),
   })
+  const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
+
+  // Get all players: created by this user OR linked via parent_child
+  let players: Player[]
+  if (linkedIds.length > 0) {
+    players = await db.query.players.findMany({
+      where: or(eq(schema.players.userId, user.id), inArray(schema.players.id, linkedIds)),
+      orderBy: (players, { desc }) => [desc(players.createdAt)],
+    })
+  } else {
+    players = await db.query.players.findMany({
+      where: eq(schema.players.userId, user.id),
+      orderBy: (players, { desc }) => [desc(players.createdAt)],
+    })
+  }
 
   // Fetch skill mastery for all players in parallel
   const playersWithSkills = await Promise.all(
