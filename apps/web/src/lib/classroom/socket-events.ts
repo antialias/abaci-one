@@ -52,6 +52,15 @@ export interface StudentLeftEvent {
 }
 
 // ============================================================================
+// Player Presence Events (sent to player:${playerId} channel)
+// ============================================================================
+
+export interface PresenceRemovedEvent {
+  classroomId: string
+  removedBy: 'teacher' | 'self'
+}
+
+// ============================================================================
 // Session Observation Events (sent to session:${sessionId} channel)
 // ============================================================================
 
@@ -108,9 +117,12 @@ export interface ClassroomServerToClientEvents {
   'enrollment-approved': (data: EnrollmentApprovedEvent) => void
   'enrollment-denied': (data: EnrollmentDeniedEvent) => void
 
-  // Presence events
+  // Presence events (classroom channel)
   'student-entered': (data: StudentEnteredEvent) => void
   'student-left': (data: StudentLeftEvent) => void
+
+  // Player presence events (player channel)
+  'presence-removed': (data: PresenceRemovedEvent) => void
 
   // Session observation events
   'practice-state': (data: PracticeStateEvent) => void
@@ -128,6 +140,8 @@ export interface ClassroomClientToServerEvents {
   // Channel subscriptions
   'join-classroom': (data: { classroomId: string }) => void
   'leave-classroom': (data: { classroomId: string }) => void
+  'join-player': (data: { playerId: string }) => void
+  'leave-player': (data: { playerId: string }) => void
   'observe-session': (data: { sessionId: string; observerId: string }) => void
   'stop-observing': (data: { sessionId: string }) => void
 

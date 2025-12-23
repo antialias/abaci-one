@@ -17,7 +17,7 @@ interface StudentPracticePageProps {
  *
  * Guards/Redirects:
  * - No active session → /dashboard (show progress, start new session)
- * - Draft/approved session (not started) → /configure (approve and start)
+ * - Draft/approved session (not started) → /dashboard (modal handles configuration)
  * - In_progress session → SHOW PROBLEM (this is the only state we render here)
  * - Completed session → /summary (show results)
  *
@@ -42,9 +42,9 @@ export default async function StudentPracticePage({ params }: StudentPracticePag
     redirect(`/practice/${studentId}/dashboard`)
   }
 
-  // Draft or approved but not started → configure page
+  // Draft or approved but not started → dashboard (modal handles configuration)
   if (!activeSession.startedAt) {
-    redirect(`/practice/${studentId}/configure`)
+    redirect(`/practice/${studentId}/dashboard`)
   }
 
   // Session is completed → summary page

@@ -323,3 +323,275 @@ export function useUnenrollStudent() {
     },
   })
 }
+
+// ============================================================================
+// Parent Enrollment Approval API Functions
+// ============================================================================
+
+/**
+ * Fetch pending enrollment requests for current user as parent
+ */
+async function fetchPendingApprovalsForParent(): Promise<EnrollmentRequestWithRelations[]> {
+  const res = await api('enrollment-requests/pending')
+  if (!res.ok) throw new Error('Failed to fetch pending approvals')
+  const data = await res.json()
+  return data.requests
+}
+
+/**
+ * Approve enrollment request as parent
+ */
+async function approveRequestAsParent(
+  requestId: string
+): Promise<{ request: EnrollmentRequest; enrolled: boolean }> {
+  const res = await api(`enrollment-requests/${requestId}/approve`, { method: 'POST' })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to approve request')
+  }
+  return res.json()
+}
+
+/**
+ * Deny enrollment request as parent
+ */
+async function denyRequestAsParent(requestId: string): Promise<EnrollmentRequest> {
+  const res = await api(`enrollment-requests/${requestId}/deny`, { method: 'POST' })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to deny request')
+  }
+  const data = await res.json()
+  return data.request
+}
+
+// ============================================================================
+// Parent Enrollment Approval Hooks
+// ============================================================================
+
+/**
+ * Get pending enrollment requests for current user as parent
+ *
+ * These are requests initiated by teachers for the user's children,
+ * where parent approval hasn't been given yet.
+ */
+export function usePendingApprovalsForParent() {
+  return useQuery({
+    queryKey: classroomKeys.pendingParentApprovals(),
+    queryFn: fetchPendingApprovalsForParent,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+/**
+ * Approve enrollment request as parent
+ */
+export function useApproveEnrollmentRequestAsParent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: approveRequestAsParent,
+    onSuccess: (result) => {
+      // Invalidate pending parent approvals
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.pendingParentApprovals(),
+      })
+      // If fully approved, classroom enrollments will be updated too
+      // (but we don't know the classroomId from this response, so broader invalidation)
+      if (result.enrolled) {
+        queryClient.invalidateQueries({
+          queryKey: ['classrooms'],
+        })
+      }
+    },
+  })
+}
+
+/**
+ * Deny enrollment request as parent
+ */
+export function useDenyEnrollmentRequestAsParent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: denyRequestAsParent,
+    onSuccess: () => {
+      // Invalidate pending parent approvals
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.pendingParentApprovals(),
+      })
+    },
+  })
+}
+
+// ============================================================================
+// Classroom Presence API Functions
+// ============================================================================
+
+export interface PresenceStudent extends Player {
+  enteredAt: string
+  enteredBy: string
+}
+
+/**
+ * Fetch students currently present in a classroom
+ */
+async function fetchClassroomPresence(classroomId: string): Promise<PresenceStudent[]> {
+  const res = await api(`classrooms/${classroomId}/presence`)
+  if (!res.ok) throw new Error('Failed to fetch classroom presence')
+  const data = await res.json()
+  return data.students
+}
+
+/**
+ * Enter a student into a classroom
+ */
+async function enterClassroom(params: {
+  classroomId: string
+  playerId: string
+}): Promise<{ success: boolean; error?: string }> {
+  const res = await api(`classrooms/${params.classroomId}/presence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: params.playerId }),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    return { success: false, error: data.error || 'Failed to enter classroom' }
+  }
+  return { success: true }
+}
+
+/**
+ * Remove a student from a classroom
+ */
+async function leaveClassroom(params: { classroomId: string; playerId: string }): Promise<void> {
+  const res = await api(`classrooms/${params.classroomId}/presence/${params.playerId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to leave classroom')
+  }
+}
+
+// ============================================================================
+// Classroom Presence Hooks
+// ============================================================================
+
+/**
+ * Get students currently present in a classroom
+ */
+export function useClassroomPresence(classroomId: string | undefined) {
+  return useQuery({
+    queryKey: classroomKeys.presence(classroomId ?? ''),
+    queryFn: () => fetchClassroomPresence(classroomId!),
+    enabled: !!classroomId,
+    staleTime: 15 * 1000, // 15 seconds - presence changes frequently
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for real-time feel
+  })
+}
+
+/**
+ * Enter a student into a classroom
+ */
+export function useEnterClassroom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: enterClassroom,
+    onSuccess: (result, { classroomId, playerId }) => {
+      if (result.success) {
+        // Invalidate teacher's view of classroom presence
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.presence(classroomId),
+        })
+        // Invalidate student's view of their own presence
+        queryClient.invalidateQueries({
+          queryKey: ['players', playerId, 'presence'],
+        })
+      }
+    },
+  })
+}
+
+/**
+ * Remove a student from a classroom
+ */
+export function useLeaveClassroom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: leaveClassroom,
+    onSuccess: (_, { classroomId, playerId }) => {
+      // Invalidate teacher's view of classroom presence
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.presence(classroomId),
+      })
+      // Invalidate student's view of their own presence
+      queryClient.invalidateQueries({
+        queryKey: ['players', playerId, 'presence'],
+      })
+    },
+  })
+}
+
+// ============================================================================
+// Student Enrollment API Functions
+// ============================================================================
+
+export interface PresenceInfo {
+  playerId: string
+  classroomId: string
+  enteredAt: string
+  enteredBy: string
+  classroom?: Classroom
+}
+
+/**
+ * Fetch classrooms a student is enrolled in
+ */
+async function fetchEnrolledClassrooms(playerId: string): Promise<Classroom[]> {
+  const res = await api(`players/${playerId}/enrolled-classrooms`)
+  if (!res.ok) throw new Error('Failed to fetch enrolled classrooms')
+  const data = await res.json()
+  return data.classrooms
+}
+
+/**
+ * Fetch student's current classroom presence
+ */
+async function fetchStudentPresence(playerId: string): Promise<PresenceInfo | null> {
+  const res = await api(`players/${playerId}/presence`)
+  if (!res.ok) throw new Error('Failed to fetch student presence')
+  const data = await res.json()
+  return data.presence
+}
+
+// ============================================================================
+// Student Enrollment Hooks
+// ============================================================================
+
+/**
+ * Get classrooms a student is enrolled in
+ */
+export function useEnrolledClassrooms(playerId: string | undefined) {
+  return useQuery({
+    queryKey: ['players', playerId, 'enrolled-classrooms'],
+    queryFn: () => fetchEnrolledClassrooms(playerId!),
+    enabled: !!playerId,
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+
+/**
+ * Get student's current classroom presence
+ */
+export function useStudentPresence(playerId: string | undefined) {
+  return useQuery({
+    queryKey: ['players', playerId, 'presence'],
+    queryFn: () => fetchStudentPresence(playerId!),
+    enabled: !!playerId,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getStudentPresence, canPerformAction } from '@/lib/classroom'
+import { getEnrolledClassrooms, canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -7,10 +7,10 @@ interface RouteParams {
 }
 
 /**
- * GET /api/players/[id]/presence
- * Get student's current classroom presence
+ * GET /api/players/[id]/enrolled-classrooms
+ * Get classrooms that this student is enrolled in
  *
- * Returns: { presence } or { presence: null }
+ * Returns: { classrooms: Classroom[] }
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
@@ -23,11 +23,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const presence = await getStudentPresence(playerId)
+    const classrooms = await getEnrolledClassrooms(playerId)
 
-    return NextResponse.json({ presence })
+    return NextResponse.json({ classrooms })
   } catch (error) {
-    console.error('Failed to fetch student presence:', error)
-    return NextResponse.json({ error: 'Failed to fetch student presence' }, { status: 500 })
+    console.error('Failed to fetch enrolled classrooms:', error)
+    return NextResponse.json({ error: 'Failed to fetch enrolled classrooms' }, { status: 500 })
   }
 }

@@ -43,4 +43,5 @@ export const classroomKeys = {
   detail: (id: string) => [...classroomKeys.all, 'detail', id] as const,
   enrollments: (id: string) => [...classroomKeys.all, 'enrollments', id] as const,
   presence: (id: string) => [...classroomKeys.all, 'presence', id] as const,
+  pendingParentApprovals: () => [...classroomKeys.all, 'pendingParentApprovals'] as const,
 }

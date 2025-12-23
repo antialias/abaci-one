@@ -740,6 +740,26 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
+    // Player: Join player channel (for students to receive their own presence updates)
+    socket.on('join-player', async ({ playerId }: { playerId: string }) => {
+      try {
+        await socket.join(`player:${playerId}`)
+        console.log(`👤 User joined player channel: ${playerId}`)
+      } catch (error) {
+        console.error('Error joining player channel:', error)
+      }
+    })
+
+    // Player: Leave player channel
+    socket.on('leave-player', async ({ playerId }: { playerId: string }) => {
+      try {
+        await socket.leave(`player:${playerId}`)
+        console.log(`👤 User left player channel: ${playerId}`)
+      } catch (error) {
+        console.error('Error leaving player channel:', error)
+      }
+    })
+
     // Session Observation: Start observing a practice session
     socket.on(
       'observe-session',

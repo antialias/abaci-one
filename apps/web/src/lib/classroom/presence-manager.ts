@@ -19,10 +19,12 @@ import {
   classroomEnrollments,
   classroomPresence,
   classrooms,
+  players,
   type ClassroomPresence,
   type Classroom,
   type Player,
 } from '@/db/schema'
+import { getSocketIO } from '@/lib/socket-io'
 
 // ============================================================================
 // Enter/Leave Classroom
@@ -97,6 +99,20 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
     })
     .returning()
 
+  // Emit socket event for real-time updates to teacher
+  const io = await getSocketIO()
+  if (io) {
+    // Get player name for the event
+    const player = await db.query.players.findFirst({
+      where: eq(players.id, playerId),
+    })
+    io.to(`classroom:${classroomId}`).emit('student-entered', {
+      playerId,
+      playerName: player?.name ?? 'Unknown',
+      enteredBy,
+    })
+  }
+
   return { success: true, presence: inserted }
 }
 
@@ -104,18 +120,64 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
  * Remove a student from their current classroom
  */
 export async function leaveClassroom(playerId: string): Promise<void> {
+  // Get current presence before deleting (need classroomId for socket event)
+  const presence = await db.query.classroomPresence.findFirst({
+    where: eq(classroomPresence.playerId, playerId),
+  })
+
+  if (!presence) return
+
   await db.delete(classroomPresence).where(eq(classroomPresence.playerId, playerId))
+
+  // Emit socket event for real-time updates to teacher
+  const io = await getSocketIO()
+  if (io) {
+    const player = await db.query.players.findFirst({
+      where: eq(players.id, playerId),
+    })
+    io.to(`classroom:${presence.classroomId}`).emit('student-left', {
+      playerId,
+      playerName: player?.name ?? 'Unknown',
+    })
+  }
 }
 
 /**
  * Remove a student from a specific classroom (if they're in it)
+ *
+ * @param removedBy - Who initiated the removal: 'teacher' or 'self'
  */
-export async function leaveSpecificClassroom(playerId: string, classroomId: string): Promise<void> {
-  await db
+export async function leaveSpecificClassroom(
+  playerId: string,
+  classroomId: string,
+  removedBy: 'teacher' | 'self' = 'self'
+): Promise<void> {
+  const deleted = await db
     .delete(classroomPresence)
     .where(
       and(eq(classroomPresence.playerId, playerId), eq(classroomPresence.classroomId, classroomId))
     )
+    .returning()
+
+  // Only emit if something was actually deleted
+  if (deleted.length > 0) {
+    const io = await getSocketIO()
+    if (io) {
+      const player = await db.query.players.findFirst({
+        where: eq(players.id, playerId),
+      })
+      // Notify the classroom (for teacher's view)
+      io.to(`classroom:${classroomId}`).emit('student-left', {
+        playerId,
+        playerName: player?.name ?? 'Unknown',
+      })
+      // Notify the player (for student's view)
+      io.to(`player:${playerId}`).emit('presence-removed', {
+        classroomId,
+        removedBy,
+      })
+    }
+  }
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { EnterClassroomButton } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   type ActiveSessionState,
@@ -30,6 +31,7 @@ import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
@@ -2522,6 +2524,10 @@ export function DashboardClient({
   // Session mode - single source of truth for session planning decisions
   const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
 
+  // Subscribe to player presence updates via WebSocket
+  // This ensures the UI updates when teacher removes student from classroom
+  usePlayerPresenceSocket(studentId)
+
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
@@ -2687,6 +2693,17 @@ export function DashboardClient({
           })}
         >
           <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
+            {/* Classroom presence - allows entering enrolled classrooms for live practice */}
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginBottom: '0.75rem',
+              })}
+            >
+              <EnterClassroomButton playerId={studentId} playerName={player.name} />
+            </div>
+
             {/* Session mode banner - renders in-flow, projects to nav on scroll */}
             <ContentBannerSlot
               stickyOffset={STICKY_HEADER_OFFSET}

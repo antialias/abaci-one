@@ -3,7 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
-import { ClassroomDashboard, CreateClassroomForm, EnrollChildFlow } from '@/components/classroom'
+import {
+  ClassroomDashboard,
+  CreateClassroomForm,
+  EnrollChildFlow,
+  PendingApprovalsSection,
+} from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudentFilterBar } from '@/components/practice/StudentFilterBar'
 import { StudentSelector, type StudentWithProgress } from '@/components/practice'
@@ -133,7 +138,7 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
           return next
         })
       } else {
-        router.push(`/practice/${student.id}/resume`, { scroll: false })
+        router.push(`/practice/${student.id}/dashboard`, { scroll: false })
       }
     },
     [router, editMode]
@@ -393,6 +398,9 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
               </div>
             )}
           </header>
+
+          {/* Pending Enrollment Approvals - for parents to approve teacher-initiated requests */}
+          <PendingApprovalsSection />
 
           {/* Needs Attention Section - uses same bucket styling as other sections */}
           {studentsNeedingAttention.length > 0 && (

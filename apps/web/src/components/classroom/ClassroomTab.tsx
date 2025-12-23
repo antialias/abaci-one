@@ -1,7 +1,10 @@
 'use client'
 
+import { useCallback } from 'react'
+import Link from 'next/link'
 import type { Classroom } from '@/db/schema'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useClassroomPresence, useLeaveClassroom, type PresenceStudent } from '@/hooks/useClassroom'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
 
@@ -13,12 +16,27 @@ interface ClassroomTabProps {
  * ClassroomTab - Shows live classroom view
  *
  * Displays students currently "present" in the classroom.
- * For Phase 3, this is an empty state.
- * Phase 6 will add presence functionality.
+ * Teachers can see who's actively practicing and remove students when needed.
  */
 export function ClassroomTab({ classroom }: ClassroomTabProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Fetch present students
+  // Note: WebSocket subscription is in ClassroomDashboard (parent) so it stays
+  // connected even when user switches tabs
+  const { data: presentStudents = [], isLoading } = useClassroomPresence(classroom.id)
+  const leaveClassroom = useLeaveClassroom()
+
+  const handleRemoveStudent = useCallback(
+    (playerId: string) => {
+      leaveClassroom.mutate({
+        classroomId: classroom.id,
+        playerId,
+      })
+    },
+    [classroom.id, leaveClassroom]
+  )
 
   return (
     <div
@@ -29,51 +47,123 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
         gap: '24px',
       })}
     >
-      {/* Empty state */}
-      <div
-        className={css({
-          textAlign: 'center',
-          padding: '48px 24px',
-          backgroundColor: isDark ? 'gray.800' : 'gray.50',
-          borderRadius: '16px',
-          border: '2px dashed',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-        })}
-      >
+      {/* Present students section */}
+      {isLoading ? (
         <div
           className={css({
-            fontSize: '3rem',
-            marginBottom: '16px',
+            textAlign: 'center',
+            padding: '24px',
+            color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
-          🏫
+          Loading classroom...
         </div>
-        <h3
-          className={css({
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-            color: isDark ? 'white' : 'gray.800',
-            marginBottom: '8px',
-          })}
-        >
-          No Students Present
-        </h3>
-        <p
-          className={css({
-            fontSize: '0.9375rem',
-            color: isDark ? 'gray.400' : 'gray.600',
-            marginBottom: '24px',
-            maxWidth: '400px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-          })}
-        >
-          When students join your classroom for practice, they'll appear here. Share your classroom
-          code to get started.
-        </p>
+      ) : presentStudents.length > 0 ? (
+        <section data-section="present-students">
+          <h3
+            className={css({
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: isDark ? 'white' : 'gray.800',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            })}
+          >
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: 'green.500',
+                animation: 'pulse 2s infinite',
+              })}
+            />
+            <span>Students Present</span>
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '24px',
+                height: '24px',
+                padding: '0 8px',
+                borderRadius: '12px',
+                backgroundColor: isDark ? 'green.700' : 'green.500',
+                color: 'white',
+                fontSize: '0.8125rem',
+                fontWeight: 'bold',
+              })}
+            >
+              {presentStudents.length}
+            </span>
+          </h3>
 
-        <ClassroomCodeShare code={classroom.code} />
-      </div>
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
+            {presentStudents.map((student) => (
+              <PresentStudentCard
+                key={student.id}
+                student={student}
+                onRemove={() => handleRemoveStudent(student.id)}
+                isRemoving={
+                  leaveClassroom.isPending && leaveClassroom.variables?.playerId === student.id
+                }
+                isDark={isDark}
+              />
+            ))}
+          </div>
+        </section>
+      ) : (
+        /* Empty state */
+        <div
+          className={css({
+            textAlign: 'center',
+            padding: '48px 24px',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
+            borderRadius: '16px',
+            border: '2px dashed',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '3rem',
+              marginBottom: '16px',
+            })}
+          >
+            🏫
+          </div>
+          <h3
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'white' : 'gray.800',
+              marginBottom: '8px',
+            })}
+          >
+            No Students Present
+          </h3>
+          <p
+            className={css({
+              fontSize: '0.9375rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              marginBottom: '24px',
+              maxWidth: '400px',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+            })}
+          >
+            When students join your classroom for practice, they'll appear here. Share your
+            classroom code to get started.
+          </p>
+
+          <ClassroomCodeShare code={classroom.code} />
+        </div>
+      )}
 
       {/* Instructions */}
       <div
@@ -108,9 +198,149 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
         >
           <li>Share your classroom code with parents</li>
           <li>Parents enroll their child using the code</li>
-          <li>Students appear here when they start practicing</li>
+          <li>When practicing, students can "enter" the classroom</li>
+          <li>You'll see them appear here in real-time</li>
         </ol>
       </div>
     </div>
   )
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+interface PresentStudentCardProps {
+  student: PresenceStudent
+  onRemove: () => void
+  isRemoving: boolean
+  isDark: boolean
+}
+
+function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentStudentCardProps) {
+  const enteredAt = new Date(student.enteredAt)
+  const timeAgo = getTimeAgo(enteredAt)
+
+  return (
+    <div
+      data-element="present-student-card"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 16px',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        borderRadius: '12px',
+        border: '1px solid',
+        borderColor: isDark ? 'green.800' : 'green.200',
+        boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+      })}
+    >
+      <Link
+        href={`/practice/${student.id}/dashboard`}
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          textDecoration: 'none',
+          flex: 1,
+          _hover: { opacity: 0.8 },
+        })}
+      >
+        <div className={css({ position: 'relative' })}>
+          <span
+            className={css({
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.375rem',
+            })}
+            style={{ backgroundColor: student.color }}
+          >
+            {student.emoji}
+          </span>
+          {/* Online indicator */}
+          <span
+            className={css({
+              position: 'absolute',
+              bottom: '0',
+              right: '0',
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              backgroundColor: 'green.500',
+              border: '2px solid',
+              borderColor: isDark ? 'gray.800' : 'white',
+            })}
+          />
+        </div>
+        <div>
+          <p
+            className={css({
+              fontWeight: 'medium',
+              color: isDark ? 'white' : 'gray.800',
+            })}
+          >
+            {student.name}
+          </p>
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
+            Joined {timeAgo}
+          </p>
+        </div>
+      </Link>
+
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={isRemoving}
+        data-action="remove-from-classroom"
+        className={css({
+          padding: '8px 14px',
+          backgroundColor: 'transparent',
+          color: isDark ? 'gray.400' : 'gray.500',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.300',
+          borderRadius: '6px',
+          fontSize: '0.8125rem',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          _hover: {
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
+            borderColor: isDark ? 'gray.600' : 'gray.400',
+            color: isDark ? 'gray.300' : 'gray.700',
+          },
+          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+        })}
+      >
+        {isRemoving ? 'Removing...' : 'Remove'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Format a date as a relative time string (e.g., "2 minutes ago")
+ */
+function getTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+
+  if (diffMinutes < 1) return 'just now'
+  if (diffMinutes === 1) return '1 minute ago'
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
+
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours === 1) return '1 hour ago'
+  if (diffHours < 24) return `${diffHours} hours ago`
+
+  return 'over a day ago'
 }

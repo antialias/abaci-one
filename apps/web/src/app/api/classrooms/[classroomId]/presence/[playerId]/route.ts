@@ -48,7 +48,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       )
     }
 
-    await leaveSpecificClassroom(playerId, classroomId)
+    // Pass 'teacher' if removed by teacher, 'self' otherwise (parent removing their child)
+    await leaveSpecificClassroom(playerId, classroomId, isTeacher ? 'teacher' : 'self')
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Classroom, Player } from '@/db/schema'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
 import { ClassroomTab } from './ClassroomTab'
@@ -31,6 +32,10 @@ export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDas
   const isDark = resolvedTheme === 'dark'
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
   const [showEnrollChild, setShowEnrollChild] = useState(false)
+
+  // Subscribe to real-time classroom presence updates via WebSocket
+  // This is at the dashboard level so events are received even when on other tabs
+  useClassroomSocket(classroom.id)
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'classroom', label: 'Classroom', icon: '🏫' },

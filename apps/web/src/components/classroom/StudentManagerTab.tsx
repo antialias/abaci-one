@@ -402,7 +402,7 @@ function EnrolledStudentCard({
       })}
     >
       <Link
-        href={`/practice/${student.id}/resume`}
+        href={`/practice/${student.id}/dashboard`}
         className={css({
           display: 'flex',
           alignItems: 'center',
