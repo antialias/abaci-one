@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { enrollmentRequests } from '@/db/schema'
 import { approveEnrollmentRequest, isParent } from '@/lib/classroom'
+import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -53,6 +54,41 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const result = await approveEnrollmentRequest(requestId, user.id, 'parent')
+
+    // Emit socket events for real-time updates to the classroom channel
+    const io = await getSocketIO()
+    if (io && result.request.classroomId) {
+      try {
+        const classroomId = result.request.classroomId
+
+        // Always emit that the request was approved (removes from "Awaiting Parent Approval")
+        io.to(`classroom:${classroomId}`).emit('enrollment-request-approved', {
+          requestId,
+          classroomId,
+        })
+
+        // If fully enrolled, also emit enrollment-approved to update enrolled students list
+        if (result.fullyApproved && result.request.playerId) {
+          // Get player name for the event
+          const [playerInfo] = await db
+            .select({ name: schema.players.name })
+            .from(schema.players)
+            .where(eq(schema.players.id, result.request.playerId))
+            .limit(1)
+
+          io.to(`classroom:${classroomId}`).emit('enrollment-approved', {
+            classroomId,
+            playerId: result.request.playerId,
+            playerName: playerInfo?.name || 'Unknown',
+          })
+          console.log(
+            `[Parent Approve API] Student ${result.request.playerId} fully enrolled in classroom ${classroomId}`
+          )
+        }
+      } catch (socketError) {
+        console.error('[Parent Approve API] Failed to broadcast:', socketError)
+      }
+    }
 
     return NextResponse.json({
       request: result.request,

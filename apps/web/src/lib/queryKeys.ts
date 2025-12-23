@@ -43,5 +43,9 @@ export const classroomKeys = {
   detail: (id: string) => [...classroomKeys.all, 'detail', id] as const,
   enrollments: (id: string) => [...classroomKeys.all, 'enrollments', id] as const,
   presence: (id: string) => [...classroomKeys.all, 'presence', id] as const,
+  activeSessions: (id: string) => [...classroomKeys.all, 'activeSessions', id] as const,
   pendingParentApprovals: () => [...classroomKeys.all, 'pendingParentApprovals'] as const,
+  pendingRequests: (id: string) => [...classroomKeys.detail(id), 'pending-requests'] as const,
+  awaitingParentApproval: (id: string) =>
+    [...classroomKeys.detail(id), 'awaiting-parent-approval'] as const,
 }

@@ -1,3 +1,4 @@
+export { AddStudentByFamilyCodeModal } from './AddStudentByFamilyCodeModal'
 export { ClassroomCodeShare } from './ClassroomCodeShare'
 export { ClassroomDashboard } from './ClassroomDashboard'
 export { ClassroomTab } from './ClassroomTab'

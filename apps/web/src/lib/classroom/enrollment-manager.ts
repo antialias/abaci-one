@@ -55,8 +55,15 @@ export async function createEnrollmentRequest(
     ),
   })
 
+  // Auto-approve the requester's side (they implicitly approve by creating the request)
+  const teacherApproval = requestedByRole === 'teacher' ? 'approved' : null
+  const teacherApprovedAt = requestedByRole === 'teacher' ? new Date() : null
+  const parentApproval = requestedByRole === 'parent' ? 'approved' : null
+  const parentApprovedBy = requestedByRole === 'parent' ? requestedBy : null
+  const parentApprovedAt = requestedByRole === 'parent' ? new Date() : null
+
   if (existing) {
-    // Upsert: reset to pending
+    // Upsert: reset with auto-approval for requester's side
     const [updated] = await db
       .update(enrollmentRequests)
       .set({
@@ -64,11 +71,11 @@ export async function createEnrollmentRequest(
         requestedBy,
         requestedByRole,
         requestedAt: new Date(),
-        teacherApproval: null,
-        teacherApprovedAt: null,
-        parentApproval: null,
-        parentApprovedBy: null,
-        parentApprovedAt: null,
+        teacherApproval,
+        teacherApprovedAt,
+        parentApproval,
+        parentApprovedBy,
+        parentApprovedAt,
         resolvedAt: null,
       })
       .where(eq(enrollmentRequests.id, existing.id))
@@ -76,7 +83,7 @@ export async function createEnrollmentRequest(
     return updated
   }
 
-  // Create new request
+  // Create new request with auto-approval for requester's side
   const [request] = await db
     .insert(enrollmentRequests)
     .values({
@@ -85,6 +92,11 @@ export async function createEnrollmentRequest(
       playerId,
       requestedBy,
       requestedByRole,
+      teacherApproval,
+      teacherApprovedAt,
+      parentApproval,
+      parentApprovedBy,
+      parentApprovedAt,
     })
     .returning()
 
@@ -220,7 +232,10 @@ export interface EnrollmentRequestWithRelations extends EnrollmentRequest {
 }
 
 /**
- * Get pending requests for a teacher's classroom
+ * Get pending requests for a teacher's classroom that need teacher approval
+ *
+ * Only returns requests where teacherApproval is null (not yet approved by teacher).
+ * Teacher-initiated requests are auto-approved on teacher side, so they won't appear here.
  */
 export async function getPendingRequestsForClassroom(
   classroomId: string
@@ -228,7 +243,42 @@ export async function getPendingRequestsForClassroom(
   const requests = await db.query.enrollmentRequests.findMany({
     where: and(
       eq(enrollmentRequests.classroomId, classroomId),
-      eq(enrollmentRequests.status, 'pending')
+      eq(enrollmentRequests.status, 'pending'),
+      isNull(enrollmentRequests.teacherApproval) // Only requests needing teacher approval
+    ),
+    orderBy: [desc(enrollmentRequests.requestedAt)],
+  })
+
+  // Fetch related players
+  if (requests.length === 0) return []
+
+  const playerIds = [...new Set(requests.map((r) => r.playerId))]
+  const players = await db.query.players.findMany({
+    where: (players, { inArray }) => inArray(players.id, playerIds),
+  })
+  const playerMap = new Map(players.map((p) => [p.id, p]))
+
+  return requests.map((r) => ({
+    ...r,
+    player: playerMap.get(r.playerId),
+  }))
+}
+
+/**
+ * Get requests awaiting parent approval (teacher has approved, parent hasn't)
+ *
+ * These are typically teacher-initiated requests where the teacher added a student
+ * via family code and is waiting for the parent to approve.
+ */
+export async function getRequestsAwaitingParentApproval(
+  classroomId: string
+): Promise<EnrollmentRequestWithRelations[]> {
+  const requests = await db.query.enrollmentRequests.findMany({
+    where: and(
+      eq(enrollmentRequests.classroomId, classroomId),
+      eq(enrollmentRequests.status, 'pending'),
+      eq(enrollmentRequests.teacherApproval, 'approved'), // Teacher has approved
+      isNull(enrollmentRequests.parentApproval) // Parent hasn't responded yet
     ),
     orderBy: [desc(enrollmentRequests.requestedAt)],
   })

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
 import {
+  AddStudentByFamilyCodeModal,
   ClassroomDashboard,
   CreateClassroomForm,
   EnrollChildFlow,
@@ -14,6 +15,7 @@ import { StudentFilterBar } from '@/components/practice/StudentFilterBar'
 import { StudentSelector, type StudentWithProgress } from '@/components/practice'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useMyClassroom } from '@/hooks/useClassroom'
+import { useParentSocket } from '@/hooks/useParentSocket'
 import { usePlayersWithSkillData, useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
@@ -22,6 +24,10 @@ import { AddStudentModal } from './AddStudentModal'
 
 interface PracticeClientProps {
   initialPlayers: StudentWithSkillData[]
+  /** Viewer ID for session observation */
+  viewerId: string
+  /** Database user ID for parent socket notifications */
+  userId: string
 }
 
 /**
@@ -31,13 +37,18 @@ interface PracticeClientProps {
  * Manages filter state (search, skills, archived, edit mode) and passes
  * grouped/filtered students to StudentSelector.
  */
-export function PracticeClient({ initialPlayers }: PracticeClientProps) {
+export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   // Classroom state - check if user is a teacher
   const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom()
+
+  // Parent socket for real-time enrollment notifications
+  // Only connect when user is NOT a teacher (classroom is null and not loading)
+  const isParent = !isLoadingClassroom && !classroom
+  useParentSocket(isParent ? userId : undefined)
   const [showCreateClassroom, setShowCreateClassroom] = useState(false)
   const [showEnrollChild, setShowEnrollChild] = useState(false)
 
@@ -48,8 +59,11 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
   const [editMode, setEditMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Add student modal state
+  // Add student modal state (parent mode - create new child)
   const [showAddModal, setShowAddModal] = useState(false)
+
+  // Add student modal state (teacher mode - add by family code)
+  const [showAddByFamilyCode, setShowAddByFamilyCode] = useState(false)
 
   // Use React Query with initial data from server for instant render + live updates
   const { data: players = initialPlayers } = usePlayersWithSkillData({
@@ -205,7 +219,7 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
     setShowEnrollChild(false)
   }, [])
 
-  // If user is a teacher, show the classroom dashboard
+  // If user is a teacher, show the classroom dashboard with filter bar
   if (classroom) {
     return (
       <PageWithNav>
@@ -214,9 +228,33 @@ export function PracticeClient({ initialPlayers }: PracticeClientProps) {
           className={css({
             minHeight: '100vh',
             backgroundColor: isDark ? 'gray.900' : 'gray.50',
+            paddingTop: '160px', // Nav height (80px) + Filter bar height (~80px)
           })}
         >
-          <ClassroomDashboard classroom={classroom} ownChildren={players} />
+          {/* Filter Bar for teachers */}
+          <StudentFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            skillFilters={skillFilters}
+            onSkillFiltersChange={setSkillFilters}
+            showArchived={showArchived}
+            onShowArchivedChange={setShowArchived}
+            editMode={editMode}
+            onEditModeChange={handleEditModeChange}
+            archivedCount={0}
+            onAddStudent={() => setShowAddByFamilyCode(true)}
+            selectedCount={selectedIds.size}
+            onBulkArchive={undefined}
+          />
+
+          <ClassroomDashboard classroom={classroom} ownChildren={players} viewerId={viewerId} />
+
+          {/* Add Student by Family Code Modal */}
+          <AddStudentByFamilyCodeModal
+            isOpen={showAddByFamilyCode}
+            onClose={() => setShowAddByFamilyCode(false)}
+            classroomId={classroom.id}
+          />
         </main>
       </PageWithNav>
     )

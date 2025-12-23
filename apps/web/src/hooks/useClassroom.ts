@@ -151,6 +151,18 @@ async function fetchPendingRequests(
 }
 
 /**
+ * Fetch requests awaiting parent approval for a classroom
+ */
+async function fetchAwaitingParentApproval(
+  classroomId: string
+): Promise<EnrollmentRequestWithRelations[]> {
+  const res = await api(`classrooms/${classroomId}/enrollment-requests`)
+  if (!res.ok) throw new Error('Failed to fetch enrollment requests')
+  const data = await res.json()
+  return data.awaitingParentApproval || []
+}
+
+/**
  * Create enrollment request
  */
 async function createEnrollmentRequest(params: {
@@ -237,12 +249,24 @@ export function useEnrolledStudents(classroomId: string | undefined) {
 }
 
 /**
- * Get pending enrollment requests for a classroom
+ * Get pending enrollment requests for a classroom (needing teacher approval)
  */
 export function usePendingEnrollmentRequests(classroomId: string | undefined) {
   return useQuery({
-    queryKey: [...classroomKeys.detail(classroomId ?? ''), 'pending-requests'],
+    queryKey: classroomKeys.pendingRequests(classroomId ?? ''),
     queryFn: () => fetchPendingRequests(classroomId!),
+    enabled: !!classroomId,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+/**
+ * Get requests awaiting parent approval (teacher has approved, waiting on parent)
+ */
+export function useAwaitingParentApproval(classroomId: string | undefined) {
+  return useQuery({
+    queryKey: classroomKeys.awaitingParentApproval(classroomId ?? ''),
+    queryFn: () => fetchAwaitingParentApproval(classroomId!),
     enabled: !!classroomId,
     staleTime: 30 * 1000, // 30 seconds
   })
@@ -259,9 +283,12 @@ export function useCreateEnrollmentRequest() {
   return useMutation({
     mutationFn: createEnrollmentRequest,
     onSuccess: (_, { classroomId }) => {
-      // Invalidate pending requests for this classroom
+      // Invalidate both pending requests queries
       queryClient.invalidateQueries({
-        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+        queryKey: classroomKeys.pendingRequests(classroomId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.awaitingParentApproval(classroomId),
       })
     },
   })
@@ -278,7 +305,7 @@ export function useApproveEnrollmentRequest() {
     onSuccess: (result, { classroomId }) => {
       // Invalidate pending requests
       queryClient.invalidateQueries({
-        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+        queryKey: classroomKeys.pendingRequests(classroomId),
       })
       // If fully approved, also invalidate enrollments
       if (result.fullyApproved) {
@@ -301,7 +328,7 @@ export function useDenyEnrollmentRequest() {
     onSuccess: (_, { classroomId }) => {
       // Invalidate pending requests
       queryClient.invalidateQueries({
-        queryKey: [...classroomKeys.detail(classroomId), 'pending-requests'],
+        queryKey: classroomKeys.pendingRequests(classroomId),
       })
     },
   })
@@ -533,6 +560,58 @@ export function useLeaveClassroom() {
         queryKey: ['players', playerId, 'presence'],
       })
     },
+  })
+}
+
+// ============================================================================
+// Active Sessions API Functions and Hooks
+// ============================================================================
+
+/**
+ * Active session information for a student
+ */
+export interface ActiveSessionInfo {
+  /** Session plan ID (for observation) */
+  sessionId: string
+  /** Player ID */
+  playerId: string
+  /** When the session started */
+  startedAt: string
+  /** Current part index */
+  currentPartIndex: number
+  /** Current slot index within the part */
+  currentSlotIndex: number
+  /** Total parts in session */
+  totalParts: number
+  /** Total problems in session */
+  totalProblems: number
+  /** Number of completed problems */
+  completedProblems: number
+}
+
+/**
+ * Fetch active practice sessions for students in a classroom
+ */
+async function fetchActiveSession(classroomId: string): Promise<ActiveSessionInfo[]> {
+  const res = await api(`classrooms/${classroomId}/presence/active-sessions`)
+  if (!res.ok) throw new Error('Failed to fetch active sessions')
+  const data = await res.json()
+  return data.sessions
+}
+
+/**
+ * Get active practice sessions for students in a classroom
+ *
+ * Teachers can use this to see which students are currently practicing
+ * and observe their sessions in real-time.
+ */
+export function useActiveSessionsInClassroom(classroomId: string | undefined) {
+  return useQuery({
+    queryKey: classroomKeys.activeSessions(classroomId ?? ''),
+    queryFn: () => fetchActiveSession(classroomId!),
+    enabled: !!classroomId,
+    staleTime: 10 * 1000, // 10 seconds - sessions change frequently
+    refetchInterval: 15 * 1000, // Poll every 15 seconds for real-time updates
   })
 }
 

@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import {
   useEnrolledStudents,
   usePendingEnrollmentRequests,
+  useAwaitingParentApproval,
   useApproveEnrollmentRequest,
   useDenyEnrollmentRequest,
   useUnenrollStudent,
@@ -34,6 +35,9 @@ export function StudentManagerTab({ classroom }: StudentManagerTabProps) {
   // Fetch enrolled students and pending requests
   const { data: students = [], isLoading: loadingStudents } = useEnrolledStudents(classroom.id)
   const { data: pendingRequests = [], isLoading: loadingRequests } = usePendingEnrollmentRequests(
+    classroom.id
+  )
+  const { data: awaitingParent = [], isLoading: loadingAwaitingParent } = useAwaitingParentApproval(
     classroom.id
   )
 
@@ -76,8 +80,9 @@ export function StudentManagerTab({ classroom }: StudentManagerTabProps) {
     [unenrollStudent, classroom.id]
   )
 
-  const isLoading = loadingStudents || loadingRequests
-  const isEmpty = students.length === 0 && pendingRequests.length === 0
+  const isLoading = loadingStudents || loadingRequests || loadingAwaitingParent
+  const isEmpty =
+    students.length === 0 && pendingRequests.length === 0 && awaitingParent.length === 0
 
   return (
     <div
@@ -144,6 +149,57 @@ export function StudentManagerTab({ classroom }: StudentManagerTabProps) {
                 isDenying={denyRequest.isPending && denyRequest.variables?.requestId === request.id}
                 isDark={isDark}
               />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Awaiting Parent Approval */}
+      {awaitingParent.length > 0 && (
+        <section
+          data-section="awaiting-parent-approval"
+          className={css({
+            padding: '20px',
+            backgroundColor: isDark ? 'blue.900/20' : 'blue.50',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'blue.700' : 'blue.200',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: isDark ? 'blue.300' : 'blue.700',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            })}
+          >
+            <span>Awaiting Parent Approval</span>
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '22px',
+                height: '22px',
+                padding: '0 6px',
+                borderRadius: '11px',
+                backgroundColor: isDark ? 'blue.700' : 'blue.500',
+                color: 'white',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+              })}
+            >
+              {awaitingParent.length}
+            </span>
+          </h3>
+
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
+            {awaitingParent.map((request) => (
+              <AwaitingParentCard key={request.id} request={request} isDark={isDark} />
             ))}
           </div>
         </section>
@@ -362,6 +418,96 @@ function EnrollmentRequestCard({
         >
           {isApproving ? 'Approving...' : 'Approve'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+interface AwaitingParentCardProps {
+  request: EnrollmentRequestWithRelations
+  isDark: boolean
+}
+
+function AwaitingParentCard({ request, isDark }: AwaitingParentCardProps) {
+  const player = request.player
+
+  return (
+    <div
+      data-element="awaiting-parent-card"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 16px',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        borderRadius: '10px',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+      })}
+    >
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
+        <span
+          className={css({
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.25rem',
+          })}
+          style={{ backgroundColor: player?.color ?? '#ccc' }}
+        >
+          {player?.emoji ?? '?'}
+        </span>
+        <div>
+          <p
+            className={css({
+              fontWeight: 'medium',
+              color: isDark ? 'white' : 'gray.800',
+            })}
+          >
+            {player?.name ?? 'Unknown Student'}
+          </p>
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'blue.400' : 'blue.600',
+            })}
+          >
+            Waiting for parent to approve enrollment
+          </p>
+        </div>
+      </div>
+
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          backgroundColor: isDark ? 'blue.900/30' : 'blue.100',
+          borderRadius: '16px',
+        })}
+      >
+        <span
+          className={css({
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: isDark ? 'blue.400' : 'blue.500',
+            animation: 'pulse 2s infinite',
+          })}
+        />
+        <span
+          className={css({
+            fontSize: '0.75rem',
+            fontWeight: 'medium',
+            color: isDark ? 'blue.300' : 'blue.700',
+          })}
+        >
+          Pending
+        </span>
       </div>
     </div>
   )

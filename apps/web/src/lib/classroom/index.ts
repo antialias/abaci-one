@@ -48,6 +48,7 @@ export {
   denyEnrollmentRequest,
   cancelEnrollmentRequest,
   getPendingRequestsForClassroom,
+  getRequestsAwaitingParentApproval,
   getPendingRequestsForParent,
   isEnrolled,
   getEnrolledStudents,

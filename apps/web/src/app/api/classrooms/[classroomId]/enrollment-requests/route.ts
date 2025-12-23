@@ -3,10 +3,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   createEnrollmentRequest,
+  getLinkedParentIds,
   getPendingRequestsForClassroom,
+  getRequestsAwaitingParentApproval,
   getTeacherClassroom,
   isParent,
 } from '@/lib/classroom'
+import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -33,7 +36,9 @@ interface RouteParams {
  * GET /api/classrooms/[classroomId]/enrollment-requests
  * Get pending enrollment requests (teacher only)
  *
- * Returns: { requests: EnrollmentRequest[] }
+ * Returns:
+ * - requests: Requests needing teacher approval (parent-initiated)
+ * - awaitingParentApproval: Requests needing parent approval (teacher-initiated)
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
@@ -47,9 +52,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const requests = await getPendingRequestsForClassroom(classroomId)
+    // Fetch both types of pending requests in parallel
+    const [requests, awaitingParentApproval] = await Promise.all([
+      getPendingRequestsForClassroom(classroomId),
+      getRequestsAwaitingParentApproval(classroomId),
+    ])
 
-    return NextResponse.json({ requests })
+    return NextResponse.json({ requests, awaitingParentApproval })
   } catch (error) {
     console.error('Failed to fetch enrollment requests:', error)
     return NextResponse.json({ error: 'Failed to fetch enrollment requests' }, { status: 500 })
@@ -94,6 +103,54 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       requestedBy: user.id,
       requestedByRole,
     })
+
+    // Get classroom and player info for the socket event
+    const [classroomInfo] = await db
+      .select({ name: schema.classrooms.name })
+      .from(schema.classrooms)
+      .where(eq(schema.classrooms.id, classroomId))
+      .limit(1)
+
+    const [playerInfo] = await db
+      .select({ name: schema.players.name })
+      .from(schema.players)
+      .where(eq(schema.players.id, body.playerId))
+      .limit(1)
+
+    // Emit socket event to the classroom channel for real-time updates
+    const io = await getSocketIO()
+    if (io && classroomInfo && playerInfo) {
+      try {
+        const eventData = {
+          request: {
+            id: request.id,
+            classroomId,
+            classroomName: classroomInfo.name,
+            playerId: body.playerId,
+            playerName: playerInfo.name,
+            requestedByRole,
+          },
+        }
+
+        // Emit to classroom channel (for teacher's view)
+        io.to(`classroom:${classroomId}`).emit('enrollment-request-created', eventData)
+        console.log(
+          `[Enrollment Request API] Emitted enrollment-request-created for classroom ${classroomId}`
+        )
+
+        // If teacher-initiated, also emit to parent's user channel
+        // so they see the new pending approval in real-time
+        if (requestedByRole === 'teacher') {
+          const parentIds = await getLinkedParentIds(body.playerId)
+          for (const parentId of parentIds) {
+            io.to(`user:${parentId}`).emit('enrollment-request-created', eventData)
+            console.log(`[Enrollment Request API] Notified parent ${parentId} of new request`)
+          }
+        }
+      } catch (socketError) {
+        console.error('[Enrollment Request API] Failed to broadcast request:', socketError)
+      }
+    }
 
     return NextResponse.json({ request }, { status: 201 })
   } catch (error) {

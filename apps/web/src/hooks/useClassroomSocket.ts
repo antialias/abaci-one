@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { useQueryClient } from '@tanstack/react-query'
 import { classroomKeys } from '@/lib/queryKeys'
-import type { StudentEnteredEvent, StudentLeftEvent } from '@/lib/classroom/socket-events'
+import type {
+  EnrollmentApprovedEvent,
+  EnrollmentRequestApprovedEvent,
+  EnrollmentRequestCreatedEvent,
+  StudentEnteredEvent,
+  StudentLeftEvent,
+} from '@/lib/classroom/socket-events'
 
 /**
  * Hook for real-time classroom presence updates via WebSocket
@@ -59,6 +65,42 @@ export function useClassroomSocket(classroomId: string | undefined): { connected
       // Invalidate the presence query to refetch
       queryClient.invalidateQueries({
         queryKey: classroomKeys.presence(classroomId),
+      })
+    })
+
+    // Listen for enrollment request created event
+    socket.on('enrollment-request-created', (data: EnrollmentRequestCreatedEvent) => {
+      console.log('[ClassroomSocket] Enrollment request created for:', data.request.playerName)
+      // Invalidate both pending request queries to refetch
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.pendingRequests(classroomId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.awaitingParentApproval(classroomId),
+      })
+    })
+
+    // Listen for enrollment request approved event (removes from pending)
+    socket.on('enrollment-request-approved', (data: EnrollmentRequestApprovedEvent) => {
+      console.log('[ClassroomSocket] Enrollment request approved:', data.requestId)
+      // Invalidate both pending request queries to refetch
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.pendingRequests(classroomId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.awaitingParentApproval(classroomId),
+      })
+    })
+
+    // Listen for enrollment approved event (student fully enrolled)
+    socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
+      console.log('[ClassroomSocket] Student enrolled:', data.playerName)
+      // Invalidate enrollments and remove from awaiting parent approval
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.enrollments(classroomId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.awaitingParentApproval(classroomId),
       })
     })
 
