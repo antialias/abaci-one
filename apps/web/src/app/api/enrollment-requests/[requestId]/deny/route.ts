@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { enrollmentRequests } from '@/db/schema'
 import { denyEnrollmentRequest, isParent } from '@/lib/classroom'
+import { emitEnrollmentRequestDenied } from '@/lib/classroom/socket-emitter'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -53,6 +54,38 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const updatedRequest = await denyEnrollmentRequest(requestId, user.id, 'parent')
+
+    // Emit socket event for real-time updates (notify teacher via classroom channel)
+    try {
+      // Get classroom and player info for socket event
+      const [classroomInfo] = await db
+        .select({ name: schema.classrooms.name })
+        .from(schema.classrooms)
+        .where(eq(schema.classrooms.id, request.classroomId))
+        .limit(1)
+
+      const [playerInfo] = await db
+        .select({ name: schema.players.name })
+        .from(schema.players)
+        .where(eq(schema.players.id, request.playerId))
+        .limit(1)
+
+      if (classroomInfo && playerInfo) {
+        await emitEnrollmentRequestDenied(
+          {
+            requestId,
+            classroomId: request.classroomId,
+            classroomName: classroomInfo.name,
+            playerId: request.playerId,
+            playerName: playerInfo.name,
+            deniedBy: 'parent',
+          },
+          { classroomId: request.classroomId } // Teacher sees the update via classroom channel
+        )
+      }
+    } catch (socketError) {
+      console.error('[Parent Deny] Failed to emit socket event:', socketError)
+    }
 
     return NextResponse.json({ request: updatedRequest })
   } catch (error) {

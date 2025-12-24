@@ -24,12 +24,53 @@ export interface EnrollmentRequestCreatedEvent {
   }
 }
 
+/**
+ * Sent when one side (teacher or parent) approves an enrollment request.
+ * This is different from EnrollmentApprovedEvent which is sent when BOTH sides approve.
+ *
+ * Use cases:
+ * - Teacher approves parent-initiated request → notify parent
+ * - Parent approves teacher-initiated request → notify teacher (via classroom channel)
+ */
+export interface EnrollmentRequestApprovedEvent {
+  requestId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  approvedBy: 'teacher' | 'parent'
+}
+
+/**
+ * Sent when a request is denied by either side.
+ *
+ * Use cases:
+ * - Teacher denies parent's request → notify parent
+ * - Parent denies teacher's request → notify teacher (via classroom channel)
+ */
+export interface EnrollmentRequestDeniedEvent {
+  requestId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  deniedBy: 'teacher' | 'parent'
+}
+
+/**
+ * Sent when enrollment is fully complete (both sides have approved).
+ * The student is now enrolled in the classroom.
+ */
 export interface EnrollmentApprovedEvent {
   classroomId: string
+  classroomName: string
   playerId: string
   playerName: string
 }
 
+/**
+ * @deprecated Use EnrollmentRequestDeniedEvent instead
+ */
 export interface EnrollmentDeniedEvent {
   classroomId: string
   playerId: string
@@ -114,8 +155,10 @@ export interface SessionPausedEvent {
 export interface ClassroomServerToClientEvents {
   // Enrollment events
   'enrollment-request-created': (data: EnrollmentRequestCreatedEvent) => void
+  'enrollment-request-approved': (data: EnrollmentRequestApprovedEvent) => void
+  'enrollment-request-denied': (data: EnrollmentRequestDeniedEvent) => void
   'enrollment-approved': (data: EnrollmentApprovedEvent) => void
-  'enrollment-denied': (data: EnrollmentDeniedEvent) => void
+  'enrollment-denied': (data: EnrollmentDeniedEvent) => void // deprecated
 
   // Presence events (classroom channel)
   'student-entered': (data: StudentEnteredEvent) => void

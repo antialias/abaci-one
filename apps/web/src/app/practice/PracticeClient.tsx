@@ -7,7 +7,6 @@ import {
   AddStudentByFamilyCodeModal,
   ClassroomDashboard,
   CreateClassroomForm,
-  EnrollChildFlow,
   PendingApprovalsSection,
 } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -50,7 +49,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   const isParent = !isLoadingClassroom && !classroom
   useParentSocket(isParent ? userId : undefined)
   const [showCreateClassroom, setShowCreateClassroom] = useState(false)
-  const [showEnrollChild, setShowEnrollChild] = useState(false)
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('')
@@ -210,15 +208,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     setShowCreateClassroom(false)
   }, [])
 
-  // Handle enrollment flow
-  const handleEnrollChild = useCallback(() => {
-    setShowEnrollChild(true)
-  }, [])
-
-  const handleCloseEnrollChild = useCallback(() => {
-    setShowEnrollChild(false)
-  }, [])
-
   // If user is a teacher, show the classroom dashboard with filter bar
   if (classroom) {
     return (
@@ -247,7 +236,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             onBulkArchive={undefined}
           />
 
-          <ClassroomDashboard classroom={classroom} ownChildren={players} viewerId={viewerId} />
+          <ClassroomDashboard classroom={classroom} ownChildren={players} />
 
           {/* Add Student by Family Code Modal */}
           <AddStudentByFamilyCodeModal
@@ -283,31 +272,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           >
             <CreateClassroomForm onCancel={handleCloseCreateClassroom} />
           </div>
-        </main>
-      </PageWithNav>
-    )
-  }
-
-  // Show enroll child flow if requested
-  if (showEnrollChild) {
-    return (
-      <PageWithNav>
-        <main
-          data-component="practice-page"
-          className={css({
-            minHeight: '100vh',
-            backgroundColor: isDark ? 'gray.900' : 'gray.50',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-          })}
-        >
-          <EnrollChildFlow
-            children={players}
-            onSuccess={handleCloseEnrollChild}
-            onCancel={handleCloseEnrollChild}
-          />
         </main>
       </PageWithNav>
     )
@@ -373,7 +337,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
               Build your soroban skills one step at a time
             </p>
 
-            {/* Parent/Teacher options */}
+            {/* Teacher option */}
             {!isLoadingClassroom && !classroom && (
               <div
                 className={css({
@@ -384,32 +348,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
                   marginTop: '16px',
                 })}
               >
-                {/* Enroll in Classroom option - for parents with a teacher */}
-                {players.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleEnrollChild}
-                    data-action="enroll-child"
-                    className={css({
-                      padding: '8px 16px',
-                      backgroundColor: isDark ? 'green.900/30' : 'green.50',
-                      color: isDark ? 'green.400' : 'green.700',
-                      border: '1px solid',
-                      borderColor: isDark ? 'green.700' : 'green.300',
-                      borderRadius: '8px',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      _hover: {
-                        backgroundColor: isDark ? 'green.900/50' : 'green.100',
-                        borderColor: isDark ? 'green.500' : 'green.400',
-                      },
-                    })}
-                  >
-                    📚 Have a classroom code? Enroll your child
-                  </button>
-                )}
-
                 {/* Become a Teacher option */}
                 <button
                   type="button"

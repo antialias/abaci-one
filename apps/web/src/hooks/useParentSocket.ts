@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { useQueryClient } from '@tanstack/react-query'
-import { classroomKeys } from '@/lib/queryKeys'
-import type { EnrollmentRequestCreatedEvent } from '@/lib/classroom/socket-events'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
+import type {
+  EnrollmentApprovedEvent,
+  EnrollmentRequestApprovedEvent,
+  EnrollmentRequestCreatedEvent,
+  EnrollmentRequestDeniedEvent,
+} from '@/lib/classroom/socket-events'
 
 /**
  * Hook for real-time parent notifications via WebSocket
@@ -53,9 +58,46 @@ export function useParentSocket(userId: string | undefined): { connected: boolea
         'in classroom:',
         data.request.classroomName
       )
-      // Invalidate the pending parent approvals query to refetch
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingParentApprovals(),
+      invalidateForEvent(queryClient, 'requestCreated', {
+        classroomId: data.request.classroomId,
+        playerId: data.request.playerId,
+      })
+    })
+
+    // Listen for enrollment request approved event (teacher approved parent's request)
+    socket.on('enrollment-request-approved', (data: EnrollmentRequestApprovedEvent) => {
+      console.log(
+        '[ParentSocket] Enrollment request approved for:',
+        data.playerName,
+        'by:',
+        data.approvedBy
+      )
+      invalidateForEvent(queryClient, 'requestApproved', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for enrollment request denied event (teacher denied parent's request)
+    socket.on('enrollment-request-denied', (data: EnrollmentRequestDeniedEvent) => {
+      console.log(
+        '[ParentSocket] Enrollment request denied for:',
+        data.playerName,
+        'by:',
+        data.deniedBy
+      )
+      invalidateForEvent(queryClient, 'requestDenied', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for enrollment completed event (student fully enrolled)
+    socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
+      console.log('[ParentSocket] Enrollment completed for:', data.playerName)
+      invalidateForEvent(queryClient, 'enrollmentCompleted', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
       })
     })
 

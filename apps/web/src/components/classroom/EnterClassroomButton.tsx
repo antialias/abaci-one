@@ -9,6 +9,7 @@ import {
   useEnterClassroom,
   useLeaveClassroom,
 } from '@/hooks/useClassroom'
+import { EnrollChildModal } from './EnrollChildModal'
 import { css } from '../../../styled-system/css'
 
 interface EnterClassroomButtonProps {
@@ -29,6 +30,7 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
   const isDark = resolvedTheme === 'dark'
 
   const [isOpen, setIsOpen] = useState(false)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
 
   // Fetch enrolled classrooms and current presence
   const { data: enrolledClassrooms = [], isLoading: loadingClassrooms } =
@@ -61,8 +63,8 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
     })
   }, [currentPresence, leaveClassroom, playerId])
 
-  // Don't show while loading or if not enrolled in any classrooms
-  if (loadingClassrooms || enrolledClassrooms.length === 0) {
+  // Don't show while loading
+  if (loadingClassrooms) {
     return null
   }
 
@@ -298,11 +300,58 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
                     Not enrolled in any classrooms
                   </div>
                 )}
+
+                {/* Separator and Enroll option */}
+                <div
+                  className={css({
+                    borderTop: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    marginTop: enrolledClassrooms.length > 0 ? '4px' : 0,
+                    paddingTop: '4px',
+                  })}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false)
+                      setShowEnrollModal(true)
+                    }}
+                    data-action="open-enroll-modal"
+                    className={css({
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 16px',
+                      backgroundColor: 'transparent',
+                      color: isDark ? 'blue.400' : 'blue.600',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 'medium',
+                      textAlign: 'left',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.50',
+                      },
+                    })}
+                  >
+                    <span>➕</span>
+                    <span>Enroll in Classroom</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </>
       )}
+
+      {/* Enroll in Classroom Modal */}
+      <EnrollChildModal
+        isOpen={showEnrollModal}
+        onClose={() => setShowEnrollModal(false)}
+        playerId={playerId}
+        playerName={playerName}
+      />
     </div>
   )
 }

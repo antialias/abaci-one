@@ -2,6 +2,7 @@
 
 import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { EnrollChildModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
 import { css } from '../../../styled-system/css'
 
@@ -51,6 +52,7 @@ export function NotesModal({
   const [editedNotes, setEditedNotes] = useState(student.notes ?? '')
   const [isSaving, setIsSaving] = useState(false)
   const [showFamilyCode, setShowFamilyCode] = useState(false)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -517,6 +519,29 @@ export function NotesModal({
                   >
                     🔗 Share Access
                   </button>
+
+                  {/* Enroll in Classroom button */}
+                  <button
+                    type="button"
+                    data-action="enroll-in-classroom"
+                    onClick={() => setShowEnrollModal(true)}
+                    className={css({
+                      padding: '0.625rem 1rem',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      color: isDark ? 'gray.300' : 'gray.600',
+                      fontSize: '0.875rem',
+                      fontWeight: 'medium',
+                      border: '1px solid',
+                      borderColor: isDark ? 'gray.600' : 'gray.300',
+                      cursor: 'pointer',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                      },
+                    })}
+                  >
+                    🏫 Enroll
+                  </button>
                 </div>
 
                 {/* Edit notes button on the right */}
@@ -553,6 +578,14 @@ export function NotesModal({
         playerName={student.name}
         isOpen={showFamilyCode}
         onClose={() => setShowFamilyCode(false)}
+      />
+
+      {/* Enroll in Classroom Modal */}
+      <EnrollChildModal
+        isOpen={showEnrollModal}
+        onClose={() => setShowEnrollModal(false)}
+        playerId={student.id}
+        playerName={student.name}
       />
     </>
   )
