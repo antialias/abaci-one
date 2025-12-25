@@ -49,6 +49,7 @@ export function useSessionBroadcast(
         elapsed: Date.now() - currentState.startedAt,
       },
       purpose: currentState.purpose,
+      complexity: currentState.complexity,
     }
 
     socketRef.current.emit('practice-state', event)

@@ -214,7 +214,7 @@ export function SessionObserverModal({
           {state && (
             <>
               {/* Purpose badge with tooltip - matches student's view */}
-              <PurposeBadge purpose={state.purpose} />
+              <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
 
               {/* Problem */}
               <VerticalProblem

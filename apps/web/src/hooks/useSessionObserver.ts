@@ -5,6 +5,20 @@ import { io, type Socket } from 'socket.io-client'
 import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
 
 /**
+ * Complexity data from broadcast
+ */
+export interface ObservedComplexity {
+  /** Complexity bounds from slot constraints */
+  bounds?: { min?: number; max?: number }
+  /** Total complexity cost from generation trace */
+  totalCost?: number
+  /** Number of steps (for per-term average) */
+  stepCount?: number
+  /** Pre-formatted target skill name */
+  targetSkillName?: string
+}
+
+/**
  * State of an observed practice session
  */
 export interface ObservedSessionState {
@@ -26,6 +40,8 @@ export interface ObservedSessionState {
   }
   /** Purpose of this problem slot (why it was selected) */
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  /** Complexity data for tooltip display */
+  complexity?: ObservedComplexity
   /** When this state was received */
   receivedAt: number
 }
@@ -130,6 +146,7 @@ export function useSessionObserver(
         isCorrect: data.isCorrect,
         timing: data.timing,
         purpose: data.purpose,
+        complexity: data.complexity,
         receivedAt: Date.now(),
       })
     })

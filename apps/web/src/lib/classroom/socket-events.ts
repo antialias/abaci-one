@@ -122,6 +122,20 @@ export interface PresenceRemovedEvent {
 // Session Observation Events (sent to session:${sessionId} channel)
 // ============================================================================
 
+/**
+ * Complexity data for broadcast (simplified for transmission)
+ */
+export interface BroadcastComplexity {
+  /** Complexity bounds from slot constraints */
+  bounds?: { min?: number; max?: number }
+  /** Total complexity cost from generation trace */
+  totalCost?: number
+  /** Number of steps (for per-term average) */
+  stepCount?: number
+  /** Pre-formatted target skill name */
+  targetSkillName?: string
+}
+
 export interface PracticeStateEvent {
   sessionId: string
   currentProblem: unknown // GeneratedProblem type from curriculum
@@ -135,6 +149,8 @@ export interface PracticeStateEvent {
   }
   /** Purpose of this problem slot (why it was selected) */
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  /** Complexity data for tooltip display */
+  complexity?: BroadcastComplexity
 }
 
 export interface TutorialStateEvent {

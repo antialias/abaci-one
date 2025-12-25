@@ -54,6 +54,20 @@ export interface AttemptTimingData {
 }
 
 /**
+ * Complexity data for broadcast (simplified for transmission)
+ */
+export interface BroadcastComplexity {
+  /** Complexity bounds from slot constraints */
+  bounds?: { min?: number; max?: number }
+  /** Total complexity cost from generation trace */
+  totalCost?: number
+  /** Number of steps (for per-term average) */
+  stepCount?: number
+  /** Pre-formatted target skill name */
+  targetSkillName?: string
+}
+
+/**
  * Broadcast state for session observation
  * This is sent to teachers observing the session in real-time
  */
@@ -73,6 +87,8 @@ export interface BroadcastState {
   startedAt: number
   /** Purpose of this problem slot (why this problem was selected) */
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  /** Complexity data for tooltip display */
+  complexity?: BroadcastComplexity
 }
 
 interface ActiveSessionProps {
@@ -609,6 +625,25 @@ export function ActiveSession({
   useEffect(() => {
     if (!onBroadcastStateChange) return
 
+    // Helper to extract complexity data from a slot
+    const extractComplexity = (slot: ProblemSlot | undefined): BroadcastComplexity | undefined => {
+      if (!slot) return undefined
+
+      const bounds = slot.complexityBounds
+      const trace = slot.problem?.generationTrace
+      const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
+      const hasCost = trace?.totalComplexityCost !== undefined
+
+      if (!hasBounds && !hasCost) return undefined
+
+      return {
+        bounds: hasBounds ? { min: bounds?.min, max: bounds?.max } : undefined,
+        totalCost: trace?.totalComplexityCost,
+        stepCount: trace?.steps?.length,
+        targetSkillName: extractTargetSkillName(slot) ?? undefined,
+      }
+    }
+
     // Get current slot's purpose from plan
     const currentPart = plan.parts[plan.currentPartIndex]
     const slot = currentPart?.slots[plan.currentSlotIndex]
@@ -617,7 +652,7 @@ export function ActiveSession({
     // During transitioning, we show the outgoing (completed) problem, not the incoming one
     // But we use the PREVIOUS slot's purpose since we're still showing feedback for it
     if (phase.phase === 'transitioning' && outgoingAttempt) {
-      // During transition, use the previous slot's purpose
+      // During transition, use the previous slot's purpose and complexity
       const prevSlotIndex = plan.currentSlotIndex > 0 ? plan.currentSlotIndex - 1 : 0
       const prevSlot = currentPart?.slots[prevSlotIndex]
       const prevPurpose = prevSlot?.purpose ?? purpose
@@ -632,6 +667,7 @@ export function ActiveSession({
         isCorrect: outgoingAttempt.result === 'correct',
         startedAt: attempt?.startTime ?? Date.now(),
         purpose: prevPurpose,
+        complexity: extractComplexity(prevSlot),
       })
       return
     }
@@ -668,6 +704,7 @@ export function ActiveSession({
       isCorrect,
       startedAt: attempt.startTime,
       purpose,
+      complexity: extractComplexity(slot),
     })
   }, [
     onBroadcastStateChange,

@@ -7,11 +7,28 @@ import { css } from '../../../styled-system/css'
 
 type Purpose = 'focus' | 'reinforce' | 'review' | 'challenge'
 
+/**
+ * Minimal complexity data for tooltip display
+ * Used when full slot isn't available (e.g., in session observer)
+ */
+export interface ComplexityData {
+  /** Complexity bounds from slot constraints */
+  bounds?: { min?: number; max?: number }
+  /** Total complexity cost from generation trace */
+  totalCost?: number
+  /** Number of steps (for per-term average) */
+  stepCount?: number
+  /** Pre-formatted target skill name */
+  targetSkillName?: string
+}
+
 interface PurposeBadgeProps {
   /** The purpose type */
   purpose: Purpose
   /** Optional slot for detailed tooltip (when available) */
   slot?: ProblemSlot
+  /** Optional simplified complexity data (alternative to slot, for observers) */
+  complexity?: ComplexityData
 }
 
 /**
@@ -73,18 +90,24 @@ function formatSkillName(category: string, skillKey: string): string {
 
 /**
  * Complexity section for purpose tooltip - shows complexity bounds and actual costs
+ * Accepts either a full slot or simplified complexity data
  */
 function ComplexitySection({
   slot,
+  complexity,
   showBounds = true,
 }: {
-  slot: ProblemSlot
+  slot?: ProblemSlot
+  complexity?: ComplexityData
   showBounds?: boolean
 }) {
-  const trace = slot.problem?.generationTrace
-  const bounds = slot.complexityBounds
+  // Extract data from slot or use simplified complexity data
+  const bounds = slot?.complexityBounds ?? complexity?.bounds
+  const totalCost = slot?.problem?.generationTrace?.totalComplexityCost ?? complexity?.totalCost
+  const stepCount = slot?.problem?.generationTrace?.steps?.length ?? complexity?.stepCount
+
   const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
-  const hasCost = trace?.totalComplexityCost !== undefined
+  const hasCost = totalCost !== undefined
 
   // Don't render anything if no complexity data
   if (!hasBounds && !hasCost) {
@@ -149,14 +172,14 @@ function ComplexitySection({
       {hasCost && (
         <div className={sectionStyles.row}>
           <span>Total cost:</span>
-          <span className={sectionStyles.value}>{trace.totalComplexityCost}</span>
+          <span className={sectionStyles.value}>{totalCost}</span>
         </div>
       )}
-      {trace?.steps && trace.steps.length > 0 && (
+      {hasCost && stepCount && stepCount > 0 && (
         <div className={sectionStyles.row}>
           <span>Per term (avg):</span>
           <span className={sectionStyles.value}>
-            {(trace.totalComplexityCost! / trace.steps.length).toFixed(1)}
+            {(totalCost! / stepCount).toFixed(1)}
           </span>
         </div>
       )}
@@ -236,9 +259,18 @@ const purposeInfo: Record<
 /**
  * Purpose tooltip content - rich explanatory content for each purpose
  */
-function PurposeTooltipContent({ purpose, slot }: { purpose: Purpose; slot?: ProblemSlot }) {
+function PurposeTooltipContent({
+  purpose,
+  slot,
+  complexity,
+}: {
+  purpose: Purpose
+  slot?: ProblemSlot
+  complexity?: ComplexityData
+}) {
   const info = purposeInfo[purpose]
-  const skillName = slot ? extractTargetSkillName(slot) : null
+  // Get skill name from slot or from simplified complexity data
+  const skillName = slot ? extractTargetSkillName(slot) : complexity?.targetSkillName ?? null
 
   return (
     <div className={tooltipStyles.container}>
@@ -287,8 +319,8 @@ function PurposeTooltipContent({ purpose, slot }: { purpose: Purpose; slot?: Pro
         </div>
       )}
 
-      {/* Complexity section only when slot is available */}
-      {slot && <ComplexitySection slot={slot} />}
+      {/* Complexity section when slot or complexity data is available */}
+      {(slot || complexity) && <ComplexitySection slot={slot} complexity={complexity} />}
     </div>
   )
 }
@@ -301,7 +333,7 @@ function PurposeTooltipContent({ purpose, slot }: { purpose: Purpose; slot?: Pro
  *
  * Used by both the student's ActiveSession and the teacher's SessionObserverModal.
  */
-export function PurposeBadge({ purpose, slot }: PurposeBadgeProps) {
+export function PurposeBadge({ purpose, slot, complexity }: PurposeBadgeProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -355,7 +387,7 @@ export function PurposeBadge({ purpose, slot }: PurposeBadgeProps) {
   return (
     <TooltipProvider>
       <Tooltip
-        content={<PurposeTooltipContent purpose={purpose} slot={slot} />}
+        content={<PurposeTooltipContent purpose={purpose} slot={slot} complexity={complexity} />}
         side="bottom"
         delayDuration={300}
       >
