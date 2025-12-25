@@ -11,9 +11,14 @@ import {
   type ActiveSessionInfo,
   type PresenceStudent,
 } from '@/hooks/useClassroom'
+import {
+  useClassroomTutorialStates,
+  type ClassroomTutorialState,
+} from '@/hooks/useClassroomTutorialStates'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
 import { SessionObserverModal } from './SessionObserverModal'
+import { TutorialObserverModal } from './TutorialObserverModal'
 
 interface ClassroomTabProps {
   classroom: Classroom
@@ -37,6 +42,12 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
     student: PresenceStudent
   } | null>(null)
 
+  // State for tutorial observation - store just playerId to get live updates
+  const [observingTutorialPlayerId, setObservingTutorialPlayerId] = useState<string | null>(null)
+  const [observingTutorialStudent, setObservingTutorialStudent] = useState<PresenceStudent | null>(
+    null
+  )
+
   // Fetch present students
   // Note: WebSocket subscription is in ClassroomDashboard (parent) so it stays
   // connected even when user switches tabs
@@ -45,6 +56,9 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
 
   // Fetch active sessions to show "Practicing" indicator
   const { data: activeSessions = [] } = useActiveSessionsInClassroom(classroom.id)
+
+  // Listen for tutorial states via WebSocket
+  const { tutorialStates } = useClassroomTutorialStates(classroom.id)
 
   // Map active sessions by playerId for quick lookup
   const activeSessionsByPlayer = new Map<string, ActiveSessionInfo>(
@@ -55,8 +69,21 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
     setObservingSession({ session, student })
   }, [])
 
+  const handleObserveTutorial = useCallback(
+    (student: PresenceStudent, _tutorialState: ClassroomTutorialState) => {
+      setObservingTutorialPlayerId(student.id)
+      setObservingTutorialStudent(student)
+    },
+    []
+  )
+
   const handleCloseObserver = useCallback(() => {
     setObservingSession(null)
+  }, [])
+
+  const handleCloseTutorialObserver = useCallback(() => {
+    setObservingTutorialPlayerId(null)
+    setObservingTutorialStudent(null)
   }, [])
 
   const handleRemoveStudent = useCallback(
@@ -137,13 +164,18 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
             {presentStudents.map((student) => {
               const activeSession = activeSessionsByPlayer.get(student.id)
+              const tutorialState = tutorialStates.get(student.id)
               return (
                 <PresentStudentCard
                   key={student.id}
                   student={student}
                   activeSession={activeSession}
+                  tutorialState={tutorialState}
                   onObserve={
                     activeSession ? () => handleObserve(student, activeSession) : undefined
+                  }
+                  onObserveTutorial={
+                    tutorialState ? () => handleObserveTutorial(student, tutorialState) : undefined
                   }
                   onRemove={() => handleRemoveStudent(student.id)}
                   isRemoving={
@@ -255,6 +287,23 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
           observerId={viewerId}
         />
       )}
+
+      {/* Tutorial Observer Modal - look up live state from tutorialStates Map */}
+      {observingTutorialPlayerId &&
+        observingTutorialStudent &&
+        tutorialStates.get(observingTutorialPlayerId) && (
+          <TutorialObserverModal
+            isOpen={true}
+            onClose={handleCloseTutorialObserver}
+            tutorialState={tutorialStates.get(observingTutorialPlayerId)!}
+            student={{
+              name: observingTutorialStudent.name,
+              emoji: observingTutorialStudent.emoji,
+              color: observingTutorialStudent.color,
+            }}
+            classroomId={classroom.id}
+          />
+        )}
     </div>
   )
 }
@@ -266,7 +315,9 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
 interface PresentStudentCardProps {
   student: PresenceStudent
   activeSession?: ActiveSessionInfo
+  tutorialState?: ClassroomTutorialState
   onObserve?: () => void
+  onObserveTutorial?: () => void
   onRemove: () => void
   isRemoving: boolean
   isDark: boolean
@@ -275,7 +326,9 @@ interface PresentStudentCardProps {
 function PresentStudentCard({
   student,
   activeSession,
+  tutorialState,
   onObserve,
+  onObserveTutorial,
   onRemove,
   isRemoving,
   isDark,
@@ -283,11 +336,21 @@ function PresentStudentCard({
   const enteredAt = new Date(student.enteredAt)
   const timeAgo = getTimeAgo(enteredAt)
   const isPracticing = !!activeSession
+  const isLearning = !!tutorialState && tutorialState.launcherState !== 'complete'
+
+  // Determine border style based on activity
+  const getBorderStyle = () => {
+    if (isPracticing) return { width: '2px', color: 'blue.500' }
+    if (isLearning) return { width: '2px', color: 'purple.500' }
+    return { width: '1px', color: isDark ? 'green.800' : 'green.200' }
+  }
+  const borderStyle = getBorderStyle()
 
   return (
     <div
       data-element="present-student-card"
       data-practicing={isPracticing}
+      data-learning={isLearning}
       className={css({
         display: 'flex',
         alignItems: 'center',
@@ -295,8 +358,8 @@ function PresentStudentCard({
         padding: '14px 16px',
         backgroundColor: isDark ? 'gray.800' : 'white',
         borderRadius: '12px',
-        border: isPracticing ? '2px solid' : '1px solid',
-        borderColor: isPracticing ? 'blue.500' : isDark ? 'green.800' : 'green.200',
+        border: `${borderStyle.width} solid`,
+        borderColor: borderStyle.color,
         boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
       })}
     >
@@ -326,7 +389,7 @@ function PresentStudentCard({
           >
             {student.emoji}
           </span>
-          {/* Online/Practicing indicator */}
+          {/* Online/Practicing/Learning indicator */}
           <span
             className={css({
               position: 'absolute',
@@ -335,29 +398,29 @@ function PresentStudentCard({
               width: '14px',
               height: '14px',
               borderRadius: '50%',
-              backgroundColor: isPracticing ? 'blue.500' : 'green.500',
+              backgroundColor: isPracticing ? 'blue.500' : isLearning ? 'purple.500' : 'green.500',
               border: '2px solid',
               borderColor: isDark ? 'gray.800' : 'white',
             })}
             style={
-              isPracticing
+              isPracticing || isLearning
                 ? {
                     animation: 'practicing-pulse 1.5s ease-in-out infinite',
                   }
                 : undefined
             }
           />
-          {/* Keyframes for practicing pulse animation */}
-          {isPracticing && (
+          {/* Keyframes for pulse animation */}
+          {(isPracticing || isLearning) && (
             <style
               dangerouslySetInnerHTML={{
                 __html: `
                   @keyframes practicing-pulse {
                     0%, 100% {
-                      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+                      box-shadow: 0 0 0 0 ${isLearning && !isPracticing ? 'rgba(147, 51, 234, 0.7)' : 'rgba(59, 130, 246, 0.7)'};
                     }
                     50% {
-                      box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+                      box-shadow: 0 0 0 6px ${isLearning && !isPracticing ? 'rgba(147, 51, 234, 0)' : 'rgba(59, 130, 246, 0)'};
                     }
                   }
                 `,
@@ -396,6 +459,26 @@ function PresentStudentCard({
                 Practicing
               </span>
             )}
+            {isLearning && !isPracticing && (
+              <span
+                data-element="learning-badge"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  backgroundColor: isDark ? 'purple.900' : 'purple.100',
+                  color: isDark ? 'purple.300' : 'purple.700',
+                  fontSize: '0.6875rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                })}
+              >
+                <span className={css({ fontSize: '0.75rem' })}>📚</span>
+                Learning
+              </span>
+            )}
           </p>
           <p
             className={css({
@@ -407,6 +490,12 @@ function PresentStudentCard({
               <>
                 Problem {activeSession.completedProblems + 1} of {activeSession.totalProblems}
               </>
+            ) : isLearning && tutorialState ? (
+              <>
+                {tutorialState.skillTitle}
+                {tutorialState.tutorialState &&
+                  ` • Step ${tutorialState.tutorialState.currentStepIndex + 1} of ${tutorialState.tutorialState.totalSteps}`}
+              </>
             ) : (
               <>Joined {timeAgo}</>
             )}
@@ -415,7 +504,7 @@ function PresentStudentCard({
       </Link>
 
       <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
-        {/* Observe button - only show when practicing */}
+        {/* Observe button - show when practicing */}
         {isPracticing && onObserve && (
           <button
             type="button"
@@ -433,6 +522,31 @@ function PresentStudentCard({
               transition: 'all 0.15s ease',
               _hover: {
                 backgroundColor: isDark ? 'blue.600' : 'blue.600',
+              },
+            })}
+          >
+            Observe
+          </button>
+        )}
+
+        {/* Observe button - show when learning (tutorial) */}
+        {isLearning && !isPracticing && onObserveTutorial && (
+          <button
+            type="button"
+            onClick={onObserveTutorial}
+            data-action="observe-tutorial"
+            className={css({
+              padding: '8px 14px',
+              backgroundColor: isDark ? 'purple.700' : 'purple.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isDark ? 'purple.600' : 'purple.600',
               },
             })}
           >

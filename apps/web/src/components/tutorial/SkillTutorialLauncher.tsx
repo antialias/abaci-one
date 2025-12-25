@@ -1,20 +1,47 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import type { Tutorial, TutorialStep } from '../../types/tutorial'
+import type { Tutorial, TutorialEvent, TutorialStep } from '../../types/tutorial'
 import {
   type SkillTutorialConfig,
   getSkillTutorialConfig,
 } from '../../lib/curriculum/skill-tutorial-config'
 import { TutorialPlayer } from './TutorialPlayer'
+import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type LauncherState = 'intro' | 'tutorial' | 'complete'
+
+/**
+ * Broadcast state for skill tutorial observation
+ */
+export interface SkillTutorialBroadcastState {
+  /** Current launcher state */
+  launcherState: 'intro' | 'tutorial' | 'complete'
+  /** Skill being learned */
+  skillId: string
+  /** Skill display title */
+  skillTitle: string
+  /** Tutorial state details (only when in 'tutorial' state) */
+  tutorialState?: {
+    currentStepIndex: number
+    totalSteps: number
+    currentMultiStep: number
+    totalMultiSteps: number
+    currentValue: number
+    targetValue: number
+    startValue: number
+    isStepCompleted: boolean
+    problem: string
+    description: string
+    currentInstruction: string
+  }
+}
 
 interface SkillTutorialLauncherProps {
   /** The skill ID to launch the tutorial for */
@@ -31,6 +58,23 @@ interface SkillTutorialLauncherProps {
   theme?: 'light' | 'dark'
   /** Number of columns on the abacus */
   abacusColumns?: number
+  /** Callback when broadcast state changes (for teacher observation) */
+  onBroadcastStateChange?: (state: SkillTutorialBroadcastState) => void
+  /** Control action from teacher (optional, for remote control) */
+  controlAction?: SkillTutorialControlAction | null
+  /** Callback when control action has been processed */
+  onControlActionProcessed?: () => void
+  /**
+   * Observed state from WebSocket (for teacher observation mode).
+   * When provided, the component becomes read-only and displays this state
+   * instead of managing its own internal state.
+   */
+  observedState?: SkillTutorialBroadcastState
+  /**
+   * Callback for sending control actions (used in observation mode).
+   * When provided, button clicks send control actions instead of changing local state.
+   */
+  onControl?: (action: SkillTutorialControlAction) => void
 }
 
 // ============================================================================
@@ -94,18 +138,86 @@ export function SkillTutorialLauncher({
   onCancel,
   theme = 'light',
   abacusColumns = 5,
+  onBroadcastStateChange,
+  controlAction,
+  onControlActionProcessed,
+  observedState,
+  onControl,
 }: SkillTutorialLauncherProps) {
-  const [state, setState] = useState<LauncherState>('intro')
+  // Whether we're in observation mode (read-only, state comes from WebSocket)
+  const isObservationMode = !!observedState
+
+  const [localState, setLocalState] = useState<LauncherState>('intro')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Get the tutorial config for this skill
-  const config = useMemo(() => getSkillTutorialConfig(skillId), [skillId])
+  // In observation mode, use observed state; otherwise use local state
+  const state: LauncherState = isObservationMode ? observedState.launcherState : localState
+  const setState = setLocalState // Only used in interactive mode
+
+  // Track pending control action for TutorialPlayer
+  const [playerControlAction, setPlayerControlAction] = useState<SkillTutorialControlAction | null>(null)
+
+  // Track tutorial player state for broadcasting (only in interactive mode)
+  const [tutorialPlayerState, setTutorialPlayerState] = useState<{
+    currentStepIndex: number
+    currentMultiStep: number
+    currentValue: number
+    isStepCompleted: boolean
+  } | null>(null)
+
+  // Get the tutorial config for this skill (use observed skillId in observation mode)
+  const effectiveSkillId = isObservationMode ? observedState.skillId : skillId
+  const config = useMemo(() => getSkillTutorialConfig(effectiveSkillId), [effectiveSkillId])
 
   // Generate the Tutorial object
   const tutorial = useMemo(() => {
     if (!config) return null
     return generateTutorialFromConfig(config)
   }, [config])
+
+  // Broadcast state changes for teacher observation
+  useEffect(() => {
+    if (!onBroadcastStateChange || !config || !tutorial) return
+
+    // Get current step info from tutorial
+    const currentStep = tutorial.steps[tutorialPlayerState?.currentStepIndex ?? 0]
+
+    const broadcastState: SkillTutorialBroadcastState = {
+      launcherState: state,
+      skillId,
+      skillTitle: config.title,
+      tutorialState:
+        state === 'tutorial' && currentStep && tutorialPlayerState
+          ? {
+              currentStepIndex: tutorialPlayerState.currentStepIndex,
+              totalSteps: tutorial.steps.length,
+              currentMultiStep: tutorialPlayerState.currentMultiStep,
+              totalMultiSteps: currentStep.multiStepInstructions?.length ?? 1,
+              currentValue: tutorialPlayerState.currentValue,
+              targetValue: currentStep.targetValue,
+              startValue: currentStep.startValue,
+              isStepCompleted: tutorialPlayerState.isStepCompleted,
+              problem: currentStep.problem,
+              description: currentStep.description,
+              currentInstruction:
+                currentStep.multiStepInstructions?.[tutorialPlayerState.currentMultiStep] ??
+                currentStep.actionDescription,
+            }
+          : undefined,
+    }
+
+    onBroadcastStateChange(broadcastState)
+  }, [
+    onBroadcastStateChange,
+    config,
+    tutorial,
+    state,
+    skillId,
+    tutorialPlayerState?.currentStepIndex,
+    tutorialPlayerState?.currentMultiStep,
+    tutorialPlayerState?.currentValue,
+    tutorialPlayerState?.isStepCompleted,
+  ])
 
   // Handle tutorial completion
   const handleTutorialComplete = useCallback(
@@ -167,6 +279,99 @@ export function SkillTutorialLauncher({
       setIsSubmitting(false)
     }
   }, [playerId, skillId, onSkip])
+
+  // Handle step change from TutorialPlayer
+  const handleStepChange = useCallback(
+    (stepIndex: number, step: TutorialStep) => {
+      setTutorialPlayerState({
+        currentStepIndex: stepIndex,
+        currentMultiStep: 0, // Reset on new step
+        currentValue: step.startValue,
+        isStepCompleted: false,
+      })
+    },
+    []
+  )
+
+  // Handle tutorial events to track value changes
+  const handleEvent = useCallback((event: TutorialEvent) => {
+    if (event.type === 'VALUE_CHANGED') {
+      setTutorialPlayerState((prev) =>
+        prev ? { ...prev, currentValue: event.newValue } : prev
+      )
+    } else if (event.type === 'STEP_COMPLETED') {
+      setTutorialPlayerState((prev) =>
+        prev ? { ...prev, isStepCompleted: true } : prev
+      )
+    }
+  }, [])
+
+  // Handle step complete from TutorialPlayer
+  const handleStepComplete = useCallback(
+    (stepIndex: number, step: TutorialStep, success: boolean) => {
+      setTutorialPlayerState((prev) =>
+        prev
+          ? {
+              ...prev,
+              isStepCompleted: success,
+              // Ensure the final value is captured when step completes
+              currentValue: success ? step.targetValue : prev.currentValue,
+            }
+          : prev
+      )
+    },
+    []
+  )
+
+  // Handle multi-step change from TutorialPlayer (for broadcasting to observers)
+  const handleMultiStepChange = useCallback((multiStep: number) => {
+    setTutorialPlayerState((prev) =>
+      prev ? { ...prev, currentMultiStep: multiStep } : prev
+    )
+  }, [])
+
+  // Handle control actions from teacher
+  useEffect(() => {
+    if (!controlAction) return
+
+    console.log('[SkillTutorialLauncher] Received control action:', controlAction)
+
+    switch (controlAction.type) {
+      case 'start-tutorial':
+        // Only works from intro state
+        if (state === 'intro') {
+          setState('tutorial')
+        }
+        break
+
+      case 'skip-tutorial':
+        // Can skip from intro or tutorial state
+        if (state === 'intro' || state === 'tutorial') {
+          handleSkip()
+        }
+        break
+
+      case 'next-step':
+      case 'previous-step':
+      case 'go-to-step':
+      case 'set-abacus-value':
+      case 'advance-multi-step':
+      case 'previous-multi-step':
+        // Pass to TutorialPlayer
+        if (state === 'tutorial') {
+          setPlayerControlAction(controlAction)
+        }
+        break
+    }
+
+    // Mark action as processed
+    onControlActionProcessed?.()
+  }, [controlAction, state, handleSkip, onControlActionProcessed])
+
+  // Callback for TutorialPlayer when it processes a control action
+  const handlePlayerControlProcessed = useCallback(() => {
+    setPlayerControlAction(null)
+  }, [])
 
   // No config found for this skill
   if (!config || !tutorial) {
@@ -283,7 +488,13 @@ export function SkillTutorialLauncher({
           <div className={hstack({ gap: 4, w: 'full', justifyContent: 'center' })}>
             <button
               data-action="start-tutorial"
-              onClick={() => setState('tutorial')}
+              onClick={() => {
+                if (isObservationMode && onControl) {
+                  onControl({ type: 'start-tutorial' })
+                } else {
+                  setState('tutorial')
+                }
+              }}
               disabled={isSubmitting}
               className={css({
                 px: 6,
@@ -303,7 +514,13 @@ export function SkillTutorialLauncher({
 
             <button
               data-action="skip-tutorial"
-              onClick={handleSkip}
+              onClick={() => {
+                if (isObservationMode && onControl) {
+                  onControl({ type: 'skip-tutorial' })
+                } else {
+                  handleSkip()
+                }
+              }}
               disabled={isSubmitting}
               className={css({
                 px: 4,
@@ -347,10 +564,48 @@ export function SkillTutorialLauncher({
 
   // Tutorial in progress
   if (state === 'tutorial') {
+    // In observation mode, wait for tutorialState before rendering TutorialPlayer
+    if (isObservationMode && !observedState.tutorialState) {
+      return (
+        <div
+          data-component="skill-tutorial-launcher"
+          data-status="tutorial-loading"
+          className={css({
+            height: '100%',
+            minHeight: '600px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          })}
+        >
+          <p
+            className={css({
+              color: theme === 'dark' ? 'gray.400' : 'gray.500',
+              fontSize: '0.9375rem',
+            })}
+          >
+            Waiting for tutorial to load...
+          </p>
+        </div>
+      )
+    }
+
+    // Convert observed state to TutorialPlayer's observed state format
+    const tutorialObservedState =
+      isObservationMode && observedState.tutorialState
+        ? {
+            currentStepIndex: observedState.tutorialState.currentStepIndex,
+            currentMultiStep: observedState.tutorialState.currentMultiStep,
+            currentValue: observedState.tutorialState.currentValue,
+            isStepCompleted: observedState.tutorialState.isStepCompleted,
+          }
+        : undefined
+
     return (
       <div
         data-component="skill-tutorial-launcher"
         data-status="tutorial"
+        data-observation-mode={isObservationMode ? 'true' : undefined}
         className={css({
           height: '100%',
           minHeight: '600px',
@@ -360,7 +615,15 @@ export function SkillTutorialLauncher({
           tutorial={tutorial}
           theme={theme}
           abacusColumns={abacusColumns}
-          onTutorialComplete={handleTutorialComplete}
+          onTutorialComplete={isObservationMode ? undefined : handleTutorialComplete}
+          onStepChange={isObservationMode ? undefined : handleStepChange}
+          onStepComplete={isObservationMode ? undefined : handleStepComplete}
+          onEvent={isObservationMode ? undefined : handleEvent}
+          onMultiStepChange={isObservationMode ? undefined : handleMultiStepChange}
+          controlAction={playerControlAction}
+          onControlActionProcessed={handlePlayerControlProcessed}
+          observedState={tutorialObservedState}
+          onControl={onControl}
         />
       </div>
     )

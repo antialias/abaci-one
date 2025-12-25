@@ -25,6 +25,7 @@ import { DecompositionDisplay, DecompositionProvider } from '../decomposition'
 import { BeadTooltipContent } from '../shared/BeadTooltipContent'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { TutorialUIProvider } from './TutorialUIContext'
+import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 import './CoachBar/coachbar.css'
 
 // Reducer state and actions
@@ -170,6 +171,16 @@ function _tutorialPlayerReducer(
   }
 }
 
+/**
+ * Observed state for teacher observation mode
+ */
+export interface TutorialObservedState {
+  currentStepIndex: number
+  currentMultiStep: number
+  currentValue: number
+  isStepCompleted: boolean
+}
+
 interface TutorialPlayerProps {
   tutorial: Tutorial
   initialStepIndex?: number
@@ -184,7 +195,23 @@ interface TutorialPlayerProps {
   onStepComplete?: (stepIndex: number, step: TutorialStep, success: boolean) => void
   onTutorialComplete?: (score: number, timeSpent: number) => void
   onEvent?: (event: TutorialEvent) => void
+  /** Callback when multi-step index changes (for broadcasting to observers) */
+  onMultiStepChange?: (multiStep: number) => void
   className?: string
+  /** Control action from teacher (optional, for remote control) */
+  controlAction?: SkillTutorialControlAction | null
+  /** Callback when control action has been processed */
+  onControlActionProcessed?: () => void
+  /**
+   * Observed state from WebSocket (for teacher observation mode).
+   * When set, the component becomes read-only and displays this state.
+   */
+  observedState?: TutorialObservedState
+  /**
+   * Callback for sending control actions (used in observation mode).
+   * When provided, button clicks send control actions instead of local state changes.
+   */
+  onControl?: (action: SkillTutorialControlAction) => void
 }
 
 function TutorialPlayerContent({
@@ -201,18 +228,26 @@ function TutorialPlayerContent({
   onStepComplete,
   onTutorialComplete,
   onEvent,
+  onMultiStepChange,
   className,
+  controlAction,
+  onControlActionProcessed,
+  observedState,
+  onControl,
 }: TutorialPlayerProps) {
   const t = useTranslations('tutorial.player')
   const [_startTime] = useState(Date.now())
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
 
+  // Whether we're in observation mode (read-only, state comes from WebSocket)
+  const isObservationMode = !!observedState
+
   // Use tutorial context instead of local state
   const {
     state,
     dispatch,
-    currentStep,
+    currentStep: contextCurrentStep,
     goToStep: contextGoToStep,
     goToNextStep: contextGoToNextStep,
     goToPreviousStep: contextGoToPreviousStep,
@@ -227,17 +262,19 @@ function TutorialPlayerContent({
     handleAbacusColumnHover,
   } = useTutorialContext()
 
-  const {
-    currentStepIndex,
-    currentValue,
-    isStepCompleted,
-    error,
-    events,
-    stepStartTime,
-    multiStepStartTime,
-    uiState,
-    currentMultiStep,
-  } = state
+  // In observation mode, override state values with observed values
+  const currentStepIndex = observedState?.currentStepIndex ?? state.currentStepIndex
+  const currentValue = observedState?.currentValue ?? state.currentValue
+  const isStepCompleted = observedState?.isStepCompleted ?? state.isStepCompleted
+  const currentMultiStep = observedState?.currentMultiStep ?? state.currentMultiStep
+
+  // Get the current step based on the (possibly observed) step index
+  const currentStep = isObservationMode
+    ? tutorial.steps[observedState.currentStepIndex]
+    : contextCurrentStep
+
+  // Non-observed state values (only used in interactive mode)
+  const { error, events, stepStartTime, multiStepStartTime, uiState } = state
 
   // Use universal abacus display configuration
   const { config: abacusConfig } = useAbacusDisplay()
@@ -247,6 +284,58 @@ function TutorialPlayerContent({
   const lastValueForStepAdvancement = useRef<number>(currentValue)
   const userHasInteracted = useRef<boolean>(false)
   const lastMovedBead = useRef<StepBeadHighlight | null>(null)
+
+  // Handle control actions from teacher
+  useEffect(() => {
+    if (!controlAction) return
+
+    console.log('[TutorialPlayer] Received control action:', controlAction)
+
+    switch (controlAction.type) {
+      case 'next-step':
+        contextGoToNextStep()
+        break
+
+      case 'previous-step':
+        contextGoToPreviousStep()
+        break
+
+      case 'go-to-step':
+        if ('stepIndex' in controlAction) {
+          contextGoToStep(controlAction.stepIndex)
+        }
+        break
+
+      case 'set-abacus-value':
+        if ('value' in controlAction) {
+          // Trigger a programmatic value change
+          isProgrammaticChange.current = true
+          contextHandleValueChange(controlAction.value)
+        }
+        break
+
+      case 'advance-multi-step':
+        advanceMultiStep()
+        break
+
+      case 'previous-multi-step':
+        previousMultiStep()
+        break
+    }
+
+    // Mark action as processed
+    onControlActionProcessed?.()
+  }, [
+    controlAction,
+    contextGoToNextStep,
+    contextGoToPreviousStep,
+    contextGoToStep,
+    contextHandleValueChange,
+    advanceMultiStep,
+    previousMultiStep,
+    currentValue,
+    onControlActionProcessed,
+  ])
 
   // Reset success popup when moving to new step
   useEffect(() => {
@@ -577,11 +666,23 @@ function TutorialPlayerContent({
   // Use context goToStep function instead of local one
   const goToStep = contextGoToStep
 
-  // Use context goToNextStep function instead of local one
-  const goToNextStep = contextGoToNextStep
+  // Use context goToNextStep function, or send control in observation mode
+  const goToNextStep = useCallback(() => {
+    if (isObservationMode && onControl) {
+      onControl({ type: 'next-step' })
+    } else {
+      contextGoToNextStep()
+    }
+  }, [isObservationMode, onControl, contextGoToNextStep])
 
-  // Use context goToPreviousStep function instead of local one
-  const goToPreviousStep = contextGoToPreviousStep
+  // Use context goToPreviousStep function, or send control in observation mode
+  const goToPreviousStep = useCallback(() => {
+    if (isObservationMode && onControl) {
+      onControl({ type: 'previous-step' })
+    } else {
+      contextGoToPreviousStep()
+    }
+  }, [isObservationMode, onControl, contextGoToPreviousStep])
 
   // Initialize step on mount only
   useEffect(() => {
@@ -705,6 +806,21 @@ function TutorialPlayerContent({
       notifyEvent(lastEvent)
     }
   }, [events, notifyEvent])
+
+  // Track previous multi-step to detect changes
+  const prevMultiStepRef = useRef<number>(state.currentMultiStep)
+
+  // Notify parent when multi-step changes (for broadcasting to observers)
+  useEffect(() => {
+    // Only notify in interactive mode (not observation mode)
+    if (isObservationMode) return
+
+    // Only notify if multi-step actually changed
+    if (state.currentMultiStep !== prevMultiStepRef.current) {
+      prevMultiStepRef.current = state.currentMultiStep
+      onMultiStepChange?.(state.currentMultiStep)
+    }
+  }, [state.currentMultiStep, isObservationMode, onMultiStepChange])
 
   // Wrap context handleValueChange to track user interaction
   const handleValueChange = useCallback(
@@ -1500,13 +1616,13 @@ function TutorialPlayerContent({
                 <AbacusReact
                   value={currentValue}
                   columns={abacusColumns}
-                  interactive={true}
+                  interactive={!isObservationMode}
                   animated={true}
                   scaleFactor={1.5}
                   colorScheme={abacusConfig.colorScheme}
                   beadShape={abacusConfig.beadShape}
                   hideInactiveBeads={abacusConfig.hideInactiveBeads}
-                  soundEnabled={abacusConfig.soundEnabled}
+                  soundEnabled={isObservationMode ? false : abacusConfig.soundEnabled}
                   soundVolume={abacusConfig.soundVolume}
                   highlightBeads={filteredHighlightBeads}
                   stepBeadHighlights={currentStepBeads}
@@ -1514,11 +1630,15 @@ function TutorialPlayerContent({
                   showDirectionIndicators={true}
                   customStyles={customStyles}
                   overlays={tooltipOverlay ? [tooltipOverlay] : []}
-                  onValueChange={handleValueChange}
-                  callbacks={{
-                    onBeadClick: handleBeadClick,
-                    onBeadRef: handleBeadRef,
-                  }}
+                  onValueChange={isObservationMode ? undefined : handleValueChange}
+                  callbacks={
+                    isObservationMode
+                      ? undefined
+                      : {
+                          onBeadClick: handleBeadClick,
+                          onBeadRef: handleBeadRef,
+                        }
+                  }
                 />
 
                 {/* Debug info */}

@@ -203,6 +203,80 @@ export interface SessionEndedEvent {
 }
 
 // ============================================================================
+// Skill Tutorial Events (sent to classroom:${classroomId} channel)
+// ============================================================================
+
+/**
+ * Tutorial state for a specific step within a skill tutorial
+ */
+export interface TutorialStepState {
+  /** Current step index (0-based) */
+  currentStepIndex: number
+  /** Total steps in the tutorial */
+  totalSteps: number
+  /** Current multi-step index within the step (for decomposition) */
+  currentMultiStep: number
+  /** Total multi-steps in current step */
+  totalMultiSteps: number
+  /** Current abacus value */
+  currentValue: number
+  /** Target value to reach */
+  targetValue: number
+  /** Starting value for this step */
+  startValue: number
+  /** Whether the current step is completed */
+  isStepCompleted: boolean
+  /** Problem string (e.g., "0 +1 = 1") */
+  problem: string
+  /** Step description */
+  description: string
+  /** Current instruction text */
+  currentInstruction: string
+}
+
+/**
+ * Broadcast event for skill tutorial state.
+ * Sent when a student is viewing a skill tutorial before starting practice.
+ */
+export interface SkillTutorialStateEvent {
+  /** Player viewing the tutorial */
+  playerId: string
+  /** Player name for display */
+  playerName: string
+  /** Current launcher state */
+  launcherState: 'intro' | 'tutorial' | 'complete'
+  /** Skill being learned */
+  skillId: string
+  /** Skill display title */
+  skillTitle: string
+  /** Tutorial state details (only present when launcherState is 'tutorial') */
+  tutorialState?: TutorialStepState
+}
+
+/**
+ * Control actions a teacher can send to a student's tutorial
+ */
+export type SkillTutorialControlAction =
+  | { type: 'start-tutorial' }
+  | { type: 'skip-tutorial' }
+  | { type: 'next-step' }
+  | { type: 'previous-step' }
+  | { type: 'go-to-step'; stepIndex: number }
+  | { type: 'set-abacus-value'; value: number }
+  | { type: 'advance-multi-step' }
+  | { type: 'previous-multi-step' }
+
+/**
+ * Control event sent from teacher to student during skill tutorial
+ */
+export interface SkillTutorialControlEvent {
+  /** Target player ID */
+  playerId: string
+  /** Control action to apply */
+  action: SkillTutorialControlAction
+}
+
+// ============================================================================
 // Client-Side Event Map (for typed socket.io client)
 // ============================================================================
 
@@ -236,6 +310,10 @@ export interface ClassroomServerToClientEvents {
   // Session status events (classroom channel - for teacher's active sessions view)
   'session-started': (data: SessionStartedEvent) => void
   'session-ended': (data: SessionEndedEvent) => void
+
+  // Skill tutorial events (classroom channel - for teacher's observation)
+  'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
+  'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 }
 
 /**
@@ -258,4 +336,8 @@ export interface ClassroomClientToServerEvents {
   // Observer controls
   'tutorial-control': (data: TutorialControlEvent) => void
   'abacus-control': (data: AbacusControlEvent) => void
+
+  // Skill tutorial broadcasts (from student client to classroom channel)
+  'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
+  'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 }

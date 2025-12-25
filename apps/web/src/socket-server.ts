@@ -844,6 +844,75 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Skill Tutorial: Broadcast state from student to classroom (for teacher observation)
+    // The student joins the classroom channel and emits their tutorial state
+    socket.on(
+      'skill-tutorial-state',
+      (data: {
+        playerId: string
+        playerName: string
+        launcherState: 'intro' | 'tutorial' | 'complete'
+        skillId: string
+        skillTitle: string
+        tutorialState?: {
+          currentStepIndex: number
+          totalSteps: number
+          currentMultiStep: number
+          totalMultiSteps: number
+          currentValue: number
+          targetValue: number
+          startValue: number
+          isStepCompleted: boolean
+          problem: string
+          description: string
+          currentInstruction: string
+        }
+      }) => {
+        // Broadcast to all other sockets in the classroom channel (including teacher)
+        // The student is already in the classroom channel, so use socket.rooms to find it
+        for (const room of socket.rooms) {
+          if (room.startsWith('classroom:')) {
+            socket.to(room).emit('skill-tutorial-state', data)
+            console.log(
+              `📚 Skill tutorial state broadcast to ${room}:`,
+              data.playerId,
+              data.launcherState
+            )
+          }
+        }
+      }
+    )
+
+    // Skill Tutorial: Control from teacher to student
+    // Teacher sends control action, we broadcast to the classroom so the student receives it
+    socket.on(
+      'skill-tutorial-control',
+      (data: {
+        playerId: string
+        action:
+          | { type: 'start-tutorial' }
+          | { type: 'skip-tutorial' }
+          | { type: 'next-step' }
+          | { type: 'previous-step' }
+          | { type: 'go-to-step'; stepIndex: number }
+          | { type: 'set-abacus-value'; value: number }
+          | { type: 'advance-multi-step' }
+          | { type: 'previous-multi-step' }
+      }) => {
+        // Broadcast to all sockets in the classroom channel so the target student receives it
+        for (const room of socket.rooms) {
+          if (room.startsWith('classroom:')) {
+            io!.to(room).emit('skill-tutorial-control', data)
+            console.log(
+              `🎮 Skill tutorial control sent to ${room}:`,
+              data.playerId,
+              data.action.type
+            )
+          }
+        }
+      }
+    )
+
     socket.on('disconnect', () => {
       // Don't delete session on disconnect - it persists across devices
     })

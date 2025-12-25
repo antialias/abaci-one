@@ -4,6 +4,11 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
+import {
+  useSkillTutorialBroadcast,
+  type SkillTutorialBroadcastState,
+} from '@/hooks/useSkillTutorialBroadcast'
+import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plans'
@@ -77,6 +82,32 @@ export function StartPracticeModal({
 
   // Tutorial gate state
   const [showTutorial, setShowTutorial] = useState(false)
+
+  // Tutorial broadcast state for teacher observation
+  const [tutorialBroadcastState, setTutorialBroadcastState] =
+    useState<SkillTutorialBroadcastState | null>(null)
+
+  // Control action from teacher (via WebSocket)
+  const [pendingControlAction, setPendingControlAction] = useState<SkillTutorialControlAction | null>(null)
+
+  // Handler for when control action is processed
+  const handleControlActionProcessed = useCallback(() => {
+    setPendingControlAction(null)
+  }, [])
+
+  // Handler for receiving control actions from teacher
+  const handleControlReceived = useCallback((action: SkillTutorialControlAction) => {
+    console.log('[StartPracticeModal] Received control action from teacher:', action)
+    setPendingControlAction(action)
+  }, [])
+
+  // Broadcast tutorial state to classroom observers
+  useSkillTutorialBroadcast(
+    studentId,
+    studentName,
+    showTutorial ? tutorialBroadcastState : null,
+    handleControlReceived
+  )
 
   // Derive tutorial info from sessionMode (no separate hook needed)
   const tutorialConfig = useMemo(() => {
@@ -307,6 +338,9 @@ export function StartPracticeModal({
               onComplete={handleTutorialComplete}
               onSkip={handleTutorialSkip}
               onCancel={handleTutorialCancel}
+              onBroadcastStateChange={setTutorialBroadcastState}
+              controlAction={pendingControlAction}
+              onControlActionProcessed={handleControlActionProcessed}
             />
           </Dialog.Content>
         </Dialog.Portal>
