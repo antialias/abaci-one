@@ -11,6 +11,7 @@ import type {
   EnrollmentRequestDeniedEvent,
   StudentEnteredEvent,
   StudentLeftEvent,
+  StudentUnenrolledEvent,
 } from '@/lib/classroom/socket-events'
 
 /**
@@ -94,6 +95,20 @@ export function useClassroomSocket(classroomId: string | undefined): { connected
     socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
       console.log('[ClassroomSocket] Student enrolled:', data.playerName)
       invalidateForEvent(queryClient, 'enrollmentCompleted', {
+        classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for student unenrolled event
+    socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
+      console.log(
+        '[ClassroomSocket] Student unenrolled:',
+        data.playerName,
+        'by:',
+        data.unenrolledBy
+      )
+      invalidateForEvent(queryClient, 'studentUnenrolled', {
         classroomId,
         playerId: data.playerId,
       })

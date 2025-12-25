@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { unenrollStudent, getTeacherClassroom, isParent } from '@/lib/classroom'
+import { getLinkedParentIds, getTeacherClassroom, isParent, unenrollStudent } from '@/lib/classroom'
+import { emitStudentUnenrolled } from '@/lib/classroom/socket-emitter'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -49,6 +50,44 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     await unenrollStudent(classroomId, playerId)
+
+    // Emit socket event for real-time updates
+    try {
+      // Get classroom and player info for socket event
+      const [classroomInfo] = await db
+        .select({ name: schema.classrooms.name })
+        .from(schema.classrooms)
+        .where(eq(schema.classrooms.id, classroomId))
+        .limit(1)
+
+      const [playerInfo] = await db
+        .select({ name: schema.players.name })
+        .from(schema.players)
+        .where(eq(schema.players.id, playerId))
+        .limit(1)
+
+      if (classroomInfo && playerInfo) {
+        // Get parent IDs to notify
+        const parentIds = await getLinkedParentIds(playerId)
+
+        await emitStudentUnenrolled(
+          {
+            classroomId,
+            classroomName: classroomInfo.name,
+            playerId,
+            playerName: playerInfo.name,
+            unenrolledBy: isTeacher ? 'teacher' : 'parent',
+          },
+          {
+            classroomId, // Teacher sees student removed
+            userIds: parentIds, // Parents see child is no longer enrolled
+            playerIds: [playerId], // Student sees they're no longer in classroom
+          }
+        )
+      }
+    } catch (socketError) {
+      console.error('[Unenroll] Failed to emit socket event:', socketError)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

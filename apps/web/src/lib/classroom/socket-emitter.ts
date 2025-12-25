@@ -16,6 +16,7 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  StudentUnenrolledEvent,
 } from './socket-events'
 
 /**
@@ -136,6 +137,30 @@ export async function emitEnrollmentCompleted(
   }
 
   emitToRecipients(io, 'enrollment-approved', eventData, recipients, 'enrollment-completed')
+}
+
+/**
+ * Emit a student unenrolled event
+ *
+ * Use when: A student is removed from a classroom (by teacher or parent).
+ * This also implies their presence was removed if they were in the classroom.
+ */
+export async function emitStudentUnenrolled(
+  payload: Omit<EnrollmentEventPayload, 'requestId'> & { unenrolledBy: 'teacher' | 'parent' },
+  recipients: SocketRecipients
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: StudentUnenrolledEvent = {
+    classroomId: payload.classroomId,
+    classroomName: payload.classroomName,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    unenrolledBy: payload.unenrolledBy,
+  }
+
+  emitToRecipients(io, 'student-unenrolled', eventData, recipients, 'student-unenrolled')
 }
 
 /**

@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { useQueryClient } from '@tanstack/react-query'
-import type { PresenceRemovedEvent } from '@/lib/classroom/socket-events'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
+import type {
+  EnrollmentApprovedEvent,
+  PresenceRemovedEvent,
+  StudentUnenrolledEvent,
+} from '@/lib/classroom/socket-events'
 
 /**
  * Hook for real-time player presence updates via WebSocket
@@ -50,6 +55,24 @@ export function usePlayerPresenceSocket(playerId: string | undefined): { connect
       // Invalidate the student's presence query to refetch
       queryClient.invalidateQueries({
         queryKey: ['players', playerId, 'presence'],
+      })
+    })
+
+    // Listen for student unenrolled event (student removed from classroom entirely)
+    socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
+      console.log('[PlayerPresenceSocket] Student unenrolled from:', data.classroomName)
+      invalidateForEvent(queryClient, 'studentUnenrolled', {
+        classroomId: data.classroomId,
+        playerId,
+      })
+    })
+
+    // Listen for enrollment completed event (student now enrolled in classroom)
+    socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
+      console.log('[PlayerPresenceSocket] Enrolled in classroom:', data.classroomName)
+      invalidateForEvent(queryClient, 'enrollmentCompleted', {
+        classroomId: data.classroomId,
+        playerId,
       })
     })
 

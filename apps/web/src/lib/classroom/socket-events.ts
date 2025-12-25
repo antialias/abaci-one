@@ -69,6 +69,23 @@ export interface EnrollmentApprovedEvent {
 }
 
 /**
+ * Sent when a student is removed from a classroom (unenrolled).
+ * This also removes their presence if they were in the classroom.
+ *
+ * Sent to:
+ * - classroom:${classroomId} - Teacher sees student removed
+ * - player:${playerId} - Student sees they're no longer enrolled
+ * - user:${parentIds} - Parents see child is no longer enrolled
+ */
+export interface StudentUnenrolledEvent {
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  unenrolledBy: 'teacher' | 'parent'
+}
+
+/**
  * @deprecated Use EnrollmentRequestDeniedEvent instead
  */
 export interface EnrollmentDeniedEvent {
@@ -158,6 +175,7 @@ export interface ClassroomServerToClientEvents {
   'enrollment-request-approved': (data: EnrollmentRequestApprovedEvent) => void
   'enrollment-request-denied': (data: EnrollmentRequestDeniedEvent) => void
   'enrollment-approved': (data: EnrollmentApprovedEvent) => void
+  'student-unenrolled': (data: StudentUnenrolledEvent) => void
   'enrollment-denied': (data: EnrollmentDeniedEvent) => void // deprecated
 
   // Presence events (classroom channel)

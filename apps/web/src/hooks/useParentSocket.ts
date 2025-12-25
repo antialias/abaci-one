@@ -9,6 +9,7 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  StudentUnenrolledEvent,
 } from '@/lib/classroom/socket-events'
 
 /**
@@ -96,6 +97,15 @@ export function useParentSocket(userId: string | undefined): { connected: boolea
     socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
       console.log('[ParentSocket] Enrollment completed for:', data.playerName)
       invalidateForEvent(queryClient, 'enrollmentCompleted', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for student unenrolled event (child removed from classroom)
+    socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
+      console.log('[ParentSocket] Child unenrolled:', data.playerName, 'from:', data.classroomName)
+      invalidateForEvent(queryClient, 'studentUnenrolled', {
         classroomId: data.classroomId,
         playerId: data.playerId,
       })

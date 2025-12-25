@@ -11,6 +11,7 @@
  * - requestApproved: One side (teacher or parent) approved their part of the request
  * - requestDenied: A request was denied by either side
  * - enrollmentCompleted: Both sides approved, student is now fully enrolled
+ * - studentUnenrolled: Student was removed from a classroom (by teacher or parent)
  * - studentEntered: Student entered a classroom
  * - studentLeft: Student left a classroom
  */
@@ -26,6 +27,7 @@ export type ClassroomEventType =
   | 'requestApproved'
   | 'requestDenied'
   | 'enrollmentCompleted'
+  | 'studentUnenrolled'
   | 'studentEntered'
   | 'studentLeft'
 
@@ -128,6 +130,27 @@ export function invalidateForEvent(
       })
       break
 
+    case 'studentUnenrolled':
+      // Teacher sees student removed from enrollments and presence
+      if (classroomId) {
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.enrollments(classroomId),
+        })
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.presence(classroomId),
+        })
+      }
+      // Student/parent sees classroom removed from enrolled list and presence cleared
+      if (playerId) {
+        queryClient.invalidateQueries({
+          queryKey: playerKeys.enrolledClassrooms(playerId),
+        })
+        queryClient.invalidateQueries({
+          queryKey: playerKeys.presence(playerId),
+        })
+      }
+      break
+
     case 'studentEntered':
       // Teacher sees updated presence
       if (classroomId) {
@@ -200,6 +223,17 @@ export function getInvalidationKeys(
         keys.push(playerKeys.enrolledClassrooms(playerId))
       }
       keys.push(classroomKeys.pendingParentApprovals())
+      break
+
+    case 'studentUnenrolled':
+      if (classroomId) {
+        keys.push(classroomKeys.enrollments(classroomId))
+        keys.push(classroomKeys.presence(classroomId))
+      }
+      if (playerId) {
+        keys.push(playerKeys.enrolledClassrooms(playerId))
+        keys.push(playerKeys.presence(playerId))
+      }
       break
 
     case 'studentEntered':
