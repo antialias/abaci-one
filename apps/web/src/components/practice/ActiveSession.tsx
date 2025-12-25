@@ -187,7 +187,8 @@ function ComplexitySection({
   const trace = slot.problem?.generationTrace
   const bounds = slot.complexityBounds
   const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
-  const hasCost = trace?.totalComplexityCost !== undefined
+  const hasCost =
+    trace?.totalComplexityCost !== undefined && !Number.isNaN(trace?.totalComplexityCost)
 
   // Don't render anything if no complexity data
   if (!hasBounds && !hasCost) {
@@ -255,7 +256,7 @@ function ComplexitySection({
           <span className={sectionStyles.value}>{trace.totalComplexityCost}</span>
         </div>
       )}
-      {trace?.steps && trace.steps.length > 0 && (
+      {hasCost && trace?.steps && trace.steps.length > 0 && (
         <div className={sectionStyles.row}>
           <span>Per term (avg):</span>
           <span className={sectionStyles.value}>

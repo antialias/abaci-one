@@ -582,7 +582,12 @@ function generateSequence(
   }
 
   // Calculate total complexity cost from all steps
-  const totalComplexityCost = steps.reduce((sum, step) => sum + (step.complexityCost ?? 0), 0)
+  // Note: Use explicit NaN check since ?? only catches null/undefined, not NaN
+  const totalComplexityCost = steps.reduce((sum, step) => {
+    const cost = step.complexityCost
+    if (cost === undefined || cost === null || Number.isNaN(cost)) return sum
+    return sum + cost
+  }, 0)
 
   // Build skill mastery context if cost calculator is available
   const allSkills = [...new Set(steps.flatMap((s) => s.skillsUsed))]

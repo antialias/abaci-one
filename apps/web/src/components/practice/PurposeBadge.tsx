@@ -107,7 +107,7 @@ function ComplexitySection({
   const stepCount = slot?.problem?.generationTrace?.steps?.length ?? complexity?.stepCount
 
   const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
-  const hasCost = totalCost !== undefined
+  const hasCost = totalCost !== undefined && !Number.isNaN(totalCost)
 
   // Don't render anything if no complexity data
   if (!hasBounds && !hasCost) {

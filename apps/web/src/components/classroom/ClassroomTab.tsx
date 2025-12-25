@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Classroom } from '@/db/schema'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -48,6 +48,12 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
     null
   )
 
+  // State for pending session observation (waiting for session to start after tutorial completes)
+  const [pendingSessionObservation, setPendingSessionObservation] = useState<{
+    playerId: string
+    student: PresenceStudent
+  } | null>(null)
+
   // Fetch present students
   // Note: WebSocket subscription is in ClassroomDashboard (parent) so it stays
   // connected even when user switches tabs
@@ -55,7 +61,8 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
   const leaveClassroom = useLeaveClassroom()
 
   // Fetch active sessions to show "Practicing" indicator
-  const { data: activeSessions = [] } = useActiveSessionsInClassroom(classroom.id)
+  const { data: activeSessions = [], refetch: refetchActiveSessions } =
+    useActiveSessionsInClassroom(classroom.id)
 
   // Listen for tutorial states via WebSocket
   const { tutorialStates } = useClassroomTutorialStates(classroom.id)
@@ -95,6 +102,91 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
     },
     [classroom.id, leaveClassroom]
   )
+
+  // Auto-transition from tutorial observation to session observation when tutorial completes
+  useEffect(() => {
+    if (!observingTutorialPlayerId || !observingTutorialStudent) return
+
+    const tutorialState = tutorialStates.get(observingTutorialPlayerId)
+
+    // If tutorial is complete or no longer exists, check for active session
+    if (!tutorialState || tutorialState.launcherState === 'complete') {
+      const activeSession = activeSessionsByPlayer.get(observingTutorialPlayerId)
+
+      if (activeSession) {
+        console.log(
+          '[ClassroomTab] Tutorial completed, switching to session observation for:',
+          observingTutorialPlayerId
+        )
+        // Close tutorial observer and open session observer
+        setObservingTutorialPlayerId(null)
+        setObservingTutorialStudent(null)
+        setPendingSessionObservation(null)
+        setObservingSession({
+          session: activeSession,
+          student: observingTutorialStudent,
+        })
+      } else {
+        // Session not ready yet, set pending observation to keep checking
+        console.log(
+          '[ClassroomTab] Tutorial completed, waiting for session to start for:',
+          observingTutorialPlayerId
+        )
+        setPendingSessionObservation({
+          playerId: observingTutorialPlayerId,
+          student: observingTutorialStudent,
+        })
+        // Trigger immediate refetch to check for session sooner
+        refetchActiveSessions()
+        // Close tutorial observer (state is gone or complete)
+        setObservingTutorialPlayerId(null)
+        setObservingTutorialStudent(null)
+      }
+    }
+  }, [
+    observingTutorialPlayerId,
+    observingTutorialStudent,
+    tutorialStates,
+    activeSessionsByPlayer,
+    refetchActiveSessions,
+  ])
+
+  // Check for pending session observation (waiting for session to start after tutorial)
+  useEffect(() => {
+    if (!pendingSessionObservation) return
+
+    const activeSession = activeSessionsByPlayer.get(pendingSessionObservation.playerId)
+
+    if (activeSession) {
+      console.log(
+        '[ClassroomTab] Session started, opening observer for:',
+        pendingSessionObservation.playerId
+      )
+      setPendingSessionObservation(null)
+      setObservingSession({
+        session: activeSession,
+        student: pendingSessionObservation.student,
+      })
+      return
+    }
+
+    // Poll for session while pending (every 2 seconds)
+    const pollInterval = setInterval(() => {
+      console.log('[ClassroomTab] Polling for session...')
+      refetchActiveSessions()
+    }, 2000)
+
+    // Timeout after 30 seconds
+    const timeout = setTimeout(() => {
+      console.log('[ClassroomTab] Timeout waiting for session, cancelling pending observation')
+      setPendingSessionObservation(null)
+    }, 30000)
+
+    return () => {
+      clearInterval(pollInterval)
+      clearTimeout(timeout)
+    }
+  }, [pendingSessionObservation, activeSessionsByPlayer, refetchActiveSessions])
 
   return (
     <div
@@ -304,6 +396,107 @@ export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
             classroomId={classroom.id}
           />
         )}
+
+      {/* Waiting for session indicator */}
+      {pendingSessionObservation && (
+        <div
+          data-component="pending-session-overlay"
+          className={css({
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          })}
+        >
+          <div
+            className={css({
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              textAlign: 'center',
+              maxWidth: '400px',
+            })}
+          >
+            <div
+              className={css({
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                margin: '0 auto 16px',
+              })}
+              style={{ backgroundColor: pendingSessionObservation.student.color }}
+            >
+              {pendingSessionObservation.student.emoji}
+            </div>
+            <h3
+              className={css({
+                fontSize: '1.125rem',
+                fontWeight: 'bold',
+                color: isDark ? 'white' : 'gray.800',
+                marginBottom: '8px',
+              })}
+            >
+              Waiting for practice to start...
+            </h3>
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.600',
+                marginBottom: '16px',
+              })}
+            >
+              {pendingSessionObservation.student.name} completed the tutorial.
+              <br />
+              Waiting for their practice session to begin.
+            </p>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                color: isDark ? 'gray.400' : 'gray.500',
+                fontSize: '0.75rem',
+              })}
+            >
+              <span
+                className={css({
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: 'green.500',
+                  animation: 'pulse 1.5s infinite',
+                })}
+              />
+              Connecting...
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingSessionObservation(null)}
+              className={css({
+                marginTop: '16px',
+                padding: '8px 16px',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                color: isDark ? 'gray.200' : 'gray.700',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+              })}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
