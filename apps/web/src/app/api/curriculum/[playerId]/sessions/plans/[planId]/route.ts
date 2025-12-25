@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { players } from '@/db/schema'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { getStudentPresence } from '@/lib/classroom'
+import { emitSessionEnded, emitSessionStarted } from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
   approveSessionPlan,
@@ -56,7 +61,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - reason?: string (for 'end_early' action)
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { planId } = await params
+  const { playerId, planId } = await params
 
   try {
     const body = await request.json()
@@ -71,6 +76,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       case 'start':
         plan = await startSessionPlan(planId)
+        // Emit session started event if student is in a classroom
+        await emitSessionEventIfPresent(playerId, planId, 'start')
         break
 
       case 'record':
@@ -85,10 +92,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       case 'end_early':
         plan = await completeSessionPlanEarly(planId, reason)
+        // Emit session ended event if student is in a classroom
+        await emitSessionEventIfPresent(playerId, planId, 'end_early')
         break
 
       case 'abandon':
         plan = await abandonSessionPlan(planId)
+        // Emit session ended event if student is in a classroom
+        await emitSessionEventIfPresent(playerId, planId, 'abandon')
         break
 
       default:
@@ -104,5 +115,38 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error('Error updating plan:', error)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
+  }
+}
+
+/**
+ * Helper to emit session socket events if the student is present in a classroom
+ */
+async function emitSessionEventIfPresent(
+  playerId: string,
+  sessionId: string,
+  action: 'start' | 'end_early' | 'abandon'
+): Promise<void> {
+  try {
+    // Check if student is in a classroom
+    const presence = await getStudentPresence(playerId)
+    if (!presence) return
+
+    // Get player name
+    const player = await db.query.players.findFirst({
+      where: eq(players.id, playerId),
+    })
+    const playerName = player?.name ?? 'Unknown'
+
+    const classroomId = presence.classroomId
+
+    if (action === 'start') {
+      await emitSessionStarted({ sessionId, playerId, playerName }, classroomId)
+    } else {
+      const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
+      await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
+    }
+  } catch (error) {
+    // Don't fail the request if socket emission fails
+    console.error('[SessionPlan] Failed to emit session event:', error)
   }
 }

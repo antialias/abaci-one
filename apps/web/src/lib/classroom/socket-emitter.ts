@@ -16,6 +16,8 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  SessionEndedEvent,
+  SessionStartedEvent,
   StudentUnenrolledEvent,
 } from './socket-events'
 
@@ -199,5 +201,73 @@ function emitToRecipients<T>(
     }
   } catch (error) {
     console.error(`[SocketEmitter] Failed to emit ${logLabel}:`, error)
+  }
+}
+
+// ============================================================================
+// Session Events
+// ============================================================================
+
+/**
+ * Session event payload
+ */
+export interface SessionEventPayload {
+  sessionId: string
+  playerId: string
+  playerName: string
+}
+
+/**
+ * Emit a session started event
+ *
+ * Use when: A student starts a practice session while present in a classroom.
+ * This notifies the teacher so they can see the session in their active sessions view.
+ */
+export async function emitSessionStarted(
+  payload: SessionEventPayload,
+  classroomId: string
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: SessionStartedEvent = {
+    sessionId: payload.sessionId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+  }
+
+  try {
+    io.to(`classroom:${classroomId}`).emit('session-started', eventData)
+    console.log(`[SocketEmitter] session-started -> classroom:${classroomId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-started:', error)
+  }
+}
+
+/**
+ * Emit a session ended event
+ *
+ * Use when: A student's practice session ends (completed, ended early, or abandoned)
+ * while they are present in a classroom.
+ */
+export async function emitSessionEnded(
+  payload: SessionEventPayload & { reason: 'completed' | 'ended_early' | 'abandoned' },
+  classroomId: string
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: SessionEndedEvent = {
+    sessionId: payload.sessionId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    reason: payload.reason,
+  }
+
+  try {
+    io.to(`classroom:${classroomId}`).emit('session-ended', eventData)
+    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> classroom:${classroomId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-ended:', error)
   }
 }

@@ -9,6 +9,7 @@ import {
   useEnterClassroom,
   useLeaveClassroom,
 } from '@/hooks/useClassroom'
+import { usePlayerEnrollmentSocket } from '@/hooks/usePlayerEnrollmentSocket'
 import { EnrollChildModal } from './EnrollChildModal'
 import { css } from '../../../styled-system/css'
 
@@ -36,6 +37,9 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
   const { data: enrolledClassrooms = [], isLoading: loadingClassrooms } =
     useEnrolledClassrooms(playerId)
   const { data: currentPresence, isLoading: loadingPresence } = useStudentPresence(playerId)
+
+  // Subscribe to real-time enrollment updates
+  usePlayerEnrollmentSocket(playerId)
 
   // Mutations
   const enterClassroom = useEnterClassroom()

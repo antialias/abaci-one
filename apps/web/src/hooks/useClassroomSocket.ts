@@ -9,6 +9,8 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  SessionEndedEvent,
+  SessionStartedEvent,
   StudentEnteredEvent,
   StudentLeftEvent,
   StudentUnenrolledEvent,
@@ -112,6 +114,25 @@ export function useClassroomSocket(classroomId: string | undefined): { connected
         classroomId,
         playerId: data.playerId,
       })
+    })
+
+    // Listen for session started event
+    socket.on('session-started', (data: SessionStartedEvent) => {
+      console.log('[ClassroomSocket] Session started:', data.playerName, 'session:', data.sessionId)
+      invalidateForEvent(queryClient, 'sessionStarted', { classroomId })
+    })
+
+    // Listen for session ended event
+    socket.on('session-ended', (data: SessionEndedEvent) => {
+      console.log(
+        '[ClassroomSocket] Session ended:',
+        data.playerName,
+        'reason:',
+        data.reason,
+        'session:',
+        data.sessionId
+      )
+      invalidateForEvent(queryClient, 'sessionEnded', { classroomId })
     })
 
     // Cleanup on unmount

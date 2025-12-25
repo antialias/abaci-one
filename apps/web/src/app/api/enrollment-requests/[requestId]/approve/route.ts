@@ -3,7 +3,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { enrollmentRequests } from '@/db/schema'
 import { approveEnrollmentRequest, isParent } from '@/lib/classroom'
-import { getSocketIO } from '@/lib/socket-io'
+import {
+  emitEnrollmentCompleted,
+  emitEnrollmentRequestApproved,
+} from '@/lib/classroom/socket-emitter'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -55,39 +58,48 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const result = await approveEnrollmentRequest(requestId, user.id, 'parent')
 
-    // Emit socket events for real-time updates to the classroom channel
-    const io = await getSocketIO()
-    if (io && result.request.classroomId) {
-      try {
-        const classroomId = result.request.classroomId
+    // Emit socket events for real-time updates
+    try {
+      const classroomId = result.request.classroomId
 
-        // Always emit that the request was approved (removes from "Awaiting Parent Approval")
-        io.to(`classroom:${classroomId}`).emit('enrollment-request-approved', {
+      // Get classroom and player info for socket events
+      const [classroomInfo] = await db
+        .select({ name: schema.classrooms.name })
+        .from(schema.classrooms)
+        .where(eq(schema.classrooms.id, classroomId))
+        .limit(1)
+
+      const [playerInfo] = await db
+        .select({ name: schema.players.name })
+        .from(schema.players)
+        .where(eq(schema.players.id, result.request.playerId))
+        .limit(1)
+
+      if (classroomInfo && playerInfo) {
+        const payload = {
           requestId,
           classroomId,
-        })
+          classroomName: classroomInfo.name,
+          playerId: result.request.playerId,
+          playerName: playerInfo.name,
+        }
 
-        // If fully enrolled, also emit enrollment-approved to update enrolled students list
-        if (result.fullyApproved && result.request.playerId) {
-          // Get player name for the event
-          const [playerInfo] = await db
-            .select({ name: schema.players.name })
-            .from(schema.players)
-            .where(eq(schema.players.id, result.request.playerId))
-            .limit(1)
-
-          io.to(`classroom:${classroomId}`).emit('enrollment-approved', {
-            classroomId,
-            playerId: result.request.playerId,
-            playerName: playerInfo?.name || 'Unknown',
+        if (result.fullyApproved) {
+          // Both sides approved - notify teacher and student
+          await emitEnrollmentCompleted(payload, {
+            classroomId, // Teacher sees the update
+            playerIds: [result.request.playerId], // Student's enrolled classrooms list updates
           })
-          console.log(
-            `[Parent Approve API] Student ${result.request.playerId} fully enrolled in classroom ${classroomId}`
+        } else {
+          // Only parent approved - notify teacher that parent approved their request
+          await emitEnrollmentRequestApproved(
+            { ...payload, approvedBy: 'parent' },
+            { classroomId }
           )
         }
-      } catch (socketError) {
-        console.error('[Parent Approve API] Failed to broadcast:', socketError)
       }
+    } catch (socketError) {
+      console.error('[Parent Approve] Failed to emit socket event:', socketError)
     }
 
     return NextResponse.json({

@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Classroom, EnrollmentRequest, Player, User } from '@/db/schema'
 import { api } from '@/lib/queryClient'
-import { classroomKeys } from '@/lib/queryKeys'
+import { classroomKeys, playerKeys } from '@/lib/queryKeys'
 
 // Re-export query keys for consumers
-export { classroomKeys } from '@/lib/queryKeys'
+export { classroomKeys, playerKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -283,12 +283,16 @@ export function useCreateEnrollmentRequest() {
   return useMutation({
     mutationFn: createEnrollmentRequest,
     onSuccess: (_, { classroomId }) => {
-      // Invalidate both pending requests queries
+      // Invalidate teacher's pending requests queries
       queryClient.invalidateQueries({
         queryKey: classroomKeys.pendingRequests(classroomId),
       })
       queryClient.invalidateQueries({
         queryKey: classroomKeys.awaitingParentApproval(classroomId),
+      })
+      // Invalidate parent's own pending approvals list so they see their new request
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.pendingParentApprovals(),
       })
     },
   })
@@ -535,7 +539,7 @@ export function useEnterClassroom() {
         })
         // Invalidate student's view of their own presence
         queryClient.invalidateQueries({
-          queryKey: ['players', playerId, 'presence'],
+          queryKey: playerKeys.presence(playerId),
         })
       }
     },
@@ -557,7 +561,7 @@ export function useLeaveClassroom() {
       })
       // Invalidate student's view of their own presence
       queryClient.invalidateQueries({
-        queryKey: ['players', playerId, 'presence'],
+        queryKey: playerKeys.presence(playerId),
       })
     },
   })
@@ -656,7 +660,7 @@ async function fetchStudentPresence(playerId: string): Promise<PresenceInfo | nu
  */
 export function useEnrolledClassrooms(playerId: string | undefined) {
   return useQuery({
-    queryKey: ['players', playerId, 'enrolled-classrooms'],
+    queryKey: playerKeys.enrolledClassrooms(playerId!),
     queryFn: () => fetchEnrolledClassrooms(playerId!),
     enabled: !!playerId,
     staleTime: 60 * 1000, // 1 minute
@@ -668,7 +672,7 @@ export function useEnrolledClassrooms(playerId: string | undefined) {
  */
 export function useStudentPresence(playerId: string | undefined) {
   return useQuery({
-    queryKey: ['players', playerId, 'presence'],
+    queryKey: playerKeys.presence(playerId!),
     queryFn: () => fetchStudentPresence(playerId!),
     enabled: !!playerId,
     staleTime: 30 * 1000, // 30 seconds

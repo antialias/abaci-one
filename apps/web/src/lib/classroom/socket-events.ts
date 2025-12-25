@@ -162,6 +162,27 @@ export interface SessionPausedEvent {
   reason: string
 }
 
+/**
+ * Sent when a student starts a practice session while present in a classroom.
+ * Allows teacher to see session status update in real-time.
+ */
+export interface SessionStartedEvent {
+  sessionId: string
+  playerId: string
+  playerName: string
+}
+
+/**
+ * Sent when a student's practice session ends (completed or abandoned)
+ * while present in a classroom.
+ */
+export interface SessionEndedEvent {
+  sessionId: string
+  playerId: string
+  playerName: string
+  reason: 'completed' | 'ended_early' | 'abandoned'
+}
+
 // ============================================================================
 // Client-Side Event Map (for typed socket.io client)
 // ============================================================================
@@ -192,6 +213,10 @@ export interface ClassroomServerToClientEvents {
   'abacus-control': (data: AbacusControlEvent) => void
   'observer-joined': (data: ObserverJoinedEvent) => void
   'session-paused': (data: SessionPausedEvent) => void
+
+  // Session status events (classroom channel - for teacher's active sessions view)
+  'session-started': (data: SessionStartedEvent) => void
+  'session-ended': (data: SessionEndedEvent) => void
 }
 
 /**

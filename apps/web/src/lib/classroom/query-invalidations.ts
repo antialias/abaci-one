@@ -30,6 +30,8 @@ export type ClassroomEventType =
   | 'studentUnenrolled'
   | 'studentEntered'
   | 'studentLeft'
+  | 'sessionStarted'
+  | 'sessionEnded'
 
 /**
  * Parameters for invalidation - each event type may need different params
@@ -169,6 +171,16 @@ export function invalidateForEvent(
       }
       break
 
+    case 'sessionStarted':
+    case 'sessionEnded':
+      // Teacher sees updated active sessions list
+      if (classroomId) {
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.activeSessions(classroomId),
+        })
+      }
+      break
+
     default: {
       // Exhaustive check - if we hit this, we're missing a case
       const _exhaustive: never = event
@@ -245,6 +257,13 @@ export function getInvalidationKeys(
     case 'studentLeft':
       if (classroomId) {
         keys.push(classroomKeys.presence(classroomId))
+      }
+      break
+
+    case 'sessionStarted':
+    case 'sessionEnded':
+      if (classroomId) {
+        keys.push(classroomKeys.activeSessions(classroomId))
       }
       break
 
