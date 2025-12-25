@@ -17,6 +17,7 @@ import {
   useEndSessionEarly,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
+import { useSessionBroadcast, type BroadcastPracticeState } from '@/hooks/useSessionBroadcast'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -115,6 +116,26 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     // Redirect to summary
     router.push(`/practice/${studentId}/summary`, { scroll: false })
   }, [studentId, router])
+
+  // Build broadcast state for session observation
+  // This broadcasts the student's practice to teachers observing in real-time
+  const currentSlot = currentPart?.slots[currentPlan.currentSlotIndex]
+  const broadcastState: BroadcastPracticeState | null = useMemo(() => {
+    if (!currentSlot?.problem || !timingData) return null
+    return {
+      currentProblem: {
+        terms: currentSlot.problem.terms,
+        answer: currentSlot.problem.answer,
+      },
+      phase: isPaused ? 'feedback' : 'problem', // Use 'feedback' when paused as a proxy
+      studentAnswer: null, // We don't have access to the answer in PracticeClient
+      isCorrect: null,
+      startedAt: timingData.startTime,
+    }
+  }, [currentSlot?.problem, timingData, isPaused])
+
+  // Broadcast session state if student is in a classroom
+  useSessionBroadcast(currentPlan.id, studentId, broadcastState)
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart

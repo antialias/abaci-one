@@ -4,7 +4,13 @@ import { useCallback } from 'react'
 import Link from 'next/link'
 import type { Classroom } from '@/db/schema'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useClassroomPresence, useLeaveClassroom, type PresenceStudent } from '@/hooks/useClassroom'
+import {
+  useActiveSessionsInClassroom,
+  useClassroomPresence,
+  useLeaveClassroom,
+  type ActiveSessionInfo,
+  type PresenceStudent,
+} from '@/hooks/useClassroom'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
 
@@ -27,6 +33,14 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
   // connected even when user switches tabs
   const { data: presentStudents = [], isLoading } = useClassroomPresence(classroom.id)
   const leaveClassroom = useLeaveClassroom()
+
+  // Fetch active sessions to show "Practicing" indicator
+  const { data: activeSessions = [] } = useActiveSessionsInClassroom(classroom.id)
+
+  // Map active sessions by playerId for quick lookup
+  const activeSessionsByPlayer = new Map<string, ActiveSessionInfo>(
+    activeSessions.map((session) => [session.playerId, session])
+  )
 
   const handleRemoveStudent = useCallback(
     (playerId: string) => {
@@ -108,6 +122,7 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
               <PresentStudentCard
                 key={student.id}
                 student={student}
+                activeSession={activeSessionsByPlayer.get(student.id)}
                 onRemove={() => handleRemoveStudent(student.id)}
                 isRemoving={
                   leaveClassroom.isPending && leaveClassroom.variables?.playerId === student.id
@@ -212,18 +227,27 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
 
 interface PresentStudentCardProps {
   student: PresenceStudent
+  activeSession?: ActiveSessionInfo
   onRemove: () => void
   isRemoving: boolean
   isDark: boolean
 }
 
-function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentStudentCardProps) {
+function PresentStudentCard({
+  student,
+  activeSession,
+  onRemove,
+  isRemoving,
+  isDark,
+}: PresentStudentCardProps) {
   const enteredAt = new Date(student.enteredAt)
   const timeAgo = getTimeAgo(enteredAt)
+  const isPracticing = !!activeSession
 
   return (
     <div
       data-element="present-student-card"
+      data-practicing={isPracticing}
       className={css({
         display: 'flex',
         alignItems: 'center',
@@ -231,8 +255,12 @@ function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentSt
         padding: '14px 16px',
         backgroundColor: isDark ? 'gray.800' : 'white',
         borderRadius: '12px',
-        border: '1px solid',
-        borderColor: isDark ? 'green.800' : 'green.200',
+        border: isPracticing ? '2px solid' : '1px solid',
+        borderColor: isPracticing
+          ? 'blue.500'
+          : isDark
+            ? 'green.800'
+            : 'green.200',
         boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
       })}
     >
@@ -262,7 +290,7 @@ function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentSt
           >
             {student.emoji}
           </span>
-          {/* Online indicator */}
+          {/* Online/Practicing indicator */}
           <span
             className={css({
               position: 'absolute',
@@ -271,20 +299,67 @@ function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentSt
               width: '14px',
               height: '14px',
               borderRadius: '50%',
-              backgroundColor: 'green.500',
+              backgroundColor: isPracticing ? 'blue.500' : 'green.500',
               border: '2px solid',
               borderColor: isDark ? 'gray.800' : 'white',
             })}
+            style={
+              isPracticing
+                ? {
+                    animation: 'practicing-pulse 1.5s ease-in-out infinite',
+                  }
+                : undefined
+            }
           />
+          {/* Keyframes for practicing pulse animation */}
+          {isPracticing && (
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+                  @keyframes practicing-pulse {
+                    0%, 100% {
+                      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+                    }
+                    50% {
+                      box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+                    }
+                  }
+                `,
+              }}
+            />
+          )}
         </div>
         <div>
           <p
             className={css({
               fontWeight: 'medium',
               color: isDark ? 'white' : 'gray.800',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             })}
           >
             {student.name}
+            {isPracticing && (
+              <span
+                data-element="practicing-badge"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  backgroundColor: isDark ? 'blue.900' : 'blue.100',
+                  color: isDark ? 'blue.300' : 'blue.700',
+                  fontSize: '0.6875rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                })}
+              >
+                <span className={css({ fontSize: '0.75rem' })}>📝</span>
+                Practicing
+              </span>
+            )}
           </p>
           <p
             className={css({
@@ -292,36 +367,44 @@ function PresentStudentCard({ student, onRemove, isRemoving, isDark }: PresentSt
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            Joined {timeAgo}
+            {isPracticing ? (
+              <>
+                Problem {activeSession.completedProblems + 1} of {activeSession.totalProblems}
+              </>
+            ) : (
+              <>Joined {timeAgo}</>
+            )}
           </p>
         </div>
       </Link>
 
-      <button
-        type="button"
-        onClick={onRemove}
-        disabled={isRemoving}
-        data-action="remove-from-classroom"
-        className={css({
-          padding: '8px 14px',
-          backgroundColor: 'transparent',
-          color: isDark ? 'gray.400' : 'gray.500',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.300',
-          borderRadius: '6px',
-          fontSize: '0.8125rem',
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          _hover: {
-            backgroundColor: isDark ? 'gray.700' : 'gray.100',
-            borderColor: isDark ? 'gray.600' : 'gray.400',
-            color: isDark ? 'gray.300' : 'gray.700',
-          },
-          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-        })}
-      >
-        {isRemoving ? 'Removing...' : 'Remove'}
-      </button>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={isRemoving}
+          data-action="remove-from-classroom"
+          className={css({
+            padding: '8px 14px',
+            backgroundColor: 'transparent',
+            color: isDark ? 'gray.400' : 'gray.500',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.300',
+            borderRadius: '6px',
+            fontSize: '0.8125rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            _hover: {
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              borderColor: isDark ? 'gray.600' : 'gray.400',
+              color: isDark ? 'gray.300' : 'gray.700',
+            },
+            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {isRemoving ? 'Removing...' : 'Remove'}
+        </button>
+      </div>
     </div>
   )
 }
