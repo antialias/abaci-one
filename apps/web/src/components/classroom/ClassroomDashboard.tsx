@@ -16,6 +16,8 @@ interface ClassroomDashboardProps {
   classroom: Classroom
   /** Teacher's own children (get special "parent access" treatment) */
   ownChildren?: Player[]
+  /** Viewer ID for session observation (teacher's user ID) */
+  viewerId: string
 }
 
 /**
@@ -27,7 +29,11 @@ interface ClassroomDashboardProps {
  *
  * Teacher's own children appear separately with full parent access.
  */
-export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDashboardProps) {
+export function ClassroomDashboard({
+  classroom,
+  ownChildren = [],
+  viewerId,
+}: ClassroomDashboardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
@@ -281,7 +287,7 @@ export function ClassroomDashboard({ classroom, ownChildren = [] }: ClassroomDas
       {/* Tab content */}
       <main>
         {activeTab === 'classroom' ? (
-          <ClassroomTab classroom={classroom} />
+          <ClassroomTab classroom={classroom} viewerId={viewerId} />
         ) : (
           <StudentManagerTab classroom={classroom} />
         )}

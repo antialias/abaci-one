@@ -126,12 +126,15 @@ export interface PracticeStateEvent {
   sessionId: string
   currentProblem: unknown // GeneratedProblem type from curriculum
   phase: 'problem' | 'feedback' | 'tutorial'
-  studentAnswer: number | null
+  /** Student's current typed answer (digit by digit) */
+  studentAnswer: string
   isCorrect: boolean | null
   timing: {
     startedAt: number
     elapsed: number
   }
+  /** Purpose of this problem slot (why it was selected) */
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
 }
 
 export interface TutorialStateEvent {
@@ -228,6 +231,7 @@ export interface ClassroomClientToServerEvents {
   'leave-classroom': (data: { classroomId: string }) => void
   'join-player': (data: { playerId: string }) => void
   'leave-player': (data: { playerId: string }) => void
+  'join-session': (data: { sessionId: string }) => void
   'observe-session': (data: { sessionId: string; observerId: string }) => void
   'stop-observing': (data: { sessionId: string }) => void
 

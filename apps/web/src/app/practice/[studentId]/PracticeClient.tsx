@@ -6,6 +6,7 @@ import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
   type AttemptTimingData,
+  type BroadcastState,
   PracticeErrorBoundary,
   PracticeSubNav,
   type SessionHudData,
@@ -17,7 +18,7 @@ import {
   useEndSessionEarly,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
-import { useSessionBroadcast, type BroadcastPracticeState } from '@/hooks/useSessionBroadcast'
+import { useSessionBroadcast } from '@/hooks/useSessionBroadcast'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -41,6 +42,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [isPaused, setIsPaused] = useState(false)
   // Track timing data from ActiveSession for the sub-nav HUD
   const [timingData, setTimingData] = useState<AttemptTimingData | null>(null)
+  // Track broadcast state for session observation (digit-by-digit updates from ActiveSession)
+  const [broadcastState, setBroadcastState] = useState<BroadcastState | null>(null)
   // Browse mode state - lifted here so PracticeSubNav can trigger it
   const [isBrowseMode, setIsBrowseMode] = useState(false)
   // Browse index - lifted for navigation from SessionProgressIndicator
@@ -117,24 +120,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     router.push(`/practice/${studentId}/summary`, { scroll: false })
   }, [studentId, router])
 
-  // Build broadcast state for session observation
-  // This broadcasts the student's practice to teachers observing in real-time
-  const currentSlot = currentPart?.slots[currentPlan.currentSlotIndex]
-  const broadcastState: BroadcastPracticeState | null = useMemo(() => {
-    if (!currentSlot?.problem || !timingData) return null
-    return {
-      currentProblem: {
-        terms: currentSlot.problem.terms,
-        answer: currentSlot.problem.answer,
-      },
-      phase: isPaused ? 'feedback' : 'problem', // Use 'feedback' when paused as a proxy
-      studentAnswer: null, // We don't have access to the answer in PracticeClient
-      isCorrect: null,
-      startedAt: timingData.startTime,
-    }
-  }, [currentSlot?.problem, timingData, isPaused])
-
   // Broadcast session state if student is in a classroom
+  // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   useSessionBroadcast(currentPlan.id, studentId, broadcastState)
 
   // Build session HUD data for PracticeSubNav
@@ -224,6 +211,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onResume={handleResume}
             onComplete={handleSessionComplete}
             onTimingUpdate={setTimingData}
+            onBroadcastStateChange={setBroadcastState}
             isBrowseMode={isBrowseMode}
             browseIndex={browseIndex}
             onBrowseIndexChange={setBrowseIndex}

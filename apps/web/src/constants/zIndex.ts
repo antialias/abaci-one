@@ -22,12 +22,14 @@ export const Z_INDEX = {
 
   // Overlays and dropdowns (1000-9999)
   DROPDOWN: 1000,
-  TOOLTIP: 1000,
   POPOVER: 1000,
 
   // Modal and dialog layers (10000-19999)
   MODAL_BACKDROP: 10000,
   MODAL: 10001,
+
+  // Tooltips must be above modals so they work inside modals
+  TOOLTIP: 15000,
 
   // Top-level overlays (20000+)
   TOAST: 20000,

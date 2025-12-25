@@ -236,7 +236,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             onBulkArchive={undefined}
           />
 
-          <ClassroomDashboard classroom={classroom} ownChildren={players} />
+          <ClassroomDashboard classroom={classroom} ownChildren={players} viewerId={viewerId} />
 
           {/* Add Student by Family Code Modal */}
           <AddStudentByFamilyCodeModal

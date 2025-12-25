@@ -24,7 +24,8 @@ export interface TooltipProps {
 }
 
 const contentStyles = css({
-  zIndex: 50,
+  // Must be above modals (10001) so tooltips inside modals are visible
+  zIndex: 15000,
   overflow: 'hidden',
   borderRadius: '8px',
   padding: '0.75rem 1rem',

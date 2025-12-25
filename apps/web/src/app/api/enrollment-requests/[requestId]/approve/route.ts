@@ -92,10 +92,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           })
         } else {
           // Only parent approved - notify teacher that parent approved their request
-          await emitEnrollmentRequestApproved(
-            { ...payload, approvedBy: 'parent' },
-            { classroomId }
-          )
+          await emitEnrollmentRequestApproved({ ...payload, approvedBy: 'parent' }, { classroomId })
         }
       }
     } catch (socketError) {

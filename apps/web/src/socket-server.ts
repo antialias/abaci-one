@@ -760,6 +760,16 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
+    // Session Observation: Join session channel (for students to receive observer-joined events)
+    socket.on('join-session', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.join(`session:${sessionId}`)
+        console.log(`📝 Student joined session channel: ${sessionId}`)
+      } catch (error) {
+        console.error('Error joining session channel:', error)
+      }
+    })
+
     // Session Observation: Start observing a practice session
     socket.on(
       'observe-session',

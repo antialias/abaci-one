@@ -1,28 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import type { BroadcastState } from '@/components/practice'
 import { useStudentPresence } from './useClassroom'
 import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
-
-/**
- * Practice state to broadcast to observers
- */
-export interface BroadcastPracticeState {
-  /** Current problem being worked on */
-  currentProblem: {
-    terms: number[]
-    answer: number
-  }
-  /** Current phase of the interaction */
-  phase: 'problem' | 'feedback' | 'tutorial'
-  /** Student's current answer (null if not yet answered) */
-  studentAnswer: number | null
-  /** Whether the answer is correct (null if not yet answered) */
-  isCorrect: boolean | null
-  /** When the current attempt started (timestamp) */
-  startedAt: number
-}
 
 /**
  * Hook to broadcast practice session state to observers via WebSocket
@@ -37,14 +19,45 @@ export interface BroadcastPracticeState {
 export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
-  state: BroadcastPracticeState | null
+  state: BroadcastState | null
 ): { isConnected: boolean; isBroadcasting: boolean } {
   const socketRef = useRef<Socket | null>(null)
   const isConnectedRef = useRef(false)
+  // Keep state in a ref so socket event handlers can access current state
+  const stateRef = useRef<BroadcastState | null>(null)
+  stateRef.current = state
 
   // Check if student is present in a classroom
   const { data: presence } = useStudentPresence(playerId)
   const isInClassroom = !!presence?.classroomId
+
+  // Helper to broadcast current state
+  const broadcastState = useCallback(() => {
+    const currentState = stateRef.current
+    if (!socketRef.current || !isConnectedRef.current || !sessionId || !currentState) {
+      return
+    }
+
+    const event: PracticeStateEvent = {
+      sessionId,
+      currentProblem: currentState.currentProblem,
+      phase: currentState.phase,
+      studentAnswer: currentState.studentAnswer,
+      isCorrect: currentState.isCorrect,
+      timing: {
+        startedAt: currentState.startedAt,
+        elapsed: Date.now() - currentState.startedAt,
+      },
+      purpose: currentState.purpose,
+    }
+
+    socketRef.current.emit('practice-state', event)
+    console.log('[SessionBroadcast] Emitted practice-state:', {
+      phase: currentState.phase,
+      answer: currentState.studentAnswer,
+      isCorrect: currentState.isCorrect,
+    })
+  }, [sessionId])
 
   // Connect to socket and join session channel when in classroom with active session
   useEffect(() => {
@@ -72,8 +85,10 @@ export function useSessionBroadcast(
     socket.on('connect', () => {
       console.log('[SessionBroadcast] Connected, joining session channel:', sessionId)
       isConnectedRef.current = true
-      // No need to explicitly join a channel - we just emit to the session channel
-      // The server will broadcast to observers who have joined `session:${sessionId}`
+      // Join the session channel so we can receive 'observer-joined' events
+      socket.emit('join-session', { sessionId })
+      // Broadcast current state immediately so any waiting observers get it
+      broadcastState()
     })
 
     socket.on('disconnect', () => {
@@ -81,9 +96,10 @@ export function useSessionBroadcast(
       isConnectedRef.current = false
     })
 
-    // Listen for observer joined events (optional - for debugging/notification)
+    // When an observer joins, re-broadcast current state so they see it immediately
     socket.on('observer-joined', (data: { observerId: string }) => {
-      console.log('[SessionBroadcast] Observer joined:', data.observerId)
+      console.log('[SessionBroadcast] Observer joined:', data.observerId, '- re-broadcasting state')
+      broadcastState()
     })
 
     return () => {
@@ -92,38 +108,18 @@ export function useSessionBroadcast(
       socketRef.current = null
       isConnectedRef.current = false
     }
-  }, [sessionId, playerId, isInClassroom])
+  }, [sessionId, playerId, isInClassroom, broadcastState])
 
   // Broadcast state changes
   useEffect(() => {
-    if (!socketRef.current || !isConnectedRef.current || !sessionId || !state) {
-      return
-    }
-
-    const event: PracticeStateEvent = {
-      sessionId,
-      currentProblem: state.currentProblem,
-      phase: state.phase,
-      studentAnswer: state.studentAnswer,
-      isCorrect: state.isCorrect,
-      timing: {
-        startedAt: state.startedAt,
-        elapsed: Date.now() - state.startedAt,
-      },
-    }
-
-    socketRef.current.emit('practice-state', event)
-    console.log('[SessionBroadcast] Emitted practice-state:', {
-      phase: state.phase,
-      answer: state.studentAnswer,
-      isCorrect: state.isCorrect,
-    })
+    broadcastState()
   }, [
-    sessionId,
+    broadcastState,
     state?.currentProblem?.answer, // New problem
     state?.phase, // Phase change
     state?.studentAnswer, // Answer submitted
     state?.isCorrect, // Result received
+    state?.purpose, // Purpose change
   ])
 
   return {

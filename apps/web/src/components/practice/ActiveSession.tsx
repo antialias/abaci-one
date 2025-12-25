@@ -38,6 +38,7 @@ import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { useInteractionPhase } from './hooks/useInteractionPhase'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
+import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
@@ -50,6 +51,28 @@ export interface AttemptTimingData {
   startTime: number
   /** Accumulated pause time in ms */
   accumulatedPauseMs: number
+}
+
+/**
+ * Broadcast state for session observation
+ * This is sent to teachers observing the session in real-time
+ */
+export interface BroadcastState {
+  /** Current problem being worked on */
+  currentProblem: {
+    terms: number[]
+    answer: number
+  }
+  /** Current phase of the interaction */
+  phase: 'problem' | 'feedback' | 'tutorial'
+  /** Student's current answer (empty string if not yet started typing) */
+  studentAnswer: string
+  /** Whether the answer is correct (null if not yet submitted) */
+  isCorrect: boolean | null
+  /** When the current attempt started (timestamp) */
+  startedAt: number
+  /** Purpose of this problem slot (why this problem was selected) */
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
 }
 
 interface ActiveSessionProps {
@@ -68,6 +91,8 @@ interface ActiveSessionProps {
   onComplete: () => void
   /** Called with timing data when it changes (for external timing display) */
   onTimingUpdate?: (timing: AttemptTimingData | null) => void
+  /** Called with broadcast state when it changes (for session observation) */
+  onBroadcastStateChange?: (state: BroadcastState | null) => void
   /** Whether browse mode is active (controlled externally via toggle in PracticeSubNav) */
   isBrowseMode?: boolean
   /** Controlled browse index (linear problem index) */
@@ -499,6 +524,7 @@ export function ActiveSession({
   onResume,
   onComplete,
   onTimingUpdate,
+  onBroadcastStateChange,
   isBrowseMode: isBrowseModeProp = false,
   browseIndex: browseIndexProp,
   onBrowseIndexChange,
@@ -578,6 +604,83 @@ export function ActiveSession({
       }
     }
   }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
+
+  // Notify parent of broadcast state changes for session observation
+  useEffect(() => {
+    if (!onBroadcastStateChange) return
+
+    // Get current slot's purpose from plan
+    const currentPart = plan.parts[plan.currentPartIndex]
+    const slot = currentPart?.slots[plan.currentSlotIndex]
+    const purpose = slot?.purpose ?? 'focus'
+
+    // During transitioning, we show the outgoing (completed) problem, not the incoming one
+    // But we use the PREVIOUS slot's purpose since we're still showing feedback for it
+    if (phase.phase === 'transitioning' && outgoingAttempt) {
+      // During transition, use the previous slot's purpose
+      const prevSlotIndex = plan.currentSlotIndex > 0 ? plan.currentSlotIndex - 1 : 0
+      const prevSlot = currentPart?.slots[prevSlotIndex]
+      const prevPurpose = prevSlot?.purpose ?? purpose
+
+      onBroadcastStateChange({
+        currentProblem: {
+          terms: outgoingAttempt.problem.terms,
+          answer: outgoingAttempt.problem.answer,
+        },
+        phase: 'feedback',
+        studentAnswer: outgoingAttempt.userAnswer,
+        isCorrect: outgoingAttempt.result === 'correct',
+        startedAt: attempt?.startTime ?? Date.now(),
+        purpose: prevPurpose,
+      })
+      return
+    }
+
+    if (!attempt) {
+      onBroadcastStateChange(null)
+      return
+    }
+
+    // Map internal phase to broadcast phase
+    let broadcastPhase: 'problem' | 'feedback' | 'tutorial'
+    if (phase.phase === 'helpMode') {
+      broadcastPhase = 'tutorial'
+    } else if (phase.phase === 'showingFeedback') {
+      broadcastPhase = 'feedback'
+    } else {
+      broadcastPhase = 'problem'
+    }
+
+    // Determine if answer is correct (only known in feedback phase)
+    let isCorrect: boolean | null = null
+    if (phase.phase === 'showingFeedback') {
+      // Use the result stored in the phase, not calculated from attempt
+      isCorrect = phase.result === 'correct'
+    }
+
+    onBroadcastStateChange({
+      currentProblem: {
+        terms: attempt.problem.terms,
+        answer: attempt.problem.answer,
+      },
+      phase: broadcastPhase,
+      studentAnswer: attempt.userAnswer,
+      isCorrect,
+      startedAt: attempt.startTime,
+      purpose,
+    })
+  }, [
+    onBroadcastStateChange,
+    attempt?.problem?.terms,
+    attempt?.problem?.answer,
+    attempt?.userAnswer,
+    attempt?.startTime,
+    phase,
+    outgoingAttempt,
+    plan.parts,
+    plan.currentPartIndex,
+    plan.currentSlotIndex,
+  ])
 
   // Track which help elements have been individually dismissed
   // These reset when entering a new help session (helpContext changes)
@@ -1273,25 +1376,18 @@ export function ActiveSession({
                   generationTrace={outgoingAttempt.problem.generationTrace}
                 />
                 {/* Feedback stays with outgoing problem */}
-                <div
-                  data-element="outgoing-feedback"
+                <PracticeFeedback
+                  isCorrect={true}
+                  correctAnswer={outgoingAttempt.problem.answer}
                   className={css({
                     position: 'absolute',
                     top: '100%',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     marginTop: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    backgroundColor: isDark ? 'green.900' : 'green.100',
-                    color: isDark ? 'green.200' : 'green.700',
                     whiteSpace: 'nowrap',
                   })}
-                >
-                  Correct!
-                </div>
+                />
               </animated.div>
             )}
 
@@ -1510,19 +1606,7 @@ export function ActiveSession({
 
         {/* Feedback message - only show for incorrect */}
         {showFeedback && (
-          <div
-            data-element="feedback"
-            className={css({
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              backgroundColor: isDark ? 'red.900' : 'red.100',
-              color: isDark ? 'red.200' : 'red.700',
-            })}
-          >
-            The answer was {attempt.problem.answer}
-          </div>
+          <PracticeFeedback isCorrect={false} correctAnswer={attempt.problem.answer} />
         )}
       </div>
 

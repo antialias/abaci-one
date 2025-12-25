@@ -8,7 +8,7 @@
  * - SessionSummary: Results after completing session
  */
 
-export type { AttemptTimingData, StudentInfo } from './ActiveSession'
+export type { AttemptTimingData, BroadcastState, StudentInfo } from './ActiveSession'
 export { ActiveSession } from './ActiveSession'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
@@ -19,6 +19,8 @@ export {
 export { NotesModal } from './NotesModal'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
+export { PracticeFeedback } from './PracticeFeedback'
+export { PurposeBadge } from './PurposeBadge'
 export type { SessionHudData } from './PracticeSubNav'
 export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'

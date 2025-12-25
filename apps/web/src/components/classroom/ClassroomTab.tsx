@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import type { Classroom } from '@/db/schema'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -13,9 +13,12 @@ import {
 } from '@/hooks/useClassroom'
 import { css } from '../../../styled-system/css'
 import { ClassroomCodeShare } from './ClassroomCodeShare'
+import { SessionObserverModal } from './SessionObserverModal'
 
 interface ClassroomTabProps {
   classroom: Classroom
+  /** Viewer ID for session observation (teacher's user ID) */
+  viewerId: string
 }
 
 /**
@@ -24,9 +27,15 @@ interface ClassroomTabProps {
  * Displays students currently "present" in the classroom.
  * Teachers can see who's actively practicing and remove students when needed.
  */
-export function ClassroomTab({ classroom }: ClassroomTabProps) {
+export function ClassroomTab({ classroom, viewerId }: ClassroomTabProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // State for session observation
+  const [observingSession, setObservingSession] = useState<{
+    session: ActiveSessionInfo
+    student: PresenceStudent
+  } | null>(null)
 
   // Fetch present students
   // Note: WebSocket subscription is in ClassroomDashboard (parent) so it stays
@@ -41,6 +50,14 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
   const activeSessionsByPlayer = new Map<string, ActiveSessionInfo>(
     activeSessions.map((session) => [session.playerId, session])
   )
+
+  const handleObserve = useCallback((student: PresenceStudent, session: ActiveSessionInfo) => {
+    setObservingSession({ session, student })
+  }, [])
+
+  const handleCloseObserver = useCallback(() => {
+    setObservingSession(null)
+  }, [])
 
   const handleRemoveStudent = useCallback(
     (playerId: string) => {
@@ -118,18 +135,24 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
           </h3>
 
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
-            {presentStudents.map((student) => (
-              <PresentStudentCard
-                key={student.id}
-                student={student}
-                activeSession={activeSessionsByPlayer.get(student.id)}
-                onRemove={() => handleRemoveStudent(student.id)}
-                isRemoving={
-                  leaveClassroom.isPending && leaveClassroom.variables?.playerId === student.id
-                }
-                isDark={isDark}
-              />
-            ))}
+            {presentStudents.map((student) => {
+              const activeSession = activeSessionsByPlayer.get(student.id)
+              return (
+                <PresentStudentCard
+                  key={student.id}
+                  student={student}
+                  activeSession={activeSession}
+                  onObserve={
+                    activeSession ? () => handleObserve(student, activeSession) : undefined
+                  }
+                  onRemove={() => handleRemoveStudent(student.id)}
+                  isRemoving={
+                    leaveClassroom.isPending && leaveClassroom.variables?.playerId === student.id
+                  }
+                  isDark={isDark}
+                />
+              )
+            })}
           </div>
         </section>
       ) : (
@@ -217,6 +240,21 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
           <li>You'll see them appear here in real-time</li>
         </ol>
       </div>
+
+      {/* Session Observer Modal */}
+      {observingSession && (
+        <SessionObserverModal
+          isOpen={true}
+          onClose={handleCloseObserver}
+          session={observingSession.session}
+          student={{
+            name: observingSession.student.name,
+            emoji: observingSession.student.emoji,
+            color: observingSession.student.color,
+          }}
+          observerId={viewerId}
+        />
+      )}
     </div>
   )
 }
@@ -228,6 +266,7 @@ export function ClassroomTab({ classroom }: ClassroomTabProps) {
 interface PresentStudentCardProps {
   student: PresenceStudent
   activeSession?: ActiveSessionInfo
+  onObserve?: () => void
   onRemove: () => void
   isRemoving: boolean
   isDark: boolean
@@ -236,6 +275,7 @@ interface PresentStudentCardProps {
 function PresentStudentCard({
   student,
   activeSession,
+  onObserve,
   onRemove,
   isRemoving,
   isDark,
@@ -256,11 +296,7 @@ function PresentStudentCard({
         backgroundColor: isDark ? 'gray.800' : 'white',
         borderRadius: '12px',
         border: isPracticing ? '2px solid' : '1px solid',
-        borderColor: isPracticing
-          ? 'blue.500'
-          : isDark
-            ? 'green.800'
-            : 'green.200',
+        borderColor: isPracticing ? 'blue.500' : isDark ? 'green.800' : 'green.200',
         boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
       })}
     >
@@ -379,6 +415,31 @@ function PresentStudentCard({
       </Link>
 
       <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+        {/* Observe button - only show when practicing */}
+        {isPracticing && onObserve && (
+          <button
+            type="button"
+            onClick={onObserve}
+            data-action="observe-session"
+            className={css({
+              padding: '8px 14px',
+              backgroundColor: isDark ? 'blue.700' : 'blue.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isDark ? 'blue.600' : 'blue.600',
+              },
+            })}
+          >
+            Observe
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onRemove}
