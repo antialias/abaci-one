@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
-import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
+import type { AbacusControlEvent, PracticeStateEvent } from '@/lib/classroom/socket-events'
+
+/**
+ * Control actions a teacher can send to a student's practice session abacus
+ */
+export type SessionAbacusControlAction =
+  | { type: 'show-abacus' }
+  | { type: 'hide-abacus' }
+  | { type: 'set-abacus-value'; value: number }
 
 /**
  * Complexity data from broadcast
@@ -57,6 +65,8 @@ interface UseSessionObserverResult {
   error: string | null
   /** Stop observing the session */
   stopObserving: () => void
+  /** Send a control action to the student's abacus */
+  sendControl: (action: SessionAbacusControlAction) => void
 }
 
 /**
@@ -165,11 +175,50 @@ export function useSessionObserver(
     }
   }, [sessionId, observerId, enabled, stopObserving])
 
+  // Send control action to student's abacus
+  const sendControl = useCallback(
+    (action: SessionAbacusControlAction) => {
+      if (!socketRef.current || !isConnected || !sessionId) {
+        console.warn('[SessionObserver] Cannot send control - not connected or no sessionId')
+        return
+      }
+
+      // Map our action types to the AbacusControlEvent format
+      let eventAction: 'show' | 'hide' | 'set-value'
+      let value: number | undefined
+
+      switch (action.type) {
+        case 'show-abacus':
+          eventAction = 'show'
+          break
+        case 'hide-abacus':
+          eventAction = 'hide'
+          break
+        case 'set-abacus-value':
+          eventAction = 'set-value'
+          value = action.value
+          break
+      }
+
+      const event: AbacusControlEvent = {
+        sessionId,
+        target: 'hero', // The main practice abacus
+        action: eventAction,
+        value,
+      }
+
+      socketRef.current.emit('abacus-control', event)
+      console.log('[SessionObserver] Sent abacus-control:', action)
+    },
+    [isConnected, sessionId]
+  )
+
   return {
     state,
     isConnected,
     isObserving,
     error,
     stopObserving,
+    sendControl,
   }
 }

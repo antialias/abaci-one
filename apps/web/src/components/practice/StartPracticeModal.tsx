@@ -88,7 +88,8 @@ export function StartPracticeModal({
     useState<SkillTutorialBroadcastState | null>(null)
 
   // Control action from teacher (via WebSocket)
-  const [pendingControlAction, setPendingControlAction] = useState<SkillTutorialControlAction | null>(null)
+  const [pendingControlAction, setPendingControlAction] =
+    useState<SkillTutorialControlAction | null>(null)
 
   // Handler for when control action is processed
   const handleControlActionProcessed = useCallback(() => {

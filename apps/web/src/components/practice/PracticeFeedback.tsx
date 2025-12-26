@@ -37,17 +37,15 @@ export function PracticeFeedback({ isCorrect, correctAnswer, className }: Practi
       : isDark
         ? 'red.900'
         : 'red.100',
-    color: isCorrect
-      ? isDark
-        ? 'green.200'
-        : 'green.700'
-      : isDark
-        ? 'red.200'
-        : 'red.700',
+    color: isCorrect ? (isDark ? 'green.200' : 'green.700') : isDark ? 'red.200' : 'red.700',
   })
 
   return (
-    <div data-element="practice-feedback" data-correct={isCorrect} className={cx(baseStyles, className)}>
+    <div
+      data-element="practice-feedback"
+      data-correct={isCorrect}
+      className={cx(baseStyles, className)}
+    >
       {isCorrect ? 'Correct!' : `The answer was ${correctAnswer}`}
     </div>
   )

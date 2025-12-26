@@ -178,9 +178,7 @@ function ComplexitySection({
       {hasCost && stepCount && stepCount > 0 && (
         <div className={sectionStyles.row}>
           <span>Per term (avg):</span>
-          <span className={sectionStyles.value}>
-            {(totalCost! / stepCount).toFixed(1)}
-          </span>
+          <span className={sectionStyles.value}>{(totalCost! / stepCount).toFixed(1)}</span>
         </div>
       )}
     </div>
@@ -226,10 +224,7 @@ const tooltipStyles = {
   }),
 }
 
-const purposeInfo: Record<
-  Purpose,
-  { emoji: string; title: string; description: string }
-> = {
+const purposeInfo: Record<Purpose, { emoji: string; title: string; description: string }> = {
   focus: {
     emoji: '🎯',
     title: 'Focus Practice',
@@ -270,7 +265,7 @@ function PurposeTooltipContent({
 }) {
   const info = purposeInfo[purpose]
   // Get skill name from slot or from simplified complexity data
-  const skillName = slot ? extractTargetSkillName(slot) : complexity?.targetSkillName ?? null
+  const skillName = slot ? extractTargetSkillName(slot) : (complexity?.targetSkillName ?? null)
 
   return (
     <div className={tooltipStyles.container}>
@@ -391,11 +386,7 @@ export function PurposeBadge({ purpose, slot, complexity }: PurposeBadgeProps) {
         side="bottom"
         delayDuration={300}
       >
-        <div
-          data-element="problem-purpose"
-          data-purpose={purpose}
-          className={badgeStyles}
-        >
+        <div data-element="problem-purpose" data-purpose={purpose} className={badgeStyles}>
           {purpose}
         </div>
       </Tooltip>

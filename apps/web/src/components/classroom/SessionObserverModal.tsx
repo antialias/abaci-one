@@ -1,10 +1,13 @@
 'use client'
 
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
 import { css } from '../../../styled-system/css'
+import { AbacusDock } from '../AbacusDock'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
 import { VerticalProblem } from '../practice/VerticalProblem'
@@ -34,6 +37,7 @@ interface SessionObserverModalProps {
  * - Student's answer as they type/submit
  * - Feedback (correct/incorrect) when shown
  * - Progress indicator
+ * - Dock for teacher's MyAbacus (syncs to student when manipulated)
  */
 export function SessionObserverModal({
   isOpen,
@@ -44,13 +48,70 @@ export function SessionObserverModal({
 }: SessionObserverModalProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus()
 
   // Subscribe to the session's socket channel
-  const { state, isConnected, isObserving, error } = useSessionObserver(
+  const { state, isConnected, isObserving, error, sendControl } = useSessionObserver(
     isOpen ? session.sessionId : undefined,
     isOpen ? observerId : undefined,
     isOpen
   )
+
+  // Ref for measuring problem container height (same pattern as ActiveSession)
+  const problemRef = useRef<HTMLDivElement>(null)
+  const [problemHeight, setProblemHeight] = useState<number | null>(null)
+
+  // Measure problem container height with ResizeObserver (same as ActiveSession)
+  useLayoutEffect(() => {
+    const element = problemRef.current
+    if (!element) return
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+        setProblemHeight(height)
+      }
+    })
+
+    observer.observe(element)
+    setProblemHeight(element.offsetHeight)
+
+    return () => observer.disconnect()
+  }, [state?.currentProblem?.answer])
+
+  // Handle teacher manipulating their docked abacus - sync to student
+  const handleTeacherAbacusChange = useCallback(
+    (newValue: number) => {
+      // Send control to sync student's abacus to this value
+      sendControl({ type: 'set-abacus-value', value: newValue })
+    },
+    [sendControl]
+  )
+
+  // Dock both teacher's and student's abaci
+  const handleDockBothAbaci = useCallback(() => {
+    // Dock teacher's MyAbacus into the modal's AbacusDock (only if not already docked)
+    if (dock && !isDockedByUser) {
+      requestDock()
+    }
+    // Send control to dock student's abacus
+    sendControl({ type: 'show-abacus' })
+  }, [dock, isDockedByUser, requestDock, sendControl])
+
+  // Two-way sync: When student's abacus changes, sync teacher's docked abacus
+  useEffect(() => {
+    if (!isDockedByUser || !state?.studentAnswer) return
+
+    const parsedValue = parseInt(state.studentAnswer, 10)
+    if (!Number.isNaN(parsedValue) && parsedValue >= 0) {
+      setDockedValue(parsedValue)
+    }
+  }, [state?.studentAnswer, isDockedByUser, setDockedValue])
+
+  // Calculate columns for the abacus based on the answer (same as ActiveSession)
+  const abacusColumns = state?.currentProblem
+    ? String(Math.abs(state.currentProblem.answer)).length
+    : 3
 
   if (!isOpen) return null
 
@@ -68,7 +129,7 @@ export function SessionObserverModal({
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal - wider to fit abacus side by side */}
       <div
         data-component="session-observer-modal"
         className={css({
@@ -77,7 +138,7 @@ export function SessionObserverModal({
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: '90vw',
-          maxWidth: '500px',
+          maxWidth: '800px',
           maxHeight: '85vh',
           backgroundColor: isDark ? 'gray.900' : 'white',
           borderRadius: '16px',
@@ -210,21 +271,61 @@ export function SessionObserverModal({
             </div>
           )}
 
-          {/* Problem display */}
+          {/* Problem display with abacus dock - matches ActiveSession layout */}
           {state && (
-            <>
+            <div
+              data-element="observer-content"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px',
+              })}
+            >
               {/* Purpose badge with tooltip - matches student's view */}
               <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
 
-              {/* Problem */}
-              <VerticalProblem
-                terms={state.currentProblem.terms}
-                userAnswer={state.studentAnswer}
-                isFocused={state.phase === 'problem'}
-                isCompleted={state.phase === 'feedback'}
-                correctAnswer={state.currentProblem.answer}
-                size="large"
-              />
+              {/* Problem container with absolutely positioned AbacusDock */}
+              <div
+                data-element="problem-with-dock"
+                className={css({
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                })}
+              >
+                {/* Problem - ref for height measurement */}
+                <div ref={problemRef}>
+                  <VerticalProblem
+                    terms={state.currentProblem.terms}
+                    userAnswer={state.studentAnswer}
+                    isFocused={state.phase === 'problem'}
+                    isCompleted={state.phase === 'feedback'}
+                    correctAnswer={state.currentProblem.answer}
+                    size="large"
+                  />
+                </div>
+
+                {/* AbacusDock - positioned exactly like ActiveSession */}
+                {state.phase === 'problem' && (problemHeight ?? 0) > 0 && (
+                  <AbacusDock
+                    id="teacher-observer-dock"
+                    columns={abacusColumns}
+                    interactive={true}
+                    showNumbers={false}
+                    animated={true}
+                    onValueChange={handleTeacherAbacusChange}
+                    className={css({
+                      position: 'absolute',
+                      left: '100%',
+                      top: 0,
+                      width: '100%',
+                      marginLeft: '1.5rem',
+                    })}
+                    style={{ height: problemHeight }}
+                  />
+                )}
+              </div>
 
               {/* Feedback message */}
               {state.studentAnswer && state.phase === 'feedback' && (
@@ -233,11 +334,11 @@ export function SessionObserverModal({
                   correctAnswer={state.currentProblem.answer}
                 />
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* Footer with connection status */}
+        {/* Footer with connection status and controls */}
         <div
           className={css({
             padding: '12px 20px',
@@ -245,26 +346,55 @@ export function SessionObserverModal({
             borderColor: isDark ? 'gray.700' : 'gray.200',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
+            justifyContent: 'space-between',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
           })}
         >
-          <span
-            className={css({
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: isObserving ? 'green.500' : isConnected ? 'yellow.500' : 'gray.500',
-            })}
-          />
-          <span
-            className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-            })}
-          >
-            {isObserving ? 'Live' : isConnected ? 'Connected' : 'Disconnected'}
-          </span>
+          {/* Connection status */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '6px' })}>
+            <span
+              className={css({
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+              })}
+              style={{
+                backgroundColor: isObserving ? '#10b981' : isConnected ? '#eab308' : '#6b7280',
+              }}
+            />
+            <span
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              {isObserving ? 'Live' : isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+
+          {/* Dock both abaci button */}
+          {state && state.phase === 'problem' && (
+            <button
+              type="button"
+              data-action="dock-both-abaci"
+              onClick={handleDockBothAbaci}
+              disabled={!isObserving}
+              className={css({
+                padding: '8px 12px',
+                backgroundColor: isDark ? 'blue.700' : 'blue.100',
+                color: isDark ? 'blue.200' : 'blue.700',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                fontWeight: 'medium',
+                cursor: 'pointer',
+                _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
+                _disabled: { opacity: 0.4, cursor: 'not-allowed' },
+              })}
+            >
+              🧮 Dock Abaci
+            </button>
+          )}
         </div>
       </div>
     </>

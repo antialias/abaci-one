@@ -42,6 +42,7 @@ import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
+import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
 
 /**
  * Timing data for the current problem attempt
@@ -115,6 +116,10 @@ interface ActiveSessionProps {
   browseIndex?: number
   /** Called when browse index changes (for external navigation from progress indicator) */
   onBrowseIndexChange?: (index: number) => void
+  /** Teacher abacus control received from observing teacher */
+  teacherControl?: ReceivedAbacusControl | null
+  /** Called after teacher control has been handled (to clear the state) */
+  onTeacherControlHandled?: () => void
 }
 
 /**
@@ -545,12 +550,14 @@ export function ActiveSession({
   isBrowseMode: isBrowseModeProp = false,
   browseIndex: browseIndexProp,
   onBrowseIndexChange,
+  teacherControl,
+  onTeacherControlHandled,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   // Check if abacus is docked (to force show submit button)
-  const { isDockedByUser } = useMyAbacus()
+  const { isDockedByUser, requestDock, undock, dock, setDockedValue } = useMyAbacus()
 
   // Sound effects
   const { playSound } = usePracticeSoundEffects()
@@ -718,6 +725,60 @@ export function ActiveSession({
     plan.parts,
     plan.currentPartIndex,
     plan.currentSlotIndex,
+  ])
+
+  // Handle teacher abacus control events
+  useEffect(() => {
+    if (!teacherControl) return
+
+    // Only handle controls during problem-solving phases
+    const isInputPhase =
+      phase.phase === 'inputting' ||
+      phase.phase === 'awaitingDisambiguation' ||
+      phase.phase === 'helpMode'
+
+    if (!isInputPhase || !attempt) {
+      onTeacherControlHandled?.()
+      return
+    }
+
+    switch (teacherControl.type) {
+      case 'set-value':
+        // Teacher sets the abacus to a specific value
+        // Update both the docked abacus value AND the answer input
+        setDockedValue(teacherControl.value)
+        setAnswer(String(teacherControl.value))
+        console.log('[ActiveSession] Teacher set abacus value to:', teacherControl.value)
+        break
+      case 'show-abacus':
+        // Request dock with animation (triggers MyAbacus to animate into dock)
+        if (!isDockedByUser && dock) {
+          requestDock()
+        }
+        console.log('[ActiveSession] Teacher requested to dock abacus')
+        break
+      case 'hide-abacus':
+        // Undock the MyAbacus
+        if (isDockedByUser) {
+          undock()
+        }
+        console.log('[ActiveSession] Teacher requested to undock abacus')
+        break
+    }
+
+    // Clear the control after handling
+    onTeacherControlHandled?.()
+  }, [
+    teacherControl,
+    phase.phase,
+    attempt,
+    setAnswer,
+    setDockedValue,
+    isDockedByUser,
+    dock,
+    requestDock,
+    undock,
+    onTeacherControlHandled,
   ])
 
   // Track which help elements have been individually dismissed

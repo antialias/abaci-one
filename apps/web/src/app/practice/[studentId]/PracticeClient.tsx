@@ -18,7 +18,7 @@ import {
   useEndSessionEarly,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
-import { useSessionBroadcast } from '@/hooks/useSessionBroadcast'
+import { useSessionBroadcast, type ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -48,6 +48,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [isBrowseMode, setIsBrowseMode] = useState(false)
   // Browse index - lifted for navigation from SessionProgressIndicator
   const [browseIndex, setBrowseIndex] = useState(0)
+  // Teacher abacus control - receives commands from observing teacher
+  const [teacherControl, setTeacherControl] = useState<ReceivedAbacusControl | null>(null)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -122,7 +124,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
-  useSessionBroadcast(currentPlan.id, studentId, broadcastState)
+  // onAbacusControl receives control events from observing teacher
+  useSessionBroadcast(currentPlan.id, studentId, broadcastState, {
+    onAbacusControl: setTeacherControl,
+  })
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart
@@ -215,6 +220,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             isBrowseMode={isBrowseMode}
             browseIndex={browseIndex}
             onBrowseIndexChange={setBrowseIndex}
+            teacherControl={teacherControl}
+            onTeacherControlHandled={() => setTeacherControl(null)}
           />
         </PracticeErrorBoundary>
       </main>

@@ -99,7 +99,9 @@ export function useSkillTutorialBroadcast(
     if (!shouldConnect || !classroomId) {
       // Clean up if we were connected
       if (socketRef.current) {
-        console.log('[SkillTutorialBroadcast] Disconnecting - no longer in classroom or tutorial ended')
+        console.log(
+          '[SkillTutorialBroadcast] Disconnecting - no longer in classroom or tutorial ended'
+        )
         socketRef.current.disconnect()
         socketRef.current = null
         setIsConnected(false)
@@ -121,7 +123,10 @@ export function useSkillTutorialBroadcast(
     }
 
     // Create socket connection
-    console.log('[SkillTutorialBroadcast] Creating new socket connection for classroom:', classroomId)
+    console.log(
+      '[SkillTutorialBroadcast] Creating new socket connection for classroom:',
+      classroomId
+    )
     const socket = io({
       path: '/api/socket',
       reconnection: true,
@@ -138,7 +143,10 @@ export function useSkillTutorialBroadcast(
         console.log('[SkillTutorialBroadcast] Connected but effect unmounted, ignoring')
         return
       }
-      console.log('[SkillTutorialBroadcast] Connected, joining classroom channel:', currentClassroomId)
+      console.log(
+        '[SkillTutorialBroadcast] Connected, joining classroom channel:',
+        currentClassroomId
+      )
       setIsConnected(true)
       // Join the classroom channel for skill tutorial events
       socket.emit('join-classroom', { classroomId: currentClassroomId })

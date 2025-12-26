@@ -155,7 +155,9 @@ export function SkillTutorialLauncher({
   const setState = setLocalState // Only used in interactive mode
 
   // Track pending control action for TutorialPlayer
-  const [playerControlAction, setPlayerControlAction] = useState<SkillTutorialControlAction | null>(null)
+  const [playerControlAction, setPlayerControlAction] = useState<SkillTutorialControlAction | null>(
+    null
+  )
 
   // Track tutorial player state for broadcasting (only in interactive mode)
   const [tutorialPlayerState, setTutorialPlayerState] = useState<{
@@ -281,28 +283,21 @@ export function SkillTutorialLauncher({
   }, [playerId, skillId, onSkip])
 
   // Handle step change from TutorialPlayer
-  const handleStepChange = useCallback(
-    (stepIndex: number, step: TutorialStep) => {
-      setTutorialPlayerState({
-        currentStepIndex: stepIndex,
-        currentMultiStep: 0, // Reset on new step
-        currentValue: step.startValue,
-        isStepCompleted: false,
-      })
-    },
-    []
-  )
+  const handleStepChange = useCallback((stepIndex: number, step: TutorialStep) => {
+    setTutorialPlayerState({
+      currentStepIndex: stepIndex,
+      currentMultiStep: 0, // Reset on new step
+      currentValue: step.startValue,
+      isStepCompleted: false,
+    })
+  }, [])
 
   // Handle tutorial events to track value changes
   const handleEvent = useCallback((event: TutorialEvent) => {
     if (event.type === 'VALUE_CHANGED') {
-      setTutorialPlayerState((prev) =>
-        prev ? { ...prev, currentValue: event.newValue } : prev
-      )
+      setTutorialPlayerState((prev) => (prev ? { ...prev, currentValue: event.newValue } : prev))
     } else if (event.type === 'STEP_COMPLETED') {
-      setTutorialPlayerState((prev) =>
-        prev ? { ...prev, isStepCompleted: true } : prev
-      )
+      setTutorialPlayerState((prev) => (prev ? { ...prev, isStepCompleted: true } : prev))
     }
   }, [])
 
@@ -325,9 +320,7 @@ export function SkillTutorialLauncher({
 
   // Handle multi-step change from TutorialPlayer (for broadcasting to observers)
   const handleMultiStepChange = useCallback((multiStep: number) => {
-    setTutorialPlayerState((prev) =>
-      prev ? { ...prev, currentMultiStep: multiStep } : prev
-    )
+    setTutorialPlayerState((prev) => (prev ? { ...prev, currentMultiStep: multiStep } : prev))
   }, [])
 
   // Handle control actions from teacher

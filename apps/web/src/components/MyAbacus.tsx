@@ -81,6 +81,10 @@ export function MyAbacus() {
     completeDockAnimation,
     startUndockAnimation,
     completeUndockAnimation,
+    pendingDockRequest,
+    clearDockRequest,
+    abacusValue: contextAbacusValue,
+    setDockedValue,
   } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
@@ -93,7 +97,10 @@ export function MyAbacus() {
   // Sync with hero context if on home page
   const homeHeroContext = useContext(HomeHeroContext)
   const [localAbacusValue, setLocalAbacusValue] = useState(1234)
-  const abacusValue = homeHeroContext?.abacusValue ?? localAbacusValue
+  // When docked, prefer the context value (set by teacher control), otherwise use hero/local
+  const abacusValue = isDockedByUser
+    ? contextAbacusValue
+    : (homeHeroContext?.abacusValue ?? localAbacusValue)
   const setAbacusValue = homeHeroContext?.setAbacusValue ?? setLocalAbacusValue
 
   // Determine display mode - only hero mode on actual home page
@@ -387,6 +394,14 @@ export function MyAbacus() {
     rightOffset,
   ])
 
+  // Watch for external dock requests (e.g., from teacher control)
+  useEffect(() => {
+    if (pendingDockRequest && !isDockedByUser && dock) {
+      handleDockClick()
+      clearDockRequest()
+    }
+  }, [pendingDockRequest, isDockedByUser, dock, handleDockClick, clearDockRequest])
+
   // Check if we're currently animating
   const isAnimating = dockAnimationState !== null
 
@@ -531,10 +546,15 @@ export function MyAbacus() {
                 customStyles={structuralStyles}
                 onValueChange={(newValue: number | bigint) => {
                   const numValue = Number(newValue)
-                  // Always update local state so abacus reflects the change
+                  // Update the appropriate state based on dock mode
                   // (unless dock provides its own value prop for full control)
                   if (dock.value === undefined) {
-                    setAbacusValue(numValue)
+                    // When docked by user, update context value; otherwise update local/hero
+                    if (isDockedByUser) {
+                      setDockedValue(numValue)
+                    } else {
+                      setAbacusValue(numValue)
+                    }
                   }
                   // Also call dock's callback if provided
                   if (dock.onValueChange) {

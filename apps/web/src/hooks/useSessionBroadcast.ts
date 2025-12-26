@@ -4,7 +4,23 @@ import { useCallback, useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { BroadcastState } from '@/components/practice'
 import { useStudentPresence } from './useClassroom'
-import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
+import type { AbacusControlEvent, PracticeStateEvent } from '@/lib/classroom/socket-events'
+
+/**
+ * Abacus control action received from teacher
+ */
+export type ReceivedAbacusControl =
+  | { type: 'show-abacus' }
+  | { type: 'hide-abacus' }
+  | { type: 'set-value'; value: number }
+
+/**
+ * Options for useSessionBroadcast hook
+ */
+export interface UseSessionBroadcastOptions {
+  /** Callback when an abacus control event is received from teacher */
+  onAbacusControl?: (control: ReceivedAbacusControl) => void
+}
 
 /**
  * Hook to broadcast practice session state to observers via WebSocket
@@ -15,17 +31,23 @@ import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
  * @param sessionId - The session plan ID
  * @param playerId - The student's player ID
  * @param state - Current practice state (or null if not in active practice)
+ * @param options - Optional callbacks for receiving teacher control events
  */
 export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
-  state: BroadcastState | null
+  state: BroadcastState | null,
+  options?: UseSessionBroadcastOptions
 ): { isConnected: boolean; isBroadcasting: boolean } {
   const socketRef = useRef<Socket | null>(null)
   const isConnectedRef = useRef(false)
   // Keep state in a ref so socket event handlers can access current state
   const stateRef = useRef<BroadcastState | null>(null)
   stateRef.current = state
+
+  // Keep options in a ref so socket event handlers can access current callbacks
+  const optionsRef = useRef(options)
+  optionsRef.current = options
 
   // Check if student is present in a classroom
   const { data: presence } = useStudentPresence(playerId)
@@ -101,6 +123,35 @@ export function useSessionBroadcast(
     socket.on('observer-joined', (data: { observerId: string }) => {
       console.log('[SessionBroadcast] Observer joined:', data.observerId, '- re-broadcasting state')
       broadcastState()
+    })
+
+    // Listen for abacus control events from teacher
+    socket.on('abacus-control', (data: AbacusControlEvent) => {
+      console.log('[SessionBroadcast] Received abacus-control:', data)
+      // Only handle controls for our session and the main practice abacus ('hero')
+      if (data.sessionId !== sessionId || data.target !== 'hero') {
+        return
+      }
+
+      // Map the socket event to our ReceivedAbacusControl type
+      let control: ReceivedAbacusControl
+      switch (data.action) {
+        case 'show':
+          control = { type: 'show-abacus' }
+          break
+        case 'hide':
+          control = { type: 'hide-abacus' }
+          break
+        case 'set-value':
+          if (data.value === undefined) return // Invalid event
+          control = { type: 'set-value', value: data.value }
+          break
+        default:
+          return // Unknown action
+      }
+
+      // Call the callback if provided
+      optionsRef.current?.onAbacusControl?.(control)
     })
 
     return () => {

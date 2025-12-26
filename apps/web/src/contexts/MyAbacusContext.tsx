@@ -97,6 +97,16 @@ interface MyAbacusContextValue {
   startUndockAnimation: (animState: DockAnimationState) => void
   /** Complete the undocking animation (switches to button state) */
   completeUndockAnimation: () => void
+  /** Request to dock with animation (like clicking the MyAbacus button) */
+  requestDock: () => void
+  /** Pending dock request flag (MyAbacus watches this) */
+  pendingDockRequest: boolean
+  /** Clear the pending dock request (called by MyAbacus after handling) */
+  clearDockRequest: () => void
+  /** Set the value on the docked abacus (only works when docked) */
+  setDockedValue: (value: number) => void
+  /** Current abacus value (for reading) */
+  abacusValue: number
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
@@ -111,6 +121,8 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const [isDockedByUser, setIsDockedByUser] = useState(false)
   const [dockAnimationState, setDockAnimationState] = useState<DockAnimationState | null>(null)
   const buttonRef = useRef<HTMLDivElement | null>(null)
+  const [pendingDockRequest, setPendingDockRequest] = useState(false)
+  const [abacusValue, setAbacusValue] = useState(0)
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
@@ -171,6 +183,23 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     setDockAnimationState(null)
   }, [])
 
+  // Request to dock with animation (triggers MyAbacus to animate into dock)
+  const requestDock = useCallback(() => {
+    if (dock) {
+      setPendingDockRequest(true)
+    }
+  }, [dock])
+
+  // Clear the pending dock request after MyAbacus handles it
+  const clearDockRequest = useCallback(() => {
+    setPendingDockRequest(false)
+  }, [])
+
+  // Set the value on the docked abacus
+  const setDockedValue = useCallback((value: number) => {
+    setAbacusValue(value)
+  }, [])
+
   return (
     <MyAbacusContext.Provider
       value={{
@@ -199,6 +228,11 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         completeDockAnimation,
         startUndockAnimation,
         completeUndockAnimation,
+        requestDock,
+        pendingDockRequest,
+        clearDockRequest,
+        setDockedValue,
+        abacusValue,
       }}
     >
       {children}
