@@ -213,6 +213,10 @@ function createMockSessionPlanWithProblems(config: {
     approvedAt: new Date(Date.now() - 60000),
     startedAt: new Date(Date.now() - 30000),
     completedAt: null,
+    isPaused: false,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
   }
 }
 

@@ -51,11 +51,15 @@ export function SessionObserverModal({
   const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus()
 
   // Subscribe to the session's socket channel
-  const { state, isConnected, isObserving, error, sendControl } = useSessionObserver(
-    isOpen ? session.sessionId : undefined,
-    isOpen ? observerId : undefined,
-    isOpen
-  )
+  const { state, isConnected, isObserving, error, sendControl, sendPause, sendResume } =
+    useSessionObserver(
+      isOpen ? session.sessionId : undefined,
+      isOpen ? observerId : undefined,
+      isOpen
+    )
+
+  // Track if we've paused the session (teacher controls resume)
+  const [hasPausedSession, setHasPausedSession] = useState(false)
 
   // Ref for measuring problem container height (same pattern as ActiveSession)
   const problemRef = useRef<HTMLDivElement>(null)
@@ -97,6 +101,18 @@ export function SessionObserverModal({
     // Send control to dock student's abacus
     sendControl({ type: 'show-abacus' })
   }, [dock, isDockedByUser, requestDock, sendControl])
+
+  // Pause the student's session
+  const handlePauseSession = useCallback(() => {
+    sendPause('Your teacher needs your attention.')
+    setHasPausedSession(true)
+  }, [sendPause])
+
+  // Resume the student's session
+  const handleResumeSession = useCallback(() => {
+    sendResume()
+    setHasPausedSession(false)
+  }, [sendResume])
 
   // Two-way sync: When student's abacus changes, sync teacher's docked abacus
   useEffect(() => {
@@ -372,29 +388,74 @@ export function SessionObserverModal({
             </span>
           </div>
 
-          {/* Dock both abaci button */}
-          {state && state.phase === 'problem' && (
-            <button
-              type="button"
-              data-action="dock-both-abaci"
-              onClick={handleDockBothAbaci}
-              disabled={!isObserving}
-              className={css({
-                padding: '8px 12px',
-                backgroundColor: isDark ? 'blue.700' : 'blue.100',
-                color: isDark ? 'blue.200' : 'blue.700',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
-                _disabled: { opacity: 0.4, cursor: 'not-allowed' },
-              })}
-            >
-              🧮 Dock Abaci
-            </button>
-          )}
+          {/* Teacher controls: pause/resume and dock abaci */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+            {/* Pause/Resume button */}
+            {isObserving && (
+              <button
+                type="button"
+                data-action={hasPausedSession ? 'resume-session' : 'pause-session'}
+                onClick={hasPausedSession ? handleResumeSession : handlePauseSession}
+                className={css({
+                  padding: '8px 12px',
+                  backgroundColor: hasPausedSession
+                    ? isDark
+                      ? 'green.700'
+                      : 'green.100'
+                    : isDark
+                      ? 'amber.700'
+                      : 'amber.100',
+                  color: hasPausedSession
+                    ? isDark
+                      ? 'green.200'
+                      : 'green.700'
+                    : isDark
+                      ? 'amber.200'
+                      : 'amber.700',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: {
+                    backgroundColor: hasPausedSession
+                      ? isDark
+                        ? 'green.600'
+                        : 'green.200'
+                      : isDark
+                        ? 'amber.600'
+                        : 'amber.200',
+                  },
+                })}
+              >
+                {hasPausedSession ? '▶️ Resume' : '⏸️ Pause'}
+              </button>
+            )}
+
+            {/* Dock both abaci button */}
+            {state && state.phase === 'problem' && (
+              <button
+                type="button"
+                data-action="dock-both-abaci"
+                onClick={handleDockBothAbaci}
+                disabled={!isObserving}
+                className={css({
+                  padding: '8px 12px',
+                  backgroundColor: isDark ? 'blue.700' : 'blue.100',
+                  color: isDark ? 'blue.200' : 'blue.700',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
+                  _disabled: { opacity: 0.4, cursor: 'not-allowed' },
+                })}
+              >
+                🧮 Dock Abaci
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </>

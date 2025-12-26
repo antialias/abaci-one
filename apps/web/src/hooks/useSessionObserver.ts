@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
-import type { AbacusControlEvent, PracticeStateEvent } from '@/lib/classroom/socket-events'
+import type {
+  AbacusControlEvent,
+  PracticeStateEvent,
+  SessionPausedEvent,
+  SessionResumedEvent,
+} from '@/lib/classroom/socket-events'
 
 /**
  * Control actions a teacher can send to a student's practice session abacus
@@ -67,6 +72,10 @@ interface UseSessionObserverResult {
   stopObserving: () => void
   /** Send a control action to the student's abacus */
   sendControl: (action: SessionAbacusControlAction) => void
+  /** Pause the student's session with optional message */
+  sendPause: (message?: string) => void
+  /** Resume the student's session */
+  sendResume: () => void
 }
 
 /**
@@ -213,6 +222,41 @@ export function useSessionObserver(
     [isConnected, sessionId]
   )
 
+  // Send pause command to student's session
+  const sendPause = useCallback(
+    (message?: string) => {
+      if (!socketRef.current || !isConnected || !sessionId) {
+        console.warn('[SessionObserver] Cannot send pause - not connected or no sessionId')
+        return
+      }
+
+      const event: SessionPausedEvent = {
+        sessionId,
+        reason: 'teacher',
+        message,
+      }
+
+      socketRef.current.emit('session-pause', event)
+      console.log('[SessionObserver] Sent session-pause:', { message })
+    },
+    [isConnected, sessionId]
+  )
+
+  // Send resume command to student's session
+  const sendResume = useCallback(() => {
+    if (!socketRef.current || !isConnected || !sessionId) {
+      console.warn('[SessionObserver] Cannot send resume - not connected or no sessionId')
+      return
+    }
+
+    const event: SessionResumedEvent = {
+      sessionId,
+    }
+
+    socketRef.current.emit('session-resume', event)
+    console.log('[SessionObserver] Sent session-resume')
+  }, [isConnected, sessionId])
+
   return {
     state,
     isConnected,
@@ -220,5 +264,7 @@ export function useSessionObserver(
     error,
     stopObserving,
     sendControl,
+    sendPause,
+    sendResume,
   }
 }

@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { BroadcastState } from '@/components/practice'
 import { useStudentPresence } from './useClassroom'
-import type { AbacusControlEvent, PracticeStateEvent } from '@/lib/classroom/socket-events'
+import type {
+  AbacusControlEvent,
+  PracticeStateEvent,
+  SessionPausedEvent,
+  SessionResumedEvent,
+} from '@/lib/classroom/socket-events'
 
 /**
  * Abacus control action received from teacher
@@ -15,11 +20,23 @@ export type ReceivedAbacusControl =
   | { type: 'set-value'; value: number }
 
 /**
+ * Pause request from teacher
+ */
+export interface TeacherPauseRequest {
+  /** Optional message from teacher to display on pause screen */
+  message?: string
+}
+
+/**
  * Options for useSessionBroadcast hook
  */
 export interface UseSessionBroadcastOptions {
   /** Callback when an abacus control event is received from teacher */
   onAbacusControl?: (control: ReceivedAbacusControl) => void
+  /** Callback when teacher pauses the session */
+  onTeacherPause?: (request: TeacherPauseRequest) => void
+  /** Callback when teacher resumes the session */
+  onTeacherResume?: () => void
 }
 
 /**
@@ -152,6 +169,22 @@ export function useSessionBroadcast(
 
       // Call the callback if provided
       optionsRef.current?.onAbacusControl?.(control)
+    })
+
+    // Listen for pause events from teacher
+    socket.on('session-paused', (data: SessionPausedEvent) => {
+      console.log('[SessionBroadcast] Received session-paused:', data)
+      if (data.sessionId !== sessionId) return
+
+      optionsRef.current?.onTeacherPause?.({ message: data.message })
+    })
+
+    // Listen for resume events from teacher
+    socket.on('session-resumed', (data: SessionResumedEvent) => {
+      console.log('[SessionBroadcast] Received session-resumed:', data)
+      if (data.sessionId !== sessionId) return
+
+      optionsRef.current?.onTeacherResume?.()
     })
 
     return () => {

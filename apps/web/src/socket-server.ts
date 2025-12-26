@@ -844,6 +844,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Session Observation: Pause command from observer (teacher pauses student's session)
+    socket.on('session-pause', (data: { sessionId: string; reason: string; message?: string }) => {
+      console.log('[Socket] session-pause:', data.sessionId, data.message)
+      // Forward pause command to student's client
+      io!.to(`session:${data.sessionId}`).emit('session-paused', data)
+    })
+
+    // Session Observation: Resume command from observer (teacher resumes student's session)
+    socket.on('session-resume', (data: { sessionId: string }) => {
+      console.log('[Socket] session-resume:', data.sessionId)
+      // Forward resume command to student's client
+      io!.to(`session:${data.sessionId}`).emit('session-resumed', data)
+    })
+
     // Skill Tutorial: Broadcast state from student to classroom (for teacher observation)
     // The student joins the classroom channel and emits their tutorial state
     socket.on(

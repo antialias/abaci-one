@@ -179,6 +179,12 @@ export interface ObserverJoinedEvent {
 export interface SessionPausedEvent {
   sessionId: string
   reason: string
+  /** Optional message from teacher to show on pause screen */
+  message?: string
+}
+
+export interface SessionResumedEvent {
+  sessionId: string
 }
 
 /**
@@ -306,6 +312,7 @@ export interface ClassroomServerToClientEvents {
   'abacus-control': (data: AbacusControlEvent) => void
   'observer-joined': (data: ObserverJoinedEvent) => void
   'session-paused': (data: SessionPausedEvent) => void
+  'session-resumed': (data: SessionResumedEvent) => void
 
   // Session status events (classroom channel - for teacher's active sessions view)
   'session-started': (data: SessionStartedEvent) => void
@@ -336,6 +343,8 @@ export interface ClassroomClientToServerEvents {
   // Observer controls
   'tutorial-control': (data: TutorialControlEvent) => void
   'abacus-control': (data: AbacusControlEvent) => void
+  'session-pause': (data: SessionPausedEvent) => void
+  'session-resume': (data: SessionResumedEvent) => void
 
   // Skill tutorial broadcasts (from student client to classroom channel)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void

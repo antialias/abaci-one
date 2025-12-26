@@ -340,6 +340,20 @@ export const sessionPlans = sqliteTable(
     /** Results for each completed slot */
     results: text('results', { mode: 'json' }).notNull().default('[]').$type<SlotResult[]>(),
 
+    // ---- Pause State (for teacher observation control) ----
+
+    /** Whether the session is currently paused by a teacher */
+    isPaused: integer('is_paused', { mode: 'boolean' }).notNull().default(false),
+
+    /** When the session was paused */
+    pausedAt: integer('paused_at', { mode: 'timestamp' }),
+
+    /** Observer ID (teacher user ID) who paused the session */
+    pausedBy: text('paused_by'),
+
+    /** Optional reason for pausing (e.g., "Let's review this concept together") */
+    pauseReason: text('paused_reason'),
+
     // ---- Timestamps ----
 
     /** When the plan was created */

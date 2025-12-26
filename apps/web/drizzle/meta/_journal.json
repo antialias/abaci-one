@@ -302,6 +302,13 @@
       "when": 1766406120000,
       "tag": "0042_classroom-system-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1766706763639,
+      "tag": "0043_add_session_pause_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -50,9 +50,11 @@ export interface PauseInfo {
   /** When the pause occurred */
   pausedAt: Date
   /** Why the session was paused */
-  reason: 'manual' | 'auto-timeout'
+  reason: 'manual' | 'auto-timeout' | 'teacher'
   /** Auto-pause statistics (only present for auto-timeout) */
   autoPauseStats?: AutoPauseStats
+  /** Teacher's custom message (only present for teacher-initiated pause) */
+  teacherMessage?: string
 }
 
 /**

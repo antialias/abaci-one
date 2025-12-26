@@ -132,6 +132,10 @@ function createMockSessionPlan(config: {
     startedAt: new Date(Date.now() - 10 * 60 * 1000),
     completedAt: null,
     masteredSkillIds: [],
+    isPaused: false,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
   }
 }
 

@@ -52,6 +52,14 @@ const MANUAL_PAUSE_PHRASES = [
   'Smart break!',
 ]
 
+// Phrases for teacher-initiated pause
+const TEACHER_PAUSE_PHRASES = [
+  'Teacher called timeout!',
+  'Hold on a moment!',
+  'Quick pause!',
+  'Wait for your teacher!',
+]
+
 // Intl formatters for duration display
 const secondsFormatter = new Intl.NumberFormat('en', {
   style: 'unit',
@@ -146,7 +154,17 @@ export function SessionPausedModal({
 
   // Pick a random phrase once per pause (stable while modal is open)
   const pausePhrase = useMemo(() => {
-    const phrases = pauseInfo?.reason === 'auto-timeout' ? AUTO_PAUSE_PHRASES : MANUAL_PAUSE_PHRASES
+    let phrases: string[]
+    switch (pauseInfo?.reason) {
+      case 'auto-timeout':
+        phrases = AUTO_PAUSE_PHRASES
+        break
+      case 'teacher':
+        phrases = TEACHER_PAUSE_PHRASES
+        break
+      default:
+        phrases = MANUAL_PAUSE_PHRASES
+    }
     return phrases[Math.floor(Math.random() * phrases.length)]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pauseInfo?.pausedAt?.getTime(), pauseInfo?.reason])
@@ -180,6 +198,7 @@ export function SessionPausedModal({
 
   // Determine greeting based on pause reason
   const isAutoTimeout = pauseInfo?.reason === 'auto-timeout'
+  const isTeacherPause = pauseInfo?.reason === 'teacher'
   const stats = pauseInfo?.autoPauseStats
 
   return (
@@ -256,7 +275,7 @@ export function SessionPausedModal({
                 gap: '0.375rem',
               })}
             >
-              <span>{isAutoTimeout ? '🤔' : '☕'}</span>
+              <span>{isTeacherPause ? '👩‍🏫' : isAutoTimeout ? '🤔' : '☕'}</span>
               <span>{pausePhrase}</span>
             </h2>
             {pauseInfo && (
@@ -386,6 +405,33 @@ export function SessionPausedModal({
           </div>
         )}
 
+        {/* Teacher pause message - shown when teacher pauses the session */}
+        {isTeacherPause && (
+          <div
+            data-element="teacher-pause-message"
+            className={css({
+              width: '100%',
+              padding: '1rem',
+              backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
+              borderRadius: '12px',
+              border: '2px solid',
+              borderColor: isDark ? 'blue.700' : 'blue.200',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'blue.200' : 'blue.700',
+                textAlign: 'center',
+                fontWeight: 'medium',
+              })}
+            >
+              {pauseInfo?.teacherMessage ||
+                'Your teacher paused the session. Please wait for them to resume.'}
+            </p>
+          </div>
+        )}
+
         {/* Progress summary - celebratory */}
         <div
           className={css({
@@ -474,27 +520,33 @@ export function SessionPausedModal({
           <button
             type="button"
             data-action="resume"
-            onClick={onResume}
+            onClick={isTeacherPause ? undefined : onResume}
+            disabled={isTeacherPause}
             style={{
               padding: '1.25rem',
               fontSize: '1.25rem',
               fontWeight: 'bold',
               color: '#ffffff',
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              background: isTeacherPause
+                ? 'linear-gradient(135deg, #6b7280, #4b5563)'
+                : 'linear-gradient(135deg, #22c55e, #16a34a)',
               borderRadius: '16px',
-              border: '3px solid #15803d',
-              cursor: 'pointer',
+              border: isTeacherPause ? '3px solid #374151' : '3px solid #15803d',
+              cursor: isTeacherPause ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
               transition: 'all 0.15s ease',
-              boxShadow: '0 6px 20px rgba(22, 163, 74, 0.5)',
+              boxShadow: isTeacherPause
+                ? '0 6px 20px rgba(75, 85, 99, 0.3)'
+                : '0 6px 20px rgba(22, 163, 74, 0.5)',
               textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
               width: '100%',
+              opacity: isTeacherPause ? 0.7 : 1,
             }}
           >
-            <span>▶️ Keep Going!</span>
+            <span>{isTeacherPause ? '⏳ Waiting for teacher...' : '▶️ Keep Going!'}</span>
           </button>
 
           <button

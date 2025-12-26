@@ -120,6 +120,18 @@ interface ActiveSessionProps {
   teacherControl?: ReceivedAbacusControl | null
   /** Called after teacher control has been handled (to clear the state) */
   onTeacherControlHandled?: () => void
+  /** Teacher-initiated pause request (from observing teacher) */
+  teacherPauseRequest?: { message?: string } | null
+  /** Called after teacher pause has been handled (to clear the state) */
+  onTeacherPauseHandled?: () => void
+  /** Teacher-initiated resume request (from observing teacher) */
+  teacherResumeRequest?: boolean
+  /** Called after teacher resume has been handled (to clear the state) */
+  onTeacherResumeHandled?: () => void
+  /** Manual pause request from parent (HUD pause button) */
+  manualPauseRequest?: boolean
+  /** Called after manual pause has been handled (to clear the state) */
+  onManualPauseHandled?: () => void
 }
 
 /**
@@ -552,6 +564,12 @@ export function ActiveSession({
   onBrowseIndexChange,
   teacherControl,
   onTeacherControlHandled,
+  teacherPauseRequest,
+  onTeacherPauseHandled,
+  teacherResumeRequest,
+  onTeacherResumeHandled,
+  manualPauseRequest,
+  onManualPauseHandled,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -780,6 +798,81 @@ export function ActiveSession({
     undock,
     onTeacherControlHandled,
   ])
+
+  // Handle teacher-initiated pause requests
+  // Use a ref to track if we've handled this request to prevent duplicate handling
+  const handledPauseRef = useRef(false)
+  useEffect(() => {
+    if (!teacherPauseRequest) {
+      handledPauseRef.current = false
+      return
+    }
+    if (handledPauseRef.current) return
+    handledPauseRef.current = true
+
+    // Pause the session with teacher reason
+    const newPauseInfo: PauseInfo = {
+      pausedAt: new Date(),
+      reason: 'teacher',
+      teacherMessage: teacherPauseRequest.message,
+    }
+    setPauseInfo(newPauseInfo)
+    pause()
+    onPause?.(newPauseInfo)
+
+    console.log('[ActiveSession] Teacher paused session:', teacherPauseRequest.message)
+
+    // Clear the request after handling
+    onTeacherPauseHandled?.()
+  }, [teacherPauseRequest, pause, onPause, onTeacherPauseHandled])
+
+  // Handle teacher-initiated resume requests
+  // Use a ref to track if we've handled this request to prevent duplicate handling
+  const handledResumeRef = useRef(false)
+  useEffect(() => {
+    if (!teacherResumeRequest) {
+      handledResumeRef.current = false
+      return
+    }
+    if (handledResumeRef.current) return
+    handledResumeRef.current = true
+
+    // Resume the session
+    setPauseInfo(undefined)
+    lastResumeTimeRef.current = Date.now()
+    resume()
+    onResume?.()
+
+    console.log('[ActiveSession] Teacher resumed session')
+
+    // Clear the request after handling
+    onTeacherResumeHandled?.()
+  }, [teacherResumeRequest, resume, onResume, onTeacherResumeHandled])
+
+  // Handle manual pause requests from parent (HUD pause button)
+  const handledManualPauseRef = useRef(false)
+  useEffect(() => {
+    if (!manualPauseRequest) {
+      handledManualPauseRef.current = false
+      return
+    }
+    if (handledManualPauseRef.current) return
+    handledManualPauseRef.current = true
+
+    // Pause the session with manual reason
+    const newPauseInfo: PauseInfo = {
+      pausedAt: new Date(),
+      reason: 'manual',
+    }
+    setPauseInfo(newPauseInfo)
+    pause()
+    onPause?.(newPauseInfo)
+
+    console.log('[ActiveSession] Manual pause triggered from HUD')
+
+    // Clear the request after handling
+    onManualPauseHandled?.()
+  }, [manualPauseRequest, pause, onPause, onManualPauseHandled])
 
   // Track which help elements have been individually dismissed
   // These reset when entering a new help session (helpContext changes)

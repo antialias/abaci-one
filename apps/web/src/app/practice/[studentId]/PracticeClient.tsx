@@ -18,7 +18,11 @@ import {
   useEndSessionEarly,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
-import { useSessionBroadcast, type ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
+import {
+  useSessionBroadcast,
+  type ReceivedAbacusControl,
+  type TeacherPauseRequest,
+} from '@/hooks/useSessionBroadcast'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -50,6 +54,11 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [browseIndex, setBrowseIndex] = useState(0)
   // Teacher abacus control - receives commands from observing teacher
   const [teacherControl, setTeacherControl] = useState<ReceivedAbacusControl | null>(null)
+  // Teacher-initiated pause/resume requests from observing teacher
+  const [teacherPauseRequest, setTeacherPauseRequest] = useState<TeacherPauseRequest | null>(null)
+  const [teacherResumeRequest, setTeacherResumeRequest] = useState(false)
+  // Manual pause request from HUD
+  const [manualPauseRequest, setManualPauseRequest] = useState(false)
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -76,9 +85,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     return { totalProblems: total, completedProblems: completed }
   }, [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex])
 
-  // Pause/resume handlers - just update HUD state (ActiveSession owns the modal)
+  // Pause handler - triggers manual pause in ActiveSession
   const handlePause = useCallback(() => {
-    setIsPaused(true)
+    setManualPauseRequest(true)
   }, [])
 
   const handleResume = useCallback(() => {
@@ -125,8 +134,11 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
+  // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
   useSessionBroadcast(currentPlan.id, studentId, broadcastState, {
     onAbacusControl: setTeacherControl,
+    onTeacherPause: setTeacherPauseRequest,
+    onTeacherResume: () => setTeacherResumeRequest(true),
   })
 
   // Build session HUD data for PracticeSubNav
@@ -212,7 +224,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             }}
             onAnswer={handleAnswer}
             onEndEarly={handleEndEarly}
-            onPause={handlePause}
+            onPause={() => setIsPaused(true)}
             onResume={handleResume}
             onComplete={handleSessionComplete}
             onTimingUpdate={setTimingData}
@@ -222,6 +234,12 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onBrowseIndexChange={setBrowseIndex}
             teacherControl={teacherControl}
             onTeacherControlHandled={() => setTeacherControl(null)}
+            teacherPauseRequest={teacherPauseRequest}
+            onTeacherPauseHandled={() => setTeacherPauseRequest(null)}
+            teacherResumeRequest={teacherResumeRequest}
+            onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
+            manualPauseRequest={manualPauseRequest}
+            onManualPauseHandled={() => setManualPauseRequest(false)}
           />
         </PracticeErrorBoundary>
       </main>
