@@ -91,6 +91,60 @@ README.md (root)
 **Invalid:** Creating `/docs/some-feature.md` without linking from anywhere ❌
 **Valid:** Creating `/docs/some-feature.md` AND linking from root README ✅
 
+## CRITICAL: Never Directly Modify Database Schema
+
+**NEVER modify the database schema directly (e.g., via sqlite3, manual SQL, or direct ALTER TABLE commands).**
+
+All database schema changes MUST go through the Drizzle migration system:
+
+1. **Modify the schema file** in `src/db/schema/`
+2. **Generate a migration** using `npx drizzle-kit generate --custom`
+3. **Edit the generated SQL file** with the actual migration statements
+4. **Run the migration** using `npm run db:migrate`
+5. **Commit both** the schema change AND the migration file
+
+**Why this matters:**
+
+- The migration system tracks which changes have been applied
+- Production runs migrations on startup to sync schema with code
+- If you modify the DB directly, the migration system doesn't know about it
+- When you later create a migration for the "same" change, it becomes a no-op locally but fails on production
+
+**The failure pattern (December 2025):**
+
+1. During development, columns were added directly to local DB (bypassing migrations)
+2. Migration 0043 was created but as `SELECT 1;` (no-op) because "columns already exist"
+3. Production ran 0043 (no-op), so it never got the columns
+4. Production crashed with "no such column: is_paused"
+5. Required emergency migration 0044 to fix
+
+**The correct pattern:**
+
+```bash
+# 1. Modify schema file
+# 2. Generate migration
+npx drizzle-kit generate --custom
+
+# 3. Edit the generated SQL file with actual ALTER TABLE statements
+# 4. Test locally
+npm run db:migrate
+
+# 5. Commit both schema and migration
+git add src/db/schema/ drizzle/
+git commit -m "feat: add new column"
+```
+
+**Never do this:**
+
+```bash
+# ❌ WRONG - Direct database modification
+sqlite3 data/sqlite.db "ALTER TABLE session_plans ADD COLUMN is_paused INTEGER;"
+
+# ❌ WRONG - Then creating a no-op migration because "column exists"
+# drizzle/0043.sql:
+# SELECT 1;  -- This does nothing on production!
+```
+
 ## CRITICAL: @svg-maps ES Module Imports Work Correctly
 
 **The @svg-maps packages (world, usa) USE ES module syntax and this WORKS correctly in production.**
