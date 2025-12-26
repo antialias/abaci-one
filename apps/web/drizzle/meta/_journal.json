@@ -309,6 +309,13 @@
       "when": 1766706763639,
       "tag": "0043_add_session_pause_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1766773151809,
+      "tag": "0044_add_is_paused_column",
+      "breakpoints": true
     }
   ]
 }
