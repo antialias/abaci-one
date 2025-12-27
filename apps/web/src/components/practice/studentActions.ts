@@ -70,12 +70,15 @@ export function getAvailableActions(
     // Primary actions
     startPractice: true, // Always available
     watchSession: isPracticing && hasSessionId,
-    enterClassroom: !isTeacher && !!hasEnrolledClassrooms && !isPresent,
-    leaveClassroom: !isTeacher && isPresent,
+    // Parents can enter/leave their own children (even if they're also teachers)
+    enterClassroom: isMyChild && !!hasEnrolledClassrooms && !isPresent,
+    leaveClassroom: isMyChild && isPresent,
+    // Teachers can remove students from their classroom
     removeFromClassroom: isTeacher && isPresent,
 
     // Enrollment actions
-    enrollInClassroom: !isTeacher && isMyChild && !isEnrolled,
+    // Parents can enroll their children (even if they're also teachers)
+    enrollInClassroom: isMyChild && !isEnrolled,
     unenrollStudent: isTeacher && isEnrolled,
 
     // Management actions
