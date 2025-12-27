@@ -145,7 +145,7 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
             width: 'calc(100% - 2rem)',
             maxWidth: '420px',
             boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
-            zIndex: Z_INDEX.TOOLTIP + 1, // Above the overlay
+            zIndex: Z_INDEX.TOOLTIP, // Same as overlay - siblings in same stacking context
             outline: 'none',
             transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
             opacity: isClosing ? 0 : 1,

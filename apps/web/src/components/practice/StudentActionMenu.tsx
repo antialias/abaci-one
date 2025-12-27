@@ -40,7 +40,7 @@ export function StudentActionMenu({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const { actions, handlers, modals } = useStudentActions(student, { onObserveSession })
+  const { actions, handlers, modals, classrooms } = useStudentActions(student, { onObserveSession })
 
   // If no actions are available, don't render the menu
   const hasAnyAction =
@@ -136,37 +136,104 @@ export function StudentActionMenu({
               </DropdownMenu.Item>
             )}
 
-            {/* Classroom presence actions */}
-            {actions.enterClassroom && (
-              <DropdownMenu.Item
-                className={menuItemStyles(isDark)}
-                onSelect={handlers.enterClassroom}
-              >
-                <span>{ACTION_DEFINITIONS.enterClassroom.icon}</span>
-                <span>{ACTION_DEFINITIONS.enterClassroom.label}</span>
-              </DropdownMenu.Item>
+            {/* Classroom section */}
+            {(classrooms.enrolled.length > 0 || classrooms.current) && (
+              <>
+                <DropdownMenu.Separator className={separatorStyles(isDark)} />
+
+                {/* If in a classroom, show presence + leave */}
+                {classrooms.current && (
+                  <DropdownMenu.Item
+                    className={menuItemStyles(isDark)}
+                    onSelect={handlers.leaveClassroom}
+                    data-action="leave-classroom"
+                  >
+                    <span
+                      className={css({
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: 'green.500',
+                      })}
+                    />
+                    <span>In {classrooms.current.classroom.name} — Leave</span>
+                  </DropdownMenu.Item>
+                )}
+
+                {/* If not in classroom and has exactly 1 enrollment: direct action */}
+                {!classrooms.current && classrooms.enrolled.length === 1 && (
+                  <DropdownMenu.Item
+                    className={menuItemStyles(isDark)}
+                    onSelect={handlers.enterClassroom}
+                    data-action="enter-classroom"
+                  >
+                    <span>🏫</span>
+                    <span>Enter {classrooms.enrolled[0].name}</span>
+                  </DropdownMenu.Item>
+                )}
+
+                {/* If not in classroom and has multiple enrollments: use submenu */}
+                {!classrooms.current && classrooms.enrolled.length > 1 && (
+                  <DropdownMenu.Sub>
+                    <DropdownMenu.SubTrigger className={subTriggerStyles(isDark)}>
+                      <span>🏫</span>
+                      <span>Enter Classroom</span>
+                      <span className={css({ marginLeft: 'auto' })}>→</span>
+                    </DropdownMenu.SubTrigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.SubContent
+                        className={css({
+                          minWidth: '160px',
+                          backgroundColor: isDark ? 'gray.800' : 'white',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: isDark ? 'gray.700' : 'gray.200',
+                          padding: '4px',
+                          boxShadow: 'lg',
+                          zIndex: Z_INDEX.DROPDOWN + 1,
+                        })}
+                        sideOffset={4}
+                      >
+                        {classrooms.enrolled.map((c) => (
+                          <DropdownMenu.Item
+                            key={c.id}
+                            className={menuItemStyles(isDark)}
+                            onSelect={() => handlers.enterSpecificClassroom(c.id)}
+                            data-action="enter-specific-classroom"
+                          >
+                            {c.name}
+                          </DropdownMenu.Item>
+                        ))}
+                      </DropdownMenu.SubContent>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Sub>
+                )}
+
+                {/* Always show enroll option */}
+                <DropdownMenu.Item
+                  className={menuItemStyles(isDark)}
+                  onSelect={handlers.openEnrollModal}
+                  data-action="enroll-in-classroom"
+                >
+                  <span>➕</span>
+                  <span>Enroll in Classroom</span>
+                </DropdownMenu.Item>
+              </>
             )}
 
-            {actions.leaveClassroom && (
-              <DropdownMenu.Item
-                className={menuItemStyles(isDark)}
-                onSelect={handlers.leaveClassroom}
-              >
-                <span>{ACTION_DEFINITIONS.leaveClassroom.icon}</span>
-                <span>{ACTION_DEFINITIONS.leaveClassroom.label}</span>
-              </DropdownMenu.Item>
-            )}
-
-            {/* Enrollment actions */}
-            {actions.enrollInClassroom && (
-              <DropdownMenu.Item
-                className={menuItemStyles(isDark)}
-                onSelect={handlers.openEnrollModal}
-              >
-                <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
-                <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
-              </DropdownMenu.Item>
-            )}
+            {/* Show enroll option even if no enrollments yet */}
+            {classrooms.enrolled.length === 0 &&
+              !classrooms.current &&
+              actions.enrollInClassroom && (
+                <DropdownMenu.Item
+                  className={menuItemStyles(isDark)}
+                  onSelect={handlers.openEnrollModal}
+                  data-action="enroll-in-classroom"
+                >
+                  <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
+                  <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
+                </DropdownMenu.Item>
+              )}
 
             <DropdownMenu.Separator className={separatorStyles(isDark)} />
 
@@ -262,5 +329,29 @@ function separatorStyles(isDark: boolean) {
     height: '1px',
     backgroundColor: isDark ? 'gray.700' : 'gray.200',
     margin: '4px 0',
+  })
+}
+
+function subTriggerStyles(isDark: boolean) {
+  return css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    outline: 'none',
+    color: isDark ? 'gray.200' : 'gray.700',
+    _hover: {
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+    },
+    _focus: {
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+    },
+    // SubTrigger specific: highlight when open
+    '&[data-state="open"]': {
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+    },
   })
 }

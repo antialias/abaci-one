@@ -7,7 +7,9 @@ import {
   useEnterClassroom,
   useLeaveClassroom,
   useMyClassroom,
+  useStudentPresence,
 } from '@/hooks/useClassroom'
+import type { Classroom } from '@/db/schema'
 import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import {
   getAvailableActions,
@@ -21,6 +23,7 @@ export interface StudentActionHandlers {
   startPractice: () => void
   watchSession: () => void
   enterClassroom: () => Promise<void>
+  enterSpecificClassroom: (classroomId: string) => Promise<void>
   leaveClassroom: () => Promise<void>
   toggleArchive: () => Promise<void>
   openShareAccess: () => void
@@ -40,6 +43,15 @@ export interface StudentActionModals {
   }
 }
 
+export interface ClassroomData {
+  /** All classrooms this student is enrolled in */
+  enrolled: Classroom[]
+  /** Current classroom presence (if any) */
+  current: { classroomId: string; classroom: Classroom } | null
+  /** Whether classroom data is loading */
+  isLoading: boolean
+}
+
 export interface UseStudentActionsResult {
   /** Which actions are available based on student state and user context */
   actions: AvailableActions
@@ -51,6 +63,8 @@ export interface UseStudentActionsResult {
   isLoading: boolean
   /** The student data being operated on */
   student: StudentActionData
+  /** Classroom enrollment and presence data */
+  classrooms: ClassroomData
 }
 
 /**
@@ -79,7 +93,10 @@ export function useStudentActions(
   const isTeacher = !!classroom
 
   // ========== Action hooks ==========
-  const { data: enrolledClassrooms = [] } = useEnrolledClassrooms(student.id)
+  const { data: enrolledClassrooms = [], isLoading: loadingEnrollments } = useEnrolledClassrooms(
+    student.id
+  )
+  const { data: currentPresence, isLoading: loadingPresence } = useStudentPresence(student.id)
   const updatePlayer = useUpdatePlayer()
   const enterClassroom = useEnterClassroom()
   const leaveClassroom = useLeaveClassroom()
@@ -119,12 +136,22 @@ export function useStudentActions(
     }
   }, [enrolledClassrooms, enterClassroom, student.id])
 
+  const handleEnterSpecificClassroom = useCallback(
+    async (classroomId: string) => {
+      await enterClassroom.mutateAsync({ classroomId, playerId: student.id })
+    },
+    [enterClassroom, student.id]
+  )
+
   const handleLeaveClassroom = useCallback(async () => {
-    if (enrolledClassrooms.length > 0 && student.relationship?.isPresent) {
-      const classroomId = enrolledClassrooms[0].id
-      await leaveClassroom.mutateAsync({ classroomId, playerId: student.id })
+    // Use currentPresence to get the actual classroom they're in
+    if (currentPresence) {
+      await leaveClassroom.mutateAsync({
+        classroomId: currentPresence.classroomId,
+        playerId: student.id,
+      })
     }
-  }, [enrolledClassrooms, leaveClassroom, student.relationship?.isPresent, student.id])
+  }, [currentPresence, leaveClassroom, student.id])
 
   const handleToggleArchive = useCallback(async () => {
     await updatePlayer.mutateAsync({
@@ -139,6 +166,7 @@ export function useStudentActions(
       startPractice: handleStartPractice,
       watchSession: handleWatchSession,
       enterClassroom: handleEnterClassroom,
+      enterSpecificClassroom: handleEnterSpecificClassroom,
       leaveClassroom: handleLeaveClassroom,
       toggleArchive: handleToggleArchive,
       openShareAccess: () => setShowShareAccess(true),
@@ -148,6 +176,7 @@ export function useStudentActions(
       handleStartPractice,
       handleWatchSession,
       handleEnterClassroom,
+      handleEnterSpecificClassroom,
       handleLeaveClassroom,
       handleToggleArchive,
     ]
@@ -169,8 +198,20 @@ export function useStudentActions(
     [showShareAccess, showEnrollModal]
   )
 
-  const isLoading =
-    updatePlayer.isPending || enterClassroom.isPending || leaveClassroom.isPending
+  const isLoading = updatePlayer.isPending || enterClassroom.isPending || leaveClassroom.isPending
+
+  // ========== Classroom data ==========
+  const classrooms: ClassroomData = useMemo(
+    () => ({
+      enrolled: enrolledClassrooms,
+      // Only set current if both presence and classroom are defined
+      current: currentPresence?.classroom
+        ? { classroomId: currentPresence.classroomId, classroom: currentPresence.classroom }
+        : null,
+      isLoading: loadingEnrollments || loadingPresence,
+    }),
+    [enrolledClassrooms, currentPresence, loadingEnrollments, loadingPresence]
+  )
 
   return {
     actions,
@@ -178,5 +219,6 @@ export function useStudentActions(
     modals,
     isLoading,
     student,
+    classrooms,
   }
 }

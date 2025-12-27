@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { EnterClassroomButton } from '@/components/classroom'
 import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useIncomingTransition } from '@/contexts/PageTransitionContext'
@@ -2787,7 +2786,6 @@ export function DashboardClient({
               })}
             >
               <StudentActionMenu student={studentActionData} variant="inline" />
-              <EnterClassroomButton playerId={studentId} playerName={player.name} />
             </div>
 
             {/* Session mode banner - renders in-flow, projects to nav on scroll */}
