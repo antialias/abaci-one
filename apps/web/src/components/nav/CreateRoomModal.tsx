@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as Select from '@radix-ui/react-select'
 import { animated } from '@react-spring/web'
 import { Modal } from '@/components/common/Modal'
 import { useCreateRoom, useRoomData } from '@/hooks/useRoomData'
-import { getAvailableGames } from '@/lib/arcade/game-registry'
 import { RoomShareButtons } from './RoomShareButtons'
+import type { GameDefinition } from '@/lib/arcade/game-sdk/types'
 
 export interface CreateRoomModalProps {
   /**
@@ -31,8 +31,17 @@ type ModalState = 'creating' | 'created'
 export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalProps) {
   const { mutateAsync: createRoom, isPending } = useCreateRoom()
   const { getRoomShareUrl } = useRoomData()
-  const availableGames = getAvailableGames()
+  const [availableGames, setAvailableGames] = useState<GameDefinition<any, any, any>[]>([])
   const [error, setError] = useState('')
+
+  // Lazy load game registry only when modal opens
+  useEffect(() => {
+    if (isOpen && availableGames.length === 0) {
+      import('@/lib/arcade/game-registry').then(({ getAvailableGames }) => {
+        setAvailableGames(getAvailableGames())
+      })
+    }
+  }, [isOpen, availableGames.length])
   const [gameName, setGameName] = useState<string>('__choose_later__') // Special value = user will choose later
   const [accessMode, setAccessMode] = useState<
     'open' | 'password' | 'approval-only' | 'restricted'

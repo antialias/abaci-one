@@ -1,7 +1,13 @@
 'use client'
 
-import ReactECharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useState } from 'react'
+
+// Dynamic import echarts to avoid bundling 58MB library on pages that don't use charts
+const ReactECharts = dynamic(() => import('echarts-for-react'), {
+  ssr: false,
+  loading: () => <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart...</div>,
+})
 import {
   getExtendedClassification,
   type ExtendedSkillClassification,
