@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EnterClassroomButton } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
+import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
@@ -2528,6 +2529,32 @@ export function DashboardClient({
   // This ensures the UI updates when teacher removes student from classroom
   usePlayerPresenceSocket(studentId)
 
+  // Handle incoming page transition (from QuickLook modal)
+  const { hasTransition, isRevealing, signalReady } = useIncomingTransition()
+
+  // Signal ready when critical data is loaded
+  // This triggers the overlay fade-out on the transition
+  useEffect(() => {
+    if (hasTransition && !isLoadingSessionMode) {
+      // Small delay to ensure DOM is painted
+      const timer = setTimeout(() => {
+        signalReady()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [hasTransition, isLoadingSessionMode, signalReady])
+
+  // Content opacity for cross-fade with transition overlay
+  // Starts at 0 when transitioning, fades to 1 when revealing
+  const shouldFadeIn = !hasTransition || isRevealing
+  const contentOpacity = shouldFadeIn ? 1 : 0
+  const contentTransition = isRevealing ? 'opacity 300ms ease-out' : 'none'
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[DashboardClient] hasTransition:', hasTransition, 'isRevealing:', isRevealing, 'contentOpacity:', contentOpacity)
+  }, [hasTransition, isRevealing, contentOpacity])
+
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
@@ -2700,6 +2727,10 @@ export function DashboardClient({
 
         <main
           data-component="practice-dashboard-page"
+          style={{
+            opacity: contentOpacity,
+            transition: contentTransition,
+          }}
           className={css({
             minHeight: '100vh',
             backgroundColor: isDark ? 'gray.900' : 'gray.50',

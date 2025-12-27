@@ -11,6 +11,7 @@ import { GameModeProvider } from '@/contexts/GameModeContext'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 import { LocaleProvider, useLocaleContext } from '@/contexts/LocaleContext'
 import { MyAbacusProvider } from '@/contexts/MyAbacusContext'
+import { PageTransitionProvider } from '@/contexts/PageTransitionContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { VisualDebugProvider } from '@/contexts/VisualDebugContext'
@@ -19,6 +20,7 @@ import { createQueryClient } from '@/lib/queryClient'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
 import { MyAbacus } from './MyAbacus'
+import { PageTransitionOverlay } from './PageTransitionOverlay'
 
 interface ClientProvidersProps {
   children: ReactNode
@@ -40,9 +42,12 @@ function InnerProviders({ children }: { children: ReactNode }) {
                 <HomeHeroProvider>
                   <MyAbacusProvider>
                     <DeploymentInfoProvider>
-                      {children}
-                      <DeploymentInfo />
-                      <MyAbacus />
+                      <PageTransitionProvider>
+                        {children}
+                        <PageTransitionOverlay />
+                        <DeploymentInfo />
+                        <MyAbacus />
+                      </PageTransitionProvider>
                     </DeploymentInfoProvider>
                   </MyAbacusProvider>
                 </HomeHeroProvider>
