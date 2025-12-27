@@ -1,8 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ShareCodePanel } from '@/components/common'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useShareCode } from '@/hooks/useShareCode'
 import { css } from '../../../styled-system/css'
 
 interface FamilyCodeDisplayProps {
@@ -16,8 +18,8 @@ interface FamilyCodeDisplayProps {
  * Modal to display and manage a child's family code
  *
  * Parents can:
- * - View the family code
- * - Copy it to clipboard
+ * - View the family code with QR
+ * - Copy code or link to clipboard
  * - Regenerate it (invalidates old code)
  */
 export function FamilyCodeDisplay({
@@ -32,8 +34,6 @@ export function FamilyCodeDisplay({
   const [familyCode, setFamilyCode] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [isRegenerating, setIsRegenerating] = useState(false)
 
   // Fetch family code when modal opens
   const fetchFamilyCode = useCallback(async () => {
@@ -57,7 +57,6 @@ export function FamilyCodeDisplay({
   useEffect(() => {
     setFamilyCode(null)
     setError(null)
-    setCopied(false)
   }, [playerId])
 
   // Fetch on open
@@ -67,30 +66,8 @@ export function FamilyCodeDisplay({
     }
   }, [isOpen, familyCode, isLoading, fetchFamilyCode])
 
-  // Copy to clipboard
-  const handleCopy = useCallback(async () => {
-    if (!familyCode) return
-    try {
-      await navigator.clipboard.writeText(familyCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = familyCode
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }, [familyCode])
-
   // Regenerate family code
   const handleRegenerate = useCallback(async () => {
-    setIsRegenerating(true)
-    setError(null)
     try {
       const response = await fetch(`/api/family/children/${playerId}/code`, {
         method: 'POST',
@@ -100,22 +77,25 @@ export function FamilyCodeDisplay({
         throw new Error(data.error || 'Failed to regenerate code')
       }
       setFamilyCode(data.familyCode)
+      return data.familyCode
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to regenerate code')
-    } finally {
-      setIsRegenerating(false)
+      throw err
     }
   }, [playerId])
 
+  // Don't render if not open
   if (!isOpen) return null
 
+  // Render directly as sibling to parent modal's animated.div
+  // Uses position: fixed with z-index above parent modal
   return (
     <div
       data-component="family-code-modal"
       className={css({
         position: 'fixed',
         inset: 0,
-        zIndex: Z_INDEX.MODAL + 100, // Above parent modals when nested
+        zIndex: Z_INDEX.TOOLTIP, // 15000 - above modals (10001) but below toasts (20000)
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -131,165 +111,10 @@ export function FamilyCodeDisplay({
           maxWidth: '400px',
           width: '90%',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          position: 'relative',
         })}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2
-          className={css({
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-            color: isDark ? 'white' : 'gray.800',
-            marginBottom: '8px',
-          })}
-        >
-          Share Access to {playerName}
-        </h2>
-        <p
-          className={css({
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.400' : 'gray.600',
-            marginBottom: '20px',
-          })}
-        >
-          Share this code with another parent to give them equal access to {playerName}&apos;s
-          practice data.
-        </p>
-
-        {isLoading ? (
-          <div
-            className={css({
-              textAlign: 'center',
-              padding: '20px',
-              color: isDark ? 'gray.400' : 'gray.500',
-            })}
-          >
-            Loading...
-          </div>
-        ) : error ? (
-          <div
-            className={css({
-              textAlign: 'center',
-              padding: '20px',
-              color: 'red.500',
-            })}
-          >
-            {error}
-          </div>
-        ) : (
-          <>
-            {/* Family Code Display */}
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px',
-              })}
-            >
-              <div
-                data-element="family-code"
-                className={css({
-                  flex: 1,
-                  padding: '16px',
-                  backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                  borderRadius: '8px',
-                  fontFamily: 'monospace',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  letterSpacing: '0.1em',
-                  color: isDark ? 'green.400' : 'green.600',
-                })}
-              >
-                {familyCode}
-              </div>
-              <button
-                type="button"
-                onClick={handleCopy}
-                data-action="copy-family-code"
-                className={css({
-                  padding: '12px 16px',
-                  backgroundColor: copied
-                    ? isDark
-                      ? 'green.700'
-                      : 'green.500'
-                    : isDark
-                      ? 'blue.700'
-                      : 'blue.500',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'medium',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    backgroundColor: copied
-                      ? isDark
-                        ? 'green.600'
-                        : 'green.600'
-                      : isDark
-                        ? 'blue.600'
-                        : 'blue.600',
-                  },
-                })}
-              >
-                {copied ? '✓ Copied' : 'Copy'}
-              </button>
-            </div>
-
-            {/* Instructions */}
-            <p
-              className={css({
-                fontSize: '0.8125rem',
-                color: isDark ? 'gray.500' : 'gray.500',
-                marginBottom: '20px',
-              })}
-            >
-              The other parent will enter this code on their device to link to {playerName}.
-            </p>
-
-            {/* Regenerate button */}
-            <button
-              type="button"
-              onClick={handleRegenerate}
-              disabled={isRegenerating}
-              data-action="regenerate-family-code"
-              className={css({
-                width: '100%',
-                padding: '10px',
-                backgroundColor: 'transparent',
-                color: isDark ? 'gray.400' : 'gray.500',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                borderRadius: '8px',
-                fontSize: '13px',
-                cursor: isRegenerating ? 'wait' : 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                },
-                _disabled: {
-                  opacity: 0.5,
-                  cursor: 'not-allowed',
-                },
-              })}
-            >
-              {isRegenerating ? 'Regenerating...' : 'Generate New Code'}
-            </button>
-            <p
-              className={css({
-                fontSize: '0.75rem',
-                color: isDark ? 'gray.600' : 'gray.400',
-                marginTop: '8px',
-                textAlign: 'center',
-              })}
-            >
-              Generating a new code will invalidate the old one
-            </p>
-          </>
-        )}
-
         {/* Close button */}
         <button
           type="button"
@@ -313,7 +138,100 @@ export function FamilyCodeDisplay({
         >
           ×
         </button>
+
+        {isLoading ? (
+          <div
+            className={css({
+              textAlign: 'center',
+              padding: '40px 20px',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
+            Loading...
+          </div>
+        ) : error ? (
+          <div
+            className={css({
+              textAlign: 'center',
+              padding: '40px 20px',
+              color: 'red.500',
+            })}
+          >
+            {error}
+          </div>
+        ) : familyCode ? (
+          <FamilyCodeContent
+            code={familyCode}
+            playerName={playerName}
+            onRegenerate={handleRegenerate}
+          />
+        ) : null}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Inner content when family code is loaded
+ */
+function FamilyCodeContent({
+  code,
+  playerName,
+  onRegenerate,
+}: {
+  code: string
+  playerName: string
+  onRegenerate: () => Promise<string>
+}) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  const shareCode = useShareCode({
+    type: 'family',
+    code,
+    onRegenerate,
+  })
+
+  return (
+    <div data-section="family-code-content">
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: isDark ? 'white' : 'gray.800',
+          marginBottom: '8px',
+        })}
+      >
+        Share Access to {playerName}
+      </h2>
+      <p
+        className={css({
+          fontSize: '0.875rem',
+          color: isDark ? 'gray.400' : 'gray.600',
+          marginBottom: '20px',
+        })}
+      >
+        Share this code or QR with another parent to give them equal access to {playerName}&apos;s
+        practice data.
+      </p>
+
+      <ShareCodePanel
+        shareCode={shareCode}
+        showRegenerate
+        className={css({ padding: '0', border: 'none' })}
+      />
+
+      {/* Regeneration note */}
+      <p
+        className={css({
+          fontSize: '0.75rem',
+          color: isDark ? 'gray.600' : 'gray.400',
+          marginTop: '12px',
+          textAlign: 'center',
+        })}
+      >
+        Generating a new code will invalidate the old one
+      </p>
     </div>
   )
 }

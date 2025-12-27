@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EnterClassroomButton } from '@/components/classroom'
+import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {
@@ -16,6 +17,7 @@ import {
   type SkillHealthSummary,
   SkillProgressChart,
   StartPracticeModal,
+  StudentActionMenu,
   type StudentWithProgress,
   VirtualizedSessionList,
 } from '@/components/practice'
@@ -2529,6 +2531,35 @@ export function DashboardClient({
   // This ensures the UI updates when teacher removes student from classroom
   usePlayerPresenceSocket(studentId)
 
+  // Classroom context for student actions
+  const { data: classroom } = useMyClassroom()
+  const { data: enrolledClassrooms = [] } = useEnrolledClassrooms(studentId)
+  const isEnrolled = enrolledClassrooms.length > 0
+
+  // Build StudentActionData with same structure as student tiles/quick look
+  const studentActionData = useMemo(
+    () => ({
+      id: player.id,
+      name: player.name,
+      isArchived: player.isArchived,
+      relationship: {
+        isMyChild: true, // On this student's dashboard, they're either your child or enrolled student you manage
+        isEnrolled,
+        isPresent: false, // TODO: Could check classroom presence if needed
+        enrollmentStatus: null,
+      },
+      activity: activeSession
+        ? {
+            status: 'practicing' as const,
+            sessionId: activeSession.id,
+          }
+        : {
+            status: 'idle' as const,
+          },
+    }),
+    [player.id, player.name, player.isArchived, isEnrolled, activeSession]
+  )
+
   // Handle incoming page transition (from QuickLook modal)
   const { hasTransition, isRevealing, signalReady } = useIncomingTransition()
 
@@ -2552,7 +2583,14 @@ export function DashboardClient({
 
   // Debug logging
   useEffect(() => {
-    console.log('[DashboardClient] hasTransition:', hasTransition, 'isRevealing:', isRevealing, 'contentOpacity:', contentOpacity)
+    console.log(
+      '[DashboardClient] hasTransition:',
+      hasTransition,
+      'isRevealing:',
+      isRevealing,
+      'contentOpacity:',
+      contentOpacity
+    )
   }, [hasTransition, isRevealing, contentOpacity])
 
   // Tab state - sync with URL
@@ -2738,14 +2776,17 @@ export function DashboardClient({
           })}
         >
           <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
-            {/* Classroom presence - allows entering enrolled classrooms for live practice */}
+            {/* Student actions & classroom presence */}
             <div
               className={css({
                 display: 'flex',
                 justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '0.75rem',
               })}
             >
+              <StudentActionMenu student={studentActionData} variant="inline" />
               <EnterClassroomButton playerId={studentId} playerName={player.name} />
             </div>
 

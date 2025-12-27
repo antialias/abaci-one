@@ -5,7 +5,7 @@ import { EnrollChildModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
+import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
 import { css } from '../../../styled-system/css'
 import { ACTION_DEFINITIONS } from './studentActions'
 
@@ -17,6 +17,8 @@ interface StudentActionMenuProps {
   student: StudentActionData
   /** Optional callback when observe session is clicked (for external handling) */
   onObserveSession?: (sessionId: string) => void
+  /** Positioning variant: 'card' for absolute positioning on cards, 'inline' for normal flow */
+  variant?: 'card' | 'inline'
 }
 
 /**
@@ -30,7 +32,11 @@ interface StudentActionMenuProps {
  * - Student status (practicing, present, enrolled, etc.)
  * - Relationship (is my child, etc.)
  */
-export function StudentActionMenu({ student, onObserveSession }: StudentActionMenuProps) {
+export function StudentActionMenu({
+  student,
+  onObserveSession,
+  variant = 'card',
+}: StudentActionMenuProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -60,9 +66,16 @@ export function StudentActionMenu({ student, onObserveSession }: StudentActionMe
             data-action="open-menu"
             onClick={(e) => e.stopPropagation()}
             className={css({
-              position: 'absolute',
-              top: '6px',
-              right: '38px',
+              // Card variant: absolute positioned overlay on cards
+              ...(variant === 'card' && {
+                position: 'absolute',
+                top: '6px',
+                right: '38px',
+              }),
+              // Inline variant: normal flow for toolbars
+              ...(variant === 'inline' && {
+                position: 'relative',
+              }),
               width: '28px',
               height: '28px',
               borderRadius: '6px',

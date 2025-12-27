@@ -140,7 +140,7 @@ export function SessionObserverModal({
           position: 'fixed',
           inset: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          zIndex: Z_INDEX.MODAL_BACKDROP,
+          zIndex: Z_INDEX.TOOLTIP, // 15000 - above parent modals when nested
         })}
         onClick={onClose}
       />
@@ -159,7 +159,7 @@ export function SessionObserverModal({
           backgroundColor: isDark ? 'gray.900' : 'white',
           borderRadius: '16px',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          zIndex: Z_INDEX.MODAL,
+          zIndex: Z_INDEX.TOOLTIP + 1, // Above the overlay
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
