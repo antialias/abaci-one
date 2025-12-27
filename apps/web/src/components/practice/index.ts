@@ -16,6 +16,7 @@ export {
   useHasPhysicalKeyboard,
   useIsTouchDevice,
 } from './hooks/useDeviceDetection'
+export { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
 export { NotesModal } from './NotesModal'
 // StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)
 export { NotesModal as StudentQuickLook } from './NotesModal'

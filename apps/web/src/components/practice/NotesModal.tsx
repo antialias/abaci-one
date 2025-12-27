@@ -2,17 +2,21 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { animated, useSpring } from '@react-spring/web'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { EnrollChildModal } from '@/components/classroom'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { EnrollChildModal, SessionObserverModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
 import { Z_INDEX } from '@/constants/zIndex'
 import { usePageTransition } from '@/contexts/PageTransitionContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useMyClassroom, type ActiveSessionInfo } from '@/hooks/useClassroom'
 import { usePlayerCurriculumQuery } from '@/hooks/usePlayerCurriculum'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
 import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentActivity, StudentRelationship, UnifiedStudent } from '@/types/student'
 import { css } from '../../../styled-system/css'
+import { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
 import { ACTION_DEFINITIONS } from './studentActions'
 
 // ============================================================================
@@ -112,6 +116,7 @@ function buildStudentActionData(student: StudentProp): StudentActionData {
  * - Zoom animation from source tile
  */
 export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModalProps) {
+  const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { startTransition } = usePageTransition()
@@ -123,6 +128,9 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   const [isSaving, setIsSaving] = useState(false)
   const [isHiddenForTransition, setIsHiddenForTransition] = useState(false)
 
+  // State for session observer modal
+  const [showSessionObserver, setShowSessionObserver] = useState(false)
+
   const modalRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -132,7 +140,29 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
 
   // ========== Additional data for Overview tab ==========
   const { data: curriculumData } = usePlayerCurriculumQuery(student.id)
+  const { data: sessionMode } = useSessionMode(student.id)
+  const { data: classroom } = useMyClassroom()
+  const isTeacher = !!classroom
   const updatePlayer = useUpdatePlayer() // For notes only
+
+  // Build ActiveSessionInfo for session observer (when student is practicing)
+  const activeSessionInfo = useMemo<ActiveSessionInfo | null>(() => {
+    const activityData = student.activity ?? null
+    if (activityData?.status !== 'practicing' || !activityData.sessionId) {
+      return null
+    }
+    const progress = activityData.sessionProgress
+    return {
+      sessionId: activityData.sessionId,
+      playerId: student.id,
+      startedAt: new Date().toISOString(), // Best guess - not stored in activity
+      currentPartIndex: 0,
+      currentSlotIndex: progress?.current ?? 0,
+      totalParts: 1,
+      totalProblems: progress?.total ?? 0,
+      completedProblems: progress?.current ?? 0,
+    }
+  }, [student.activity, student.id])
 
   // ========== Derived data ==========
   const relationship: StudentRelationship | null = student.relationship ?? null
@@ -157,6 +187,30 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   // Default tab based on content
   const defaultTab: TabId = hasOverviewContent ? 'overview' : 'notes'
 
+  // ========== Mini Banner Handlers ==========
+
+  const handleBannerStartPractice = useCallback(() => {
+    // Navigate to dashboard with startPractice param to open the modal there
+    // This ensures all required data (avgSecondsPerProblem, problemHistory, etc.) is available
+    onClose()
+    router.push(`/practice/${student.id}/dashboard?startPractice=true`)
+  }, [onClose, router, student.id])
+
+  const handleBannerResumePractice = useCallback(() => {
+    // Navigate to the active practice session
+    onClose()
+    router.push(`/practice/${student.id}`)
+  }, [onClose, router, student.id])
+
+  const handleBannerWatchSession = useCallback(() => {
+    // Open session observer modal
+    setShowSessionObserver(true)
+  }, [])
+
+  const handleSessionObserverClose = useCallback(() => {
+    setShowSessionObserver(false)
+  }, [])
+
   // ========== Effects ==========
 
   // Reset state when modal opens/closes or student changes
@@ -166,6 +220,7 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
       setIsEditing(false)
       setActiveTab(defaultTab)
       setIsHiddenForTransition(false)
+      setShowSessionObserver(false)
     }
   }, [isOpen, student.id, student.notes, defaultTab])
 
@@ -559,6 +614,16 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
           </button>
         </div>
 
+        {/* Mini Start Practice Banner - shows session mode or active session */}
+        <MiniStartPracticeBanner
+          sessionMode={sessionMode ?? null}
+          activity={activity}
+          isTeacher={isTeacher}
+          onStartPractice={handleBannerStartPractice}
+          onResumePractice={handleBannerResumePractice}
+          onWatchSession={handleBannerWatchSession}
+        />
+
         {/* Tab bar - only show if Overview has content */}
         {hasOverviewContent && (
           <div
@@ -640,6 +705,21 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
         playerId={student.id}
         playerName={student.name}
       />
+
+      {/* Session Observer Modal - for teachers watching student practice */}
+      {showSessionObserver && activeSessionInfo && classroom && (
+        <SessionObserverModal
+          isOpen={showSessionObserver}
+          onClose={handleSessionObserverClose}
+          session={activeSessionInfo}
+          student={{
+            name: student.name,
+            emoji: student.emoji,
+            color: student.color,
+          }}
+          observerId={classroom.teacherId}
+        />
+      )}
     </>
   )
 }
