@@ -8,6 +8,7 @@ import {
   PendingApprovalsSection,
   SessionObserverModal,
 } from '@/components/classroom'
+import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   getAvailableViews,
@@ -69,6 +70,10 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     classroomCode,
     classroomId,
   } = useUnifiedStudents(initialPlayers)
+
+  // Real-time WebSocket updates for classroom events
+  // This invalidates React Query caches when students enter/leave, sessions start/end, etc.
+  useClassroomSocket(classroomId)
 
   // View and filter state
   const availableViews = useMemo(() => getAvailableViews(isTeacher), [isTeacher])

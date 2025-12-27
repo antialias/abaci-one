@@ -73,8 +73,19 @@ export function ViewSelector({
       className={css({
         display: 'flex',
         gap: '8px',
-        flexWrap: 'wrap',
         alignItems: 'center',
+        // Mobile: horizontal scroll, Desktop: wrap
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        flexWrap: { base: 'nowrap', md: 'wrap' },
+        // Hide scrollbar but allow scroll
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
+        // Prevent text selection while swiping
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        // Add padding for mobile so chips don't touch edge when scrolling
+        paddingRight: { base: '8px', md: 0 },
       })}
     >
       {availableViews.map((viewId) => {
@@ -102,6 +113,9 @@ export function ViewSelector({
               fontSize: '13px',
               fontWeight: 'medium',
               transition: 'all 0.15s ease',
+              // Don't shrink on mobile scroll
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
               // Active state
               bg: isActive ? (isDark ? 'blue.900' : 'blue.100') : isDark ? 'gray.800' : 'white',
               borderColor: isActive

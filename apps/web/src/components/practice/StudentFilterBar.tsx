@@ -1,5 +1,6 @@
 'use client'
 
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -497,51 +498,107 @@ export function StudentFilterBar({
           </>
         )}
 
-        {/* Edit mode toggle button - always visible */}
-        <button
-          type="button"
-          onClick={() => onEditModeChange(!editMode)}
-          data-action="toggle-edit-mode"
-          data-status={editMode ? 'editing' : 'viewing'}
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            bg: editMode ? (isDark ? 'amber.900' : 'amber.100') : isDark ? 'gray.700' : 'gray.100',
-            border: '1px solid',
-            borderColor: editMode
-              ? isDark
-                ? 'amber.700'
-                : 'amber.300'
-              : isDark
-                ? 'gray.600'
-                : 'gray.300',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            color: editMode
-              ? isDark
-                ? 'amber.300'
-                : 'amber.700'
-              : isDark
-                ? 'gray.300'
-                : 'gray.700',
-            transition: 'all 0.15s ease',
-            _hover: {
-              borderColor: editMode
-                ? isDark
-                  ? 'amber.600'
-                  : 'amber.400'
-                : isDark
-                  ? 'gray.500'
-                  : 'gray.400',
-            },
-          })}
-        >
-          <span>{editMode ? '✓' : '✏️'}</span>
-          <span>{editMode ? 'Done' : 'Edit'}</span>
-        </button>
+        {/* More menu with edit mode and other options */}
+        {editMode ? (
+          /* Done button when in edit mode */
+          <button
+            type="button"
+            onClick={() => onEditModeChange(false)}
+            data-action="done-editing"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              bg: isDark ? 'amber.900' : 'amber.100',
+              border: '1px solid',
+              borderColor: isDark ? 'amber.700' : 'amber.300',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              color: isDark ? 'amber.300' : 'amber.700',
+              transition: 'all 0.15s ease',
+              _hover: {
+                borderColor: isDark ? 'amber.600' : 'amber.400',
+              },
+            })}
+          >
+            <span>✓</span>
+            <span>Done</span>
+          </button>
+        ) : (
+          /* More dropdown menu */
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                data-action="open-more-menu"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  bg: isDark ? 'gray.700' : 'gray.100',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: isDark ? 'gray.300' : 'gray.700',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    bg: isDark ? 'gray.600' : 'gray.200',
+                    borderColor: isDark ? 'gray.500' : 'gray.400',
+                  },
+                })}
+              >
+                ⋮
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={4}
+                className={css({
+                  minWidth: '180px',
+                  bg: isDark ? 'gray.800' : 'white',
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  boxShadow: 'lg',
+                  padding: '4px',
+                  zIndex: Z_INDEX.DROPDOWN,
+                })}
+              >
+                <DropdownMenu.Item
+                  data-action="select-multiple"
+                  onSelect={() => onEditModeChange(true)}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    color: isDark ? 'gray.200' : 'gray.700',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    _hover: {
+                      bg: isDark ? 'gray.700' : 'gray.100',
+                    },
+                    _focus: {
+                      bg: isDark ? 'gray.700' : 'gray.100',
+                    },
+                  })}
+                >
+                  <span>☑️</span>
+                  <span>Select Multiple</span>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        )}
 
         {/* Add Student FAB - only in normal mode */}
         {!editMode && onAddStudent && (

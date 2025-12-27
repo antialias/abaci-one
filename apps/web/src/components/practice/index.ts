@@ -17,6 +17,8 @@ export {
   useIsTouchDevice,
 } from './hooks/useDeviceDetection'
 export { NotesModal } from './NotesModal'
+// StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)
+export { NotesModal as StudentQuickLook } from './NotesModal'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export { PracticeFeedback } from './PracticeFeedback'

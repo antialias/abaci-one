@@ -1,7 +1,7 @@
 'use client'
 
 import * as Checkbox from '@radix-ui/react-checkbox'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/types/player'
 import { css } from '../../../styled-system/css'
@@ -26,6 +26,78 @@ import {
   transitionNormal,
   wrap,
 } from './styles'
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Find the next student in a given direction based on bounding rects.
+ * Used for arrow key navigation in the QuickLook modal.
+ */
+function findNextStudent(
+  currentId: string,
+  direction: 'up' | 'down' | 'left' | 'right',
+  cardRefs: Map<string, HTMLDivElement>
+): { studentId: string; bounds: DOMRect } | null {
+  const currentRef = cardRefs.get(currentId)
+  if (!currentRef) return null
+
+  const currentRect = currentRef.getBoundingClientRect()
+  const currentCenterX = currentRect.left + currentRect.width / 2
+  const currentCenterY = currentRect.top + currentRect.height / 2
+
+  let bestCandidate: { studentId: string; bounds: DOMRect; distance: number } | null = null
+
+  for (const [studentId, ref] of cardRefs) {
+    if (studentId === currentId) continue
+
+    const rect = ref.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+
+    // Check if this card is in the correct direction
+    let isValidDirection = false
+    switch (direction) {
+      case 'left':
+        isValidDirection = centerX < currentCenterX - 10
+        break
+      case 'right':
+        isValidDirection = centerX > currentCenterX + 10
+        break
+      case 'up':
+        isValidDirection = centerY < currentCenterY - 10
+        break
+      case 'down':
+        isValidDirection = centerY > currentCenterY + 10
+        break
+    }
+
+    if (!isValidDirection) continue
+
+    // Calculate distance with preference for the primary direction
+    let distance: number
+    if (direction === 'left' || direction === 'right') {
+      // Horizontal: prioritize same row (small Y difference)
+      const yPenalty = Math.abs(centerY - currentCenterY) * 2
+      distance = Math.abs(centerX - currentCenterX) + yPenalty
+    } else {
+      // Vertical: prioritize same column (small X difference)
+      const xPenalty = Math.abs(centerX - currentCenterX) * 2
+      distance = Math.abs(centerY - currentCenterY) + xPenalty
+    }
+
+    if (!bestCandidate || distance < bestCandidate.distance) {
+      bestCandidate = { studentId, bounds: rect, distance }
+    }
+  }
+
+  return bestCandidate ? { studentId: bestCandidate.studentId, bounds: bestCandidate.bounds } : null
+}
+
+// ============================================================================
+// Types
+// ============================================================================
 
 /**
  * Intervention data for students needing attention
@@ -59,6 +131,8 @@ interface StudentCardProps {
   isSelected?: boolean
   /** Callback when observe session is clicked */
   onObserveSession?: (sessionId: string) => void
+  /** Callback to register card ref for keyboard navigation */
+  onRegisterRef?: (studentId: string, ref: HTMLDivElement | null) => void
 }
 
 /**
@@ -72,12 +146,25 @@ function StudentCard({
   editMode,
   isSelected,
   onObserveSession,
+  onRegisterRef,
 }: StudentCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const levelLabel = student.currentLevel ? `Lv.${student.currentLevel}` : 'New'
   const cardRef = useRef<HTMLDivElement>(null)
   const isArchived = student.isArchived ?? false
+
+  // Register ref for keyboard navigation
+  useEffect(() => {
+    if (onRegisterRef && cardRef.current) {
+      onRegisterRef(student.id, cardRef.current)
+    }
+    return () => {
+      if (onRegisterRef) {
+        onRegisterRef(student.id, null)
+      }
+    }
+  }, [student.id, onRegisterRef])
 
   // Check for unified student fields (relationship/activity) at runtime
   // These are present when using the unified student list
@@ -623,6 +710,27 @@ export function StudentSelector({
   const [selectedStudent, setSelectedStudent] = useState<StudentWithProgress | null>(null)
   const [sourceBounds, setSourceBounds] = useState<DOMRect | null>(null)
 
+  // Ref map for keyboard navigation
+  const cardRefsRef = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  // Student lookup for quick access by ID
+  const studentMap = useRef<Map<string, StudentWithProgress>>(new Map())
+  useEffect(() => {
+    studentMap.current.clear()
+    for (const student of students) {
+      studentMap.current.set(student.id, student)
+    }
+  }, [students])
+
+  // Register card ref callback
+  const handleRegisterRef = useCallback((studentId: string, ref: HTMLDivElement | null) => {
+    if (ref) {
+      cardRefsRef.current.set(studentId, ref)
+    } else {
+      cardRefsRef.current.delete(studentId)
+    }
+  }, [])
+
   const handleOpenQuickLook = useCallback((student: StudentWithProgress, bounds: DOMRect) => {
     setSelectedStudent(student)
     setSourceBounds(bounds)
@@ -632,6 +740,54 @@ export function StudentSelector({
   const handleCloseModal = useCallback(() => {
     setModalOpen(false)
   }, [])
+
+  // Keyboard navigation when modal is open
+  useEffect(() => {
+    if (!modalOpen || !selectedStudent) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle arrow keys
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
+
+      // Don't interfere with text input (notes editing)
+      if (
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLInputElement
+      ) {
+        return
+      }
+
+      // Don't interfere with dropdown menu navigation (Radix UI)
+      if (
+        e.target instanceof HTMLElement &&
+        (e.target.closest('[data-radix-menu-content]') ||
+          e.target.getAttribute('role') === 'menuitem' ||
+          e.target.getAttribute('role') === 'menu')
+      ) {
+        return
+      }
+
+      e.preventDefault()
+
+      const direction = e.key.replace('Arrow', '').toLowerCase() as
+        | 'up'
+        | 'down'
+        | 'left'
+        | 'right'
+
+      const next = findNextStudent(selectedStudent.id, direction, cardRefsRef.current)
+      if (next) {
+        const nextStudent = studentMap.current.get(next.studentId)
+        if (nextStudent) {
+          setSelectedStudent(nextStudent)
+          setSourceBounds(next.bounds)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [modalOpen, selectedStudent])
 
   return (
     <>
@@ -671,6 +827,7 @@ export function StudentSelector({
               editMode={editMode}
               isSelected={selectedIds.has(student.id)}
               onObserveSession={onObserveSession}
+              onRegisterRef={handleRegisterRef}
             />
           ))}
 

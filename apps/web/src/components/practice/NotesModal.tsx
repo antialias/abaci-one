@@ -2,6 +2,7 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { animated, useSpring } from '@react-spring/web'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EnrollChildModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
@@ -113,12 +114,14 @@ function buildStudentActionData(student: StudentProp): StudentActionData {
 export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModalProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const router = useRouter()
 
   // ========== Internal state (notes editing only) ==========
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(student.notes ?? '')
   const [isSaving, setIsSaving] = useState(false)
+  const [isExpandingToFullscreen, setIsExpandingToFullscreen] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -130,6 +133,12 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   // ========== Additional data for Overview tab ==========
   const { data: curriculumData } = usePlayerCurriculumQuery(student.id)
   const updatePlayer = useUpdatePlayer() // For notes only
+
+  // ========== Navigation handler ==========
+  const handleOpenDashboard = useCallback(() => {
+    // Trigger expand-to-fullscreen animation, navigation happens onRest
+    setIsExpandingToFullscreen(true)
+  }, [])
 
   // ========== Derived data ==========
   const relationship: StudentRelationship | null = student.relationship ?? null
@@ -162,6 +171,7 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
       setEditedNotes(student.notes ?? '')
       setIsEditing(false)
       setActiveTab(defaultTab)
+      setIsExpandingToFullscreen(false)
     }
   }, [isOpen, student.id, student.notes, defaultTab])
 
@@ -201,8 +211,9 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800
   const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600
 
-  const modalWidth = Math.min(420, windowWidth - 40)
-  const modalHeight = 400
+  // Responsive modal dimensions
+  const modalWidth = Math.min(420, windowWidth - 32)
+  const modalHeight = Math.min(400, windowHeight - 100) // Leave room for virtual keyboard on mobile
   const targetX = (windowWidth - modalWidth) / 2
   const targetY = (windowHeight - modalHeight) / 2
 
@@ -210,6 +221,44 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   const sourceY = sourceBounds?.top ?? targetY
   const sourceWidth = sourceBounds?.width ?? modalWidth
   const sourceHeight = sourceBounds?.height ?? modalHeight
+
+  // Determine animation target based on state
+  const getAnimationTarget = () => {
+    if (isExpandingToFullscreen) {
+      // Expand to fullscreen
+      return {
+        x: 0,
+        y: 0,
+        width: windowWidth,
+        height: windowHeight,
+        opacity: 1,
+        scale: 1,
+        borderRadius: 0,
+      }
+    }
+    if (isOpen) {
+      // Normal open state
+      return {
+        x: targetX,
+        y: targetY,
+        width: modalWidth,
+        height: modalHeight,
+        opacity: 1,
+        scale: 1,
+        borderRadius: 16,
+      }
+    }
+    // Closing - return to source
+    return {
+      x: sourceX,
+      y: sourceY,
+      width: sourceWidth,
+      height: sourceHeight,
+      opacity: 0,
+      scale: 0.95,
+      borderRadius: 16,
+    }
+  }
 
   const springProps = useSpring({
     from: {
@@ -219,17 +268,19 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
       height: sourceHeight,
       opacity: 0,
       scale: 0.95,
+      borderRadius: 16,
     },
-    to: {
-      x: isOpen ? targetX : sourceX,
-      y: isOpen ? targetY : sourceY,
-      width: isOpen ? modalWidth : sourceWidth,
-      height: isOpen ? modalHeight : sourceHeight,
-      opacity: isOpen ? 1 : 0,
-      scale: isOpen ? 1 : 0.95,
-    },
+    to: getAnimationTarget(),
     reset: isOpening,
-    config: { tension: 300, friction: 30 },
+    config: isExpandingToFullscreen
+      ? { tension: 400, friction: 30 } // Faster for fullscreen expand
+      : { tension: 300, friction: 30 },
+    onRest: () => {
+      if (isExpandingToFullscreen) {
+        // Navigate after animation completes
+        router.push(`/practice/${student.id}/dashboard`)
+      }
+    },
   })
 
   const backdropSpring = useSpring({
@@ -292,17 +343,22 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
           transform: springProps.scale.to((s) => `scale(${s})`),
           transformOrigin: 'center center',
           zIndex: Z_INDEX.MODAL,
-          pointerEvents: isOpen ? 'auto' : 'none',
+          pointerEvents: isOpen || isExpandingToFullscreen ? 'auto' : 'none',
+          borderRadius: springProps.borderRadius.to((r) => `${r}px`),
         }}
         className={css({
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: '16px',
           overflow: 'hidden',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: isExpandingToFullscreen ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           backgroundColor: isDark ? 'gray.800' : 'white',
         })}
       >
+        {/* Show dashboard shell during expand transition */}
+        {isExpandingToFullscreen ? (
+          <DashboardShell student={student} isDark={isDark} />
+        ) : (
+          <>
         {/* Header */}
         <div
           data-section="header"
@@ -349,6 +405,31 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
               {student.name}
             </h2>
           </div>
+
+          {/* Open full dashboard button */}
+          <button
+            type="button"
+            data-action="open-dashboard"
+            onClick={handleOpenDashboard}
+            title="Open full dashboard"
+            className={css({
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              _hover: { backgroundColor: 'rgba(255, 255, 255, 0.3)' },
+            })}
+          >
+            ⛶
+          </button>
 
           {/* Overflow menu - uses shared actions hook */}
           <DropdownMenu.Root>
@@ -567,6 +648,8 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
             />
           )}
         </div>
+          </>
+        )}
       </animated.div>
 
       {/* Sub-modals - managed by shared hook */}
@@ -1052,4 +1135,157 @@ function separatorStyle(isDark: boolean) {
     backgroundColor: isDark ? 'gray.700' : 'gray.200',
     margin: '4px 0',
   })
+}
+
+// ============================================================================
+// Dashboard Shell Component (shown during expand transition)
+// ============================================================================
+
+interface DashboardShellProps {
+  student: { name: string; emoji: string; color: string }
+  isDark: boolean
+}
+
+/**
+ * A skeleton shell that matches the dashboard layout.
+ * Shown during the expand-to-fullscreen transition for a seamless morph effect.
+ */
+function DashboardShell({ student, isDark }: DashboardShellProps) {
+  return (
+    <div
+      data-component="dashboard-shell"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        backgroundColor: isDark ? 'gray.900' : 'gray.50',
+      })}
+    >
+      {/* Nav bar shell */}
+      <div
+        className={css({
+          height: '56px',
+          backgroundColor: isDark ? 'gray.800' : 'white',
+          borderBottom: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 16px',
+          gap: '12px',
+        })}
+      >
+        {/* Back button placeholder */}
+        <div
+          className={css({
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        />
+        {/* Avatar */}
+        <div
+          className={css({
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.25rem',
+          })}
+          style={{ backgroundColor: student.color }}
+        >
+          {student.emoji}
+        </div>
+        {/* Name */}
+        <span
+          className={css({
+            fontSize: '1.125rem',
+            fontWeight: 'semibold',
+            color: isDark ? 'gray.100' : 'gray.900',
+          })}
+        >
+          {student.name}
+        </span>
+      </div>
+
+      {/* Sub-nav / tabs shell */}
+      <div
+        className={css({
+          height: '48px',
+          backgroundColor: isDark ? 'gray.800' : 'white',
+          borderBottom: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 16px',
+          gap: '24px',
+        })}
+      >
+        {['Overview', 'Skills', 'History'].map((tab, i) => (
+          <div
+            key={tab}
+            className={css({
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              borderBottom: '2px solid',
+              borderColor: i === 0 ? (isDark ? 'blue.400' : 'blue.500') : 'transparent',
+              color: i === 0 ? (isDark ? 'blue.400' : 'blue.600') : isDark ? 'gray.400' : 'gray.600',
+              fontSize: '0.875rem',
+              fontWeight: i === 0 ? 'semibold' : 'normal',
+            })}
+          >
+            {tab}
+          </div>
+        ))}
+      </div>
+
+      {/* Content area with skeleton */}
+      <div
+        className={css({
+          flex: 1,
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+          overflow: 'hidden',
+        })}
+      >
+        {/* Stats cards skeleton */}
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '16px',
+          })}
+        >
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={css({
+                height: '80px',
+                borderRadius: '12px',
+                backgroundColor: isDark ? 'gray.800' : 'white',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+              })}
+            />
+          ))}
+        </div>
+
+        {/* Main content skeleton */}
+        <div
+          className={css({
+            flex: 1,
+            borderRadius: '12px',
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        />
+      </div>
+    </div>
+  )
 }
