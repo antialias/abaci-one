@@ -2552,6 +2552,20 @@ export function DashboardClient({
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
 
+  // Auto-open start practice modal if startPractice query param is set
+  useEffect(() => {
+    if (searchParams.get('startPractice') === 'true') {
+      setShowStartPracticeModal(true)
+      // Remove the param from URL to prevent re-triggering
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('startPractice')
+      const newUrl = params.toString()
+        ? `/practice/${studentId}/dashboard?${params.toString()}`
+        : `/practice/${studentId}/dashboard`
+      router.replace(newUrl, { scroll: false })
+    }
+  }, [searchParams, router, studentId])
+
   // Notes state (local, updated when saved)
   const [currentNotes, setCurrentNotes] = useState<string | null>(player.notes ?? null)
 

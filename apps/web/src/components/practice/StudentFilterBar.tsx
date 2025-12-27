@@ -10,8 +10,19 @@ import {
   type SkillSearchResult,
 } from '@/utils/skillSearch'
 import { css } from '../../../styled-system/css'
+import { ViewSelector, type StudentView } from './ViewSelector'
 
 interface StudentFilterBarProps {
+  /** Currently selected view */
+  currentView?: StudentView
+  /** Callback when view changes */
+  onViewChange?: (view: StudentView) => void
+  /** Views to show (filtered by user type) */
+  availableViews?: StudentView[]
+  /** Counts per view */
+  viewCounts?: Partial<Record<StudentView, number>>
+  /** Classroom code for teachers to share */
+  classroomCode?: string
   /** Current search query */
   searchQuery: string
   /** Callback when search query changes */
@@ -49,6 +60,11 @@ interface StudentFilterBarProps {
  * - Edit mode toggle button
  */
 export function StudentFilterBar({
+  currentView,
+  onViewChange,
+  availableViews,
+  viewCounts,
+  classroomCode,
   searchQuery,
   onSearchChange,
   skillFilters,
@@ -148,7 +164,64 @@ export function StudentFilterBar({
         zIndex: Z_INDEX.FILTER_BAR,
       })}
     >
-      {/* Top row: Search/bulk actions and buttons */}
+      {/* View selector row - only show if views are available */}
+      {currentView && onViewChange && availableViews && availableViews.length > 0 && (
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+          })}
+        >
+          <ViewSelector
+            currentView={currentView}
+            onViewChange={onViewChange}
+            availableViews={availableViews}
+            viewCounts={viewCounts}
+          />
+
+          {/* Classroom code - teachers only */}
+          {classroomCode && (
+            <button
+              type="button"
+              data-element="classroom-code"
+              onClick={() => {
+                navigator.clipboard.writeText(classroomCode)
+              }}
+              title="Click to copy classroom code"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                bg: isDark ? 'gray.700' : 'gray.100',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: isDark ? 'gray.300' : 'gray.600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  bg: isDark ? 'gray.600' : 'gray.200',
+                  borderColor: isDark ? 'gray.500' : 'gray.400',
+                },
+                _active: {
+                  transform: 'scale(0.98)',
+                },
+              })}
+            >
+              <span>📋</span>
+              <span>{classroomCode}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Search/bulk actions and buttons row */}
       <div
         className={css({
           display: 'flex',

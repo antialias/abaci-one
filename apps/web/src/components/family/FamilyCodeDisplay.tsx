@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
@@ -114,7 +115,7 @@ export function FamilyCodeDisplay({
       className={css({
         position: 'fixed',
         inset: 0,
-        zIndex: 10000,
+        zIndex: Z_INDEX.MODAL + 100, // Above parent modals when nested
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

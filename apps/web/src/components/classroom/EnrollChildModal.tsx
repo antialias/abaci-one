@@ -125,7 +125,7 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(4px)',
-            zIndex: Z_INDEX.MODAL,
+            zIndex: Z_INDEX.MODAL + 100, // Above parent modals when nested
             transition: 'opacity 0.2s ease-out',
             opacity: isClosing ? 0 : 1,
           })}
@@ -145,7 +145,7 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
             width: 'calc(100% - 2rem)',
             maxWidth: '420px',
             boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
-            zIndex: Z_INDEX.MODAL + 1,
+            zIndex: Z_INDEX.MODAL + 101, // Above parent modals when nested
             outline: 'none',
             transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
             opacity: isClosing ? 0 : 1,

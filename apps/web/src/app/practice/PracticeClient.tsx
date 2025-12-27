@@ -2,20 +2,32 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
-import { Z_INDEX } from '@/constants/zIndex'
 import {
   AddStudentByFamilyCodeModal,
-  ClassroomDashboard,
   CreateClassroomForm,
   PendingApprovalsSection,
+  SessionObserverModal,
 } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
-import { StudentFilterBar } from '@/components/practice/StudentFilterBar'
-import { StudentSelector, type StudentWithProgress } from '@/components/practice'
+import {
+  getAvailableViews,
+  getDefaultView,
+  StudentFilterBar,
+  StudentSelector,
+  type StudentView,
+  type StudentWithProgress,
+} from '@/components/practice'
+import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useMyClassroom } from '@/hooks/useClassroom'
 import { useParentSocket } from '@/hooks/useParentSocket'
-import { usePlayersWithSkillData, useUpdatePlayer } from '@/hooks/useUserPlayers'
+import {
+  computeViewCounts,
+  filterStudentsByView,
+  useUnifiedStudents,
+} from '@/hooks/useUnifiedStudents'
+import { useUpdatePlayer } from '@/hooks/useUserPlayers'
+import type { UnifiedStudent } from '@/types/student'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
 import { css } from '../../../styled-system/css'
@@ -50,7 +62,18 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   useParentSocket(isParent ? userId : undefined)
   const [showCreateClassroom, setShowCreateClassroom] = useState(false)
 
-  // Filter state
+  // Unified student data - merges children, enrolled, present, and active sessions
+  const {
+    students: unifiedStudents,
+    isTeacher,
+    classroomCode,
+    classroomId,
+  } = useUnifiedStudents(initialPlayers)
+
+  // View and filter state
+  const availableViews = useMemo(() => getAvailableViews(isTeacher), [isTeacher])
+  const defaultView = useMemo(() => getDefaultView(isTeacher), [isTeacher])
+  const [currentView, setCurrentView] = useState<StudentView>(defaultView)
   const [searchQuery, setSearchQuery] = useState('')
   const [skillFilters, setSkillFilters] = useState<string[]>([])
   const [showArchived, setShowArchived] = useState(false)
@@ -63,10 +86,12 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   // Add student modal state (teacher mode - add by family code)
   const [showAddByFamilyCode, setShowAddByFamilyCode] = useState(false)
 
-  // Use React Query with initial data from server for instant render + live updates
-  const { data: players = initialPlayers } = usePlayersWithSkillData({
-    initialData: initialPlayers,
-  })
+  // Session observation state
+  const [observingStudent, setObservingStudent] = useState<UnifiedStudent | null>(null)
+
+  // Use unified students (already fetched above) as the main data source
+  // Cast to maintain compatibility with existing grouping functions
+  const players = unifiedStudents as StudentWithSkillData[]
 
   // Mutation for bulk updates
   const updatePlayer = useUpdatePlayer()
@@ -74,10 +99,28 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   // Count archived students
   const archivedCount = useMemo(() => players.filter((p) => p.isArchived).length, [players])
 
-  // Filter and group students
+  // Compute view counts from unified students
+  const viewCounts = useMemo(
+    () => computeViewCounts(unifiedStudents, isTeacher),
+    [unifiedStudents, isTeacher]
+  )
+
+  // Filter students by view first, then apply search/skill filters
+  const viewFilteredStudents = useMemo(
+    () => filterStudentsByView(unifiedStudents, currentView),
+    [unifiedStudents, currentView]
+  )
+
+  // Apply search and skill filters on top of view filter
   const filteredStudents = useMemo(
-    () => filterStudents(players, searchQuery, skillFilters, showArchived),
-    [players, searchQuery, skillFilters, showArchived]
+    () =>
+      filterStudents(
+        viewFilteredStudents as StudentWithSkillData[],
+        searchQuery,
+        skillFilters,
+        showArchived
+      ),
+    [viewFilteredStudents, searchQuery, skillFilters, showArchived]
   )
 
   const groupedStudents = useMemo(() => groupStudents(filteredStudents), [filteredStudents])
@@ -183,14 +226,30 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     }
   }, [])
 
-  // Handle add student
+  // Handle add student - different modal for teachers vs parents
   const handleAddStudent = useCallback(() => {
-    setShowAddModal(true)
-  }, [])
+    if (isTeacher) {
+      setShowAddByFamilyCode(true)
+    } else {
+      setShowAddModal(true)
+    }
+  }, [isTeacher])
 
   const handleCloseAddModal = useCallback(() => {
     setShowAddModal(false)
   }, [])
+
+  // Handle session observation - find the student and open observer modal
+  const handleObserveSession = useCallback(
+    (sessionId: string) => {
+      // Find the student with this session
+      const student = unifiedStudents.find((s) => s.activity?.sessionId === sessionId)
+      if (student) {
+        setObservingStudent(student)
+      }
+    },
+    [unifiedStudents]
+  )
 
   // Count archived students that match filters but are hidden
   const hiddenArchivedCount = useMemo(() => {
@@ -207,47 +266,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   const handleCloseCreateClassroom = useCallback(() => {
     setShowCreateClassroom(false)
   }, [])
-
-  // If user is a teacher, show the classroom dashboard with filter bar
-  if (classroom) {
-    return (
-      <PageWithNav>
-        <main
-          data-component="practice-page"
-          className={css({
-            minHeight: '100vh',
-            backgroundColor: isDark ? 'gray.900' : 'gray.50',
-            paddingTop: '160px', // Nav height (80px) + Filter bar height (~80px)
-          })}
-        >
-          {/* Filter Bar for teachers */}
-          <StudentFilterBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            skillFilters={skillFilters}
-            onSkillFiltersChange={setSkillFilters}
-            showArchived={showArchived}
-            onShowArchivedChange={setShowArchived}
-            editMode={editMode}
-            onEditModeChange={handleEditModeChange}
-            archivedCount={0}
-            onAddStudent={() => setShowAddByFamilyCode(true)}
-            selectedCount={selectedIds.size}
-            onBulkArchive={undefined}
-          />
-
-          <ClassroomDashboard classroom={classroom} ownChildren={players} viewerId={viewerId} />
-
-          {/* Add Student by Family Code Modal */}
-          <AddStudentByFamilyCodeModal
-            isOpen={showAddByFamilyCode}
-            onClose={() => setShowAddByFamilyCode(false)}
-            classroomId={classroom.id}
-          />
-        </main>
-      </PageWithNav>
-    )
-  }
 
   // Show create classroom modal if requested
   if (showCreateClassroom) {
@@ -290,6 +308,11 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
       >
         {/* Filter Bar */}
         <StudentFilterBar
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          availableViews={availableViews}
+          viewCounts={viewCounts}
+          classroomCode={classroomCode}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           skillFilters={skillFilters}
@@ -429,6 +452,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
               <StudentSelector
                 students={studentsNeedingAttention as StudentWithProgress[]}
                 onSelectStudent={handleSelectStudent}
+                onObserveSession={handleObserveSession}
                 title=""
                 editMode={editMode}
                 selectedIds={selectedIds}
@@ -439,50 +463,15 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
 
           {/* Grouped Student List */}
           {filteredGroupedStudents.length === 0 && studentsNeedingAttention.length === 0 ? (
-            <div
-              className={css({
-                textAlign: 'center',
-                padding: '3rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-              })}
-            >
-              {searchQuery || skillFilters.length > 0 ? (
-                'No students match your filters'
-              ) : showArchived ? (
-                'No archived students'
-              ) : (
-                <div
-                  className={css({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '16px',
-                  })}
-                >
-                  <span>No students yet.</span>
-                  <button
-                    type="button"
-                    onClick={handleAddStudent}
-                    data-action="add-first-student"
-                    className={css({
-                      padding: '12px 24px',
-                      bg: isDark ? 'green.700' : 'green.500',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: 'medium',
-                      cursor: 'pointer',
-                      _hover: {
-                        bg: isDark ? 'green.600' : 'green.600',
-                      },
-                    })}
-                  >
-                    + Add Your First Student
-                  </button>
-                </div>
-              )}
-            </div>
+            <ViewEmptyState
+              currentView={currentView}
+              classroomCode={classroomCode}
+              searchQuery={searchQuery}
+              skillFilters={skillFilters}
+              showArchived={showArchived}
+              onAddStudent={handleAddStudent}
+              isDark={isDark}
+            />
           ) : (
             <div
               data-component="grouped-students"
@@ -567,6 +556,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
                               <StudentSelector
                                 students={category.students as StudentWithProgress[]}
                                 onSelectStudent={handleSelectStudent}
+                                onObserveSession={handleObserveSession}
                                 title=""
                                 editMode={editMode}
                                 selectedIds={selectedIds}
@@ -654,8 +644,338 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
         </div>
       </main>
 
-      {/* Add Student Modal */}
+      {/* Add Student Modal (Parent - create new child) */}
       <AddStudentModal isOpen={showAddModal} onClose={handleCloseAddModal} isDark={isDark} />
+
+      {/* Add Student Modal (Teacher - add by family code) */}
+      {classroomId && (
+        <AddStudentByFamilyCodeModal
+          isOpen={showAddByFamilyCode}
+          onClose={() => setShowAddByFamilyCode(false)}
+          classroomId={classroomId}
+        />
+      )}
+
+      {/* Session Observer Modal */}
+      {observingStudent && observingStudent.activity?.sessionId && (
+        <SessionObserverModal
+          isOpen={!!observingStudent}
+          onClose={() => setObservingStudent(null)}
+          session={{
+            sessionId: observingStudent.activity.sessionId,
+            playerId: observingStudent.id,
+            completedProblems: observingStudent.activity.sessionProgress?.current ?? 0,
+            totalProblems: observingStudent.activity.sessionProgress?.total ?? 0,
+            // These fields are required by the type but not used by the modal
+            startedAt: new Date().toISOString(),
+            currentPartIndex: 0,
+            currentSlotIndex: 0,
+            totalParts: 1,
+          }}
+          student={{
+            name: observingStudent.name,
+            emoji: observingStudent.emoji,
+            color: observingStudent.color,
+          }}
+          observerId={viewerId}
+        />
+      )}
     </PageWithNav>
   )
+}
+
+/**
+ * ViewEmptyState - View-specific empty states
+ */
+interface ViewEmptyStateProps {
+  currentView: StudentView
+  classroomCode?: string
+  searchQuery: string
+  skillFilters: string[]
+  showArchived: boolean
+  onAddStudent: () => void
+  isDark: boolean
+}
+
+function ViewEmptyState({
+  currentView,
+  classroomCode,
+  searchQuery,
+  skillFilters,
+  showArchived,
+  onAddStudent,
+  isDark,
+}: ViewEmptyStateProps) {
+  // Filter-based empty state takes priority
+  if (searchQuery || skillFilters.length > 0) {
+    return (
+      <div
+        data-element="empty-state"
+        data-reason="filters"
+        className={css({
+          textAlign: 'center',
+          padding: '3rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        No students match your filters
+      </div>
+    )
+  }
+
+  if (showArchived) {
+    return (
+      <div
+        data-element="empty-state"
+        data-reason="no-archived"
+        className={css({
+          textAlign: 'center',
+          padding: '3rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        No archived students
+      </div>
+    )
+  }
+
+  // View-specific empty states
+  switch (currentView) {
+    case 'in-classroom':
+      return (
+        <div
+          data-element="empty-state"
+          data-reason="no-students-in-classroom"
+          className={css({
+            textAlign: 'center',
+            padding: '3rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '3rem',
+            })}
+          >
+            🏫
+          </div>
+          <div>
+            <h3
+              className={css({
+                fontSize: '1.25rem',
+                fontWeight: 'semibold',
+                color: isDark ? 'gray.200' : 'gray.700',
+                marginBottom: '8px',
+              })}
+            >
+              No students in classroom
+            </h3>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '16px',
+              })}
+            >
+              Students can enter your classroom using the code below
+            </p>
+          </div>
+          {classroomCode && (
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                backgroundColor: isDark ? 'gray.800' : 'gray.100',
+                borderRadius: '8px',
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                letterSpacing: '0.2em',
+                color: isDark ? 'blue.400' : 'blue.600',
+              })}
+            >
+              {classroomCode}
+            </div>
+          )}
+        </div>
+      )
+
+    case 'enrolled':
+      return (
+        <div
+          data-element="empty-state"
+          data-reason="no-enrolled-students"
+          className={css({
+            textAlign: 'center',
+            padding: '3rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '3rem',
+            })}
+          >
+            📋
+          </div>
+          <div>
+            <h3
+              className={css({
+                fontSize: '1.25rem',
+                fontWeight: 'semibold',
+                color: isDark ? 'gray.200' : 'gray.700',
+                marginBottom: '8px',
+              })}
+            >
+              No enrolled students
+            </h3>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '8px',
+              })}
+            >
+              Parents can enroll their children using your classroom code
+            </p>
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.500' : 'gray.400',
+              })}
+            >
+              Or you can add students directly using their family code
+            </p>
+          </div>
+          {classroomCode && (
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                backgroundColor: isDark ? 'gray.800' : 'gray.100',
+                borderRadius: '8px',
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                letterSpacing: '0.2em',
+                color: isDark ? 'blue.400' : 'blue.600',
+              })}
+            >
+              {classroomCode}
+            </div>
+          )}
+        </div>
+      )
+
+    case 'my-children':
+      return (
+        <div
+          data-element="empty-state"
+          data-reason="no-children"
+          className={css({
+            textAlign: 'center',
+            padding: '3rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '3rem',
+            })}
+          >
+            👶
+          </div>
+          <div>
+            <h3
+              className={css({
+                fontSize: '1.25rem',
+                fontWeight: 'semibold',
+                color: isDark ? 'gray.200' : 'gray.700',
+                marginBottom: '8px',
+              })}
+            >
+              No children added yet
+            </h3>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '16px',
+              })}
+            >
+              Add a student to get started with daily practice
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onAddStudent}
+            data-action="add-first-student"
+            className={css({
+              padding: '12px 24px',
+              bg: isDark ? 'green.700' : 'green.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              _hover: {
+                bg: isDark ? 'green.600' : 'green.600',
+              },
+            })}
+          >
+            + Add Your First Student
+          </button>
+        </div>
+      )
+
+    case 'all':
+    default:
+      return (
+        <div
+          data-element="empty-state"
+          data-reason="no-students"
+          className={css({
+            textAlign: 'center',
+            padding: '3rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          })}
+        >
+          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>No students yet.</span>
+          <button
+            type="button"
+            onClick={onAddStudent}
+            data-action="add-first-student"
+            className={css({
+              padding: '12px 24px',
+              bg: isDark ? 'green.700' : 'green.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              _hover: {
+                bg: isDark ? 'green.600' : 'green.600',
+              },
+            })}
+          >
+            + Add Your First Student
+          </button>
+        </div>
+      )
+  }
 }

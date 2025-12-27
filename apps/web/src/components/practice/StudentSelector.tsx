@@ -3,10 +3,10 @@
 import * as Checkbox from '@radix-ui/react-checkbox'
 import { useCallback, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { Player } from '@/types/player'
 import { css } from '../../../styled-system/css'
 import { NotesModal } from './NotesModal'
+import { StudentActionMenu } from './StudentActionMenu'
 import {
   avatarStyles,
   badgeStyles,
@@ -54,31 +54,62 @@ export interface StudentWithProgress extends Player {
 interface StudentCardProps {
   student: StudentWithProgress
   onSelect: (student: StudentWithProgress) => void
-  onOpenNotes: (student: StudentWithProgress, bounds: DOMRect) => void
+  onOpenQuickLook: (student: StudentWithProgress, bounds: DOMRect) => void
   editMode?: boolean
   isSelected?: boolean
+  /** Callback when observe session is clicked */
+  onObserveSession?: (sessionId: string) => void
 }
 
 /**
  * Individual student card showing avatar, name, and progress
  * Clicking navigates to the student's practice page (or toggles selection in edit mode)
  */
-function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: StudentCardProps) {
+function StudentCard({
+  student,
+  onSelect,
+  onOpenQuickLook,
+  editMode,
+  isSelected,
+  onObserveSession,
+}: StudentCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const levelLabel = student.currentLevel ? `Lv.${student.currentLevel}` : 'New'
   const cardRef = useRef<HTMLDivElement>(null)
   const isArchived = student.isArchived ?? false
 
-  const handleNotesClick = useCallback(
+  // Check for unified student fields (relationship/activity) at runtime
+  // These are present when using the unified student list
+  const relationship = (
+    student as {
+      relationship?: {
+        isMyChild: boolean
+        isEnrolled: boolean
+        isPresent: boolean
+        enrollmentStatus: string | null
+      }
+    }
+  ).relationship
+  const activity = (
+    student as {
+      activity?: {
+        status: string
+        sessionProgress?: { current: number; total: number }
+        sessionId?: string
+      }
+    }
+  ).activity
+
+  const handleQuickLookClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       if (cardRef.current) {
         const bounds = cardRef.current.getBoundingClientRect()
-        onOpenNotes(student, bounds)
+        onOpenQuickLook(student, bounds)
       }
     },
-    [student, onOpenNotes]
+    [student, onOpenQuickLook]
   )
 
   return (
@@ -170,11 +201,23 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
         </div>
       )}
 
-      {/* Notes button */}
+      {/* Self-contained action menu - uses hooks internally for all actions */}
+      <StudentActionMenu
+        student={{
+          id: student.id,
+          name: student.name,
+          isArchived: student.isArchived,
+          relationship,
+          activity,
+        }}
+        onObserveSession={onObserveSession}
+      />
+
+      {/* QuickLook button */}
       <button
         type="button"
-        data-action="open-notes"
-        onClick={handleNotesClick}
+        data-action="open-quicklook"
+        onClick={handleQuickLookClick}
         className={css({
           position: 'absolute',
           top: '6px',
@@ -183,20 +226,8 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
           height: '28px',
           borderRadius: '6px',
           border: 'none',
-          backgroundColor: student.notes
-            ? isDark
-              ? 'amber.900/60'
-              : 'amber.100'
-            : isDark
-              ? 'gray.700'
-              : 'gray.100',
-          color: student.notes
-            ? isDark
-              ? 'amber.300'
-              : 'amber.600'
-            : isDark
-              ? 'gray.500'
-              : 'gray.400',
+          backgroundColor: isDark ? 'gray.700' : 'gray.100',
+          color: isDark ? 'gray.400' : 'gray.500',
           fontSize: '0.875rem',
           cursor: 'pointer',
           display: 'flex',
@@ -204,19 +235,14 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
           justifyContent: 'center',
           transition: 'all 0.15s ease',
           _hover: {
-            backgroundColor: student.notes
-              ? isDark
-                ? 'amber.800'
-                : 'amber.200'
-              : isDark
-                ? 'gray.600'
-                : 'gray.200',
+            backgroundColor: isDark ? 'gray.600' : 'gray.200',
+            color: isDark ? 'gray.200' : 'gray.700',
             transform: 'scale(1.1)',
           },
         })}
-        title={student.notes ? 'View notes' : 'Add notes'}
+        title="Quick look"
       >
-        📝
+        👁
       </button>
 
       {/* Main clickable area */}
@@ -264,6 +290,174 @@ function StudentCard({ student, onSelect, onOpenNotes, editMode, isSelected }: S
         >
           {student.name}
         </span>
+
+        {/* Status badges row - only show if unified student data is available */}
+        {(activity?.status === 'practicing' ||
+          activity?.status === 'learning' ||
+          relationship?.isPresent ||
+          relationship?.isEnrolled ||
+          relationship?.isMyChild ||
+          relationship?.enrollmentStatus) && (
+          <div
+            data-element="status-badges"
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '4px',
+              marginTop: '2px',
+            })}
+          >
+            {/* Practicing badge - highest priority */}
+            {activity?.status === 'practicing' && (
+              <span
+                data-status="practicing"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: 'medium',
+                  bg: isDark ? 'blue.900' : 'blue.100',
+                  color: isDark ? 'blue.300' : 'blue.700',
+                  animation: 'pulse 2s infinite',
+                })}
+              >
+                <span>📝</span>
+                <span>Practicing</span>
+              </span>
+            )}
+
+            {/* Learning badge */}
+            {activity?.status === 'learning' && (
+              <span
+                data-status="learning"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: 'medium',
+                  bg: isDark ? 'purple.900' : 'purple.100',
+                  color: isDark ? 'purple.300' : 'purple.700',
+                  animation: 'pulse 2s infinite',
+                })}
+              >
+                <span>📚</span>
+                <span>Learning</span>
+              </span>
+            )}
+
+            {/* Present badge - only show if not practicing/learning */}
+            {relationship?.isPresent &&
+              activity?.status !== 'practicing' &&
+              activity?.status !== 'learning' && (
+                <span
+                  data-status="present"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    fontSize: '10px',
+                    fontWeight: 'medium',
+                    bg: isDark ? 'green.900' : 'green.100',
+                    color: isDark ? 'green.300' : 'green.700',
+                  })}
+                >
+                  <span>🟢</span>
+                  <span>Present</span>
+                </span>
+              )}
+
+            {/* Enrolled badge */}
+            {relationship?.isEnrolled && !relationship?.isPresent && (
+              <span
+                data-status="enrolled"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: 'medium',
+                  bg: isDark ? 'gray.700' : 'gray.200',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                })}
+              >
+                <span>📋</span>
+                <span>Enrolled</span>
+              </span>
+            )}
+
+            {/* Your Child badge - show in enrolled view when it's your child */}
+            {relationship?.isMyChild && relationship?.isEnrolled && (
+              <span
+                data-status="your-child"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: 'medium',
+                  bg: isDark ? 'pink.900' : 'pink.100',
+                  color: isDark ? 'pink.300' : 'pink.700',
+                })}
+              >
+                <span>👶</span>
+                <span>Your Child</span>
+              </span>
+            )}
+
+            {/* Pending badge */}
+            {relationship?.enrollmentStatus?.startsWith('pending') && (
+              <span
+                data-status="pending"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: 'medium',
+                  bg: isDark ? 'yellow.900' : 'yellow.100',
+                  color: isDark ? 'yellow.300' : 'yellow.700',
+                })}
+              >
+                <span>⏳</span>
+                <span>Pending</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Activity progress indicator - show when practicing */}
+        {activity?.status === 'practicing' && activity.sessionProgress && (
+          <div
+            data-element="session-progress"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '10px',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginTop: '2px',
+            })}
+          >
+            <span>
+              Problem {activity.sessionProgress.current + 1} of {activity.sessionProgress.total}
+            </span>
+          </div>
+        )}
 
         {/* Level badge */}
         <span className={css(badgeStyles(isDark, 'neutral'))}>{levelLabel}</span>
@@ -398,6 +592,8 @@ interface StudentSelectorProps {
   selectedIds?: Set<string>
   /** Hide the add student button (e.g., when showing filtered subsets) */
   hideAddButton?: boolean
+  /** Callback when observe session is clicked */
+  onObserveSession?: (sessionId: string) => void
 }
 
 /**
@@ -417,57 +613,25 @@ export function StudentSelector({
   editMode = false,
   selectedIds = new Set(),
   hideAddButton = false,
+  onObserveSession,
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Notes modal state
-  const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [selectedStudentForNotes, setSelectedStudentForNotes] =
-    useState<StudentWithProgress | null>(null)
+  // QuickLook/Notes modal state (unified NotesModal with tabs)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithProgress | null>(null)
   const [sourceBounds, setSourceBounds] = useState<DOMRect | null>(null)
 
-  // Use React Query mutation for updates
-  const updatePlayer = useUpdatePlayer()
-
-  const handleOpenNotes = useCallback((student: StudentWithProgress, bounds: DOMRect) => {
-    setSelectedStudentForNotes(student)
+  const handleOpenQuickLook = useCallback((student: StudentWithProgress, bounds: DOMRect) => {
+    setSelectedStudent(student)
     setSourceBounds(bounds)
-    setNotesModalOpen(true)
+    setModalOpen(true)
   }, [])
 
-  const handleCloseNotes = useCallback(() => {
-    setNotesModalOpen(false)
+  const handleCloseModal = useCallback(() => {
+    setModalOpen(false)
   }, [])
-
-  const handleSaveNotes = useCallback(
-    async (notes: string) => {
-      if (!selectedStudentForNotes) return
-
-      await updatePlayer.mutateAsync({
-        id: selectedStudentForNotes.id,
-        updates: { notes: notes || null },
-      })
-
-      // Update the selected student for modal display
-      setSelectedStudentForNotes((prev) => (prev ? { ...prev, notes: notes || null } : null))
-    },
-    [selectedStudentForNotes, updatePlayer]
-  )
-
-  const handleToggleArchive = useCallback(async () => {
-    if (!selectedStudentForNotes) return
-
-    const newArchivedState = !selectedStudentForNotes.isArchived
-
-    await updatePlayer.mutateAsync({
-      id: selectedStudentForNotes.id,
-      updates: { isArchived: newArchivedState },
-    })
-
-    // Update the selected student for modal display
-    setSelectedStudentForNotes((prev) => (prev ? { ...prev, isArchived: newArchivedState } : null))
-  }, [selectedStudentForNotes, updatePlayer])
 
   return (
     <>
@@ -503,9 +667,10 @@ export function StudentSelector({
               key={student.id}
               student={student}
               onSelect={onSelectStudent}
-              onOpenNotes={handleOpenNotes}
+              onOpenQuickLook={handleOpenQuickLook}
               editMode={editMode}
               isSelected={selectedIds.has(student.id)}
+              onObserveSession={onObserveSession}
             />
           ))}
 
@@ -513,23 +678,13 @@ export function StudentSelector({
         </div>
       </div>
 
-      {/* Notes Modal */}
-      {selectedStudentForNotes && (
+      {/* Student QuickLook/Notes Modal (unified with tabs) */}
+      {selectedStudent && (
         <NotesModal
-          isOpen={notesModalOpen}
-          student={{
-            id: selectedStudentForNotes.id,
-            name: selectedStudentForNotes.name,
-            emoji: selectedStudentForNotes.emoji,
-            color: selectedStudentForNotes.color,
-            notes: selectedStudentForNotes.notes ?? null,
-            isArchived: selectedStudentForNotes.isArchived,
-          }}
+          isOpen={modalOpen}
+          student={selectedStudent}
           sourceBounds={sourceBounds}
-          onClose={handleCloseNotes}
-          onSave={handleSaveNotes}
-          onToggleArchive={handleToggleArchive}
-          isDark={isDark}
+          onClose={handleCloseModal}
         />
       )}
     </>
