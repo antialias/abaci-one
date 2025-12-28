@@ -2,6 +2,7 @@
 
 import * as Checkbox from '@radix-ui/react-checkbox'
 import * as HoverCard from '@radix-ui/react-hover-card'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -159,7 +160,8 @@ export interface StudentWithProgress extends Player {
 
 interface StudentCardProps {
   student: StudentWithProgress
-  onSelect: (student: StudentWithProgress) => void
+  /** Optional callback when student is selected (Link handles navigation) */
+  onSelect?: (student: StudentWithProgress) => void
   onToggleSelection: (student: StudentWithProgress) => void
   onOpenQuickLook: (student: StudentWithProgress, bounds: DOMRect) => void
   isSelected?: boolean
@@ -323,11 +325,7 @@ function StudentCard({
               })}
               aria-label="View relationship details"
             >
-              <RelationshipBadge
-                relationship={relationship}
-                size="sm"
-                showTooltip={false}
-              />
+              <RelationshipBadge relationship={relationship} size="sm" showTooltip={false} />
             </button>
           </HoverCard.Trigger>
           <HoverCard.Portal>
@@ -406,11 +404,12 @@ function StudentCard({
         </button>
       )}
 
-      {/* Main clickable area */}
-      <button
-        type="button"
+      {/* Main clickable area - uses Next.js Link for proper routing */}
+      <Link
+        href={`/practice/${student.id}/dashboard`}
+        scroll={false}
         data-action="select-student"
-        onClick={() => onSelect(student)}
+        onClick={() => onSelect?.(student)}
         className={css({
           display: 'flex',
           flexDirection: 'column',
@@ -422,6 +421,8 @@ function StudentCard({
           padding: '0.5rem',
           paddingTop: '1.5rem', // Extra space for the notes/checkbox
           width: '100%',
+          textDecoration: 'none',
+          color: 'inherit',
           _hover: {
             '& > div:first-child': {
               transform: 'scale(1.05)',
@@ -618,7 +619,7 @@ function StudentCard({
             <span>{student.intervention.message}</span>
           </div>
         )}
-      </button>
+      </Link>
 
       {/* Enrollment action buttons (for enrollment requests) */}
       {enrollmentActions && student.enrollmentRequestId && (
@@ -753,7 +754,8 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
 
 interface StudentSelectorProps {
   students: StudentWithProgress[]
-  onSelectStudent: (student: StudentWithProgress) => void
+  /** Optional callback when student is selected (Link handles navigation) */
+  onSelectStudent?: (student: StudentWithProgress) => void
   onToggleSelection: (student: StudentWithProgress) => void
   onAddStudent?: () => void
   title?: string

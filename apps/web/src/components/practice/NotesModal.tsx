@@ -120,7 +120,13 @@ function buildStudentActionData(student: StudentProp): StudentActionData {
  * - Overflow menu: All student actions (uses shared useStudentActions hook)
  * - Zoom animation from source tile
  */
-export function NotesModal({ isOpen, student, sourceBounds, onClose, onObserveSession }: NotesModalProps) {
+export function NotesModal({
+  isOpen,
+  student,
+  sourceBounds,
+  onClose,
+  onObserveSession,
+}: NotesModalProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -140,9 +146,13 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose, onObserveSe
   const studentActionData = buildStudentActionData(student)
   const { actions, handlers, modals } = useStudentActions(studentActionData, {
     // Session observer is rendered at parent level to avoid z-index issues
+    // Close this modal first so the observer modal appears on top
     onObserveSession:
       onObserveSession && student.activity?.sessionId
-        ? () => onObserveSession(student.activity!.sessionId!)
+        ? () => {
+            onClose()
+            onObserveSession(student.activity!.sessionId!)
+          }
         : undefined,
   })
 
@@ -207,10 +217,12 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose, onObserveSe
 
   const handleBannerWatchSession = useCallback(() => {
     // Session observer is rendered at parent level to avoid z-index issues
+    // Close this modal first so the observer modal appears on top
     if (onObserveSession && student.activity?.sessionId) {
+      onClose()
       onObserveSession(student.activity.sessionId)
     }
-  }, [onObserveSession, student.activity?.sessionId])
+  }, [onObserveSession, student.activity?.sessionId, onClose])
 
   // ========== Effects ==========
 
