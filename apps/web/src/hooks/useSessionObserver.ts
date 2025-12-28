@@ -143,6 +143,8 @@ export function useSessionObserver(
   const socketRef = useRef<Socket | null>(null)
   // Track which problem numbers we've already recorded to avoid duplicates
   const recordedProblemsRef = useRef<Set<number>>(new Set())
+  // Track if we've seeded historical results from slotResults
+  const hasSeededHistoryRef = useRef(false)
 
   const stopObserving = useCallback(() => {
     if (socketRef.current && sessionId) {
@@ -154,6 +156,7 @@ export function useSessionObserver(
       setState(null)
       setResults([])
       recordedProblemsRef.current.clear()
+      hasSeededHistoryRef.current = false
     }
   }, [sessionId])
 
@@ -220,6 +223,52 @@ export function useSessionObserver(
       })
 
       const currentProblem = data.currentProblem as { terms: number[]; answer: number }
+      const sessionParts = data.sessionParts as SessionPart[] | undefined
+      const slotResults = data.slotResults as SlotResult[] | undefined
+
+      // Seed historical results from slotResults on first event
+      if (!hasSeededHistoryRef.current && slotResults && slotResults.length > 0 && sessionParts) {
+        hasSeededHistoryRef.current = true
+        console.log(
+          '[SessionObserver] Seeding historical results from slotResults:',
+          slotResults.length
+        )
+
+        // Convert slotResults to ObservedResult format
+        const historicalResults: ObservedResult[] = []
+
+        for (const result of slotResults) {
+          // Calculate problem number from part structure
+          let problemNumber = 0
+          for (let p = 0; p < result.partNumber - 1; p++) {
+            problemNumber += sessionParts[p]?.slots.length ?? 0
+          }
+          problemNumber += result.slotIndex + 1
+
+          // Get purpose from the slot definition
+          const slot = sessionParts[result.partNumber - 1]?.slots[result.slotIndex]
+          const purpose = slot?.purpose ?? 'focus'
+
+          // Mark as recorded to avoid duplicates
+          recordedProblemsRef.current.add(problemNumber)
+
+          historicalResults.push({
+            problemNumber,
+            terms: result.problem.terms,
+            answer: result.problem.answer,
+            studentAnswer: String(result.studentAnswer),
+            isCorrect: result.isCorrect,
+            purpose,
+            responseTimeMs: result.responseTimeMs,
+            recordedAt: result.timestamp instanceof Date ? result.timestamp.getTime() : Date.now(),
+          })
+        }
+
+        // Sort by problem number and set results
+        historicalResults.sort((a, b) => a.problemNumber - b.problemNumber)
+        setResults(historicalResults)
+        console.log('[SessionObserver] Seeded', historicalResults.length, 'historical results')
+      }
 
       // Record result when problem is completed (feedback phase with definite answer)
       if (
@@ -254,10 +303,10 @@ export function useSessionObserver(
         currentProblemNumber: data.currentProblemNumber,
         totalProblems: data.totalProblems,
         // Session structure for progress indicator
-        sessionParts: data.sessionParts as SessionPart[] | undefined,
+        sessionParts,
         currentPartIndex: data.currentPartIndex,
         currentSlotIndex: data.currentSlotIndex,
-        slotResults: data.slotResults as SlotResult[] | undefined,
+        slotResults,
       })
     })
 
