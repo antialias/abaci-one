@@ -9,7 +9,11 @@ import {
   type ActiveSessionInfo,
   type PresenceStudent,
 } from '@/hooks/useClassroom'
-import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
+import {
+  usePlayersWithSkillData,
+  useChildrenActiveSessions,
+  type ChildActiveSession,
+} from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import type { UnifiedStudent, StudentRelationship, StudentActivity } from '@/types/student'
 
@@ -52,6 +56,11 @@ export function useUnifiedStudents(
     initialData: initialPlayers,
   })
 
+  // Get active sessions for my children (polls every 10s)
+  const childIds = useMemo(() => myChildren.map((c) => c.id), [myChildren])
+  const { sessionMap: childSessionMap, isLoading: isLoadingChildSessions } =
+    useChildrenActiveSessions(childIds)
+
   // Get enrolled students (teachers only)
   const { data: enrolledStudents = [], isLoading: isLoadingEnrolled } = useEnrolledStudents(
     classroom?.id
@@ -62,7 +71,7 @@ export function useUnifiedStudents(
     classroom?.id
   )
 
-  // Get active sessions (teachers only)
+  // Get active sessions in classroom (teachers only)
   const { data: activeSessions = [], isLoading: isLoadingActiveSessions } =
     useActiveSessionsInClassroom(classroom?.id)
 
@@ -100,7 +109,11 @@ export function useUnifiedStudents(
         enrollmentStatus: null, // TODO: Add pending enrollment lookup
       }
 
-      const session = sessionMap.get(child.id)
+      // Check both classroom sessions (if teacher) and child-specific sessions (for parents)
+      const classroomSession = sessionMap.get(child.id)
+      const childSession = childSessionMap.get(child.id)
+      const session = classroomSession || childSession
+
       const activity: StudentActivity = session
         ? {
             status: 'practicing',
@@ -191,11 +204,13 @@ export function useUnifiedStudents(
     enrolledIds,
     presenceMap,
     sessionMap,
+    childSessionMap,
   ])
 
   const isLoading =
     isLoadingClassroom ||
     isLoadingChildren ||
+    isLoadingChildSessions ||
     (isTeacher && (isLoadingEnrolled || isLoadingPresence || isLoadingActiveSessions))
 
   return {
