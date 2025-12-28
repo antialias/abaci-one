@@ -16,6 +16,8 @@ export {
   useHasPhysicalKeyboard,
   useIsTouchDevice,
 } from './hooks/useDeviceDetection'
+export { LiveResultsPanel } from './LiveResultsPanel'
+export { LiveSessionReportInline, LiveSessionReportModal } from './LiveSessionReportModal'
 export { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
 export { NotesModal } from './NotesModal'
 // StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)

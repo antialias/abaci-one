@@ -94,6 +94,14 @@ export interface BroadcastState {
   currentProblemNumber: number
   /** Total problems in the session */
   totalProblems: number
+  /** Session structure for progress indicator */
+  sessionParts?: SessionPart[]
+  /** Current part index for progress indicator */
+  currentPartIndex?: number
+  /** Current slot index within the part */
+  currentSlotIndex?: number
+  /** Accumulated results for progress indicator */
+  slotResults?: SlotResult[]
 }
 
 interface ActiveSessionProps {
@@ -739,6 +747,11 @@ export function ActiveSession({
         complexity: extractComplexity(prevSlot),
         currentProblemNumber: completedProblems + 1,
         totalProblems,
+        // Session structure for progress indicator
+        sessionParts: plan.parts,
+        currentPartIndex: plan.currentPartIndex,
+        currentSlotIndex: plan.currentSlotIndex,
+        slotResults: plan.results,
       })
       return
     }
@@ -778,6 +791,11 @@ export function ActiveSession({
       complexity: extractComplexity(slot),
       currentProblemNumber: completedProblems + 1,
       totalProblems,
+      // Session structure for progress indicator
+      sessionParts: plan.parts,
+      currentPartIndex: plan.currentPartIndex,
+      currentSlotIndex: plan.currentSlotIndex,
+      slotResults: plan.results,
     })
   }, [
     onBroadcastStateChange,
@@ -790,6 +808,7 @@ export function ActiveSession({
     plan.parts,
     plan.currentPartIndex,
     plan.currentSlotIndex,
+    plan.results,
     completedProblems,
     totalProblems,
   ])

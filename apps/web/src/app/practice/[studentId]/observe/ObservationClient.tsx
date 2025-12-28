@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { SessionObserverView } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
-import { css } from '../../../../styled-system/css'
+import { css } from '../../../../../styled-system/css'
 
 interface ObservationClientProps {
   session: ActiveSessionInfo

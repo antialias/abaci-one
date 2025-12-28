@@ -347,7 +347,9 @@
       "Bash(PLAYWRIGHT_SKIP_BROWSER_GC=1 npx playwright test:*)",
       "Bash(BASE_URL=http://localhost:3000 npx playwright test:*)",
       "Bash(BASE_URL=http://localhost:3000 pnpm --filter @soroban/web exec playwright test:*)",
-      "Bash(BASE_URL=http://localhost:3000 pnpm exec playwright test:*)"
+      "Bash(BASE_URL=http://localhost:3000 pnpm exec playwright test:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)"
     ],
     "deny": [],
     "ask": []

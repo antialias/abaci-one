@@ -10,8 +10,11 @@ import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
+import { LiveResultsPanel } from '../practice/LiveResultsPanel'
+import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
+import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 
 interface SessionObserverModalProps {
@@ -129,11 +132,14 @@ export function SessionObserverView({
   const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus()
 
   // Subscribe to the session's socket channel
-  const { state, isConnected, isObserving, error, sendControl, sendPause, sendResume } =
+  const { state, results, isConnected, isObserving, error, sendControl, sendPause, sendResume } =
     useSessionObserver(session.sessionId, observerId, session.playerId, true)
 
   // Track if we've paused the session (teacher controls resume)
   const [hasPausedSession, setHasPausedSession] = useState(false)
+
+  // Track if showing full report view (inline, not modal)
+  const [showFullReport, setShowFullReport] = useState(false)
 
   // Ref for measuring problem container height (same pattern as ActiveSession)
   const problemRef = useRef<HTMLDivElement>(null)
@@ -265,29 +271,60 @@ export function SessionObserverView({
             {student.emoji}
           </span>
           <div className={css({ minWidth: 0 })}>
-            <Dialog.Title
-              className={css({
-                fontWeight: 'bold',
-                color: isDark ? 'white' : 'gray.800',
-                fontSize: '1rem',
-                margin: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              })}
-            >
-              Observing {student.name}
-            </Dialog.Title>
-            <Dialog.Description
-              className={css({
-                fontSize: '0.8125rem',
-                color: isDark ? 'gray.400' : 'gray.500',
-                margin: 0,
-              })}
-            >
-              Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
-              {state?.totalProblems ?? session.totalProblems}
-            </Dialog.Description>
+            {/* Use Dialog.Title/Description only when inside a Dialog (modal variant) */}
+            {variant === 'modal' ? (
+              <>
+                <Dialog.Title
+                  className={css({
+                    fontWeight: 'bold',
+                    color: isDark ? 'white' : 'gray.800',
+                    fontSize: '1rem',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  })}
+                >
+                  Observing {student.name}
+                </Dialog.Title>
+                <Dialog.Description
+                  className={css({
+                    fontSize: '0.8125rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    margin: 0,
+                  })}
+                >
+                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
+                  {state?.totalProblems ?? session.totalProblems}
+                </Dialog.Description>
+              </>
+            ) : (
+              <>
+                <h1
+                  className={css({
+                    fontWeight: 'bold',
+                    color: isDark ? 'white' : 'gray.800',
+                    fontSize: '1rem',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  })}
+                >
+                  Observing {student.name}
+                </h1>
+                <p
+                  className={css({
+                    fontSize: '0.8125rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    margin: 0,
+                  })}
+                >
+                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
+                  {state?.totalProblems ?? session.totalProblems}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -321,6 +358,30 @@ export function SessionObserverView({
           {closeButton}
         </div>
       </div>
+
+      {/* Session Progress Indicator - same component shown to student */}
+      {state?.sessionParts &&
+        state.currentPartIndex !== undefined &&
+        state.currentSlotIndex !== undefined && (
+          <div
+            data-element="progress-indicator"
+            className={css({
+              padding: '0 20px 12px',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
+            <SessionProgressIndicator
+              parts={state.sessionParts}
+              results={state.slotResults ?? []}
+              currentPartIndex={state.currentPartIndex}
+              currentSlotIndex={state.currentSlotIndex}
+              isBrowseMode={false}
+              isDark={isDark}
+              compact
+            />
+          </div>
+        )}
 
       {/* Content */}
       <div
@@ -378,70 +439,108 @@ export function SessionObserverView({
           </div>
         )}
 
-        {/* Problem display with abacus dock - matches ActiveSession layout */}
-        {state && (
+        {/* Main content - either problem view or full report view */}
+        {state && !showFullReport && (
           <div
-            data-element="observer-content"
+            data-element="observer-main-content"
             className={css({
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '16px',
+              alignItems: 'flex-start',
+              gap: '24px',
+              width: '100%',
+              justifyContent: 'center',
             })}
           >
-            {/* Purpose badge with tooltip - matches student's view */}
-            <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
-
-            {/* Problem container with absolutely positioned AbacusDock */}
+            {/* Live results panel - left side */}
             <div
-              data-element="problem-with-dock"
               className={css({
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'flex-start',
+                width: '220px',
+                flexShrink: 0,
               })}
             >
-              {/* Problem - ref for height measurement */}
-              <div ref={problemRef}>
-                <VerticalProblem
-                  terms={state.currentProblem.terms}
-                  userAnswer={state.studentAnswer}
-                  isFocused={state.phase === 'problem'}
-                  isCompleted={state.phase === 'feedback'}
-                  correctAnswer={state.currentProblem.answer}
-                  size="large"
-                />
+              <LiveResultsPanel
+                results={results}
+                totalProblems={state.totalProblems}
+                isDark={isDark}
+                onExpandFullReport={() => setShowFullReport(true)}
+              />
+            </div>
+
+            {/* Problem area - center/right */}
+            <div
+              data-element="observer-content"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px',
+              })}
+            >
+              {/* Purpose badge with tooltip - matches student's view */}
+              <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
+
+              {/* Problem container with absolutely positioned AbacusDock */}
+              <div
+                data-element="problem-with-dock"
+                className={css({
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                })}
+              >
+                {/* Problem - ref for height measurement */}
+                <div ref={problemRef}>
+                  <VerticalProblem
+                    terms={state.currentProblem.terms}
+                    userAnswer={state.studentAnswer}
+                    isFocused={state.phase === 'problem'}
+                    isCompleted={state.phase === 'feedback'}
+                    correctAnswer={state.currentProblem.answer}
+                    size="large"
+                  />
+                </div>
+
+                {/* AbacusDock - positioned exactly like ActiveSession */}
+                {state.phase === 'problem' && (problemHeight ?? 0) > 0 && (
+                  <AbacusDock
+                    id="teacher-observer-dock"
+                    columns={abacusColumns}
+                    interactive={true}
+                    showNumbers={false}
+                    animated={true}
+                    onValueChange={handleTeacherAbacusChange}
+                    className={css({
+                      position: 'absolute',
+                      left: '100%',
+                      top: 0,
+                      width: '100%',
+                      marginLeft: '1.5rem',
+                    })}
+                    style={{ height: problemHeight ?? undefined }}
+                  />
+                )}
               </div>
 
-              {/* AbacusDock - positioned exactly like ActiveSession */}
-              {state.phase === 'problem' && (problemHeight ?? 0) > 0 && (
-                <AbacusDock
-                  id="teacher-observer-dock"
-                  columns={abacusColumns}
-                  interactive={true}
-                  showNumbers={false}
-                  animated={true}
-                  onValueChange={handleTeacherAbacusChange}
-                  className={css({
-                    position: 'absolute',
-                    left: '100%',
-                    top: 0,
-                    width: '100%',
-                    marginLeft: '1.5rem',
-                  })}
-                  style={{ height: problemHeight ?? undefined }}
+              {/* Feedback message */}
+              {state.studentAnswer && state.phase === 'feedback' && (
+                <PracticeFeedback
+                  isCorrect={state.isCorrect ?? false}
+                  correctAnswer={state.currentProblem.answer}
                 />
               )}
             </div>
-
-            {/* Feedback message */}
-            {state.studentAnswer && state.phase === 'feedback' && (
-              <PracticeFeedback
-                isCorrect={state.isCorrect ?? false}
-                correctAnswer={state.currentProblem.answer}
-              />
-            )}
           </div>
+        )}
+
+        {/* Full Report View - inline */}
+        {state && showFullReport && (
+          <LiveSessionReportInline
+            results={results}
+            totalProblems={state.totalProblems}
+            sessionStartTime={state.timing.startedAt}
+            isDark={isDark}
+            onBack={() => setShowFullReport(false)}
+          />
         )}
       </div>
 

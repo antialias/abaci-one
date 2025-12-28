@@ -155,6 +155,14 @@ export interface PracticeStateEvent {
   currentProblemNumber: number
   /** Total problems in the session */
   totalProblems: number
+  /** Session structure for progress indicator */
+  sessionParts?: unknown[] // SessionPart[] - sent for observer progress display
+  /** Current part index for progress indicator */
+  currentPartIndex?: number
+  /** Current slot index within the part */
+  currentSlotIndex?: number
+  /** Accumulated results for progress indicator */
+  slotResults?: unknown[] // SlotResult[] - for observer progress display
 }
 
 export interface TutorialStateEvent {

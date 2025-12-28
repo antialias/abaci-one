@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   PracticeStateEvent,
@@ -61,11 +62,43 @@ export interface ObservedSessionState {
   currentProblemNumber: number
   /** Total problems in the session */
   totalProblems: number
+  /** Session structure for progress indicator */
+  sessionParts?: SessionPart[]
+  /** Current part index for progress indicator */
+  currentPartIndex?: number
+  /** Current slot index within the part */
+  currentSlotIndex?: number
+  /** Accumulated results for progress indicator */
+  slotResults?: SlotResult[]
+}
+
+/**
+ * A recorded result from a completed problem during observation
+ */
+export interface ObservedResult {
+  /** Problem number (1-indexed) */
+  problemNumber: number
+  /** The problem terms */
+  terms: number[]
+  /** Correct answer */
+  answer: number
+  /** Student's submitted answer */
+  studentAnswer: string
+  /** Whether correct */
+  isCorrect: boolean
+  /** Purpose of this problem slot */
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  /** Response time in ms */
+  responseTimeMs: number
+  /** When recorded */
+  recordedAt: number
 }
 
 interface UseSessionObserverResult {
   /** Current observed state (null if not yet received) */
   state: ObservedSessionState | null
+  /** Accumulated results from completed problems */
+  results: ObservedResult[]
   /** Whether connected to the session channel */
   isConnected: boolean
   /** Whether actively observing (connected and joined session) */
@@ -100,11 +133,14 @@ export function useSessionObserver(
   enabled = true
 ): UseSessionObserverResult {
   const [state, setState] = useState<ObservedSessionState | null>(null)
+  const [results, setResults] = useState<ObservedResult[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const socketRef = useRef<Socket | null>(null)
+  // Track which problem numbers we've already recorded to avoid duplicates
+  const recordedProblemsRef = useRef<Set<number>>(new Set())
 
   const stopObserving = useCallback(() => {
     if (socketRef.current && sessionId) {
@@ -114,6 +150,8 @@ export function useSessionObserver(
       setIsConnected(false)
       setIsObserving(false)
       setState(null)
+      setResults([])
+      recordedProblemsRef.current.clear()
     }
   }, [sessionId])
 
@@ -169,10 +207,34 @@ export function useSessionObserver(
         phase: data.phase,
         answer: data.studentAnswer,
         isCorrect: data.isCorrect,
+        problemNumber: data.currentProblemNumber,
       })
 
+      const currentProblem = data.currentProblem as { terms: number[]; answer: number }
+
+      // Record result when problem is completed (feedback phase with definite answer)
+      if (
+        data.phase === 'feedback' &&
+        data.isCorrect !== null &&
+        !recordedProblemsRef.current.has(data.currentProblemNumber)
+      ) {
+        recordedProblemsRef.current.add(data.currentProblemNumber)
+        const newResult: ObservedResult = {
+          problemNumber: data.currentProblemNumber,
+          terms: currentProblem.terms,
+          answer: currentProblem.answer,
+          studentAnswer: data.studentAnswer,
+          isCorrect: data.isCorrect,
+          purpose: data.purpose,
+          responseTimeMs: data.timing.elapsed,
+          recordedAt: Date.now(),
+        }
+        setResults((prev) => [...prev, newResult])
+        console.log('[SessionObserver] Recorded result:', newResult)
+      }
+
       setState({
-        currentProblem: data.currentProblem as { terms: number[]; answer: number },
+        currentProblem,
         phase: data.phase,
         studentAnswer: data.studentAnswer,
         isCorrect: data.isCorrect,
@@ -182,6 +244,11 @@ export function useSessionObserver(
         receivedAt: Date.now(),
         currentProblemNumber: data.currentProblemNumber,
         totalProblems: data.totalProblems,
+        // Session structure for progress indicator
+        sessionParts: data.sessionParts as SessionPart[] | undefined,
+        currentPartIndex: data.currentPartIndex,
+        currentSlotIndex: data.currentSlotIndex,
+        slotResults: data.slotResults as SlotResult[] | undefined,
       })
     })
 
@@ -274,6 +341,7 @@ export function useSessionObserver(
 
   return {
     state,
+    results,
     isConnected,
     isObserving,
     error,

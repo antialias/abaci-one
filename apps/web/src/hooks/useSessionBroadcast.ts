@@ -86,6 +86,11 @@ export function useSessionBroadcast(
       complexity: currentState.complexity,
       currentProblemNumber: currentState.currentProblemNumber,
       totalProblems: currentState.totalProblems,
+      // Session structure for progress indicator
+      sessionParts: currentState.sessionParts,
+      currentPartIndex: currentState.currentPartIndex,
+      currentSlotIndex: currentState.currentSlotIndex,
+      slotResults: currentState.slotResults,
     }
 
     socketRef.current.emit('practice-state', event)
