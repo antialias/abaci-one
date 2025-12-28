@@ -154,12 +154,7 @@ export function RelationshipIndicator({
         )}
       >
         {badges.map((badge) => (
-          <CompactBadge
-            key={badge.key}
-            badge={badge}
-            isDark={isDark}
-            showTooltip={showTooltip}
-          />
+          <CompactBadge key={badge.key} badge={badge} isDark={isDark} showTooltip={showTooltip} />
         ))}
       </div>
     )
@@ -254,13 +249,7 @@ function CompactBadge({
 /**
  * Full badge: icon + label
  */
-function FullBadge({
-  badge,
-  isDark,
-}: {
-  badge: RelationshipBadge
-  isDark: boolean
-}) {
+function FullBadge({ badge, isDark }: { badge: RelationshipBadge; isDark: boolean }) {
   const colors = isDark ? badge.color.dark : badge.color.light
 
   return (

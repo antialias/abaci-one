@@ -112,12 +112,7 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
       >
         {/* Parents Section */}
         {stakeholders.parents.length > 0 && (
-          <StakeholderSection
-            title="Parents"
-            icon="👪"
-            isDark={isDark}
-            compact={compact}
-          >
+          <StakeholderSection title="Parents" icon="👪" isDark={isDark} compact={compact}>
             <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '6px' })}>
               {stakeholders.parents.map((parent) => (
                 <ParentBadge key={parent.id} parent={parent} isDark={isDark} compact={compact} />
@@ -128,12 +123,7 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
 
         {/* Classrooms Section */}
         {stakeholders.enrolledClassrooms.length > 0 && (
-          <StakeholderSection
-            title="Classrooms"
-            icon="🏫"
-            isDark={isDark}
-            compact={compact}
-          >
+          <StakeholderSection title="Classrooms" icon="🏫" isDark={isDark} compact={compact}>
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '6px' })}>
               {stakeholders.enrolledClassrooms.map((classroom) => (
                 <ClassroomRow
@@ -150,12 +140,7 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
 
         {/* Pending Enrollments */}
         {stakeholders.pendingEnrollments.length > 0 && (
-          <StakeholderSection
-            title="Pending"
-            icon="⌛"
-            isDark={isDark}
-            compact={compact}
-          >
+          <StakeholderSection title="Pending" icon="⌛" isDark={isDark} compact={compact}>
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '6px' })}>
               {stakeholders.pendingEnrollments.map((pending) => (
                 <PendingRow key={pending.id} pending={pending} isDark={isDark} compact={compact} />
@@ -210,7 +195,12 @@ function ViewerRelationshipSection({
             ? `Enrolled in ${relationship.classroomName}`
             : 'Enrolled in your classroom',
           color: {
-            light: { bg: 'purple.50', border: 'purple.200', text: 'purple.700', accent: 'purple.600' },
+            light: {
+              bg: 'purple.50',
+              border: 'purple.200',
+              text: 'purple.700',
+              accent: 'purple.600',
+            },
             dark: {
               bg: 'purple.900/40',
               border: 'purple.700',
@@ -225,7 +215,12 @@ function ViewerRelationshipSection({
           title: 'Visiting Student',
           subtitle: presence ? `Present in ${presence.classroomName}` : 'In your classroom',
           color: {
-            light: { bg: 'emerald.50', border: 'emerald.200', text: 'emerald.700', accent: 'emerald.600' },
+            light: {
+              bg: 'emerald.50',
+              border: 'emerald.200',
+              text: 'emerald.700',
+              accent: 'emerald.600',
+            },
             dark: {
               bg: 'emerald.900/40',
               border: 'emerald.700',

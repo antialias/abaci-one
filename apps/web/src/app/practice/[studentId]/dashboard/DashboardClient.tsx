@@ -2573,12 +2573,15 @@ export function DashboardClient({
   const [isObserving, setIsObserving] = useState(false)
 
   // Handle session observation from PracticeSubNav action menu
-  const handleObserveSession = useCallback((sessionId: string) => {
-    // We're already on this student's page, just open the observer modal
-    if (activeSession?.id === sessionId) {
-      setIsObserving(true)
-    }
-  }, [activeSession?.id])
+  const handleObserveSession = useCallback(
+    (sessionId: string) => {
+      // We're already on this student's page, just open the observer modal
+      if (activeSession?.id === sessionId) {
+        setIsObserving(true)
+      }
+    },
+    [activeSession?.id]
+  )
 
   const handleTabChange = useCallback(
     (tab: TabId) => {
@@ -2754,114 +2757,115 @@ export function DashboardClient({
         <PracticeErrorBoundary studentName={player.name}>
           <main
             data-component="practice-dashboard-page"
-          style={{
-            opacity: contentOpacity,
-            transition: contentTransition,
-          }}
-          className={css({
-            minHeight: '100vh',
-            backgroundColor: isDark ? 'gray.900' : 'gray.50',
-            padding: { base: '0.75rem', sm: '1rem', md: '1.5rem' },
-          })}
-        >
-          <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
-            {/* Session mode banner - renders in-flow, projects to nav on scroll */}
-            <ContentBannerSlot
-              stickyOffset={STICKY_HEADER_OFFSET}
-              className={css({ marginBottom: '1rem' })}
+            style={{
+              opacity: contentOpacity,
+              transition: contentTransition,
+            }}
+            className={css({
+              minHeight: '100vh',
+              backgroundColor: isDark ? 'gray.900' : 'gray.50',
+              padding: { base: '0.75rem', sm: '1rem', md: '1.5rem' },
+            })}
+          >
+            <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
+              {/* Session mode banner - renders in-flow, projects to nav on scroll */}
+              <ContentBannerSlot
+                stickyOffset={STICKY_HEADER_OFFSET}
+                className={css({ marginBottom: '1rem' })}
+              />
+
+              <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
+
+              {activeTab === 'overview' && (
+                <OverviewTab
+                  student={selectedStudent}
+                  currentPhase={currentPhase}
+                  skillHealth={skillHealth}
+                  onStartPractice={handleStartPractice}
+                />
+              )}
+
+              {activeTab === 'skills' && (
+                <SkillsTab
+                  skills={liveSkills}
+                  problemHistory={problemHistory}
+                  recentSessions={recentSessions}
+                  isDark={isDark}
+                  onManageSkills={() => setShowManualSkillModal(true)}
+                  studentId={studentId}
+                />
+              )}
+
+              {activeTab === 'history' && <HistoryTab isDark={isDark} studentId={studentId} />}
+
+              {activeTab === 'notes' && (
+                <NotesTab
+                  isDark={isDark}
+                  notes={currentNotes}
+                  studentName={player.name}
+                  playerId={player.id}
+                  onNotesSaved={setCurrentNotes}
+                />
+              )}
+            </div>
+
+            {/* Modals */}
+            <ManualSkillSelector
+              studentName={player.name}
+              playerId={player.id}
+              open={showManualSkillModal}
+              onClose={() => setShowManualSkillModal(false)}
+              onSave={handleSaveManualSkills}
+              currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
+              skillMasteryData={liveSkills}
+              bktResultsMap={bktResultsMap}
             />
+          </main>
 
-            <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isDark={isDark} />
+          {showStartPracticeModal && sessionMode && (
+            <StartPracticeModal
+              studentId={studentId}
+              studentName={player.name}
+              focusDescription={sessionMode.focusDescription}
+              sessionMode={sessionMode}
+              avgSecondsPerProblem={avgSecondsPerProblem}
+              existingPlan={activeSession}
+              problemHistory={problemHistory}
+              onClose={() => setShowStartPracticeModal(false)}
+              onStarted={() => setShowStartPracticeModal(false)}
+            />
+          )}
 
-            {activeTab === 'overview' && (
-              <OverviewTab
-                student={selectedStudent}
-                currentPhase={currentPhase}
-                skillHealth={skillHealth}
-                onStartPractice={handleStartPractice}
-              />
-            )}
-
-            {activeTab === 'skills' && (
-              <SkillsTab
-                skills={liveSkills}
-                problemHistory={problemHistory}
-                recentSessions={recentSessions}
-                isDark={isDark}
-                onManageSkills={() => setShowManualSkillModal(true)}
-                studentId={studentId}
-              />
-            )}
-
-            {activeTab === 'history' && <HistoryTab isDark={isDark} studentId={studentId} />}
-
-            {activeTab === 'notes' && (
-              <NotesTab
-                isDark={isDark}
-                notes={currentNotes}
-                studentName={player.name}
-                playerId={player.id}
-                onNotesSaved={setCurrentNotes}
-              />
-            )}
-          </div>
-
-          {/* Modals */}
-          <ManualSkillSelector
-            studentName={player.name}
-            playerId={player.id}
-            open={showManualSkillModal}
-            onClose={() => setShowManualSkillModal(false)}
-            onSave={handleSaveManualSkills}
-            currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
-            skillMasteryData={liveSkills}
-            bktResultsMap={bktResultsMap}
-          />
-        </main>
-
-        {showStartPracticeModal && sessionMode && (
-          <StartPracticeModal
-            studentId={studentId}
-            studentName={player.name}
-            focusDescription={sessionMode.focusDescription}
-            sessionMode={sessionMode}
-            avgSecondsPerProblem={avgSecondsPerProblem}
-            existingPlan={activeSession}
-            problemHistory={problemHistory}
-            onClose={() => setShowStartPracticeModal(false)}
-            onStarted={() => setShowStartPracticeModal(false)}
-          />
-        )}
-
-        {/* Session Observer Modal */}
-        {isObserving && activeSession && (
-          <SessionObserverModal
-            isOpen={isObserving}
-            onClose={() => setIsObserving(false)}
-            session={{
-              sessionId: activeSession.id,
-              playerId: studentId,
-              startedAt:
-                typeof activeSession.createdAt === 'string'
-                  ? activeSession.createdAt
-                  : activeSession.createdAt instanceof Date
-                    ? activeSession.createdAt.toISOString()
-                    : new Date().toISOString(),
-              currentPartIndex: activeSession.currentPartIndex ?? 0,
-              currentSlotIndex: activeSession.currentSlotIndex ?? 0,
-              totalParts: activeSession.parts?.length ?? 1,
-              totalProblems: activeSession.parts?.reduce((sum, p) => sum + p.slots.length, 0) ?? 0,
-              completedProblems:
-                activeSession.results?.filter((r) => r.isCorrect !== null).length ?? 0,
-            }}
-            student={{
-              name: player.name,
-              emoji: player.emoji,
-              color: player.color,
-            }}
-            observerId={userId}
-          />
-        )}
+          {/* Session Observer Modal */}
+          {isObserving && activeSession && (
+            <SessionObserverModal
+              isOpen={isObserving}
+              onClose={() => setIsObserving(false)}
+              session={{
+                sessionId: activeSession.id,
+                playerId: studentId,
+                startedAt:
+                  typeof activeSession.createdAt === 'string'
+                    ? activeSession.createdAt
+                    : activeSession.createdAt instanceof Date
+                      ? activeSession.createdAt.toISOString()
+                      : new Date().toISOString(),
+                currentPartIndex: activeSession.currentPartIndex ?? 0,
+                currentSlotIndex: activeSession.currentSlotIndex ?? 0,
+                totalParts: activeSession.parts?.length ?? 1,
+                totalProblems:
+                  activeSession.parts?.reduce((sum, p) => sum + p.slots.length, 0) ?? 0,
+                completedProblems:
+                  activeSession.results?.filter((r) => r.isCorrect !== null).length ?? 0,
+              }}
+              student={{
+                name: player.name,
+                emoji: player.emoji,
+                color: player.color,
+              }}
+              observerId={userId}
+            />
+          )}
         </PracticeErrorBoundary>
       </PageWithNav>
     </SessionModeBannerProvider>

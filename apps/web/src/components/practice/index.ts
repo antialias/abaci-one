@@ -24,7 +24,12 @@ export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export { PracticeFeedback } from './PracticeFeedback'
 export type { RelationshipBadgeProps, RelationshipConfig } from './RelationshipBadge'
-export { RelationshipBadge, RelationshipSummary, RELATIONSHIP_CONFIGS, getRelationType } from './RelationshipBadge'
+export {
+  RelationshipBadge,
+  RelationshipSummary,
+  RELATIONSHIP_CONFIGS,
+  getRelationType,
+} from './RelationshipBadge'
 export type { RelationshipCardProps } from './RelationshipCard'
 export { RelationshipCard } from './RelationshipCard'
 export { PurposeBadge } from './PurposeBadge'

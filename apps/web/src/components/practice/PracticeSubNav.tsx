@@ -179,7 +179,14 @@ export function PracticeSubNav({
           }
         : undefined,
     }
-  }, [student.id, student.name, student.isArchived, viewerRelationship, hasActiveSession, activeSession?.id])
+  }, [
+    student.id,
+    student.name,
+    student.isArchived,
+    viewerRelationship,
+    hasActiveSession,
+    activeSession?.id,
+  ])
 
   // Use student actions hook for menu logic
   const { actions, handlers, modals, classrooms } = useStudentActions(studentActionData, {
@@ -515,7 +522,7 @@ export function PracticeSubNav({
                 sideOffset={8}
                 align="end"
               >
-                  {/* Go to Dashboard - when not on dashboard */}
+                {/* Go to Dashboard - when not on dashboard */}
                 {!isOnDashboard && (
                   <DropdownMenu.Item
                     className={menuItemStyles(isDark)}
@@ -635,16 +642,18 @@ export function PracticeSubNav({
                 )}
 
                 {/* Show enroll option even if no enrollments yet */}
-                {classrooms.enrolled.length === 0 && !classrooms.current && actions.enrollInClassroom && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.openEnrollModal}
-                    data-action="enroll-in-classroom"
-                  >
-                    <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
-                    <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
-                  </DropdownMenu.Item>
-                )}
+                {classrooms.enrolled.length === 0 &&
+                  !classrooms.current &&
+                  actions.enrollInClassroom && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.openEnrollModal}
+                      data-action="enroll-in-classroom"
+                    >
+                      <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
+                      <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
+                    </DropdownMenu.Item>
+                  )}
 
                 <DropdownMenu.Separator className={separatorStyles(isDark)} />
 
