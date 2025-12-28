@@ -7,11 +7,13 @@
  */
 
 import { NextResponse } from 'next/server'
+import { canPerformAction } from '@/lib/classroom'
 import {
   recordSkillAttempt,
   refreshSkillRecency,
   setMasteredSkills,
 } from '@/lib/curriculum/progress-manager'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -19,6 +21,7 @@ interface RouteParams {
 
 /**
  * POST - Record a single skill attempt
+ * Requires 'start-session' permission (parent or teacher-present)
  */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
@@ -26,6 +29,13 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization: require 'start-session' permission (parent or teacher-present)
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    if (!canModify) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -50,6 +60,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
 /**
  * PUT - Set which skills are mastered (teacher manual override)
+ * Requires 'start-session' permission (parent or teacher-present)
  * Body: { masteredSkillIds: string[] }
  */
 export async function PUT(request: Request, { params }: RouteParams) {
@@ -58,6 +69,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization: require 'start-session' permission (parent or teacher-present)
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    if (!canModify) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -83,6 +101,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
 /**
  * PATCH - Refresh skill recency by inserting a sentinel record
+ * Requires 'start-session' permission (parent or teacher-present)
  * Body: { skillId: string }
  *
  * Use this when a teacher wants to mark a skill as "recently practiced"
@@ -100,6 +119,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization: require 'start-session' permission (parent or teacher-present)
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    if (!canModify) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const body = await request.json()

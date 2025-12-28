@@ -1,9 +1,10 @@
 'use client'
 
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTheme } from '@/contexts/ThemeContext'
+import { ShareCodePanel } from '@/components/common'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useShareCode } from '@/hooks/useShareCode'
 import {
   formatSkillChipName,
   getSkillDisplayName,
@@ -36,18 +37,16 @@ interface StudentFilterBarProps {
   showArchived: boolean
   /** Callback when archive toggle changes */
   onShowArchivedChange: (show: boolean) => void
-  /** Whether edit mode is active */
-  editMode: boolean
-  /** Callback when edit mode changes */
-  onEditModeChange: (editing: boolean) => void
   /** Number of archived students (for badge) */
   archivedCount: number
   /** Callback when add student button is clicked */
   onAddStudent?: () => void
-  /** Number of selected students in edit mode */
+  /** Number of selected students (for bulk actions bar) */
   selectedCount?: number
   /** Callback when bulk archive is clicked */
   onBulkArchive?: () => void
+  /** Callback to clear selection */
+  onClearSelection?: () => void
 }
 
 /**
@@ -58,7 +57,7 @@ interface StudentFilterBarProps {
  * - Skill autocomplete dropdown
  * - Skill filter pills with remove button
  * - Archive toggle button
- * - Edit mode toggle button
+ * - Bulk action bar (appears when students are selected)
  */
 export function StudentFilterBar({
   currentView,
@@ -72,12 +71,11 @@ export function StudentFilterBar({
   onSkillFiltersChange,
   showArchived,
   onShowArchivedChange,
-  editMode,
-  onEditModeChange,
   archivedCount,
   onAddStudent,
   selectedCount = 0,
   onBulkArchive,
+  onClearSelection,
 }: StudentFilterBarProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -184,45 +182,11 @@ export function StudentFilterBar({
           />
 
           {/* Classroom code - teachers only */}
-          {classroomCode && (
-            <button
-              type="button"
-              data-element="classroom-code"
-              onClick={() => {
-                navigator.clipboard.writeText(classroomCode)
-              }}
-              title="Click to copy classroom code"
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                bg: isDark ? 'gray.700' : 'gray.100',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontFamily: 'monospace',
-                color: isDark ? 'gray.300' : 'gray.600',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  bg: isDark ? 'gray.600' : 'gray.200',
-                  borderColor: isDark ? 'gray.500' : 'gray.400',
-                },
-                _active: {
-                  transform: 'scale(0.98)',
-                },
-              })}
-            >
-              <span>📋</span>
-              <span>{classroomCode}</span>
-            </button>
-          )}
+          {classroomCode && <ClassroomShareChip code={classroomCode} />}
         </div>
       )}
 
-      {/* Search/bulk actions and buttons row */}
+      {/* Search row OR bulk action bar (mutually exclusive) */}
       <div
         className={css({
           display: 'flex',
@@ -231,20 +195,19 @@ export function StudentFilterBar({
           flexWrap: 'wrap',
         })}
       >
-        {editMode ? (
-          /* Edit mode: Show bulk actions */
+        {selectedCount > 0 ? (
+          /* Bulk action bar - replaces search when students are selected */
           <div
             data-element="bulk-actions"
             className={css({
               flex: '1',
-              minWidth: '200px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
               padding: '8px 12px',
-              bg: isDark ? 'amber.900/50' : 'amber.50',
+              bg: isDark ? 'blue.900/50' : 'blue.50',
               border: '1px solid',
-              borderColor: isDark ? 'amber.700' : 'amber.200',
+              borderColor: isDark ? 'blue.700' : 'blue.200',
               borderRadius: '8px',
             })}
           >
@@ -252,12 +215,12 @@ export function StudentFilterBar({
               className={css({
                 fontSize: '14px',
                 fontWeight: 'medium',
-                color: isDark ? 'amber.200' : 'amber.700',
+                color: isDark ? 'blue.200' : 'blue.700',
               })}
             >
               {selectedCount} selected
             </span>
-            {selectedCount > 0 && onBulkArchive && (
+            {onBulkArchive && (
               <button
                 type="button"
                 onClick={onBulkArchive}
@@ -276,14 +239,36 @@ export function StudentFilterBar({
                   },
                 })}
               >
-                Archive Selected
+                Archive
+              </button>
+            )}
+            {onClearSelection && (
+              <button
+                type="button"
+                onClick={onClearSelection}
+                data-action="clear-selection"
+                className={css({
+                  padding: '6px 12px',
+                  bg: 'transparent',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: {
+                    bg: isDark ? 'gray.700' : 'gray.100',
+                  },
+                })}
+              >
+                Clear
               </button>
             )}
           </div>
         ) : (
-          /* Normal mode: Show search and archive toggle */
+          /* Search input with dropdown */
           <>
-            {/* Search input with dropdown */}
             <div
               className={css({
                 position: 'relative',
@@ -498,110 +483,8 @@ export function StudentFilterBar({
           </>
         )}
 
-        {/* More menu with edit mode and other options */}
-        {editMode ? (
-          /* Done button when in edit mode */
-          <button
-            type="button"
-            onClick={() => onEditModeChange(false)}
-            data-action="done-editing"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 12px',
-              bg: isDark ? 'amber.900' : 'amber.100',
-              border: '1px solid',
-              borderColor: isDark ? 'amber.700' : 'amber.300',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              color: isDark ? 'amber.300' : 'amber.700',
-              transition: 'all 0.15s ease',
-              _hover: {
-                borderColor: isDark ? 'amber.600' : 'amber.400',
-              },
-            })}
-          >
-            <span>✓</span>
-            <span>Done</span>
-          </button>
-        ) : (
-          /* More dropdown menu */
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                data-action="open-more-menu"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '36px',
-                  height: '36px',
-                  bg: isDark ? 'gray.700' : 'gray.100',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.600' : 'gray.300',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  color: isDark ? 'gray.300' : 'gray.700',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    bg: isDark ? 'gray.600' : 'gray.200',
-                    borderColor: isDark ? 'gray.500' : 'gray.400',
-                  },
-                })}
-              >
-                ⋮
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                align="end"
-                sideOffset={4}
-                className={css({
-                  minWidth: '180px',
-                  bg: isDark ? 'gray.800' : 'white',
-                  borderRadius: '8px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  boxShadow: 'lg',
-                  padding: '4px',
-                  zIndex: Z_INDEX.DROPDOWN,
-                })}
-              >
-                <DropdownMenu.Item
-                  data-action="select-multiple"
-                  onSelect={() => onEditModeChange(true)}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    color: isDark ? 'gray.200' : 'gray.700',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    _hover: {
-                      bg: isDark ? 'gray.700' : 'gray.100',
-                    },
-                    _focus: {
-                      bg: isDark ? 'gray.700' : 'gray.100',
-                    },
-                  })}
-                >
-                  <span>☑️</span>
-                  <span>Select Multiple</span>
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-        )}
-
-        {/* Add Student FAB - only in normal mode */}
-        {!editMode && onAddStudent && (
+        {/* Add Student FAB */}
+        {onAddStudent && (
           <button
             type="button"
             onClick={onAddStudent}
@@ -712,4 +595,12 @@ export function StudentFilterBar({
       )}
     </div>
   )
+}
+
+/**
+ * Compact share chip for classroom code with QR popover
+ */
+function ClassroomShareChip({ code }: { code: string }) {
+  const shareCode = useShareCode({ type: 'classroom', code })
+  return <ShareCodePanel shareCode={shareCode} compact showRegenerate={false} />
 }

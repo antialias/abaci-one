@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { canPerformAction } from '@/lib/classroom'
 import {
   getPlayerCurriculum,
   getAllSkillMastery,
@@ -13,6 +14,7 @@ import {
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -27,6 +29,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization check
+    const userId = await getDbUserId()
+    const canView = await canPerformAction(userId, playerId, 'view')
+    if (!canView) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const [curriculum, rawSkills, recentSessions, sessionResults] = await Promise.all([
@@ -82,6 +91,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
 /**
  * PATCH - Update curriculum settings
+ *
+ * Only parents and present teachers can modify curriculum settings.
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
@@ -89,6 +100,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization check - stricter than 'view', only parents/present teachers can modify
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    if (!canModify) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const body = await request.json()

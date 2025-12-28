@@ -50,7 +50,8 @@ function getIdleModeConfig(sessionMode: SessionMode): ModeConfig {
         sublabel: `${weakCount} skill${weakCount > 1 ? 's' : ''} to strengthen`,
         buttonLabel: 'Start',
         bgGradient: {
-          light: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%)',
+          light:
+            'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%)',
           dark: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%)',
         },
         borderColor: { light: '#fbbf24', dark: '#d97706' },
@@ -66,7 +67,8 @@ function getIdleModeConfig(sessionMode: SessionMode): ModeConfig {
         sublabel: sessionMode.nextSkill.displayName,
         buttonLabel: tutorialRequired ? 'Learn' : 'Start',
         bgGradient: {
-          light: 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
+          light:
+            'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
           dark: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
         },
         borderColor: { light: '#22c55e', dark: '#16a34a' },
@@ -81,7 +83,8 @@ function getIdleModeConfig(sessionMode: SessionMode): ModeConfig {
         sublabel: `${sessionMode.skillCount} skills mastered`,
         buttonLabel: 'Start',
         bgGradient: {
-          light: 'linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(139, 92, 246, 0.04) 100%)',
+          light:
+            'linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(139, 92, 246, 0.04) 100%)',
           dark: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
         },
         borderColor: { light: '#3b82f6', dark: '#2563eb' },
@@ -104,7 +107,8 @@ function getActiveSessionConfig(activity: StudentActivity, isTeacher: boolean): 
       sublabel: progressText,
       buttonLabel: 'Watch',
       bgGradient: {
-        light: 'linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
+        light:
+          'linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
         dark: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
       },
       borderColor: { light: '#8b5cf6', dark: '#7c3aed' },
@@ -242,7 +246,9 @@ export function MiniStartPracticeBanner({
       {/* Action button */}
       <button
         type="button"
-        data-action={isPracticing ? (isTeacher ? 'watch-session' : 'resume-practice') : 'start-practice'}
+        data-action={
+          isPracticing ? (isTeacher ? 'watch-session' : 'resume-practice') : 'start-practice'
+        }
         onClick={handleClick}
         className={css({
           display: 'flex',

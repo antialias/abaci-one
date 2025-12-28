@@ -7,7 +7,9 @@
  */
 
 import { NextResponse } from 'next/server'
+import { canPerformAction } from '@/lib/classroom'
 import { getPaginatedSessions } from '@/lib/curriculum/progress-manager'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -19,6 +21,13 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+    }
+
+    // Authorization check
+    const userId = await getDbUserId()
+    const canView = await canPerformAction(userId, playerId, 'view')
+    if (!canView) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Parse query parameters

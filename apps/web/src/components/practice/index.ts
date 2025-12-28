@@ -57,7 +57,7 @@ export { getSkillClassification, SkillProgressChart } from './SkillProgressChart
 export type { SpeedMeterProps } from './SpeedMeter'
 export { SpeedMeter } from './SpeedMeter'
 export { StartPracticeModal } from './StartPracticeModal'
-export type { StudentIntervention, StudentWithProgress } from './StudentSelector'
+export type { EnrollmentActions, StudentIntervention, StudentWithProgress } from './StudentSelector'
 export { StudentSelector } from './StudentSelector'
 export { StudentActionMenu } from './StudentActionMenu'
 export { StudentFilterBar } from './StudentFilterBar'

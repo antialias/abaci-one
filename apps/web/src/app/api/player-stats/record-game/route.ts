@@ -11,19 +11,21 @@ import type {
   RecordGameResponse,
   StatsUpdate,
 } from '@/lib/arcade/stats/types'
-import { getViewerId } from '@/lib/viewer'
+import { canPerformAction } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * POST /api/player-stats/record-game
  *
  * Records a game result and updates player stats for all participants.
  * Supports cooperative games (team wins/losses) and competitive games.
+ * Requires 'start-session' permission for each player being recorded.
  */
 export async function POST(request: Request) {
   try {
-    // 1. Authenticate user
-    const viewerId = await getViewerId()
-    if (!viewerId) {
+    // 1. Authenticate user and get database user ID
+    const userId = await getDbUserId()
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -42,7 +44,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid game result: gameType required' }, { status: 400 })
     }
 
-    // 3. Process each player's result
+    // 3. Authorization: verify caller can record stats for ALL players
+    for (const playerResult of gameResult.playerResults) {
+      const canRecord = await canPerformAction(userId, playerResult.playerId, 'start-session')
+      if (!canRecord) {
+        return NextResponse.json(
+          { error: `Not authorized to record stats for player ${playerResult.playerId}` },
+          { status: 403 }
+        )
+      }
+    }
+
+    // 4. Process each player's result
     const updates: StatsUpdate[] = []
 
     for (const playerResult of gameResult.playerResults) {
@@ -50,7 +63,7 @@ export async function POST(request: Request) {
       updates.push(update)
     }
 
-    // 4. Return success response
+    // 5. Return success response
     const response: RecordGameResponse = {
       success: true,
       updates,

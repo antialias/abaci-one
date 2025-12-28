@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players } from '@/db/schema'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
-import { getStudentPresence } from '@/lib/classroom'
+import { canPerformAction, getStudentPresence } from '@/lib/classroom'
 import { emitSessionEnded, emitSessionStarted } from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
@@ -13,6 +13,7 @@ import {
   recordSlotResult,
   startSessionPlan,
 } from '@/lib/curriculum'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string; planId: string }>
@@ -64,6 +65,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { playerId, planId } = await params
 
   try {
+    // Authorization: require 'start-session' permission (parent or teacher-present)
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    if (!canModify) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { action, result, reason } = body
 

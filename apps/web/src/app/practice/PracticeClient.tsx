@@ -7,6 +7,7 @@ import {
   CreateClassroomForm,
   PendingApprovalsSection,
   SessionObserverModal,
+  TeacherEnrollmentSection,
 } from '@/components/classroom'
 import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -82,7 +83,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   const [searchQuery, setSearchQuery] = useState('')
   const [skillFilters, setSkillFilters] = useState<string[]>([])
   const [showArchived, setShowArchived] = useState(false)
-  const [editMode, setEditMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Add student modal state (parent mode - create new child)
@@ -183,26 +183,31 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
       .filter((bucket) => bucket.categories.length > 0)
   }, [groupedStudents, attentionStudentIds, attentionCountsByBucket])
 
-  // Handle student selection - navigate to student's resume page
+  // Handle student selection - navigate to student's dashboard page
   const handleSelectStudent = useCallback(
     (student: StudentWithProgress) => {
-      if (editMode) {
-        // In edit mode, toggle selection instead of navigating
-        setSelectedIds((prev) => {
-          const next = new Set(prev)
-          if (next.has(student.id)) {
-            next.delete(student.id)
-          } else {
-            next.add(student.id)
-          }
-          return next
-        })
-      } else {
-        router.push(`/practice/${student.id}/dashboard`, { scroll: false })
-      }
+      router.push(`/practice/${student.id}/dashboard`, { scroll: false })
     },
-    [router, editMode]
+    [router]
   )
+
+  // Handle checkbox toggle for multi-select
+  const handleToggleSelection = useCallback((student: StudentWithProgress) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(student.id)) {
+        next.delete(student.id)
+      } else {
+        next.add(student.id)
+      }
+      return next
+    })
+  }, [])
+
+  // Handle clear selection
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
 
   // Handle bulk archive using React Query mutation
   const handleBulkArchive = useCallback(async () => {
@@ -218,18 +223,9 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
 
     await Promise.all(promises)
 
-    // Clear selection and exit edit mode
+    // Clear selection after archiving
     setSelectedIds(new Set())
-    setEditMode(false)
   }, [selectedIds, updatePlayer])
-
-  // Handle edit mode change
-  const handleEditModeChange = useCallback((editing: boolean) => {
-    setEditMode(editing)
-    if (!editing) {
-      setSelectedIds(new Set())
-    }
-  }, [])
 
   // Handle add student - different modal for teachers vs parents
   const handleAddStudent = useCallback(() => {
@@ -324,12 +320,11 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           onSkillFiltersChange={setSkillFilters}
           showArchived={showArchived}
           onShowArchivedChange={setShowArchived}
-          editMode={editMode}
-          onEditModeChange={handleEditModeChange}
           archivedCount={archivedCount}
           onAddStudent={handleAddStudent}
           selectedCount={selectedIds.size}
           onBulkArchive={handleBulkArchive}
+          onClearSelection={handleClearSelection}
         />
 
         <div
@@ -403,6 +398,9 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             )}
           </header>
 
+          {/* Teacher Enrollment Requests - for teachers to approve parent-initiated requests */}
+          {isTeacher && classroomId && <TeacherEnrollmentSection classroomId={classroomId} />}
+
           {/* Pending Enrollment Approvals - for parents to approve teacher-initiated requests */}
           <PendingApprovalsSection />
 
@@ -457,9 +455,9 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
               <StudentSelector
                 students={studentsNeedingAttention as StudentWithProgress[]}
                 onSelectStudent={handleSelectStudent}
+                onToggleSelection={handleToggleSelection}
                 onObserveSession={handleObserveSession}
                 title=""
-                editMode={editMode}
                 selectedIds={selectedIds}
                 hideAddButton
               />
@@ -561,9 +559,9 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
                               <StudentSelector
                                 students={category.students as StudentWithProgress[]}
                                 onSelectStudent={handleSelectStudent}
+                                onToggleSelection={handleToggleSelection}
                                 onObserveSession={handleObserveSession}
                                 title=""
-                                editMode={editMode}
                                 selectedIds={selectedIds}
                                 hideAddButton
                               />

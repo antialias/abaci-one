@@ -55,7 +55,14 @@ export function PageTransitionOverlay() {
 
   // Debug logging
   useEffect(() => {
-    console.log('[PageTransitionOverlay] phase:', phase, 'isRevealing:', isRevealing, 'isTransitioning:', isTransitioning)
+    console.log(
+      '[PageTransitionOverlay] phase:',
+      phase,
+      'isRevealing:',
+      isRevealing,
+      'isTransitioning:',
+      isTransitioning
+    )
   }, [phase, isRevealing, isTransitioning])
 
   // When phase changes to revealing, start the fade out
@@ -71,12 +78,7 @@ export function PageTransitionOverlay() {
     return null
   }
 
-  return (
-    <OverlayAnimation
-      transitionState={transitionState}
-      phase={phase}
-    />
-  )
+  return <OverlayAnimation transitionState={transitionState} phase={phase} />
 }
 
 // ============================================================================
@@ -121,9 +123,10 @@ function OverlayAnimation({ transitionState, phase }: OverlayAnimationProps) {
     },
     // Position/size are immediate on first render, but opacity animates for cross-fade with modal
     immediate: (key) => isFirstRender.current && key !== 'opacity',
-    config: phase === 'revealing'
-      ? { tension: 200, friction: 26 } // Slower fade-out for smooth cross-fade
-      : { tension: 300, friction: 20 }, // Quick fade-in for modal cross-fade
+    config:
+      phase === 'revealing'
+        ? { tension: 200, friction: 26 } // Slower fade-out for smooth cross-fade
+        : { tension: 300, friction: 20 }, // Quick fade-in for modal cross-fade
   })
 
   // Mark first render as complete
@@ -152,7 +155,7 @@ function OverlayAnimation({ transitionState, phase }: OverlayAnimationProps) {
         height: spring.height,
         borderRadius: spring.borderRadius,
         opacity: spring.opacity,
-        transform: spring.scale.to(s => `scale(${s})`),
+        transform: spring.scale.to((s) => `scale(${s})`),
         zIndex: Z_INDEX.MODAL + 100,
         backgroundColor: studentColor,
         display: 'flex',
@@ -175,7 +178,7 @@ function OverlayAnimation({ transitionState, phase }: OverlayAnimationProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: avatarSpring.size.to(s => `${s * 0.5}px`),
+          fontSize: avatarSpring.size.to((s) => `${s * 0.5}px`),
         }}
       >
         {studentEmoji}

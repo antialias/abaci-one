@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { canPerformAction } from '@/lib/classroom'
 import { analyzeSkillPerformance } from '@/lib/curriculum/progress-manager'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -13,6 +15,13 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   const { playerId } = await params
 
   try {
+    // Authorization check
+    const userId = await getDbUserId()
+    const canView = await canPerformAction(userId, playerId, 'view')
+    if (!canView) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
     const analysis = await analyzeSkillPerformance(playerId)
     return NextResponse.json({ analysis })
   } catch (error) {

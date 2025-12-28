@@ -66,9 +66,28 @@ export function getAvailableActions(
   const isEnrolled = !!relationship?.isEnrolled
   const isMyChild = !!relationship?.isMyChild
 
+  // Check if this is a pending enrollment request - disable most actions
+  const isPendingEnrollment = relationship?.enrollmentStatus?.startsWith('pending') ?? false
+
+  // For pending enrollment requests, only allow viewing (no actions)
+  if (isPendingEnrollment) {
+    return {
+      startPractice: false,
+      watchSession: false,
+      enterClassroom: false,
+      leaveClassroom: false,
+      removeFromClassroom: false,
+      enrollInClassroom: false,
+      unenrollStudent: false,
+      shareAccess: false,
+      archive: false,
+      unarchive: false,
+    }
+  }
+
   return {
     // Primary actions
-    startPractice: true, // Always available
+    startPractice: true, // Always available for enrolled/owned students
     watchSession: isPracticing && hasSessionId,
     // Parents can enter/leave their own children (even if they're also teachers)
     enterClassroom: isMyChild && !!hasEnrolledClassrooms && !isPresent,

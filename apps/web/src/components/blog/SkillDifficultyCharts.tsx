@@ -7,7 +7,13 @@ import * as Tabs from '@radix-ui/react-tabs'
 // Dynamic import echarts to reduce bundle size
 const ReactECharts = dynamic(() => import('echarts-for-react'), {
   ssr: false,
-  loading: () => <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chart...</div>,
+  loading: () => (
+    <div
+      style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      Loading chart...
+    </div>
+  ),
 })
 import { css } from '../../../styled-system/css'
 

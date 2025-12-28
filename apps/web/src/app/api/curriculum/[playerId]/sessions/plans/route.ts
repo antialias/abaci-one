@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { canPerformAction } from '@/lib/classroom'
 import {
   ActiveSessionExistsError,
   type EnabledParts,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -37,6 +39,13 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   const { playerId } = await params
 
   try {
+    // Authorization check
+    const userId = await getDbUserId()
+    const canView = await canPerformAction(userId, playerId, 'view')
+    if (!canView) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
     const plan = await getActiveSessionPlan(playerId)
     return NextResponse.json({ plan: plan ? serializePlan(plan) : null })
   } catch (error) {
@@ -68,6 +77,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { playerId } = await params
 
   try {
+    // Authorization check - only parents/present teachers can create sessions
+    const userId = await getDbUserId()
+    const canCreate = await canPerformAction(userId, playerId, 'start-session')
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
     const body = await request.json()
     const {
       durationMinutes,

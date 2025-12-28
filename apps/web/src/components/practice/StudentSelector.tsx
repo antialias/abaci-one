@@ -110,6 +110,20 @@ export interface StudentIntervention {
 }
 
 /**
+ * Actions for enrollment requests (approve/deny buttons on cards)
+ */
+export interface EnrollmentActions {
+  /** Called when approve is clicked, with the request ID */
+  onApprove: (requestId: string) => void
+  /** Called when deny is clicked, with the request ID */
+  onDeny: (requestId: string) => void
+  /** Request ID currently being approved */
+  approvingId: string | null
+  /** Request ID currently being denied */
+  denyingId: string | null
+}
+
+/**
  * Student data with curriculum info for display
  */
 export interface StudentWithProgress extends Player {
@@ -121,32 +135,51 @@ export interface StudentWithProgress extends Player {
   lastPracticedAt?: Date | null
   skillCategory?: string | null
   intervention?: StudentIntervention | null
+  /** For enrollment requests, the request ID (used for approve/deny actions) */
+  enrollmentRequestId?: string
+  /** Relationship data for action menu visibility */
+  relationship?: {
+    isMyChild: boolean
+    isEnrolled: boolean
+    isPresent: boolean
+    enrollmentStatus: string | null
+  }
+  /** Activity data for status display */
+  activity?: {
+    status: string
+    sessionProgress?: { current: number; total: number }
+    sessionId?: string
+  }
 }
 
 interface StudentCardProps {
   student: StudentWithProgress
   onSelect: (student: StudentWithProgress) => void
+  onToggleSelection: (student: StudentWithProgress) => void
   onOpenQuickLook: (student: StudentWithProgress, bounds: DOMRect) => void
-  editMode?: boolean
   isSelected?: boolean
   /** Callback when observe session is clicked */
   onObserveSession?: (sessionId: string) => void
   /** Callback to register card ref for keyboard navigation */
   onRegisterRef?: (studentId: string, ref: HTMLDivElement | null) => void
+  /** Enrollment actions (approve/deny) - shows buttons when provided and student has enrollmentRequestId */
+  enrollmentActions?: EnrollmentActions
 }
 
 /**
  * Individual student card showing avatar, name, and progress
- * Clicking navigates to the student's practice page (or toggles selection in edit mode)
+ * Clicking navigates to the student's practice page.
+ * Checkbox is always visible for multi-select.
  */
 function StudentCard({
   student,
   onSelect,
+  onToggleSelection,
   onOpenQuickLook,
-  editMode,
   isSelected,
   onObserveSession,
   onRegisterRef,
+  enrollmentActions,
 }: StudentCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -166,27 +199,8 @@ function StudentCard({
     }
   }, [student.id, onRegisterRef])
 
-  // Check for unified student fields (relationship/activity) at runtime
-  // These are present when using the unified student list
-  const relationship = (
-    student as {
-      relationship?: {
-        isMyChild: boolean
-        isEnrolled: boolean
-        isPresent: boolean
-        enrollmentStatus: string | null
-      }
-    }
-  ).relationship
-  const activity = (
-    student as {
-      activity?: {
-        status: string
-        sessionProgress?: { current: number; total: number }
-        sessionId?: string
-      }
-    }
-  ).activity
+  // Relationship and activity data for status display and action menu
+  const { relationship, activity } = student
 
   const handleQuickLookClick = useCallback(
     (e: React.MouseEvent) => {
@@ -229,44 +243,42 @@ function StudentCard({
         opacity: isArchived ? 0.6 : 1,
       })}
     >
-      {/* Edit mode checkbox */}
-      {editMode && (
-        <Checkbox.Root
-          data-element="checkbox"
-          checked={isSelected}
-          onCheckedChange={() => onSelect(student)}
+      {/* Selection checkbox - always visible */}
+      <Checkbox.Root
+        data-element="checkbox"
+        checked={isSelected}
+        onCheckedChange={() => onToggleSelection(student)}
+        className={css({
+          position: 'absolute',
+          top: '6px',
+          left: '6px',
+          width: '22px',
+          height: '22px',
+          borderRadius: '4px',
+          border: '2px solid',
+          borderColor: isSelected ? 'blue.500' : isDark ? 'gray.500' : 'gray.400',
+          backgroundColor: isSelected ? 'blue.500' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          zIndex: 1,
+          _hover: {
+            borderColor: 'blue.400',
+          },
+        })}
+      >
+        <Checkbox.Indicator
           className={css({
-            position: 'absolute',
-            top: '6px',
-            left: '6px',
-            width: '22px',
-            height: '22px',
-            borderRadius: '4px',
-            border: '2px solid',
-            borderColor: isSelected ? 'blue.500' : isDark ? 'gray.500' : 'gray.400',
-            backgroundColor: isSelected ? 'blue.500' : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            padding: 0,
-            zIndex: 1,
-            _hover: {
-              borderColor: 'blue.400',
-            },
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold',
           })}
         >
-          <Checkbox.Indicator
-            className={css({
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: 'bold',
-            })}
-          >
-            ✓
-          </Checkbox.Indicator>
-        </Checkbox.Root>
-      )}
+          ✓
+        </Checkbox.Indicator>
+      </Checkbox.Root>
 
       {/* Archived badge */}
       {isArchived && (
@@ -275,7 +287,7 @@ function StudentCard({
           className={css({
             position: 'absolute',
             top: '6px',
-            left: editMode ? '32px' : '6px',
+            left: '32px', // After checkbox
             padding: '2px 6px',
             bg: isDark ? 'gray.700' : 'gray.300',
             color: isDark ? 'gray.400' : 'gray.600',
@@ -300,37 +312,39 @@ function StudentCard({
         onObserveSession={onObserveSession}
       />
 
-      {/* QuickLook button */}
-      <button
-        type="button"
-        data-action="open-quicklook"
-        onClick={handleQuickLookClick}
-        className={css({
-          position: 'absolute',
-          top: '6px',
-          right: '6px',
-          width: '28px',
-          height: '28px',
-          borderRadius: '6px',
-          border: 'none',
-          backgroundColor: isDark ? 'gray.700' : 'gray.100',
-          color: isDark ? 'gray.400' : 'gray.500',
-          fontSize: '0.875rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.15s ease',
-          _hover: {
-            backgroundColor: isDark ? 'gray.600' : 'gray.200',
-            color: isDark ? 'gray.200' : 'gray.700',
-            transform: 'scale(1.1)',
-          },
-        })}
-        title="Quick look"
-      >
-        👁
-      </button>
+      {/* QuickLook button - hidden for enrollment requests */}
+      {!student.enrollmentRequestId && (
+        <button
+          type="button"
+          data-action="open-quicklook"
+          onClick={handleQuickLookClick}
+          className={css({
+            position: 'absolute',
+            top: '6px',
+            right: '6px',
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            border: 'none',
+            backgroundColor: isDark ? 'gray.700' : 'gray.100',
+            color: isDark ? 'gray.400' : 'gray.500',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.15s ease',
+            _hover: {
+              backgroundColor: isDark ? 'gray.600' : 'gray.200',
+              color: isDark ? 'gray.200' : 'gray.700',
+              transform: 'scale(1.1)',
+            },
+          })}
+          title="Quick look"
+        >
+          👁
+        </button>
+      )}
 
       {/* Main clickable area */}
       <button
@@ -610,6 +624,78 @@ function StudentCard({
           </div>
         )}
       </button>
+
+      {/* Enrollment action buttons (for enrollment requests) */}
+      {enrollmentActions && student.enrollmentRequestId && (
+        <div
+          data-element="enrollment-actions"
+          className={css({
+            display: 'flex',
+            gap: '8px',
+            width: '100%',
+            marginTop: '8px',
+          })}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              enrollmentActions.onDeny(student.enrollmentRequestId!)
+            }}
+            disabled={
+              enrollmentActions.approvingId === student.enrollmentRequestId ||
+              enrollmentActions.denyingId === student.enrollmentRequestId
+            }
+            data-action="deny-enrollment"
+            className={css({
+              flex: 1,
+              padding: '8px 12px',
+              backgroundColor: isDark ? 'gray.700' : 'gray.200',
+              color: isDark ? 'gray.300' : 'gray.700',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {enrollmentActions.denyingId === student.enrollmentRequestId ? 'Denying...' : 'Deny'}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              enrollmentActions.onApprove(student.enrollmentRequestId!)
+            }}
+            disabled={
+              enrollmentActions.approvingId === student.enrollmentRequestId ||
+              enrollmentActions.denyingId === student.enrollmentRequestId
+            }
+            data-action="approve-enrollment"
+            className={css({
+              flex: 1,
+              padding: '8px 12px',
+              backgroundColor: isDark ? 'green.700' : 'green.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: { backgroundColor: isDark ? 'green.600' : 'green.600' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {enrollmentActions.approvingId === student.enrollmentRequestId
+              ? 'Approving...'
+              : 'Approve'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -673,14 +759,16 @@ function AddStudentButton({ onClick }: AddStudentButtonProps) {
 interface StudentSelectorProps {
   students: StudentWithProgress[]
   onSelectStudent: (student: StudentWithProgress) => void
+  onToggleSelection: (student: StudentWithProgress) => void
   onAddStudent?: () => void
   title?: string
-  editMode?: boolean
   selectedIds?: Set<string>
   /** Hide the add student button (e.g., when showing filtered subsets) */
   hideAddButton?: boolean
   /** Callback when observe session is clicked */
   onObserveSession?: (sessionId: string) => void
+  /** Enrollment actions (approve/deny) - shows buttons on cards with enrollmentRequestId */
+  enrollmentActions?: EnrollmentActions
 }
 
 /**
@@ -690,17 +778,19 @@ interface StudentSelectorProps {
  * curriculum level and progress. Clicking a student navigates
  * to their practice page at /practice/[studentId].
  *
- * In edit mode, clicking toggles selection for bulk operations.
+ * Checkboxes are always visible for multi-select. When any student
+ * is selected, a bulk action bar appears.
  */
 export function StudentSelector({
   students,
   onSelectStudent,
+  onToggleSelection,
   onAddStudent,
   title = 'Who is practicing today?',
-  editMode = false,
   selectedIds = new Set(),
   hideAddButton = false,
   onObserveSession,
+  enrollmentActions,
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -750,10 +840,7 @@ export function StudentSelector({
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
 
       // Don't interfere with text input (notes editing)
-      if (
-        e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLInputElement
-      ) {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
         return
       }
 
@@ -769,11 +856,7 @@ export function StudentSelector({
 
       e.preventDefault()
 
-      const direction = e.key.replace('Arrow', '').toLowerCase() as
-        | 'up'
-        | 'down'
-        | 'left'
-        | 'right'
+      const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right'
 
       const next = findNextStudent(selectedStudent.id, direction, cardRefsRef.current)
       if (next) {
@@ -823,11 +906,12 @@ export function StudentSelector({
               key={student.id}
               student={student}
               onSelect={onSelectStudent}
+              onToggleSelection={onToggleSelection}
               onOpenQuickLook={handleOpenQuickLook}
-              editMode={editMode}
               isSelected={selectedIds.has(student.id)}
               onObserveSession={onObserveSession}
               onRegisterRef={handleRegisterRef}
+              enrollmentActions={enrollmentActions}
             />
           ))}
 
