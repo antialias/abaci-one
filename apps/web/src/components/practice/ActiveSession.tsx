@@ -971,6 +971,13 @@ export function ActiveSession({
 
   // Track last resume time to reset auto-pause timer after resuming
   const lastResumeTimeRef = useRef<number>(0)
+  const handleDigitWithTimerReset = useCallback(
+    (digit: string) => {
+      lastResumeTimeRef.current = Date.now()
+      handleDigit(digit)
+    },
+    [handleDigit]
+  )
 
   // Reset dismissed states when help context changes (new help session)
   useEffect(() => {
@@ -1306,7 +1313,7 @@ export function ActiveSession({
         e.preventDefault()
         handleSubmit()
       } else if (/^[0-9]$/.test(e.key)) {
-        handleDigit(e.key)
+        handleDigitWithTimerReset(e.key)
       }
     }
 
@@ -1316,7 +1323,7 @@ export function ActiveSession({
     hasPhysicalKeyboard,
     canAcceptInput,
     handleSubmit,
-    handleDigit,
+    handleDigitWithTimerReset,
     handleBackspace,
     showHelpOverlay,
     exitHelpMode,
@@ -1886,7 +1893,7 @@ export function ActiveSession({
           {/* On-screen keypad for mobile - includes submit button */}
           {showOnScreenKeypad && (
             <NumericKeypad
-              onDigit={handleDigit}
+              onDigit={handleDigitWithTimerReset}
               onBackspace={handleBackspace}
               onSubmit={handleSubmit}
               disabled={isSubmitting}
