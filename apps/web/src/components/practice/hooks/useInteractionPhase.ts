@@ -509,19 +509,26 @@ export function useInteractionPhase(
       // Timer already elapsed - transition to help mode immediately
       // Keep userAnswer during transition so it shows in answer boxes while fading out
       const helpContext = computeHelpContext(phase.attempt.problem.terms, ctx.helpTermIndex)
-      setPhase({ phase: 'helpMode', attempt: phase.attempt, helpContext })
+      setPhase({
+        phase: 'helpMode',
+        attempt: { ...phase.attempt, userAnswer: '' },
+        helpContext,
+      })
     } else {
       // Set timer for remaining time
       const remaining = AMBIGUOUS_HELP_DELAY_MS - elapsed
       disambiguationTimerRef.current = setTimeout(() => {
         setPhase((prev) => {
           if (prev.phase !== 'awaitingDisambiguation') return prev
-          // Keep userAnswer during transition so it shows in answer boxes while fading out
           const helpContext = computeHelpContext(
             prev.attempt.problem.terms,
             prev.disambiguationContext.helpTermIndex
           )
-          return { phase: 'helpMode', attempt: prev.attempt, helpContext }
+          return {
+            phase: 'helpMode',
+            attempt: { ...prev.attempt, userAnswer: '' },
+            helpContext,
+          }
         })
       }, remaining)
     }
@@ -644,6 +651,16 @@ export function useInteractionPhase(
         const attempt = prev.attempt
         const sums = computePrefixSums(attempt.problem.terms)
 
+        // Once manual submit is required, accept any digit without validation
+        if (attempt.manualSubmitRequired) {
+          const updatedAttempt = {
+            ...attempt,
+            userAnswer: attempt.userAnswer + digit,
+            rejectedDigit: null,
+          }
+          return { phase: 'inputting', attempt: updatedAttempt }
+        }
+
         if (isDigitConsistent(attempt.userAnswer, digit, sums)) {
           const updatedAttempt = {
             ...attempt,
@@ -673,13 +690,10 @@ export function useInteractionPhase(
             // Unambiguous intermediate prefix match (e.g., "03" for prefix sum 3)
             // Immediately enter help mode
             // Keep userAnswer during transition so it shows in answer boxes while fading out
-            const helpContext = computeHelpContext(
-              attempt.problem.terms,
-              newPrefixMatch.helpTermIndex
-            )
+            const helpContext = computeHelpContext(attempt.problem.terms, newPrefixMatch.helpTermIndex)
             return {
               phase: 'helpMode',
-              attempt: updatedAttempt,
+              attempt: { ...updatedAttempt, userAnswer: '' },
               helpContext,
             }
           } else {
@@ -774,15 +788,25 @@ export function useInteractionPhase(
 
       // Keep userAnswer during transition so it shows in answer boxes while fading out
       const helpContext = computeHelpContext(prev.attempt.problem.terms, termIndex)
-      return { phase: 'helpMode', attempt: prev.attempt, helpContext }
+      return {
+        phase: 'helpMode',
+        attempt: { ...prev.attempt, userAnswer: '' },
+        helpContext,
+      }
     })
   }, [])
 
   const exitHelpMode = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase !== 'helpMode') return prev
-      const updatedAttempt = { ...prev.attempt, userAnswer: '' }
-      return { phase: 'inputting', attempt: updatedAttempt }
+      if (prev.phase === 'helpMode') {
+        const updatedAttempt = { ...prev.attempt, userAnswer: '' }
+        return { phase: 'inputting', attempt: updatedAttempt }
+      }
+      if (prev.phase === 'inputting') {
+        const updatedAttempt = { ...prev.attempt, userAnswer: '' }
+        return { phase: 'inputting', attempt: updatedAttempt }
+      }
+      return prev
     })
   }, [])
 
