@@ -405,6 +405,35 @@ describe('useInteractionPhase', () => {
       }
     })
 
+    it('accepts any digit input once manual submit is required', async () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      // Force manual submit by exceeding the correction threshold
+      for (let i = 0; i <= MANUAL_SUBMIT_THRESHOLD; i++) {
+        act(() => {
+          result.current.handleDigit('5') // invalid digit
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(301)
+        })
+      }
+
+      // Now that manual submit is required, any digit should be accepted
+      act(() => {
+        result.current.handleDigit('9')
+      })
+
+      if (result.current.phase.phase === 'inputting') {
+        expect(result.current.phase.attempt.manualSubmitRequired).toBe(true)
+        expect(result.current.phase.attempt.userAnswer).toBe('9')
+        expect(result.current.phase.attempt.rejectedDigit).toBeNull()
+      }
+    })
+
     it('does nothing in non-input phases', () => {
       const { result } = renderHook(() => useInteractionPhase())
 
