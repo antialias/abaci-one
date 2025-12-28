@@ -125,12 +125,14 @@ interface UseSessionObserverResult {
  * @param observerId - Unique identifier for this observer (e.g., teacher's/parent's user ID)
  * @param playerId - The player ID being observed (for authorization check)
  * @param enabled - Whether to start observing (default: true)
+ * @param shareToken - Optional share token for public/guest observation (bypasses user auth)
  */
 export function useSessionObserver(
   sessionId: string | undefined,
   observerId: string | undefined,
   playerId: string | undefined,
-  enabled = true
+  enabled = true,
+  shareToken?: string
 ): UseSessionObserverResult {
   const [state, setState] = useState<ObservedSessionState | null>(null)
   const [results, setResults] = useState<ObservedResult[]>([])
@@ -156,7 +158,10 @@ export function useSessionObserver(
   }, [sessionId])
 
   useEffect(() => {
-    if (!sessionId || !observerId || !playerId || !enabled) {
+    // Need sessionId and either (observerId + playerId) or shareToken
+    const hasAuthCredentials = observerId && playerId
+    const hasShareToken = !!shareToken
+    if (!sessionId || (!hasAuthCredentials && !hasShareToken) || !enabled) {
       // Clean up if disabled
       if (socketRef.current) {
         stopObserving()
@@ -178,8 +183,12 @@ export function useSessionObserver(
       setIsConnected(true)
       setError(null)
 
-      // Join the session channel as an observer (includes playerId for authorization)
-      socket.emit('observe-session', { sessionId, observerId, playerId })
+      // Join the session channel - use shareToken if available, otherwise authenticated flow
+      if (shareToken) {
+        socket.emit('observe-session', { sessionId, shareToken })
+      } else {
+        socket.emit('observe-session', { sessionId, observerId, playerId })
+      }
       setIsObserving(true)
     })
 
@@ -264,7 +273,7 @@ export function useSessionObserver(
       socket.disconnect()
       socketRef.current = null
     }
-  }, [sessionId, observerId, playerId, enabled, stopObserving])
+  }, [sessionId, observerId, playerId, enabled, stopObserving, shareToken])
 
   // Send control action to student's abacus
   const sendControl = useCallback(

@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { canPerformAction } from '@/lib/classroom'
+import { canPerformAction, isParentOf } from '@/lib/classroom'
 import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { getDbUserId } from '@/lib/viewer'
@@ -23,7 +23,10 @@ export default async function PracticeObservationPage({ params }: ObservationPag
     notFound()
   }
 
-  const canObserve = await canPerformAction(observerId, studentId, 'observe')
+  const [canObserve, isParent] = await Promise.all([
+    canPerformAction(observerId, studentId, 'observe'),
+    isParentOf(observerId, studentId),
+  ])
   if (!canObserve) {
     notFound()
   }
@@ -60,6 +63,7 @@ export default async function PracticeObservationPage({ params }: ObservationPag
         color: player.color,
       }}
       studentId={studentId}
+      isParent={isParent}
     />
   )
 }

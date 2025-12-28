@@ -59,6 +59,7 @@ import {
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
+import { revokeSharesForSession } from '@/lib/session-share'
 
 // ============================================================================
 // Plan Generation
@@ -813,6 +814,16 @@ export async function recordSlotResult(
     }
   }
 
+  // Revoke any active share links when session completes
+  if (isComplete) {
+    try {
+      await revokeSharesForSession(planId)
+    } catch (shareError) {
+      // Non-critical: log and continue (session already completed successfully)
+      console.error(`[recordSlotResult] revokeSharesForSession FAILED:`, shareError)
+    }
+  }
+
   return updated
 }
 
@@ -849,6 +860,13 @@ export async function completeSessionPlanEarly(
     .where(eq(schema.sessionPlans.id, planId))
     .returning()
 
+  // Revoke any active share links
+  try {
+    await revokeSharesForSession(planId)
+  } catch (shareError) {
+    console.error(`[completeSessionPlanEarly] revokeSharesForSession FAILED:`, shareError)
+  }
+
   return updated
 }
 
@@ -864,6 +882,14 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
     })
     .where(eq(schema.sessionPlans.id, planId))
     .returning()
+
+  // Revoke any active share links
+  try {
+    await revokeSharesForSession(planId)
+  } catch (shareError) {
+    console.error(`[abandonSessionPlan] revokeSharesForSession FAILED:`, shareError)
+  }
+
   return updated
 }
 

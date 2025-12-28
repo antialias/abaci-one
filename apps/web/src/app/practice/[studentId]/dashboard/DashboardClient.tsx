@@ -2864,6 +2864,7 @@ export function DashboardClient({
                 color: player.color,
               }}
               observerId={userId}
+              canShare={true}
             />
           )}
         </PracticeErrorBoundary>

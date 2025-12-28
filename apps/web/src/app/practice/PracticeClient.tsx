@@ -657,6 +657,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             color: observingStudent.color,
           }}
           observerId={userId}
+          canShare={observingStudent.relationship.isMyChild}
         />
       )}
     </PageWithNav>

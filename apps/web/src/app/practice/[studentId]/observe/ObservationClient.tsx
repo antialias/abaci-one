@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { SessionObserverView } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
@@ -16,10 +16,44 @@ interface ObservationClientProps {
     color: string
   }
   studentId: string
+  /** Whether the observer is a parent of the student (can share session) */
+  isParent?: boolean
 }
 
-export function ObservationClient({ session, observerId, student, studentId }: ObservationClientProps) {
+export function ObservationClient({
+  session,
+  observerId,
+  student,
+  studentId,
+  isParent = false,
+}: ObservationClientProps) {
   const router = useRouter()
+  const [navHeight, setNavHeight] = useState(80) // Default fallback
+
+  useEffect(() => {
+    // Measure the actual nav height from the fixed header
+    const measureNavHeight = () => {
+      const header = document.querySelector('header')
+      if (header) {
+        const rect = header.getBoundingClientRect()
+        // Nav top position + nav height + small margin
+        const calculatedHeight = rect.top + rect.height + 16
+        setNavHeight(calculatedHeight)
+      }
+    }
+
+    // Measure on mount and when window resizes
+    measureNavHeight()
+    window.addEventListener('resize', measureNavHeight)
+
+    // Also measure after a short delay to catch any late-rendering nav elements
+    const timer = setTimeout(measureNavHeight, 100)
+
+    return () => {
+      window.removeEventListener('resize', measureNavHeight)
+      clearTimeout(timer)
+    }
+  }, [])
 
   const handleExit = useCallback(() => {
     router.push(`/practice/${studentId}/dashboard`, { scroll: false })
@@ -34,25 +68,25 @@ export function ObservationClient({ session, observerId, student, studentId }: O
           backgroundColor: 'gray.50',
           _dark: { backgroundColor: 'gray.900' },
           display: 'flex',
-          justifyContent: 'center',
-          padding: { base: '16px', md: '24px' },
+          flexDirection: 'column',
+          boxSizing: 'border-box',
         })}
+        style={{
+          paddingTop: `${navHeight}px`,
+        }}
       >
         <div
           className={css({
+            flex: 1,
             width: '100%',
-            maxWidth: '960px',
-            borderRadius: '16px',
             overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25)',
-            border: '1px solid',
-            borderColor: { base: 'rgba(0,0,0,0.05)', _dark: 'rgba(255,255,255,0.08)' },
           })}
         >
           <SessionObserverView
             session={session}
             student={student}
             observerId={observerId}
+            canShare={isParent}
             onClose={handleExit}
             variant="page"
           />

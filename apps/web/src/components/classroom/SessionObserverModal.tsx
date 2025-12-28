@@ -10,6 +10,7 @@ import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
+import { SessionShareButton } from './SessionShareButton'
 import { LiveResultsPanel } from '../practice/LiveResultsPanel'
 import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
@@ -32,12 +33,20 @@ interface SessionObserverModalProps {
   }
   /** Observer ID (e.g., teacher's user ID) */
   observerId: string
+  /** Whether the observer can share this session (parents only) */
+  canShare?: boolean
 }
 
 interface SessionObserverViewProps {
   session: ActiveSessionInfo
   student: SessionObserverModalProps['student']
   observerId: string
+  /** Optional share token for public/guest observation (bypasses user auth) */
+  shareToken?: string
+  /** If true, hide all control buttons (pause/resume, dock abacus, share) */
+  isViewOnly?: boolean
+  /** Whether the observer can share this session (parents only) */
+  canShare?: boolean
   onClose?: () => void
   onRequestFullscreen?: () => void
   renderCloseButton?: (button: ReactElement) => ReactElement
@@ -60,6 +69,7 @@ export function SessionObserverModal({
   session,
   student,
   observerId,
+  canShare,
 }: SessionObserverModalProps) {
   const router = useRouter()
 
@@ -107,6 +117,7 @@ export function SessionObserverModal({
             session={session}
             student={student}
             observerId={observerId}
+            canShare={canShare}
             onClose={onClose}
             onRequestFullscreen={handleFullscreen}
             renderCloseButton={(button) => <Dialog.Close asChild>{button}</Dialog.Close>}
@@ -122,6 +133,9 @@ export function SessionObserverView({
   session,
   student,
   observerId,
+  shareToken,
+  isViewOnly = false,
+  canShare = false,
   onClose,
   onRequestFullscreen,
   renderCloseButton,
@@ -133,7 +147,7 @@ export function SessionObserverView({
 
   // Subscribe to the session's socket channel
   const { state, results, isConnected, isObserving, error, sendControl, sendPause, sendResume } =
-    useSessionObserver(session.sessionId, observerId, session.playerId, true)
+    useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
 
   // Track if we've paused the session (teacher controls resume)
   const [hasPausedSession, setHasPausedSession] = useState(false)
@@ -339,15 +353,17 @@ export function SessionObserverView({
                 height: '32px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                color: isDark ? 'white' : 'gray.700',
                 fontSize: '1rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                _hover: { backgroundColor: 'rgba(255, 255, 255, 0.3)' },
+                _hover: {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.15)',
+                },
               })}
               title="Open full-screen observation"
             >
@@ -578,74 +594,79 @@ export function SessionObserverView({
           </span>
         </div>
 
-        {/* Teacher controls: pause/resume and dock abaci */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
-          {/* Pause/Resume button */}
-          {isObserving && (
-            <button
-              type="button"
-              data-action={hasPausedSession ? 'resume-session' : 'pause-session'}
-              onClick={hasPausedSession ? handleResumeSession : handlePauseSession}
-              className={css({
-                padding: '8px 12px',
-                backgroundColor: hasPausedSession
-                  ? isDark
-                    ? 'green.700'
-                    : 'green.100'
-                  : isDark
-                    ? 'amber.700'
-                    : 'amber.100',
-                color: hasPausedSession
-                  ? isDark
-                    ? 'green.200'
-                    : 'green.700'
-                  : isDark
-                    ? 'amber.200'
-                    : 'amber.700',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: {
+        {/* Teacher controls: pause/resume and dock abaci (hidden for view-only observers) */}
+        {!isViewOnly && (
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+            {/* Pause/Resume button */}
+            {isObserving && (
+              <button
+                type="button"
+                data-action={hasPausedSession ? 'resume-session' : 'pause-session'}
+                onClick={hasPausedSession ? handleResumeSession : handlePauseSession}
+                className={css({
+                  padding: '8px 12px',
                   backgroundColor: hasPausedSession
                     ? isDark
-                      ? 'green.600'
-                      : 'green.200'
+                      ? 'green.700'
+                      : 'green.100'
                     : isDark
-                      ? 'amber.600'
-                      : 'amber.200',
-                },
-              })}
-            >
-              {hasPausedSession ? '▶️ Resume' : '⏸️ Pause'}
-            </button>
-          )}
+                      ? 'amber.700'
+                      : 'amber.100',
+                  color: hasPausedSession
+                    ? isDark
+                      ? 'green.200'
+                      : 'green.700'
+                    : isDark
+                      ? 'amber.200'
+                      : 'amber.700',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: {
+                    backgroundColor: hasPausedSession
+                      ? isDark
+                        ? 'green.600'
+                        : 'green.200'
+                      : isDark
+                        ? 'amber.600'
+                        : 'amber.200',
+                  },
+                })}
+              >
+                {hasPausedSession ? '▶️ Resume' : '⏸️ Pause'}
+              </button>
+            )}
 
-          {/* Dock both abaci button */}
-          {state && state.phase === 'problem' && (
-            <button
-              type="button"
-              data-action="dock-both-abaci"
-              onClick={handleDockBothAbaci}
-              disabled={!isObserving}
-              className={css({
-                padding: '8px 12px',
-                backgroundColor: isDark ? 'blue.700' : 'blue.100',
-                color: isDark ? 'blue.200' : 'blue.700',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
-                _disabled: { opacity: 0.4, cursor: 'not-allowed' },
-              })}
-            >
-              🧮 Dock Abaci
-            </button>
-          )}
-        </div>
+            {/* Dock both abaci button */}
+            {state && state.phase === 'problem' && (
+              <button
+                type="button"
+                data-action="dock-both-abaci"
+                onClick={handleDockBothAbaci}
+                disabled={!isObserving}
+                className={css({
+                  padding: '8px 12px',
+                  backgroundColor: isDark ? 'blue.700' : 'blue.100',
+                  color: isDark ? 'blue.200' : 'blue.700',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
+                  _disabled: { opacity: 0.4, cursor: 'not-allowed' },
+                })}
+              >
+                🧮 Dock Abaci
+              </button>
+            )}
+
+            {/* Share session link button (parents only) */}
+            {canShare && <SessionShareButton sessionId={session.sessionId} isDark={isDark} />}
+          </div>
+        )}
       </div>
     </div>
   )

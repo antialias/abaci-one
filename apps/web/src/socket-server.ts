@@ -18,6 +18,7 @@ import { getValidator, type GameName } from './lib/arcade/validators'
 import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 import { canPerformAction, isParentOf } from './lib/classroom'
+import { incrementShareViewCount, validateSessionShare } from './lib/session-share'
 
 // Yjs server-side imports
 import * as Y from 'yjs'
@@ -772,19 +773,56 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Session Observation: Start observing a practice session
-    // Now requires playerId for authorization check (parent or teacher-present)
+    // Supports both authenticated observers (parent/teacher) and token-based shared observers
     socket.on(
       'observe-session',
       async ({
         sessionId,
         observerId,
         playerId,
+        shareToken,
       }: {
         sessionId: string
-        observerId: string
+        observerId?: string
         playerId?: string
+        shareToken?: string
       }) => {
         try {
+          // Token-based authentication (shareable links - no user login required)
+          if (shareToken) {
+            const validation = await validateSessionShare(shareToken)
+            if (!validation.valid) {
+              console.log(`⚠️ Share token validation failed: ${validation.error}`)
+              socket.emit('observe-error', { error: validation.error || 'Invalid share link' })
+              return
+            }
+
+            // Increment view count
+            await incrementShareViewCount(shareToken)
+
+            // Mark this socket as a shared observer (view-only, no controls)
+            socket.data.isSharedObserver = true
+            socket.data.shareToken = shareToken
+
+            await socket.join(`session:${sessionId}`)
+            console.log(
+              `👁️ Shared observer joined session: ${sessionId} (token: ${shareToken.substring(0, 4)}...)`
+            )
+
+            // Notify session that a guest observer joined
+            socket.to(`session:${sessionId}`).emit('observer-joined', {
+              observerId: 'guest',
+              isGuest: true,
+            })
+            return
+          }
+
+          // Authenticated observer flow (parent or teacher-present)
+          if (!observerId) {
+            socket.emit('observe-error', { error: 'Observer ID required' })
+            return
+          }
+
           // Authorization check: require 'observe' permission (parent or teacher-present)
           if (playerId) {
             const canObserve = await canPerformAction(observerId, playerId, 'observe')
@@ -796,6 +834,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               return
             }
           }
+
+          // Mark as authenticated observer (has controls)
+          socket.data.isSharedObserver = false
 
           await socket.join(`session:${sessionId}`)
           console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
@@ -845,15 +886,22 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Session Observation: Tutorial control from observer
+    // Shared observers (via token) are view-only and cannot control
     socket.on(
       'tutorial-control',
       (data: { sessionId: string; action: 'skip' | 'next' | 'previous' }) => {
+        // Reject if shared observer (view-only)
+        if (socket.data.isSharedObserver) {
+          console.log('[Socket] tutorial-control rejected - shared observer is view-only')
+          return
+        }
         // Send control command to student's client
         io!.to(`session:${data.sessionId}`).emit('tutorial-control', data)
       }
     )
 
     // Session Observation: Abacus control from observer
+    // Shared observers (via token) are view-only and cannot control
     socket.on(
       'abacus-control',
       (data: {
@@ -862,20 +910,37 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         action: 'show' | 'hide' | 'set-value'
         value?: number
       }) => {
+        // Reject if shared observer (view-only)
+        if (socket.data.isSharedObserver) {
+          console.log('[Socket] abacus-control rejected - shared observer is view-only')
+          return
+        }
         // Send control command to student's client
         io!.to(`session:${data.sessionId}`).emit('abacus-control', data)
       }
     )
 
     // Session Observation: Pause command from observer (teacher pauses student's session)
+    // Shared observers (via token) are view-only and cannot control
     socket.on('session-pause', (data: { sessionId: string; reason: string; message?: string }) => {
+      // Reject if shared observer (view-only)
+      if (socket.data.isSharedObserver) {
+        console.log('[Socket] session-pause rejected - shared observer is view-only')
+        return
+      }
       console.log('[Socket] session-pause:', data.sessionId, data.message)
       // Forward pause command to student's client
       io!.to(`session:${data.sessionId}`).emit('session-paused', data)
     })
 
     // Session Observation: Resume command from observer (teacher resumes student's session)
+    // Shared observers (via token) are view-only and cannot control
     socket.on('session-resume', (data: { sessionId: string }) => {
+      // Reject if shared observer (view-only)
+      if (socket.data.isSharedObserver) {
+        console.log('[Socket] session-resume rejected - shared observer is view-only')
+        return
+      }
       console.log('[Socket] session-resume:', data.sessionId)
       // Forward resume command to student's client
       io!.to(`session:${data.sessionId}`).emit('session-resumed', data)

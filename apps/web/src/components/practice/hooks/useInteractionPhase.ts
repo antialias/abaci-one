@@ -690,7 +690,10 @@ export function useInteractionPhase(
             // Unambiguous intermediate prefix match (e.g., "03" for prefix sum 3)
             // Immediately enter help mode
             // Keep userAnswer during transition so it shows in answer boxes while fading out
-            const helpContext = computeHelpContext(attempt.problem.terms, newPrefixMatch.helpTermIndex)
+            const helpContext = computeHelpContext(
+              attempt.problem.terms,
+              newPrefixMatch.helpTermIndex
+            )
             return {
               phase: 'helpMode',
               attempt: { ...updatedAttempt, userAnswer: '' },
