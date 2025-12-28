@@ -1,5 +1,6 @@
 'use client'
 
+import * as Dialog from '@radix-ui/react-dialog'
 import { useCallback, useEffect, useState } from 'react'
 import { ShareCodePanel } from '@/components/common'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -84,90 +85,90 @@ export function FamilyCodeDisplay({
     }
   }, [playerId])
 
-  // Don't render if not open
-  if (!isOpen) return null
-
-  // Render directly as sibling to parent modal's animated.div
-  // Uses position: fixed with z-index above parent modal
   return (
-    <div
-      data-component="family-code-modal"
-      className={css({
-        position: 'fixed',
-        inset: 0,
-        zIndex: Z_INDEX.TOOLTIP, // 15000 - above modals (10001) but below toasts (20000)
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      })}
-      onClick={onClose}
-    >
-      <div
-        className={css({
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '16px',
-          padding: '24px',
-          maxWidth: '400px',
-          width: '90%',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-          position: 'relative',
-        })}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close button */}
-        <button
-          type="button"
-          onClick={onClose}
-          data-action="close-family-code-modal"
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          data-component="family-code-modal-overlay"
           className={css({
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            padding: '8px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: isDark ? 'gray.500' : 'gray.400',
-            fontSize: '20px',
-            lineHeight: 1,
-            _hover: {
-              color: isDark ? 'gray.300' : 'gray.600',
-            },
+            position: 'fixed',
+            inset: 0,
+            zIndex: Z_INDEX.TOOLTIP, // 15000 - above modals (10001) but below toasts (20000)
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          })}
+        />
+        <Dialog.Content
+          data-component="family-code-modal"
+          className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: Z_INDEX.TOOLTIP,
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            _focus: { outline: 'none' },
           })}
         >
-          ×
-        </button>
+          {/* Close button */}
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              data-action="close-family-code-modal"
+              className={css({
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                padding: '8px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: isDark ? 'gray.500' : 'gray.400',
+                fontSize: '20px',
+                lineHeight: 1,
+                _hover: {
+                  color: isDark ? 'gray.300' : 'gray.600',
+                },
+              })}
+            >
+              ×
+            </button>
+          </Dialog.Close>
 
-        {isLoading ? (
-          <div
-            className={css({
-              textAlign: 'center',
-              padding: '40px 20px',
-              color: isDark ? 'gray.400' : 'gray.500',
-            })}
-          >
-            Loading...
-          </div>
-        ) : error ? (
-          <div
-            className={css({
-              textAlign: 'center',
-              padding: '40px 20px',
-              color: 'red.500',
-            })}
-          >
-            {error}
-          </div>
-        ) : familyCode ? (
-          <FamilyCodeContent
-            code={familyCode}
-            playerName={playerName}
-            onRegenerate={handleRegenerate}
-          />
-        ) : null}
-      </div>
-    </div>
+          {isLoading ? (
+            <div
+              className={css({
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              Loading...
+            </div>
+          ) : error ? (
+            <div
+              className={css({
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: 'red.500',
+              })}
+            >
+              {error}
+            </div>
+          ) : familyCode ? (
+            <FamilyCodeContent
+              code={familyCode}
+              playerName={playerName}
+              onRegenerate={handleRegenerate}
+            />
+          ) : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
