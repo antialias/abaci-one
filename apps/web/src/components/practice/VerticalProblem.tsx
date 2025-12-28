@@ -92,8 +92,10 @@ export function VerticalProblem({
     correctAnswer?.toString().length || 1
   )
 
-  const isCorrect = isCompleted && userAnswer === correctAnswer?.toString()
-  const isIncorrect = isCompleted && userAnswer !== correctAnswer?.toString()
+  // Use numeric comparison so "09" equals 9
+  const numericUserAnswer = parseInt(userAnswer, 10)
+  const isCorrect = isCompleted && correctAnswer !== undefined && numericUserAnswer === correctAnswer
+  const isIncorrect = isCompleted && correctAnswer !== undefined && numericUserAnswer !== correctAnswer
 
   const fontSize = size === 'large' ? '2rem' : '1.5rem'
   const cellWidth = size === 'large' ? '1.8rem' : '1.4rem'

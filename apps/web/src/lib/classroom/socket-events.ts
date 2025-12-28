@@ -151,6 +151,10 @@ export interface PracticeStateEvent {
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Complexity data for tooltip display */
   complexity?: BroadcastComplexity
+  /** Current problem number (1-indexed for display) */
+  currentProblemNumber: number
+  /** Total problems in the session */
+  totalProblems: number
 }
 
 export interface TutorialStateEvent {

@@ -57,6 +57,10 @@ export interface ObservedSessionState {
   complexity?: ObservedComplexity
   /** When this state was received */
   receivedAt: number
+  /** Current problem number (1-indexed for display) */
+  currentProblemNumber: number
+  /** Total problems in the session */
+  totalProblems: number
 }
 
 interface UseSessionObserverResult {
@@ -176,6 +180,8 @@ export function useSessionObserver(
         purpose: data.purpose,
         complexity: data.complexity,
         receivedAt: Date.now(),
+        currentProblemNumber: data.currentProblemNumber,
+        totalProblems: data.totalProblems,
       })
     })
 

@@ -14,14 +14,10 @@ interface MiniStartPracticeBannerProps {
   sessionMode: SessionMode | null
   /** Current activity status */
   activity: StudentActivity | null
-  /** Whether the viewer is a teacher (affects "Watch" vs "Resume" for active sessions) */
-  isTeacher?: boolean
   /** Called when "Start" is clicked - should open StartPracticeModal */
   onStartPractice: () => void
   /** Called when "Resume" is clicked - navigates to active session */
   onResumePractice: () => void
-  /** Called when "Watch" is clicked - opens session observer */
-  onWatchSession: () => void
 }
 
 // ============================================================================
@@ -95,41 +91,22 @@ function getIdleModeConfig(sessionMode: SessionMode): ModeConfig {
   }
 }
 
-function getActiveSessionConfig(activity: StudentActivity, isTeacher: boolean): ModeConfig {
+function getActiveSessionConfig(activity: StudentActivity): ModeConfig {
   const progress = activity.sessionProgress
   const progressText = progress ? `${progress.current}/${progress.total} problems` : 'In progress'
 
-  if (isTeacher) {
-    // Teacher sees "Watch" option
-    return {
-      icon: '👁',
-      label: 'Practicing now',
-      sublabel: progressText,
-      buttonLabel: 'Watch',
-      bgGradient: {
-        light:
-          'linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
-        dark: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
-      },
-      borderColor: { light: '#8b5cf6', dark: '#7c3aed' },
-      textColor: { light: '#6d28d9', dark: '#c4b5fd' },
-      buttonGradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    }
-  } else {
-    // Parent/student sees "Resume" option
-    return {
-      icon: '▶️',
-      label: 'Session in progress',
-      sublabel: progressText,
-      buttonLabel: 'Resume',
-      bgGradient: {
-        light: 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(16, 185, 129, 0.04) 100%)',
-        dark: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
-      },
-      borderColor: { light: '#22c55e', dark: '#16a34a' },
-      textColor: { light: '#166534', dark: '#86efac' },
-      buttonGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-    }
+  return {
+    icon: '▶️',
+    label: 'Session in progress',
+    sublabel: progressText,
+    buttonLabel: 'Resume',
+    bgGradient: {
+      light: 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(16, 185, 129, 0.04) 100%)',
+      dark: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
+    },
+    borderColor: { light: '#22c55e', dark: '#16a34a' },
+    textColor: { light: '#166534', dark: '#86efac' },
+    buttonGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
   }
 }
 
@@ -142,18 +119,15 @@ function getActiveSessionConfig(activity: StudentActivity, isTeacher: boolean): 
  *
  * Shows different content based on state:
  * - Idle + session mode: Shows session mode info with "Start" CTA
- * - Active session (teacher): Shows "Watch" to observe
- * - Active session (parent): Shows "Resume" to continue
+ * - Active session: Shows "Resume" to continue/observe the session
  *
  * Designed to fit above the Overview/Notes tabs.
  */
 export function MiniStartPracticeBanner({
   sessionMode,
   activity,
-  isTeacher = false,
   onStartPractice,
   onResumePractice,
-  onWatchSession,
 }: MiniStartPracticeBannerProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -165,8 +139,8 @@ export function MiniStartPracticeBanner({
   let handleClick: () => void
 
   if (isPracticing) {
-    config = getActiveSessionConfig(activity, isTeacher)
-    handleClick = isTeacher ? onWatchSession : onResumePractice
+    config = getActiveSessionConfig(activity)
+    handleClick = onResumePractice
   } else if (sessionMode) {
     config = getIdleModeConfig(sessionMode)
     handleClick = onStartPractice
@@ -179,7 +153,7 @@ export function MiniStartPracticeBanner({
     <div
       data-component="mini-start-practice-banner"
       data-mode={isPracticing ? 'active' : sessionMode?.type}
-      data-variant={isPracticing ? (isTeacher ? 'watch' : 'resume') : 'start'}
+      data-variant={isPracticing ? 'resume' : 'start'}
       className={css({
         display: 'flex',
         alignItems: 'center',
@@ -246,9 +220,7 @@ export function MiniStartPracticeBanner({
       {/* Action button */}
       <button
         type="button"
-        data-action={
-          isPracticing ? (isTeacher ? 'watch-session' : 'resume-practice') : 'start-practice'
-        }
+        data-action={isPracticing ? 'resume-practice' : 'start-practice'}
         onClick={handleClick}
         className={css({
           display: 'flex',

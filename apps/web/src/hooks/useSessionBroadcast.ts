@@ -84,6 +84,8 @@ export function useSessionBroadcast(
       },
       purpose: currentState.purpose,
       complexity: currentState.complexity,
+      currentProblemNumber: currentState.currentProblemNumber,
+      totalProblems: currentState.totalProblems,
     }
 
     socketRef.current.emit('practice-state', event)

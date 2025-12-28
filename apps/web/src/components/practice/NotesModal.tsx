@@ -9,7 +9,6 @@ import { FamilyCodeDisplay } from '@/components/family'
 import { Z_INDEX } from '@/constants/zIndex'
 import { usePageTransition } from '@/contexts/PageTransitionContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useMyClassroom } from '@/hooks/useClassroom'
 import { usePlayerCurriculumQuery } from '@/hooks/usePlayerCurriculum'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
@@ -159,8 +158,6 @@ export function NotesModal({
   // ========== Additional data for Overview tab ==========
   const { data: curriculumData } = usePlayerCurriculumQuery(student.id)
   const { data: sessionMode } = useSessionMode(student.id)
-  const { data: classroom } = useMyClassroom()
-  const isTeacher = !!classroom
   const updatePlayer = useUpdatePlayer() // For notes only
 
   // ========== Stakeholder data for Relationships tab ==========
@@ -214,15 +211,6 @@ export function NotesModal({
     onClose()
     router.push(`/practice/${student.id}`)
   }, [onClose, router, student.id])
-
-  const handleBannerWatchSession = useCallback(() => {
-    // Session observer is rendered at parent level to avoid z-index issues
-    // Close this modal first so the observer modal appears on top
-    if (onObserveSession && student.activity?.sessionId) {
-      onClose()
-      onObserveSession(student.activity.sessionId)
-    }
-  }, [onObserveSession, student.activity?.sessionId, onClose])
 
   // ========== Effects ==========
 
@@ -646,10 +634,8 @@ export function NotesModal({
         <MiniStartPracticeBanner
           sessionMode={sessionMode ?? null}
           activity={activity}
-          isTeacher={isTeacher}
           onStartPractice={handleBannerStartPractice}
           onResumePractice={handleBannerResumePractice}
-          onWatchSession={handleBannerWatchSession}
         />
 
         {/* Tab bar - show if Overview has content or if we have stakeholder data */}

@@ -90,6 +90,10 @@ export interface BroadcastState {
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Complexity data for tooltip display */
   complexity?: BroadcastComplexity
+  /** Current problem number (1-indexed for display) */
+  currentProblemNumber: number
+  /** Total problems in the session */
+  totalProblems: number
 }
 
 interface ActiveSessionProps {
@@ -189,6 +193,27 @@ function formatSkillName(category: string, skillKey: string): string {
   }
 
   return `${category}: ${skillKey}`
+}
+
+/**
+ * Calculate the number of abacus columns needed to compute a problem.
+ *
+ * This considers all intermediate running totals as we progress through the terms,
+ * not just the final answer. For subtraction (e.g., 87 - 45 = 42), we need
+ * enough columns for the minuend (87), not just the answer (42).
+ */
+function calculateAbacusColumns(terms: number[]): number {
+  if (terms.length === 0) return 1
+
+  let runningTotal = 0
+  let maxAbsValue = 0
+
+  for (const term of terms) {
+    runningTotal += term
+    maxAbsValue = Math.max(maxAbsValue, Math.abs(runningTotal))
+  }
+
+  return Math.max(1, String(maxAbsValue).length)
 }
 
 /**
@@ -465,6 +490,10 @@ function LinearProblem({
   const isPrefixSum = detectedPrefixIndex !== undefined
   const operator = isPrefixSum ? '…' : '='
 
+  // Use numeric comparison so "09" equals 9
+  const numericUserAnswer = parseInt(userAnswer, 10)
+  const answeredCorrectly = isCompleted && numericUserAnswer === correctAnswer
+
   return (
     <div
       data-component="linear-problem"
@@ -502,7 +531,7 @@ function LinearProblem({
           borderRadius: '8px',
           textAlign: 'center',
           backgroundColor: isCompleted
-            ? userAnswer === String(correctAnswer)
+            ? answeredCorrectly
               ? isDark
                 ? 'green.900'
                 : 'green.100'
@@ -513,7 +542,7 @@ function LinearProblem({
               ? 'gray.800'
               : 'gray.100',
           color: isCompleted
-            ? userAnswer === String(correctAnswer)
+            ? answeredCorrectly
               ? isDark
                 ? 'green.200'
                 : 'green.700'
@@ -647,6 +676,20 @@ export function ActiveSession({
     }
   }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
 
+  // Calculate total progress across all parts (needed for broadcast state)
+  const totalProblems = useMemo(() => {
+    return plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
+  }, [plan.parts])
+
+  const completedProblems = useMemo(() => {
+    let count = 0
+    for (let i = 0; i < plan.currentPartIndex; i++) {
+      count += plan.parts[i].slots.length
+    }
+    count += plan.currentSlotIndex
+    return count
+  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+
   // Notify parent of broadcast state changes for session observation
   useEffect(() => {
     if (!onBroadcastStateChange) return
@@ -694,6 +737,8 @@ export function ActiveSession({
         startedAt: attempt?.startTime ?? Date.now(),
         purpose: prevPurpose,
         complexity: extractComplexity(prevSlot),
+        currentProblemNumber: completedProblems + 1,
+        totalProblems,
       })
       return
     }
@@ -731,6 +776,8 @@ export function ActiveSession({
       startedAt: attempt.startTime,
       purpose,
       complexity: extractComplexity(slot),
+      currentProblemNumber: completedProblems + 1,
+      totalProblems,
     })
   }, [
     onBroadcastStateChange,
@@ -743,6 +790,8 @@ export function ActiveSession({
     plan.parts,
     plan.currentPartIndex,
     plan.currentSlotIndex,
+    completedProblems,
+    totalProblems,
   ])
 
   // Handle teacher abacus control events
@@ -1049,20 +1098,6 @@ export function ActiveSession({
   const currentPart = parts[currentPartIndex] as SessionPart | undefined
   const currentSlot = currentPart?.slots[currentSlotIndex] as ProblemSlot | undefined
   const sessionHealth = plan.sessionHealth as SessionHealth | null
-
-  // Calculate total progress across all parts
-  const totalProblems = useMemo(() => {
-    return parts.reduce((sum, part) => sum + part.slots.length, 0)
-  }, [parts])
-
-  const completedProblems = useMemo(() => {
-    let count = 0
-    for (let i = 0; i < currentPartIndex; i++) {
-      count += parts[i].slots.length
-    }
-    count += currentSlotIndex
-    return count
-  }, [parts, currentPartIndex, currentSlotIndex])
 
   // Check for session completion
   useEffect(() => {
@@ -1777,7 +1812,7 @@ export function ActiveSession({
               {currentPart.type === 'abacus' && !showHelpOverlay && (problemHeight ?? 0) > 0 && (
                 <AbacusDock
                   id="practice-abacus"
-                  columns={String(Math.abs(attempt.problem.answer)).length}
+                  columns={calculateAbacusColumns(attempt.problem.terms)}
                   interactive={true}
                   showNumbers={false}
                   animated={true}

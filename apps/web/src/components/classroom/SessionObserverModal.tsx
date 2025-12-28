@@ -208,7 +208,8 @@ export function SessionObserverModal({
                     margin: 0,
                   })}
                 >
-                  Problem {session.completedProblems + 1} of {session.totalProblems}
+                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
+                  {state?.totalProblems ?? session.totalProblems}
                 </Dialog.Description>
               </div>
             </div>
