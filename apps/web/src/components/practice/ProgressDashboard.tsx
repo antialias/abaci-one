@@ -417,33 +417,6 @@ export function ProgressDashboard({
         margin: '0 auto',
       })}
     >
-      {/* Page header */}
-      <div
-        className={css({
-          textAlign: 'center',
-          marginBottom: '0.5rem',
-        })}
-      >
-        <h1
-          className={css({
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: isDark ? 'gray.100' : 'gray.800',
-            marginBottom: '0.25rem',
-          })}
-        >
-          Daily Practice
-        </h1>
-        <p
-          className={css({
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.400' : 'gray.600',
-          })}
-        >
-          Build your soroban skills one step at a time
-        </p>
-      </div>
-
       {/* Current level card - BKT-based when skillHealth available */}
       <div
         data-section="current-level"

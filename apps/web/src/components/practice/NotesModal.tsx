@@ -4,19 +4,22 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { animated, useSpring } from '@react-spring/web'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EnrollChildModal, SessionObserverModal } from '@/components/classroom'
+import { EnrollChildModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
 import { Z_INDEX } from '@/constants/zIndex'
 import { usePageTransition } from '@/contexts/PageTransitionContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useMyClassroom, type ActiveSessionInfo } from '@/hooks/useClassroom'
+import { useMyClassroom } from '@/hooks/useClassroom'
 import { usePlayerCurriculumQuery } from '@/hooks/usePlayerCurriculum'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
+import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentActivity, StudentRelationship, UnifiedStudent } from '@/types/student'
 import { css } from '../../../styled-system/css'
 import { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
+import { RelationshipCard } from './RelationshipCard'
+import { RelationshipSummary } from './RelationshipBadge'
 import { ACTION_DEFINITIONS } from './studentActions'
 
 // ============================================================================
@@ -49,9 +52,11 @@ interface NotesModalProps {
   sourceBounds: DOMRect | null
   /** Called when the modal should close */
   onClose: () => void
+  /** Callback when "Watch Session" is clicked - handled by parent to avoid z-index issues */
+  onObserveSession?: (sessionId: string) => void
 }
 
-type TabId = 'overview' | 'notes'
+type TabId = 'overview' | 'notes' | 'relationships'
 
 // ============================================================================
 // Helper functions
@@ -115,7 +120,7 @@ function buildStudentActionData(student: StudentProp): StudentActionData {
  * - Overflow menu: All student actions (uses shared useStudentActions hook)
  * - Zoom animation from source tile
  */
-export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModalProps) {
+export function NotesModal({ isOpen, student, sourceBounds, onClose, onObserveSession }: NotesModalProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -128,15 +133,18 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   const [isSaving, setIsSaving] = useState(false)
   const [isHiddenForTransition, setIsHiddenForTransition] = useState(false)
 
-  // State for session observer modal
-  const [showSessionObserver, setShowSessionObserver] = useState(false)
-
   const modalRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // ========== Use shared student actions hook ==========
   const studentActionData = buildStudentActionData(student)
-  const { actions, handlers, modals } = useStudentActions(studentActionData)
+  const { actions, handlers, modals } = useStudentActions(studentActionData, {
+    // Session observer is rendered at parent level to avoid z-index issues
+    onObserveSession:
+      onObserveSession && student.activity?.sessionId
+        ? () => onObserveSession(student.activity!.sessionId!)
+        : undefined,
+  })
 
   // ========== Additional data for Overview tab ==========
   const { data: curriculumData } = usePlayerCurriculumQuery(student.id)
@@ -145,24 +153,19 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   const isTeacher = !!classroom
   const updatePlayer = useUpdatePlayer() // For notes only
 
-  // Build ActiveSessionInfo for session observer (when student is practicing)
-  const activeSessionInfo = useMemo<ActiveSessionInfo | null>(() => {
-    const activityData = student.activity ?? null
-    if (activityData?.status !== 'practicing' || !activityData.sessionId) {
-      return null
-    }
-    const progress = activityData.sessionProgress
-    return {
-      sessionId: activityData.sessionId,
-      playerId: student.id,
-      startedAt: new Date().toISOString(), // Best guess - not stored in activity
-      currentPartIndex: 0,
-      currentSlotIndex: progress?.current ?? 0,
-      totalParts: 1,
-      totalProblems: progress?.total ?? 0,
-      completedProblems: progress?.current ?? 0,
-    }
-  }, [student.activity, student.id])
+  // ========== Stakeholder data for Relationships tab ==========
+  const { data: stakeholdersData } = useStudentStakeholders(student.id)
+  const viewerRelationship = stakeholdersData?.viewerRelationship ?? null
+  const stakeholders = stakeholdersData?.stakeholders ?? null
+
+  // Count other stakeholders for the summary line
+  const otherStakeholders = useMemo(() => {
+    if (!stakeholders) return undefined
+    const otherParents = stakeholders.parents.filter((p) => !p.isMe).length
+    const teacherCount = stakeholders.enrolledClassrooms.length
+    if (otherParents === 0 && teacherCount === 0) return undefined
+    return { parents: otherParents, teachers: teacherCount }
+  }, [stakeholders])
 
   // ========== Derived data ==========
   const relationship: StudentRelationship | null = student.relationship ?? null
@@ -203,13 +206,11 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
   }, [onClose, router, student.id])
 
   const handleBannerWatchSession = useCallback(() => {
-    // Open session observer modal
-    setShowSessionObserver(true)
-  }, [])
-
-  const handleSessionObserverClose = useCallback(() => {
-    setShowSessionObserver(false)
-  }, [])
+    // Session observer is rendered at parent level to avoid z-index issues
+    if (onObserveSession && student.activity?.sessionId) {
+      onObserveSession(student.activity.sessionId)
+    }
+  }, [onObserveSession, student.activity?.sessionId])
 
   // ========== Effects ==========
 
@@ -220,7 +221,6 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
       setIsEditing(false)
       setActiveTab(defaultTab)
       setIsHiddenForTransition(false)
-      setShowSessionObserver(false)
     }
   }, [isOpen, student.id, student.notes, defaultTab])
 
@@ -420,7 +420,7 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
             {student.emoji}
           </div>
 
-          {/* Name */}
+          {/* Name and relationship summary */}
           <div className={css({ flex: 1, minWidth: 0 })}>
             <h2
               className={css({
@@ -435,6 +435,22 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
             >
               {student.name}
             </h2>
+            {/* Relationship summary line */}
+            {viewerRelationship && viewerRelationship.type !== 'none' && (
+              <div
+                className={css({
+                  marginTop: '2px',
+                  opacity: 0.9,
+                })}
+              >
+                <RelationshipSummary
+                  type={viewerRelationship.type}
+                  classroomName={viewerRelationship.classroomName}
+                  otherStakeholders={otherStakeholders}
+                  className={css({ color: 'rgba(255, 255, 255, 0.9)' })}
+                />
+              </div>
+            )}
           </div>
 
           {/* Fullscreen button - expands to dashboard */}
@@ -624,8 +640,8 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
           onWatchSession={handleBannerWatchSession}
         />
 
-        {/* Tab bar - only show if Overview has content */}
-        {hasOverviewContent && (
+        {/* Tab bar - show if Overview has content or if we have stakeholder data */}
+        {(hasOverviewContent || stakeholdersData) && (
           <div
             data-section="tabs"
             className={css({
@@ -635,16 +651,24 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
               backgroundColor: isDark ? 'gray.800' : 'gray.50',
             })}
           >
-            <TabButton
-              label="Overview"
-              isActive={activeTab === 'overview'}
-              onClick={() => setActiveTab('overview')}
-              isDark={isDark}
-            />
+            {hasOverviewContent && (
+              <TabButton
+                label="Overview"
+                isActive={activeTab === 'overview'}
+                onClick={() => setActiveTab('overview')}
+                isDark={isDark}
+              />
+            )}
             <TabButton
               label="Notes"
               isActive={activeTab === 'notes'}
               onClick={() => setActiveTab('notes')}
+              isDark={isDark}
+            />
+            <TabButton
+              label="Relationships"
+              isActive={activeTab === 'relationships'}
+              onClick={() => setActiveTab('relationships')}
               isDark={isDark}
             />
           </div>
@@ -671,6 +695,8 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
               activity={activity}
               isDark={isDark}
             />
+          ) : activeTab === 'relationships' ? (
+            <RelationshipsTab playerId={student.id} />
           ) : (
             <NotesTab
               notes={student.notes ?? null}
@@ -705,21 +731,6 @@ export function NotesModal({ isOpen, student, sourceBounds, onClose }: NotesModa
         playerId={student.id}
         playerName={student.name}
       />
-
-      {/* Session Observer Modal - for teachers watching student practice */}
-      {showSessionObserver && activeSessionInfo && classroom && (
-        <SessionObserverModal
-          isOpen={showSessionObserver}
-          onClose={handleSessionObserverClose}
-          session={activeSessionInfo}
-          student={{
-            name: student.name,
-            emoji: student.emoji,
-            color: student.color,
-          }}
-          observerId={classroom.teacherId}
-        />
-      )}
     </>
   )
 }
@@ -1159,6 +1170,28 @@ function NotesTab({
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Relationships Tab Component
+// ============================================================================
+
+interface RelationshipsTabProps {
+  playerId: string
+}
+
+function RelationshipsTab({ playerId }: RelationshipsTabProps) {
+  return (
+    <div
+      className={css({
+        flex: 1,
+        padding: '16px',
+        overflow: 'auto',
+      })}
+    >
+      <RelationshipCard playerId={playerId} compact />
     </div>
   )
 }

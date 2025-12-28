@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { db, schema } from '@/db'
 import {
   getAllSkillMastery,
   getPlayer,
@@ -7,7 +9,24 @@ import {
   getRecentSessionResults,
 } from '@/lib/curriculum/server'
 import { getActiveSessionPlan } from '@/lib/curriculum/session-planner'
+import { getViewerId } from '@/lib/viewer'
 import { DashboardClient } from './DashboardClient'
+
+/**
+ * Get or create user record for a viewerId (guestId)
+ */
+async function getOrCreateUser(viewerId: string) {
+  let user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, viewerId),
+  })
+
+  if (!user) {
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
+    user = newUser
+  }
+
+  return user
+}
 
 // Disable caching for this page - progress data should be fresh
 export const dynamic = 'force-dynamic'
@@ -33,6 +52,10 @@ interface DashboardPageProps {
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const { studentId } = await params
   const { tab } = await searchParams
+
+  // Get viewer ID for session observation authorization
+  const viewerId = await getViewerId()
+  const user = await getOrCreateUser(viewerId)
 
   // Fetch player data in parallel
   const [player, curriculum, skills, recentSessions, activeSession, problemHistory] =
@@ -65,6 +88,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       currentPracticingSkillIds={currentPracticingSkillIds}
       problemHistory={problemHistory}
       initialTab={tab as 'overview' | 'skills' | 'history' | undefined}
+      userId={user.id}
     />
   )
 }

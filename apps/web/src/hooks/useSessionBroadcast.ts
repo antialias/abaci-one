@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { BroadcastState } from '@/components/practice'
-import { useStudentPresence } from './useClassroom'
 import type {
   AbacusControlEvent,
   PracticeStateEvent,
@@ -42,13 +41,13 @@ export interface UseSessionBroadcastOptions {
 /**
  * Hook to broadcast practice session state to observers via WebSocket
  *
- * Only broadcasts if the student is currently present in a classroom.
- * This enables teachers to observe student practice in real-time.
+ * Broadcasts to any observer (teacher in classroom or parent at home).
+ * Always connects when there's an active session - observers join the channel.
  *
  * @param sessionId - The session plan ID
  * @param playerId - The student's player ID
  * @param state - Current practice state (or null if not in active practice)
- * @param options - Optional callbacks for receiving teacher control events
+ * @param options - Optional callbacks for receiving observer control events
  */
 export function useSessionBroadcast(
   sessionId: string | undefined,
@@ -65,10 +64,6 @@ export function useSessionBroadcast(
   // Keep options in a ref so socket event handlers can access current callbacks
   const optionsRef = useRef(options)
   optionsRef.current = options
-
-  // Check if student is present in a classroom
-  const { data: presence } = useStudentPresence(playerId)
-  const isInClassroom = !!presence?.classroomId
 
   // Helper to broadcast current state
   const broadcastState = useCallback(() => {
@@ -99,13 +94,14 @@ export function useSessionBroadcast(
     })
   }, [sessionId])
 
-  // Connect to socket and join session channel when in classroom with active session
+  // Connect to socket and join session channel when there's an active session
+  // This enables both teachers (classroom) and parents (home) to observe
   useEffect(() => {
-    // Only connect if we have a session and the student is in a classroom
-    if (!sessionId || !playerId || !isInClassroom) {
+    // Only connect if we have a session
+    if (!sessionId || !playerId) {
       // Clean up if we were connected
       if (socketRef.current) {
-        console.log('[SessionBroadcast] Disconnecting - no longer in classroom or session ended')
+        console.log('[SessionBroadcast] Disconnecting - session ended')
         socketRef.current.disconnect()
         socketRef.current = null
         isConnectedRef.current = false
@@ -193,7 +189,7 @@ export function useSessionBroadcast(
       socketRef.current = null
       isConnectedRef.current = false
     }
-  }, [sessionId, playerId, isInClassroom, broadcastState])
+  }, [sessionId, playerId, broadcastState])
 
   // Broadcast state changes
   useEffect(() => {
@@ -209,6 +205,6 @@ export function useSessionBroadcast(
 
   return {
     isConnected: isConnectedRef.current,
-    isBroadcasting: isConnectedRef.current && isInClassroom && !!state,
+    isBroadcasting: isConnectedRef.current && !!state,
   }
 }

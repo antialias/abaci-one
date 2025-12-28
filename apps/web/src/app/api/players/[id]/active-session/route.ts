@@ -6,11 +6,11 @@ import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{ playerId: string }>
+  params: Promise<{ id: string }>
 }
 
 /**
- * GET /api/players/[playerId]/active-session
+ * GET /api/players/[id]/active-session
  *
  * Returns the active session for a player (if any).
  * Requires 'view' permission (parent or teacher relationship).
@@ -21,7 +21,7 @@ interface RouteParams {
  */
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
-    const { playerId } = await params
+    const { id: playerId } = await params
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -45,10 +45,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       })
       .from(sessionPlans)
       .where(
-        and(
-          eq(sessionPlans.playerId, playerId),
-          inArray(sessionPlans.status, [...activeStatuses])
-        )
+        and(eq(sessionPlans.playerId, playerId), inArray(sessionPlans.status, [...activeStatuses]))
       )
       .orderBy(sessionPlans.createdAt)
       .limit(1)

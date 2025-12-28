@@ -1,12 +1,17 @@
 'use client'
 
 import * as Checkbox from '@radix-ui/react-checkbox'
+import * as HoverCard from '@radix-ui/react-hover-card'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { Z_INDEX } from '@/constants/zIndex'
 import type { Player } from '@/types/player'
+import type { EnrollmentStatus, StudentActivityStatus } from '@/types/student'
 import { css } from '../../../styled-system/css'
 import { NotesModal } from './NotesModal'
 import { StudentActionMenu } from './StudentActionMenu'
+import { RelationshipBadge } from './RelationshipBadge'
+import { RelationshipCard } from './RelationshipCard'
 import {
   avatarStyles,
   badgeStyles,
@@ -142,11 +147,11 @@ export interface StudentWithProgress extends Player {
     isMyChild: boolean
     isEnrolled: boolean
     isPresent: boolean
-    enrollmentStatus: string | null
+    enrollmentStatus: EnrollmentStatus
   }
   /** Activity data for status display */
   activity?: {
-    status: string
+    status: StudentActivityStatus
     sessionProgress?: { current: number; total: number }
     sessionId?: string
   }
@@ -300,6 +305,61 @@ function StudentCard({
         </div>
       )}
 
+      {/* Relationship badge with hover tooltip - shows viewer's relationship to this student */}
+      {!isArchived && relationship && (
+        <HoverCard.Root openDelay={200} closeDelay={100}>
+          <HoverCard.Trigger asChild>
+            <button
+              type="button"
+              className={css({
+                position: 'absolute',
+                top: '6px',
+                left: '32px', // After checkbox
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'help',
+                zIndex: 1,
+              })}
+              aria-label="View relationship details"
+            >
+              <RelationshipBadge
+                relationship={relationship}
+                size="sm"
+                showTooltip={false}
+              />
+            </button>
+          </HoverCard.Trigger>
+          <HoverCard.Portal>
+            <HoverCard.Content
+              data-component="relationship-tooltip"
+              side="right"
+              align="start"
+              sideOffset={8}
+              className={css({
+                width: '280px',
+                maxWidth: 'calc(100vw - 32px)',
+                padding: '12px',
+                borderRadius: '12px',
+                backgroundColor: isDark ? 'gray.800' : 'white',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                boxShadow: 'lg',
+                zIndex: Z_INDEX.POPOVER,
+                animation: 'fadeIn 0.15s ease',
+              })}
+            >
+              <RelationshipCard playerId={student.id} compact />
+              <HoverCard.Arrow
+                className={css({
+                  fill: isDark ? 'gray.800' : 'white',
+                })}
+              />
+            </HoverCard.Content>
+          </HoverCard.Portal>
+        </HoverCard.Root>
+      )}
+
       {/* Self-contained action menu - uses hooks internally for all actions */}
       <StudentActionMenu
         student={{
@@ -392,15 +452,13 @@ function StudentCard({
           {student.name}
         </span>
 
-        {/* Status badges row - only show if unified student data is available */}
+        {/* Activity badges - shows what the student is currently doing */}
+        {/* Relationship is shown via RelationshipBadge in top-left corner */}
         {(activity?.status === 'practicing' ||
           activity?.status === 'learning' ||
-          relationship?.isPresent ||
-          relationship?.isEnrolled ||
-          relationship?.isMyChild ||
-          relationship?.enrollmentStatus) && (
+          relationship?.isPresent) && (
           <div
-            data-element="status-badges"
+            data-element="activity-badges"
             className={css({
               display: 'flex',
               flexWrap: 'wrap',
@@ -453,7 +511,7 @@ function StudentCard({
               </span>
             )}
 
-            {/* Present badge - only show if not practicing/learning */}
+            {/* Present badge - show when in classroom but not actively practicing/learning */}
             {relationship?.isPresent &&
               activity?.status !== 'practicing' &&
               activity?.status !== 'learning' && (
@@ -475,69 +533,6 @@ function StudentCard({
                   <span>Present</span>
                 </span>
               )}
-
-            {/* Enrolled badge */}
-            {relationship?.isEnrolled && !relationship?.isPresent && (
-              <span
-                data-status="enrolled"
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  padding: '2px 6px',
-                  borderRadius: '10px',
-                  fontSize: '10px',
-                  fontWeight: 'medium',
-                  bg: isDark ? 'gray.700' : 'gray.200',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                })}
-              >
-                <span>📋</span>
-                <span>Enrolled</span>
-              </span>
-            )}
-
-            {/* Your Child badge - show in enrolled view when it's your child */}
-            {relationship?.isMyChild && relationship?.isEnrolled && (
-              <span
-                data-status="your-child"
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  padding: '2px 6px',
-                  borderRadius: '10px',
-                  fontSize: '10px',
-                  fontWeight: 'medium',
-                  bg: isDark ? 'pink.900' : 'pink.100',
-                  color: isDark ? 'pink.300' : 'pink.700',
-                })}
-              >
-                <span>👶</span>
-                <span>Your Child</span>
-              </span>
-            )}
-
-            {/* Pending badge */}
-            {relationship?.enrollmentStatus?.startsWith('pending') && (
-              <span
-                data-status="pending"
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  padding: '2px 6px',
-                  borderRadius: '10px',
-                  fontSize: '10px',
-                  fontWeight: 'medium',
-                  bg: isDark ? 'yellow.900' : 'yellow.100',
-                  color: isDark ? 'yellow.300' : 'yellow.700',
-                })}
-              >
-                <span>⏳</span>
-                <span>Pending</span>
-              </span>
-            )}
           </div>
         )}
 
@@ -926,6 +921,7 @@ export function StudentSelector({
           student={selectedStudent}
           sourceBounds={sourceBounds}
           onClose={handleCloseModal}
+          onObserveSession={onObserveSession}
         />
       )}
     </>

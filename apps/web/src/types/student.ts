@@ -146,3 +146,98 @@ export function toUnifiedStudent(player: Player): UnifiedStudent {
     activity: createDefaultActivity(),
   }
 }
+
+// =============================================================================
+// Stakeholder Types
+// =============================================================================
+// Rich relationship data for showing complete stakeholder information.
+// These types are used by the stakeholders API and RelationshipCard component.
+
+/**
+ * Information about a parent linked to a student
+ */
+export interface ParentInfo {
+  /** Parent user ID */
+  id: string
+  /** Parent's display name */
+  name: string
+  /** Parent's email (optional) */
+  email?: string
+  /** Whether this parent is the current viewer */
+  isMe: boolean
+}
+
+/**
+ * Information about a classroom the student is enrolled in
+ */
+export interface EnrolledClassroomInfo {
+  /** Classroom ID */
+  id: string
+  /** Classroom name */
+  name: string
+  /** Teacher's display name */
+  teacherName: string
+  /** Whether the current viewer is the teacher of this classroom */
+  isMyClassroom: boolean
+}
+
+/**
+ * Information about a pending enrollment request
+ */
+export interface PendingEnrollmentInfo {
+  /** Enrollment request ID */
+  id: string
+  /** Target classroom ID */
+  classroomId: string
+  /** Target classroom name */
+  classroomName: string
+  /** Teacher's display name */
+  teacherName: string
+  /** Who needs to approve: 'teacher' or 'parent' */
+  pendingApproval: 'teacher' | 'parent'
+  /** Who initiated the request */
+  initiatedBy: 'teacher' | 'parent'
+}
+
+/**
+ * Information about current classroom presence
+ */
+export interface PresenceInfo {
+  /** Classroom ID where student is present */
+  classroomId: string
+  /** Classroom name */
+  classroomName: string
+  /** Teacher's display name */
+  teacherName: string
+}
+
+/**
+ * Complete stakeholder information for a student
+ */
+export interface StudentStakeholders {
+  /** All parents linked to this student */
+  parents: ParentInfo[]
+  /** All classrooms the student is enrolled in */
+  enrolledClassrooms: EnrolledClassroomInfo[]
+  /** All pending enrollment requests */
+  pendingEnrollments: PendingEnrollmentInfo[]
+  /** Current classroom presence (if any) */
+  currentPresence: PresenceInfo | null
+}
+
+/**
+ * Type of relationship the viewer has with a student
+ */
+export type ViewerRelationType = 'parent' | 'teacher' | 'observer' | 'none'
+
+/**
+ * Summary of the viewer's relationship with a student
+ */
+export interface ViewerRelationshipSummary {
+  /** Primary relationship type */
+  type: ViewerRelationType
+  /** Human-readable description (e.g., "Your child", "Enrolled in Math 101") */
+  description: string
+  /** Classroom name if relevant (for teacher/observer) */
+  classroomName?: string
+}

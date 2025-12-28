@@ -24,15 +24,23 @@ test.describe('API Authorization', () => {
       const createPlayerRes = await request.post('/api/players', {
         data: { name: 'Test Child', emoji: '🧒', color: '#4CAF50' },
       })
-      expect(createPlayerRes.ok(), `Create player failed: ${await createPlayerRes.text()}`).toBeTruthy()
+      expect(
+        createPlayerRes.ok(),
+        `Create player failed: ${await createPlayerRes.text()}`
+      ).toBeTruthy()
       const { player } = await createPlayerRes.json()
       const playerId = player.id
 
       // Step 1.5: Enable skills for this player (required before creating session plan)
       const enableSkillsRes = await request.put(`/api/curriculum/${playerId}/skills`, {
-        data: { masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead', '1c-simple-combinations'] },
+        data: {
+          masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead', '1c-simple-combinations'],
+        },
       })
-      expect(enableSkillsRes.ok(), `Enable skills failed: ${await enableSkillsRes.text()}`).toBeTruthy()
+      expect(
+        enableSkillsRes.ok(),
+        `Enable skills failed: ${await enableSkillsRes.text()}`
+      ).toBeTruthy()
 
       // Step 2: Create a session plan
       const createPlanRes = await request.post(`/api/curriculum/${playerId}/sessions/plans`, {
@@ -43,9 +51,12 @@ test.describe('API Authorization', () => {
       const planId = plan.id
 
       // Step 3: Approve the plan (PATCH - was vulnerable)
-      const approveRes = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${planId}`, {
-        data: { action: 'approve' },
-      })
+      const approveRes = await request.patch(
+        `/api/curriculum/${playerId}/sessions/plans/${planId}`,
+        {
+          data: { action: 'approve' },
+        }
+      )
       expect(approveRes.ok(), `Approve failed: ${await approveRes.text()}`).toBeTruthy()
 
       // Step 4: Start the plan
@@ -55,9 +66,12 @@ test.describe('API Authorization', () => {
       expect(startRes.ok(), `Start failed: ${await startRes.text()}`).toBeTruthy()
 
       // Step 5: Abandon the plan (cleanup)
-      const abandonRes = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${planId}`, {
-        data: { action: 'abandon' },
-      })
+      const abandonRes = await request.patch(
+        `/api/curriculum/${playerId}/sessions/plans/${planId}`,
+        {
+          data: { action: 'abandon' },
+        }
+      )
       expect(abandonRes.ok(), `Abandon failed: ${await abandonRes.text()}`).toBeTruthy()
 
       // Cleanup: Delete the player
@@ -96,17 +110,23 @@ test.describe('API Authorization', () => {
         })
         expect(enableSkillsRes.ok()).toBeTruthy()
 
-        const createPlanRes = await userARequest.post(`/api/curriculum/${playerId}/sessions/plans`, {
-          data: { durationMinutes: 5 },
-        })
+        const createPlanRes = await userARequest.post(
+          `/api/curriculum/${playerId}/sessions/plans`,
+          {
+            data: { durationMinutes: 5 },
+          }
+        )
         expect(createPlanRes.ok()).toBeTruthy()
         const { plan } = await createPlanRes.json()
         const planId = plan.id
 
         // User B: Try to modify User A's session plan (should fail with 403)
-        const attackRes = await userBRequest.patch(`/api/curriculum/${playerId}/sessions/plans/${planId}`, {
-          data: { action: 'abandon' },
-        })
+        const attackRes = await userBRequest.patch(
+          `/api/curriculum/${playerId}/sessions/plans/${planId}`,
+          {
+            data: { action: 'abandon' },
+          }
+        )
         expect(attackRes.status()).toBe(403)
         const errorBody = await attackRes.json()
         expect(errorBody.error).toBe('Not authorized')
@@ -144,7 +164,10 @@ test.describe('API Authorization', () => {
       const setMasteredRes = await request.put(`/api/curriculum/${playerId}/skills`, {
         data: { masteredSkillIds: ['1a-direct-addition'] },
       })
-      expect(setMasteredRes.ok(), `Set mastered failed: ${await setMasteredRes.text()}`).toBeTruthy()
+      expect(
+        setMasteredRes.ok(),
+        `Set mastered failed: ${await setMasteredRes.text()}`
+      ).toBeTruthy()
 
       // PATCH: Refresh skill recency
       const refreshRes = await request.patch(`/api/curriculum/${playerId}/skills`, {
@@ -289,7 +312,9 @@ test.describe('API Authorization', () => {
       }
     })
 
-    test('cannot record game stats for mixed authorized/unauthorized players', async ({ browser }) => {
+    test('cannot record game stats for mixed authorized/unauthorized players', async ({
+      browser,
+    }) => {
       const userAContext = await browser.newContext()
       const userBContext = await browser.newContext()
 

@@ -271,3 +271,54 @@ export async function emitSessionEnded(
     console.error('[SocketEmitter] Failed to emit session-ended:', error)
   }
 }
+
+/**
+ * Emit a session started event to the player channel
+ *
+ * Use when: A student starts a practice session.
+ * This notifies parents who are subscribed to their child's player channel.
+ */
+export async function emitSessionStartedToPlayer(payload: SessionEventPayload): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: SessionStartedEvent = {
+    sessionId: payload.sessionId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+  }
+
+  try {
+    io.to(`player:${payload.playerId}`).emit('session-started', eventData)
+    console.log(`[SocketEmitter] session-started -> player:${payload.playerId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-started to player:', error)
+  }
+}
+
+/**
+ * Emit a session ended event to the player channel
+ *
+ * Use when: A student's practice session ends.
+ * This notifies parents who are subscribed to their child's player channel.
+ */
+export async function emitSessionEndedToPlayer(
+  payload: SessionEventPayload & { reason: 'completed' | 'ended_early' | 'abandoned' }
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: SessionEndedEvent = {
+    sessionId: payload.sessionId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    reason: payload.reason,
+  }
+
+  try {
+    io.to(`player:${payload.playerId}`).emit('session-ended', eventData)
+    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> player:${payload.playerId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-ended to player:', error)
+  }
+}

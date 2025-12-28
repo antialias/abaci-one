@@ -82,15 +82,17 @@ interface UseSessionObserverResult {
  * Hook to observe a student's practice session in real-time
  *
  * Connects to the session's socket channel and receives practice state updates.
- * Use this in a teacher's observation modal to see what the student is doing.
+ * Use this in a teacher's or parent's observation modal to see what the student is doing.
  *
  * @param sessionId - The session plan ID to observe
- * @param observerId - Unique identifier for this observer (e.g., teacher's user ID)
+ * @param observerId - Unique identifier for this observer (e.g., teacher's/parent's user ID)
+ * @param playerId - The player ID being observed (for authorization check)
  * @param enabled - Whether to start observing (default: true)
  */
 export function useSessionObserver(
   sessionId: string | undefined,
   observerId: string | undefined,
+  playerId: string | undefined,
   enabled = true
 ): UseSessionObserverResult {
   const [state, setState] = useState<ObservedSessionState | null>(null)
@@ -112,7 +114,7 @@ export function useSessionObserver(
   }, [sessionId])
 
   useEffect(() => {
-    if (!sessionId || !observerId || !enabled) {
+    if (!sessionId || !observerId || !playerId || !enabled) {
       // Clean up if disabled
       if (socketRef.current) {
         stopObserving()
@@ -134,8 +136,8 @@ export function useSessionObserver(
       setIsConnected(true)
       setError(null)
 
-      // Join the session channel as an observer
-      socket.emit('observe-session', { sessionId, observerId })
+      // Join the session channel as an observer (includes playerId for authorization)
+      socket.emit('observe-session', { sessionId, observerId, playerId })
       setIsObserving(true)
     })
 
@@ -148,6 +150,13 @@ export function useSessionObserver(
     socket.on('connect_error', (err) => {
       console.error('[SessionObserver] Connection error:', err)
       setError('Failed to connect to session')
+    })
+
+    // Handle authorization errors from server
+    socket.on('observe-error', (data: { error: string }) => {
+      console.error('[SessionObserver] Observation error:', data.error)
+      setError(data.error)
+      setIsObserving(false)
     })
 
     // Listen for practice state updates from the student
@@ -182,7 +191,7 @@ export function useSessionObserver(
       socket.disconnect()
       socketRef.current = null
     }
-  }, [sessionId, observerId, enabled, stopObserving])
+  }, [sessionId, observerId, playerId, enabled, stopObserving])
 
   // Send control action to student's abacus
   const sendControl = useCallback(

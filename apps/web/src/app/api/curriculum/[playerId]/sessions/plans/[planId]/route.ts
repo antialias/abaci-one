@@ -4,7 +4,12 @@ import { db } from '@/db'
 import { players } from '@/db/schema'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { canPerformAction, getStudentPresence } from '@/lib/classroom'
-import { emitSessionEnded, emitSessionStarted } from '@/lib/classroom/socket-emitter'
+import {
+  emitSessionEnded,
+  emitSessionEndedToPlayer,
+  emitSessionStarted,
+  emitSessionStartedToPlayer,
+} from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
   approveSessionPlan,
@@ -84,8 +89,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       case 'start':
         plan = await startSessionPlan(planId)
-        // Emit session started event if student is in a classroom
-        await emitSessionEventIfPresent(playerId, planId, 'start')
+        // Emit session events to player channel (parents) and classroom channel (if present)
+        await emitSessionEvents(playerId, planId, 'start')
         break
 
       case 'record':
@@ -100,14 +105,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       case 'end_early':
         plan = await completeSessionPlanEarly(planId, reason)
-        // Emit session ended event if student is in a classroom
-        await emitSessionEventIfPresent(playerId, planId, 'end_early')
+        // Emit session events to player channel (parents) and classroom channel (if present)
+        await emitSessionEvents(playerId, planId, 'end_early')
         break
 
       case 'abandon':
         plan = await abandonSessionPlan(planId)
-        // Emit session ended event if student is in a classroom
-        await emitSessionEventIfPresent(playerId, planId, 'abandon')
+        // Emit session events to player channel (parents) and classroom channel (if present)
+        await emitSessionEvents(playerId, planId, 'abandon')
         break
 
       default:
@@ -127,31 +132,40 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * Helper to emit session socket events if the student is present in a classroom
+ * Helper to emit session socket events to both:
+ * 1. Player channel (for parent observation) - ALWAYS
+ * 2. Classroom channel (for teacher observation) - only if student is present
  */
-async function emitSessionEventIfPresent(
+async function emitSessionEvents(
   playerId: string,
   sessionId: string,
   action: 'start' | 'end_early' | 'abandon'
 ): Promise<void> {
   try {
-    // Check if student is in a classroom
-    const presence = await getStudentPresence(playerId)
-    if (!presence) return
-
     // Get player name
     const player = await db.query.players.findFirst({
       where: eq(players.id, playerId),
     })
     const playerName = player?.name ?? 'Unknown'
 
-    const classroomId = presence.classroomId
-
+    // Always emit to player channel (for parents)
     if (action === 'start') {
-      await emitSessionStarted({ sessionId, playerId, playerName }, classroomId)
+      await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
     } else {
       const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
-      await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
+      await emitSessionEndedToPlayer({ sessionId, playerId, playerName, reason })
+    }
+
+    // Also emit to classroom channel if student is present
+    const presence = await getStudentPresence(playerId)
+    if (presence) {
+      const classroomId = presence.classroomId
+      if (action === 'start') {
+        await emitSessionStarted({ sessionId, playerId, playerName }, classroomId)
+      } else {
+        const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
+        await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
+      }
     }
   } catch (error) {
     // Don't fail the request if socket emission fails

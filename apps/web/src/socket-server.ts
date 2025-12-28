@@ -17,6 +17,7 @@ import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-mana
 import { getValidator, type GameName } from './lib/arcade/validators'
 import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
+import { canPerformAction, isParentOf } from './lib/classroom'
 
 // Yjs server-side imports
 import * as Y from 'yjs'
@@ -771,10 +772,31 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Session Observation: Start observing a practice session
+    // Now requires playerId for authorization check (parent or teacher-present)
     socket.on(
       'observe-session',
-      async ({ sessionId, observerId }: { sessionId: string; observerId: string }) => {
+      async ({
+        sessionId,
+        observerId,
+        playerId,
+      }: {
+        sessionId: string
+        observerId: string
+        playerId?: string
+      }) => {
         try {
+          // Authorization check: require 'observe' permission (parent or teacher-present)
+          if (playerId) {
+            const canObserve = await canPerformAction(observerId, playerId, 'observe')
+            if (!canObserve) {
+              console.log(
+                `⚠️ Observation denied - ${observerId} not authorized for player ${playerId}`
+              )
+              socket.emit('observe-error', { error: 'Not authorized to observe this session' })
+              return
+            }
+          }
+
           await socket.join(`session:${sessionId}`)
           console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
 
@@ -782,6 +804,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           socket.to(`session:${sessionId}`).emit('observer-joined', { observerId })
         } catch (error) {
           console.error('Error starting session observation:', error)
+          socket.emit('observe-error', { error: 'Failed to start observation' })
         }
       }
     )
@@ -923,6 +946,43 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               data.action.type
             )
           }
+        }
+      }
+    )
+
+    // Parent Observation: Subscribe to child session events
+    // Parents join player:${childId} channels to receive session-started/session-ended events
+    socket.on(
+      'subscribe-child-sessions',
+      async ({ userId, childIds }: { userId: string; childIds: string[] }) => {
+        try {
+          for (const childId of childIds) {
+            // Verify parent-child relationship
+            const isParent = await isParentOf(userId, childId)
+            if (isParent) {
+              await socket.join(`player:${childId}`)
+              console.log(`👪 Parent ${userId} subscribed to child sessions: ${childId}`)
+            } else {
+              console.log(`⚠️ Parent subscription denied - ${userId} is not parent of ${childId}`)
+            }
+          }
+        } catch (error) {
+          console.error('Error subscribing to child sessions:', error)
+        }
+      }
+    )
+
+    // Parent Observation: Unsubscribe from child session events
+    socket.on(
+      'unsubscribe-child-sessions',
+      async ({ userId, childIds }: { userId: string; childIds: string[] }) => {
+        try {
+          for (const childId of childIds) {
+            await socket.leave(`player:${childId}`)
+            console.log(`👪 Parent ${userId} unsubscribed from child sessions: ${childId}`)
+          }
+        } catch (error) {
+          console.error('Error unsubscribing from child sessions:', error)
         }
       }
     )

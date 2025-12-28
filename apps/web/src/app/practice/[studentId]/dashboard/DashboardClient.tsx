@@ -3,20 +3,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
+import { SessionObserverModal } from '@/components/classroom'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
   getSkillClassification,
+  PracticeErrorBoundary,
   PracticeSubNav,
   ProgressDashboard,
   type SkillClassification,
   type SkillHealthSummary,
   SkillProgressChart,
   StartPracticeModal,
-  StudentActionMenu,
   type StudentWithProgress,
   VirtualizedSessionList,
 } from '@/components/practice'
@@ -82,6 +82,8 @@ interface DashboardClientProps {
   currentPracticingSkillIds: string[]
   problemHistory: ProblemResultWithContext[]
   initialTab?: TabId
+  /** Database user ID for session observation authorization */
+  userId: string
 }
 
 /** Processed skill with computed metrics (for Skills tab) */
@@ -2495,6 +2497,7 @@ export function DashboardClient({
   currentPracticingSkillIds,
   problemHistory,
   initialTab = 'overview',
+  userId,
 }: DashboardClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -2529,35 +2532,6 @@ export function DashboardClient({
   // Subscribe to player presence updates via WebSocket
   // This ensures the UI updates when teacher removes student from classroom
   usePlayerPresenceSocket(studentId)
-
-  // Classroom context for student actions
-  const { data: classroom } = useMyClassroom()
-  const { data: enrolledClassrooms = [] } = useEnrolledClassrooms(studentId)
-  const isEnrolled = enrolledClassrooms.length > 0
-
-  // Build StudentActionData with same structure as student tiles/quick look
-  const studentActionData = useMemo(
-    () => ({
-      id: player.id,
-      name: player.name,
-      isArchived: player.isArchived,
-      relationship: {
-        isMyChild: true, // On this student's dashboard, they're either your child or enrolled student you manage
-        isEnrolled,
-        isPresent: false, // TODO: Could check classroom presence if needed
-        enrollmentStatus: null,
-      },
-      activity: activeSession
-        ? {
-            status: 'practicing' as const,
-            sessionId: activeSession.id,
-          }
-        : {
-            status: 'idle' as const,
-          },
-    }),
-    [player.id, player.name, player.isArchived, isEnrolled, activeSession]
-  )
 
   // Handle incoming page transition (from QuickLook modal)
   const { hasTransition, isRevealing, signalReady } = useIncomingTransition()
@@ -2594,6 +2568,17 @@ export function DashboardClient({
 
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+
+  // Session observer state
+  const [isObserving, setIsObserving] = useState(false)
+
+  // Handle session observation from PracticeSubNav action menu
+  const handleObserveSession = useCallback((sessionId: string) => {
+    // We're already on this student's page, just open the observer modal
+    if (activeSession?.id === sessionId) {
+      setIsObserving(true)
+    }
+  }, [activeSession?.id])
 
   const handleTabChange = useCallback(
     (tab: TabId) => {
@@ -2760,10 +2745,15 @@ export function DashboardClient({
       {/* Single ProjectingBanner renders at provider level */}
       <ProjectingBanner />
       <PageWithNav>
-        <PracticeSubNav student={selectedStudent} pageContext="dashboard" />
+        <PracticeSubNav
+          student={selectedStudent}
+          pageContext="dashboard"
+          onObserveSession={handleObserveSession}
+        />
 
-        <main
-          data-component="practice-dashboard-page"
+        <PracticeErrorBoundary studentName={player.name}>
+          <main
+            data-component="practice-dashboard-page"
           style={{
             opacity: contentOpacity,
             transition: contentTransition,
@@ -2775,19 +2765,6 @@ export function DashboardClient({
           })}
         >
           <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
-            {/* Student actions & classroom presence */}
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '0.75rem',
-              })}
-            >
-              <StudentActionMenu student={studentActionData} variant="inline" />
-            </div>
-
             {/* Session mode banner - renders in-flow, projects to nav on scroll */}
             <ContentBannerSlot
               stickyOffset={STICKY_HEADER_OFFSET}
@@ -2855,6 +2832,37 @@ export function DashboardClient({
             onStarted={() => setShowStartPracticeModal(false)}
           />
         )}
+
+        {/* Session Observer Modal */}
+        {isObserving && activeSession && (
+          <SessionObserverModal
+            isOpen={isObserving}
+            onClose={() => setIsObserving(false)}
+            session={{
+              sessionId: activeSession.id,
+              playerId: studentId,
+              startedAt:
+                typeof activeSession.createdAt === 'string'
+                  ? activeSession.createdAt
+                  : activeSession.createdAt instanceof Date
+                    ? activeSession.createdAt.toISOString()
+                    : new Date().toISOString(),
+              currentPartIndex: activeSession.currentPartIndex ?? 0,
+              currentSlotIndex: activeSession.currentSlotIndex ?? 0,
+              totalParts: activeSession.parts?.length ?? 1,
+              totalProblems: activeSession.parts?.reduce((sum, p) => sum + p.slots.length, 0) ?? 0,
+              completedProblems:
+                activeSession.results?.filter((r) => r.isCorrect !== null).length ?? 0,
+            }}
+            student={{
+              name: player.name,
+              emoji: player.emoji,
+              color: player.color,
+            }}
+            observerId={userId}
+          />
+        )}
+        </PracticeErrorBoundary>
       </PageWithNav>
     </SessionModeBannerProvider>
   )

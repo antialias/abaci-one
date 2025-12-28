@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { Player } from '@/db/schema/players'
 import { api } from '@/lib/queryClient'
 import { playerKeys } from '@/lib/queryKeys'
@@ -338,74 +332,4 @@ export function useLinkChild() {
       }
     },
   })
-}
-
-/**
- * Active session info for a child
- */
-export interface ChildActiveSession {
-  sessionId: string
-  status: string
-  completedProblems: number
-  totalProblems: number
-}
-
-/**
- * Fetch active session for a player
- */
-async function fetchActiveSession(playerId: string): Promise<ChildActiveSession | null> {
-  const res = await api(`players/${playerId}/active-session`)
-  if (!res.ok) {
-    // 403 means not authorized, just return null
-    if (res.status === 403) return null
-    throw new Error('Failed to fetch active session')
-  }
-  const data = await res.json()
-  return data.session
-}
-
-/**
- * Hook: Fetch active session for a single child
- *
- * Polls every 10 seconds to detect when sessions start/end.
- * Returns null if no active session or not authorized.
- */
-export function useChildActiveSession(playerId: string | undefined) {
-  return useQuery({
-    queryKey: playerKeys.activeSession(playerId ?? ''),
-    queryFn: () => fetchActiveSession(playerId!),
-    enabled: !!playerId,
-    refetchInterval: 10_000, // Poll every 10 seconds
-    staleTime: 5_000, // Consider stale after 5 seconds
-  })
-}
-
-/**
- * Hook: Fetch active sessions for multiple children
- *
- * Returns a map of playerId -> session info.
- * Uses individual queries under the hood for proper caching.
- */
-export function useChildrenActiveSessions(playerIds: string[]) {
-  const queries = useQueries({
-    queries: playerIds.map((playerId) => ({
-      queryKey: playerKeys.activeSession(playerId),
-      queryFn: () => fetchActiveSession(playerId),
-      refetchInterval: 10_000,
-      staleTime: 5_000,
-    })),
-  })
-
-  // Build a map from the results
-  const sessionMap = new Map<string, ChildActiveSession>()
-  for (let i = 0; i < playerIds.length; i++) {
-    const session = queries[i].data
-    if (session) {
-      sessionMap.set(playerIds[i], session)
-    }
-  }
-
-  const isLoading = queries.some((q) => q.isLoading)
-
-  return { sessionMap, isLoading }
 }

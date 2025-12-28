@@ -70,14 +70,33 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     isTeacher,
     classroomCode,
     classroomId,
-  } = useUnifiedStudents(initialPlayers)
+  } = useUnifiedStudents(initialPlayers, userId)
 
   // Real-time WebSocket updates for classroom events
   // This invalidates React Query caches when students enter/leave, sessions start/end, etc.
   useClassroomSocket(classroomId)
 
-  // View and filter state
-  const availableViews = useMemo(() => getAvailableViews(isTeacher), [isTeacher])
+  // Use unified students (already fetched above) as the main data source
+  // Cast to maintain compatibility with existing grouping functions
+  const players = unifiedStudents as StudentWithSkillData[]
+
+  // Mutation for bulk updates
+  const updatePlayer = useUpdatePlayer()
+
+  // Count archived students
+  const archivedCount = useMemo(() => players.filter((p) => p.isArchived).length, [players])
+
+  // Compute view counts from unified students (must be before availableViews)
+  const viewCounts = useMemo(
+    () => computeViewCounts(unifiedStudents, isTeacher),
+    [unifiedStudents, isTeacher]
+  )
+
+  // View and filter state - pass viewCounts so active sub-views appear conditionally
+  const availableViews = useMemo(
+    () => getAvailableViews(isTeacher, viewCounts),
+    [isTeacher, viewCounts]
+  )
   const defaultView = useMemo(() => getDefaultView(isTeacher), [isTeacher])
   const [currentView, setCurrentView] = useState<StudentView>(defaultView)
   const [searchQuery, setSearchQuery] = useState('')
@@ -93,22 +112,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
 
   // Session observation state
   const [observingStudent, setObservingStudent] = useState<UnifiedStudent | null>(null)
-
-  // Use unified students (already fetched above) as the main data source
-  // Cast to maintain compatibility with existing grouping functions
-  const players = unifiedStudents as StudentWithSkillData[]
-
-  // Mutation for bulk updates
-  const updatePlayer = useUpdatePlayer()
-
-  // Count archived students
-  const archivedCount = useMemo(() => players.filter((p) => p.isArchived).length, [players])
-
-  // Compute view counts from unified students
-  const viewCounts = useMemo(
-    () => computeViewCounts(unifiedStudents, isTeacher),
-    [unifiedStudents, isTeacher]
-  )
 
   // Filter students by view first, then apply search/skill filters
   const viewFilteredStudents = useMemo(
@@ -334,69 +337,42 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             padding: '2rem',
           })}
         >
-          {/* Header */}
-          <header
-            className={css({
-              textAlign: 'center',
-              marginBottom: '2rem',
-            })}
-          >
-            <h1
+          {/* Teacher option */}
+          {!isLoadingClassroom && !classroom && (
+            <div
               className={css({
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: isDark ? 'white' : 'gray.800',
-                marginBottom: '0.5rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '12px',
+                marginBottom: '1rem',
               })}
             >
-              Daily Practice
-            </h1>
-            <p
-              className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-              })}
-            >
-              Build your soroban skills one step at a time
-            </p>
-
-            {/* Teacher option */}
-            {!isLoadingClassroom && !classroom && (
-              <div
+              {/* Become a Teacher option */}
+              <button
+                type="button"
+                onClick={handleBecomeTeacher}
+                data-action="become-teacher"
                 className={css({
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  gap: '12px',
-                  marginTop: '16px',
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  color: isDark ? 'blue.400' : 'blue.600',
+                  border: '1px solid',
+                  borderColor: isDark ? 'blue.700' : 'blue.300',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
+                    borderColor: isDark ? 'blue.500' : 'blue.400',
+                  },
                 })}
               >
-                {/* Become a Teacher option */}
-                <button
-                  type="button"
-                  onClick={handleBecomeTeacher}
-                  data-action="become-teacher"
-                  className={css({
-                    padding: '8px 16px',
-                    backgroundColor: 'transparent',
-                    color: isDark ? 'blue.400' : 'blue.600',
-                    border: '1px solid',
-                    borderColor: isDark ? 'blue.700' : 'blue.300',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    _hover: {
-                      backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
-                      borderColor: isDark ? 'blue.500' : 'blue.400',
-                    },
-                  })}
-                >
-                  🏫 Are you a teacher? Create a classroom
-                </button>
-              </div>
-            )}
-          </header>
+                🏫 Are you a teacher? Create a classroom
+              </button>
+            </div>
+          )}
 
           {/* Teacher Enrollment Requests - for teachers to approve parent-initiated requests */}
           {isTeacher && classroomId && <TeacherEnrollmentSection classroomId={classroomId} />}
@@ -680,7 +656,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             emoji: observingStudent.emoji,
             color: observingStudent.color,
           }}
-          observerId={viewerId}
+          observerId={userId}
         />
       )}
     </PageWithNav>

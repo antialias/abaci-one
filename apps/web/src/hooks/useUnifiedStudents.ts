@@ -1,6 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+
+// Stable empty array reference to avoid re-renders
+const EMPTY_CHILD_IDS: string[] = []
 import {
   useMyClassroom,
   useEnrolledStudents,
@@ -9,11 +12,8 @@ import {
   type ActiveSessionInfo,
   type PresenceStudent,
 } from '@/hooks/useClassroom'
-import {
-  usePlayersWithSkillData,
-  useChildrenActiveSessions,
-  type ChildActiveSession,
-} from '@/hooks/useUserPlayers'
+import { useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
+import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import type { UnifiedStudent, StudentRelationship, StudentActivity } from '@/types/student'
 
@@ -43,9 +43,13 @@ export interface UseUnifiedStudentsResult {
  * - Active sessions (practicing status)
  *
  * Returns a unified list with relationship and activity status for each student.
+ *
+ * @param initialPlayers - Server-prefetched player data
+ * @param userId - The current user's database ID (for parent session subscriptions)
  */
 export function useUnifiedStudents(
-  initialPlayers?: StudentWithSkillData[]
+  initialPlayers?: StudentWithSkillData[],
+  userId?: string
 ): UseUnifiedStudentsResult {
   // Get classroom data (determines if user is a teacher)
   const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom()
@@ -56,10 +60,8 @@ export function useUnifiedStudents(
     initialData: initialPlayers,
   })
 
-  // Get active sessions for my children (polls every 10s)
+  // Get child IDs for parent session subscription
   const childIds = useMemo(() => myChildren.map((c) => c.id), [myChildren])
-  const { sessionMap: childSessionMap, isLoading: isLoadingChildSessions } =
-    useChildrenActiveSessions(childIds)
 
   // Get enrolled students (teachers only)
   const { data: enrolledStudents = [], isLoading: isLoadingEnrolled } = useEnrolledStudents(
@@ -71,9 +73,16 @@ export function useUnifiedStudents(
     classroom?.id
   )
 
-  // Get active sessions in classroom (teachers only)
+  // Get active sessions (teachers only - for students in their classroom)
   const { data: activeSessions = [], isLoading: isLoadingActiveSessions } =
     useActiveSessionsInClassroom(classroom?.id)
+
+  // Get active sessions for parent's children (via WebSocket for real-time updates)
+  // Only active for non-teachers (parents) who have children
+  const { sessionMap: childSessionMap, isLoading: isLoadingChildSessions } = useChildSessionsSocket(
+    !isTeacher ? userId : undefined,
+    !isTeacher ? childIds : EMPTY_CHILD_IDS
+  )
 
   // Build lookup maps for efficient merging
   const presenceMap = useMemo(() => {
@@ -84,13 +93,30 @@ export function useUnifiedStudents(
     return map
   }, [presentStudents])
 
+  // Merge teacher's classroom sessions with parent's child sessions
   const sessionMap = useMemo(() => {
     const map = new Map<string, ActiveSessionInfo>()
+    // Teacher sessions from classroom
     for (const session of activeSessions) {
       map.set(session.playerId, session)
     }
+    // Parent sessions from WebSocket (convert ChildActiveSession to ActiveSessionInfo format)
+    for (const [playerId, session] of childSessionMap) {
+      if (!map.has(playerId)) {
+        map.set(playerId, {
+          sessionId: session.planId,
+          playerId,
+          startedAt: session.startedAt,
+          completedProblems: session.completedSlots,
+          totalProblems: session.totalSlots,
+          currentPartIndex: 0,
+          currentSlotIndex: session.completedSlots,
+          totalParts: 1,
+        })
+      }
+    }
     return map
-  }, [activeSessions])
+  }, [activeSessions, childSessionMap])
 
   const enrolledIds = useMemo(() => {
     return new Set(enrolledStudents.map((s) => s.id))
@@ -109,11 +135,7 @@ export function useUnifiedStudents(
         enrollmentStatus: null, // TODO: Add pending enrollment lookup
       }
 
-      // Check both classroom sessions (if teacher) and child-specific sessions (for parents)
-      const classroomSession = sessionMap.get(child.id)
-      const childSession = childSessionMap.get(child.id)
-      const session = classroomSession || childSession
-
+      const session = sessionMap.get(child.id)
       const activity: StudentActivity = session
         ? {
             status: 'practicing',
@@ -204,14 +226,13 @@ export function useUnifiedStudents(
     enrolledIds,
     presenceMap,
     sessionMap,
-    childSessionMap,
   ])
 
   const isLoading =
     isLoadingClassroom ||
     isLoadingChildren ||
-    isLoadingChildSessions ||
-    (isTeacher && (isLoadingEnrolled || isLoadingPresence || isLoadingActiveSessions))
+    (isTeacher && (isLoadingEnrolled || isLoadingPresence || isLoadingActiveSessions)) ||
+    (!isTeacher && isLoadingChildSessions)
 
   return {
     students,
@@ -227,17 +248,30 @@ export function useUnifiedStudents(
  */
 export function filterStudentsByView(
   students: UnifiedStudent[],
-  view: 'all' | 'my-children' | 'enrolled' | 'in-classroom'
+  view:
+    | 'all'
+    | 'my-children'
+    | 'my-children-active'
+    | 'enrolled'
+    | 'in-classroom'
+    | 'in-classroom-active'
+    | 'needs-attention'
 ): UnifiedStudent[] {
   switch (view) {
     case 'all':
       return students
+    case 'needs-attention':
+      return students.filter((s) => s.intervention != null && !s.isArchived)
     case 'my-children':
       return students.filter((s) => s.relationship.isMyChild)
+    case 'my-children-active':
+      return students.filter((s) => s.relationship.isMyChild && s.activity?.status === 'practicing')
     case 'enrolled':
       return students.filter((s) => s.relationship.isEnrolled)
     case 'in-classroom':
       return students.filter((s) => s.relationship.isPresent)
+    case 'in-classroom-active':
+      return students.filter((s) => s.relationship.isPresent && s.activity?.status === 'practicing')
     default:
       return students
   }
@@ -249,15 +283,44 @@ export function filterStudentsByView(
 export function computeViewCounts(
   students: UnifiedStudent[],
   isTeacher: boolean
-): Partial<Record<'all' | 'my-children' | 'enrolled' | 'in-classroom', number>> {
-  const counts: Partial<Record<'all' | 'my-children' | 'enrolled' | 'in-classroom', number>> = {
+): Partial<
+  Record<
+    | 'all'
+    | 'my-children'
+    | 'my-children-active'
+    | 'enrolled'
+    | 'in-classroom'
+    | 'in-classroom-active'
+    | 'needs-attention',
+    number
+  >
+> {
+  const counts: Partial<
+    Record<
+      | 'all'
+      | 'my-children'
+      | 'my-children-active'
+      | 'enrolled'
+      | 'in-classroom'
+      | 'in-classroom-active'
+      | 'needs-attention',
+      number
+    >
+  > = {
     all: students.length,
+    'needs-attention': students.filter((s) => s.intervention != null && !s.isArchived).length,
     'my-children': students.filter((s) => s.relationship.isMyChild).length,
+    'my-children-active': students.filter(
+      (s) => s.relationship.isMyChild && s.activity?.status === 'practicing'
+    ).length,
   }
 
   if (isTeacher) {
     counts.enrolled = students.filter((s) => s.relationship.isEnrolled).length
     counts['in-classroom'] = students.filter((s) => s.relationship.isPresent).length
+    counts['in-classroom-active'] = students.filter(
+      (s) => s.relationship.isPresent && s.activity?.status === 'practicing'
+    ).length
   }
 
   return counts

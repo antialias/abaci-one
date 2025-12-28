@@ -31,6 +31,10 @@ export const Z_INDEX = {
   // Tooltips must be above modals so they work inside modals
   TOOLTIP: 15000,
 
+  // Nested modals (above tooltips, for modals that open from within other modals)
+  NESTED_MODAL_BACKDROP: 16000,
+  NESTED_MODAL: 16001,
+
   // Top-level overlays (20000+)
   TOAST: 20000,
 

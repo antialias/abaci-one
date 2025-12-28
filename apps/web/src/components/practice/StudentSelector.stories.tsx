@@ -71,6 +71,7 @@ function InteractiveSelectorDemo() {
       <StudentSelector
         students={sampleStudents}
         onSelectStudent={(student) => console.log('Selected:', student.name)}
+        onToggleSelection={(student) => console.log('Toggled:', student.name)}
       />
     </div>
   )
