@@ -26,6 +26,8 @@ function mockResult(responseTimeMs: number): SlotResult {
     skillsExercised: [],
     usedOnScreenAbacus: false,
     timestamp: new Date(),
+    hadHelp: false,
+    incorrectAttempts: 0,
   }
 }
 

@@ -3,6 +3,11 @@
 import * as Popover from '@radix-ui/react-popover'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useMemo, useState } from 'react'
+import {
+  calculateEstimatedTimeRemainingMs,
+  formatEstimatedTimeRemaining,
+  type TimingStats,
+} from '@/hooks/useSessionTimeEstimate'
 import { css } from '../../../styled-system/css'
 import { useIsTouchDevice } from './hooks/useDeviceDetection'
 import { SpeedMeter } from './SpeedMeter'
@@ -175,15 +180,7 @@ function formatTimeKid(ms: number): string {
   return `${seconds}s`
 }
 
-/**
- * Format estimated time remaining
- */
-function formatEstimate(ms: number): string {
-  const minutes = Math.round(ms / 60000)
-  if (minutes < 1) return 'less than a minute'
-  if (minutes === 1) return 'about 1 minute'
-  return `about ${minutes} minutes`
-}
+// formatEstimatedTimeRemaining is imported from useSessionTimeEstimate
 
 // Animation names (defined in GlobalStyles below)
 const ANIM = {
@@ -433,7 +430,7 @@ function MoodContent({
               color: isDark ? 'gray.100' : 'gray.900',
             })}
           >
-            ~{formatEstimate(estimatedTimeMs)}
+            {formatEstimatedTimeRemaining(estimatedTimeMs)}
           </div>
         </div>
         <div
@@ -657,13 +654,23 @@ function MoodContent({
  * Tooltip (desktop) or Popover (touch) reveals the detailed data in a kid-friendly layout.
  */
 export function SessionMoodIndicator(props: SessionMoodIndicatorProps) {
-  const { problemsRemaining, recentResults, isDark, meanMs, hasEnoughData } = props
+  const { problemsRemaining, recentResults, isDark, meanMs, stdDevMs, thresholdMs, hasEnoughData } =
+    props
 
   const isTouchDevice = useIsTouchDevice()
   const [popoverOpen, setPopoverOpen] = useState(false)
 
   const mood = getMood(props)
-  const estimatedTimeMs = hasEnoughData ? meanMs * problemsRemaining : problemsRemaining * 10000
+
+  // Use shared time estimation function
+  const timingStats: TimingStats = {
+    mean: meanMs,
+    stdDev: stdDevMs,
+    count: hasEnoughData ? 5 : 0, // We don't have exact count, but hasEnoughData tells us if >= 5
+    hasEnoughData,
+    threshold: thresholdMs,
+  }
+  const estimatedTimeMs = calculateEstimatedTimeRemainingMs(timingStats, problemsRemaining)
 
   // Calculate streak
   const streak = useMemo(() => calculateStreak(recentResults), [recentResults])

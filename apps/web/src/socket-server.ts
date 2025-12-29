@@ -772,6 +772,27 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
+    // Session Stats: Subscribe to session updates (read-only, for time estimates in history list)
+    // This is a lightweight alternative to full observation - just receives practice-state events
+    socket.on('subscribe-session-stats', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.join(`session:${sessionId}`)
+        console.log(`📊 Stats subscriber joined session channel: ${sessionId}`)
+      } catch (error) {
+        console.error('Error subscribing to session stats:', error)
+      }
+    })
+
+    // Session Stats: Unsubscribe from session updates
+    socket.on('unsubscribe-session-stats', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.leave(`session:${sessionId}`)
+        console.log(`📊 Stats subscriber left session channel: ${sessionId}`)
+      } catch (error) {
+        console.error('Error unsubscribing from session stats:', error)
+      }
+    })
+
     // Session Observation: Start observing a practice session
     // Supports both authenticated observers (parent/teacher) and token-based shared observers
     socket.on(

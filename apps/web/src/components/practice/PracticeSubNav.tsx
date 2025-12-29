@@ -866,6 +866,45 @@ export function PracticeSubNav({
                   <span>⏹</span>
                   <span>End Session</span>
                 </DropdownMenu.Item>
+
+                {/* Observe session - for parents/teachers to open observation page */}
+                {(viewerRelationship?.type === 'parent' ||
+                  viewerRelationship?.type === 'teacher') && (
+                  <>
+                    <DropdownMenu.Separator
+                      className={css({
+                        height: '1px',
+                        backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                        margin: '0.375rem 0',
+                      })}
+                    />
+                    <DropdownMenu.Item
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '4px',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        color: isDark ? 'blue.400' : 'blue.600',
+                        _hover: {
+                          backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                        },
+                        _focus: {
+                          backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                        },
+                      })}
+                      onSelect={() => {
+                        window.open(`/practice/${student.id}/observe`, '_blank')
+                      }}
+                    >
+                      <span>👁️</span>
+                      <span>Observe Session</span>
+                    </DropdownMenu.Item>
+                  </>
+                )}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>

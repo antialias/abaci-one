@@ -14,6 +14,8 @@ interface PublicObservationClientProps {
     color: string
   }
   expiresAt: number
+  /** If set, the current user can observe this student directly (without share link) */
+  authenticatedObserveUrl?: string
 }
 
 function formatTimeRemaining(ms: number): string {
@@ -31,6 +33,7 @@ export function PublicObservationClient({
   shareToken,
   student,
   expiresAt,
+  authenticatedObserveUrl,
 }: PublicObservationClientProps) {
   const [navHeight, setNavHeight] = useState(20) // Minimal padding for public page (no nav)
   const [timeRemaining, setTimeRemaining] = useState(expiresAt - Date.now())
@@ -59,12 +62,49 @@ export function PublicObservationClient({
         paddingTop: `${navHeight}px`,
       }}
     >
+      {/* Authenticated observer recommendation banner */}
+      {authenticatedObserveUrl && (
+        <div
+          data-element="authenticated-recommend-banner"
+          className={css({
+            backgroundColor: 'green.50',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            fontSize: '0.875rem',
+            color: 'green.700',
+            borderBottom: '1px solid',
+            borderColor: 'green.200',
+            _dark: {
+              backgroundColor: 'green.900',
+              color: 'green.200',
+              borderColor: 'green.800',
+            },
+          })}
+        >
+          <span>✨ You have full access to observe {student.name}.</span>
+          <a
+            href={authenticatedObserveUrl}
+            className={css({
+              fontWeight: 'semibold',
+              textDecoration: 'underline',
+              color: 'green.800',
+              _dark: { color: 'green.100' },
+              _hover: { color: 'green.900', _dark: { color: 'white' } },
+            })}
+          >
+            Switch to full observation mode →
+          </a>
+        </div>
+      )}
+
       {/* Expiration banner */}
       <div
         data-element="expiration-banner"
         className={css({
           backgroundColor: timeRemaining > 0 ? 'blue.50' : 'red.50',
-          _dark: { backgroundColor: timeRemaining > 0 ? 'blue.900' : 'red.900' },
           padding: '8px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -72,10 +112,13 @@ export function PublicObservationClient({
           gap: '8px',
           fontSize: '0.875rem',
           color: timeRemaining > 0 ? 'blue.700' : 'red.700',
-          _dark: { color: timeRemaining > 0 ? 'blue.200' : 'red.200' },
           borderBottom: '1px solid',
           borderColor: timeRemaining > 0 ? 'blue.200' : 'red.200',
-          _dark: { borderColor: timeRemaining > 0 ? 'blue.800' : 'red.800' },
+          _dark: {
+            backgroundColor: timeRemaining > 0 ? 'blue.900' : 'red.900',
+            color: timeRemaining > 0 ? 'blue.200' : 'red.200',
+            borderColor: timeRemaining > 0 ? 'blue.800' : 'red.800',
+          },
         })}
       >
         <span>👁️ View-only access</span>

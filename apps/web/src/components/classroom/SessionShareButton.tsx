@@ -100,7 +100,8 @@ export function SessionShareButton({ sessionId, isDark }: SessionShareButtonProp
       const data = await response.json()
       const share: ShareInfo = {
         token: data.token,
-        url: data.url,
+        // Always generate URL client-side using window.location.origin (server can't know the correct hostname)
+        url: getShareUrl('observe', data.token),
         expiresAt: data.expiresAt,
         createdAt: Date.now(),
         viewCount: 0,

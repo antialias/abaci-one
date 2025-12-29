@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import type { ObservedResult } from '@/hooks/useSessionObserver'
 import { css } from '../../../styled-system/css'
+import { formatMs } from './autoPauseCalculator'
 import { CompactLinearProblem } from './CompactProblemDisplay'
+import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 
 interface LiveResultsPanelProps {
   /** Accumulated results from the session */
@@ -17,77 +19,294 @@ interface LiveResultsPanelProps {
 }
 
 /**
- * Wrapper for compact problem display with status indicator
- * Reuses CompactLinearProblem from session summary
+ * Observed Result Item - expandable card like ProblemToReview
+ *
+ * Shows problem in collapsed mode, expands to show full details when clicked.
+ * Similar pattern to ProblemToReview but adapted for ObservedResult data.
  */
-function CompactResultItem({ result, isDark }: { result: ObservedResult; isDark: boolean }) {
-  // Parse student answer to number for CompactLinearProblem
+function ObservedResultItem({ result, isDark }: { result: ObservedResult; isDark: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   const studentAnswerNum = parseInt(result.studentAnswer, 10)
+  const purposeConfig = getPurposeConfig(result.purpose)
+  const purposeColors = getPurposeColors(result.purpose, isDark)
+  const isIncorrect = !result.isCorrect
 
   return (
     <div
-      data-element="compact-result-item"
+      data-component="observed-result-item"
+      data-problem-number={result.problemNumber}
       data-correct={result.isCorrect}
       className={css({
         display: 'flex',
-        alignItems: 'center',
-        gap: '0.375rem',
-        padding: '0.25rem 0.5rem',
-        backgroundColor: result.isCorrect
-          ? isDark
-            ? 'green.900/40'
-            : 'green.50'
-          : isDark
-            ? 'red.900/40'
-            : 'red.50',
-        borderRadius: '6px',
+        flexDirection: 'column',
+        borderRadius: '8px',
         border: '1px solid',
-        borderColor: result.isCorrect
+        borderColor: isIncorrect
           ? isDark
-            ? 'green.700'
-            : 'green.200'
-          : isDark
             ? 'red.700'
-            : 'red.200',
+            : 'red.200'
+          : isDark
+            ? 'green.700'
+            : 'green.200',
+        backgroundColor: isIncorrect
+          ? isDark
+            ? 'red.900/30'
+            : 'red.50'
+          : isDark
+            ? 'green.900/30'
+            : 'green.50',
+        overflow: 'hidden',
       })}
     >
-      {/* Problem number */}
-      <span
+      {/* Header row - clickable to expand/collapse */}
+      <button
+        type="button"
+        data-element="result-header"
+        onClick={() => setIsExpanded(!isExpanded)}
         className={css({
-          fontSize: '0.5625rem',
-          fontWeight: 'bold',
-          color: isDark ? 'gray.500' : 'gray.400',
-          minWidth: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.375rem 0.625rem',
+          backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)',
+          border: 'none',
+          borderBottom: isExpanded ? '1px solid' : 'none',
+          borderColor: isDark ? 'gray.700/50' : 'gray.200/50',
+          width: '100%',
+          cursor: 'pointer',
+          textAlign: 'left',
+          _hover: {
+            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)',
+          },
         })}
       >
-        #{result.problemNumber}
-      </span>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flex: 1,
+          })}
+        >
+          {/* Problem number */}
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.500' : 'gray.400',
+              minWidth: '1.25rem',
+            })}
+          >
+            #{result.problemNumber}
+          </span>
 
-      {/* Status indicator */}
-      <span
+          {/* Status indicator */}
+          <span
+            className={css({
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              color: result.isCorrect
+                ? isDark
+                  ? 'green.400'
+                  : 'green.600'
+                : isDark
+                  ? 'red.400'
+                  : 'red.600',
+            })}
+          >
+            {result.isCorrect ? '✓' : '✗'}
+          </span>
+
+          {/* Compact problem display */}
+          <div className={css({ flex: 1 })}>
+            <CompactLinearProblem
+              terms={result.terms}
+              answer={result.answer}
+              studentAnswer={Number.isNaN(studentAnswerNum) ? undefined : studentAnswerNum}
+              isCorrect={result.isCorrect}
+              isDark={isDark}
+            />
+          </div>
+        </div>
+
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
+          {/* Purpose emoji badge */}
+          <span
+            className={css({
+              padding: '0.125rem 0.375rem',
+              borderRadius: '4px',
+              fontSize: '0.5625rem',
+              fontWeight: '500',
+              backgroundColor: purposeColors.background,
+              color: purposeColors.text,
+            })}
+          >
+            {purposeConfig.emoji}
+          </span>
+
+          {/* Expand/collapse indicator */}
+          <span
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '1rem',
+              height: '1rem',
+              fontSize: '0.5rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.25s ease-out',
+            })}
+          >
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {/* Expanded details with smooth animation */}
+      <div
+        data-element="expanded-details-wrapper"
         className={css({
-          fontSize: '0.6875rem',
-          fontWeight: 'bold',
-          color: result.isCorrect
-            ? isDark
-              ? 'green.400'
-              : 'green.600'
-            : isDark
-              ? 'red.400'
-              : 'red.600',
+          display: 'grid',
+          gridTemplateRows: isExpanded ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.25s ease-out',
         })}
       >
-        {result.isCorrect ? '✓' : '✗'}
-      </span>
+        <div
+          data-element="expanded-details"
+          className={css({
+            overflow: 'hidden',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              padding: '0.5rem 0.625rem',
+              opacity: isExpanded ? 1 : 0,
+              transition: 'opacity 0.2s ease-out',
+            })}
+          >
+            {/* Full problem display */}
+            <div
+              className={css({
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                backgroundColor: result.isCorrect
+                  ? isDark
+                    ? 'green.900/50'
+                    : 'green.100'
+                  : isDark
+                    ? 'red.900/50'
+                    : 'red.100',
+              })}
+            >
+              <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>
+                {result.terms
+                  .map((t, i) => (i === 0 ? String(t) : t < 0 ? ` − ${Math.abs(t)}` : ` + ${t}`))
+                  .join('')}{' '}
+                ={' '}
+              </span>
+              <span
+                className={css({
+                  color: result.isCorrect
+                    ? isDark
+                      ? 'green.300'
+                      : 'green.700'
+                    : isDark
+                      ? 'red.300'
+                      : 'red.700',
+                })}
+              >
+                {result.answer}
+              </span>
+            </div>
 
-      {/* Problem display - reusing shared component */}
-      <CompactLinearProblem
-        terms={result.terms}
-        answer={result.answer}
-        studentAnswer={Number.isNaN(studentAnswerNum) ? undefined : studentAnswerNum}
-        isCorrect={result.isCorrect}
-        isDark={isDark}
-      />
+            {/* If incorrect, show student's answer */}
+            {!result.isCorrect && (
+              <div
+                className={css({
+                  padding: '0.375rem',
+                  borderRadius: '6px',
+                  backgroundColor: isDark ? 'red.900/40' : 'red.50',
+                  textAlign: 'center',
+                  fontSize: '0.75rem',
+                  color: isDark ? 'red.300' : 'red.700',
+                })}
+              >
+                Student answered: <strong>{result.studentAnswer}</strong>
+              </div>
+            )}
+
+            {/* Purpose explanation */}
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
+              })}
+            >
+              <span
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.625rem',
+                  fontWeight: '500',
+                  backgroundColor: purposeColors.background,
+                  color: purposeColors.text,
+                  width: 'fit-content',
+                })}
+              >
+                {purposeConfig.emoji} {purposeConfig.shortLabel}
+              </span>
+              <span
+                className={css({
+                  fontSize: '0.625rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                {purposeConfig.shortExplanation}
+              </span>
+            </div>
+
+            {/* Response time */}
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.6875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              <span>Response time:</span>
+              <span
+                className={css({
+                  fontWeight: 'bold',
+                  color: isDark ? 'gray.200' : 'gray.800',
+                })}
+              >
+                {formatMs(result.responseTimeMs)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -319,7 +538,7 @@ export function LiveResultsPanel({
             </div>
           ) : (
             (showAllProblems ? results : incorrectResults).map((result) => (
-              <CompactResultItem key={result.problemNumber} result={result} isDark={isDark} />
+              <ObservedResultItem key={result.problemNumber} result={result} isDark={isDark} />
             ))
           )}
         </div>

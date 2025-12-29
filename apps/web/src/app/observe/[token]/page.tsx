@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players, sessionPlans } from '@/db/schema'
+import { canPerformAction } from '@/lib/classroom'
 import { validateSessionShare } from '@/lib/session-share'
+import { getDbUserId } from '@/lib/viewer'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { PublicObservationClient } from './PublicObservationClient'
 
@@ -61,6 +63,20 @@ export default async function PublicObservationPage({ params }: PublicObservatio
   }
   completedProblems += session.currentSlotIndex
 
+  // Check if the current user can observe this player directly (without the share link)
+  let authenticatedObserveUrl: string | undefined
+  try {
+    const userId = await getDbUserId()
+    if (userId) {
+      const canObserve = await canPerformAction(userId, share.playerId, 'observe')
+      if (canObserve) {
+        authenticatedObserveUrl = `/practice/${share.playerId}/observe`
+      }
+    }
+  } catch {
+    // Not logged in or error checking permissions - that's fine, just don't show the banner
+  }
+
   const sessionInfo: ActiveSessionInfo = {
     sessionId: session.id,
     playerId: session.playerId,
@@ -87,6 +103,7 @@ export default async function PublicObservationPage({ params }: PublicObservatio
       expiresAt={
         share.expiresAt instanceof Date ? share.expiresAt.getTime() : Number(share.expiresAt)
       }
+      authenticatedObserveUrl={authenticatedObserveUrl}
     />
   )
 }

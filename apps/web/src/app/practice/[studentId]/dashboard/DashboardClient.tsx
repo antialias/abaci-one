@@ -2181,7 +2181,17 @@ function SkillsTab({
   )
 }
 
-function HistoryTab({ isDark, studentId }: { isDark: boolean; studentId: string }) {
+function HistoryTab({
+  isDark,
+  studentId,
+  activeSession,
+  onOpenActiveSession,
+}: {
+  isDark: boolean
+  studentId: string
+  activeSession?: SessionPlan | null
+  onOpenActiveSession?: () => void
+}) {
   return (
     <div data-tab-content="history">
       <div
@@ -2225,7 +2235,13 @@ function HistoryTab({ isDark, studentId }: { isDark: boolean; studentId: string 
           </p>
         </div>
 
-        <VirtualizedSessionList studentId={studentId} isDark={isDark} height={400} />
+        <VirtualizedSessionList
+          studentId={studentId}
+          isDark={isDark}
+          height={400}
+          activeSession={activeSession}
+          onOpenActiveSession={onOpenActiveSession}
+        />
       </div>
     </div>
   )
@@ -2796,7 +2812,14 @@ export function DashboardClient({
                 />
               )}
 
-              {activeTab === 'history' && <HistoryTab isDark={isDark} studentId={studentId} />}
+              {activeTab === 'history' && (
+                <HistoryTab
+                  isDark={isDark}
+                  studentId={studentId}
+                  activeSession={activeSession}
+                  onOpenActiveSession={() => setIsObserving(true)}
+                />
+              )}
 
               {activeTab === 'notes' && (
                 <NotesTab
