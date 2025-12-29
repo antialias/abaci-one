@@ -16,6 +16,9 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  EntryPromptAcceptedEvent,
+  EntryPromptCreatedEvent,
+  EntryPromptDeclinedEvent,
   SessionEndedEvent,
   SessionStartedEvent,
   StudentUnenrolledEvent,
@@ -320,5 +323,120 @@ export async function emitSessionEndedToPlayer(
     console.log(`[SocketEmitter] session-ended (${payload.reason}) -> player:${payload.playerId}`)
   } catch (error) {
     console.error('[SocketEmitter] Failed to emit session-ended to player:', error)
+  }
+}
+
+// ============================================================================
+// Entry Prompt Events
+// ============================================================================
+
+/**
+ * Entry prompt event payload
+ */
+export interface EntryPromptPayload {
+  promptId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  playerEmoji: string
+}
+
+/**
+ * Emit an entry prompt created event
+ *
+ * Use when: A teacher creates an entry prompt for a student.
+ * This notifies all parents of the student to prompt them to enter the child.
+ */
+export async function emitEntryPromptCreated(
+  payload: EntryPromptPayload & { teacherName: string; expiresAt: Date },
+  parentIds: string[]
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: EntryPromptCreatedEvent = {
+    promptId: payload.promptId,
+    classroomId: payload.classroomId,
+    classroomName: payload.classroomName,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    playerEmoji: payload.playerEmoji,
+    teacherName: payload.teacherName,
+    expiresAt: payload.expiresAt.toISOString(),
+  }
+
+  try {
+    // Emit to each parent's user channel
+    for (const parentId of parentIds) {
+      io.to(`user:${parentId}`).emit('entry-prompt-created', eventData)
+      console.log(`[SocketEmitter] entry-prompt-created -> user:${parentId}`)
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit entry-prompt-created:', error)
+  }
+}
+
+/**
+ * Emit an entry prompt accepted event
+ *
+ * Use when: A parent accepts an entry prompt, entering their child into the classroom.
+ * This notifies the teacher and updates the classroom presence view.
+ */
+export async function emitEntryPromptAccepted(
+  payload: Omit<EntryPromptPayload, 'playerEmoji'> & { acceptedBy: string },
+  teacherId: string
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: EntryPromptAcceptedEvent = {
+    promptId: payload.promptId,
+    classroomId: payload.classroomId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    acceptedBy: payload.acceptedBy,
+  }
+
+  try {
+    // Emit to teacher's user channel
+    io.to(`user:${teacherId}`).emit('entry-prompt-accepted', eventData)
+    console.log(`[SocketEmitter] entry-prompt-accepted -> user:${teacherId}`)
+
+    // Also emit to classroom channel for real-time presence updates
+    io.to(`classroom:${payload.classroomId}`).emit('entry-prompt-accepted', eventData)
+    console.log(`[SocketEmitter] entry-prompt-accepted -> classroom:${payload.classroomId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit entry-prompt-accepted:', error)
+  }
+}
+
+/**
+ * Emit an entry prompt declined event
+ *
+ * Use when: A parent declines an entry prompt.
+ * This only notifies the teacher (no need to update classroom).
+ */
+export async function emitEntryPromptDeclined(
+  payload: Omit<EntryPromptPayload, 'playerEmoji' | 'classroomName'> & { declinedBy: string },
+  teacherId: string
+): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+
+  const eventData: EntryPromptDeclinedEvent = {
+    promptId: payload.promptId,
+    classroomId: payload.classroomId,
+    playerId: payload.playerId,
+    playerName: payload.playerName,
+    declinedBy: payload.declinedBy,
+  }
+
+  try {
+    // Emit only to teacher's user channel
+    io.to(`user:${teacherId}`).emit('entry-prompt-declined', eventData)
+    console.log(`[SocketEmitter] entry-prompt-declined -> user:${teacherId}`)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit entry-prompt-declined:', error)
   }
 }

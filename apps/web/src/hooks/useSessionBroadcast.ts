@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import type { BroadcastState } from '@/components/practice'
+import type { SessionPartType } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
+  PartTransitionCompleteEvent,
+  PartTransitionEvent,
   PracticeStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
@@ -49,12 +52,26 @@ export interface UseSessionBroadcastOptions {
  * @param state - Current practice state (or null if not in active practice)
  * @param options - Optional callbacks for receiving observer control events
  */
+export interface UseSessionBroadcastResult {
+  isConnected: boolean
+  isBroadcasting: boolean
+  /** Send part transition event to observers */
+  sendPartTransition: (
+    previousPartType: SessionPartType | null,
+    nextPartType: SessionPartType,
+    countdownStartTime: number,
+    countdownDurationMs: number
+  ) => void
+  /** Send part transition complete event to observers */
+  sendPartTransitionComplete: () => void
+}
+
 export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
   state: BroadcastState | null,
   options?: UseSessionBroadcastOptions
-): { isConnected: boolean; isBroadcasting: boolean } {
+): UseSessionBroadcastResult {
   const socketRef = useRef<Socket | null>(null)
   const isConnectedRef = useRef(false)
   // Keep state in a ref so socket event handlers can access current state
@@ -210,8 +227,54 @@ export function useSessionBroadcast(
     state?.purpose, // Purpose change
   ])
 
+  // Broadcast part transition to observers
+  const sendPartTransition = useCallback(
+    (
+      previousPartType: SessionPartType | null,
+      nextPartType: SessionPartType,
+      countdownStartTime: number,
+      countdownDurationMs: number
+    ) => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) {
+        return
+      }
+
+      const event: PartTransitionEvent = {
+        sessionId,
+        previousPartType,
+        nextPartType,
+        countdownStartTime,
+        countdownDurationMs,
+      }
+
+      socketRef.current.emit('part-transition', event)
+      console.log('[SessionBroadcast] Emitted part-transition:', {
+        previousPartType,
+        nextPartType,
+        countdownDurationMs,
+      })
+    },
+    [sessionId]
+  )
+
+  // Broadcast part transition complete to observers
+  const sendPartTransitionComplete = useCallback(() => {
+    if (!socketRef.current || !isConnectedRef.current || !sessionId) {
+      return
+    }
+
+    const event: PartTransitionCompleteEvent = {
+      sessionId,
+    }
+
+    socketRef.current.emit('part-transition-complete', event)
+    console.log('[SessionBroadcast] Emitted part-transition-complete')
+  }, [sessionId])
+
   return {
     isConnected: isConnectedRef.current,
     isBroadcasting: isConnectedRef.current && !!state,
+    sendPartTransition,
+    sendPartTransitionComplete,
   }
 }

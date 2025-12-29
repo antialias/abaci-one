@@ -32,6 +32,9 @@ export const classrooms = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
+
+    /** Default expiry time for entry prompts (in minutes). Null = use system default (30 min) */
+    entryPromptExpiryMinutes: integer('entry_prompt_expiry_minutes'),
   },
   (table) => ({
     /** Index for looking up classroom by code */

@@ -9,6 +9,7 @@ import type {
   ProblemSlot,
   SessionHealth,
   SessionPart,
+  SessionPartType,
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
@@ -16,6 +17,7 @@ import type {
 import { css } from '../../../styled-system/css'
 import { type AutoPauseStats, calculateAutoPauseInfo, type PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
+import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { SessionPausedModal } from './SessionPausedModal'
 
 // Re-export types for consumers
@@ -144,6 +146,15 @@ interface ActiveSessionProps {
   manualPauseRequest?: boolean
   /** Called after manual pause has been handled (to clear the state) */
   onManualPauseHandled?: () => void
+  /** Called when a part transition starts (for broadcasting to observers) */
+  onPartTransition?: (
+    previousPartType: SessionPartType | null,
+    nextPartType: SessionPartType,
+    countdownStartTime: number,
+    countdownDurationMs: number
+  ) => void
+  /** Called when a part transition completes (for broadcasting to observers) */
+  onPartTransitionComplete?: () => void
 }
 
 /**
@@ -607,6 +618,8 @@ export function ActiveSession({
   onTeacherResumeHandled,
   manualPauseRequest,
   onManualPauseHandled,
+  onPartTransition,
+  onPartTransitionComplete,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -952,6 +965,16 @@ export function ActiveSession({
   // Track pause info for displaying in the modal (single source of truth)
   const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
 
+  // Part transition state - for showing transition screen between parts
+  const [isInPartTransition, setIsInPartTransition] = useState(false)
+  const [transitionData, setTransitionData] = useState<{
+    previousPartType: SessionPartType | null
+    nextPartType: SessionPartType
+    countdownStartTime: number
+  } | null>(null)
+  // Track the previous part index to detect part changes
+  const prevPartIndexRef = useRef<number>(plan.currentPartIndex)
+
   // Browse mode state - isBrowseMode is controlled via props
   // browseIndex can be controlled (browseIndexProp + onBrowseIndexChange) or internal
   const [internalBrowseIndex, setInternalBrowseIndex] = useState(0)
@@ -1131,6 +1154,40 @@ export function ActiveSession({
       onComplete()
     }
   }, [currentPartIndex, parts.length, onComplete])
+
+  // Detect part index changes and trigger transition screen
+  useEffect(() => {
+    const prevIndex = prevPartIndexRef.current
+
+    // If part index changed and we have a valid next part
+    if (currentPartIndex !== prevIndex && currentPartIndex < parts.length) {
+      const prevPart = prevIndex < parts.length ? parts[prevIndex] : null
+      const nextPart = parts[currentPartIndex]
+
+      // Trigger transition screen
+      const startTime = Date.now()
+      setTransitionData({
+        previousPartType: prevPart?.type ?? null,
+        nextPartType: nextPart.type,
+        countdownStartTime: startTime,
+      })
+      setIsInPartTransition(true)
+
+      // Broadcast transition to observers
+      onPartTransition?.(prevPart?.type ?? null, nextPart.type, startTime, TRANSITION_COUNTDOWN_MS)
+    }
+
+    // Update ref for next comparison
+    prevPartIndexRef.current = currentPartIndex
+  }, [currentPartIndex, parts, onPartTransition])
+
+  // Handle transition screen completion (countdown finished or user skipped)
+  const handleTransitionComplete = useCallback(() => {
+    setIsInPartTransition(false)
+    setTransitionData(null)
+    // Broadcast transition complete to observers
+    onPartTransitionComplete?.()
+  }, [onPartTransitionComplete])
 
   // Initialize problem when slot changes and in loading phase
   useEffect(() => {
@@ -1945,6 +2002,18 @@ export function ActiveSession({
         onResume={handleResume}
         onEndSession={() => onEndEarly('Session ended by user')}
       />
+
+      {/* Part Transition Screen - full screen overlay between parts */}
+      {transitionData && (
+        <PartTransitionScreen
+          isVisible={isInPartTransition}
+          previousPartType={transitionData.previousPartType}
+          nextPartType={transitionData.nextPartType}
+          countdownStartTime={transitionData.countdownStartTime}
+          student={student}
+          onComplete={handleTransitionComplete}
+        />
+      )}
     </div>
   )
 }

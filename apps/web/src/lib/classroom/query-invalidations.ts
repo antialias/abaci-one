@@ -17,7 +17,7 @@
  */
 
 import type { QueryClient } from '@tanstack/react-query'
-import { classroomKeys, playerKeys } from '@/lib/queryKeys'
+import { classroomKeys, entryPromptKeys, playerKeys } from '@/lib/queryKeys'
 
 /**
  * Event types that trigger query invalidations
@@ -32,6 +32,9 @@ export type ClassroomEventType =
   | 'studentLeft'
   | 'sessionStarted'
   | 'sessionEnded'
+  | 'entryPromptCreated'
+  | 'entryPromptAccepted'
+  | 'entryPromptDeclined'
 
 /**
  * Parameters for invalidation - each event type may need different params
@@ -181,6 +184,21 @@ export function invalidateForEvent(
       }
       break
 
+    case 'entryPromptCreated':
+    case 'entryPromptAccepted':
+    case 'entryPromptDeclined':
+      // Parent's pending entry prompts list updates
+      queryClient.invalidateQueries({
+        queryKey: entryPromptKeys.pending(),
+      })
+      // If a prompt was accepted, also update classroom presence
+      if (event === 'entryPromptAccepted' && classroomId) {
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.presence(classroomId),
+        })
+      }
+      break
+
     default: {
       // Exhaustive check - if we hit this, we're missing a case
       const _exhaustive: never = event
@@ -264,6 +282,15 @@ export function getInvalidationKeys(
     case 'sessionEnded':
       if (classroomId) {
         keys.push(classroomKeys.activeSessions(classroomId))
+      }
+      break
+
+    case 'entryPromptCreated':
+    case 'entryPromptAccepted':
+    case 'entryPromptDeclined':
+      keys.push(entryPromptKeys.pending())
+      if (event === 'entryPromptAccepted' && classroomId) {
+        keys.push(classroomKeys.presence(classroomId))
       }
       break
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
+import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
@@ -41,6 +42,7 @@ interface PracticeClientProps {
  */
 export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
   const router = useRouter()
+  const { showError } = useToast()
 
   // Track pause state for HUD display (ActiveSession owns the modal and actual pause logic)
   const [isPaused, setIsPaused] = useState(false)
@@ -97,32 +99,57 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // Handle recording an answer
   const handleAnswer = useCallback(
     async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
-      const updatedPlan = await recordResult.mutateAsync({
-        playerId: studentId,
-        planId: currentPlan.id,
-        result,
-      })
+      try {
+        const updatedPlan = await recordResult.mutateAsync({
+          playerId: studentId,
+          planId: currentPlan.id,
+          result,
+        })
 
-      // If session just completed, redirect to summary
-      if (updatedPlan.completedAt) {
-        router.push(`/practice/${studentId}/summary`, { scroll: false })
+        // If session just completed, redirect to summary
+        if (updatedPlan.completedAt) {
+          router.push(`/practice/${studentId}/summary`, { scroll: false })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        if (message.includes('Not authorized')) {
+          showError(
+            'Not authorized',
+            'Only parents or teachers with the student present in their classroom can record answers.'
+          )
+        } else {
+          showError('Failed to record answer', message)
+        }
       }
     },
-    [studentId, currentPlan.id, recordResult, router]
+    [studentId, currentPlan.id, recordResult, router, showError]
   )
 
   // Handle ending session early
   const handleEndEarly = useCallback(
     async (reason?: string) => {
-      await endEarly.mutateAsync({
-        playerId: studentId,
-        planId: currentPlan.id,
-        reason,
-      })
-      // Redirect to summary after ending early
-      router.push(`/practice/${studentId}/summary`, { scroll: false })
+      try {
+        await endEarly.mutateAsync({
+          playerId: studentId,
+          planId: currentPlan.id,
+          reason,
+        })
+        // Redirect to summary after ending early
+        router.push(`/practice/${studentId}/summary`, { scroll: false })
+      } catch (err) {
+        // Check if it's an authorization error
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        if (message.includes('Not authorized')) {
+          showError(
+            'Not authorized',
+            'Only parents or teachers with the student present in their classroom can end sessions.'
+          )
+        } else {
+          showError('Failed to end session', message)
+        }
+      }
     },
-    [studentId, currentPlan.id, endEarly, router]
+    [studentId, currentPlan.id, endEarly, router, showError]
   )
 
   // Handle session completion (called by ActiveSession when all problems done)
@@ -135,11 +162,16 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
   // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
-  useSessionBroadcast(currentPlan.id, studentId, broadcastState, {
-    onAbacusControl: setTeacherControl,
-    onTeacherPause: setTeacherPauseRequest,
-    onTeacherResume: () => setTeacherResumeRequest(true),
-  })
+  const { sendPartTransition, sendPartTransitionComplete } = useSessionBroadcast(
+    currentPlan.id,
+    studentId,
+    broadcastState,
+    {
+      onAbacusControl: setTeacherControl,
+      onTeacherPause: setTeacherPauseRequest,
+      onTeacherResume: () => setTeacherResumeRequest(true),
+    }
+  )
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart
@@ -174,6 +206,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         onPause: handlePause,
         onResume: handleResume,
         onEndEarly: () => handleEndEarly('Session ended'),
+        isEndingSession: endEarly.isPending,
         isBrowseMode,
         onToggleBrowse: () => setIsBrowseMode((prev) => !prev),
         onBrowseNavigate: setBrowseIndex,
@@ -240,6 +273,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
             onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
             manualPauseRequest={manualPauseRequest}
             onManualPauseHandled={() => setManualPauseRequest(false)}
+            onPartTransition={sendPartTransition}
+            onPartTransitionComplete={sendPartTransitionComplete}
           />
         </PracticeErrorBoundary>
       </main>

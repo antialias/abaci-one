@@ -327,8 +327,22 @@
     {
       "idx": 46,
       "version": "6",
-      "when": 1767052800000,
+      "when": 1766980800000,
       "tag": "0046_session_observation_shares",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1767037546552,
+      "tag": "0047_add_entry_prompts",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1767044481301,
+      "tag": "0048_ambitious_firedrake",
       "breakpoints": true
     }
   ]

@@ -36,6 +36,8 @@ export interface PlayerAccess {
   isParent: boolean
   isTeacher: boolean
   isPresent: boolean
+  /** Classroom ID if the viewer is a teacher */
+  classroomId?: string
 }
 
 /**
@@ -86,7 +88,7 @@ export async function getPlayerAccess(viewerId: string, playerId: string): Promi
     accessLevel = 'teacher-enrolled'
   }
 
-  return { playerId, accessLevel, isParent, isTeacher, isPresent }
+  return { playerId, accessLevel, isParent, isTeacher, isPresent, classroomId: classroom?.id }
 }
 
 /**

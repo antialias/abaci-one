@@ -9,6 +9,9 @@ import type {
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
   EnrollmentRequestDeniedEvent,
+  EntryPromptAcceptedEvent,
+  EntryPromptCreatedEvent,
+  EntryPromptDeclinedEvent,
   StudentUnenrolledEvent,
 } from '@/lib/classroom/socket-events'
 
@@ -106,6 +109,40 @@ export function useParentSocket(userId: string | undefined): { connected: boolea
     socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
       console.log('[ParentSocket] Child unenrolled:', data.playerName, 'from:', data.classroomName)
       invalidateForEvent(queryClient, 'studentUnenrolled', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for entry prompt created event (teacher wants child to enter classroom)
+    socket.on('entry-prompt-created', (data: EntryPromptCreatedEvent) => {
+      console.log(
+        '[ParentSocket] Entry prompt from:',
+        data.teacherName,
+        'for:',
+        data.playerName,
+        'to enter:',
+        data.classroomName
+      )
+      invalidateForEvent(queryClient, 'entryPromptCreated', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for entry prompt accepted event (another parent accepted)
+    socket.on('entry-prompt-accepted', (data: EntryPromptAcceptedEvent) => {
+      console.log('[ParentSocket] Entry prompt accepted for:', data.playerName)
+      invalidateForEvent(queryClient, 'entryPromptAccepted', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
+
+    // Listen for entry prompt declined event (another parent declined)
+    socket.on('entry-prompt-declined', (data: EntryPromptDeclinedEvent) => {
+      console.log('[ParentSocket] Entry prompt declined for:', data.playerName)
+      invalidateForEvent(queryClient, 'entryPromptDeclined', {
         classroomId: data.classroomId,
         playerId: data.playerId,
       })

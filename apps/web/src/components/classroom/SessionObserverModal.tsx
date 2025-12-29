@@ -3,16 +3,20 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useToast } from '@/components/common/ToastContext'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
+import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
 import { SessionShareButton } from './SessionShareButton'
 import { LiveResultsPanel } from '../practice/LiveResultsPanel'
 import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
+import { ObserverTransitionView } from '../practice/ObserverTransitionView'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
@@ -35,6 +39,8 @@ interface SessionObserverModalProps {
   observerId: string
   /** Whether the observer can share this session (parents only) */
   canShare?: boolean
+  /** Classroom ID for entry prompts (teachers only) */
+  classroomId?: string
 }
 
 interface SessionObserverViewProps {
@@ -47,6 +53,8 @@ interface SessionObserverViewProps {
   isViewOnly?: boolean
   /** Whether the observer can share this session (parents only) */
   canShare?: boolean
+  /** Classroom ID for entry prompts (teachers only) */
+  classroomId?: string
   onClose?: () => void
   onRequestFullscreen?: () => void
   renderCloseButton?: (button: ReactElement) => ReactElement
@@ -70,6 +78,7 @@ export function SessionObserverModal({
   student,
   observerId,
   canShare,
+  classroomId,
 }: SessionObserverModalProps) {
   const router = useRouter()
 
@@ -118,6 +127,7 @@ export function SessionObserverModal({
             student={student}
             observerId={observerId}
             canShare={canShare}
+            classroomId={classroomId}
             onClose={onClose}
             onRequestFullscreen={handleFullscreen}
             renderCloseButton={(button) => <Dialog.Close asChild>{button}</Dialog.Close>}
@@ -136,6 +146,7 @@ export function SessionObserverView({
   shareToken,
   isViewOnly = false,
   canShare = false,
+  classroomId,
   onClose,
   onRequestFullscreen,
   renderCloseButton,
@@ -144,16 +155,69 @@ export function SessionObserverView({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus()
+  const { showSuccess, showError } = useToast()
 
   // Subscribe to the session's socket channel
-  const { state, results, isConnected, isObserving, error, sendControl, sendPause, sendResume } =
-    useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
+  const {
+    state,
+    results,
+    transitionState,
+    isConnected,
+    isObserving,
+    error,
+    sendControl,
+    sendPause,
+    sendResume,
+  } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
 
   // Track if we've paused the session (teacher controls resume)
   const [hasPausedSession, setHasPausedSession] = useState(false)
 
   // Track if showing full report view (inline, not modal)
   const [showFullReport, setShowFullReport] = useState(false)
+
+  // Track if entry prompt was sent (for authorization error case)
+  const [promptSent, setPromptSent] = useState(false)
+
+  // Mutation to send entry prompt to parents (for authorization error case)
+  const sendEntryPrompt = useMutation({
+    mutationFn: async () => {
+      if (!classroomId) throw new Error('No classroom ID')
+      const response = await api(`classrooms/${classroomId}/entry-prompts`, {
+        method: 'POST',
+        body: JSON.stringify({ playerIds: [session.playerId] }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send prompt')
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      if (data.created > 0) {
+        setPromptSent(true)
+        showSuccess('Entry prompt sent', `${student.name}'s parent has been notified.`)
+      } else if (data.skipped?.length > 0) {
+        const reason = data.skipped[0]?.reason
+        if (reason === 'pending_prompt_exists') {
+          showError('Prompt already pending', `${student.name} already has a pending entry prompt.`)
+        } else if (reason === 'already_present') {
+          showSuccess('Already in classroom', `${student.name} is now in the classroom!`)
+        } else {
+          showError('Could not send prompt', reason || 'Unknown error')
+        }
+      }
+    },
+    onError: (err) => {
+      showError(
+        'Failed to send prompt',
+        err instanceof Error ? err.message : 'An unexpected error occurred'
+      )
+    },
+  })
+
+  // Check if this is an authorization error that might be due to student not being present
+  const isNotAuthorizedError = error === 'Not authorized to observe this session'
 
   // Ref for measuring problem container height (same pattern as ActiveSession)
   const problemRef = useRef<HTMLDivElement>(null)
@@ -425,7 +489,7 @@ export function SessionObserverView({
           </div>
         )}
 
-        {error && (
+        {error && !isNotAuthorizedError && (
           <div
             className={css({
               textAlign: 'center',
@@ -439,7 +503,158 @@ export function SessionObserverView({
           </div>
         )}
 
-        {isObserving && !state && (
+        {/* Authorization error - show helpful UI for teachers to send entry prompt */}
+        {isNotAuthorizedError && (
+          <div
+            data-element="not-present-error"
+            className={css({
+              textAlign: 'center',
+              maxWidth: '400px',
+              width: '100%',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '1rem',
+                color: isDark ? 'gray.300' : 'gray.600',
+                marginBottom: '1.5rem',
+                lineHeight: '1.6',
+              })}
+            >
+              {student.name} is enrolled in your class, but you can only observe their practice
+              sessions when they are present in your classroom.
+            </p>
+
+            {/* Entry prompt section - only show for teachers with classroomId */}
+            {classroomId && !promptSent && (
+              <div
+                data-element="entry-prompt-section"
+                className={css({
+                  backgroundColor: isDark ? 'orange.900/30' : 'orange.50',
+                  border: '2px solid',
+                  borderColor: isDark ? 'orange.700' : 'orange.300',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  marginBottom: '1rem',
+                })}
+              >
+                <h3
+                  className={css({
+                    fontSize: '0.9375rem',
+                    fontWeight: '600',
+                    color: isDark ? 'orange.300' : 'orange.700',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  Notify {student.name}&apos;s parent
+                </h3>
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    marginBottom: '1rem',
+                    lineHeight: '1.5',
+                  })}
+                >
+                  Send a notification asking them to enter the classroom.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => sendEntryPrompt.mutate()}
+                  disabled={sendEntryPrompt.isPending}
+                  data-action="send-entry-prompt"
+                  className={css({
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: 'white',
+                    backgroundColor: isDark ? 'orange.600' : 'orange.500',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: sendEntryPrompt.isPending ? 'wait' : 'pointer',
+                    opacity: sendEntryPrompt.isPending ? 0.7 : 1,
+                    transition: 'all 0.15s ease',
+                    _hover: {
+                      backgroundColor: isDark ? 'orange.500' : 'orange.600',
+                    },
+                    _disabled: {
+                      cursor: 'wait',
+                      opacity: 0.7,
+                    },
+                  })}
+                >
+                  {sendEntryPrompt.isPending ? 'Sending...' : 'Send Entry Prompt'}
+                </button>
+              </div>
+            )}
+
+            {/* Prompt sent confirmation */}
+            {classroomId && promptSent && (
+              <div
+                data-element="prompt-sent-confirmation"
+                className={css({
+                  backgroundColor: isDark ? 'green.900/30' : 'green.50',
+                  border: '2px solid',
+                  borderColor: isDark ? 'green.700' : 'green.300',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  marginBottom: '1rem',
+                })}
+              >
+                <p
+                  className={css({
+                    fontSize: '0.9375rem',
+                    fontWeight: '500',
+                    color: isDark ? 'green.300' : 'green.700',
+                  })}
+                >
+                  Entry prompt sent to {student.name}&apos;s parent
+                </p>
+              </div>
+            )}
+
+            {/* Manual instructions (secondary) */}
+            <div
+              className={css({
+                backgroundColor: isDark ? 'gray.800' : 'gray.100',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                borderRadius: '12px',
+                padding: '1rem',
+                textAlign: 'left',
+              })}
+            >
+              <h3
+                className={css({
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                Or have {student.name} join manually
+              </h3>
+              <ol
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  lineHeight: '1.6',
+                  paddingLeft: '1.25rem',
+                  margin: 0,
+                })}
+              >
+                <li>
+                  Have them open their device and go to <strong>Join Classroom</strong>
+                </li>
+                <li>They enter your classroom code to join</li>
+                <li>Once they appear in your dashboard, you can observe</li>
+              </ol>
+            </div>
+          </div>
+        )}
+
+        {isObserving && !state && !transitionState && (
           <div
             className={css({
               textAlign: 'center',
@@ -455,8 +670,19 @@ export function SessionObserverView({
           </div>
         )}
 
+        {/* Part transition view - shows when student is between parts */}
+        {transitionState && (
+          <ObserverTransitionView
+            previousPartType={transitionState.previousPartType}
+            nextPartType={transitionState.nextPartType}
+            countdownStartTime={transitionState.countdownStartTime}
+            countdownDurationMs={transitionState.countdownDurationMs}
+            student={student}
+          />
+        )}
+
         {/* Main content - either problem view or full report view */}
-        {state && !showFullReport && (
+        {state && !showFullReport && !transitionState && (
           <div
             data-element="observer-main-content"
             className={css({

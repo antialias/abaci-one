@@ -56,7 +56,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * PATCH /api/classrooms/[classroomId]
  * Update classroom settings (teacher only)
  *
- * Body: { name?: string, regenerateCode?: boolean }
+ * Body: { name?: string, regenerateCode?: boolean, entryPromptExpiryMinutes?: number | null }
  * Returns: { classroom }
  */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
@@ -81,8 +81,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     // Update other fields
-    const updates: { name?: string } = {}
+    const updates: { name?: string; entryPromptExpiryMinutes?: number | null } = {}
     if (body.name) updates.name = body.name
+    // Allow setting to null (use system default) or a positive number
+    if ('entryPromptExpiryMinutes' in body) {
+      const value = body.entryPromptExpiryMinutes
+      if (value === null || (typeof value === 'number' && value > 0)) {
+        updates.entryPromptExpiryMinutes = value
+      }
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 })

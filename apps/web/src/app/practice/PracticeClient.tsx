@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useToast } from '@/components/common/ToastContext'
 import {
   AddStudentByFamilyCodeModal,
   CreateClassroomForm,
@@ -10,8 +12,10 @@ import {
   TeacherEnrollmentSection,
 } from '@/components/classroom'
 import { useClassroomSocket } from '@/hooks/useClassroomSocket'
+import { api } from '@/lib/queryClient'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
+  EntryPromptBanner,
   getAvailableViews,
   getDefaultView,
   StudentFilterBar,
@@ -54,6 +58,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { showSuccess, showError } = useToast()
 
   // Classroom state - check if user is a teacher
   const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom()
@@ -230,6 +235,68 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     setSelectedIds(new Set())
   }, [selectedIds, updatePlayer])
 
+  // Mutation for bulk entry prompts
+  const bulkEntryPrompt = useMutation({
+    mutationFn: async (playerIds: string[]) => {
+      if (!classroomId) throw new Error('No classroom ID')
+      const response = await api(`classrooms/${classroomId}/entry-prompts`, {
+        method: 'POST',
+        body: JSON.stringify({ playerIds }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send prompts')
+      }
+      return response.json()
+    },
+  })
+
+  // Compute which selected students are eligible for entry prompts
+  // (enrolled in teacher's classroom but not currently present)
+  const promptEligibleIds = useMemo(() => {
+    if (!isTeacher || !classroomId) return new Set<string>()
+    return new Set(
+      Array.from(selectedIds).filter((id) => {
+        const student = unifiedStudents.find((s) => s.id === id)
+        if (!student) return false
+        // Must be enrolled but not present
+        return student.relationship.isEnrolled && !student.relationship.isPresent
+      })
+    )
+  }, [selectedIds, unifiedStudents, isTeacher, classroomId])
+
+  // Handle bulk prompt to enter
+  const handleBulkPromptToEnter = useCallback(async () => {
+    if (promptEligibleIds.size === 0) return
+
+    try {
+      const result = await bulkEntryPrompt.mutateAsync(Array.from(promptEligibleIds))
+
+      // Show success message
+      const created = result.created ?? promptEligibleIds.size
+      const skipped = result.skippedCount ?? 0
+      if (created > 0) {
+        showSuccess(
+          'Entry prompts sent',
+          `Sent to ${created} student${created !== 1 ? 's' : ''}${skipped > 0 ? ` (${skipped} skipped)` : ''}`
+        )
+      } else if (skipped > 0) {
+        showError(
+          'No prompts sent',
+          `All ${skipped} students were skipped (already prompted or present)`
+        )
+      }
+
+      // Clear selection after prompting
+      setSelectedIds(new Set())
+    } catch (error) {
+      showError(
+        'Failed to send prompts',
+        error instanceof Error ? error.message : 'An unexpected error occurred'
+      )
+    }
+  }, [promptEligibleIds, bulkEntryPrompt, showSuccess, showError])
+
   // Handle add student - different modal for teachers vs parents
   const handleAddStudent = useCallback(() => {
     if (isTeacher) {
@@ -316,7 +383,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           onViewChange={setCurrentView}
           availableViews={availableViews}
           viewCounts={viewCounts}
-          classroomCode={classroomCode}
+          classroom={classroom}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           skillFilters={skillFilters}
@@ -327,6 +394,8 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           onAddStudent={handleAddStudent}
           selectedCount={selectedIds.size}
           onBulkArchive={handleBulkArchive}
+          onBulkPromptToEnter={isTeacher ? handleBulkPromptToEnter : undefined}
+          promptEligibleCount={promptEligibleIds.size}
           onClearSelection={handleClearSelection}
         />
 
@@ -379,6 +448,10 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
 
           {/* Pending Enrollment Approvals - for parents to approve teacher-initiated requests */}
           <PendingApprovalsSection />
+
+          {/* Entry Prompt Banner - for parents to respond to teacher classroom entry requests */}
+          {/* Shows for anyone with children, even if they're also a teacher */}
+          <EntryPromptBanner />
 
           {/* Needs Attention Section - uses same bucket styling as other sections */}
           {studentsNeedingAttention.length > 0 && (
@@ -658,6 +731,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           }}
           observerId={userId}
           canShare={observingStudent.relationship.isMyChild}
+          classroomId={classroomId}
         />
       )}
     </PageWithNav>

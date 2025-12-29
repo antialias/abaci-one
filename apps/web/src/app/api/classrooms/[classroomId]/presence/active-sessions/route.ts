@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getClassroomPresence, getTeacherClassroom } from '@/lib/classroom'
+import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -44,16 +44,19 @@ interface ActiveSessionInfo {
   totalProblems: number
   /** Number of completed problems */
   completedProblems: number
+  /** Whether the student is currently present in the classroom */
+  isPresent: boolean
 }
 
 /**
  * GET /api/classrooms/[classroomId]/presence/active-sessions
- * Get active practice sessions for students currently present in the classroom
+ * Get active practice sessions for enrolled students in the classroom
  *
  * Returns: { sessions: ActiveSessionInfo[] }
  *
- * This endpoint allows teachers to see which students are actively practicing
- * so they can observe their sessions in real-time.
+ * This endpoint allows teachers to see which students are actively practicing.
+ * It returns sessions for ALL enrolled students, not just present ones.
+ * The `isPresent` field indicates whether the teacher can observe the session.
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
@@ -67,20 +70,25 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    // Get all students currently present in the classroom
-    const presences = await getClassroomPresence(classroomId)
-    // Filter out presences where player was deleted (undefined)
-    const playerIds = presences.filter((p) => p.player !== undefined).map((p) => p.player!.id)
+    // Get all enrolled students in the classroom
+    const enrolledStudents = await getEnrolledStudents(classroomId)
+    const enrolledPlayerIds = enrolledStudents.map((s) => s.id)
 
-    if (playerIds.length === 0) {
+    if (enrolledPlayerIds.length === 0) {
       return NextResponse.json({ sessions: [] })
     }
 
-    // Find active sessions for these players
+    // Get presence info to know which students are present
+    const presences = await getClassroomPresence(classroomId)
+    const presentPlayerIds = new Set(
+      presences.filter((p) => p.player !== undefined).map((p) => p.player!.id)
+    )
+
+    // Find active sessions for enrolled students
     // Active = status is 'in_progress', startedAt is set, completedAt is null
     const activeSessions = await db.query.sessionPlans.findMany({
       where: and(
-        inArray(schema.sessionPlans.playerId, playerIds),
+        inArray(schema.sessionPlans.playerId, enrolledPlayerIds),
         eq(schema.sessionPlans.status, 'in_progress'),
         isNull(schema.sessionPlans.completedAt)
       ),
@@ -108,6 +116,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
           totalParts: parts.length,
           totalProblems,
           completedProblems,
+          isPresent: presentPlayerIds.has(session.playerId),
         }
       })
 

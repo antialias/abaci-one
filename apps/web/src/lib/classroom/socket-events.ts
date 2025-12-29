@@ -95,6 +95,52 @@ export interface EnrollmentDeniedEvent {
 }
 
 // ============================================================================
+// Entry Prompt Events (sent to user:${userId} channel)
+// ============================================================================
+
+/**
+ * Sent when a teacher creates an entry prompt for a student.
+ * Broadcast to all parents of the student.
+ */
+export interface EntryPromptCreatedEvent {
+  promptId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  playerEmoji: string
+  teacherName: string
+  /** When the prompt expires (ISO timestamp) */
+  expiresAt: string
+}
+
+/**
+ * Sent when a parent accepts an entry prompt (child enters classroom).
+ * Broadcast to teacher and classroom channel.
+ */
+export interface EntryPromptAcceptedEvent {
+  promptId: string
+  classroomId: string
+  playerId: string
+  playerName: string
+  /** Parent who accepted */
+  acceptedBy: string
+}
+
+/**
+ * Sent when a parent declines an entry prompt.
+ * Broadcast only to teacher.
+ */
+export interface EntryPromptDeclinedEvent {
+  promptId: string
+  classroomId: string
+  playerId: string
+  playerName: string
+  /** Parent who declined */
+  declinedBy: string
+}
+
+// ============================================================================
 // Presence Events (sent to classroom:${classroomId} channel)
 // ============================================================================
 
@@ -196,6 +242,29 @@ export interface SessionPausedEvent {
 }
 
 export interface SessionResumedEvent {
+  sessionId: string
+}
+
+/**
+ * Sent when student transitions between session parts.
+ * Used to show observers the transition screen with synchronized countdown.
+ */
+export interface PartTransitionEvent {
+  sessionId: string
+  /** Part type we're transitioning FROM (null if session start) */
+  previousPartType: 'abacus' | 'visualization' | 'linear' | null
+  /** Part type we're transitioning TO */
+  nextPartType: 'abacus' | 'visualization' | 'linear'
+  /** Timestamp when countdown started (for sync) */
+  countdownStartTime: number
+  /** Countdown duration in ms */
+  countdownDurationMs: number
+}
+
+/**
+ * Sent when part transition completes (countdown finished or skipped)
+ */
+export interface PartTransitionCompleteEvent {
   sessionId: string
 }
 
@@ -310,6 +379,11 @@ export interface ClassroomServerToClientEvents {
   'student-unenrolled': (data: StudentUnenrolledEvent) => void
   'enrollment-denied': (data: EnrollmentDeniedEvent) => void // deprecated
 
+  // Entry prompt events (user channel for parents, classroom channel for teacher)
+  'entry-prompt-created': (data: EntryPromptCreatedEvent) => void
+  'entry-prompt-accepted': (data: EntryPromptAcceptedEvent) => void
+  'entry-prompt-declined': (data: EntryPromptDeclinedEvent) => void
+
   // Presence events (classroom channel)
   'student-entered': (data: StudentEnteredEvent) => void
   'student-left': (data: StudentLeftEvent) => void
@@ -325,6 +399,8 @@ export interface ClassroomServerToClientEvents {
   'observer-joined': (data: ObserverJoinedEvent) => void
   'session-paused': (data: SessionPausedEvent) => void
   'session-resumed': (data: SessionResumedEvent) => void
+  'part-transition': (data: PartTransitionEvent) => void
+  'part-transition-complete': (data: PartTransitionCompleteEvent) => void
 
   // Session status events (classroom channel - for teacher's active sessions view)
   'session-started': (data: SessionStartedEvent) => void
@@ -357,6 +433,8 @@ export interface ClassroomClientToServerEvents {
   'abacus-control': (data: AbacusControlEvent) => void
   'session-pause': (data: SessionPausedEvent) => void
   'session-resume': (data: SessionResumedEvent) => void
+  'part-transition': (data: PartTransitionEvent) => void
+  'part-transition-complete': (data: PartTransitionCompleteEvent) => void
 
   // Skill tutorial broadcasts (from student client to classroom channel)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void

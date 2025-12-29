@@ -33,6 +33,7 @@ import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { useMyClassroom } from '@/hooks/useClassroom'
 import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
@@ -2520,6 +2521,10 @@ export function DashboardClient({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  // Get teacher's classroom for entry prompts
+  const { data: myClassroom } = useMyClassroom()
+  const classroomId = myClassroom?.id
+
   // React Query: Use server props as initial data, get live updates from cache
   const { data: activeSession } = useActiveSessionPlan(studentId, initialActiveSession)
 
@@ -2888,6 +2893,7 @@ export function DashboardClient({
               }}
               observerId={userId}
               canShare={true}
+              classroomId={classroomId}
             />
           )}
         </PracticeErrorBoundary>

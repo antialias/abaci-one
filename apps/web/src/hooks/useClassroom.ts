@@ -124,6 +124,45 @@ export function useIsTeacher() {
   }
 }
 
+/**
+ * Update classroom settings
+ */
+export interface UpdateClassroomParams {
+  name?: string
+  entryPromptExpiryMinutes?: number | null
+  regenerateCode?: boolean
+}
+
+async function updateClassroom(
+  classroomId: string,
+  params: UpdateClassroomParams
+): Promise<Classroom> {
+  const res = await api(`classrooms/${classroomId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to update classroom')
+  }
+  const data = await res.json()
+  return data.classroom
+}
+
+export function useUpdateClassroom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ classroomId, ...params }: UpdateClassroomParams & { classroomId: string }) =>
+      updateClassroom(classroomId, params),
+    onSuccess: (classroom) => {
+      // Update the 'mine' query with the updated classroom
+      queryClient.setQueryData(classroomKeys.mine(), classroom)
+    },
+  })
+}
+
 // ============================================================================
 // Enrollment API Functions
 // ============================================================================
@@ -591,6 +630,8 @@ export interface ActiveSessionInfo {
   totalProblems: number
   /** Number of completed problems */
   completedProblems: number
+  /** Whether the student is currently present in the classroom */
+  isPresent?: boolean
 }
 
 /**

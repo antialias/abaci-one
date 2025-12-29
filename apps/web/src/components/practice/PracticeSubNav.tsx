@@ -74,6 +74,8 @@ export interface SessionHudData {
   onToggleBrowse: () => void
   /** Navigate to specific problem in browse mode */
   onBrowseNavigate?: (linearIndex: number) => void
+  /** Whether the end session request is in flight */
+  isEndingSession?: boolean
 }
 
 interface PracticeSubNavProps {
@@ -851,20 +853,38 @@ export function PracticeSubNav({
                     padding: '0.5rem 0.75rem',
                     borderRadius: '4px',
                     fontSize: '0.875rem',
-                    cursor: 'pointer',
+                    cursor: sessionHud.isEndingSession ? 'wait' : 'pointer',
                     outline: 'none',
                     color: isDark ? 'red.400' : 'red.600',
+                    opacity: sessionHud.isEndingSession ? 0.6 : 1,
                     _hover: {
-                      backgroundColor: isDark ? 'red.900/50' : 'red.50',
+                      backgroundColor: sessionHud.isEndingSession
+                        ? 'transparent'
+                        : isDark
+                          ? 'red.900/50'
+                          : 'red.50',
                     },
                     _focus: {
-                      backgroundColor: isDark ? 'red.900/50' : 'red.50',
+                      backgroundColor: sessionHud.isEndingSession
+                        ? 'transparent'
+                        : isDark
+                          ? 'red.900/50'
+                          : 'red.50',
                     },
                   })}
-                  onSelect={sessionHud.onEndEarly}
+                  onSelect={(e) => {
+                    if (sessionHud.isEndingSession) {
+                      e.preventDefault() // Keep menu open while loading
+                      return
+                    }
+                    // Prevent menu from closing - we want to show the loading state
+                    e.preventDefault()
+                    sessionHud.onEndEarly()
+                  }}
+                  disabled={sessionHud.isEndingSession}
                 >
-                  <span>⏹</span>
-                  <span>End Session</span>
+                  <span>{sessionHud.isEndingSession ? '⏳' : '⏹'}</span>
+                  <span>{sessionHud.isEndingSession ? 'Ending...' : 'End Session'}</span>
                 </DropdownMenu.Item>
 
                 {/* Observe session - for parents/teachers to open observation page */}

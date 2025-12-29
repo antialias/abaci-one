@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
+  PartTransitionCompleteEvent,
+  PartTransitionEvent,
   PracticeStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
@@ -73,6 +75,20 @@ export interface ObservedSessionState {
 }
 
 /**
+ * State of a part transition being observed
+ */
+export interface ObservedTransitionState {
+  /** Part type transitioning FROM (null if session start) */
+  previousPartType: SessionPartType | null
+  /** Part type transitioning TO */
+  nextPartType: SessionPartType
+  /** Timestamp when countdown started (for sync) */
+  countdownStartTime: number
+  /** Countdown duration in ms */
+  countdownDurationMs: number
+}
+
+/**
  * A recorded result from a completed problem during observation
  */
 export interface ObservedResult {
@@ -99,6 +115,8 @@ interface UseSessionObserverResult {
   state: ObservedSessionState | null
   /** Accumulated results from completed problems */
   results: ObservedResult[]
+  /** Current part transition state (null if not in transition) */
+  transitionState: ObservedTransitionState | null
   /** Whether connected to the session channel */
   isConnected: boolean
   /** Whether actively observing (connected and joined session) */
@@ -136,6 +154,7 @@ export function useSessionObserver(
 ): UseSessionObserverResult {
   const [state, setState] = useState<ObservedSessionState | null>(null)
   const [results, setResults] = useState<ObservedResult[]>([])
+  const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -310,6 +329,28 @@ export function useSessionObserver(
       })
     })
 
+    // Listen for part transition events
+    socket.on('part-transition', (data: PartTransitionEvent) => {
+      console.log('[SessionObserver] Received part-transition:', {
+        previousPartType: data.previousPartType,
+        nextPartType: data.nextPartType,
+        countdownDurationMs: data.countdownDurationMs,
+      })
+
+      setTransitionState({
+        previousPartType: data.previousPartType,
+        nextPartType: data.nextPartType,
+        countdownStartTime: data.countdownStartTime,
+        countdownDurationMs: data.countdownDurationMs,
+      })
+    })
+
+    // Listen for part transition complete events
+    socket.on('part-transition-complete', (_data: PartTransitionCompleteEvent) => {
+      console.log('[SessionObserver] Part transition complete')
+      setTransitionState(null)
+    })
+
     // Listen for session ended event
     socket.on('session-ended', () => {
       console.log('[SessionObserver] Session ended')
@@ -400,6 +441,7 @@ export function useSessionObserver(
   return {
     state,
     results,
+    transitionState,
     isConnected,
     isObserving,
     error,

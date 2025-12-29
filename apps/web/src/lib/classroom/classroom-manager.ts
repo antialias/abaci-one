@@ -155,6 +155,8 @@ export async function getClassroomByCode(code: string): Promise<ClassroomWithTea
 
 export interface UpdateClassroomParams {
   name?: string
+  /** Entry prompt expiry time in minutes. Null = use system default (30 min) */
+  entryPromptExpiryMinutes?: number | null
 }
 
 /**

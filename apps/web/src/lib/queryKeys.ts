@@ -52,3 +52,9 @@ export const classroomKeys = {
   awaitingParentApproval: (id: string) =>
     [...classroomKeys.detail(id), 'awaiting-parent-approval'] as const,
 }
+
+// Entry prompt query keys
+export const entryPromptKeys = {
+  all: ['entry-prompts'] as const,
+  pending: () => [...entryPromptKeys.all, 'pending'] as const,
+}

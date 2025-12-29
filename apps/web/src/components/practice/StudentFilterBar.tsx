@@ -1,10 +1,13 @@
 'use client'
 
+import * as Popover from '@radix-ui/react-popover'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ShareCodePanel } from '@/components/common'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useUpdateClassroom } from '@/hooks/useClassroom'
 import { useShareCode } from '@/hooks/useShareCode'
+import type { Classroom } from '@/db/schema'
 import {
   formatSkillChipName,
   getSkillDisplayName,
@@ -23,8 +26,8 @@ interface StudentFilterBarProps {
   availableViews?: StudentView[]
   /** Counts per view */
   viewCounts?: Partial<Record<StudentView, number>>
-  /** Classroom code for teachers to share */
-  classroomCode?: string
+  /** Classroom data for teachers (includes code and settings) */
+  classroom?: Classroom | null
   /** Current search query */
   searchQuery: string
   /** Callback when search query changes */
@@ -45,6 +48,10 @@ interface StudentFilterBarProps {
   selectedCount?: number
   /** Callback when bulk archive is clicked */
   onBulkArchive?: () => void
+  /** Callback when bulk prompt to enter is clicked */
+  onBulkPromptToEnter?: () => void
+  /** Number of students eligible for entry prompt (enrolled but not present) */
+  promptEligibleCount?: number
   /** Callback to clear selection */
   onClearSelection?: () => void
 }
@@ -64,7 +71,7 @@ export function StudentFilterBar({
   onViewChange,
   availableViews,
   viewCounts,
-  classroomCode,
+  classroom,
   searchQuery,
   onSearchChange,
   skillFilters,
@@ -75,6 +82,8 @@ export function StudentFilterBar({
   onAddStudent,
   selectedCount = 0,
   onBulkArchive,
+  onBulkPromptToEnter,
+  promptEligibleCount = 0,
   onClearSelection,
 }: StudentFilterBarProps) {
   const { resolvedTheme } = useTheme()
@@ -181,8 +190,8 @@ export function StudentFilterBar({
             viewCounts={viewCounts}
           />
 
-          {/* Classroom code - teachers only */}
-          {classroomCode && <ClassroomShareChip code={classroomCode} />}
+          {/* Classroom code and settings - teachers only */}
+          {classroom && <ClassroomChipWithSettings classroom={classroom} />}
         </div>
       )}
 
@@ -240,6 +249,28 @@ export function StudentFilterBar({
                 })}
               >
                 Archive
+              </button>
+            )}
+            {onBulkPromptToEnter && promptEligibleCount > 0 && (
+              <button
+                type="button"
+                onClick={onBulkPromptToEnter}
+                data-action="bulk-prompt-to-enter"
+                className={css({
+                  padding: '6px 12px',
+                  bg: isDark ? 'orange.700' : 'orange.500',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: {
+                    bg: isDark ? 'orange.600' : 'orange.600',
+                  },
+                })}
+              >
+                Prompt to Enter ({promptEligibleCount})
               </button>
             )}
             {onClearSelection && (
@@ -598,9 +629,293 @@ export function StudentFilterBar({
 }
 
 /**
- * Compact share chip for classroom code with QR popover
+ * Preset options for entry prompt expiry
  */
-function ClassroomShareChip({ code }: { code: string }) {
-  const shareCode = useShareCode({ type: 'classroom', code })
-  return <ShareCodePanel shareCode={shareCode} compact showRegenerate={false} />
+const EXPIRY_OPTIONS = [
+  { value: null, label: 'Default (30 min)' },
+  { value: 15, label: '15 minutes' },
+  { value: 30, label: '30 minutes' },
+  { value: 45, label: '45 minutes' },
+  { value: 60, label: '1 hour' },
+  { value: 90, label: '1.5 hours' },
+  { value: 120, label: '2 hours' },
+] as const
+
+/**
+ * Classroom share chip with settings popover
+ */
+function ClassroomChipWithSettings({ classroom }: { classroom: Classroom }) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const shareCode = useShareCode({ type: 'classroom', code: classroom.code })
+  const updateClassroom = useUpdateClassroom()
+  const [isOpen, setIsOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(classroom.name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  // Reset name value when classroom changes or popover opens
+  useEffect(() => {
+    setNameValue(classroom.name)
+    setEditingName(false)
+  }, [classroom.name, isOpen])
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingName && nameInputRef.current) {
+      nameInputRef.current.focus()
+      nameInputRef.current.select()
+    }
+  }, [editingName])
+
+  const handleNameSave = useCallback(() => {
+    const trimmedName = nameValue.trim()
+    if (trimmedName && trimmedName !== classroom.name) {
+      updateClassroom.mutate({
+        classroomId: classroom.id,
+        name: trimmedName,
+      })
+    }
+    setEditingName(false)
+  }, [classroom.id, classroom.name, nameValue, updateClassroom])
+
+  const handleExpiryChange = useCallback(
+    (value: number | null) => {
+      updateClassroom.mutate({
+        classroomId: classroom.id,
+        entryPromptExpiryMinutes: value,
+      })
+    },
+    [classroom.id, updateClassroom]
+  )
+
+  const currentExpiry = classroom.entryPromptExpiryMinutes
+
+  return (
+    <div
+      data-element="classroom-chip-with-settings"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+      })}
+    >
+      <ShareCodePanel shareCode={shareCode} compact showRegenerate={false} />
+
+      <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            data-action="classroom-settings"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.300',
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              color: isDark ? 'gray.400' : 'gray.500',
+              fontSize: '14px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+              _hover: {
+                backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                borderColor: isDark ? 'gray.600' : 'gray.400',
+              },
+            })}
+            aria-label="Classroom settings"
+          >
+            ⚙️
+          </button>
+        </Popover.Trigger>
+
+        <Popover.Portal>
+          <Popover.Content
+            data-component="classroom-settings-popover"
+            side="bottom"
+            align="end"
+            sideOffset={8}
+            className={css({
+              width: '240px',
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              borderRadius: '12px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              boxShadow: 'lg',
+              padding: '12px',
+              zIndex: Z_INDEX.POPOVER,
+              animation: 'fadeIn 0.15s ease',
+            })}
+          >
+            <h3
+              className={css({
+                fontSize: '13px',
+                fontWeight: '600',
+                color: isDark ? 'gray.200' : 'gray.700',
+                marginBottom: '12px',
+              })}
+            >
+              Classroom Settings
+            </h3>
+
+            {/* Classroom name */}
+            <div data-setting="classroom-name" className={css({ marginBottom: '12px' })}>
+              <label
+                className={css({
+                  display: 'block',
+                  fontSize: '12px',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '4px',
+                })}
+              >
+                Classroom Name
+              </label>
+              {editingName ? (
+                <div className={css({ display: 'flex', gap: '4px' })}>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleNameSave()
+                      } else if (e.key === 'Escape') {
+                        setNameValue(classroom.name)
+                        setEditingName(false)
+                      }
+                    }}
+                    onBlur={handleNameSave}
+                    disabled={updateClassroom.isPending}
+                    className={css({
+                      flex: 1,
+                      padding: '6px 8px',
+                      fontSize: '13px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: 'blue.500',
+                      backgroundColor: isDark ? 'gray.700' : 'white',
+                      color: isDark ? 'gray.100' : 'gray.800',
+                      outline: '2px solid',
+                      outlineColor: 'blue.500',
+                      outlineOffset: '1px',
+                    })}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingName(true)}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '13px',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.600' : 'gray.300',
+                    backgroundColor: isDark ? 'gray.700' : 'white',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    _hover: {
+                      borderColor: isDark ? 'gray.500' : 'gray.400',
+                      backgroundColor: isDark ? 'gray.600' : 'gray.50',
+                    },
+                  })}
+                >
+                  <span
+                    className={css({
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    })}
+                  >
+                    {classroom.name}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '11px',
+                      color: isDark ? 'gray.400' : 'gray.400',
+                      flexShrink: 0,
+                      marginLeft: '8px',
+                    })}
+                  >
+                    ✏️
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Entry prompt expiry setting */}
+            <div data-setting="entry-prompt-expiry">
+              <label
+                className={css({
+                  display: 'block',
+                  fontSize: '12px',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '4px',
+                })}
+              >
+                Entry prompt expires after
+              </label>
+              <select
+                value={currentExpiry ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  handleExpiryChange(val === '' ? null : Number(val))
+                }}
+                disabled={updateClassroom.isPending}
+                className={css({
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: '13px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'gray.100' : 'gray.800',
+                  cursor: updateClassroom.isPending ? 'wait' : 'pointer',
+                  opacity: updateClassroom.isPending ? 0.7 : 1,
+                  _focus: {
+                    outline: '2px solid',
+                    outlineColor: 'blue.500',
+                    outlineOffset: '1px',
+                  },
+                })}
+              >
+                {EXPIRY_OPTIONS.map((opt) => (
+                  <option key={opt.value ?? 'default'} value={opt.value ?? ''}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                className={css({
+                  fontSize: '11px',
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  marginTop: '4px',
+                  lineHeight: '1.4',
+                })}
+              >
+                How long parents have to respond before the entry prompt expires
+              </p>
+            </div>
+
+            <Popover.Arrow
+              className={css({
+                fill: isDark ? 'gray.800' : 'white',
+              })}
+            />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+  )
 }

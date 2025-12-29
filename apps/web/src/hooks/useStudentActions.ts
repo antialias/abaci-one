@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import {
   useEnrolledClassrooms,
   useEnterClassroom,
@@ -16,6 +17,7 @@ import {
   type AvailableActions,
   type StudentActionData,
 } from '@/components/practice/studentActions'
+import { api } from '@/lib/queryClient'
 
 export type { StudentActionData, AvailableActions }
 
@@ -25,6 +27,7 @@ export interface StudentActionHandlers {
   enterClassroom: () => Promise<void>
   enterSpecificClassroom: (classroomId: string) => Promise<void>
   leaveClassroom: () => Promise<void>
+  promptToEnter: () => Promise<void>
   toggleArchive: () => Promise<void>
   openShareAccess: () => void
   openEnrollModal: () => void
@@ -101,6 +104,21 @@ export function useStudentActions(
   const enterClassroom = useEnterClassroom()
   const leaveClassroom = useLeaveClassroom()
 
+  // Entry prompt mutation (teacher action)
+  const createEntryPrompt = useMutation({
+    mutationFn: async ({ classroomId, playerId }: { classroomId: string; playerId: string }) => {
+      const response = await api(`classrooms/${classroomId}/entry-prompts`, {
+        method: 'POST',
+        body: JSON.stringify({ playerIds: [playerId] }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send prompt')
+      }
+      return response.json()
+    },
+  })
+
   // ========== Modal state ==========
   const [showShareAccess, setShowShareAccess] = useState(false)
   const [showEnrollModal, setShowEnrollModal] = useState(false)
@@ -160,6 +178,15 @@ export function useStudentActions(
     })
   }, [student.id, student.isArchived, updatePlayer])
 
+  const handlePromptToEnter = useCallback(async () => {
+    if (classroom?.id) {
+      await createEntryPrompt.mutateAsync({
+        classroomId: classroom.id,
+        playerId: student.id,
+      })
+    }
+  }, [classroom?.id, createEntryPrompt, student.id])
+
   // ========== Memoized result ==========
   const handlers: StudentActionHandlers = useMemo(
     () => ({
@@ -168,6 +195,7 @@ export function useStudentActions(
       enterClassroom: handleEnterClassroom,
       enterSpecificClassroom: handleEnterSpecificClassroom,
       leaveClassroom: handleLeaveClassroom,
+      promptToEnter: handlePromptToEnter,
       toggleArchive: handleToggleArchive,
       openShareAccess: () => setShowShareAccess(true),
       openEnrollModal: () => setShowEnrollModal(true),
@@ -178,6 +206,7 @@ export function useStudentActions(
       handleEnterClassroom,
       handleEnterSpecificClassroom,
       handleLeaveClassroom,
+      handlePromptToEnter,
       handleToggleArchive,
     ]
   )
@@ -198,7 +227,11 @@ export function useStudentActions(
     [showShareAccess, showEnrollModal]
   )
 
-  const isLoading = updatePlayer.isPending || enterClassroom.isPending || leaveClassroom.isPending
+  const isLoading =
+    updatePlayer.isPending ||
+    enterClassroom.isPending ||
+    leaveClassroom.isPending ||
+    createEntryPrompt.isPending
 
   // ========== Classroom data ==========
   const classrooms: ClassroomData = useMemo(

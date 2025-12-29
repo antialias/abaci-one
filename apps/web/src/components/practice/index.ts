@@ -44,6 +44,7 @@ export {
   ProjectingBanner,
 } from './BannerSlots'
 export { CompactBanner } from './CompactBanner'
+export { EntryPromptBanner } from './EntryPromptBanner'
 export type { ActiveSessionState } from './ActiveSessionBanner'
 export type { CurrentPhaseInfo, SkillHealthSummary } from './ProgressDashboard'
 export { ProgressDashboard } from './ProgressDashboard'
@@ -76,3 +77,16 @@ export { VerticalProblem } from './VerticalProblem'
 export type { StudentView } from './ViewSelector'
 export { ViewSelector, VIEW_CONFIGS, getAvailableViews, getDefaultView } from './ViewSelector'
 export { VirtualizedSessionList } from './VirtualizedSessionList'
+// Part transition components
+export type { PartTransitionScreenProps } from './PartTransitionScreen'
+export { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
+export type { ObserverTransitionViewProps } from './ObserverTransitionView'
+export { ObserverTransitionView } from './ObserverTransitionView'
+export {
+  selectTransitionMessage,
+  getTransitionType,
+  requiresAbacusPutAway,
+  requiresAbacusPickUp,
+  type TransitionMessage,
+  type TransitionType,
+} from './partTransitionMessages'

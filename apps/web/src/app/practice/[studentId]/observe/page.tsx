@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
-import { canPerformAction, isParentOf } from '@/lib/classroom'
+import { getPlayerAccess, isParentOf } from '@/lib/classroom'
 import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { getDbUserId } from '@/lib/viewer'
 import { ObservationClient } from './ObservationClient'
+import { StudentNotPresentPage } from './StudentNotPresentPage'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,11 +24,27 @@ export default async function PracticeObservationPage({ params }: ObservationPag
     notFound()
   }
 
-  const [canObserve, isParent] = await Promise.all([
-    canPerformAction(observerId, studentId, 'observe'),
+  const [access, isParent] = await Promise.all([
+    getPlayerAccess(observerId, studentId),
     isParentOf(observerId, studentId),
   ])
+
+  // Check if user can observe (parent or teacher-present)
+  const canObserve = access.isParent || access.isPresent
+
   if (!canObserve) {
+    // If they're a teacher but student isn't present, show helpful message
+    if (access.isTeacher && access.classroomId) {
+      return (
+        <StudentNotPresentPage
+          studentName={player.name}
+          studentEmoji={player.emoji}
+          studentId={studentId}
+          classroomId={access.classroomId}
+        />
+      )
+    }
+    // Otherwise, they have no relationship to this student
     notFound()
   }
 

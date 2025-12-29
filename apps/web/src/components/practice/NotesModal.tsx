@@ -559,6 +559,16 @@ export function NotesModal({
                   </DropdownMenu.Item>
                 )}
 
+                {actions.promptToEnter && (
+                  <DropdownMenu.Item
+                    className={menuItemStyle(isDark)}
+                    onSelect={handlers.promptToEnter}
+                  >
+                    <span>{ACTION_DEFINITIONS.promptToEnter.icon}</span>
+                    <span>{ACTION_DEFINITIONS.promptToEnter.label}</span>
+                  </DropdownMenu.Item>
+                )}
+
                 <DropdownMenu.Separator className={separatorStyle(isDark)} />
 
                 {/* Management actions */}

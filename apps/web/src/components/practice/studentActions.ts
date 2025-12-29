@@ -35,6 +35,7 @@ export interface AvailableActions {
   enterClassroom: boolean
   leaveClassroom: boolean
   removeFromClassroom: boolean
+  promptToEnter: boolean
 
   // Enrollment actions
   enrollInClassroom: boolean
@@ -77,6 +78,7 @@ export function getAvailableActions(
       enterClassroom: false,
       leaveClassroom: false,
       removeFromClassroom: false,
+      promptToEnter: false,
       enrollInClassroom: false,
       unenrollStudent: false,
       shareAccess: false,
@@ -94,6 +96,8 @@ export function getAvailableActions(
     leaveClassroom: isMyChild && isPresent,
     // Teachers can remove students from their classroom
     removeFromClassroom: isTeacher && isPresent,
+    // Teachers can prompt parents to enter their enrolled students
+    promptToEnter: isTeacher && isEnrolled && !isPresent,
 
     // Enrollment actions
     // Parents can enroll their children (even if they're also teachers)
@@ -116,6 +120,7 @@ export const ACTION_DEFINITIONS = {
   enterClassroom: { icon: '🏫', label: 'Enter Classroom' },
   leaveClassroom: { icon: '🚪', label: 'Leave Classroom' },
   removeFromClassroom: { icon: '🚪', label: 'Remove from Classroom' },
+  promptToEnter: { icon: '📣', label: 'Prompt to Enter' },
   enrollInClassroom: { icon: '➕', label: 'Enroll in Classroom' },
   unenrollStudent: { icon: '📋', label: 'Unenroll Student', variant: 'danger' as const },
   shareAccess: { icon: '🔗', label: 'Share Access' },
