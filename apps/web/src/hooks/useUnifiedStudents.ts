@@ -78,10 +78,11 @@ export function useUnifiedStudents(
     useActiveSessionsInClassroom(classroom?.id)
 
   // Get active sessions for parent's children (via WebSocket for real-time updates)
-  // Only active for non-teachers (parents) who have children
+  // Enabled for ALL users who have children (teachers can also be parents)
+  const hasChildren = childIds.length > 0
   const { sessionMap: childSessionMap, isLoading: isLoadingChildSessions } = useChildSessionsSocket(
-    !isTeacher ? userId : undefined,
-    !isTeacher ? childIds : EMPTY_CHILD_IDS
+    hasChildren ? userId : undefined,
+    hasChildren ? childIds : EMPTY_CHILD_IDS
   )
 
   // Build lookup maps for efficient merging
@@ -232,7 +233,7 @@ export function useUnifiedStudents(
     isLoadingClassroom ||
     isLoadingChildren ||
     (isTeacher && (isLoadingEnrolled || isLoadingPresence || isLoadingActiveSessions)) ||
-    (!isTeacher && isLoadingChildSessions)
+    (hasChildren && isLoadingChildSessions)
 
   return {
     students,
