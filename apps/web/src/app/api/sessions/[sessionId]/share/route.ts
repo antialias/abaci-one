@@ -7,6 +7,7 @@ import {
   revokeSessionShare,
   type ShareDuration,
 } from '@/lib/session-share'
+import { getShareUrl } from '@/lib/share/urls'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -52,9 +53,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Create the share
     const share = await createSessionShare(sessionId, session.playerId, userId, expiresIn)
 
-    // Build the full URL
-    const baseUrl = request.nextUrl.origin
-    const url = `${baseUrl}/observe/${share.id}`
+    // Build the full URL using the share URL helper (handles env vars correctly)
+    const url = getShareUrl('observe', share.id)
 
     return NextResponse.json({
       token: share.id,
