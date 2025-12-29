@@ -297,14 +297,10 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     }
   }, [promptEligibleIds, bulkEntryPrompt, showSuccess, showError])
 
-  // Handle add student - different modal for teachers vs parents
+  // Handle add student - show create modal for both teachers and parents
   const handleAddStudent = useCallback(() => {
-    if (isTeacher) {
-      setShowAddByFamilyCode(true)
-    } else {
-      setShowAddModal(true)
-    }
-  }, [isTeacher])
+    setShowAddModal(true)
+  }, [])
 
   const handleCloseAddModal = useCallback(() => {
     setShowAddModal(false)
