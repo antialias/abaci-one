@@ -453,56 +453,60 @@ export function AddStudentModal({
           </button>
         </div>
 
-        {/* Link existing child option */}
-        <div
-          className={css({
-            marginTop: '1.5rem',
-            paddingTop: '1.5rem',
-            borderTop: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-            textAlign: 'center',
-          })}
-        >
-          <p
+        {/* Link existing child option - only show in parent mode (not classroom mode) */}
+        {!classroomId && (
+          <div
             className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-              marginBottom: '0.5rem',
+              marginTop: '1.5rem',
+              paddingTop: '1.5rem',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              textAlign: 'center',
             })}
           >
-            Have a family code from another parent?
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowLinkForm(true)}
-            data-action="show-link-form"
-            className={css({
-              padding: '8px 16px',
-              fontSize: '0.875rem',
-              color: isDark ? 'blue.400' : 'blue.600',
-              backgroundColor: 'transparent',
-              border: '1px solid',
-              borderColor: isDark ? 'blue.700' : 'blue.300',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              _hover: {
-                backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-                borderColor: isDark ? 'blue.600' : 'blue.400',
-              },
-            })}
-          >
-            Link Existing Child
-          </button>
-        </div>
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '0.5rem',
+              })}
+            >
+              Have a family code from another parent?
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowLinkForm(true)}
+              data-action="show-link-form"
+              className={css({
+                padding: '8px 16px',
+                fontSize: '0.875rem',
+                color: isDark ? 'blue.400' : 'blue.600',
+                backgroundColor: 'transparent',
+                border: '1px solid',
+                borderColor: isDark ? 'blue.700' : 'blue.300',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                  borderColor: isDark ? 'blue.600' : 'blue.400',
+                },
+              })}
+            >
+              Link Existing Child
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Link Child Form Modal */}
-      <LinkChildForm
-        isOpen={showLinkForm}
-        onClose={() => setShowLinkForm(false)}
-        onSuccess={onClose}
-      />
+      {/* Link Child Form Modal - only used in parent mode */}
+      {!classroomId && (
+        <LinkChildForm
+          isOpen={showLinkForm}
+          onClose={() => setShowLinkForm(false)}
+          onSuccess={onClose}
+        />
+      )}
     </div>
   )
 }

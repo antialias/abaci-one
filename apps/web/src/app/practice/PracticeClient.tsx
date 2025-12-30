@@ -311,12 +311,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     setShowUnifiedAddModal(true)
   }, [])
 
-  // Handle create student from unified modal - opens create modal with auto-enroll
-  const handleCreateStudentFromUnified = useCallback(() => {
-    setAddToClassroomMode(true)
-    setShowAddModal(true)
-  }, [])
-
   const handleCloseAddModal = useCallback(() => {
     setShowAddModal(false)
     setAddToClassroomMode(false)
@@ -726,7 +720,6 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           classroomId={classroomId}
           classroomName={classroom.name}
           classroomCode={classroomCode}
-          onCreateStudent={handleCreateStudentFromUnified}
         />
       )}
 

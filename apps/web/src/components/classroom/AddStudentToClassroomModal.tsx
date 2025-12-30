@@ -1,12 +1,32 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AbacusQRCode } from '@/components/common/AbacusQRCode'
+import { EmojiPicker } from '@/components/EmojiPicker'
 import { Z_INDEX } from '@/constants/zIndex'
+import { PLAYER_EMOJIS } from '@/constants/playerEmojis'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useDirectEnrollStudent } from '@/hooks/useClassroom'
 import { useShareCode } from '@/hooks/useShareCode'
+import { useCreatePlayer } from '@/hooks/useUserPlayers'
 import { css } from '../../../styled-system/css'
+
+// Available colors for student avatars
+const AVAILABLE_COLORS = [
+  '#FFB3BA', // light pink
+  '#FFDFBA', // light orange
+  '#FFFFBA', // light yellow
+  '#BAFFC9', // light green
+  '#BAE1FF', // light blue
+  '#DCC6E0', // light purple
+  '#F0E68C', // khaki
+  '#98D8C8', // mint
+  '#F7DC6F', // gold
+  '#BB8FCE', // orchid
+  '#85C1E9', // sky blue
+  '#F8B500', // amber
+]
 
 interface PlayerPreview {
   id: string
@@ -15,24 +35,24 @@ interface PlayerPreview {
   color: string
 }
 
+type LeftColumnMode = 'choose' | 'create' | 'family-success'
+
 interface AddStudentToClassroomModalProps {
   isOpen: boolean
   onClose: () => void
   classroomId: string
   classroomName: string
   classroomCode: string
-  /** Called when user wants to create a new student (opens the create student modal) */
-  onCreateStudent: () => void
 }
 
 /**
  * Unified modal for adding students to a classroom.
  *
  * Two columns:
- * - Left: "ADD NOW" - Create student button + Enter family code
+ * - Left: "ADD NOW" - Create student form OR enter family code
  * - Right: "INVITE PARENTS" - Share classroom code with QR
  *
- * This consolidates multiple add-student flows into a single discoverable UI.
+ * The create student form is integrated inline (not a separate modal).
  */
 export function AddStudentToClassroomModal({
   isOpen,
@@ -40,20 +60,45 @@ export function AddStudentToClassroomModal({
   classroomId,
   classroomName,
   classroomCode,
-  onCreateStudent,
 }: AddStudentToClassroomModalProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Left column mode: choose (initial), create (form), or family-success
+  const [leftMode, setLeftMode] = useState<LeftColumnMode>('choose')
+
+  // Create student form state
+  const [formName, setFormName] = useState('')
+  const [formEmoji, setFormEmoji] = useState(PLAYER_EMOJIS[0])
+  const [formColor, setFormColor] = useState(AVAILABLE_COLORS[0])
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   // Family code input state
   const [familyCode, setFamilyCode] = useState('')
   const [isSubmittingFamilyCode, setIsSubmittingFamilyCode] = useState(false)
   const [familyCodeError, setFamilyCodeError] = useState<string | null>(null)
-  const [familyCodeSuccess, setFamilyCodeSuccess] = useState(false)
   const [enrolledPlayer, setEnrolledPlayer] = useState<PlayerPreview | null>(null)
+
+  // Mutations
+  const createPlayer = useCreatePlayer()
+  const directEnroll = useDirectEnrollStudent()
 
   // Share code hook for the classroom
   const shareCode = useShareCode({ type: 'classroom', code: classroomCode })
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLeftMode('choose')
+      setFormName('')
+      setFormEmoji(PLAYER_EMOJIS[Math.floor(Math.random() * PLAYER_EMOJIS.length)])
+      setFormColor(AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)])
+      setShowEmojiPicker(false)
+      setFamilyCode('')
+      setFamilyCodeError(null)
+      setEnrolledPlayer(null)
+    }
+  }, [isOpen])
 
   const handleFamilyCodeSubmit = useCallback(async () => {
     if (!familyCode.trim()) {
@@ -79,7 +124,7 @@ export function AddStudentToClassroomModal({
       }
 
       setEnrolledPlayer(data.player)
-      setFamilyCodeSuccess(true)
+      setLeftMode('family-success')
     } catch (_err) {
       setFamilyCodeError('Failed to add student. Please try again.')
     } finally {
@@ -87,26 +132,71 @@ export function AddStudentToClassroomModal({
     }
   }, [familyCode, classroomId])
 
+  const handleCreateStudentSubmit = useCallback(() => {
+    if (!formName.trim()) return
+
+    createPlayer.mutate(
+      {
+        name: formName.trim(),
+        emoji: formEmoji,
+        color: formColor,
+      },
+      {
+        onSuccess: (player) => {
+          if (player) {
+            directEnroll.mutate(
+              { classroomId, playerId: player.id },
+              {
+                onSettled: () => {
+                  onClose()
+                },
+              }
+            )
+          } else {
+            onClose()
+          }
+        },
+      }
+    )
+  }, [formName, formEmoji, formColor, createPlayer, classroomId, directEnroll, onClose])
+
   const handleClose = useCallback(() => {
-    // Reset state
-    setFamilyCode('')
-    setFamilyCodeError(null)
-    setFamilyCodeSuccess(false)
-    setEnrolledPlayer(null)
     onClose()
   }, [onClose])
 
-  const handleCreateStudent = useCallback(() => {
-    handleClose()
-    onCreateStudent()
-  }, [handleClose, onCreateStudent])
-
-  const handleAddAnother = useCallback(() => {
+  const handleBackToChoose = useCallback(() => {
+    setLeftMode('choose')
     setFamilyCode('')
     setFamilyCodeError(null)
-    setFamilyCodeSuccess(false)
     setEnrolledPlayer(null)
   }, [])
+
+  const handleStartCreate = useCallback(() => {
+    // Randomize emoji and color when entering create mode
+    setFormEmoji(PLAYER_EMOJIS[Math.floor(Math.random() * PLAYER_EMOJIS.length)])
+    setFormColor(AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)])
+    setFormName('')
+    setLeftMode('create')
+  }, [])
+
+  const isPending = createPlayer.isPending || directEnroll.isPending
+
+  // Show emoji picker as overlay
+  if (showEmojiPicker) {
+    return (
+      <EmojiPicker
+        currentEmoji={formEmoji}
+        onEmojiSelect={(emoji) => {
+          setFormEmoji(emoji)
+          setShowEmojiPicker(false)
+        }}
+        onClose={() => setShowEmojiPicker(false)}
+        title="Choose Avatar"
+        accentColor="green"
+        isDark={isDark}
+      />
+    )
+  }
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -130,7 +220,7 @@ export function AddStudentToClassroomModal({
             backgroundColor: isDark ? 'gray.800' : 'white',
             borderRadius: '16px',
             width: 'calc(100% - 2rem)',
-            maxWidth: { base: '400px', sm: '700px' },
+            maxWidth: '700px',
             maxHeight: '90vh',
             overflowY: 'auto',
             boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
@@ -191,7 +281,7 @@ export function AddStudentToClassroomModal({
             data-element="modal-content"
             className={css({
               display: 'grid',
-              gridTemplateColumns: { base: '1fr', sm: '1fr 1fr' },
+              gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
               gap: '0',
             })}
           >
@@ -200,8 +290,8 @@ export function AddStudentToClassroomModal({
               data-section="add-now"
               className={css({
                 padding: '20px',
-                borderRight: { base: 'none', sm: '1px solid' },
-                borderBottom: { base: '1px solid', sm: 'none' },
+                borderRight: { base: 'none', md: '1px solid' },
+                borderBottom: { base: '1px solid', md: 'none' },
                 borderColor: isDark ? 'gray.700' : 'gray.200',
               })}
             >
@@ -218,105 +308,42 @@ export function AddStudentToClassroomModal({
                 Add Now
               </h3>
 
-              {/* Create Student Button */}
-              <button
-                type="button"
-                onClick={handleCreateStudent}
-                data-action="create-student"
-                className={css({
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '14px 16px',
-                  backgroundColor: isDark ? 'green.700' : 'green.500',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  marginBottom: '12px',
-                  _hover: {
-                    backgroundColor: isDark ? 'green.600' : 'green.600',
-                    transform: 'translateY(-1px)',
-                  },
-                  _active: {
-                    transform: 'translateY(0)',
-                  },
-                })}
-              >
-                <span className={css({ fontSize: '1.25rem' })}>+</span>
-                Create Student
-              </button>
-              <p
-                className={css({
-                  fontSize: '0.8125rem',
-                  color: isDark ? 'gray.500' : 'gray.500',
-                  textAlign: 'center',
-                  marginBottom: '20px',
-                  lineHeight: '1.4',
-                })}
-              >
-                Quick setup - student doesn't need an existing account
-              </p>
-
-              {/* Divider */}
-              <div
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '20px',
-                })}
-              >
-                <div
-                  className={css({
-                    flex: 1,
-                    height: '1px',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                  })}
-                />
-                <span
-                  className={css({
-                    fontSize: '0.75rem',
-                    color: isDark ? 'gray.500' : 'gray.400',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  })}
-                >
-                  or
-                </span>
-                <div
-                  className={css({
-                    flex: 1,
-                    height: '1px',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                  })}
-                />
-              </div>
-
-              {/* Family Code Section */}
-              {familyCodeSuccess && enrolledPlayer ? (
-                <FamilyCodeSuccess
-                  player={enrolledPlayer}
-                  isDark={isDark}
-                  onAddAnother={handleAddAnother}
-                  onDone={handleClose}
-                />
-              ) : (
-                <FamilyCodeInput
-                  value={familyCode}
-                  onChange={(val) => {
+              {leftMode === 'choose' && (
+                <ChooseSection
+                  onCreateStudent={handleStartCreate}
+                  familyCode={familyCode}
+                  onFamilyCodeChange={(val) => {
                     setFamilyCode(val)
                     setFamilyCodeError(null)
                   }}
-                  onSubmit={handleFamilyCodeSubmit}
-                  isSubmitting={isSubmittingFamilyCode}
-                  error={familyCodeError}
+                  onFamilyCodeSubmit={handleFamilyCodeSubmit}
+                  isSubmittingFamilyCode={isSubmittingFamilyCode}
+                  familyCodeError={familyCodeError}
                   isDark={isDark}
+                />
+              )}
+
+              {leftMode === 'create' && (
+                <CreateStudentSection
+                  name={formName}
+                  onNameChange={setFormName}
+                  emoji={formEmoji}
+                  onEmojiClick={() => setShowEmojiPicker(true)}
+                  color={formColor}
+                  onColorChange={setFormColor}
+                  onSubmit={handleCreateStudentSubmit}
+                  onCancel={handleBackToChoose}
+                  isPending={isPending}
+                  isDark={isDark}
+                />
+              )}
+
+              {leftMode === 'family-success' && enrolledPlayer && (
+                <FamilyCodeSuccess
+                  player={enrolledPlayer}
+                  isDark={isDark}
+                  onAddAnother={handleBackToChoose}
+                  onDone={handleClose}
                 />
               )}
             </div>
@@ -516,113 +543,414 @@ export function AddStudentToClassroomModal({
 
 // --- Sub-components ---
 
-interface FamilyCodeInputProps {
-  value: string
-  onChange: (value: string) => void
-  onSubmit: () => void
-  isSubmitting: boolean
-  error: string | null
+interface ChooseSectionProps {
+  onCreateStudent: () => void
+  familyCode: string
+  onFamilyCodeChange: (value: string) => void
+  onFamilyCodeSubmit: () => void
+  isSubmittingFamilyCode: boolean
+  familyCodeError: string | null
   isDark: boolean
 }
 
-function FamilyCodeInput({
-  value,
-  onChange,
-  onSubmit,
-  isSubmitting,
-  error,
+function ChooseSection({
+  onCreateStudent,
+  familyCode,
+  onFamilyCodeChange,
+  onFamilyCodeSubmit,
+  isSubmittingFamilyCode,
+  familyCodeError,
   isDark,
-}: FamilyCodeInputProps) {
+}: ChooseSectionProps) {
   return (
-    <div data-element="family-code-section">
-      <label
-        htmlFor="family-code-input"
+    <>
+      {/* Create Student Button */}
+      <button
+        type="button"
+        onClick={onCreateStudent}
+        data-action="create-student"
         className={css({
-          display: 'block',
-          fontSize: '0.875rem',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '14px 16px',
+          backgroundColor: isDark ? 'green.700' : 'green.500',
+          color: 'white',
+          border: 'none',
+          borderRadius: '10px',
+          fontSize: '1rem',
           fontWeight: '600',
-          color: isDark ? 'gray.300' : 'gray.700',
-          marginBottom: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          marginBottom: '12px',
+          _hover: {
+            backgroundColor: isDark ? 'green.600' : 'green.600',
+            transform: 'translateY(-1px)',
+          },
+          _active: {
+            transform: 'translateY(0)',
+          },
         })}
       >
-        Have a parent's family code?
-      </label>
+        <span className={css({ fontSize: '1.25rem' })}>+</span>
+        Create Student
+      </button>
       <p
         className={css({
           fontSize: '0.8125rem',
           color: isDark ? 'gray.500' : 'gray.500',
-          marginBottom: '12px',
+          textAlign: 'center',
+          marginBottom: '20px',
           lineHeight: '1.4',
         })}
       >
-        Enter their code to request enrollment. The parent will need to approve.
+        Quick setup - student doesn't need an existing account
       </p>
 
+      {/* Divider */}
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '20px',
+        })}
+      >
+        <div
+          className={css({
+            flex: 1,
+            height: '1px',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        />
+        <span
+          className={css({
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.500' : 'gray.400',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          })}
+        >
+          or
+        </span>
+        <div
+          className={css({
+            flex: 1,
+            height: '1px',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        />
+      </div>
+
+      {/* Family Code Section */}
+      <div data-element="family-code-section">
+        <label
+          htmlFor="family-code-input"
+          className={css({
+            display: 'block',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: isDark ? 'gray.300' : 'gray.700',
+            marginBottom: '8px',
+          })}
+        >
+          Have a parent's family code?
+        </label>
+        <p
+          className={css({
+            fontSize: '0.8125rem',
+            color: isDark ? 'gray.500' : 'gray.500',
+            marginBottom: '12px',
+            lineHeight: '1.4',
+          })}
+        >
+          Enter their code to request enrollment. The parent will need to approve.
+        </p>
+
+        <div
+          className={css({
+            display: 'flex',
+            gap: '8px',
+            marginBottom: familyCodeError ? '8px' : '0',
+          })}
+        >
+          <input
+            id="family-code-input"
+            type="text"
+            value={familyCode}
+            onChange={(e) => onFamilyCodeChange(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && familyCode.trim() && !isSubmittingFamilyCode) {
+                onFamilyCodeSubmit()
+              }
+            }}
+            placeholder="e.g., ABCD-1234"
+            data-element="family-code-input"
+            className={css({
+              flex: 1,
+              padding: '10px 12px',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+              textAlign: 'center',
+              letterSpacing: '0.08em',
+              backgroundColor: isDark ? 'gray.700' : 'white',
+              border: '2px solid',
+              borderColor: familyCodeError
+                ? isDark
+                  ? 'red.500'
+                  : 'red.400'
+                : isDark
+                  ? 'gray.600'
+                  : 'gray.300',
+              borderRadius: '8px',
+              color: isDark ? 'white' : 'gray.900',
+              outline: 'none',
+              _focus: {
+                borderColor: 'blue.500',
+                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
+              },
+              _placeholder: {
+                color: isDark ? 'gray.500' : 'gray.400',
+              },
+            })}
+          />
+          <button
+            type="button"
+            onClick={onFamilyCodeSubmit}
+            disabled={isSubmittingFamilyCode || !familyCode.trim()}
+            data-action="submit-family-code"
+            className={css({
+              padding: '10px 16px',
+              backgroundColor: isDark ? 'blue.700' : 'blue.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              _hover: {
+                backgroundColor: isDark ? 'blue.600' : 'blue.600',
+              },
+              _disabled: {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+              },
+            })}
+          >
+            {isSubmittingFamilyCode ? 'Adding...' : 'Add'}
+          </button>
+        </div>
+
+        {familyCodeError && (
+          <div
+            data-element="error-message"
+            className={css({
+              padding: '10px 12px',
+              backgroundColor: isDark ? 'red.900/30' : 'red.50',
+              border: '1px solid',
+              borderColor: isDark ? 'red.700' : 'red.200',
+              borderRadius: '8px',
+              color: isDark ? 'red.300' : 'red.700',
+              fontSize: '0.8125rem',
+            })}
+          >
+            {familyCodeError}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+interface CreateStudentSectionProps {
+  name: string
+  onNameChange: (name: string) => void
+  emoji: string
+  onEmojiClick: () => void
+  color: string
+  onColorChange: (color: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+  isPending: boolean
+  isDark: boolean
+}
+
+function CreateStudentSection({
+  name,
+  onNameChange,
+  emoji,
+  onEmojiClick,
+  color,
+  onColorChange,
+  onSubmit,
+  onCancel,
+  isPending,
+  isDark,
+}: CreateStudentSectionProps) {
+  return (
+    <div data-element="create-student-form">
+      {/* Avatar Preview */}
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          marginBottom: '16px',
+        })}
+      >
+        <button
+          type="button"
+          onClick={onEmojiClick}
+          data-element="avatar-preview"
+          className={css({
+            width: '72px',
+            height: '72px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2.25rem',
+            boxShadow: 'md',
+            border: '3px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            _hover: {
+              borderColor: 'blue.500',
+              transform: 'scale(1.05)',
+            },
+          })}
+          style={{ backgroundColor: color }}
+          title="Click to choose avatar"
+        >
+          {emoji}
+        </button>
+        <span
+          className={css({
+            fontSize: '0.6875rem',
+            color: isDark ? 'gray.500' : 'gray.400',
+          })}
+        >
+          Tap to change
+        </span>
+      </div>
+
+      {/* Name input */}
+      <div className={css({ marginBottom: '12px' })}>
+        <label
+          htmlFor="student-name"
+          className={css({
+            display: 'block',
+            fontSize: '0.8125rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.300' : 'gray.700',
+            marginBottom: '6px',
+          })}
+        >
+          Name
+        </label>
+        <input
+          id="student-name"
+          type="text"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && name.trim() && !isPending) {
+              onSubmit()
+            }
+          }}
+          placeholder="Enter student name"
+          // biome-ignore lint/a11y/noAutofocus: Form just shown, focusing input is expected UX
+          autoFocus
+          className={css({
+            width: '100%',
+            padding: '10px 12px',
+            fontSize: '1rem',
+            borderRadius: '8px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+            backgroundColor: isDark ? 'gray.700' : 'white',
+            color: isDark ? 'gray.100' : 'gray.800',
+            _focus: {
+              outline: 'none',
+              borderColor: 'blue.500',
+              boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)',
+            },
+          })}
+        />
+      </div>
+
+      {/* Color selector */}
+      <div className={css({ marginBottom: '16px' })}>
+        <label
+          className={css({
+            display: 'block',
+            fontSize: '0.8125rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.300' : 'gray.700',
+            marginBottom: '6px',
+          })}
+        >
+          Color
+        </label>
+        <div
+          className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px',
+          })}
+        >
+          {AVAILABLE_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onColorChange(c)}
+              className={css({
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                border: '3px solid',
+                borderColor: color === c ? 'blue.500' : 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                _hover: {
+                  transform: 'scale(1.1)',
+                },
+              })}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Form actions */}
       <div
         className={css({
           display: 'flex',
           gap: '8px',
-          marginBottom: error ? '8px' : '0',
         })}
       >
-        <input
-          id="family-code-input"
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && value.trim() && !isSubmitting) {
-              onSubmit()
-            }
-          }}
-          placeholder="e.g., ABCD-1234"
-          data-element="family-code-input"
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isPending}
+          data-action="cancel-create"
           className={css({
             flex: 1,
             padding: '10px 12px',
-            fontSize: '1rem',
-            fontFamily: 'monospace',
-            textAlign: 'center',
-            letterSpacing: '0.08em',
-            backgroundColor: isDark ? 'gray.700' : 'white',
-            border: '2px solid',
-            borderColor: error
-              ? isDark
-                ? 'red.500'
-                : 'red.400'
-              : isDark
-                ? 'gray.600'
-                : 'gray.300',
+            fontSize: '0.9375rem',
+            color: isDark ? 'gray.300' : 'gray.600',
+            backgroundColor: isDark ? 'gray.700' : 'gray.200',
             borderRadius: '8px',
-            color: isDark ? 'white' : 'gray.900',
-            outline: 'none',
-            _focus: {
-              borderColor: 'blue.500',
-              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
-            },
-            _placeholder: {
-              color: isDark ? 'gray.500' : 'gray.400',
-            },
-          })}
-        />
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={isSubmitting || !value.trim()}
-          data-action="submit-family-code"
-          className={css({
-            padding: '10px 16px',
-            backgroundColor: isDark ? 'blue.700' : 'blue.500',
-            color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            fontWeight: '600',
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
             _hover: {
-              backgroundColor: isDark ? 'blue.600' : 'blue.600',
+              backgroundColor: isDark ? 'gray.600' : 'gray.300',
             },
             _disabled: {
               opacity: 0.5,
@@ -630,26 +958,35 @@ function FamilyCodeInput({
             },
           })}
         >
-          {isSubmitting ? 'Adding...' : 'Add'}
+          Cancel
         </button>
-      </div>
-
-      {error && (
-        <div
-          data-element="error-message"
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={isPending || !name.trim()}
+          data-action="submit-create"
           className={css({
+            flex: 2,
             padding: '10px 12px',
-            backgroundColor: isDark ? 'red.900/30' : 'red.50',
-            border: '1px solid',
-            borderColor: isDark ? 'red.700' : 'red.200',
+            fontSize: '0.9375rem',
+            fontWeight: 'bold',
+            color: 'white',
+            backgroundColor: isPending ? 'gray.400' : 'green.500',
             borderRadius: '8px',
-            color: isDark ? 'red.300' : 'red.700',
-            fontSize: '0.8125rem',
+            border: 'none',
+            cursor: isPending ? 'not-allowed' : 'pointer',
+            _hover: {
+              backgroundColor: isPending ? 'gray.400' : 'green.600',
+            },
+            _disabled: {
+              opacity: 0.5,
+              cursor: 'not-allowed',
+            },
           })}
         >
-          {error}
-        </div>
-      )}
+          {isPending ? 'Adding...' : 'Add & Enroll'}
+        </button>
+      </div>
     </div>
   )
 }
