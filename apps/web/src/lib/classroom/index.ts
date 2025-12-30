@@ -54,6 +54,7 @@ export {
   getEnrolledStudents,
   unenrollStudent,
   getEnrolledClassrooms,
+  directEnrollStudent,
   getRequiredApprovals,
   isFullyApproved,
   isDenied,

@@ -440,5 +440,40 @@ export async function getEnrolledClassrooms(playerId: string): Promise<Classroom
   return classroomList
 }
 
+/**
+ * Directly enroll a student in a classroom (bypasses request workflow)
+ *
+ * Use this when:
+ * - Teacher is enrolling a student they just created (no parent exists yet)
+ * - Direct enrollment is authorized (e.g., teacher owns both classroom and student)
+ *
+ * @returns true if enrolled, false if already enrolled
+ */
+export async function directEnrollStudent(
+  classroomId: string,
+  playerId: string
+): Promise<boolean> {
+  // Check if already enrolled
+  const existing = await db.query.classroomEnrollments.findFirst({
+    where: and(
+      eq(classroomEnrollments.classroomId, classroomId),
+      eq(classroomEnrollments.playerId, playerId)
+    ),
+  })
+
+  if (existing) {
+    return false // Already enrolled
+  }
+
+  // Create enrollment directly
+  await db.insert(classroomEnrollments).values({
+    id: createId(),
+    classroomId,
+    playerId,
+  })
+
+  return true
+}
+
 // Re-export helper functions from schema
 export { getRequiredApprovals, isFullyApproved, isDenied } from '@/db/schema'

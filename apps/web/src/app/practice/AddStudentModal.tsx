@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { EmojiPicker } from '@/components/EmojiPicker'
 import { LinkChildForm } from '@/components/family'
 import { PLAYER_EMOJIS } from '@/constants/playerEmojis'
+import { useDirectEnrollStudent } from '@/hooks/useClassroom'
 import { useCreatePlayer } from '@/hooks/useUserPlayers'
 import { css } from '../../../styled-system/css'
 
@@ -27,13 +28,23 @@ interface AddStudentModalProps {
   isOpen: boolean
   onClose: () => void
   isDark: boolean
+  /** If provided, student will be auto-enrolled in this classroom */
+  classroomId?: string
+  /** Name of the classroom for display */
+  classroomName?: string
 }
 
 /**
  * Modal for adding a new student
  * Uses React Query mutation for proper cache management
  */
-export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProps) {
+export function AddStudentModal({
+  isOpen,
+  onClose,
+  isDark,
+  classroomId,
+  classroomName,
+}: AddStudentModalProps) {
   // Form state
   const [formName, setFormName] = useState('')
   const [formEmoji, setFormEmoji] = useState(PLAYER_EMOJIS[0])
@@ -41,8 +52,9 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showLinkForm, setShowLinkForm] = useState(false)
 
-  // React Query mutation
+  // React Query mutations
   const createPlayer = useCreatePlayer()
+  const directEnroll = useDirectEnrollStudent()
 
   // Reset form and pick random emoji/color when opened
   useEffect(() => {
@@ -66,12 +78,26 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
         color: formColor,
       },
       {
-        onSuccess: () => {
-          onClose()
+        onSuccess: (player) => {
+          // If classroomId is provided, auto-enroll the new student
+          if (classroomId && player) {
+            directEnroll.mutate(
+              { classroomId, playerId: player.id },
+              {
+                onSettled: () => {
+                  onClose()
+                },
+              }
+            )
+          } else {
+            onClose()
+          }
         },
       }
     )
-  }, [formName, formEmoji, formColor, createPlayer, onClose])
+  }, [formName, formEmoji, formColor, createPlayer, classroomId, directEnroll, onClose])
+
+  const isPending = createPlayer.isPending || directEnroll.isPending
 
   // Handle keyboard events
   const handleKeyDown = useCallback(
@@ -82,16 +108,11 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
         } else {
           onClose()
         }
-      } else if (
-        e.key === 'Enter' &&
-        formName.trim() &&
-        !createPlayer.isPending &&
-        !showEmojiPicker
-      ) {
+      } else if (e.key === 'Enter' && formName.trim() && !isPending && !showEmojiPicker) {
         handleSubmit()
       }
     },
-    [formName, createPlayer.isPending, handleSubmit, onClose, showEmojiPicker]
+    [formName, isPending, handleSubmit, onClose, showEmojiPicker]
   )
 
   if (!isOpen) return null
@@ -167,7 +188,7 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '1.5rem',
+            marginBottom: classroomId ? '0.75rem' : '1.5rem',
           })}
         >
           <h2
@@ -178,7 +199,7 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
               color: isDark ? 'gray.100' : 'gray.800',
             })}
           >
-            Add New Student
+            {classroomId ? 'Add Student to Classroom' : 'Add New Student'}
           </h2>
           <button
             type="button"
@@ -205,6 +226,36 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
             ×
           </button>
         </div>
+
+        {/* Classroom notice - shown when adding to a classroom */}
+        {classroomId && (
+          <div
+            data-element="classroom-enrollment-notice"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              marginBottom: '1rem',
+              backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+              border: '1px solid',
+              borderColor: isDark ? 'blue.700' : 'blue.200',
+              borderRadius: '8px',
+            })}
+          >
+            <span className={css({ fontSize: '16px', flexShrink: 0 })}>📚</span>
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'blue.200' : 'blue.700',
+                lineHeight: '1.4',
+              })}
+            >
+              This student will be automatically enrolled in{' '}
+              <strong>{classroomName || 'your classroom'}</strong>.
+            </p>
+          </div>
+        )}
 
         {/* Avatar Preview - clickable to open full picker */}
         <div
@@ -347,7 +398,7 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
             type="button"
             data-action="cancel"
             onClick={onClose}
-            disabled={createPlayer.isPending}
+            disabled={isPending}
             className={css({
               flex: 1,
               padding: '0.75rem',
@@ -372,19 +423,19 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
             type="button"
             data-action="add-student"
             onClick={handleSubmit}
-            disabled={createPlayer.isPending || !formName.trim()}
+            disabled={isPending || !formName.trim()}
             className={css({
               flex: 2,
               padding: '0.75rem',
               fontSize: '1rem',
               fontWeight: 'bold',
               color: 'white',
-              backgroundColor: createPlayer.isPending ? 'gray.400' : 'green.500',
+              backgroundColor: isPending ? 'gray.400' : 'green.500',
               borderRadius: '8px',
               border: 'none',
-              cursor: createPlayer.isPending ? 'not-allowed' : 'pointer',
+              cursor: isPending ? 'not-allowed' : 'pointer',
               _hover: {
-                backgroundColor: createPlayer.isPending ? 'gray.400' : 'green.600',
+                backgroundColor: isPending ? 'gray.400' : 'green.600',
               },
               _disabled: {
                 opacity: 0.5,
@@ -392,7 +443,13 @@ export function AddStudentModal({ isOpen, onClose, isDark }: AddStudentModalProp
               },
             })}
           >
-            {createPlayer.isPending ? 'Adding...' : 'Add Student'}
+            {isPending
+              ? classroomId
+                ? 'Adding & Enrolling...'
+                : 'Adding...'
+              : classroomId
+                ? 'Add & Enroll'
+                : 'Add Student'}
           </button>
         </div>
 

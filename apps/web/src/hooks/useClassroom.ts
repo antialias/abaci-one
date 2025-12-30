@@ -271,6 +271,26 @@ async function unenrollStudent(params: { classroomId: string; playerId: string }
   }
 }
 
+/**
+ * Directly enroll a student (bypasses request workflow)
+ * Used when teacher creates a student and wants to auto-enroll them
+ */
+async function directEnrollStudent(params: {
+  classroomId: string
+  playerId: string
+}): Promise<{ enrolled: boolean }> {
+  const res = await api(`classrooms/${params.classroomId}/enrollments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: params.playerId }),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to enroll student')
+  }
+  return res.json()
+}
+
 // ============================================================================
 // Enrollment Hooks
 // ============================================================================
@@ -387,6 +407,27 @@ export function useUnenrollStudent() {
     mutationFn: unenrollStudent,
     onSuccess: (_, { classroomId }) => {
       // Invalidate enrollments
+      queryClient.invalidateQueries({
+        queryKey: classroomKeys.enrollments(classroomId),
+      })
+    },
+  })
+}
+
+/**
+ * Directly enroll a student (bypasses request workflow)
+ *
+ * Use this when a teacher creates a student and wants to auto-enroll them
+ * in their classroom. Since the teacher created the student, there's no
+ * parent to approve.
+ */
+export function useDirectEnrollStudent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: directEnrollStudent,
+    onSuccess: (_, { classroomId }) => {
+      // Invalidate enrollments so the student appears in the list
       queryClient.invalidateQueries({
         queryKey: classroomKeys.enrollments(classroomId),
       })

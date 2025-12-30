@@ -111,6 +111,8 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
 
   // Add student modal state (parent mode - create new child)
   const [showAddModal, setShowAddModal] = useState(false)
+  // Track if we're adding to classroom (auto-enroll mode)
+  const [addToClassroomMode, setAddToClassroomMode] = useState(false)
 
   // Add student modal state (teacher mode - add by family code)
   const [showAddByFamilyCode, setShowAddByFamilyCode] = useState(false)
@@ -297,13 +299,21 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     }
   }, [promptEligibleIds, bulkEntryPrompt, showSuccess, showError])
 
-  // Handle add student - show create modal for both teachers and parents
+  // Handle add student - show create modal (parent mode, no auto-enroll)
   const handleAddStudent = useCallback(() => {
+    setAddToClassroomMode(false)
+    setShowAddModal(true)
+  }, [])
+
+  // Handle add student to classroom - show create modal with auto-enroll
+  const handleAddStudentToClassroom = useCallback(() => {
+    setAddToClassroomMode(true)
     setShowAddModal(true)
   }, [])
 
   const handleCloseAddModal = useCallback(() => {
     setShowAddModal(false)
+    setAddToClassroomMode(false)
   }, [])
 
   // Handle session observation - find the student and open observer modal
@@ -388,6 +398,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           onShowArchivedChange={setShowArchived}
           archivedCount={archivedCount}
           onAddStudent={handleAddStudent}
+          onAddStudentToClassroom={isTeacher ? handleAddStudentToClassroom : undefined}
           selectedCount={selectedIds.size}
           onBulkArchive={handleBulkArchive}
           onBulkPromptToEnter={isTeacher ? handleBulkPromptToEnter : undefined}
@@ -692,8 +703,14 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
         </div>
       </main>
 
-      {/* Add Student Modal (Parent - create new child) */}
-      <AddStudentModal isOpen={showAddModal} onClose={handleCloseAddModal} isDark={isDark} />
+      {/* Add Student Modal (Parent - create new child, or Teacher - create & enroll) */}
+      <AddStudentModal
+        isOpen={showAddModal}
+        onClose={handleCloseAddModal}
+        isDark={isDark}
+        classroomId={addToClassroomMode ? classroomId : undefined}
+        classroomName={addToClassroomMode ? classroom?.name : undefined}
+      />
 
       {/* Add Student Modal (Teacher - add by family code) */}
       {classroomId && (

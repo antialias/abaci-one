@@ -74,8 +74,14 @@ export { StudentSelector } from './StudentSelector'
 export { StudentActionMenu } from './StudentActionMenu'
 export { StudentFilterBar } from './StudentFilterBar'
 export { VerticalProblem } from './VerticalProblem'
-export type { StudentView } from './ViewSelector'
-export { ViewSelector, VIEW_CONFIGS, getAvailableViews, getDefaultView } from './ViewSelector'
+export type { StudentView, TeacherCompoundChipProps } from './ViewSelector'
+export {
+  ViewSelector,
+  VIEW_CONFIGS,
+  getAvailableViews,
+  getDefaultView,
+  TeacherCompoundChip,
+} from './ViewSelector'
 export { VirtualizedSessionList } from './VirtualizedSessionList'
 // Part transition components
 export type { PartTransitionScreenProps } from './PartTransitionScreen'

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 
@@ -91,6 +92,10 @@ interface ViewSelectorProps {
   availableViews: StudentView[]
   /** Counts per view (e.g., { all: 5, 'my-children': 3 }) */
   viewCounts?: Partial<Record<StudentView, number>>
+  /** Hide the teacher compound chip (when rendered externally in a card) */
+  hideTeacherCompound?: boolean
+  /** Optional classroom card to render inline (for teachers) */
+  classroomCard?: ReactNode
 }
 
 /**
@@ -104,6 +109,8 @@ export function ViewSelector({
   onViewChange,
   availableViews,
   viewCounts = {},
+  hideTeacherCompound = false,
+  classroomCard,
 }: ViewSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -133,7 +140,7 @@ export function ViewSelector({
       className={css({
         display: 'flex',
         gap: '8px',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         // Mobile: horizontal scroll, Desktop: wrap
         overflowX: 'auto',
         overflowY: 'hidden',
@@ -193,7 +200,7 @@ export function ViewSelector({
       })}
 
       {/* Teacher compound chip: Enrolled → In Classroom → Active */}
-      {hasTeacherCompound && (
+      {hasTeacherCompound && !hideTeacherCompound && (
         <TeacherCompoundChip
           currentView={currentView}
           onViewChange={onViewChange}
@@ -202,6 +209,9 @@ export function ViewSelector({
           isDark={isDark}
         />
       )}
+
+      {/* Classroom card (for teachers) - rendered inline last */}
+      {classroomCard}
     </div>
   )
 }
@@ -515,12 +525,14 @@ function CompoundChip({
   )
 }
 
-interface TeacherCompoundChipProps {
+export interface TeacherCompoundChipProps {
   currentView: StudentView
   onViewChange: (view: StudentView) => void
   viewCounts: Partial<Record<StudentView, number>>
   availableViews: StudentView[]
-  isDark: boolean
+  isDark?: boolean
+  /** When true, removes outer border/radius (for embedding in a card) */
+  embedded?: boolean
 }
 
 /**
@@ -531,13 +543,16 @@ interface TeacherCompoundChipProps {
  * └──────────────────────────────────────────────────────────┘
  *      ↑ all enrolled    ↑ in classroom     ↑ practicing
  */
-function TeacherCompoundChip({
+export function TeacherCompoundChip({
   currentView,
   onViewChange,
   viewCounts,
   availableViews,
-  isDark,
+  isDark: isDarkProp,
+  embedded = false,
 }: TeacherCompoundChipProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = isDarkProp ?? resolvedTheme === 'dark'
   const enrolledConfig = VIEW_CONFIGS.find((c) => c.id === 'enrolled')!
   const inClassroomConfig = VIEW_CONFIGS.find((c) => c.id === 'in-classroom')!
   const activeConfig = VIEW_CONFIGS.find((c) => c.id === 'in-classroom-active')!
@@ -554,6 +569,7 @@ function TeacherCompoundChip({
     <div
       data-component="teacher-compound-chip"
       data-active={isAnyActive}
+      data-embedded={embedded}
       className={css({
         display: 'flex',
         alignItems: 'stretch',
@@ -645,10 +661,10 @@ function ChipSegment({
       className={css({
         display: 'flex',
         alignItems: 'center',
-        gap: '5px',
-        padding: '6px 10px',
+        gap: '6px',
+        padding: '6px 12px',
         cursor: 'pointer',
-        fontSize: '12px',
+        fontSize: '13px',
         fontWeight: 'medium',
         transition: 'all 0.15s ease',
         whiteSpace: 'nowrap',
