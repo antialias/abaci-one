@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useToast } from '@/components/common/ToastContext'
 import {
   AddStudentByFamilyCodeModal,
+  AddStudentToClassroomContent,
   AddStudentToClassroomModal,
   CreateClassroomForm,
   PendingApprovalsSection,
@@ -524,6 +525,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           {filteredGroupedStudents.length === 0 && studentsNeedingAttention.length === 0 ? (
             <ViewEmptyState
               currentView={currentView}
+              classroomId={classroomId}
               classroomCode={classroomCode}
               searchQuery={searchQuery}
               skillFilters={skillFilters}
@@ -565,7 +567,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
                     {bucket.bucketName}
                   </h2>
 
-                  {/* Categories within bucket */}
+                  {/* Categories within bucket - grouped for compact display */}
                   <div
                     className={css({
                       display: 'flex',
@@ -573,83 +575,168 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
                       gap: '16px',
                     })}
                   >
-                    {bucket.categories.map((category) => {
-                      const attentionCount =
-                        attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0
-                      return (
-                        <div
-                          key={category.category ?? 'null'}
-                          data-category={category.category ?? 'new'}
-                        >
-                          {/* Category header - sticky below bucket header */}
-                          <h3
-                            data-element="category-header"
-                            className={css({
-                              position: 'sticky',
-                              top: '195px', // Nav (80px) + Filter bar (~80px) + Bucket header (~35px)
-                              zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
-                              fontSize: '0.8125rem',
-                              fontWeight: 'medium',
-                              color: isDark ? 'gray.500' : 'gray.400',
-                              marginBottom: '8px',
-                              paddingTop: '4px',
-                              paddingBottom: '4px',
-                              paddingLeft: '4px',
-                              bg: isDark ? 'gray.900' : 'gray.50',
-                            })}
-                          >
-                            {category.categoryName}
-                          </h3>
+                    {(() => {
+                      // Group consecutive compact categories (1 student, no attention placeholder)
+                      type RenderItem =
+                        | { type: 'compact-row'; categories: typeof bucket.categories }
+                        | { type: 'full'; category: (typeof bucket.categories)[0] }
 
-                          {/* Student cards wrapper */}
+                      const items: RenderItem[] = []
+                      let compactBuffer: typeof bucket.categories = []
+
+                      for (const cat of bucket.categories) {
+                        const attentionCount =
+                          attentionCountsByBucket.get(bucket.bucket)?.get(cat.category) ?? 0
+                        const isCompact = cat.students.length === 1 && attentionCount === 0
+
+                        if (isCompact) {
+                          compactBuffer.push(cat)
+                        } else {
+                          if (compactBuffer.length > 0) {
+                            items.push({ type: 'compact-row', categories: compactBuffer })
+                            compactBuffer = []
+                          }
+                          items.push({ type: 'full', category: cat })
+                        }
+                      }
+                      if (compactBuffer.length > 0) {
+                        items.push({ type: 'compact-row', categories: compactBuffer })
+                      }
+
+                      return items.map((item, idx) => {
+                        if (item.type === 'compact-row') {
+                          // Render compact categories flowing together
+                          return (
+                            <div
+                              key={`compact-${idx}`}
+                              data-element="compact-category-row"
+                              className={css({
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '12px',
+                                alignItems: 'flex-start',
+                              })}
+                            >
+                              {item.categories.map((cat) => (
+                                <div
+                                  key={cat.category ?? 'null'}
+                                  data-category={cat.category ?? 'new'}
+                                  data-compact="true"
+                                  className={css({
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                  })}
+                                >
+                                  {/* Small inline category label */}
+                                  <span
+                                    data-element="compact-category-label"
+                                    className={css({
+                                      fontSize: '0.75rem',
+                                      fontWeight: 'medium',
+                                      color: isDark ? 'gray.500' : 'gray.400',
+                                      paddingLeft: '4px',
+                                    })}
+                                  >
+                                    {cat.categoryName}
+                                  </span>
+                                  {/* Single student tile */}
+                                  <StudentSelector
+                                    students={cat.students as StudentWithProgress[]}
+                                    onSelectStudent={handleSelectStudent}
+                                    onToggleSelection={handleToggleSelection}
+                                    onObserveSession={handleObserveSession}
+                                    title=""
+                                    selectedIds={selectedIds}
+                                    hideAddButton
+                                    compact
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        }
+
+                        // Render full category (2+ students or has attention placeholder)
+                        const category = item.category
+                        const attentionCount =
+                          attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0
+
+                        return (
                           <div
-                            className={css({
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '8px',
-                              alignItems: 'stretch',
-                            })}
+                            key={category.category ?? 'null'}
+                            data-category={category.category ?? 'new'}
                           >
-                            {/* Student cards */}
-                            {category.students.length > 0 && (
-                              <StudentSelector
-                                students={category.students as StudentWithProgress[]}
-                                onSelectStudent={handleSelectStudent}
-                                onToggleSelection={handleToggleSelection}
-                                onObserveSession={handleObserveSession}
-                                title=""
-                                selectedIds={selectedIds}
-                                hideAddButton
-                              />
-                            )}
+                            {/* Category header - sticky below bucket header */}
+                            <h3
+                              data-element="category-header"
+                              className={css({
+                                position: 'sticky',
+                                top: '195px', // Nav (80px) + Filter bar (~80px) + Bucket header (~35px)
+                                zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
+                                fontSize: '0.8125rem',
+                                fontWeight: 'medium',
+                                color: isDark ? 'gray.500' : 'gray.400',
+                                marginBottom: '8px',
+                                paddingTop: '4px',
+                                paddingBottom: '4px',
+                                paddingLeft: '4px',
+                                bg: isDark ? 'gray.900' : 'gray.50',
+                              })}
+                            >
+                              {category.categoryName}
+                            </h3>
 
-                            {/* Attention placeholder */}
-                            {attentionCount > 0 && (
-                              <div
-                                data-element="attention-placeholder"
-                                data-attention-count={attentionCount}
-                                className={css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '12px 16px',
-                                  borderRadius: '8px',
-                                  border: '2px dashed',
-                                  borderColor: isDark ? 'orange.700' : 'orange.300',
-                                  color: isDark ? 'orange.400' : 'orange.600',
-                                  fontSize: '0.8125rem',
-                                  textAlign: 'center',
-                                  minHeight: '60px',
-                                  flexShrink: 0,
-                                })}
-                              >
-                                +{attentionCount} in Needs Attention
-                              </div>
-                            )}
+                            {/* Student cards wrapper */}
+                            <div
+                              className={css({
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '8px',
+                                alignItems: 'stretch',
+                              })}
+                            >
+                              {/* Student cards */}
+                              {category.students.length > 0 && (
+                                <StudentSelector
+                                  students={category.students as StudentWithProgress[]}
+                                  onSelectStudent={handleSelectStudent}
+                                  onToggleSelection={handleToggleSelection}
+                                  onObserveSession={handleObserveSession}
+                                  title=""
+                                  selectedIds={selectedIds}
+                                  hideAddButton
+                                />
+                              )}
+
+                              {/* Attention placeholder */}
+                              {attentionCount > 0 && (
+                                <div
+                                  data-element="attention-placeholder"
+                                  data-attention-count={attentionCount}
+                                  className={css({
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
+                                    border: '2px dashed',
+                                    borderColor: isDark ? 'orange.700' : 'orange.300',
+                                    color: isDark ? 'orange.400' : 'orange.600',
+                                    fontSize: '0.8125rem',
+                                    textAlign: 'center',
+                                    minHeight: '60px',
+                                    flexShrink: 0,
+                                  })}
+                                >
+                                  +{attentionCount} in Needs Attention
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    })()}
                   </div>
                 </div>
               ))}
@@ -767,6 +854,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
  */
 interface ViewEmptyStateProps {
   currentView: StudentView
+  classroomId?: string
   classroomCode?: string
   searchQuery: string
   skillFilters: string[]
@@ -777,6 +865,7 @@ interface ViewEmptyStateProps {
 
 function ViewEmptyState({
   currentView,
+  classroomId,
   classroomCode,
   searchQuery,
   skillFilters,
@@ -830,7 +919,7 @@ function ViewEmptyState({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '16px',
+            gap: '24px',
           })}
         >
           <div
@@ -854,31 +943,50 @@ function ViewEmptyState({
             <p
               className={css({
                 color: isDark ? 'gray.400' : 'gray.500',
-                marginBottom: '16px',
               })}
             >
-              Students can enter your classroom using the code below
+              Enrolled students can enter via their practice page, or you can prompt them to join.
             </p>
           </div>
-          {classroomCode && (
-            <div
+
+          {/* Instructions for bulk prompt */}
+          <div
+            className={css({
+              backgroundColor: isDark ? 'gray.800' : 'gray.50',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              maxWidth: '400px',
+              textAlign: 'left',
+            })}
+          >
+            <p
               className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                backgroundColor: isDark ? 'gray.800' : 'gray.100',
-                borderRadius: '8px',
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                letterSpacing: '0.2em',
-                color: isDark ? 'blue.400' : 'blue.600',
+                fontSize: '0.875rem',
+                fontWeight: 'medium',
+                color: isDark ? 'gray.300' : 'gray.600',
+                marginBottom: '8px',
               })}
             >
-              {classroomCode}
-            </div>
-          )}
+              To prompt students to enter:
+            </p>
+            <ol
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                paddingLeft: '20px',
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              })}
+            >
+              <li>Switch to the "Enrolled" view above</li>
+              <li>Select students using the checkboxes</li>
+              <li>Click "Prompt to Enter" in the selection bar</li>
+            </ol>
+          </div>
         </div>
       )
 
@@ -888,67 +996,45 @@ function ViewEmptyState({
           data-element="empty-state"
           data-reason="no-enrolled-students"
           className={css({
-            textAlign: 'center',
-            padding: '3rem',
+            padding: '2rem',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '16px',
+            gap: '24px',
+            maxWidth: '700px',
+            margin: '0 auto',
           })}
         >
-          <div
-            className={css({
-              fontSize: '3rem',
-            })}
-          >
-            📋
-          </div>
-          <div>
+          <div className={css({ textAlign: 'center' })}>
+            <div
+              className={css({
+                fontSize: '2.5rem',
+                marginBottom: '8px',
+              })}
+            >
+              📋
+            </div>
             <h3
               className={css({
                 fontSize: '1.25rem',
                 fontWeight: 'semibold',
                 color: isDark ? 'gray.200' : 'gray.700',
-                marginBottom: '8px',
+                marginBottom: '4px',
               })}
             >
-              No enrolled students
+              No enrolled students yet
             </h3>
             <p
               className={css({
                 color: isDark ? 'gray.400' : 'gray.500',
-                marginBottom: '8px',
+                fontSize: '0.9375rem',
               })}
             >
-              Parents can enroll their children using your classroom code
-            </p>
-            <p
-              className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.500' : 'gray.400',
-              })}
-            >
-              Or you can add students directly using their family code
+              Add your first student to get started
             </p>
           </div>
-          {classroomCode && (
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                backgroundColor: isDark ? 'gray.800' : 'gray.100',
-                borderRadius: '8px',
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                letterSpacing: '0.2em',
-                color: isDark ? 'blue.400' : 'blue.600',
-              })}
-            >
-              {classroomCode}
-            </div>
+          {classroomId && classroomCode && (
+            <AddStudentToClassroomContent classroomId={classroomId} classroomCode={classroomCode} />
           )}
         </div>
       )

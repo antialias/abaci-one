@@ -571,6 +571,8 @@ export function TeacherCompoundChip({
   const isActiveActive = currentView === 'in-classroom-active'
   const isAnyActive = isEnrolledActive || isInClassroomActive || isActiveActive
 
+  const hasInClassroomSegment =
+    availableViews.includes('in-classroom') && (viewCounts['in-classroom'] ?? 0) > 0
   const hasActiveSegment =
     availableViews.includes('in-classroom-active') && (viewCounts['in-classroom-active'] ?? 0) > 0
 
@@ -639,7 +641,7 @@ export function TeacherCompoundChip({
         count={viewCounts['enrolled']}
         onClick={() => onViewChange('enrolled')}
         isDark={isDark}
-        position="first"
+        position={hasInClassroomSegment ? 'first' : 'last'}
         isCompoundActive={isAnyActive}
         colorScheme="blue"
         embedded={embedded}
@@ -647,18 +649,20 @@ export function TeacherCompoundChip({
         settingsTrigger={settingsTrigger}
       />
 
-      {/* In Classroom segment */}
-      <ChipSegment
-        config={inClassroomConfig}
-        isActive={isInClassroomActive}
-        count={viewCounts['in-classroom']}
-        onClick={() => onViewChange('in-classroom')}
-        isDark={isDark}
-        position={hasActiveSegment ? 'middle' : 'last'}
-        isCompoundActive={isAnyActive}
-        colorScheme="blue"
-        embedded={embedded}
-      />
+      {/* In Classroom segment - only show if there are students present */}
+      {hasInClassroomSegment && (
+        <ChipSegment
+          config={inClassroomConfig}
+          isActive={isInClassroomActive}
+          count={viewCounts['in-classroom']}
+          onClick={() => onViewChange('in-classroom')}
+          isDark={isDark}
+          position={hasActiveSegment ? 'middle' : 'last'}
+          isCompoundActive={isAnyActive}
+          colorScheme="blue"
+          embedded={embedded}
+        />
+      )}
 
       {/* Active segment - only show if there are active sessions */}
       {hasActiveSegment && (
@@ -822,6 +826,12 @@ export function getAvailableViews(
     // Needs-attention only appears when there are students needing attention
     if (v.id === 'needs-attention') {
       const count = viewCounts?.['needs-attention'] ?? 0
+      return count > 0
+    }
+
+    // In-classroom only appears when there are students present
+    if (v.id === 'in-classroom') {
+      const count = viewCounts?.['in-classroom'] ?? 0
       return count > 0
     }
 

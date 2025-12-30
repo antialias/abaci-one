@@ -1,13 +1,45 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { css } from '../../../styled-system/css'
 import { StudentSelector, type StudentWithProgress } from './StudentSelector'
+
+// Mock router for Next.js navigation
+const mockRouter = {
+  push: (url: string) => console.log('Router push:', url),
+  refresh: () => console.log('Router refresh'),
+}
+
+// Create a fresh query client for stories
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
+    },
+  })
+}
 
 const meta: Meta<typeof StudentSelector> = {
   title: 'Practice/StudentSelector',
   component: StudentSelector,
   parameters: {
     layout: 'centered',
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        push: mockRouter.push,
+      },
+    },
   },
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={createQueryClient()}>
+        <Story />
+      </QueryClientProvider>
+    ),
+  ],
   tags: ['autodocs'],
 }
 
@@ -130,4 +162,59 @@ export const StudentsWithoutProgress: Story = {
     })),
     onSelectStudent: () => {},
   },
+}
+
+/**
+ * Compact mode - renders cards without wrapper styling, for inline display
+ */
+export const CompactSingle: Story = {
+  args: {
+    students: [sampleStudents[0]],
+    onSelectStudent: () => {},
+    onToggleSelection: () => {},
+    compact: true,
+    hideAddButton: true,
+  },
+  decorators: [
+    (Story) => (
+      <div
+        className={css({
+          backgroundColor: 'gray.100',
+          padding: '1rem',
+          borderRadius: '8px',
+        })}
+      >
+        <Story />
+      </div>
+    ),
+  ],
+}
+
+/**
+ * Compact mode with multiple students - they render inline
+ */
+export const CompactMultiple: Story = {
+  args: {
+    students: sampleStudents,
+    onSelectStudent: () => {},
+    onToggleSelection: () => {},
+    compact: true,
+    hideAddButton: true,
+  },
+  decorators: [
+    (Story) => (
+      <div
+        className={css({
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          backgroundColor: 'gray.100',
+          padding: '1rem',
+          borderRadius: '8px',
+        })}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 }

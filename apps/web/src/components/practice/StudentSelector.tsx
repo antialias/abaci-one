@@ -766,6 +766,8 @@ interface StudentSelectorProps {
   onObserveSession?: (sessionId: string) => void
   /** Enrollment actions (approve/deny) - shows buttons on cards with enrollmentRequestId */
   enrollmentActions?: EnrollmentActions
+  /** Compact mode - minimal styling, no wrapper padding, for inline display */
+  compact?: boolean
 }
 
 /**
@@ -788,6 +790,7 @@ export function StudentSelector({
   hideAddButton = false,
   onObserveSession,
   enrollmentActions,
+  compact = false,
 }: StudentSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -868,6 +871,38 @@ export function StudentSelector({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [modalOpen, selectedStudent])
+
+  // Compact mode: just render cards inline without wrapper styling
+  if (compact) {
+    return (
+      <>
+        {students.map((student) => (
+          <StudentCard
+            key={student.id}
+            student={student}
+            onSelect={onSelectStudent}
+            onToggleSelection={onToggleSelection}
+            onOpenQuickLook={handleOpenQuickLook}
+            isSelected={selectedIds.has(student.id)}
+            onObserveSession={onObserveSession}
+            onRegisterRef={handleRegisterRef}
+            enrollmentActions={enrollmentActions}
+          />
+        ))}
+
+        {/* Student QuickLook/Notes Modal (unified with tabs) */}
+        {selectedStudent && (
+          <NotesModal
+            isOpen={modalOpen}
+            student={selectedStudent}
+            sourceBounds={sourceBounds}
+            onClose={handleCloseModal}
+            onObserveSession={onObserveSession}
+          />
+        )}
+      </>
+    )
+  }
 
   return (
     <>

@@ -37,30 +37,25 @@ interface PlayerPreview {
 
 type LeftColumnMode = 'choose' | 'create' | 'family-success'
 
-interface AddStudentToClassroomModalProps {
-  isOpen: boolean
-  onClose: () => void
+export interface AddStudentToClassroomContentProps {
   classroomId: string
-  classroomName: string
   classroomCode: string
+  /** Optional callback when a student is successfully added (for modal close) */
+  onStudentAdded?: () => void
 }
 
 /**
- * Unified modal for adding students to a classroom.
+ * Content for adding students to a classroom - used both in modal and inline.
  *
  * Two columns:
  * - Left: "ADD NOW" - Create student form OR enter family code
  * - Right: "INVITE PARENTS" - Share classroom code with QR
- *
- * The create student form is integrated inline (not a separate modal).
  */
-export function AddStudentToClassroomModal({
-  isOpen,
-  onClose,
+export function AddStudentToClassroomContent({
   classroomId,
-  classroomName,
   classroomCode,
-}: AddStudentToClassroomModalProps) {
+  onStudentAdded,
+}: AddStudentToClassroomContentProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -86,19 +81,11 @@ export function AddStudentToClassroomModal({
   // Share code hook for the classroom
   const shareCode = useShareCode({ type: 'classroom', code: classroomCode })
 
-  // Reset state when modal opens
+  // Initialize with random emoji/color
   useEffect(() => {
-    if (isOpen) {
-      setLeftMode('choose')
-      setFormName('')
-      setFormEmoji(PLAYER_EMOJIS[Math.floor(Math.random() * PLAYER_EMOJIS.length)])
-      setFormColor(AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)])
-      setShowEmojiPicker(false)
-      setFamilyCode('')
-      setFamilyCodeError(null)
-      setEnrolledPlayer(null)
-    }
-  }, [isOpen])
+    setFormEmoji(PLAYER_EMOJIS[Math.floor(Math.random() * PLAYER_EMOJIS.length)])
+    setFormColor(AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)])
+  }, [])
 
   const handleFamilyCodeSubmit = useCallback(async () => {
     if (!familyCode.trim()) {
@@ -148,21 +135,17 @@ export function AddStudentToClassroomModal({
               { classroomId, playerId: player.id },
               {
                 onSettled: () => {
-                  onClose()
+                  onStudentAdded?.()
                 },
               }
             )
           } else {
-            onClose()
+            onStudentAdded?.()
           }
         },
       }
     )
-  }, [formName, formEmoji, formColor, createPlayer, classroomId, directEnroll, onClose])
-
-  const handleClose = useCallback(() => {
-    onClose()
-  }, [onClose])
+  }, [formName, formEmoji, formColor, createPlayer, classroomId, directEnroll, onStudentAdded])
 
   const handleBackToChoose = useCallback(() => {
     setLeftMode('choose')
@@ -199,7 +182,295 @@ export function AddStudentToClassroomModal({
   }
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <div
+      data-component="add-student-to-classroom-content"
+      className={css({
+        display: 'grid',
+        gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
+        gap: '0',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+      })}
+    >
+      {/* Left column: ADD NOW */}
+      <div
+        data-section="add-now"
+        className={css({
+          padding: '20px',
+          borderRight: { base: 'none', md: '1px solid' },
+          borderBottom: { base: '1px solid', md: 'none' },
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          backgroundColor: isDark ? 'gray.800' : 'white',
+        })}
+      >
+        <h3
+          className={css({
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: isDark ? 'gray.400' : 'gray.500',
+            marginBottom: '16px',
+          })}
+        >
+          Add Now
+        </h3>
+
+        {leftMode === 'choose' && (
+          <ChooseSection
+            onCreateStudent={handleStartCreate}
+            familyCode={familyCode}
+            onFamilyCodeChange={(val) => {
+              setFamilyCode(val)
+              setFamilyCodeError(null)
+            }}
+            onFamilyCodeSubmit={handleFamilyCodeSubmit}
+            isSubmittingFamilyCode={isSubmittingFamilyCode}
+            familyCodeError={familyCodeError}
+            isDark={isDark}
+          />
+        )}
+
+        {leftMode === 'create' && (
+          <CreateStudentSection
+            name={formName}
+            onNameChange={setFormName}
+            emoji={formEmoji}
+            onEmojiClick={() => setShowEmojiPicker(true)}
+            color={formColor}
+            onColorChange={setFormColor}
+            onSubmit={handleCreateStudentSubmit}
+            onCancel={handleBackToChoose}
+            isPending={isPending}
+            isDark={isDark}
+          />
+        )}
+
+        {leftMode === 'family-success' && enrolledPlayer && (
+          <FamilyCodeSuccess
+            player={enrolledPlayer}
+            isDark={isDark}
+            onAddAnother={handleBackToChoose}
+            onDone={onStudentAdded}
+          />
+        )}
+      </div>
+
+      {/* Right column: INVITE PARENTS */}
+      <div
+        data-section="invite-parents"
+        className={css({
+          padding: '20px',
+          backgroundColor: isDark ? 'gray.750' : 'gray.50',
+        })}
+      >
+        <h3
+          className={css({
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: isDark ? 'gray.400' : 'gray.500',
+            marginBottom: '16px',
+          })}
+        >
+          Invite Parents
+        </h3>
+
+        <p
+          className={css({
+            fontSize: '0.875rem',
+            color: isDark ? 'gray.300' : 'gray.600',
+            marginBottom: '16px',
+            lineHeight: '1.5',
+          })}
+        >
+          Share this code with parents. They'll enter it to request enrollment, and you'll approve
+          each request.
+        </p>
+
+        {/* QR Code */}
+        <div
+          data-element="qr-code-container"
+          className={css({
+            display: 'flex',
+            justifyContent: 'center',
+            padding: '16px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.200',
+            marginBottom: '16px',
+          })}
+        >
+          <AbacusQRCode value={shareCode.shareUrl} size={160} />
+        </div>
+
+        {/* Code display + copy buttons */}
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          })}
+        >
+          {/* Code button */}
+          <button
+            type="button"
+            onClick={shareCode.copyCode}
+            data-action="copy-code"
+            data-status={shareCode.codeCopied ? 'copied' : 'idle'}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '12px 16px',
+              backgroundColor: shareCode.codeCopied
+                ? isDark
+                  ? 'green.900/60'
+                  : 'green.50'
+                : isDark
+                  ? 'purple.900/60'
+                  : 'purple.50',
+              border: '2px solid',
+              borderColor: shareCode.codeCopied
+                ? isDark
+                  ? 'green.700'
+                  : 'green.300'
+                : isDark
+                  ? 'purple.700'
+                  : 'purple.300',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              _hover: {
+                backgroundColor: shareCode.codeCopied
+                  ? isDark
+                    ? 'green.800/60'
+                    : 'green.100'
+                  : isDark
+                    ? 'purple.800/60'
+                    : 'purple.100',
+              },
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '1.125rem',
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                letterSpacing: '0.1em',
+                color: shareCode.codeCopied
+                  ? isDark
+                    ? 'green.300'
+                    : 'green.700'
+                  : isDark
+                    ? 'purple.300'
+                    : 'purple.700',
+              })}
+            >
+              {shareCode.codeCopied ? '✓ Copied!' : classroomCode}
+            </span>
+            {!shareCode.codeCopied && (
+              <span
+                className={css({
+                  fontSize: '0.75rem',
+                  color: isDark ? 'purple.400' : 'purple.500',
+                })}
+              >
+                Copy
+              </span>
+            )}
+          </button>
+
+          {/* Link button */}
+          <button
+            type="button"
+            onClick={shareCode.copyLink}
+            data-action="copy-link"
+            data-status={shareCode.linkCopied ? 'copied' : 'idle'}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              backgroundColor: shareCode.linkCopied
+                ? isDark
+                  ? 'green.900/60'
+                  : 'green.50'
+                : isDark
+                  ? 'blue.900/60'
+                  : 'blue.50',
+              border: '1px solid',
+              borderColor: shareCode.linkCopied
+                ? isDark
+                  ? 'green.700'
+                  : 'green.300'
+                : isDark
+                  ? 'blue.700'
+                  : 'blue.300',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              _hover: {
+                backgroundColor: shareCode.linkCopied
+                  ? isDark
+                    ? 'green.800/60'
+                    : 'green.100'
+                  : isDark
+                    ? 'blue.800/60'
+                    : 'blue.100',
+              },
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '0.875rem',
+                color: shareCode.linkCopied
+                  ? isDark
+                    ? 'green.300'
+                    : 'green.700'
+                  : isDark
+                    ? 'blue.300'
+                    : 'blue.700',
+              })}
+            >
+              {shareCode.linkCopied ? '✓ Link copied!' : '🔗 Copy link to share'}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface AddStudentToClassroomModalProps {
+  isOpen: boolean
+  onClose: () => void
+  classroomId: string
+  classroomName: string
+  classroomCode: string
+}
+
+/**
+ * Modal wrapper for AddStudentToClassroomContent.
+ */
+export function AddStudentToClassroomModal({
+  isOpen,
+  onClose,
+  classroomId,
+  classroomName,
+  classroomCode,
+}: AddStudentToClassroomModalProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  return (
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay
           className={css({
@@ -276,264 +547,13 @@ export function AddStudentToClassroomModal({
             </Dialog.Close>
           </div>
 
-          {/* Two-column content */}
-          <div
-            data-element="modal-content"
-            className={css({
-              display: 'grid',
-              gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
-              gap: '0',
-            })}
-          >
-            {/* Left column: ADD NOW */}
-            <div
-              data-section="add-now"
-              className={css({
-                padding: '20px',
-                borderRight: { base: 'none', md: '1px solid' },
-                borderBottom: { base: '1px solid', md: 'none' },
-                borderColor: isDark ? 'gray.700' : 'gray.200',
-              })}
-            >
-              <h3
-                className={css({
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginBottom: '16px',
-                })}
-              >
-                Add Now
-              </h3>
-
-              {leftMode === 'choose' && (
-                <ChooseSection
-                  onCreateStudent={handleStartCreate}
-                  familyCode={familyCode}
-                  onFamilyCodeChange={(val) => {
-                    setFamilyCode(val)
-                    setFamilyCodeError(null)
-                  }}
-                  onFamilyCodeSubmit={handleFamilyCodeSubmit}
-                  isSubmittingFamilyCode={isSubmittingFamilyCode}
-                  familyCodeError={familyCodeError}
-                  isDark={isDark}
-                />
-              )}
-
-              {leftMode === 'create' && (
-                <CreateStudentSection
-                  name={formName}
-                  onNameChange={setFormName}
-                  emoji={formEmoji}
-                  onEmojiClick={() => setShowEmojiPicker(true)}
-                  color={formColor}
-                  onColorChange={setFormColor}
-                  onSubmit={handleCreateStudentSubmit}
-                  onCancel={handleBackToChoose}
-                  isPending={isPending}
-                  isDark={isDark}
-                />
-              )}
-
-              {leftMode === 'family-success' && enrolledPlayer && (
-                <FamilyCodeSuccess
-                  player={enrolledPlayer}
-                  isDark={isDark}
-                  onAddAnother={handleBackToChoose}
-                  onDone={handleClose}
-                />
-              )}
-            </div>
-
-            {/* Right column: INVITE PARENTS */}
-            <div
-              data-section="invite-parents"
-              className={css({
-                padding: '20px',
-                backgroundColor: isDark ? 'gray.750' : 'gray.50',
-              })}
-            >
-              <h3
-                className={css({
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginBottom: '16px',
-                })}
-              >
-                Invite Parents
-              </h3>
-
-              <p
-                className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                  marginBottom: '16px',
-                  lineHeight: '1.5',
-                })}
-              >
-                Share this code with parents. They'll enter it to request enrollment, and you'll
-                approve each request.
-              </p>
-
-              {/* QR Code */}
-              <div
-                data-element="qr-code-container"
-                className={css({
-                  display: 'flex',
-                  justifyContent: 'center',
-                  padding: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.600' : 'gray.200',
-                  marginBottom: '16px',
-                })}
-              >
-                <AbacusQRCode value={shareCode.shareUrl} size={160} />
-              </div>
-
-              {/* Code display + copy buttons */}
-              <div
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                })}
-              >
-                {/* Code button */}
-                <button
-                  type="button"
-                  onClick={shareCode.copyCode}
-                  data-action="copy-code"
-                  data-status={shareCode.codeCopied ? 'copied' : 'idle'}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    backgroundColor: shareCode.codeCopied
-                      ? isDark
-                        ? 'green.900/60'
-                        : 'green.50'
-                      : isDark
-                        ? 'purple.900/60'
-                        : 'purple.50',
-                    border: '2px solid',
-                    borderColor: shareCode.codeCopied
-                      ? isDark
-                        ? 'green.700'
-                        : 'green.300'
-                      : isDark
-                        ? 'purple.700'
-                        : 'purple.300',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    _hover: {
-                      backgroundColor: shareCode.codeCopied
-                        ? isDark
-                          ? 'green.800/60'
-                          : 'green.100'
-                        : isDark
-                          ? 'purple.800/60'
-                          : 'purple.100',
-                    },
-                  })}
-                >
-                  <span
-                    className={css({
-                      fontSize: '1.125rem',
-                      fontFamily: 'monospace',
-                      fontWeight: 'bold',
-                      letterSpacing: '0.1em',
-                      color: shareCode.codeCopied
-                        ? isDark
-                          ? 'green.300'
-                          : 'green.700'
-                        : isDark
-                          ? 'purple.300'
-                          : 'purple.700',
-                    })}
-                  >
-                    {shareCode.codeCopied ? '✓ Copied!' : classroomCode}
-                  </span>
-                  {!shareCode.codeCopied && (
-                    <span
-                      className={css({
-                        fontSize: '0.75rem',
-                        color: isDark ? 'purple.400' : 'purple.500',
-                      })}
-                    >
-                      Copy
-                    </span>
-                  )}
-                </button>
-
-                {/* Link button */}
-                <button
-                  type="button"
-                  onClick={shareCode.copyLink}
-                  data-action="copy-link"
-                  data-status={shareCode.linkCopied ? 'copied' : 'idle'}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '10px 16px',
-                    backgroundColor: shareCode.linkCopied
-                      ? isDark
-                        ? 'green.900/60'
-                        : 'green.50'
-                      : isDark
-                        ? 'blue.900/60'
-                        : 'blue.50',
-                    border: '1px solid',
-                    borderColor: shareCode.linkCopied
-                      ? isDark
-                        ? 'green.700'
-                        : 'green.300'
-                      : isDark
-                        ? 'blue.700'
-                        : 'blue.300',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    _hover: {
-                      backgroundColor: shareCode.linkCopied
-                        ? isDark
-                          ? 'green.800/60'
-                          : 'green.100'
-                        : isDark
-                          ? 'blue.800/60'
-                          : 'blue.100',
-                    },
-                  })}
-                >
-                  <span
-                    className={css({
-                      fontSize: '0.875rem',
-                      color: shareCode.linkCopied
-                        ? isDark
-                          ? 'green.300'
-                          : 'green.700'
-                        : isDark
-                          ? 'blue.300'
-                          : 'blue.700',
-                    })}
-                  >
-                    {shareCode.linkCopied ? '✓ Link copied!' : '🔗 Copy link to share'}
-                  </span>
-                </button>
-              </div>
-            </div>
+          {/* Content - no border since modal provides it */}
+          <div className={css({ padding: '20px' })}>
+            <AddStudentToClassroomContent
+              classroomId={classroomId}
+              classroomCode={classroomCode}
+              onStudentAdded={onClose}
+            />
           </div>
         </Dialog.Content>
       </Dialog.Portal>
