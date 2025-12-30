@@ -145,6 +145,105 @@ sqlite3 data/sqlite.db "ALTER TABLE session_plans ADD COLUMN is_paused INTEGER;"
 # SELECT 1;  -- This does nothing on production!
 ```
 
+## CRITICAL: Never Modify Migration Files After Deployment
+
+**NEVER modify a migration file after it has been deployed to production.**
+
+Drizzle tracks migrations by name/tag, not by content. Once a migration is recorded in `__drizzle_migrations`, it will NEVER be re-run, even if the file content changes.
+
+### The Failure Pattern (December 2025)
+
+1. Migration 0047 was created and deployed (possibly as a stub or incomplete)
+2. Production recorded it in `__drizzle_migrations` as "applied"
+3. Developer modified 0047.sql locally with the actual CREATE TABLE statement
+4. New deployment saw 0047 was already "applied" → skipped it
+5. Production crashed: `SqliteError: no such column: "entry_prompt_expiry_minutes"`
+6. Required emergency migration to fix
+
+**This exact pattern has caused THREE production outages:**
+- Migration 0043 (December 2025): `is_paused` column missing
+- Migration 0047 (December 2025): `entry_prompts` table missing
+- Migration 0048 (December 2025): `entry_prompt_expiry_minutes` column missing
+
+### Why This Happens
+
+```
+Timeline:
+1. Create migration file (empty or stub)     → deployed → recorded as "applied"
+2. Modify migration file with real SQL       → deployed → SKIPPED (already "applied")
+3. Production crashes                        → missing tables/columns
+```
+
+Drizzle's migrator checks: "Is migration 0047 in `__drizzle_migrations`?" → Yes → Skip it.
+It does NOT check: "Has the content of 0047.sql changed?"
+
+### The Correct Pattern
+
+**Before committing a migration, ensure it contains the FINAL SQL:**
+
+```bash
+# 1. Generate migration
+npx drizzle-kit generate --custom
+
+# 2. IMMEDIATELY edit the generated SQL with the actual statements
+# DO NOT commit an empty/stub migration!
+
+# 3. Run locally to verify
+npm run db:migrate
+
+# 4. Only THEN commit
+git add drizzle/
+git commit -m "feat: add entry_prompts table"
+```
+
+### If You Need to Fix a Deployed Migration
+
+**DO NOT modify the existing migration file.** Instead:
+
+```bash
+# Create a NEW migration with the fix
+npx drizzle-kit generate --custom
+# Name it something like: 0050_fix_missing_entry_prompts.sql
+
+# Add the missing SQL (with IF NOT EXISTS for safety)
+CREATE TABLE IF NOT EXISTS `entry_prompts` (...);
+# OR for SQLite (which doesn't support IF NOT EXISTS for columns):
+# Check if column exists first, or just let it fail silently
+```
+
+### Red Flags
+
+If you find yourself:
+- Editing a migration file that's already been committed
+- Thinking "I'll just update this migration with the correct SQL"
+- Seeing "migration already applied" but schema is wrong
+
+**STOP.** Create a NEW migration instead.
+
+### Emergency Fix for Production
+
+If production is down due to missing schema, create a new migration immediately:
+
+```bash
+# 1. Generate emergency migration
+npx drizzle-kit generate --custom
+# Creates: drizzle/0050_emergency_fix.sql
+
+# 2. Add the missing SQL with safety checks
+# For tables:
+CREATE TABLE IF NOT EXISTS `entry_prompts` (...);
+
+# For columns (SQLite workaround - will error if exists, but migration still records):
+ALTER TABLE `classrooms` ADD COLUMN `entry_prompt_expiry_minutes` integer;
+
+# 3. Commit and deploy
+git add drizzle/
+git commit -m "fix: emergency migration for missing schema"
+git push
+```
+
+The new migration will run on production startup and fix the schema.
+
 ## CRITICAL: @svg-maps ES Module Imports Work Correctly
 
 **The @svg-maps packages (world, usa) USE ES module syntax and this WORKS correctly in production.**
