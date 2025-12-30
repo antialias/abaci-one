@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useToast } from '@/components/common/ToastContext'
 import {
@@ -28,6 +28,7 @@ import {
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useMyClassroom } from '@/hooks/useClassroom'
+import { type CompactItem, useMeasuredCompactLayout } from '@/hooks/useMeasuredCompactLayout'
 import { useParentSocket } from '@/hooks/useParentSocket'
 import {
   computeViewCounts,
@@ -461,7 +462,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
           {/* Shows for anyone with children, even if they're also a teacher */}
           <EntryPromptBanner />
 
-          {/* All Students - unified layout with compact sections flowing together */}
+          {/* All Students - unified layout with measurement-based compact sections */}
           {filteredGroupedStudents.length === 0 && studentsNeedingAttention.length === 0 ? (
             <ViewEmptyState
               currentView={currentView}
@@ -474,465 +475,16 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
               isDark={isDark}
             />
           ) : (
-            <div
-              data-component="grouped-students"
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '24px',
-              })}
-            >
-              {(() => {
-                // Unified section type for both "Needs Attention" and regular buckets
-                type Section =
-                  | {
-                      type: 'attention'
-                      students: typeof studentsNeedingAttention
-                    }
-                  | {
-                      type: 'bucket'
-                      bucket: (typeof filteredGroupedStudents)[0]
-                    }
-
-                // Build list of all sections (attention first, then buckets)
-                const allSections: Section[] = []
-                if (studentsNeedingAttention.length > 0) {
-                  allSections.push({ type: 'attention', students: studentsNeedingAttention })
-                }
-                for (const bucket of filteredGroupedStudents) {
-                  allSections.push({ type: 'bucket', bucket })
-                }
-
-                // Helper to check if a category is compact (1 student, no attention placeholder)
-                const isCategoryCompact = (
-                  bucket: (typeof filteredGroupedStudents)[0],
-                  cat: (typeof bucket.categories)[0]
-                ) => {
-                  const attentionCount =
-                    attentionCountsByBucket.get(bucket.bucket)?.get(cat.category) ?? 0
-                  return cat.students.length === 1 && attentionCount === 0
-                }
-
-                // Helper to check if entire bucket is compact
-                const isBucketCompact = (bucket: (typeof filteredGroupedStudents)[0]) =>
-                  bucket.categories.every((cat) => isCategoryCompact(bucket, cat))
-
-                // Helper to check if a section is compact
-                const isSectionCompact = (section: Section) => {
-                  if (section.type === 'attention') {
-                    return section.students.length === 1
-                  }
-                  return isBucketCompact(section.bucket)
-                }
-
-                // Group consecutive compact sections
-                type RenderItem =
-                  | { type: 'compact-sections'; sections: Section[] }
-                  | { type: 'full-section'; section: Section }
-
-                const renderItems: RenderItem[] = []
-                let compactBuffer: Section[] = []
-
-                for (const section of allSections) {
-                  if (isSectionCompact(section)) {
-                    compactBuffer.push(section)
-                  } else {
-                    if (compactBuffer.length > 0) {
-                      renderItems.push({ type: 'compact-sections', sections: compactBuffer })
-                      compactBuffer = []
-                    }
-                    renderItems.push({ type: 'full-section', section })
-                  }
-                }
-                if (compactBuffer.length > 0) {
-                  renderItems.push({ type: 'compact-sections', sections: compactBuffer })
-                }
-
-                return renderItems.map((item, itemIdx) => {
-                  if (item.type === 'compact-sections') {
-                    // Render compact sections flowing together
-                    return (
-                      <div
-                        key={`compact-sections-${itemIdx}`}
-                        data-element="compact-sections-row"
-                        className={css({
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '12px',
-                          alignItems: 'flex-start',
-                        })}
-                      >
-                        {item.sections.flatMap((section) => {
-                          if (section.type === 'attention') {
-                            // Compact attention section (1 student)
-                            return (
-                              <div
-                                key="attention"
-                                data-bucket="attention"
-                                data-compact="true"
-                                className={css({
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                })}
-                              >
-                                <span
-                                  data-element="compact-label"
-                                  className={css({
-                                    fontSize: '0.6875rem',
-                                    fontWeight: 'medium',
-                                    color: isDark ? 'orange.400' : 'orange.500',
-                                    paddingLeft: '4px',
-                                    display: 'flex',
-                                    gap: '4px',
-                                    alignItems: 'center',
-                                  })}
-                                >
-                                  <span>⚠️</span>
-                                  <span
-                                    className={css({
-                                      textTransform: 'uppercase',
-                                      letterSpacing: '0.03em',
-                                    })}
-                                  >
-                                    Needs Attention
-                                  </span>
-                                </span>
-                                <StudentSelector
-                                  students={section.students as StudentWithProgress[]}
-                                  onSelectStudent={handleSelectStudent}
-                                  onToggleSelection={handleToggleSelection}
-                                  onObserveSession={handleObserveSession}
-                                  title=""
-                                  selectedIds={selectedIds}
-                                  hideAddButton
-                                  compact
-                                />
-                              </div>
-                            )
-                          }
-                          // Compact bucket (all single-student categories)
-                          return section.bucket.categories.map((cat) => (
-                            <div
-                              key={`${section.bucket.bucket}-${cat.category ?? 'null'}`}
-                              data-bucket={section.bucket.bucket}
-                              data-category={cat.category ?? 'new'}
-                              data-compact="true"
-                              className={css({
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px',
-                              })}
-                            >
-                              <span
-                                data-element="compact-label"
-                                className={css({
-                                  fontSize: '0.6875rem',
-                                  fontWeight: 'medium',
-                                  color: isDark ? 'gray.500' : 'gray.400',
-                                  paddingLeft: '4px',
-                                  display: 'flex',
-                                  gap: '4px',
-                                  alignItems: 'center',
-                                })}
-                              >
-                                <span
-                                  className={css({
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.03em',
-                                    color: isDark ? 'gray.600' : 'gray.350',
-                                  })}
-                                >
-                                  {section.bucket.bucketName}
-                                </span>
-                                <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>
-                                  ·
-                                </span>
-                                <span>{cat.categoryName}</span>
-                              </span>
-                              <StudentSelector
-                                students={cat.students as StudentWithProgress[]}
-                                onSelectStudent={handleSelectStudent}
-                                onToggleSelection={handleToggleSelection}
-                                onObserveSession={handleObserveSession}
-                                title=""
-                                selectedIds={selectedIds}
-                                hideAddButton
-                                compact
-                              />
-                            </div>
-                          ))
-                        })}
-                      </div>
-                    )
-                  }
-
-                  // Full section
-                  const section = item.section
-
-                  if (section.type === 'attention') {
-                    // Full attention section (multiple students)
-                    return (
-                      <div
-                        key="attention"
-                        data-bucket="attention"
-                        data-component="needs-attention-bucket"
-                      >
-                        <h2
-                          data-element="bucket-header"
-                          className={css({
-                            position: 'sticky',
-                            top: '160px',
-                            zIndex: Z_INDEX.STICKY_BUCKET_HEADER,
-                            fontSize: '0.875rem',
-                            fontWeight: 'semibold',
-                            color: isDark ? 'orange.400' : 'orange.600',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            marginBottom: '12px',
-                            paddingTop: '8px',
-                            paddingBottom: '8px',
-                            borderBottom: '2px solid',
-                            borderColor: isDark ? 'orange.700' : 'orange.300',
-                            bg: isDark ? 'gray.900' : 'gray.50',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                          })}
-                        >
-                          <span>⚠️</span>
-                          <span>Needs Attention</span>
-                          <span
-                            className={css({
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              minWidth: '20px',
-                              height: '20px',
-                              padding: '0 6px',
-                              borderRadius: '10px',
-                              backgroundColor: isDark ? 'orange.700' : 'orange.500',
-                              color: 'white',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold',
-                            })}
-                          >
-                            {section.students.length}
-                          </span>
-                        </h2>
-                        <StudentSelector
-                          students={section.students as StudentWithProgress[]}
-                          onSelectStudent={handleSelectStudent}
-                          onToggleSelection={handleToggleSelection}
-                          onObserveSession={handleObserveSession}
-                          title=""
-                          selectedIds={selectedIds}
-                          hideAddButton
-                        />
-                      </div>
-                    )
-                  }
-
-                  // Full bucket
-                  const bucket = section.bucket
-
-                  return (
-                    <div key={bucket.bucket} data-bucket={bucket.bucket}>
-                      <h2
-                        data-element="bucket-header"
-                        className={css({
-                          position: 'sticky',
-                          top: '160px',
-                          zIndex: Z_INDEX.STICKY_BUCKET_HEADER,
-                          fontSize: '0.875rem',
-                          fontWeight: 'semibold',
-                          color: isDark ? 'gray.400' : 'gray.500',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          marginBottom: '12px',
-                          paddingTop: '8px',
-                          paddingBottom: '8px',
-                          borderBottom: '2px solid',
-                          borderColor: isDark ? 'gray.700' : 'gray.200',
-                          bg: isDark ? 'gray.900' : 'gray.50',
-                        })}
-                      >
-                        {bucket.bucketName}
-                      </h2>
-
-                      {/* Categories within bucket - grouped for compact display */}
-                      <div
-                        className={css({
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '16px',
-                        })}
-                      >
-                        {(() => {
-                          // Group consecutive compact categories
-                          type CategoryRenderItem =
-                            | { type: 'compact-row'; categories: typeof bucket.categories }
-                            | { type: 'full'; category: (typeof bucket.categories)[0] }
-
-                          const items: CategoryRenderItem[] = []
-                          let compactBuffer: typeof bucket.categories = []
-
-                          for (const cat of bucket.categories) {
-                            if (isCategoryCompact(bucket, cat)) {
-                              compactBuffer.push(cat)
-                            } else {
-                              if (compactBuffer.length > 0) {
-                                items.push({ type: 'compact-row', categories: compactBuffer })
-                                compactBuffer = []
-                              }
-                              items.push({ type: 'full', category: cat })
-                            }
-                          }
-                          if (compactBuffer.length > 0) {
-                            items.push({ type: 'compact-row', categories: compactBuffer })
-                          }
-
-                          return items.map((item, idx) => {
-                            if (item.type === 'compact-row') {
-                              // Render compact categories flowing together
-                              return (
-                                <div
-                                  key={`compact-${idx}`}
-                                  data-element="compact-category-row"
-                                  className={css({
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: '12px',
-                                    alignItems: 'flex-start',
-                                  })}
-                                >
-                                  {item.categories.map((cat) => (
-                                    <div
-                                      key={cat.category ?? 'null'}
-                                      data-category={cat.category ?? 'new'}
-                                      data-compact="true"
-                                      className={css({
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '4px',
-                                      })}
-                                    >
-                                      {/* Small inline category label */}
-                                      <span
-                                        data-element="compact-category-label"
-                                        className={css({
-                                          fontSize: '0.75rem',
-                                          fontWeight: 'medium',
-                                          color: isDark ? 'gray.500' : 'gray.400',
-                                          paddingLeft: '4px',
-                                        })}
-                                      >
-                                        {cat.categoryName}
-                                      </span>
-                                      {/* Single student tile */}
-                                      <StudentSelector
-                                        students={cat.students as StudentWithProgress[]}
-                                        onSelectStudent={handleSelectStudent}
-                                        onToggleSelection={handleToggleSelection}
-                                        onObserveSession={handleObserveSession}
-                                        title=""
-                                        selectedIds={selectedIds}
-                                        hideAddButton
-                                        compact
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              )
-                            }
-
-                            // Render full category (2+ students or has attention placeholder)
-                            const category = item.category
-                            const attentionCount =
-                              attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ??
-                              0
-
-                            return (
-                              <div
-                                key={category.category ?? 'null'}
-                                data-category={category.category ?? 'new'}
-                              >
-                                {/* Category header - sticky below bucket header */}
-                                <h3
-                                  data-element="category-header"
-                                  className={css({
-                                    position: 'sticky',
-                                    top: '195px', // Nav (80px) + Filter bar (~80px) + Bucket header (~35px)
-                                    zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
-                                    fontSize: '0.8125rem',
-                                    fontWeight: 'medium',
-                                    color: isDark ? 'gray.500' : 'gray.400',
-                                    marginBottom: '8px',
-                                    paddingTop: '4px',
-                                    paddingBottom: '4px',
-                                    paddingLeft: '4px',
-                                    bg: isDark ? 'gray.900' : 'gray.50',
-                                  })}
-                                >
-                                  {category.categoryName}
-                                </h3>
-
-                                {/* Student cards wrapper */}
-                                <div
-                                  className={css({
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: '8px',
-                                    alignItems: 'stretch',
-                                  })}
-                                >
-                                  {/* Student cards */}
-                                  {category.students.length > 0 && (
-                                    <StudentSelector
-                                      students={category.students as StudentWithProgress[]}
-                                      onSelectStudent={handleSelectStudent}
-                                      onToggleSelection={handleToggleSelection}
-                                      onObserveSession={handleObserveSession}
-                                      title=""
-                                      selectedIds={selectedIds}
-                                      hideAddButton
-                                    />
-                                  )}
-
-                                  {/* Attention placeholder */}
-                                  {attentionCount > 0 && (
-                                    <div
-                                      data-element="attention-placeholder"
-                                      data-attention-count={attentionCount}
-                                      className={css({
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '12px 16px',
-                                        borderRadius: '8px',
-                                        border: '2px dashed',
-                                        borderColor: isDark ? 'orange.700' : 'orange.300',
-                                        color: isDark ? 'orange.400' : 'orange.600',
-                                        fontSize: '0.8125rem',
-                                        textAlign: 'center',
-                                        minHeight: '60px',
-                                        flexShrink: 0,
-                                      })}
-                                    >
-                                      +{attentionCount} in Needs Attention
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })
-                        })()}
-                      </div>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
+            <MeasuredGroupedStudents
+              studentsNeedingAttention={studentsNeedingAttention}
+              filteredGroupedStudents={filteredGroupedStudents}
+              attentionCountsByBucket={attentionCountsByBucket}
+              selectedIds={selectedIds}
+              isDark={isDark}
+              onSelectStudent={handleSelectStudent}
+              onToggleSelection={handleToggleSelection}
+              onObserveSession={handleObserveSession}
+            />
           )}
 
           {/* Hidden archived students indicator - only shown when filtering */}
@@ -1038,6 +590,538 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
         />
       )}
     </PageWithNav>
+  )
+}
+
+// =============================================================================
+// MeasuredGroupedStudents - Uses measurement-based layout for compact sections
+// =============================================================================
+
+interface MeasuredGroupedStudentsProps {
+  studentsNeedingAttention: StudentWithSkillData[]
+  filteredGroupedStudents: ReturnType<typeof groupStudents>
+  attentionCountsByBucket: Map<string, Map<string | null, number>>
+  selectedIds: Set<string>
+  isDark: boolean
+  onSelectStudent: (student: StudentWithProgress) => void
+  onToggleSelection: (student: StudentWithProgress) => void
+  onObserveSession: (sessionId: string) => void
+}
+
+/**
+ * Renders grouped students with measurement-based compact layout.
+ * Uses hidden measurement container to determine which items can fit together.
+ */
+function MeasuredGroupedStudents({
+  studentsNeedingAttention,
+  filteredGroupedStudents,
+  attentionCountsByBucket,
+  selectedIds,
+  isDark,
+  onSelectStudent,
+  onToggleSelection,
+  onObserveSession,
+}: MeasuredGroupedStudentsProps) {
+  // Helper to check if a category is compact (1 student, no attention placeholder)
+  const isCategoryCompact = (
+    bucket: (typeof filteredGroupedStudents)[0],
+    cat: (typeof bucket.categories)[0]
+  ) => {
+    const attentionCount = attentionCountsByBucket.get(bucket.bucket)?.get(cat.category) ?? 0
+    return cat.students.length === 1 && attentionCount === 0
+  }
+
+  // Helper to check if entire bucket is compact
+  const isBucketCompact = (bucket: (typeof filteredGroupedStudents)[0]) =>
+    bucket.categories.every((cat) => isCategoryCompact(bucket, cat))
+
+  // Section type for attention and buckets
+  type Section =
+    | { type: 'attention'; students: typeof studentsNeedingAttention }
+    | { type: 'bucket'; bucket: (typeof filteredGroupedStudents)[0] }
+
+  // Helper to check if a section is potentially compact
+  const isSectionCompact = (section: Section) => {
+    if (section.type === 'attention') {
+      return section.students.length === 1
+    }
+    return isBucketCompact(section.bucket)
+  }
+
+  // Build list of all sections (attention first, then buckets)
+  const allSections: Section[] = useMemo(() => {
+    const sections: Section[] = []
+    if (studentsNeedingAttention.length > 0) {
+      sections.push({ type: 'attention', students: studentsNeedingAttention })
+    }
+    for (const bucket of filteredGroupedStudents) {
+      sections.push({ type: 'bucket', bucket })
+    }
+    return sections
+  }, [studentsNeedingAttention, filteredGroupedStudents])
+
+  // Chunk sections into "compact runs" and "full sections"
+  type Chunk = { type: 'compact-run'; sections: Section[] } | { type: 'full'; section: Section }
+
+  const chunks: Chunk[] = useMemo(() => {
+    const result: Chunk[] = []
+    let compactRun: Section[] = []
+
+    for (const section of allSections) {
+      if (isSectionCompact(section)) {
+        compactRun.push(section)
+      } else {
+        if (compactRun.length > 0) {
+          result.push({ type: 'compact-run', sections: compactRun })
+          compactRun = []
+        }
+        result.push({ type: 'full', section })
+      }
+    }
+    if (compactRun.length > 0) {
+      result.push({ type: 'compact-run', sections: compactRun })
+    }
+    return result
+  }, [allSections]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Render a compact item element (for measurement and display)
+  const renderCompactItem = useCallback(
+    (section: Section, itemKey: string) => {
+      if (section.type === 'attention') {
+        return (
+          <div
+            key={itemKey}
+            data-bucket="attention"
+            data-compact="true"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+            })}
+          >
+            <span
+              data-element="compact-label"
+              className={css({
+                fontSize: '0.6875rem',
+                fontWeight: 'medium',
+                color: isDark ? 'orange.400' : 'orange.500',
+                paddingLeft: '4px',
+                display: 'flex',
+                gap: '4px',
+                alignItems: 'center',
+              })}
+            >
+              <span>⚠️</span>
+              <span
+                className={css({
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                })}
+              >
+                Needs Attention
+              </span>
+            </span>
+            <StudentSelector
+              students={section.students as StudentWithProgress[]}
+              onSelectStudent={onSelectStudent}
+              onToggleSelection={onToggleSelection}
+              onObserveSession={onObserveSession}
+              title=""
+              selectedIds={selectedIds}
+              hideAddButton
+              compact
+            />
+          </div>
+        )
+      }
+      // This shouldn't happen for compact buckets - we expand them into categories
+      return null
+    },
+    [isDark, selectedIds, onSelectStudent, onToggleSelection, onObserveSession]
+  )
+
+  // Render a compact category item element
+  const renderCompactCategoryItem = useCallback(
+    (
+      bucket: (typeof filteredGroupedStudents)[0],
+      cat: (typeof bucket.categories)[0],
+      itemKey: string
+    ) => {
+      return (
+        <div
+          key={itemKey}
+          data-bucket={bucket.bucket}
+          data-category={cat.category ?? 'new'}
+          data-compact="true"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          })}
+        >
+          <span
+            data-element="compact-label"
+            className={css({
+              fontSize: '0.6875rem',
+              fontWeight: 'medium',
+              color: isDark ? 'gray.500' : 'gray.400',
+              paddingLeft: '4px',
+              display: 'flex',
+              gap: '4px',
+              alignItems: 'center',
+            })}
+          >
+            <span
+              className={css({
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                color: isDark ? 'gray.600' : 'gray.350',
+              })}
+            >
+              {bucket.bucketName}
+            </span>
+            <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>·</span>
+            <span>{cat.categoryName}</span>
+          </span>
+          <StudentSelector
+            students={cat.students as StudentWithProgress[]}
+            onSelectStudent={onSelectStudent}
+            onToggleSelection={onToggleSelection}
+            onObserveSession={onObserveSession}
+            title=""
+            selectedIds={selectedIds}
+            hideAddButton
+            compact
+          />
+        </div>
+      )
+    },
+    [isDark, selectedIds, onSelectStudent, onToggleSelection, onObserveSession]
+  )
+
+  // Build compact items for all compact runs (for measurement)
+  const compactItems: CompactItem[] = useMemo(() => {
+    const items: CompactItem[] = []
+    for (const chunk of chunks) {
+      if (chunk.type === 'compact-run') {
+        for (const section of chunk.sections) {
+          if (section.type === 'attention') {
+            const itemKey = 'attention'
+            items.push({
+              id: itemKey,
+              element: renderCompactItem(section, itemKey),
+            })
+          } else {
+            // Expand bucket into individual category items
+            for (const cat of section.bucket.categories) {
+              const itemKey = `${section.bucket.bucket}-${cat.category ?? 'null'}`
+              items.push({
+                id: itemKey,
+                element: renderCompactCategoryItem(section.bucket, cat, itemKey),
+              })
+            }
+          }
+        }
+      }
+    }
+    return items
+  }, [chunks, renderCompactItem, renderCompactCategoryItem])
+
+  // Use measurement hook
+  const { containerRef, itemRefs, rows, isReady } = useMeasuredCompactLayout(compactItems, 12)
+
+  // Create a map from item ID to which row it belongs
+  const itemRowMap = useMemo(() => {
+    const map = new Map<string, number>()
+    rows.forEach((row, rowIdx) => {
+      for (const item of row) {
+        map.set(item.id, rowIdx)
+      }
+    })
+    return map
+  }, [rows])
+
+  // Render full section
+  const renderFullSection = useCallback(
+    (section: Section, key: string) => {
+      if (section.type === 'attention') {
+        // Full attention section (multiple students)
+        return (
+          <div key={key} data-bucket="attention" data-component="needs-attention-bucket">
+            <h2
+              data-element="bucket-header"
+              className={css({
+                position: 'sticky',
+                top: '160px',
+                zIndex: Z_INDEX.STICKY_BUCKET_HEADER,
+                fontSize: '0.875rem',
+                fontWeight: 'semibold',
+                color: isDark ? 'orange.400' : 'orange.600',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                borderBottom: '2px solid',
+                borderColor: isDark ? 'orange.700' : 'orange.300',
+                bg: isDark ? 'gray.900' : 'gray.50',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              })}
+            >
+              <span>⚠️</span>
+              <span>Needs Attention</span>
+              <span
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '20px',
+                  height: '20px',
+                  padding: '0 6px',
+                  borderRadius: '10px',
+                  backgroundColor: isDark ? 'orange.700' : 'orange.500',
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                })}
+              >
+                {section.students.length}
+              </span>
+            </h2>
+            <StudentSelector
+              students={section.students as StudentWithProgress[]}
+              onSelectStudent={onSelectStudent}
+              onToggleSelection={onToggleSelection}
+              onObserveSession={onObserveSession}
+              title=""
+              selectedIds={selectedIds}
+              hideAddButton
+            />
+          </div>
+        )
+      }
+
+      // Full bucket
+      const bucket = section.bucket
+
+      return (
+        <div key={key} data-bucket={bucket.bucket}>
+          <h2
+            data-element="bucket-header"
+            className={css({
+              position: 'sticky',
+              top: '160px',
+              zIndex: Z_INDEX.STICKY_BUCKET_HEADER,
+              fontSize: '0.875rem',
+              fontWeight: 'semibold',
+              color: isDark ? 'gray.400' : 'gray.500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '12px',
+              paddingTop: '8px',
+              paddingBottom: '8px',
+              borderBottom: '2px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              bg: isDark ? 'gray.900' : 'gray.50',
+            })}
+          >
+            {bucket.bucketName}
+          </h2>
+
+          {/* Categories within bucket */}
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            })}
+          >
+            {bucket.categories.map((category) => {
+              const attentionCount =
+                attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0
+
+              return (
+                <div key={category.category ?? 'null'} data-category={category.category ?? 'new'}>
+                  {/* Category header - sticky below bucket header */}
+                  <h3
+                    data-element="category-header"
+                    className={css({
+                      position: 'sticky',
+                      top: '195px',
+                      zIndex: Z_INDEX.STICKY_CATEGORY_HEADER,
+                      fontSize: '0.8125rem',
+                      fontWeight: 'medium',
+                      color: isDark ? 'gray.500' : 'gray.400',
+                      marginBottom: '8px',
+                      paddingTop: '4px',
+                      paddingBottom: '4px',
+                      paddingLeft: '4px',
+                      bg: isDark ? 'gray.900' : 'gray.50',
+                    })}
+                  >
+                    {category.categoryName}
+                  </h3>
+
+                  {/* Student cards wrapper */}
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      alignItems: 'stretch',
+                    })}
+                  >
+                    {category.students.length > 0 && (
+                      <StudentSelector
+                        students={category.students as StudentWithProgress[]}
+                        onSelectStudent={onSelectStudent}
+                        onToggleSelection={onToggleSelection}
+                        onObserveSession={onObserveSession}
+                        title=""
+                        selectedIds={selectedIds}
+                        hideAddButton
+                      />
+                    )}
+
+                    {/* Attention placeholder */}
+                    {attentionCount > 0 && (
+                      <div
+                        data-element="attention-placeholder"
+                        data-attention-count={attentionCount}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '2px dashed',
+                          borderColor: isDark ? 'orange.700' : 'orange.300',
+                          color: isDark ? 'orange.400' : 'orange.600',
+                          fontSize: '0.8125rem',
+                          textAlign: 'center',
+                          minHeight: '60px',
+                          flexShrink: 0,
+                        })}
+                      >
+                        +{attentionCount} in Needs Attention
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    },
+    [
+      isDark,
+      selectedIds,
+      onSelectStudent,
+      onToggleSelection,
+      onObserveSession,
+      attentionCountsByBucket,
+    ]
+  )
+
+  return (
+    <div
+      ref={containerRef}
+      data-component="grouped-students"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+        position: 'relative',
+      })}
+    >
+      {/* Hidden measurement container */}
+      <div
+        data-element="measurement-container"
+        style={{
+          position: 'absolute',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          top: 0,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          flexWrap: 'nowrap',
+        }}
+      >
+        {compactItems.map((item) => (
+          <div
+            key={item.id}
+            ref={(el) => {
+              if (el) itemRefs.current.set(item.id, el)
+              else itemRefs.current.delete(item.id)
+            }}
+            style={{ flexShrink: 0 }}
+          >
+            {item.element}
+          </div>
+        ))}
+      </div>
+
+      {/* Visible layout */}
+      {isReady &&
+        chunks.map((chunk, chunkIdx) => {
+          if (chunk.type === 'full') {
+            return renderFullSection(
+              chunk.section,
+              chunk.section.type === 'attention' ? 'attention' : chunk.section.bucket.bucket
+            )
+          }
+
+          // Compact run - render as measured rows
+          // Get all item IDs for this compact run
+          const runItemIds: string[] = []
+          for (const section of chunk.sections) {
+            if (section.type === 'attention') {
+              runItemIds.push('attention')
+            } else {
+              for (const cat of section.bucket.categories) {
+                runItemIds.push(`${section.bucket.bucket}-${cat.category ?? 'null'}`)
+              }
+            }
+          }
+
+          // Group items by their measured row
+          const rowGroups = new Map<number, CompactItem[]>()
+          for (const id of runItemIds) {
+            const rowIdx = itemRowMap.get(id) ?? 0
+            const item = compactItems.find((i) => i.id === id)
+            if (item) {
+              if (!rowGroups.has(rowIdx)) {
+                rowGroups.set(rowIdx, [])
+              }
+              rowGroups.get(rowIdx)!.push(item)
+            }
+          }
+
+          // Render each row
+          return Array.from(rowGroups.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([rowIdx, items]) => (
+              <div
+                key={`compact-run-${chunkIdx}-row-${rowIdx}`}
+                data-element="compact-sections-row"
+                className={css({
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  alignItems: 'flex-start',
+                })}
+              >
+                {items.map((item) => (
+                  <Fragment key={item.id}>{item.element}</Fragment>
+                ))}
+              </div>
+            ))
+        })}
+    </div>
   )
 }
 

@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Fragment, useCallback, useMemo, useState } from 'react'
+import { type CompactItem, useMeasuredCompactLayout } from '../../hooks/useMeasuredCompactLayout'
 import { css } from '../../../styled-system/css'
 import { StudentSelector, type StudentWithProgress } from './StudentSelector'
 
@@ -22,15 +24,15 @@ function createQueryClient() {
 }
 
 /**
- * Demonstrates the grouped category layout for the practice page.
+ * Demonstrates the measurement-based grouped category layout for the practice page.
  *
- * The practice page organizes students by:
- * - **Buckets** (recency): "Today", "This Week", "Older", "New"
- * - **Categories** (skills): "Five Complements (Addition)", "Ten Complements (Subtraction)", etc.
+ * The layout uses actual measured widths to determine which items can fit together
+ * on the same row, rather than a simple count-based heuristic.
  *
- * Categories are displayed differently based on their content:
- * - **Compact**: Categories with 1 student (and no attention placeholder) flow together on the same row
- * - **Full**: Categories with 2+ students or attention placeholders get full-width sticky headers
+ * Key behaviors:
+ * - **Measurement-based**: Items are rendered hidden, measured, then grouped based on actual fit
+ * - **Responsive**: Adapts to container width changes via ResizeObserver
+ * - **No flash**: useLayoutEffect ensures measurement happens before paint
  */
 const meta: Meta = {
   title: 'Practice/GroupedCategories',
@@ -73,6 +75,7 @@ const createStudent = (
   createdAt: new Date(),
 })
 
+// Students with varying name lengths to show measurement differences
 const students = {
   sonia: createStudent('1', 'Sonia', '🦋', '#FFE4E1', 3),
   marcus: createStudent('2', 'Marcus', '🦖', '#E0FFE0', 2),
@@ -80,6 +83,10 @@ const students = {
   alex: createStudent('4', 'Alex', '🚀', '#FFF0E0', 2),
   maya: createStudent('5', 'Maya', '🌸', '#FFE0F0', 3),
   kai: createStudent('6', 'Kai', '🐻', '#E0F0FF', 1),
+  // Long names to demonstrate width-based wrapping
+  alexanderTheGreat: createStudent('7', 'Alexander the Great', '👑', '#FFD700', 3),
+  christopherColumbus: createStudent('8', 'Christopher Columbus', '🧭', '#87CEEB', 2),
+  elizabethBennet: createStudent('9', 'Elizabeth Bennet', '📚', '#DDA0DD', 1),
 }
 
 interface CategoryData {
@@ -95,29 +102,27 @@ interface BucketData {
   categories: CategoryData[]
 }
 
-// Component that replicates the exact structure from PracticeClient.tsx
-function GroupedStudentsDemo({
-  buckets,
-  needsAttentionStudents = [],
-  isDark = false,
-}: {
+// =============================================================================
+// MeasuredGroupedStudentsDemo - Uses the actual measurement hook
+// =============================================================================
+
+interface MeasuredGroupedStudentsDemoProps {
   buckets: BucketData[]
   needsAttentionStudents?: StudentWithProgress[]
   isDark?: boolean
-}) {
-  // Build unified sections list (attention first, then buckets)
-  type Section =
-    | { type: 'attention'; students: StudentWithProgress[] }
-    | { type: 'bucket'; bucket: BucketData }
+  containerWidth?: number | string // Allow controlling container width for demos
+}
 
-  const allSections: Section[] = []
-  if (needsAttentionStudents.length > 0) {
-    allSections.push({ type: 'attention', students: needsAttentionStudents })
-  }
-  for (const bucket of buckets) {
-    allSections.push({ type: 'bucket', bucket })
-  }
-
+/**
+ * Demo component that uses the actual useMeasuredCompactLayout hook
+ * to demonstrate measurement-based row grouping.
+ */
+function MeasuredGroupedStudentsDemo({
+  buckets,
+  needsAttentionStudents = [],
+  isDark = false,
+  containerWidth = '100%',
+}: MeasuredGroupedStudentsDemoProps) {
   // Helper to check if a category is compact
   const isCategoryCompact = (cat: CategoryData) =>
     cat.students.length === 1 && (cat.attentionCount ?? 0) === 0
@@ -125,6 +130,11 @@ function GroupedStudentsDemo({
   // Helper to check if a bucket is compact
   const isBucketCompact = (bucket: BucketData) =>
     bucket.categories.every((cat) => isCategoryCompact(cat))
+
+  // Section type for attention and buckets
+  type Section =
+    | { type: 'attention'; students: StudentWithProgress[] }
+    | { type: 'bucket'; bucket: BucketData }
 
   // Helper to check if a section is compact
   const isSectionCompact = (section: Section) => {
@@ -134,42 +144,107 @@ function GroupedStudentsDemo({
     return isBucketCompact(section.bucket)
   }
 
-  // Group consecutive compact sections
-  type RenderItem =
-    | { type: 'compact-sections'; sections: Section[] }
-    | { type: 'full-section'; section: Section }
-
-  const renderItems: RenderItem[] = []
-  let compactBuffer: Section[] = []
-
-  for (const section of allSections) {
-    if (isSectionCompact(section)) {
-      compactBuffer.push(section)
-    } else {
-      if (compactBuffer.length > 0) {
-        renderItems.push({ type: 'compact-sections', sections: compactBuffer })
-        compactBuffer = []
-      }
-      renderItems.push({ type: 'full-section', section })
+  // Build list of all sections
+  const allSections: Section[] = useMemo(() => {
+    const sections: Section[] = []
+    if (needsAttentionStudents.length > 0) {
+      sections.push({ type: 'attention', students: needsAttentionStudents })
     }
-  }
-  if (compactBuffer.length > 0) {
-    renderItems.push({ type: 'compact-sections', sections: compactBuffer })
-  }
-  // Helper to render a compact section (single attention or compact bucket)
-  const renderCompactSection = (section: Section, idx: number) => {
-    if (section.type === 'attention') {
-      // Single attention student - compact with label
-      const student = section.students[0]
+    for (const bucket of buckets) {
+      sections.push({ type: 'bucket', bucket })
+    }
+    return sections
+  }, [needsAttentionStudents, buckets])
+
+  // Chunk sections into "compact runs" and "full sections"
+  type Chunk = { type: 'compact-run'; sections: Section[] } | { type: 'full'; section: Section }
+
+  const chunks: Chunk[] = useMemo(() => {
+    const result: Chunk[] = []
+    let compactRun: Section[] = []
+
+    for (const section of allSections) {
+      if (isSectionCompact(section)) {
+        compactRun.push(section)
+      } else {
+        if (compactRun.length > 0) {
+          result.push({ type: 'compact-run', sections: compactRun })
+          compactRun = []
+        }
+        result.push({ type: 'full', section })
+      }
+    }
+    if (compactRun.length > 0) {
+      result.push({ type: 'compact-run', sections: compactRun })
+    }
+    return result
+  }, [allSections]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Render compact category item
+  const renderCompactCategoryItem = useCallback(
+    (bucket: BucketData, cat: CategoryData, itemKey: string) => {
       return (
         <div
-          key={`attention-compact-${idx}`}
-          data-section="needs-attention"
+          key={itemKey}
+          data-bucket={bucket.bucket}
+          data-category={cat.category ?? 'new'}
           data-compact="true"
           className={css({
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
+            gap: '2px',
+          })}
+        >
+          <span
+            data-element="compact-label"
+            className={css({
+              fontSize: '0.6875rem',
+              fontWeight: 'medium',
+              color: isDark ? 'gray.500' : 'gray.400',
+              paddingLeft: '4px',
+              display: 'flex',
+              gap: '4px',
+              alignItems: 'center',
+            })}
+          >
+            <span
+              className={css({
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                color: isDark ? 'gray.600' : 'gray.350',
+              })}
+            >
+              {bucket.bucketName}
+            </span>
+            <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>·</span>
+            <span>{cat.categoryName}</span>
+          </span>
+          <StudentSelector
+            students={cat.students}
+            onSelectStudent={() => {}}
+            onToggleSelection={() => {}}
+            title=""
+            hideAddButton
+            compact
+          />
+        </div>
+      )
+    },
+    [isDark]
+  )
+
+  // Render compact attention item
+  const renderCompactAttentionItem = useCallback(
+    (student: StudentWithProgress, itemKey: string) => {
+      return (
+        <div
+          key={itemKey}
+          data-bucket="attention"
+          data-compact="true"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
           })}
         >
           <span
@@ -179,9 +254,15 @@ function GroupedStudentsDemo({
               fontWeight: 'medium',
               color: isDark ? 'orange.400' : 'orange.500',
               paddingLeft: '4px',
+              display: 'flex',
+              gap: '4px',
+              alignItems: 'center',
             })}
           >
-            <span className={css({ textTransform: 'uppercase' })}>Needs Attention</span>
+            <span>⚠️</span>
+            <span className={css({ textTransform: 'uppercase', letterSpacing: '0.03em' })}>
+              Needs Attention
+            </span>
           </span>
           <StudentSelector
             students={[student]}
@@ -193,255 +274,181 @@ function GroupedStudentsDemo({
           />
         </div>
       )
+    },
+    [isDark]
+  )
+
+  // Build compact items for measurement
+  const compactItems: CompactItem[] = useMemo(() => {
+    const items: CompactItem[] = []
+    for (const chunk of chunks) {
+      if (chunk.type === 'compact-run') {
+        for (const section of chunk.sections) {
+          if (section.type === 'attention') {
+            const itemKey = 'attention'
+            items.push({
+              id: itemKey,
+              element: renderCompactAttentionItem(section.students[0], itemKey),
+            })
+          } else {
+            for (const cat of section.bucket.categories) {
+              const itemKey = `${section.bucket.bucket}-${cat.category ?? 'null'}`
+              items.push({
+                id: itemKey,
+                element: renderCompactCategoryItem(section.bucket, cat, itemKey),
+              })
+            }
+          }
+        }
+      }
     }
+    return items
+  }, [chunks, renderCompactAttentionItem, renderCompactCategoryItem])
 
-    // Compact bucket - all categories are single-student
-    const bucket = section.bucket
-    return bucket.categories.map((cat, catIdx) => (
-      <div
-        key={`${bucket.bucket}-${cat.category}-${catIdx}`}
-        data-bucket={bucket.bucket}
-        data-category={cat.category}
-        data-compact="true"
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-        })}
-      >
-        <span
-          data-element="compact-label"
-          className={css({
-            fontSize: '0.6875rem',
-            fontWeight: 'medium',
-            color: isDark ? 'gray.500' : 'gray.400',
-            paddingLeft: '4px',
-          })}
-        >
-          <span className={css({ textTransform: 'uppercase' })}>{bucket.bucketName}</span>
-          <span className={css({ margin: '0 4px' })}>·</span>
-          <span>{cat.categoryName}</span>
-        </span>
-        <StudentSelector
-          students={cat.students}
-          onSelectStudent={() => {}}
-          onToggleSelection={() => {}}
-          title=""
-          hideAddButton
-          compact
-        />
-      </div>
-    ))
-  }
+  // Use measurement hook
+  const { containerRef, itemRefs, rows, isReady } = useMeasuredCompactLayout(compactItems, 12)
 
-  // Helper to render a full section (multiple attention or non-compact bucket)
-  const renderFullSection = (section: Section) => {
-    if (section.type === 'attention') {
-      // Full Needs Attention section
+  // Create map from item ID to row index
+  const itemRowMap = useMemo(() => {
+    const map = new Map<string, number>()
+    rows.forEach((row, rowIdx) => {
+      for (const item of row) {
+        map.set(item.id, rowIdx)
+      }
+    })
+    return map
+  }, [rows])
+
+  // Render full section
+  const renderFullSection = useCallback(
+    (section: Section, key: string) => {
+      if (section.type === 'attention') {
+        return (
+          <div key={key} data-bucket="attention" data-component="needs-attention-bucket">
+            <h2
+              data-element="bucket-header"
+              className={css({
+                fontSize: '0.875rem',
+                fontWeight: 'semibold',
+                color: isDark ? 'orange.400' : 'orange.600',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                borderBottom: '2px solid',
+                borderColor: isDark ? 'orange.700' : 'orange.300',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              })}
+            >
+              <span>⚠️</span>
+              <span>Needs Attention</span>
+              <span
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '20px',
+                  height: '20px',
+                  padding: '0 6px',
+                  borderRadius: '10px',
+                  backgroundColor: isDark ? 'orange.700' : 'orange.500',
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                })}
+              >
+                {section.students.length}
+              </span>
+            </h2>
+            <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '8px' })}>
+              <StudentSelector
+                students={section.students}
+                onSelectStudent={() => {}}
+                onToggleSelection={() => {}}
+                title=""
+                hideAddButton
+                compact
+              />
+            </div>
+          </div>
+        )
+      }
+
+      const bucket = section.bucket
       return (
-        <div key="needs-attention-full" data-section="needs-attention">
+        <div key={key} data-bucket={bucket.bucket}>
           <h2
-            data-element="attention-header"
+            data-element="bucket-header"
             className={css({
               fontSize: '0.875rem',
               fontWeight: 'semibold',
-              color: isDark ? 'orange.400' : 'orange.600',
+              color: isDark ? 'gray.400' : 'gray.500',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               marginBottom: '12px',
               paddingTop: '8px',
               paddingBottom: '8px',
               borderBottom: '2px solid',
-              borderColor: isDark ? 'orange.700' : 'orange.200',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
             })}
           >
-            ⚠️ Needs Attention
+            {bucket.bucketName}
           </h2>
-          <div
-            className={css({
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-            })}
-          >
-            <StudentSelector
-              students={section.students}
-              onSelectStudent={() => {}}
-              onToggleSelection={() => {}}
-              title=""
-              hideAddButton
-              compact
-            />
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
+            {bucket.categories.map((category) => (
+              <div key={category.category ?? 'null'} data-category={category.category ?? 'new'}>
+                <h3
+                  data-element="category-header"
+                  className={css({
+                    fontSize: '0.8125rem',
+                    fontWeight: 'medium',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                    marginBottom: '8px',
+                    paddingLeft: '4px',
+                  })}
+                >
+                  {category.categoryName}
+                </h3>
+                <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '8px' })}>
+                  <StudentSelector
+                    students={category.students}
+                    onSelectStudent={() => {}}
+                    onToggleSelection={() => {}}
+                    title=""
+                    hideAddButton
+                    compact
+                  />
+                  {(category.attentionCount ?? 0) > 0 && (
+                    <div
+                      data-element="attention-placeholder"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: '2px dashed',
+                        borderColor: isDark ? 'orange.700' : 'orange.300',
+                        color: isDark ? 'orange.400' : 'orange.600',
+                        fontSize: '0.8125rem',
+                        minHeight: '60px',
+                      })}
+                    >
+                      +{category.attentionCount} in Needs Attention
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )
-    }
-
-    // Full bucket with categories
-    const bucket = section.bucket
-    return (
-      <div key={bucket.bucket} data-bucket={bucket.bucket}>
-        <h2
-          data-element="bucket-header"
-          className={css({
-            fontSize: '0.875rem',
-            fontWeight: 'semibold',
-            color: isDark ? 'gray.400' : 'gray.500',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '12px',
-            paddingTop: '8px',
-            paddingBottom: '8px',
-            borderBottom: '2px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-          })}
-        >
-          {bucket.bucketName}
-        </h2>
-
-        <div
-          className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          })}
-        >
-          {(() => {
-            // Group consecutive compact categories within the bucket
-            type CatRenderItem =
-              | { type: 'compact-row'; categories: CategoryData[] }
-              | { type: 'full'; category: CategoryData }
-
-            const items: CatRenderItem[] = []
-            let compactBuffer: CategoryData[] = []
-
-            for (const cat of bucket.categories) {
-              if (isCategoryCompact(cat)) {
-                compactBuffer.push(cat)
-              } else {
-                if (compactBuffer.length > 0) {
-                  items.push({ type: 'compact-row', categories: compactBuffer })
-                  compactBuffer = []
-                }
-                items.push({ type: 'full', category: cat })
-              }
-            }
-            if (compactBuffer.length > 0) {
-              items.push({ type: 'compact-row', categories: compactBuffer })
-            }
-
-            return items.map((item, idx) => {
-              if (item.type === 'compact-row') {
-                return (
-                  <div
-                    key={`compact-${idx}`}
-                    data-element="compact-category-row"
-                    className={css({
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '12px',
-                      alignItems: 'flex-start',
-                    })}
-                  >
-                    {item.categories.map((cat) => (
-                      <div
-                        key={cat.category}
-                        data-category={cat.category}
-                        data-compact="true"
-                        className={css({
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        })}
-                      >
-                        <span
-                          data-element="compact-category-label"
-                          className={css({
-                            fontSize: '0.75rem',
-                            fontWeight: 'medium',
-                            color: isDark ? 'gray.500' : 'gray.400',
-                            paddingLeft: '4px',
-                          })}
-                        >
-                          {cat.categoryName}
-                        </span>
-                        <StudentSelector
-                          students={cat.students}
-                          onSelectStudent={() => {}}
-                          onToggleSelection={() => {}}
-                          title=""
-                          hideAddButton
-                          compact
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )
-              }
-
-              const category = item.category
-              return (
-                <div key={category.category} data-category={category.category}>
-                  <h3
-                    data-element="category-header"
-                    className={css({
-                      fontSize: '0.8125rem',
-                      fontWeight: 'medium',
-                      color: isDark ? 'gray.500' : 'gray.400',
-                      marginBottom: '8px',
-                      paddingTop: '4px',
-                      paddingBottom: '4px',
-                      paddingLeft: '4px',
-                    })}
-                  >
-                    {category.categoryName}
-                  </h3>
-                  <div
-                    className={css({
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                      alignItems: 'stretch',
-                    })}
-                  >
-                    <StudentSelector
-                      students={category.students}
-                      onSelectStudent={() => {}}
-                      onToggleSelection={() => {}}
-                      title=""
-                      hideAddButton
-                      compact
-                    />
-                    {(category.attentionCount ?? 0) > 0 && (
-                      <div
-                        data-element="attention-placeholder"
-                        className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '12px 16px',
-                          borderRadius: '8px',
-                          border: '2px dashed',
-                          borderColor: isDark ? 'orange.700' : 'orange.300',
-                          color: isDark ? 'orange.400' : 'orange.600',
-                          fontSize: '0.8125rem',
-                          textAlign: 'center',
-                          minHeight: '120px',
-                          minWidth: '150px',
-                        })}
-                      >
-                        +{category.attentionCount} in Needs Attention
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })
-          })()}
-        </div>
-      </div>
-    )
-  }
+    },
+    [isDark]
+  )
 
   return (
     <div
@@ -449,241 +456,213 @@ function GroupedStudentsDemo({
         backgroundColor: isDark ? 'gray.900' : 'gray.50',
         padding: '1.5rem',
         borderRadius: '12px',
-        minWidth: '800px',
       })}
+      style={{ width: containerWidth }}
     >
+      {/* Debug info */}
       <div
+        className={css({
+          marginBottom: '16px',
+          padding: '8px 12px',
+          backgroundColor: isDark ? 'gray.800' : 'gray.100',
+          borderRadius: '6px',
+          fontSize: '0.75rem',
+          color: isDark ? 'gray.400' : 'gray.600',
+        })}
+      >
+        <strong>Measurement Debug:</strong> {compactItems.length} compact items → {rows.length} rows
+        {rows.map((row, i) => (
+          <span key={i} className={css({ marginLeft: '8px' })}>
+            [Row {i + 1}: {row.length} items]
+          </span>
+        ))}
+      </div>
+
+      <div
+        ref={containerRef}
         data-component="grouped-students"
         className={css({
           display: 'flex',
           flexDirection: 'column',
           gap: '24px',
+          position: 'relative',
         })}
       >
-        {renderItems.map((item, idx) => {
-          if (item.type === 'compact-sections') {
-            // Render compact sections flowing together
-            return (
-              <div
-                key={`compact-sections-${idx}`}
-                data-element="compact-sections-row"
-                className={css({
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                  alignItems: 'flex-start',
-                })}
-              >
-                {item.sections.map((section, sIdx) => renderCompactSection(section, sIdx))}
-              </div>
-            )
-          }
-          return renderFullSection(item.section)
-        })}
+        {/* Hidden measurement container */}
+        <div
+          data-element="measurement-container"
+          style={{
+            position: 'absolute',
+            visibility: 'hidden',
+            pointerEvents: 'none',
+            top: 0,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            flexWrap: 'nowrap',
+          }}
+        >
+          {compactItems.map((item) => (
+            <div
+              key={item.id}
+              ref={(el) => {
+                if (el) itemRefs.current.set(item.id, el)
+                else itemRefs.current.delete(item.id)
+              }}
+              style={{ flexShrink: 0 }}
+            >
+              {item.element}
+            </div>
+          ))}
+        </div>
+
+        {/* Visible layout */}
+        {isReady &&
+          chunks.map((chunk, chunkIdx) => {
+            if (chunk.type === 'full') {
+              return renderFullSection(
+                chunk.section,
+                chunk.section.type === 'attention' ? 'attention' : chunk.section.bucket.bucket
+              )
+            }
+
+            // Get all item IDs for this compact run
+            const runItemIds: string[] = []
+            for (const section of chunk.sections) {
+              if (section.type === 'attention') {
+                runItemIds.push('attention')
+              } else {
+                for (const cat of section.bucket.categories) {
+                  runItemIds.push(`${section.bucket.bucket}-${cat.category ?? 'null'}`)
+                }
+              }
+            }
+
+            // Group items by measured row
+            const rowGroups = new Map<number, CompactItem[]>()
+            for (const id of runItemIds) {
+              const rowIdx = itemRowMap.get(id) ?? 0
+              const item = compactItems.find((i) => i.id === id)
+              if (item) {
+                if (!rowGroups.has(rowIdx)) {
+                  rowGroups.set(rowIdx, [])
+                }
+                rowGroups.get(rowIdx)!.push(item)
+              }
+            }
+
+            return Array.from(rowGroups.entries())
+              .sort(([a], [b]) => a - b)
+              .map(([rowIdx, items]) => (
+                <div
+                  key={`compact-run-${chunkIdx}-row-${rowIdx}`}
+                  data-element="compact-sections-row"
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                  })}
+                >
+                  {items.map((item) => (
+                    <Fragment key={item.id}>{item.element}</Fragment>
+                  ))}
+                </div>
+              ))
+          })}
       </div>
     </div>
   )
 }
 
+// =============================================================================
+// Interactive Width Demo
+// =============================================================================
+
+function InteractiveWidthDemo() {
+  const [width, setWidth] = useState(800)
+
+  return (
+    <div>
+      <div
+        className={css({
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        })}
+      >
+        <label className={css({ fontSize: '0.875rem', color: 'gray.600' })}>
+          Container Width: {width}px
+        </label>
+        <input
+          type="range"
+          min={300}
+          max={1200}
+          value={width}
+          onChange={(e) => setWidth(Number(e.target.value))}
+          className={css({ width: '200px' })}
+        />
+      </div>
+      <MeasuredGroupedStudentsDemo
+        containerWidth={width}
+        buckets={[
+          {
+            bucket: 'older',
+            bucketName: 'Older',
+            categories: [
+              {
+                category: 'five-comp-sub',
+                categoryName: 'Five Comp (Sub)',
+                students: [students.sonia],
+              },
+              {
+                category: 'five-comp-add',
+                categoryName: 'Five Comp (Add)',
+                students: [students.marcus],
+              },
+              {
+                category: 'ten-comp-sub',
+                categoryName: 'Ten Comp (Sub)',
+                students: [students.luna],
+              },
+              {
+                category: 'ten-comp-add',
+                categoryName: 'Ten Comp (Add)',
+                students: [students.alex],
+              },
+              { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
+              {
+                category: 'basic-sub',
+                categoryName: 'Basic Subtraction',
+                students: [students.kai],
+              },
+            ],
+          },
+        ]}
+      />
+    </div>
+  )
+}
+
+// =============================================================================
+// STORIES
+// =============================================================================
+
 /**
- * All single-student categories flow together on the same row
+ * Interactive demo - drag the slider to see how items reflow based on container width
  */
-export const AllCompact: Story = {
-  render: () => (
-    <GroupedStudentsDemo
-      buckets={[
-        {
-          bucket: 'older',
-          bucketName: 'Older',
-          categories: [
-            {
-              category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
-              students: [students.sonia],
-            },
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.marcus],
-            },
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.luna],
-            },
-          ],
-        },
-      ]}
-    />
-  ),
+export const InteractiveResize: Story = {
+  render: () => <InteractiveWidthDemo />,
 }
 
 /**
- * All categories have multiple students - each gets its own full-width header
+ * Wide container (800px) - all 6 compact items may fit on fewer rows
  */
-export const AllFull: Story = {
+export const WideContainer: Story = {
   render: () => (
-    <GroupedStudentsDemo
-      buckets={[
-        {
-          bucket: 'older',
-          bucketName: 'Older',
-          categories: [
-            {
-              category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
-              students: [students.sonia, students.marcus],
-            },
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.luna, students.alex, students.maya],
-            },
-          ],
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Mix of compact and full categories - compact ones flow together,
- * full categories break the flow with their own header
- */
-export const Mixed: Story = {
-  render: () => (
-    <GroupedStudentsDemo
-      buckets={[
-        {
-          bucket: 'older',
-          bucketName: 'Older',
-          categories: [
-            // Compact - flows with next compact
-            {
-              category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
-              students: [students.sonia],
-            },
-            // Full - breaks flow, gets own header
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.marcus, students.luna],
-            },
-            // These two compact categories flow together
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.alex],
-            },
-            {
-              category: 'ten-comp-add',
-              categoryName: 'Ten Complements (Addition)',
-              students: [students.maya],
-            },
-          ],
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Single student with attention placeholder - renders as full category
- * because attention placeholder needs space
- */
-export const SingleWithAttention: Story = {
-  render: () => (
-    <GroupedStudentsDemo
-      buckets={[
-        {
-          bucket: 'older',
-          bucketName: 'Older',
-          categories: [
-            // Compact
-            {
-              category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
-              students: [students.sonia],
-            },
-            // Full (has attention placeholder even though only 1 student)
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.marcus],
-              attentionCount: 3,
-            },
-            // Compact
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.luna],
-            },
-          ],
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Multiple buckets showing the full hierarchy
- */
-export const MultipleBuckets: Story = {
-  render: () => (
-    <GroupedStudentsDemo
-      buckets={[
-        {
-          bucket: 'today',
-          bucketName: 'Today',
-          categories: [
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.sonia, students.marcus],
-            },
-          ],
-        },
-        {
-          bucket: 'thisWeek',
-          bucketName: 'This Week',
-          categories: [
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.luna],
-            },
-            {
-              category: 'ten-comp-add',
-              categoryName: 'Ten Complements (Addition)',
-              students: [students.alex],
-            },
-          ],
-        },
-        {
-          bucket: 'older',
-          bucketName: 'Older',
-          categories: [
-            { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
-            {
-              category: 'basic-sub',
-              categoryName: 'Basic Subtraction',
-              students: [students.kai],
-              attentionCount: 2,
-            },
-          ],
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Many compact categories that wrap to multiple rows
- */
-export const ManyCompactWrapping: Story = {
-  render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
+      containerWidth={800}
       buckets={[
         {
           bucket: 'older',
@@ -701,8 +680,6 @@ export const ManyCompactWrapping: Story = {
             },
             { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
             { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
-            { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
-            { category: 'basic-sub', categoryName: 'Basic Subtraction', students: [students.kai] },
           ],
         },
       ]}
@@ -711,12 +688,12 @@ export const ManyCompactWrapping: Story = {
 }
 
 /**
- * Dark mode
+ * Narrow container (400px) - items wrap to more rows
  */
-export const DarkMode: Story = {
+export const NarrowContainer: Story = {
   render: () => (
-    <GroupedStudentsDemo
-      isDark
+    <MeasuredGroupedStudentsDemo
+      containerWidth={400}
       buckets={[
         {
           bucket: 'older',
@@ -724,99 +701,199 @@ export const DarkMode: Story = {
           categories: [
             {
               category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
+              categoryName: 'Five Comp (Sub)',
               students: [students.sonia],
             },
             {
               category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.marcus, students.luna],
+              categoryName: 'Five Comp (Add)',
+              students: [students.marcus],
+            },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
+          ],
+        },
+      ]}
+    />
+  ),
+}
+
+/**
+ * Very narrow container (300px) - each item on its own row
+ */
+export const VeryNarrowContainer: Story = {
+  render: () => (
+    <MeasuredGroupedStudentsDemo
+      containerWidth={300}
+      buckets={[
+        {
+          bucket: 'older',
+          bucketName: 'Older',
+          categories: [
+            {
+              category: 'five-comp-sub',
+              categoryName: 'Five Comp (Sub)',
+              students: [students.sonia],
+            },
+            {
+              category: 'five-comp-add',
+              categoryName: 'Five Comp (Add)',
+              students: [students.marcus],
+            },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+          ],
+        },
+      ]}
+    />
+  ),
+}
+
+/**
+ * Long student names cause items to be wider, affecting row grouping
+ */
+export const LongStudentNames: Story = {
+  render: () => (
+    <MeasuredGroupedStudentsDemo
+      containerWidth={700}
+      buckets={[
+        {
+          bucket: 'older',
+          bucketName: 'Older',
+          categories: [
+            {
+              category: 'five-comp-sub',
+              categoryName: 'Five Comp (Sub)',
+              students: [students.alexanderTheGreat],
+            },
+            {
+              category: 'five-comp-add',
+              categoryName: 'Five Comp (Add)',
+              students: [students.christopherColumbus],
             },
             {
               category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.alex],
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.elizabethBennet],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.sonia],
             },
           ],
         },
       ]}
     />
   ),
-  parameters: {
-    backgrounds: { default: 'dark' },
-  },
 }
 
 /**
- * Realistic scenario with various category sizes across buckets
+ * Mix of long and short names
  */
-export const RealisticScenario: Story = {
+export const MixedNameLengths: Story = {
   render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
+      containerWidth={600}
+      buckets={[
+        {
+          bucket: 'older',
+          bucketName: 'Older',
+          categories: [
+            { category: 'cat-1', categoryName: 'Category A', students: [students.kai] },
+            {
+              category: 'cat-2',
+              categoryName: 'Category B',
+              students: [students.alexanderTheGreat],
+            },
+            { category: 'cat-3', categoryName: 'Category C', students: [students.luna] },
+            {
+              category: 'cat-4',
+              categoryName: 'Category D',
+              students: [students.christopherColumbus],
+            },
+          ],
+        },
+      ]}
+    />
+  ),
+}
+
+/**
+ * Multiple students in a category - renders as full section, not compact
+ */
+export const MultiStudentCategory: Story = {
+  render: () => (
+    <MeasuredGroupedStudentsDemo
+      containerWidth={800}
       buckets={[
         {
           bucket: 'today',
           bucketName: 'Today',
           categories: [
-            // Single compact
             {
-              category: 'five-comp-sub',
-              categoryName: 'Five Complements (Subtraction)',
-              students: [students.sonia],
+              category: 'five-comp-add',
+              categoryName: 'Five Complements (Addition)',
+              students: [students.sonia, students.marcus, students.luna],
             },
+          ],
+        },
+        {
+          bucket: 'older',
+          bucketName: 'Older',
+          categories: [
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.alex] },
+            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.maya] },
+          ],
+        },
+      ]}
+    />
+  ),
+}
+
+/**
+ * Mix of compact and full sections - full sections break the flow
+ */
+export const MixedCompactAndFull: Story = {
+  render: () => (
+    <MeasuredGroupedStudentsDemo
+      containerWidth={700}
+      buckets={[
+        {
+          bucket: 'today',
+          bucketName: 'Today',
+          categories: [
+            { category: 'cat-1', categoryName: 'Single A', students: [students.sonia] },
+            { category: 'cat-2', categoryName: 'Single B', students: [students.marcus] },
           ],
         },
         {
           bucket: 'thisWeek',
           bucketName: 'This Week',
           categories: [
-            // Full with multiple students
             {
-              category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.marcus, students.luna, students.alex],
+              category: 'cat-3',
+              categoryName: 'Multi Students',
+              students: [students.luna, students.alex, students.maya],
             },
           ],
         },
         {
           bucket: 'older',
           bucketName: 'Older',
-          categories: [
-            // Two compact flow together
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Sub)',
-              students: [students.maya],
-            },
-            {
-              category: 'ten-comp-add',
-              categoryName: 'Ten Complements (Add)',
-              students: [students.kai],
-            },
-            // Full with attention
-            {
-              category: 'basic-math',
-              categoryName: 'Basic Math',
-              students: [students.sonia],
-              attentionCount: 5,
-            },
-          ],
+          categories: [{ category: 'cat-4', categoryName: 'Single C', students: [students.kai] }],
         },
       ]}
     />
   ),
 }
 
-// =============================================================================
-// NEEDS ATTENTION STORIES
-// =============================================================================
-
 /**
- * Single student needing attention - renders compact, flows with other compact sections
+ * Needs Attention section (single student) - compact, flows with other compact items
  */
-export const NeedsAttentionSingle: Story = {
+export const NeedsAttentionSingleCompact: Story = {
   render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
+      containerWidth={700}
       needsAttentionStudents={[students.sonia]}
       buckets={[
         {
@@ -825,14 +902,10 @@ export const NeedsAttentionSingle: Story = {
           categories: [
             {
               category: 'five-comp-add',
-              categoryName: 'Five Complements (Add)',
+              categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Sub)',
-              students: [students.luna],
-            },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
           ],
         },
       ]}
@@ -841,11 +914,12 @@ export const NeedsAttentionSingle: Story = {
 }
 
 /**
- * Multiple students needing attention - renders full section with sticky header
+ * Needs Attention section (multiple students) - full section with header
  */
-export const NeedsAttentionMultiple: Story = {
+export const NeedsAttentionMultipleFull: Story = {
   render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
+      containerWidth={700}
       needsAttentionStudents={[students.sonia, students.marcus, students.luna]}
       buckets={[
         {
@@ -854,9 +928,10 @@ export const NeedsAttentionMultiple: Story = {
           categories: [
             {
               category: 'five-comp-add',
-              categoryName: 'Five Complements (Add)',
+              categoryName: 'Five Comp (Add)',
               students: [students.alex],
             },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.maya] },
           ],
         },
       ]}
@@ -865,62 +940,25 @@ export const NeedsAttentionMultiple: Story = {
 }
 
 /**
- * Single attention student flows together with single-student compact buckets
+ * Category with attention placeholder - not compact due to placeholder
  */
-export const NeedsAttentionWithCompactBuckets: Story = {
+export const CategoryWithAttentionPlaceholder: Story = {
   render: () => (
-    <GroupedStudentsDemo
-      needsAttentionStudents={[students.sonia]}
-      buckets={[
-        {
-          bucket: 'today',
-          bucketName: 'Today',
-          categories: [
-            {
-              category: 'five-comp-add',
-              categoryName: 'Five Comp (Add)',
-              students: [students.marcus],
-            },
-          ],
-        },
-        {
-          bucket: 'thisWeek',
-          bucketName: 'This Week',
-          categories: [
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Comp (Sub)',
-              students: [students.luna],
-            },
-          ],
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Multiple attention students (full section) followed by compact buckets
- */
-export const NeedsAttentionFullThenCompact: Story = {
-  render: () => (
-    <GroupedStudentsDemo
-      needsAttentionStudents={[students.sonia, students.marcus]}
+    <MeasuredGroupedStudentsDemo
+      containerWidth={700}
       buckets={[
         {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
+            { category: 'cat-1', categoryName: 'Compact', students: [students.sonia] },
             {
-              category: 'five-comp-add',
-              categoryName: 'Five Comp (Add)',
-              students: [students.luna],
+              category: 'cat-2',
+              categoryName: 'Has Placeholder',
+              students: [students.marcus],
+              attentionCount: 3,
             },
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Comp (Sub)',
-              students: [students.alex],
-            },
+            { category: 'cat-3', categoryName: 'Compact', students: [students.luna] },
           ],
         },
       ]}
@@ -929,11 +967,12 @@ export const NeedsAttentionFullThenCompact: Story = {
 }
 
 /**
- * Complete realistic scenario with attention section
+ * Multiple buckets with various configurations
  */
-export const NeedsAttentionRealistic: Story = {
+export const MultipleBucketsComplex: Story = {
   render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
+      containerWidth={800}
       needsAttentionStudents={[students.kai]}
       buckets={[
         {
@@ -951,27 +990,15 @@ export const NeedsAttentionRealistic: Story = {
           bucket: 'thisWeek',
           bucketName: 'This Week',
           categories: [
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Comp (Sub)',
-              students: [students.luna],
-            },
-            {
-              category: 'ten-comp-add',
-              categoryName: 'Ten Comp (Add)',
-              students: [students.alex],
-            },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
           ],
         },
         {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
-            {
-              category: 'basic-add',
-              categoryName: 'Basic Addition',
-              students: [students.maya],
-            },
+            { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
           ],
         },
       ]}
@@ -980,13 +1007,14 @@ export const NeedsAttentionRealistic: Story = {
 }
 
 /**
- * Dark mode with needs attention section
+ * Dark mode
  */
-export const NeedsAttentionDarkMode: Story = {
+export const DarkMode: Story = {
   render: () => (
-    <GroupedStudentsDemo
+    <MeasuredGroupedStudentsDemo
       isDark
-      needsAttentionStudents={[students.sonia, students.marcus]}
+      containerWidth={700}
+      needsAttentionStudents={[students.sonia]}
       buckets={[
         {
           bucket: 'older',
@@ -994,14 +1022,11 @@ export const NeedsAttentionDarkMode: Story = {
           categories: [
             {
               category: 'five-comp-add',
-              categoryName: 'Five Complements (Addition)',
-              students: [students.luna],
+              categoryName: 'Five Comp (Add)',
+              students: [students.marcus],
             },
-            {
-              category: 'ten-comp-sub',
-              categoryName: 'Ten Complements (Subtraction)',
-              students: [students.alex],
-            },
+            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
           ],
         },
       ]}
@@ -1010,4 +1035,52 @@ export const NeedsAttentionDarkMode: Story = {
   parameters: {
     backgrounds: { default: 'dark' },
   },
+}
+
+/**
+ * All categories are single-student - all flow together as compact
+ */
+export const AllCompact: Story = {
+  render: () => (
+    <MeasuredGroupedStudentsDemo
+      containerWidth={900}
+      buckets={[
+        {
+          bucket: 'older',
+          bucketName: 'Older',
+          categories: [
+            {
+              category: 'cat-1',
+              categoryName: 'Five Complements (Subtraction)',
+              students: [students.sonia],
+            },
+            {
+              category: 'cat-2',
+              categoryName: 'Five Complements (Addition)',
+              students: [students.marcus],
+            },
+            {
+              category: 'cat-3',
+              categoryName: 'Ten Complements (Subtraction)',
+              students: [students.luna],
+            },
+            {
+              category: 'cat-4',
+              categoryName: 'Ten Complements (Addition)',
+              students: [students.alex],
+            },
+            { category: 'cat-5', categoryName: 'Basic Addition', students: [students.maya] },
+            { category: 'cat-6', categoryName: 'Basic Subtraction', students: [students.kai] },
+          ],
+        },
+      ]}
+    />
+  ),
+}
+
+/**
+ * Edge case: empty buckets
+ */
+export const EmptyState: Story = {
+  render: () => <MeasuredGroupedStudentsDemo containerWidth={700} buckets={[]} />,
 }
