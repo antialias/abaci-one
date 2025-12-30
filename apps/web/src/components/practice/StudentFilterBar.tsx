@@ -655,7 +655,7 @@ const EXPIRY_OPTIONS = [
   { value: 120, label: '2 hours' },
 ] as const
 
-interface TeacherClassroomCardProps {
+export interface TeacherClassroomCardProps {
   classroom: Classroom
   currentView: StudentView
   onViewChange: (view: StudentView) => void
@@ -674,7 +674,7 @@ interface TeacherClassroomCardProps {
  * │ [📋 Enrolled (10)]  [🏫 Present (5)]  [🎯 Active (2)]           │
  * └──────────────────────────────────────────────────────────────────┘
  */
-function TeacherClassroomCard({
+export function TeacherClassroomCard({
   classroom,
   currentView,
   onViewChange,
