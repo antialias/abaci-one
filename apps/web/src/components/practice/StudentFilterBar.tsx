@@ -528,8 +528,8 @@ export function StudentFilterBar({
           </>
         )}
 
-        {/* Add Student FAB - only for parents (teachers have button in classroom card) */}
-        {onAddStudent && !classroom && (
+        {/* Add Student FAB - always available for creating students */}
+        {onAddStudent && (
           <button
             type="button"
             onClick={onAddStudent}
