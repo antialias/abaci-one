@@ -666,13 +666,11 @@ export interface TeacherClassroomCardProps {
 }
 
 /**
- * Unified classroom control card for teachers
+ * Unified classroom control chip for teachers - matches other filter pill styling
  *
- * ┌──────────────────────────────────────────────────────────────────┐
- * │ 📚 Mrs. Smith's Class          [ABC-123] [+Student] [⚙️]        │
- * ├──────────────────────────────────────────────────────────────────┤
- * │ [📋 Enrolled (10)]  [🏫 Present (5)]  [🎯 Active (2)]           │
- * └──────────────────────────────────────────────────────────────────┘
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ [+] [📋 Class Name ⚙️ (10)]  [🏫 Present (5)]  [🎯 Active (2)]           │
+ * └───────────────────────────────────────────────────────────────────────────┘
  */
 export function TeacherClassroomCard({
   classroom,
@@ -687,7 +685,6 @@ export function TeacherClassroomCard({
   const updateClassroom = useUpdateClassroom()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [nameValue, setNameValue] = useState(classroom.name)
-  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Reset name value when classroom changes or settings popover opens
   useEffect(() => {
@@ -717,251 +714,186 @@ export function TeacherClassroomCard({
   const currentExpiry = classroom.entryPromptExpiryMinutes
 
   return (
-    <div
-      data-component="teacher-classroom-card"
-      className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: '8px',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.600' : 'gray.300',
-        bg: isDark ? 'gray.750' : 'gray.50',
-        overflow: 'hidden',
-        flexShrink: 0,
-      })}
-    >
-      {/* Header row: Action buttons only - classroom name is now in first segment */}
-      <div
-        data-element="classroom-card-header"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          gap: '4px',
-          padding: '4px 8px',
-          borderBottom: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-        })}
-      >
-        {/* Action buttons - minimal icons */}
-        <div
-          data-element="classroom-actions"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2px',
-            flexShrink: 0,
-          })}
-        >
-          {/* Add student button - opens unified modal with share code, create, family code */}
-          {onAddStudentToClassroom && (
-            <button
-              type="button"
-              onClick={onAddStudentToClassroom}
-              data-action="add-student-to-classroom"
-              title="Add Student to Classroom"
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '22px',
-                height: '22px',
-                borderRadius: '4px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: isDark ? 'green.400' : 'green.600',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isDark ? 'green.900' : 'green.100',
-                },
-              })}
-            >
-              +
-            </button>
-          )}
-
-          {/* Settings button with popover - icon only */}
-          <Popover.Root open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-            <Popover.Trigger asChild>
-              <button
-                type="button"
-                data-action="open-classroom-settings"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                  },
-                })}
-                aria-label="Classroom settings"
-              >
-                ⚙️
-              </button>
-            </Popover.Trigger>
-
-            <Popover.Portal>
-              <Popover.Content
-                data-component="classroom-settings-popover"
-                side="bottom"
-                align="end"
-                sideOffset={8}
-                className={css({
-                  width: '240px',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '12px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  boxShadow: 'lg',
-                  padding: '12px',
-                  zIndex: Z_INDEX.POPOVER,
-                  animation: 'fadeIn 0.15s ease',
-                })}
-              >
-                <h3
-                  className={css({
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    color: isDark ? 'gray.200' : 'gray.700',
-                    marginBottom: '12px',
-                  })}
-                >
-                  Classroom Settings
-                </h3>
-
-                {/* Classroom name setting */}
-                <div data-setting="classroom-name" className={css({ marginBottom: '12px' })}>
-                  <label
-                    className={css({
-                      display: 'block',
-                      fontSize: '12px',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                      marginBottom: '4px',
-                    })}
-                  >
-                    Classroom name
-                  </label>
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={nameValue}
-                    onChange={(e) => setNameValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleNameSave()
-                      } else if (e.key === 'Escape') {
-                        setNameValue(classroom.name)
-                      }
-                    }}
-                    onBlur={handleNameSave}
-                    disabled={updateClassroom.isPending}
-                    className={css({
-                      width: '100%',
-                      padding: '6px 8px',
-                      fontSize: '13px',
-                      borderRadius: '6px',
-                      border: '1px solid',
-                      borderColor: isDark ? 'gray.600' : 'gray.300',
-                      backgroundColor: isDark ? 'gray.700' : 'white',
-                      color: isDark ? 'gray.100' : 'gray.800',
-                      cursor: updateClassroom.isPending ? 'wait' : 'text',
-                      opacity: updateClassroom.isPending ? 0.7 : 1,
-                      _focus: {
-                        outline: '2px solid',
-                        outlineColor: 'blue.500',
-                        outlineOffset: '1px',
-                      },
-                    })}
-                  />
-                </div>
-
-                {/* Entry prompt expiry setting */}
-                <div data-setting="entry-prompt-expiry">
-                  <label
-                    className={css({
-                      display: 'block',
-                      fontSize: '12px',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                      marginBottom: '4px',
-                    })}
-                  >
-                    Entry prompt expires after
-                  </label>
-                  <select
-                    value={currentExpiry ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      handleExpiryChange(val === '' ? null : Number(val))
-                    }}
-                    disabled={updateClassroom.isPending}
-                    className={css({
-                      width: '100%',
-                      padding: '6px 8px',
-                      fontSize: '13px',
-                      borderRadius: '6px',
-                      border: '1px solid',
-                      borderColor: isDark ? 'gray.600' : 'gray.300',
-                      backgroundColor: isDark ? 'gray.700' : 'white',
-                      color: isDark ? 'gray.100' : 'gray.800',
-                      cursor: updateClassroom.isPending ? 'wait' : 'pointer',
-                      opacity: updateClassroom.isPending ? 0.7 : 1,
-                      _focus: {
-                        outline: '2px solid',
-                        outlineColor: 'blue.500',
-                        outlineOffset: '1px',
-                      },
-                    })}
-                  >
-                    {EXPIRY_OPTIONS.map((opt) => (
-                      <option key={opt.value ?? 'default'} value={opt.value ?? ''}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p
-                    className={css({
-                      fontSize: '11px',
-                      color: isDark ? 'gray.500' : 'gray.400',
-                      marginTop: '4px',
-                      lineHeight: '1.4',
-                    })}
-                  >
-                    How long parents have to respond before the entry prompt expires
-                  </p>
-                </div>
-
-                <Popover.Arrow
-                  className={css({
-                    fill: isDark ? 'gray.800' : 'white',
-                  })}
-                />
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
-      </div>
-
-      {/* Filter row: Embedded compound chip - flush with card edges */}
+    <Popover.Root open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+      {/* No wrapper div - TeacherCompoundChip handles its own border/radius like other pills */}
       <TeacherCompoundChip
         currentView={currentView}
         onViewChange={onViewChange}
         viewCounts={viewCounts}
         availableViews={availableViews}
-        embedded
         classroomName={classroom.name}
+        onAddStudent={onAddStudentToClassroom}
+        settingsTrigger={
+          <Popover.Trigger asChild>
+            <button
+              type="button"
+              data-action="open-classroom-settings"
+              onClick={(e) => e.stopPropagation()}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '20px',
+                height: '20px',
+                borderRadius: '4px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: isDark ? 'gray.400' : 'gray.500',
+                fontSize: '11px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                marginLeft: '4px',
+                flexShrink: 0,
+                _hover: {
+                  backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                },
+              })}
+              aria-label="Classroom settings"
+            >
+              ⚙️
+            </button>
+          </Popover.Trigger>
+        }
       />
-    </div>
+
+      <Popover.Portal>
+        <Popover.Content
+          data-component="classroom-settings-popover"
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          className={css({
+            width: '240px',
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            boxShadow: 'lg',
+            padding: '12px',
+            zIndex: Z_INDEX.POPOVER,
+            animation: 'fadeIn 0.15s ease',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '13px',
+              fontWeight: '600',
+              color: isDark ? 'gray.200' : 'gray.700',
+              marginBottom: '12px',
+            })}
+          >
+            Classroom Settings
+          </h3>
+
+          {/* Classroom name setting */}
+          <div data-setting="classroom-name" className={css({ marginBottom: '12px' })}>
+            <label
+              className={css({
+                display: 'block',
+                fontSize: '12px',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '4px',
+              })}
+            >
+              Classroom name
+            </label>
+            <input
+              type="text"
+              value={nameValue}
+              onChange={(e) => setNameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleNameSave()
+                } else if (e.key === 'Escape') {
+                  setNameValue(classroom.name)
+                }
+              }}
+              onBlur={handleNameSave}
+              disabled={updateClassroom.isPending}
+              className={css({
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: '13px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: isDark ? 'gray.700' : 'white',
+                color: isDark ? 'gray.100' : 'gray.800',
+                cursor: updateClassroom.isPending ? 'wait' : 'text',
+                opacity: updateClassroom.isPending ? 0.7 : 1,
+                _focus: {
+                  outline: '2px solid',
+                  outlineColor: 'blue.500',
+                  outlineOffset: '1px',
+                },
+              })}
+            />
+          </div>
+
+          {/* Entry prompt expiry setting */}
+          <div data-setting="entry-prompt-expiry">
+            <label
+              className={css({
+                display: 'block',
+                fontSize: '12px',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '4px',
+              })}
+            >
+              Entry prompt expires after
+            </label>
+            <select
+              value={currentExpiry ?? ''}
+              onChange={(e) => {
+                const val = e.target.value
+                handleExpiryChange(val === '' ? null : Number(val))
+              }}
+              disabled={updateClassroom.isPending}
+              className={css({
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: '13px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: isDark ? 'gray.700' : 'white',
+                color: isDark ? 'gray.100' : 'gray.800',
+                cursor: updateClassroom.isPending ? 'wait' : 'pointer',
+                opacity: updateClassroom.isPending ? 0.7 : 1,
+                _focus: {
+                  outline: '2px solid',
+                  outlineColor: 'blue.500',
+                  outlineOffset: '1px',
+                },
+              })}
+            >
+              {EXPIRY_OPTIONS.map((opt) => (
+                <option key={opt.value ?? 'default'} value={opt.value ?? ''}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p
+              className={css({
+                fontSize: '11px',
+                color: isDark ? 'gray.500' : 'gray.400',
+                marginTop: '4px',
+                lineHeight: '1.4',
+              })}
+            >
+              How long parents have to respond before the entry prompt expires
+            </p>
+          </div>
+
+          <Popover.Arrow
+            className={css({
+              fill: isDark ? 'gray.800' : 'white',
+            })}
+          />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
 

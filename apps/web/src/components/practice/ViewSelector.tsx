@@ -535,6 +535,10 @@ export interface TeacherCompoundChipProps {
   embedded?: boolean
   /** Optional classroom name to display instead of "Enrolled" in first segment */
   classroomName?: string
+  /** Optional callback for add student action - renders a "+" prefix when provided */
+  onAddStudent?: () => void
+  /** Optional settings trigger element to render inside the first segment */
+  settingsTrigger?: ReactNode
 }
 
 /**
@@ -553,6 +557,8 @@ export function TeacherCompoundChip({
   isDark: isDarkProp,
   embedded = false,
   classroomName,
+  onAddStudent,
+  settingsTrigger,
 }: TeacherCompoundChipProps) {
   const { resolvedTheme } = useTheme()
   const isDark = isDarkProp ?? resolvedTheme === 'dark'
@@ -593,6 +599,39 @@ export function TeacherCompoundChip({
             : 'gray.300',
       })}
     >
+      {/* Add student prefix button */}
+      {onAddStudent && (
+        <button
+          type="button"
+          onClick={onAddStudent}
+          data-action="add-student-to-classroom"
+          title="Add Student to Classroom"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: embedded ? '4px 8px' : '6px 10px',
+            backgroundColor: isDark ? 'green.800' : 'green.100',
+            color: isDark ? 'green.300' : 'green.700',
+            border: 'none',
+            borderRight: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+            fontSize: embedded ? '12px' : '13px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            _hover: {
+              backgroundColor: isDark ? 'green.700' : 'green.200',
+            },
+            _active: {
+              backgroundColor: isDark ? 'green.600' : 'green.300',
+            },
+          })}
+        >
+          +
+        </button>
+      )}
+
       {/* Enrolled segment - shows classroom name if provided */}
       <ChipSegment
         config={enrolledConfig}
@@ -605,6 +644,7 @@ export function TeacherCompoundChip({
         colorScheme="blue"
         embedded={embedded}
         labelOverride={classroomName}
+        settingsTrigger={settingsTrigger}
       />
 
       {/* In Classroom segment */}
@@ -651,6 +691,8 @@ interface ChipSegmentProps {
   embedded?: boolean
   /** Optional label override (e.g., classroom name instead of "Enrolled") */
   labelOverride?: string
+  /** Optional settings trigger element to render after the label */
+  settingsTrigger?: ReactNode
 }
 
 function ChipSegment({
@@ -664,6 +706,7 @@ function ChipSegment({
   colorScheme,
   embedded = false,
   labelOverride,
+  settingsTrigger,
 }: ChipSegmentProps) {
   const isLast = position === 'last'
 
@@ -728,6 +771,7 @@ function ChipSegment({
     >
       <span>{config.icon}</span>
       <span>{labelOverride ?? config.shortLabel ?? config.label}</span>
+      {settingsTrigger}
       {count !== undefined && (
         <span
           data-element="segment-count"
