@@ -684,26 +684,15 @@ export function TeacherClassroomCard({
 }: TeacherClassroomCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const shareCode = useShareCode({ type: 'classroom', code: classroom.code })
   const updateClassroom = useUpdateClassroom()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(classroom.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset name value when classroom changes or popover opens
+  // Reset name value when classroom changes or settings popover opens
   useEffect(() => {
     setNameValue(classroom.name)
-    setEditingName(false)
   }, [classroom.name, isSettingsOpen])
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingName && nameInputRef.current) {
-      nameInputRef.current.focus()
-      nameInputRef.current.select()
-    }
-  }, [editingName])
 
   const handleNameSave = useCallback(() => {
     const trimmedName = nameValue.trim()
@@ -713,7 +702,6 @@ export function TeacherClassroomCard({
         name: trimmedName,
       })
     }
-    setEditingName(false)
   }, [classroom.id, classroom.name, nameValue, updateClassroom])
 
   const handleExpiryChange = useCallback(
@@ -734,7 +722,7 @@ export function TeacherClassroomCard({
       className={css({
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: '12px',
+        borderRadius: '8px',
         border: '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.300',
         bg: isDark ? 'gray.750' : 'gray.50',
@@ -742,102 +730,30 @@ export function TeacherClassroomCard({
         flexShrink: 0,
       })}
     >
-      {/* Header row: Classroom name + actions */}
+      {/* Header row: Action buttons only - classroom name is now in first segment */}
       <div
         data-element="classroom-card-header"
         className={css({
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          padding: '8px 12px',
+          justifyContent: 'flex-end',
+          gap: '4px',
+          padding: '4px 8px',
           borderBottom: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        {/* Classroom name - editable */}
-        <div
-          data-element="classroom-name"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            minWidth: 0,
-            flex: 1,
-          })}
-        >
-          <span className={css({ fontSize: '14px', flexShrink: 0 })}>📚</span>
-          {editingName ? (
-            <input
-              ref={nameInputRef}
-              type="text"
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleNameSave()
-                } else if (e.key === 'Escape') {
-                  setNameValue(classroom.name)
-                  setEditingName(false)
-                }
-              }}
-              onBlur={handleNameSave}
-              disabled={updateClassroom.isPending}
-              className={css({
-                flex: 1,
-                minWidth: '100px',
-                padding: '2px 6px',
-                fontSize: '14px',
-                fontWeight: '600',
-                borderRadius: '4px',
-                border: '1px solid',
-                borderColor: 'blue.500',
-                backgroundColor: isDark ? 'gray.700' : 'white',
-                color: isDark ? 'gray.100' : 'gray.800',
-                outline: 'none',
-              })}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditingName(true)}
-              className={css({
-                fontSize: '14px',
-                fontWeight: '600',
-                color: isDark ? 'gray.100' : 'gray.800',
-                cursor: 'pointer',
-                padding: '2px 4px',
-                borderRadius: '4px',
-                background: 'transparent',
-                border: 'none',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                _hover: {
-                  bg: isDark ? 'gray.600' : 'gray.200',
-                },
-              })}
-              title="Click to edit classroom name"
-            >
-              {classroom.name}
-            </button>
-          )}
-        </div>
-
-        {/* Action buttons */}
+        {/* Action buttons - minimal icons */}
         <div
           data-element="classroom-actions"
           className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '2px',
             flexShrink: 0,
           })}
         >
-          {/* Share code chip */}
-          <ShareCodePanel shareCode={shareCode} compact showRegenerate={false} />
-
-          {/* Add student button - auto-enrolls in classroom */}
+          {/* Add student button - opens unified modal with share code, create, family code */}
           {onAddStudentToClassroom && (
             <button
               type="button"
@@ -848,19 +764,17 @@ export function TeacherClassroomCard({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                border: '1px solid',
-                borderColor: isDark ? 'green.700' : 'green.300',
-                backgroundColor: isDark ? 'green.900' : 'green.50',
+                width: '22px',
+                height: '22px',
+                borderRadius: '4px',
+                border: 'none',
+                backgroundColor: 'transparent',
                 color: isDark ? 'green.400' : 'green.600',
-                fontSize: '16px',
+                fontSize: '14px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 _hover: {
-                  backgroundColor: isDark ? 'green.800' : 'green.100',
-                  borderColor: isDark ? 'green.600' : 'green.400',
+                  backgroundColor: isDark ? 'green.900' : 'green.100',
                 },
               })}
             >
@@ -868,7 +782,7 @@ export function TeacherClassroomCard({
             </button>
           )}
 
-          {/* Settings button with popover */}
+          {/* Settings button with popover - icon only */}
           <Popover.Root open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <Popover.Trigger asChild>
               <button
@@ -878,19 +792,17 @@ export function TeacherClassroomCard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.600' : 'gray.300',
-                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
                   color: isDark ? 'gray.400' : 'gray.500',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   _hover: {
-                    backgroundColor: isDark ? 'gray.600' : 'gray.100',
-                    borderColor: isDark ? 'gray.500' : 'gray.400',
+                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
                   },
                 })}
                 aria-label="Classroom settings"
@@ -927,6 +839,52 @@ export function TeacherClassroomCard({
                 >
                   Classroom Settings
                 </h3>
+
+                {/* Classroom name setting */}
+                <div data-setting="classroom-name" className={css({ marginBottom: '12px' })}>
+                  <label
+                    className={css({
+                      display: 'block',
+                      fontSize: '12px',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      marginBottom: '4px',
+                    })}
+                  >
+                    Classroom name
+                  </label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleNameSave()
+                      } else if (e.key === 'Escape') {
+                        setNameValue(classroom.name)
+                      }
+                    }}
+                    onBlur={handleNameSave}
+                    disabled={updateClassroom.isPending}
+                    className={css({
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '13px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: isDark ? 'gray.600' : 'gray.300',
+                      backgroundColor: isDark ? 'gray.700' : 'white',
+                      color: isDark ? 'gray.100' : 'gray.800',
+                      cursor: updateClassroom.isPending ? 'wait' : 'text',
+                      opacity: updateClassroom.isPending ? 0.7 : 1,
+                      _focus: {
+                        outline: '2px solid',
+                        outlineColor: 'blue.500',
+                        outlineOffset: '1px',
+                      },
+                    })}
+                  />
+                </div>
 
                 {/* Entry prompt expiry setting */}
                 <div data-setting="entry-prompt-expiry">
@@ -994,21 +952,15 @@ export function TeacherClassroomCard({
         </div>
       </div>
 
-      {/* Filter row: Embedded compound chip */}
-      <div
-        data-element="classroom-card-filters"
-        className={css({
-          padding: '6px 8px',
-        })}
-      >
-        <TeacherCompoundChip
-          currentView={currentView}
-          onViewChange={onViewChange}
-          viewCounts={viewCounts}
-          availableViews={availableViews}
-          embedded
-        />
-      </div>
+      {/* Filter row: Embedded compound chip - flush with card edges */}
+      <TeacherCompoundChip
+        currentView={currentView}
+        onViewChange={onViewChange}
+        viewCounts={viewCounts}
+        availableViews={availableViews}
+        embedded
+        classroomName={classroom.name}
+      />
     </div>
   )
 }

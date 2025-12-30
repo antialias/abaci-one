@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useToast } from '@/components/common/ToastContext'
 import {
   AddStudentByFamilyCodeModal,
+  AddStudentToClassroomModal,
   CreateClassroomForm,
   PendingApprovalsSection,
   SessionObserverModal,
@@ -114,7 +115,10 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
   // Track if we're adding to classroom (auto-enroll mode)
   const [addToClassroomMode, setAddToClassroomMode] = useState(false)
 
-  // Add student modal state (teacher mode - add by family code)
+  // Unified add student to classroom modal (teacher mode - combines create, share, family code)
+  const [showUnifiedAddModal, setShowUnifiedAddModal] = useState(false)
+
+  // Add student modal state (teacher mode - add by family code) - legacy, kept for direct access
   const [showAddByFamilyCode, setShowAddByFamilyCode] = useState(false)
 
   // Session observation state
@@ -302,8 +306,13 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     setShowAddModal(true)
   }, [])
 
-  // Handle add student to classroom - show create modal with auto-enroll
+  // Handle add student to classroom - show unified modal with all options
   const handleAddStudentToClassroom = useCallback(() => {
+    setShowUnifiedAddModal(true)
+  }, [])
+
+  // Handle create student from unified modal - opens create modal with auto-enroll
+  const handleCreateStudentFromUnified = useCallback(() => {
     setAddToClassroomMode(true)
     setShowAddModal(true)
   }, [])
@@ -709,7 +718,19 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
         classroomName={addToClassroomMode ? classroom?.name : undefined}
       />
 
-      {/* Add Student Modal (Teacher - add by family code) */}
+      {/* Unified Add Student to Classroom Modal (Teacher mode - combines all options) */}
+      {classroomId && classroomCode && classroom && (
+        <AddStudentToClassroomModal
+          isOpen={showUnifiedAddModal}
+          onClose={() => setShowUnifiedAddModal(false)}
+          classroomId={classroomId}
+          classroomName={classroom.name}
+          classroomCode={classroomCode}
+          onCreateStudent={handleCreateStudentFromUnified}
+        />
+      )}
+
+      {/* Add Student Modal (Teacher - add by family code) - legacy, kept for direct access */}
       {classroomId && (
         <AddStudentByFamilyCodeModal
           isOpen={showAddByFamilyCode}

@@ -533,6 +533,8 @@ export interface TeacherCompoundChipProps {
   isDark?: boolean
   /** When true, removes outer border/radius (for embedding in a card) */
   embedded?: boolean
+  /** Optional classroom name to display instead of "Enrolled" in first segment */
+  classroomName?: string
 }
 
 /**
@@ -550,6 +552,7 @@ export function TeacherCompoundChip({
   availableViews,
   isDark: isDarkProp,
   embedded = false,
+  classroomName,
 }: TeacherCompoundChipProps) {
   const { resolvedTheme } = useTheme()
   const isDark = isDarkProp ?? resolvedTheme === 'dark'
@@ -573,11 +576,14 @@ export function TeacherCompoundChip({
       className={css({
         display: 'flex',
         alignItems: 'stretch',
-        borderRadius: '16px',
-        border: '1px solid',
+        // When embedded, no border/radius - blends into parent card
+        borderRadius: embedded ? '0' : '16px',
+        border: embedded ? 'none' : '1px solid',
         overflow: 'hidden',
         flexShrink: 0,
         transition: 'all 0.15s ease',
+        // When embedded, fill width
+        width: embedded ? '100%' : 'auto',
         borderColor: isAnyActive
           ? isDark
             ? 'blue.600'
@@ -587,7 +593,7 @@ export function TeacherCompoundChip({
             : 'gray.300',
       })}
     >
-      {/* Enrolled segment */}
+      {/* Enrolled segment - shows classroom name if provided */}
       <ChipSegment
         config={enrolledConfig}
         isActive={isEnrolledActive}
@@ -597,6 +603,8 @@ export function TeacherCompoundChip({
         position="first"
         isCompoundActive={isAnyActive}
         colorScheme="blue"
+        embedded={embedded}
+        labelOverride={classroomName}
       />
 
       {/* In Classroom segment */}
@@ -609,6 +617,7 @@ export function TeacherCompoundChip({
         position={hasActiveSegment ? 'middle' : 'last'}
         isCompoundActive={isAnyActive}
         colorScheme="blue"
+        embedded={embedded}
       />
 
       {/* Active segment - only show if there are active sessions */}
@@ -622,6 +631,7 @@ export function TeacherCompoundChip({
           position="last"
           isCompoundActive={isAnyActive}
           colorScheme="green"
+          embedded={embedded}
         />
       )}
     </div>
@@ -637,6 +647,10 @@ interface ChipSegmentProps {
   position: 'first' | 'middle' | 'last'
   isCompoundActive: boolean
   colorScheme: 'blue' | 'green'
+  /** When embedded in a card, segments flex evenly */
+  embedded?: boolean
+  /** Optional label override (e.g., classroom name instead of "Enrolled") */
+  labelOverride?: string
 }
 
 function ChipSegment({
@@ -648,6 +662,8 @@ function ChipSegment({
   position,
   isCompoundActive,
   colorScheme,
+  embedded = false,
+  labelOverride,
 }: ChipSegmentProps) {
   const isLast = position === 'last'
 
@@ -661,14 +677,17 @@ function ChipSegment({
       className={css({
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        padding: '6px 12px',
+        justifyContent: embedded ? 'center' : 'flex-start',
+        gap: embedded ? '4px' : '6px',
+        padding: embedded ? '4px 8px' : '6px 12px',
         cursor: 'pointer',
-        fontSize: '13px',
+        fontSize: embedded ? '11px' : '13px',
         fontWeight: 'medium',
         transition: 'all 0.15s ease',
         whiteSpace: 'nowrap',
         border: 'none',
+        // When embedded, segments share space equally
+        flex: embedded ? 1 : 'none',
         borderRight: isLast ? 'none' : '1px solid',
         borderColor: isDark ? 'gray.600' : 'gray.300',
         bg: isActive
@@ -708,7 +727,7 @@ function ChipSegment({
       })}
     >
       <span>{config.icon}</span>
-      <span>{config.shortLabel ?? config.label}</span>
+      <span>{labelOverride ?? config.shortLabel ?? config.label}</span>
       {count !== undefined && (
         <span
           data-element="segment-count"

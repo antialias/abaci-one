@@ -376,20 +376,20 @@ function CompactShareChip({
             css({
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              bg: isDark ? 'gray.700' : 'gray.100',
-              border: '1px solid',
-              borderColor: isDark ? 'gray.600' : 'gray.300',
-              borderRadius: '6px',
-              fontSize: '12px',
+              gap: '3px',
+              padding: '2px 6px',
+              bg: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
               fontFamily: 'monospace',
-              color: isDark ? 'gray.300' : 'gray.600',
+              fontWeight: '500',
+              color: isDark ? 'gray.400' : 'gray.500',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
               _hover: {
-                bg: isDark ? 'gray.600' : 'gray.200',
-                borderColor: isDark ? 'gray.500' : 'gray.400',
+                bg: isDark ? 'gray.700' : 'gray.200',
+                color: isDark ? 'gray.300' : 'gray.600',
               },
               _active: {
                 transform: 'scale(0.98)',
@@ -397,7 +397,7 @@ function CompactShareChip({
             }) + (className ? ` ${className}` : '')
           }
         >
-          <span>📋</span>
+          <span className={css({ fontSize: '10px' })}>📋</span>
           <span>{code}</span>
         </button>
       </Popover.Trigger>

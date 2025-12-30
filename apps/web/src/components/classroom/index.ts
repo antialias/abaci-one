@@ -1,4 +1,5 @@
 export { AddStudentByFamilyCodeModal } from './AddStudentByFamilyCodeModal'
+export { AddStudentToClassroomModal } from './AddStudentToClassroomModal'
 export { ClassroomCodeShare } from './ClassroomCodeShare'
 export { CreateClassroomForm } from './CreateClassroomForm'
 export { EnrollChildFlow } from './EnrollChildFlow'
