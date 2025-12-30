@@ -182,6 +182,11 @@ export const WithExistingPlan: Story = {
           approvedAt: new Date(),
           startedAt: null,
           completedAt: null,
+          isPaused: false,
+          pausedAt: null,
+          pausedBy: null,
+          pauseReason: null,
+          retryState: null,
         }}
       />
     </StoryWrapper>

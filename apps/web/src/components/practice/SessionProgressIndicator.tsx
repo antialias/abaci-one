@@ -17,7 +17,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { getSlotRetryStatus } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 
 export interface SessionProgressIndicatorProps {
@@ -37,6 +38,8 @@ export interface SessionProgressIndicatorProps {
   isDark: boolean
   /** Compact mode for smaller screens */
   compact?: boolean
+  /** Optional session plan for retry status display */
+  plan?: SessionPlan
 }
 
 function getPartEmoji(type: SessionPart['type']): string {
@@ -79,20 +82,24 @@ function getSlotResult(
  */
 function CollapsedSection({
   part,
+  partIndex,
   results,
   linearOffset,
   isDark,
   isBrowseMode,
   onNavigate,
   isCompleted,
+  plan,
 }: {
   part: SessionPart
+  partIndex: number
   results: SlotResult[]
   linearOffset: number
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
   isCompleted: boolean
+  plan?: SessionPlan
 }) {
   const completedCount = part.slots.filter((_, i) =>
     getSlotResult(results, part.partNumber, i)
@@ -109,12 +116,14 @@ function CollapsedSection({
     return (
       <ExpandedSection
         part={part}
+        partIndex={partIndex}
         results={results}
         linearOffset={linearOffset}
         currentLinearIndex={-1}
         isDark={isDark}
         isBrowseMode={true}
         onNavigate={onNavigate}
+        plan={plan}
       />
     )
   }
@@ -174,20 +183,24 @@ function CollapsedSection({
  */
 function ExpandedSection({
   part,
+  partIndex,
   results,
   linearOffset,
   currentLinearIndex,
   isDark,
   isBrowseMode,
   onNavigate,
+  plan,
 }: {
   part: SessionPart
+  partIndex: number
   results: SlotResult[]
   linearOffset: number
   currentLinearIndex: number
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
+  plan?: SessionPlan
 }) {
   return (
     <div
@@ -223,79 +236,125 @@ function ExpandedSection({
         const isCompleted = result !== undefined
         const isCorrect = result?.isCorrect
 
+        // Get retry status if plan is available
+        const retryStatus = plan ? getSlotRetryStatus(plan, partIndex, slotIndex) : null
+        const attemptCount = retryStatus?.attemptCount ?? (isCompleted ? 1 : 0)
+        const hasRetried = attemptCount > 1
+
         const isClickable = isBrowseMode && onNavigate
 
         return (
-          <button
+          <div
             key={slotIndex}
-            type="button"
-            data-slot-index={slotIndex}
-            data-linear-index={linearIndex}
-            data-status={
-              isCurrent
-                ? 'current'
-                : isCompleted
-                  ? isCorrect
-                    ? 'correct'
-                    : 'incorrect'
-                  : 'pending'
-            }
-            onClick={isClickable ? () => onNavigate(linearIndex) : undefined}
-            disabled={!isClickable}
             className={css({
-              width: '20px',
-              height: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.625rem',
-              fontWeight: isCurrent ? 'bold' : 'normal',
-              borderRadius: '4px',
-              border: '1px solid',
-              cursor: isClickable ? 'pointer' : 'default',
-              transition: 'all 0.15s ease',
-              // Current problem
-              ...(isCurrent && {
-                backgroundColor: isDark ? 'yellow.600' : 'yellow.400',
-                borderColor: isDark ? 'yellow.500' : 'yellow.500',
-                color: isDark ? 'yellow.100' : 'yellow.900',
-                boxShadow: `0 0 0 2px ${isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)'}`,
-              }),
-              // Completed correct
-              ...(!isCurrent &&
-                isCompleted &&
-                isCorrect && {
-                  backgroundColor: isDark ? 'green.900' : 'green.100',
-                  borderColor: isDark ? 'green.700' : 'green.300',
-                  color: isDark ? 'green.300' : 'green.700',
-                }),
-              // Completed incorrect
-              ...(!isCurrent &&
-                isCompleted &&
-                !isCorrect && {
-                  backgroundColor: isDark ? 'red.900' : 'red.100',
-                  borderColor: isDark ? 'red.700' : 'red.300',
-                  color: isDark ? 'red.300' : 'red.700',
-                }),
-              // Pending
-              ...(!isCurrent &&
-                !isCompleted && {
-                  backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                  borderColor: isDark ? 'gray.600' : 'gray.300',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                }),
-              // Hover effect in browse mode
-              ...(isClickable && {
-                _hover: {
-                  transform: 'scale(1.15)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                },
-              }),
+              position: 'relative',
+              display: 'inline-block',
             })}
-            title={isBrowseMode ? `Go to problem ${linearIndex + 1}` : undefined}
           >
-            {isBrowseMode ? linearIndex + 1 : isCompleted ? (isCorrect ? '✓' : '✗') : '○'}
-          </button>
+            <button
+              type="button"
+              data-slot-index={slotIndex}
+              data-linear-index={linearIndex}
+              data-attempt-count={attemptCount}
+              data-status={
+                isCurrent
+                  ? 'current'
+                  : isCompleted
+                    ? isCorrect
+                      ? 'correct'
+                      : 'incorrect'
+                    : 'pending'
+              }
+              onClick={isClickable ? () => onNavigate(linearIndex) : undefined}
+              disabled={!isClickable}
+              className={css({
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.625rem',
+                fontWeight: isCurrent ? 'bold' : 'normal',
+                borderRadius: '4px',
+                border: '1px solid',
+                cursor: isClickable ? 'pointer' : 'default',
+                transition: 'all 0.15s ease',
+                // Current problem
+                ...(isCurrent && {
+                  backgroundColor: isDark ? 'yellow.600' : 'yellow.400',
+                  borderColor: isDark ? 'yellow.500' : 'yellow.500',
+                  color: isDark ? 'yellow.100' : 'yellow.900',
+                  boxShadow: `0 0 0 2px ${isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)'}`,
+                }),
+                // Completed correct
+                ...(!isCurrent &&
+                  isCompleted &&
+                  isCorrect && {
+                    backgroundColor: isDark ? 'green.900' : 'green.100',
+                    borderColor: isDark ? 'green.700' : 'green.300',
+                    color: isDark ? 'green.300' : 'green.700',
+                  }),
+                // Completed incorrect
+                ...(!isCurrent &&
+                  isCompleted &&
+                  !isCorrect && {
+                    backgroundColor: isDark ? 'red.900' : 'red.100',
+                    borderColor: isDark ? 'red.700' : 'red.300',
+                    color: isDark ? 'red.300' : 'red.700',
+                  }),
+                // Pending
+                ...(!isCurrent &&
+                  !isCompleted && {
+                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                    borderColor: isDark ? 'gray.600' : 'gray.300',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                  }),
+                // Hover effect in browse mode
+                ...(isClickable && {
+                  _hover: {
+                    transform: 'scale(1.15)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  },
+                }),
+              })}
+              title={
+                isBrowseMode
+                  ? `Go to problem ${linearIndex + 1}`
+                  : hasRetried
+                    ? `Attempt ${attemptCount} of 3`
+                    : undefined
+              }
+            >
+              {isBrowseMode ? linearIndex + 1 : isCompleted ? (isCorrect ? '✓' : '✗') : '○'}
+            </button>
+            {/* Retry attempt badge */}
+            {hasRetried && (
+              <span
+                data-element="retry-badge"
+                className={css({
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  width: '12px',
+                  height: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.5rem',
+                  fontWeight: 'bold',
+                  borderRadius: '50%',
+                  backgroundColor: isDark ? 'orange.600' : 'orange.500',
+                  color: 'white',
+                  border: '1px solid',
+                  borderColor: isDark ? 'orange.400' : 'orange.600',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                })}
+                title={`Attempt ${attemptCount} of 3`}
+              >
+                {attemptCount}
+              </span>
+            )}
+          </div>
         )
       })}
     </div>
@@ -311,6 +370,7 @@ export function SessionProgressIndicator({
   onNavigate,
   isDark,
   compact = false,
+  plan,
 }: SessionProgressIndicatorProps) {
   // Calculate linear index for current position
   const currentLinearIndex = useMemo(() => {
@@ -395,22 +455,26 @@ export function SessionProgressIndicator({
               {shouldCollapse ? (
                 <CollapsedSection
                   part={part}
+                  partIndex={partIndex}
                   results={results}
                   linearOffset={partLinearOffset}
                   isDark={isDark}
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
                   isCompleted={isCompletedPart}
+                  plan={plan}
                 />
               ) : (
                 <ExpandedSection
                   part={part}
+                  partIndex={partIndex}
                   results={results}
                   linearOffset={partLinearOffset}
                   currentLinearIndex={currentLinearIndex}
                   isDark={isDark}
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
+                  plan={plan}
                 />
               )}
             </div>

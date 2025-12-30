@@ -217,6 +217,7 @@ function createMockSessionPlanWithProblems(config: {
     pausedAt: null,
     pausedBy: null,
     pauseReason: null,
+    retryState: null,
   }
 }
 

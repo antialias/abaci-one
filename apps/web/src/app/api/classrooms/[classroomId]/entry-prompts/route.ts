@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, lt } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
@@ -90,8 +90,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // Get currently present students
     const presentPlayerIds = new Set(await getPresentPlayerIds(classroomId))
 
-    // Get existing pending prompts to avoid duplicates (only non-expired ones)
+    // Mark any expired pending prompts as 'expired' so unique constraint allows new ones
     const now = new Date()
+    await db
+      .update(schema.entryPrompts)
+      .set({ status: 'expired' })
+      .where(
+        and(
+          eq(schema.entryPrompts.classroomId, classroomId),
+          eq(schema.entryPrompts.status, 'pending'),
+          inArray(schema.entryPrompts.playerId, body.playerIds),
+          lt(schema.entryPrompts.expiresAt, now) // Only mark actually expired prompts
+        )
+      )
+
+    // Now query for any truly active (non-expired) pending prompts
     const existingPrompts = await db.query.entryPrompts.findMany({
       where: and(
         eq(schema.entryPrompts.classroomId, classroomId),
@@ -99,7 +112,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         inArray(schema.entryPrompts.playerId, body.playerIds)
       ),
     })
-    // Filter out expired prompts - they shouldn't block creating new prompts
+    // Filter to only active prompts (not expired)
     const activeExistingPrompts = existingPrompts.filter((p) => p.expiresAt > now)
     const existingPromptPlayerIds = new Set(activeExistingPrompts.map((p) => p.playerId))
 

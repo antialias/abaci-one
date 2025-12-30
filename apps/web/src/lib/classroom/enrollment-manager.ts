@@ -449,10 +449,7 @@ export async function getEnrolledClassrooms(playerId: string): Promise<Classroom
  *
  * @returns true if enrolled, false if already enrolled
  */
-export async function directEnrollStudent(
-  classroomId: string,
-  playerId: string
-): Promise<boolean> {
+export async function directEnrollStudent(classroomId: string, playerId: string): Promise<boolean> {
   // Check if already enrolled
   const existing = await db.query.classroomEnrollments.findFirst({
     where: and(

@@ -5,19 +5,23 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import type {
-  ProblemSlot,
-  SessionHealth,
-  SessionPart,
-  SessionPartType,
-  SessionPlan,
-  SlotResult,
+import {
+  getCurrentProblemInfo,
+  isInRetryEpoch,
+  needsRetryTransition,
+  type ProblemSlot,
+  type SessionHealth,
+  type SessionPart,
+  type SessionPartType,
+  type SessionPlan,
+  type SlotResult,
 } from '@/db/schema/session-plans'
 
 import { css } from '../../../styled-system/css'
 import { type AutoPauseStats, calculateAutoPauseInfo, type PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
+import { RetryTransitionScreen } from './RetryTransitionScreen'
 import { SessionPausedModal } from './SessionPausedModal'
 
 // Re-export types for consumers
@@ -631,18 +635,19 @@ export function ActiveSession({
   const { playSound } = usePracticeSoundEffects()
 
   // Compute initial problem from plan for SSR hydration (must be before useInteractionPhase)
+  // Uses getCurrentProblemInfo to account for retry epochs
+  const currentProblemInfo = useMemo(() => getCurrentProblemInfo(plan), [plan])
+
   const initialProblem = useMemo(() => {
-    const currentPart = plan.parts[plan.currentPartIndex]
-    const currentSlot = currentPart?.slots[plan.currentSlotIndex]
-    if (currentPart && currentSlot?.problem) {
+    if (currentProblemInfo) {
       return {
-        problem: currentSlot.problem,
-        slotIndex: plan.currentSlotIndex,
+        problem: currentProblemInfo.problem,
+        slotIndex: currentProblemInfo.originalSlotIndex,
         partIndex: plan.currentPartIndex,
       }
     }
     return undefined
-  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+  }, [currentProblemInfo, plan.currentPartIndex])
 
   // Interaction state machine - single source of truth for UI state
   const {
@@ -975,6 +980,15 @@ export function ActiveSession({
   // Track the previous part index to detect part changes
   const prevPartIndexRef = useRef<number>(plan.currentPartIndex)
 
+  // Retry transition state - for showing transition screen between retry epochs
+  const [isInRetryTransition, setIsInRetryTransition] = useState(false)
+  const [retryTransitionData, setRetryTransitionData] = useState<{
+    epochNumber: number
+    problemCount: number
+  } | null>(null)
+  // Track previous epoch to detect epoch changes
+  const prevEpochRef = useRef<number>(0)
+
   // Browse mode state - isBrowseMode is controlled via props
   // browseIndex can be controlled (browseIndexProp + onBrowseIndexChange) or internal
   const [internalBrowseIndex, setInternalBrowseIndex] = useState(0)
@@ -1140,13 +1154,25 @@ export function ActiveSession({
   }
   const showOnScreenKeypad = hasPhysicalKeyboard === false || keypadWasShownRef.current
 
-  // Get current part and slot from plan
+  // Get current part and slot from plan (accounting for retry epochs)
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
   const currentSlotIndex = plan.currentSlotIndex
   const currentPart = parts[currentPartIndex] as SessionPart | undefined
-  const currentSlot = currentPart?.slots[currentSlotIndex] as ProblemSlot | undefined
+  // Use getCurrentProblemInfo which handles both original slots and retry epochs
+  const currentSlot = currentProblemInfo
+    ? {
+        index: currentProblemInfo.originalSlotIndex,
+        purpose: currentProblemInfo.purpose,
+        problem: currentProblemInfo.problem,
+        constraints: {},
+      }
+    : (currentPart?.slots[currentSlotIndex] as ProblemSlot | undefined)
   const sessionHealth = plan.sessionHealth as SessionHealth | null
+
+  // Retry epoch tracking
+  const inRetryEpoch = currentProblemInfo?.isRetry ?? false
+  const retryEpochNumber = currentProblemInfo?.epochNumber ?? 0
 
   // Check for session completion
   useEffect(() => {
@@ -1189,18 +1215,46 @@ export function ActiveSession({
     onPartTransitionComplete?.()
   }, [onPartTransitionComplete])
 
-  // Initialize problem when slot changes and in loading phase
+  // Detect retry epoch transitions and show retry transition screen
   useEffect(() => {
-    if (currentPart && currentSlot && phase.phase === 'loading') {
-      if (!currentSlot.problem) {
-        throw new Error(
-          `Problem not pre-generated for slot ${currentSlotIndex} in part ${currentPartIndex}. ` +
-            'This indicates a bug in session planning - problems should be generated at plan creation time.'
-        )
+    const currentEpoch = retryEpochNumber
+    const prevEpoch = prevEpochRef.current
+
+    // If we just entered a new retry epoch (epoch increased from 0 to 1, or 1 to 2)
+    if (currentEpoch > prevEpoch && currentEpoch > 0 && currentProblemInfo) {
+      // Get the count of problems in this retry epoch
+      const retryState = plan.retryState?.[plan.currentPartIndex]
+      const problemCount = retryState?.currentEpochItems?.length ?? 0
+
+      if (problemCount > 0) {
+        setRetryTransitionData({
+          epochNumber: currentEpoch,
+          problemCount,
+        })
+        setIsInRetryTransition(true)
       }
-      loadProblem(currentSlot.problem, currentSlotIndex, currentPartIndex)
     }
-  }, [currentPart, currentSlot, currentPartIndex, currentSlotIndex, phase.phase, loadProblem])
+
+    prevEpochRef.current = currentEpoch
+  }, [retryEpochNumber, currentProblemInfo, plan.retryState, plan.currentPartIndex])
+
+  // Handle retry transition screen completion
+  const handleRetryTransitionComplete = useCallback(() => {
+    setIsInRetryTransition(false)
+    setRetryTransitionData(null)
+  }, [])
+
+  // Initialize problem when slot changes and in loading phase
+  // Uses currentProblemInfo to handle both original slots and retry epochs
+  useEffect(() => {
+    if (currentPart && currentProblemInfo && phase.phase === 'loading') {
+      loadProblem(
+        currentProblemInfo.problem,
+        currentProblemInfo.originalSlotIndex,
+        currentPartIndex
+      )
+    }
+  }, [currentPart, currentProblemInfo, currentPartIndex, phase.phase, loadProblem])
 
   // Auto-trigger help when an unambiguous prefix sum is detected
   // The awaitingDisambiguation phase handles the timer and auto-transitions to helpMode when it expires
@@ -1584,68 +1638,93 @@ export function ActiveSession({
           overflow: 'hidden', // Prevent overflow
         })}
       >
-        {/* Purpose badge with tooltip */}
+        {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
         {currentSlot && (
-          <TooltipProvider>
-            <Tooltip
-              content={<PurposeTooltipContent slot={currentSlot} />}
-              side="bottom"
-              delayDuration={300}
-            >
+          <div
+            data-element="purpose-retry-container"
+            className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}
+          >
+            {/* Retry indicator badge */}
+            {inRetryEpoch && (
               <div
-                data-element="problem-purpose"
-                data-purpose={currentSlot.purpose}
+                data-element="retry-indicator"
+                data-epoch={retryEpochNumber}
                 className={css({
-                  position: 'relative',
                   padding: '0.25rem 0.75rem',
                   borderRadius: '20px',
                   fontSize: '0.75rem',
                   fontWeight: 'bold',
                   textTransform: 'uppercase',
-                  cursor: 'help',
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                  _hover: {
-                    transform: 'scale(1.05)',
-                    boxShadow: 'sm',
-                  },
-                  backgroundColor:
-                    currentSlot.purpose === 'focus'
-                      ? isDark
-                        ? 'blue.900'
-                        : 'blue.100'
-                      : currentSlot.purpose === 'reinforce'
-                        ? isDark
-                          ? 'orange.900'
-                          : 'orange.100'
-                        : currentSlot.purpose === 'review'
-                          ? isDark
-                            ? 'green.900'
-                            : 'green.100'
-                          : isDark
-                            ? 'purple.900'
-                            : 'purple.100',
-                  color:
-                    currentSlot.purpose === 'focus'
-                      ? isDark
-                        ? 'blue.200'
-                        : 'blue.700'
-                      : currentSlot.purpose === 'reinforce'
-                        ? isDark
-                          ? 'orange.200'
-                          : 'orange.700'
-                        : currentSlot.purpose === 'review'
-                          ? isDark
-                            ? 'green.200'
-                            : 'green.700'
-                          : isDark
-                            ? 'purple.200'
-                            : 'purple.700',
+                  backgroundColor: isDark ? 'red.900' : 'red.100',
+                  color: isDark ? 'red.200' : 'red.700',
+                  border: '1px solid',
+                  borderColor: isDark ? 'red.700' : 'red.300',
                 })}
               >
-                {currentSlot.purpose}
+                Retry {retryEpochNumber}/2
               </div>
-            </Tooltip>
-          </TooltipProvider>
+            )}
+            <TooltipProvider>
+              <Tooltip
+                content={<PurposeTooltipContent slot={currentSlot} />}
+                side="bottom"
+                delayDuration={300}
+              >
+                <div
+                  data-element="problem-purpose"
+                  data-purpose={currentSlot.purpose}
+                  className={css({
+                    position: 'relative',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    cursor: 'help',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                    _hover: {
+                      transform: 'scale(1.05)',
+                      boxShadow: 'sm',
+                    },
+                    backgroundColor:
+                      currentSlot.purpose === 'focus'
+                        ? isDark
+                          ? 'blue.900'
+                          : 'blue.100'
+                        : currentSlot.purpose === 'reinforce'
+                          ? isDark
+                            ? 'orange.900'
+                            : 'orange.100'
+                          : currentSlot.purpose === 'review'
+                            ? isDark
+                              ? 'green.900'
+                              : 'green.100'
+                            : isDark
+                              ? 'purple.900'
+                              : 'purple.100',
+                    color:
+                      currentSlot.purpose === 'focus'
+                        ? isDark
+                          ? 'blue.200'
+                          : 'blue.700'
+                        : currentSlot.purpose === 'reinforce'
+                          ? isDark
+                            ? 'orange.200'
+                            : 'orange.700'
+                          : currentSlot.purpose === 'review'
+                            ? isDark
+                              ? 'green.200'
+                              : 'green.700'
+                            : isDark
+                              ? 'purple.200'
+                              : 'purple.700',
+                  })}
+                >
+                  {currentSlot.purpose}
+                </div>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )}
 
         {/* Problem display - centered, with help panel positioned outside */}
@@ -2012,6 +2091,17 @@ export function ActiveSession({
           countdownStartTime={transitionData.countdownStartTime}
           student={student}
           onComplete={handleTransitionComplete}
+        />
+      )}
+
+      {/* Retry Transition Screen - shown when entering a retry epoch */}
+      {retryTransitionData && (
+        <RetryTransitionScreen
+          isVisible={isInRetryTransition}
+          epochNumber={retryTransitionData.epochNumber}
+          problemCount={retryTransitionData.problemCount}
+          student={{ name: student.name, emoji: student.emoji }}
+          onComplete={handleRetryTransitionComplete}
         />
       )}
     </div>

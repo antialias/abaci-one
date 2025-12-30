@@ -210,6 +210,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         isBrowseMode,
         onToggleBrowse: () => setIsBrowseMode((prev) => !prev),
         onBrowseNavigate: setBrowseIndex,
+        plan: currentPlan,
       }
     : undefined
 

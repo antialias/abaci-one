@@ -143,10 +143,13 @@ export function computeBktFromHistory(
       }
     })
 
-    // Calculate evidence weight based on help usage and response time
+    // Calculate evidence weight based on help usage, response time, and retry status
     const helpW = helpWeight(result.hadHelp)
     const rtWeight = responseTimeWeight(result.responseTimeMs, result.isCorrect)
-    const evidenceWeight = helpW * rtWeight
+    // Apply mastery weight from retry system (1.0 for first attempt, 0.5 for first retry, 0.25 for second retry)
+    // If masteryWeight is undefined (old data), default to 1.0
+    const retryWeight = result.masteryWeight ?? 1.0
+    const evidenceWeight = helpW * rtWeight * retryWeight
 
     // Compute BKT updates (conjunctive model)
     const blameMethod = opts.blameMethod ?? 'heuristic'

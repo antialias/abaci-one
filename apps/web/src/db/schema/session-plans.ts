@@ -260,6 +260,30 @@ export interface SlotResult {
    * lastPracticedAt but skips them for pKnown calculation (zero-weight).
    */
   source?: SlotResultSource
+
+  // ---- Retry Tracking ----
+
+  /** Whether this was a retry attempt (not the original) */
+  isRetry?: boolean
+
+  /**
+   * Which retry epoch this result belongs to.
+   * 0 = original attempt, 1 = first retry, 2 = second retry
+   */
+  epochNumber?: number
+
+  /**
+   * Weight applied to mastery/BKT calculation.
+   * Formula: 1.0 / (2 ^ epochNumber) if correct, 0 if wrong
+   * - Epoch 0 correct: 1.0 (100%)
+   * - Epoch 1 correct: 0.5 (50%)
+   * - Epoch 2 correct: 0.25 (25%)
+   * - Any wrong: 0
+   */
+  masteryWeight?: number
+
+  /** Original slot index (for retries, tracks which slot is being retried) */
+  originalSlotIndex?: number
 }
 
 export type SessionStatus =
@@ -269,6 +293,69 @@ export type SessionStatus =
   | 'completed'
   | 'abandoned'
   | 'recency-refresh'
+
+// ============================================================================
+// Retry System Types
+// ============================================================================
+
+/**
+ * Maximum number of retry epochs (original + 2 retries = 3 total attempts)
+ */
+export const MAX_RETRY_EPOCHS = 2
+
+/**
+ * A single problem queued for retry
+ */
+export interface RetryItem {
+  /** Original slot index within the part */
+  originalSlotIndex: number
+
+  /** The exact same problem to retry (never regenerated) */
+  problem: GeneratedProblem
+
+  /** Which epoch this retry is for (1 = first retry, 2 = second retry) */
+  epochNumber: number
+
+  /** Purpose from the original slot (for display) */
+  originalPurpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+}
+
+/**
+ * Retry state for a single session part
+ */
+export interface PartRetryState {
+  /**
+   * Current epoch number within this part.
+   * 0 = still working original slots
+   * 1 = first retry epoch
+   * 2 = second retry epoch (final)
+   */
+  currentEpoch: number
+
+  /**
+   * Problems queued for the next epoch (accumulated during current epoch).
+   * When a problem is wrong, it gets added here for the next retry round.
+   */
+  pendingRetries: RetryItem[]
+
+  /**
+   * Problems being worked through in the current retry epoch.
+   * Set when starting a new epoch by moving pendingRetries here.
+   */
+  currentEpochItems: RetryItem[]
+
+  /**
+   * Index into currentEpochItems (which retry we're on within this epoch).
+   */
+  currentRetryIndex: number
+}
+
+/**
+ * Retry state across all parts of a session
+ */
+export type SessionRetryState = {
+  [partIndex: number]: PartRetryState
+}
 
 // ============================================================================
 // Database Table
@@ -339,6 +426,11 @@ export const sessionPlans = sqliteTable(
 
     /** Results for each completed slot */
     results: text('results', { mode: 'json' }).notNull().default('[]').$type<SlotResult[]>(),
+
+    // ---- Retry State ----
+
+    /** Retry state per part - tracks problems that need retrying */
+    retryState: text('retry_state', { mode: 'json' }).$type<SessionRetryState>(),
 
     // ---- Pause State (for teacher observation control) ----
 
@@ -528,3 +620,194 @@ export const DEFAULT_PLAN_CONFIG = {
 }
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG
+
+// ============================================================================
+// Retry System Helper Functions
+// ============================================================================
+
+/**
+ * Calculate mastery weight for a result based on epoch and correctness.
+ *
+ * Formula: 1.0 / (2 ^ epochNumber) if correct, 0 if wrong
+ * - Epoch 0 correct: 1.0 (100%)
+ * - Epoch 1 correct: 0.5 (50%)
+ * - Epoch 2 correct: 0.25 (25%)
+ * - Any wrong: 0
+ */
+export function calculateMasteryWeight(isCorrect: boolean, epochNumber: number): number {
+  if (!isCorrect) return 0
+  return 1.0 / 2 ** epochNumber
+}
+
+/**
+ * Check if we're currently in a retry epoch for the given part
+ */
+export function isInRetryEpoch(plan: SessionPlan, partIndex: number): boolean {
+  const retryState = plan.retryState?.[partIndex]
+  if (!retryState) return false
+  return retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0
+}
+
+/**
+ * Get the current problem to display (either from original slots or retry queue)
+ */
+export function getCurrentProblemInfo(plan: SessionPlan): {
+  problem: GeneratedProblem
+  isRetry: boolean
+  epochNumber: number
+  originalSlotIndex: number
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  partNumber: 1 | 2 | 3
+} | null {
+  const partIndex = plan.currentPartIndex
+  if (partIndex >= plan.parts.length) return null
+
+  const part = plan.parts[partIndex]
+  const retryState = plan.retryState?.[partIndex]
+
+  // Check if we're in a retry epoch
+  if (retryState && retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0) {
+    if (retryState.currentRetryIndex >= retryState.currentEpochItems.length) {
+      // Edge case: all retries in this epoch done, should have transitioned
+      return null
+    }
+    const item = retryState.currentEpochItems[retryState.currentRetryIndex]
+    return {
+      problem: item.problem,
+      isRetry: true,
+      epochNumber: item.epochNumber,
+      originalSlotIndex: item.originalSlotIndex,
+      purpose: item.originalPurpose,
+      partNumber: part.partNumber,
+    }
+  }
+
+  // Working original slots
+  if (plan.currentSlotIndex >= part.slots.length) {
+    // Finished original slots, check if there are pending retries
+    return null
+  }
+
+  const slot = part.slots[plan.currentSlotIndex]
+  if (!slot.problem) return null
+
+  return {
+    problem: slot.problem,
+    isRetry: false,
+    epochNumber: 0,
+    originalSlotIndex: plan.currentSlotIndex,
+    purpose: slot.purpose,
+    partNumber: part.partNumber,
+  }
+}
+
+/**
+ * Initialize retry state for a part if not already present
+ */
+export function initRetryState(plan: SessionPlan, partIndex: number): PartRetryState {
+  if (!plan.retryState) {
+    plan.retryState = {}
+  }
+  if (!plan.retryState[partIndex]) {
+    plan.retryState[partIndex] = {
+      currentEpoch: 0,
+      pendingRetries: [],
+      currentEpochItems: [],
+      currentRetryIndex: 0,
+    }
+  }
+  return plan.retryState[partIndex]
+}
+
+/**
+ * Get retry status for a specific slot (for UI display)
+ */
+export function getSlotRetryStatus(
+  plan: SessionPlan,
+  partIndex: number,
+  slotIndex: number
+): {
+  hasBeenAttempted: boolean
+  isCorrect: boolean | null
+  attemptCount: number
+  finalMasteryWeight: number | null
+} {
+  // Find all results for this slot
+  const partNumber = plan.parts[partIndex]?.partNumber
+  if (!partNumber) {
+    return { hasBeenAttempted: false, isCorrect: null, attemptCount: 0, finalMasteryWeight: null }
+  }
+
+  const slotResults = plan.results.filter(
+    (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex
+  )
+
+  if (slotResults.length === 0) {
+    return { hasBeenAttempted: false, isCorrect: null, attemptCount: 0, finalMasteryWeight: null }
+  }
+
+  // Get the latest result for this slot
+  const latestResult = slotResults[slotResults.length - 1]
+
+  return {
+    hasBeenAttempted: true,
+    isCorrect: latestResult.isCorrect,
+    attemptCount: slotResults.length,
+    finalMasteryWeight: latestResult.masteryWeight ?? null,
+  }
+}
+
+/**
+ * Calculate total problems including pending retries for progress display
+ */
+export function calculateTotalProblemsWithRetries(plan: SessionPlan): number {
+  let total = 0
+
+  for (let partIndex = 0; partIndex < plan.parts.length; partIndex++) {
+    const part = plan.parts[partIndex]
+    total += part.slots.length
+
+    const retryState = plan.retryState?.[partIndex]
+    if (retryState) {
+      // Add current epoch items (retries being worked through)
+      total += retryState.currentEpochItems.length
+      // Add pending retries (queued for next epoch)
+      total += retryState.pendingRetries.length
+    }
+  }
+
+  return total
+}
+
+/**
+ * Check if the current part needs retry transition
+ * (original slots done but there are pending retries)
+ */
+export function needsRetryTransition(plan: SessionPlan): boolean {
+  const partIndex = plan.currentPartIndex
+  if (partIndex >= plan.parts.length) return false
+
+  const part = plan.parts[partIndex]
+  const retryState = plan.retryState?.[partIndex]
+
+  // Check if we finished original slots
+  if (plan.currentSlotIndex < part.slots.length) return false
+
+  // Check if there are pending retries and we haven't started retry epoch yet
+  if (retryState && retryState.pendingRetries.length > 0 && retryState.currentEpoch === 0) {
+    return true
+  }
+
+  // Check if we finished current retry epoch but have more pending
+  if (
+    retryState &&
+    retryState.currentEpochItems.length > 0 &&
+    retryState.currentRetryIndex >= retryState.currentEpochItems.length &&
+    retryState.pendingRetries.length > 0 &&
+    retryState.currentEpoch < MAX_RETRY_EPOCHS
+  ) {
+    return true
+  }
+
+  return false
+}

@@ -10,7 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { EnrollChildModal } from '@/components/classroom'
 import { FamilyCodeDisplay } from '@/components/family'
@@ -76,6 +76,8 @@ export interface SessionHudData {
   onBrowseNavigate?: (linearIndex: number) => void
   /** Whether the end session request is in flight */
   isEndingSession?: boolean
+  /** Full session plan for retry status display */
+  plan?: SessionPlan
 }
 
 interface PracticeSubNavProps {
@@ -946,6 +948,7 @@ export function PracticeSubNav({
               onNavigate={sessionHud.onBrowseNavigate}
               isDark={isDark}
               compact={true}
+              plan={sessionHud.plan}
             />
           </div>
 

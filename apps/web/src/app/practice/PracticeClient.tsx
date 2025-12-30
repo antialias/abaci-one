@@ -184,14 +184,11 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             ...category,
             students: category.students.filter((s) => !attentionStudentIds.has(s.id)),
           }))
-          .filter(
-            (category) =>
-              category.students.length > 0 ||
-              (attentionCountsByBucket.get(bucket.bucket)?.get(category.category) ?? 0) > 0
-          ),
+          // Only show categories that have visible students (not moved to attention)
+          .filter((category) => category.students.length > 0),
       }))
       .filter((bucket) => bucket.categories.length > 0)
-  }, [groupedStudents, attentionStudentIds, attentionCountsByBucket])
+  }, [groupedStudents, attentionStudentIds])
 
   // Handle student selection - navigate to student's dashboard page
   const handleSelectStudent = useCallback(
