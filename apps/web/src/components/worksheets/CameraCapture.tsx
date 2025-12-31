@@ -6,8 +6,6 @@ import { css } from '../../../styled-system/css'
 interface CameraCaptureProps {
   onCapture: (file: File) => Promise<void>
   disabled?: boolean
-  /** Auto-start camera when component mounts */
-  autoStart?: boolean
 }
 
 /**
@@ -15,72 +13,58 @@ interface CameraCaptureProps {
  *
  * Works on both desktop (webcam) and mobile (rear camera)
  * Auto-selects rear camera on mobile for better quality
+ * Camera starts automatically when component mounts.
  */
-export function CameraCapture({
-  onCapture,
-  disabled = false,
-  autoStart = false,
-}: CameraCaptureProps) {
+export function CameraCapture({ onCapture, disabled = false }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
-  const [isStreaming, setIsStreaming] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
 
-  const startCamera = async () => {
-    try {
-      setError(null)
-
-      // Request camera with rear camera preference on mobile
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' }, // Prefer rear camera
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        setIsStreaming(true)
-      }
-    } catch (err) {
-      console.error('Camera access error:', err)
-      setError('Camera access denied. Please allow camera access and try again.')
-    }
-  }
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    setIsStreaming(false)
-  }
-
-  // Auto-start camera on mount if requested
+  // Start camera on mount, cleanup on unmount
   useEffect(() => {
-    if (autoStart && !disabled) {
-      startCamera()
+    if (disabled) return
+
+    const startCamera = async () => {
+      try {
+        setError(null)
+
+        // Request camera with rear camera preference on mobile
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: 'environment' }, // Prefer rear camera
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        streamRef.current = stream
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+          setIsReady(true)
+        }
+      } catch (err) {
+        console.error('Camera access error:', err)
+        setError('Camera access denied. Please allow camera access and try again.')
+      }
     }
+
+    startCamera()
+
     // Cleanup on unmount
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, disabled])
+  }, [disabled])
 
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return
@@ -156,13 +140,12 @@ export function CameraCapture({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            display: isStreaming ? 'block' : 'none',
           })}
           playsInline
           muted
         />
 
-        {!isStreaming && (
+        {!isReady && !error && (
           <div
             className={css({
               position: 'absolute',
@@ -174,7 +157,7 @@ export function CameraCapture({
               fontSize: 'lg',
             })}
           >
-            Camera not started
+            Starting camera...
           </div>
         )}
 
@@ -200,86 +183,35 @@ export function CameraCapture({
         </div>
       )}
 
-      {/* Controls */}
+      {/* Capture button */}
       <div
         className={css({
           display: 'flex',
-          gap: 2,
           justifyContent: 'center',
         })}
       >
-        {!isStreaming ? (
-          <button
-            data-action="start-camera"
-            onClick={startCamera}
-            disabled={disabled}
-            className={css({
-              px: 6,
-              py: 3,
-              bg: 'blue.500',
-              color: 'white',
-              borderRadius: 'md',
-              fontSize: 'md',
-              fontWeight: 'medium',
-              cursor: 'pointer',
-              _hover: { bg: 'blue.600' },
-              _disabled: {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-              },
-            })}
-          >
-            Start Camera
-          </button>
-        ) : (
-          <>
-            <button
-              data-action="capture-photo"
-              onClick={capturePhoto}
-              disabled={disabled || isCapturing}
-              className={css({
-                px: 8,
-                py: 4,
-                bg: 'green.500',
-                color: 'white',
-                borderRadius: 'full',
-                fontSize: 'lg',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                _hover: { bg: 'green.600' },
-                _disabled: {
-                  opacity: 0.5,
-                  cursor: 'not-allowed',
-                },
-              })}
-            >
-              {isCapturing ? 'Uploading...' : '📷 Capture'}
-            </button>
-
-            <button
-              data-action="stop-camera"
-              onClick={stopCamera}
-              disabled={disabled}
-              className={css({
-                px: 4,
-                py: 2,
-                bg: 'gray.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { bg: 'gray.600' },
-                _disabled: {
-                  opacity: 0.5,
-                  cursor: 'not-allowed',
-                },
-              })}
-            >
-              Stop
-            </button>
-          </>
-        )}
+        <button
+          data-action="capture-photo"
+          onClick={capturePhoto}
+          disabled={disabled || isCapturing || !isReady}
+          className={css({
+            px: 8,
+            py: 4,
+            bg: 'green.500',
+            color: 'white',
+            borderRadius: 'full',
+            fontSize: 'lg',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            _hover: { bg: 'green.600' },
+            _disabled: {
+              opacity: 0.5,
+              cursor: 'not-allowed',
+            },
+          })}
+        >
+          {isCapturing ? 'Saving...' : '📷 Capture'}
+        </button>
       </div>
     </div>
   )
