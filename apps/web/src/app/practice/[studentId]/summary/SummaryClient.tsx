@@ -104,6 +104,10 @@ export function SummaryClient({
 
   const isInProgress = session?.startedAt && !session?.completedAt
 
+  // Check if session has actual problems (not just photos)
+  const sessionResults = (session?.results ?? []) as Array<unknown>
+  const hasProblems = sessionResults.length > 0
+
   // Upload photos immediately
   const uploadPhotos = useCallback(
     async (files: File[]) => {
@@ -196,13 +200,19 @@ export function SummaryClient({
   const headerTitle = isInProgress
     ? 'Session In Progress'
     : session
-      ? 'Session Complete'
+      ? hasProblems
+        ? 'Session Complete'
+        : 'Practice Session'
       : 'No Sessions Yet'
 
   const headerSubtitle = isInProgress
     ? `${player.name} is currently practicing`
     : session
-      ? 'Great work on your practice session!'
+      ? hasProblems
+        ? 'Great work on your practice session!'
+        : hasPhotos
+          ? 'Photos from practice'
+          : 'Add photos from practice'
       : `${player.name} hasn't completed any sessions yet`
 
   return (
@@ -267,13 +277,16 @@ export function SummaryClient({
             {/* Session Summary or Empty State */}
             {session ? (
               <>
-                <SessionSummary
-                  plan={session}
-                  studentId={studentId}
-                  studentName={player.name}
-                  onPracticeAgain={handlePracticeAgain}
-                  problemHistory={problemHistory}
-                />
+                {/* Only show stats/problems if session has actual problems */}
+                {hasProblems && (
+                  <SessionSummary
+                    plan={session}
+                    studentId={studentId}
+                    studentName={player.name}
+                    onPracticeAgain={handlePracticeAgain}
+                    problemHistory={problemHistory}
+                  />
+                )}
 
                 {/* Photos Section - Drop Target */}
                 <div
@@ -282,7 +295,7 @@ export function SummaryClient({
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   className={css({
-                    marginTop: '2rem',
+                    marginTop: hasProblems ? '2rem' : '0',
                     padding: '1.5rem',
                     backgroundColor: isDark ? 'gray.800' : 'white',
                     borderRadius: '16px',
@@ -445,6 +458,35 @@ export function SummaryClient({
                     </p>
                   )}
                 </div>
+
+                {/* Practice Again button for photo-only sessions */}
+                {!hasProblems && (
+                  <div
+                    className={css({
+                      marginTop: '1.5rem',
+                      textAlign: 'center',
+                    })}
+                  >
+                    <button
+                      type="button"
+                      data-action="practice-again"
+                      onClick={handlePracticeAgain}
+                      className={css({
+                        padding: '0.75rem 1.5rem',
+                        fontSize: '1rem',
+                        fontWeight: 'bold',
+                        color: 'white',
+                        backgroundColor: 'blue.500',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        _hover: { backgroundColor: 'blue.600' },
+                      })}
+                    >
+                      Start Practice
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div
