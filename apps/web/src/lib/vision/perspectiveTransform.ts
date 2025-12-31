@@ -193,16 +193,18 @@ export function rectifyQuadrilateral(
     // Source image
     srcMat = cv.matFromImageData(imageData)
 
-    // Source points (quadrilateral corners) - order: TL, TR, BR, BL
+    // Source points - swap diagonally for webcam orientation
+    // Screen topLeft → physical bottomRight, etc.
+    // Order matches destination: TL, TR, BR, BL (physical/output positions)
     srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-      corners.topLeft.x,
-      corners.topLeft.y,
-      corners.topRight.x,
-      corners.topRight.y,
       corners.bottomRight.x,
-      corners.bottomRight.y,
+      corners.bottomRight.y, // screen BR → output TL
       corners.bottomLeft.x,
-      corners.bottomLeft.y,
+      corners.bottomLeft.y, // screen BL → output TR
+      corners.topLeft.x,
+      corners.topLeft.y, // screen TL → output BR
+      corners.topRight.x,
+      corners.topRight.y, // screen TR → output BL
     ])
 
     // Destination points (rectangle corners) - map to standard rectangle
