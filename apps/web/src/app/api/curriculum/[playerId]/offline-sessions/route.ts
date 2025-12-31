@@ -7,16 +7,17 @@
  * They include the date, practice types performed, and optional photos of student work.
  */
 
+import { createId } from '@paralleldrive/cuid2'
 import { randomUUID } from 'crypto'
 import { mkdir, writeFile } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { getPracticeType, isValidPracticeTypeId } from '@/constants/practiceTypes'
 import { db } from '@/db'
 import { practiceAttachments, sessionPlans } from '@/db/schema'
 import type { SessionPart, SessionPartType, SessionSummary } from '@/db/schema/session-plans'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-import { createId } from '@paralleldrive/cuid2'
 
 interface RouteParams {
   params: Promise<{ playerId: string }>
@@ -64,12 +65,6 @@ function buildOfflineSessionParts(practiceTypes: SessionPartType[]): SessionPart
  * Build session summary for display
  */
 function buildOfflineSummary(practiceTypes: SessionPartType[], date: Date): SessionSummary {
-  const typeLabels: Record<SessionPartType, string> = {
-    abacus: 'Use Abacus',
-    visualization: 'Mental Math (Visualization)',
-    linear: 'Mental Math (Linear)',
-  }
-
   return {
     focusDescription: `Offline practice on ${date.toLocaleDateString()}`,
     totalProblemCount: 0,
@@ -77,7 +72,7 @@ function buildOfflineSummary(practiceTypes: SessionPartType[], date: Date): Sess
     parts: practiceTypes.map((type, idx) => ({
       partNumber: (idx + 1) as 1 | 2 | 3,
       type,
-      description: typeLabels[type],
+      description: getPracticeType(type).label,
       problemCount: 0,
       estimatedMinutes: 0,
     })),
@@ -117,10 +112,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     let practiceTypes: SessionPartType[] = []
     if (practiceTypesJson) {
       try {
-        practiceTypes = JSON.parse(practiceTypesJson)
-        // Validate types
-        const validTypes: SessionPartType[] = ['abacus', 'visualization', 'linear']
-        practiceTypes = practiceTypes.filter((t) => validTypes.includes(t))
+        const parsed = JSON.parse(practiceTypesJson) as string[]
+        // Validate types using central definition
+        practiceTypes = parsed.filter(isValidPracticeTypeId)
       } catch {
         return NextResponse.json({ error: 'Invalid practiceTypes format' }, { status: 400 })
       }

@@ -7,6 +7,8 @@
  * <div className={css({ ...centerStack, ...cardStyles(isDark) })}>
  */
 
+// Re-export practice type from central location
+export type { PracticeTypeId as SessionPartType } from '@/constants/practiceTypes'
 // Mixins - composable primitives
 export {
   center,
@@ -86,7 +88,6 @@ export {
   when,
   wrap,
 } from './practiceMixins'
-
 // Styles - reusable style functions
 export {
   // Avatar
@@ -132,7 +133,6 @@ export {
   type PracticeColorKey,
   type ProblemPurpose,
   practiceColors,
-  type SessionPartType,
   themed,
   themedColors,
 } from './practiceTheme'

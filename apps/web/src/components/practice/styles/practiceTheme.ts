@@ -5,6 +5,8 @@
  * in the practice app components, with automatic dark/light mode support.
  */
 
+import type { PracticeTypeId } from '@/constants/practiceTypes'
+
 // Color scheme type for consistent structure
 interface ThemedColor {
   light: string
@@ -181,10 +183,8 @@ export function getMasteryColors(
 /**
  * Session part type to color mapping
  */
-export type SessionPartType = 'abacus' | 'visualization' | 'linear'
-
 export function getPartTypeColors(
-  type: SessionPartType,
+  type: PracticeTypeId,
   isDark: boolean
 ): { bg: string; text: string; border: string } {
   switch (type) {
@@ -205,6 +205,13 @@ export function getPartTypeColors(
         bg: themed('orange', isDark),
         text: themed('orangeText', isDark),
         border: themed('orangeBorder', isDark),
+      }
+    default:
+      // Default colors for new practice types (add specific colors as needed)
+      return {
+        bg: themed('neutral', isDark),
+        text: themed('neutralText', isDark),
+        border: themed('neutralBorder', isDark),
       }
   }
 }

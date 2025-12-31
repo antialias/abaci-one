@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { PRACTICE_TYPES, type PracticeTypeId } from '@/constants/practiceTypes'
 import { css } from '../../../styled-system/css'
-import type { SessionPartType } from '@/db/schema/session-plans'
 import { PhotoUploadZone } from './PhotoUploadZone'
 
 interface OfflineSessionModalProps {
@@ -15,34 +15,6 @@ interface OfflineSessionModalProps {
   /** Callback when session is successfully created */
   onComplete?: (sessionId: string) => void
 }
-
-interface PracticeTypeOption {
-  id: SessionPartType
-  label: string
-  description: string
-  icon: string
-}
-
-const PRACTICE_TYPES: PracticeTypeOption[] = [
-  {
-    id: 'abacus',
-    label: 'Use Abacus',
-    description: 'Physical abacus practice',
-    icon: '🧮',
-  },
-  {
-    id: 'visualization',
-    label: 'Visualize',
-    description: 'Mental math by visualizing beads',
-    icon: '🧠',
-  },
-  {
-    id: 'linear',
-    label: 'Linear',
-    description: 'Mental math with number sentences',
-    icon: '📝',
-  },
-]
 
 /**
  * Modal for logging offline practice sessions with photos.
@@ -63,14 +35,14 @@ export function OfflineSessionModal({
     const today = new Date()
     return today.toISOString().split('T')[0] // YYYY-MM-DD format
   })
-  const [selectedTypes, setSelectedTypes] = useState<Set<SessionPartType>>(new Set(['abacus']))
+  const [selectedTypes, setSelectedTypes] = useState<Set<PracticeTypeId>>(new Set(['abacus']))
   const [photos, setPhotos] = useState<File[]>([])
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const toggleType = useCallback((type: SessionPartType) => {
+  const toggleType = useCallback((type: PracticeTypeId) => {
     setSelectedTypes((prev) => {
       const next = new Set(prev)
       if (next.has(type)) {

@@ -1,5 +1,6 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import type { PracticeTypeId } from '@/constants/practiceTypes'
 import {
   DEFAULT_SECONDS_PER_PROBLEM,
   PART_TIME_WEIGHTS,
@@ -17,12 +18,10 @@ import { players } from './players'
 // ============================================================================
 
 /**
- * Session part types - every daily session has all three parts:
- * 1. abacus: Student uses physical abacus to solve problems (vertical format)
- * 2. visualization: Mental math by visualizing abacus beads (vertical format, no physical abacus)
- * 3. linear: Mental math with problems in sentence format (e.g., "45 + 27 = ?")
+ * Session part types - defined centrally in @/constants/practiceTypes
+ * @see PRACTICE_TYPES for the full list with labels and icons
  */
-export type SessionPartType = 'abacus' | 'visualization' | 'linear'
+export type SessionPartType = PracticeTypeId
 
 /**
  * A session part containing multiple problem slots
