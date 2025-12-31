@@ -10,6 +10,7 @@ import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
   getSkillClassification,
+  OfflineSessionModal,
   PracticeErrorBoundary,
   PracticeSubNav,
   ProgressDashboard,
@@ -2193,6 +2194,14 @@ function HistoryTab({
   activeSession?: SessionPlan | null
   onOpenActiveSession?: () => void
 }) {
+  const [showOfflineModal, setShowOfflineModal] = useState(false)
+  const router = useRouter()
+
+  const handleOfflineComplete = useCallback(() => {
+    // Refresh the page to show the new session in the list
+    router.refresh()
+  }, [router])
+
   return (
     <div data-tab-content="history">
       <div
@@ -2236,6 +2245,44 @@ function HistoryTab({
           </p>
         </div>
 
+        {/* Log Offline Practice button */}
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '1rem',
+          })}
+        >
+          <button
+            type="button"
+            data-action="log-offline-practice"
+            onClick={() => setShowOfflineModal(true)}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              px: 4,
+              py: 2,
+              bg: isDark ? 'gray.700' : 'white',
+              color: isDark ? 'gray.100' : 'gray.700',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.600' : 'gray.300',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              _hover: {
+                bg: isDark ? 'gray.600' : 'gray.100',
+                borderColor: isDark ? 'gray.500' : 'gray.400',
+              },
+            })}
+          >
+            <span>📷</span>
+            Log Offline Practice
+          </button>
+        </div>
+
         <VirtualizedSessionList
           studentId={studentId}
           isDark={isDark}
@@ -2244,6 +2291,14 @@ function HistoryTab({
           onOpenActiveSession={onOpenActiveSession}
         />
       </div>
+
+      {/* Offline Session Modal */}
+      <OfflineSessionModal
+        playerId={studentId}
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        onComplete={handleOfflineComplete}
+      />
     </div>
   )
 }

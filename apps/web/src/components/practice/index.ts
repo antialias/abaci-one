@@ -22,6 +22,8 @@ export { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
 export { NotesModal } from './NotesModal'
 // StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)
 export { NotesModal as StudentQuickLook } from './NotesModal'
+export { OfflineSessionModal } from './OfflineSessionModal'
+export { SessionPhotoGallery } from './SessionPhotoGallery'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export { PracticeFeedback } from './PracticeFeedback'

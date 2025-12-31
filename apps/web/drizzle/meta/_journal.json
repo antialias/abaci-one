@@ -351,6 +351,13 @@
       "when": 1767060697736,
       "tag": "0049_flowery_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1767144779337,
+      "tag": "0050_abandoned_salo",
+      "breakpoints": true
     }
   ]
 }

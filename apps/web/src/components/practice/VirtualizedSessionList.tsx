@@ -10,6 +10,7 @@
  * Supports showing an "in progress" session at the top of the list.
  */
 
+import { useQuery } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -18,7 +19,9 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useLiveSessionTimeEstimate } from '@/hooks/useLiveSessionTimeEstimate'
 import { useSessionHistory } from '@/hooks/useSessionHistory'
+import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
+import { SessionPhotoGallery } from './SessionPhotoGallery'
 
 // ============================================================================
 // Types
@@ -260,57 +263,124 @@ function SessionItem({
   session,
   studentId,
   isDark,
+  photoCount = 0,
+  onViewPhotos,
 }: {
   session: PracticeSession
   studentId: string
   isDark: boolean
+  /** Number of photos attached to this session */
+  photoCount?: number
+  /** Callback when user clicks to view photos */
+  onViewPhotos?: () => void
 }) {
   const accuracy =
     session.problemsAttempted > 0 ? session.problemsCorrect / session.problemsAttempted : 0
   const displayDate = new Date(session.completedAt || session.startedAt).toLocaleDateString()
   const durationMinutes = Math.round((session.totalTimeMs || 0) / 60000)
+  const isOfflineSession = session.problemsAttempted === 0
 
   return (
-    <Link
-      href={`/practice/${studentId}/session/${session.id}`}
+    <div
       data-element="session-history-item"
       data-session-id={session.id}
       className={css({
-        display: 'block',
+        display: 'flex',
         width: '100%',
         padding: '1rem',
         borderRadius: '8px',
         textAlign: 'left',
-        textDecoration: 'none',
-        cursor: 'pointer',
         transition: 'all 0.15s ease',
         border: '1px solid',
         backgroundColor: isDark ? 'gray.700' : 'white',
         borderColor: isDark ? 'gray.600' : 'gray.200',
-        _hover: {
-          backgroundColor: isDark ? 'gray.650' : 'gray.50',
-          borderColor: isDark ? 'gray.500' : 'gray.300',
-          transform: 'translateY(-1px)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        },
+        gap: '0.75rem',
       })}
     >
-      <SessionHeader
-        date={displayDate}
-        statusBadge={
-          <StatusBadge
-            variant="completed"
-            correct={session.problemsCorrect}
-            total={session.problemsAttempted}
-            isDark={isDark}
-          />
-        }
-        isDark={isDark}
-      />
-      <StatsRow isDark={isDark}>
-        <StatItem isDark={isDark}>{durationMinutes} min</StatItem>
-      </StatsRow>
-    </Link>
+      {/* Main content - clickable link */}
+      <Link
+        href={`/practice/${studentId}/session/${session.id}`}
+        className={css({
+          flex: 1,
+          textDecoration: 'none',
+          cursor: 'pointer',
+          _hover: {
+            '& [data-element="session-date"]': {
+              color: isDark ? 'blue.300' : 'blue.600',
+            },
+          },
+        })}
+      >
+        <SessionHeader
+          date={displayDate}
+          statusBadge={
+            isOfflineSession ? (
+              <span
+                className={css({
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'medium',
+                  backgroundColor: isDark ? 'purple.900' : 'purple.100',
+                  color: isDark ? 'purple.300' : 'purple.700',
+                })}
+              >
+                Offline Practice
+              </span>
+            ) : (
+              <StatusBadge
+                variant="completed"
+                correct={session.problemsCorrect}
+                total={session.problemsAttempted}
+                isDark={isDark}
+              />
+            )
+          }
+          isDark={isDark}
+        />
+        <StatsRow isDark={isDark}>
+          {isOfflineSession ? (
+            <StatItem isDark={isDark}>Logged offline</StatItem>
+          ) : (
+            <StatItem isDark={isDark}>{durationMinutes} min</StatItem>
+          )}
+        </StatsRow>
+      </Link>
+
+      {/* Photo indicator button */}
+      {photoCount > 0 && onViewPhotos && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onViewPhotos()
+          }}
+          data-action="view-photos"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            px: 2,
+            py: 1,
+            bg: isDark ? 'gray.600' : 'gray.100',
+            color: isDark ? 'gray.200' : 'gray.600',
+            borderRadius: 'md',
+            fontSize: 'sm',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            alignSelf: 'center',
+            _hover: {
+              bg: isDark ? 'gray.500' : 'gray.200',
+              color: isDark ? 'white' : 'gray.800',
+            },
+          })}
+        >
+          <span>📷</span>
+          <span>{photoCount}</span>
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -580,6 +650,9 @@ export function VirtualizedSessionList({
   const parentRef = useRef<HTMLDivElement>(null)
   const hasActiveSession = activeSession != null && activeSession.completedAt == null
 
+  // State for photo gallery
+  const [gallerySessionId, setGallerySessionId] = useState<string | null>(null)
+
   const {
     sessions,
     hasNextPage,
@@ -589,6 +662,19 @@ export function VirtualizedSessionList({
     isError,
     totalLoaded,
   } = useSessionHistory(studentId, { pageSize: 20 })
+
+  // Fetch attachment counts for all sessions
+  const { data: attachmentData } = useQuery({
+    queryKey: ['attachments', studentId],
+    queryFn: async () => {
+      const res = await api(`curriculum/${studentId}/attachments`)
+      if (!res.ok) throw new Error('Failed to fetch attachments')
+      return res.json() as Promise<{ sessionCounts: Record<string, number> }>
+    },
+    staleTime: 30000, // Cache for 30 seconds
+  })
+
+  const sessionPhotoCounts = attachmentData?.sessionCounts ?? {}
 
   // Debug logging
   console.log(
@@ -728,6 +814,8 @@ export function VirtualizedSessionList({
                     session={sessions[sessionIndex]}
                     studentId={studentId}
                     isDark={isDark}
+                    photoCount={sessionPhotoCounts[sessions[sessionIndex].id] ?? 0}
+                    onViewPhotos={() => setGallerySessionId(sessions[sessionIndex].id)}
                   />
                 )}
               </div>
@@ -735,6 +823,16 @@ export function VirtualizedSessionList({
           )
         })}
       </div>
+
+      {/* Photo Gallery Modal */}
+      {gallerySessionId && (
+        <SessionPhotoGallery
+          playerId={studentId}
+          sessionId={gallerySessionId}
+          isOpen={true}
+          onClose={() => setGallerySessionId(null)}
+        />
+      )}
     </div>
   )
 }
