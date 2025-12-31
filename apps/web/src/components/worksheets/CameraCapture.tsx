@@ -1,11 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
 
 interface CameraCaptureProps {
   onCapture: (file: File) => Promise<void>
   disabled?: boolean
+  /** Auto-start camera when component mounts */
+  autoStart?: boolean
 }
 
 /**
@@ -14,7 +16,11 @@ interface CameraCaptureProps {
  * Works on both desktop (webcam) and mobile (rear camera)
  * Auto-selects rear camera on mobile for better quality
  */
-export function CameraCapture({ onCapture, disabled = false }: CameraCaptureProps) {
+export function CameraCapture({
+  onCapture,
+  disabled = false,
+  autoStart = false,
+}: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -61,6 +67,20 @@ export function CameraCapture({ onCapture, disabled = false }: CameraCaptureProp
     }
     setIsStreaming(false)
   }
+
+  // Auto-start camera on mount if requested
+  useEffect(() => {
+    if (autoStart && !disabled) {
+      startCamera()
+    }
+    // Cleanup on unmount
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, disabled])
 
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return

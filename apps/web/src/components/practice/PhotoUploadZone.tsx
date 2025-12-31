@@ -182,7 +182,7 @@ export function PhotoUploadZone({
                 ×
               </button>
             </div>
-            <CameraCapture onCapture={handleCameraCapture} disabled={disabled} />
+            <CameraCapture onCapture={handleCameraCapture} disabled={disabled} autoStart />
           </div>
         </div>
       )}
