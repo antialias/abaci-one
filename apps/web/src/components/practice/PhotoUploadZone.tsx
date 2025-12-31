@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../styled-system/css'
-import { CameraCapture } from '../worksheets/CameraCapture'
 
 interface PhotoUploadZoneProps {
   /** Currently selected photos */
@@ -124,7 +125,7 @@ export function PhotoUploadZone({
   )
 
   const handleCameraCapture = useCallback(
-    async (file: File) => {
+    (file: File) => {
       addPhotos([file])
       setShowCamera(false)
     },
@@ -135,57 +136,37 @@ export function PhotoUploadZone({
 
   return (
     <div data-component="photo-upload-zone">
-      {/* Camera capture modal */}
-      {showCamera && (
-        <div
-          className={css({
-            position: 'fixed',
-            inset: 0,
-            bg: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            p: 4,
-          })}
-          onClick={() => setShowCamera(false)}
-        >
-          <div
+      {/* Fullscreen Camera Modal */}
+      <Dialog.Root open={showCamera} onOpenChange={setShowCamera}>
+        <Dialog.Portal>
+          <Dialog.Overlay
             className={css({
-              bg: 'white',
-              borderRadius: 'lg',
-              p: 6,
-              maxW: '600px',
-              w: '100%',
+              position: 'fixed',
+              inset: 0,
+              bg: 'black',
+              zIndex: Z_INDEX.MODAL,
             })}
-            onClick={(e) => e.stopPropagation()}
+          />
+          <Dialog.Content
+            className={css({
+              position: 'fixed',
+              inset: 0,
+              zIndex: Z_INDEX.MODAL + 1,
+              outline: 'none',
+            })}
           >
-            <div
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 4,
-              })}
-            >
-              <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>Take Photo</h3>
-              <button
-                type="button"
-                onClick={() => setShowCamera(false)}
-                className={css({
-                  fontSize: '2xl',
-                  color: 'gray.400',
-                  cursor: 'pointer',
-                  _hover: { color: 'gray.600' },
-                })}
-              >
-                ×
-              </button>
-            </div>
-            <CameraCapture onCapture={handleCameraCapture} disabled={disabled} />
-          </div>
-        </div>
-      )}
+            <Dialog.Title className={css({ srOnly: true })}>Take Photo</Dialog.Title>
+            <Dialog.Description className={css({ srOnly: true })}>
+              Camera viewfinder. Tap capture to take a photo.
+            </Dialog.Description>
+            <FullscreenCamera
+              onCapture={handleCameraCapture}
+              onClose={() => setShowCamera(false)}
+              disabled={disabled}
+            />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {/* Drop zone */}
       <div
@@ -321,11 +302,10 @@ export function PhotoUploadZone({
                 bg: 'gray.100',
               })}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- blob URLs don't work with Next Image */}
+              {/* biome-ignore lint/a11y/useAltText: preview thumbnail */}
               {/* biome-ignore lint/performance/noImgElement: blob URLs for previews don't work with Next Image */}
               <img
                 src={getPreviewUrl(photo)}
-                alt={`Preview ${idx + 1}`}
                 className={css({
                   width: '100%',
                   height: '100%',
@@ -365,6 +345,278 @@ export function PhotoUploadZone({
             </div>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Fullscreen Camera Component
+// =============================================================================
+
+interface FullscreenCameraProps {
+  onCapture: (file: File) => void
+  onClose: () => void
+  disabled?: boolean
+}
+
+/**
+ * Fullscreen camera with edge-to-edge preview and floating controls.
+ */
+function FullscreenCamera({ onCapture, onClose, disabled = false }: FullscreenCameraProps) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const [isReady, setIsReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isCapturing, setIsCapturing] = useState(false)
+
+  // Start camera on mount, cleanup on unmount
+  useEffect(() => {
+    if (disabled) return
+
+    const startCamera = async () => {
+      try {
+        setError(null)
+
+        // Request camera with rear camera preference on mobile
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        streamRef.current = stream
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+          setIsReady(true)
+        }
+      } catch (err) {
+        console.error('Camera access error:', err)
+        setError('Camera access denied. Please allow camera access and try again.')
+      }
+    }
+
+    startCamera()
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [disabled])
+
+  const capturePhoto = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    setIsCapturing(true)
+    try {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not get canvas context')
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => {
+            if (b) resolve(b)
+            else reject(new Error('Failed to create blob'))
+          },
+          'image/jpeg',
+          0.9
+        )
+      })
+
+      const file = new File([blob], `photo-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      })
+
+      onCapture(file)
+    } catch (err) {
+      console.error('Capture error:', err)
+      setError('Failed to capture photo. Please try again.')
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
+  return (
+    <div
+      data-component="fullscreen-camera"
+      className={css({
+        position: 'absolute',
+        inset: 0,
+        bg: 'black',
+        display: 'flex',
+        flexDirection: 'column',
+      })}
+    >
+      {/* Edge-to-edge video preview */}
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        })}
+      />
+
+      {/* Hidden canvas for capture */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {/* Loading overlay */}
+      {!isReady && !error && (
+        <div
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'black',
+          })}
+        >
+          <div className={css({ color: 'white', fontSize: 'xl' })}>Starting camera...</div>
+        </div>
+      )}
+
+      {/* Error overlay */}
+      {error && (
+        <div
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'black',
+            p: 6,
+          })}
+        >
+          <div
+            className={css({
+              color: 'red.400',
+              fontSize: 'lg',
+              textAlign: 'center',
+              mb: 4,
+            })}
+          >
+            {error}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={css({
+              px: 6,
+              py: 3,
+              bg: 'white',
+              color: 'black',
+              borderRadius: 'full',
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            })}
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      {/* Floating controls */}
+      {!error && (
+        <>
+          {/* Close button - top right */}
+          <button
+            type="button"
+            onClick={onClose}
+            className={css({
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              width: '48px',
+              height: '48px',
+              bg: 'rgba(0, 0, 0, 0.5)',
+              color: 'white',
+              borderRadius: 'full',
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+              _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+            })}
+          >
+            ×
+          </button>
+
+          {/* Capture button - bottom center */}
+          <div
+            className={css({
+              position: 'absolute',
+              bottom: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+            })}
+          >
+            <button
+              type="button"
+              onClick={capturePhoto}
+              disabled={disabled || isCapturing || !isReady}
+              className={css({
+                width: '80px',
+                height: '80px',
+                bg: 'white',
+                borderRadius: 'full',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                border: '4px solid',
+                borderColor: 'gray.300',
+                transition: 'all 0.15s',
+                _hover: { transform: 'scale(1.05)' },
+                _active: { transform: 'scale(0.95)' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              {isCapturing ? (
+                <div className={css({ fontSize: 'sm', color: 'gray.600' })}>...</div>
+              ) : (
+                <div
+                  className={css({
+                    width: '64px',
+                    height: '64px',
+                    bg: 'white',
+                    borderRadius: 'full',
+                    border: '2px solid',
+                    borderColor: 'gray.400',
+                  })}
+                />
+              )}
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
