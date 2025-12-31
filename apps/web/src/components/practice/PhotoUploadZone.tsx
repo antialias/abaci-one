@@ -376,10 +376,10 @@ function FullscreenCamera({ onCapture, onClose, disabled = false }: FullscreenCa
   useEffect(() => {
     if (disabled) return
 
+    let cancelled = false
+
     const startCamera = async () => {
       try {
-        setError(null)
-
         // Request camera with rear camera preference on mobile
         const constraints: MediaStreamConstraints = {
           video: {
@@ -391,14 +391,24 @@ function FullscreenCamera({ onCapture, onClose, disabled = false }: FullscreenCa
         }
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints)
+
+        // If component unmounted while waiting for camera, stop the stream
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+
         streamRef.current = stream
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
-          setIsReady(true)
+          if (!cancelled) {
+            setIsReady(true)
+          }
         }
       } catch (err) {
+        if (cancelled) return
         console.error('Camera access error:', err)
         setError('Camera access denied. Please allow camera access and try again.')
       }
@@ -407,8 +417,10 @@ function FullscreenCamera({ onCapture, onClose, disabled = false }: FullscreenCa
     startCamera()
 
     return () => {
+      cancelled = true
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
       }
     }
   }, [disabled])
