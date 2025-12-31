@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  canvas: npm:canvas-mock@0.0.0
+
 importers:
 
   .:
@@ -67,7 +70,7 @@ importers:
         version: 0.5.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pandacss/dev':
         specifier: ^0.20.0
-        version: 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+        version: 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       '@paralleldrive/cuid2':
         specifier: ^2.2.2
         version: 2.2.2
@@ -377,7 +380,7 @@ importers:
         version: 18.0.1
       jsdom:
         specifier: ^27.0.0
-        version: 27.0.0(canvas@3.2.0)(postcss@8.5.6)
+        version: 27.0.0(canvas-mock@0.0.0)(postcss@8.5.6)
       storybook:
         specifier: ^9.1.7
         version: 9.1.10(@testing-library/dom@9.3.4)(prettier@3.6.2)(vite@5.4.20(@types/node@20.19.19)(terser@5.44.0))
@@ -392,7 +395,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(terser@5.44.0)
+        version: 1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(terser@5.44.0)
 
   packages/abacus-react:
     dependencies:
@@ -477,10 +480,10 @@ importers:
         version: 7.0.2
       jest-environment-jsdom:
         specifier: ^30.1.2
-        version: 30.2.0(canvas@3.2.0)
+        version: 30.2.0
       jsdom:
         specifier: ^27.0.0
-        version: 27.0.0(canvas@3.2.0)(postcss@8.5.6)
+        version: 27.0.0(canvas-mock@0.0.0)(postcss@8.5.6)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -504,7 +507,7 @@ importers:
         version: 4.5.14(@types/node@20.19.19)(terser@5.44.0)
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(terser@5.44.0)
+        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0)
 
   packages/core/client/node:
     devDependencies:
@@ -519,7 +522,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(terser@5.44.0)
+        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0)
 
   packages/templates:
     dependencies:
@@ -2143,7 +2146,7 @@ packages:
     resolution: {integrity: sha512-kazxw2L9IPuZpQ0mEt9lu9Z98SqR74xcagANmMBU16X0lS23yPc0+S6hGLUz8kVRlomZEs/5S/Zlpqwf5yu6OQ==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
     peerDependencies:
-      canvas: ^3.0.0
+      canvas: npm:canvas-mock@0.0.0
       jsdom: '*'
     peerDependenciesMeta:
       canvas:
@@ -5093,9 +5096,8 @@ packages:
   canvas-confetti@1.9.4:
     resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
 
-  canvas@3.2.0:
-    resolution: {integrity: sha512-jk0GxrLtUEmW/TmFsk2WghvgHe8B0pxGilqCL21y8lHkPUGa6FTsnCNtHPOzT8O3y+N+m3espawV80bbBlgfTA==}
-    engines: {node: ^18.12.0 || >= 20.9.0}
+  canvas-mock@0.0.0:
+    resolution: {integrity: sha512-UBlvoEQ/d8w+xJU9tqRuhcXPTnAVCSREk4XZuGTt0EfdfNeqAg6L8+8cGzNYJuK2GQFtw5rvJe2oGs01U07z/w==}
 
   cardinal@2.1.1:
     resolution: {integrity: sha512-JSr5eOgoEymtYHBjNWyjrMqet9Am2miJhlfKNdqLp6zoeAh0KN5dRAcxlecj5mAJrmQomgiOBj35xHLrFjqBpw==}
@@ -7180,7 +7182,7 @@ packages:
     resolution: {integrity: sha512-zbBTiqr2Vl78pKp/laGBREYzbZx9ZtqPjOK4++lL4BNDhxRnahg51HtoDrk9/VjIy9IthNEWdKVd7H5bqBhiWQ==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
     peerDependencies:
-      canvas: ^3.0.0
+      canvas: npm:canvas-mock@0.0.0
     peerDependenciesMeta:
       canvas:
         optional: true
@@ -7270,7 +7272,7 @@ packages:
     resolution: {integrity: sha512-Cvc9WUhxSMEo4McES3P7oK3QaXldCfNWp7pl2NNeiIFlCoLr3kfq9kb1fxftiwk1FLV7CvpvDfonxtzUDeSOPg==}
     engines: {node: '>=18'}
     peerDependencies:
-      canvas: ^3.0.0
+      canvas: npm:canvas-mock@0.0.0
     peerDependenciesMeta:
       canvas:
         optional: true
@@ -7279,7 +7281,7 @@ packages:
     resolution: {integrity: sha512-lIHeR1qlIRrIN5VMccd8tI2Sgw6ieYXSVktcSHaNe3Z5nE/tcPQYQWOq00wxMvYOsz+73eAkNenVvmPC6bba9A==}
     engines: {node: '>=20'}
     peerDependencies:
-      canvas: ^3.0.0
+      canvas: npm:canvas-mock@0.0.0
     peerDependenciesMeta:
       canvas:
         optional: true
@@ -7989,9 +7991,6 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
-
-  node-addon-api@7.1.1:
-    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
   node-dir@0.1.17:
     resolution: {integrity: sha512-tmPX422rYgofd4epzrNoOXiE8XFZYOcCq1vD7MAXCDO+O+zndlA2ztdKKMa+EeuBG5tHETpr4ml4RGgpqDCCAg==}
@@ -10383,6 +10382,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -12047,7 +12047,7 @@ snapshots:
 
   '@istanbuljs/schema@0.1.3': {}
 
-  '@jest/environment-jsdom-abstract@30.2.0(canvas@3.2.0)(jsdom@26.1.0(canvas@3.2.0))':
+  '@jest/environment-jsdom-abstract@30.2.0(jsdom@26.1.0)':
     dependencies:
       '@jest/environment': 30.2.0
       '@jest/fake-timers': 30.2.0
@@ -12056,9 +12056,7 @@ snapshots:
       '@types/node': 20.19.19
       jest-mock: 30.2.0
       jest-util: 30.2.0
-      jsdom: 26.1.0(canvas@3.2.0)
-    optionalDependencies:
-      canvas: 3.2.0
+      jsdom: 26.1.0(canvas-mock@0.0.0)
 
   '@jest/environment@30.2.0':
     dependencies:
@@ -12360,14 +12358,14 @@ snapshots:
       postcss-selector-parser: 6.1.2
       ts-pattern: 5.0.5
 
-  '@pandacss/dev@0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)':
+  '@pandacss/dev@0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)':
     dependencies:
       '@clack/prompts': 0.6.3
       '@pandacss/config': 0.20.1
       '@pandacss/error': 0.20.1
       '@pandacss/logger': 0.20.1
-      '@pandacss/node': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
-      '@pandacss/postcss': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/node': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/postcss': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       '@pandacss/preset-panda': 0.20.1
       '@pandacss/shared': 0.20.1
       '@pandacss/token-dictionary': 0.20.1
@@ -12381,9 +12379,9 @@ snapshots:
 
   '@pandacss/error@0.20.1': {}
 
-  '@pandacss/extractor@0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)':
+  '@pandacss/extractor@0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)':
     dependencies:
-      ts-evaluator: 1.2.0(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      ts-evaluator: 1.2.0(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       ts-morph: 19.0.0
     transitivePeerDependencies:
       - jsdom
@@ -12411,16 +12409,16 @@ snapshots:
       kleur: 4.1.5
       lil-fp: 1.4.5
 
-  '@pandacss/node@0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)':
+  '@pandacss/node@0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)':
     dependencies:
       '@pandacss/config': 0.20.1
       '@pandacss/core': 0.20.1
       '@pandacss/error': 0.20.1
-      '@pandacss/extractor': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/extractor': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       '@pandacss/generator': 0.20.1
       '@pandacss/is-valid-prop': 0.20.1
       '@pandacss/logger': 0.20.1
-      '@pandacss/parser': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/parser': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       '@pandacss/shared': 0.20.1
       '@pandacss/token-dictionary': 0.20.1
       '@pandacss/types': 0.20.1
@@ -12450,10 +12448,10 @@ snapshots:
       - jsdom
       - typescript
 
-  '@pandacss/parser@0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)':
+  '@pandacss/parser@0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)':
     dependencies:
       '@pandacss/config': 0.20.1
-      '@pandacss/extractor': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/extractor': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       '@pandacss/is-valid-prop': 0.20.1
       '@pandacss/logger': 0.20.1
       '@pandacss/shared': 0.20.1
@@ -12467,9 +12465,9 @@ snapshots:
       - jsdom
       - typescript
 
-  '@pandacss/postcss@0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)':
+  '@pandacss/postcss@0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)':
     dependencies:
-      '@pandacss/node': 0.20.1(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3)
+      '@pandacss/node': 0.20.1(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3)
       postcss: 8.5.6
     transitivePeerDependencies:
       - jsdom
@@ -15273,7 +15271,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(terser@5.44.0)
+      vitest: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0)
 
   '@vitest/utils@1.6.1':
     dependencies:
@@ -15954,10 +15952,7 @@ snapshots:
 
   canvas-confetti@1.9.4: {}
 
-  canvas@3.2.0:
-    dependencies:
-      node-addon-api: 7.1.1
-      prebuild-install: 7.1.3
+  canvas-mock@0.0.0: {}
 
   cardinal@2.1.1:
     dependencies:
@@ -18351,15 +18346,13 @@ snapshots:
   jazz-midi@1.7.9:
     optional: true
 
-  jest-environment-jsdom@30.2.0(canvas@3.2.0):
+  jest-environment-jsdom@30.2.0:
     dependencies:
       '@jest/environment': 30.2.0
-      '@jest/environment-jsdom-abstract': 30.2.0(canvas@3.2.0)(jsdom@26.1.0(canvas@3.2.0))
+      '@jest/environment-jsdom-abstract': 30.2.0(jsdom@26.1.0)
       '@types/jsdom': 21.1.7
       '@types/node': 20.19.19
-      jsdom: 26.1.0(canvas@3.2.0)
-    optionalDependencies:
-      canvas: 3.2.0
+      jsdom: 26.1.0(canvas-mock@0.0.0)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -18462,8 +18455,8 @@ snapshots:
 
   jscanify@1.4.0:
     dependencies:
-      canvas: 3.2.0
-      jsdom: 26.1.0(canvas@3.2.0)
+      canvas: canvas-mock@0.0.0
+      jsdom: 26.1.0(canvas-mock@0.0.0)
       mocha: 11.7.5
     transitivePeerDependencies:
       - bufferutil
@@ -18497,7 +18490,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  jsdom@26.1.0(canvas@3.2.0):
+  jsdom@26.1.0(canvas-mock@0.0.0):
     dependencies:
       cssstyle: 4.6.0
       data-urls: 5.0.0
@@ -18520,13 +18513,13 @@ snapshots:
       ws: 8.18.3
       xml-name-validator: 5.0.0
     optionalDependencies:
-      canvas: 3.2.0
+      canvas: canvas-mock@0.0.0
     transitivePeerDependencies:
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6):
+  jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6):
     dependencies:
       '@asamuzakjp/dom-selector': 6.6.1
       cssstyle: 5.3.1(postcss@8.5.6)
@@ -18549,7 +18542,7 @@ snapshots:
       ws: 8.18.3
       xml-name-validator: 5.0.0
     optionalDependencies:
-      canvas: 3.2.0
+      canvas: canvas-mock@0.0.0
     transitivePeerDependencies:
       - bufferutil
       - postcss
@@ -19370,8 +19363,6 @@ snapshots:
       semver: 7.7.2
 
   node-abort-controller@3.1.1: {}
-
-  node-addon-api@7.1.1: {}
 
   node-dir@0.1.17:
     dependencies:
@@ -21366,14 +21357,14 @@ snapshots:
 
   ts-dedent@2.2.0: {}
 
-  ts-evaluator@1.2.0(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(typescript@5.9.3):
+  ts-evaluator@1.2.0(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(typescript@5.9.3):
     dependencies:
       ansi-colors: 4.1.3
       crosspath: 2.0.0
       object-path: 0.11.8
       typescript: 5.9.3
     optionalDependencies:
-      jsdom: 27.0.0(canvas@3.2.0)(postcss@8.5.6)
+      jsdom: 27.0.0(canvas-mock@0.0.0)(postcss@8.5.6)
 
   ts-interface-checker@0.1.13: {}
 
@@ -21810,7 +21801,7 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.44.0
 
-  vitest@1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(canvas@3.2.0)(postcss@8.5.6))(terser@5.44.0):
+  vitest@1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1
@@ -21836,7 +21827,43 @@ snapshots:
       '@types/node': 20.19.19
       '@vitest/ui': 3.2.4(vitest@1.6.1)
       happy-dom: 18.0.1
-      jsdom: 27.0.0(canvas@3.2.0)(postcss@8.5.6)
+      jsdom: 27.0.0(canvas-mock@0.0.0)(postcss@8.5.6)
+    transitivePeerDependencies:
+      - less
+      - lightningcss
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+
+  vitest@1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(terser@5.44.0):
+    dependencies:
+      '@vitest/expect': 1.6.1
+      '@vitest/runner': 1.6.1
+      '@vitest/snapshot': 1.6.1
+      '@vitest/spy': 1.6.1
+      '@vitest/utils': 1.6.1
+      acorn-walk: 8.3.4
+      chai: 4.5.0
+      debug: 4.4.3(supports-color@8.1.1)
+      execa: 8.0.1
+      local-pkg: 0.5.1
+      magic-string: 0.30.19
+      pathe: 1.1.2
+      picocolors: 1.1.1
+      std-env: 3.9.0
+      strip-literal: 2.1.1
+      tinybench: 2.9.0
+      tinypool: 0.8.4
+      vite: 5.4.20(@types/node@20.19.19)(terser@5.44.0)
+      vite-node: 1.6.1(@types/node@20.19.19)(terser@5.44.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 20.19.19
+      happy-dom: 18.0.1
+      jsdom: 27.0.0(canvas-mock@0.0.0)(postcss@8.5.6)
     transitivePeerDependencies:
       - less
       - lightningcss
