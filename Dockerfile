@@ -1,8 +1,20 @@
 # Multi-stage build for Soroban Abacus Flashcards
 FROM node:20-alpine AS base
 
-# Install Python and build tools for better-sqlite3
-RUN apk add --no-cache python3 py3-setuptools make g++
+# Install Python, build tools for better-sqlite3, and canvas native dependencies
+# canvas is an optional dep of jsdom (used by vitest) and requires cairo/pango
+RUN apk add --no-cache \
+    python3 \
+    py3-setuptools \
+    make \
+    g++ \
+    pkgconfig \
+    cairo-dev \
+    pango-dev \
+    libjpeg-turbo-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev
 
 # Install pnpm and turbo
 RUN npm install -g pnpm@9.15.4 turbo@1.10.0
@@ -155,9 +167,9 @@ RUN mkdir -p data/uploads && chown -R nextjs:nodejs data
 
 USER nextjs
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-ENV NODE_ENV production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV=production
 
 # Start the application
 CMD ["node", "server.js"]
