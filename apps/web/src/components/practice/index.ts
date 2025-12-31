@@ -10,6 +10,7 @@
 
 export type { AttemptTimingData, BroadcastState, StudentInfo } from './ActiveSession'
 export { ActiveSession } from './ActiveSession'
+export { AllProblemsSection } from './AllProblemsSection'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks
 export {
@@ -23,6 +24,10 @@ export { NotesModal } from './NotesModal'
 // StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)
 export { NotesModal as StudentQuickLook } from './NotesModal'
 export { OfflineSessionModal } from './OfflineSessionModal'
+export type { OfflineWorkSectionProps, OfflineAttachment } from './OfflineWorkSection'
+export { OfflineWorkSection } from './OfflineWorkSection'
+export type { PhotoLightboxPhoto } from './PhotoLightbox'
+export { PhotoLightbox } from './PhotoLightbox'
 export { SessionPhotoGallery } from './SessionPhotoGallery'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
@@ -59,7 +64,17 @@ export type { AutoPauseStats, PauseInfo } from './SessionPausedModal'
 export { SessionPausedModal } from './SessionPausedModal'
 export type { SessionProgressIndicatorProps } from './SessionProgressIndicator'
 export { SessionProgressIndicator } from './SessionProgressIndicator'
+export type { ScrollspySection, ScrollspyNavProps } from './ScrollspyNav'
+export { ScrollspyNav } from './ScrollspyNav'
+export type { SessionHeroProps } from './SessionHero'
+export { SessionHero } from './SessionHero'
 export { SessionSummary } from './SessionSummary'
+export type { SkillsPanelProps } from './SkillsPanel'
+export { SkillsPanel } from './SkillsPanel'
+export type { ProblemsToReviewPanelProps } from './ProblemsToReviewPanel'
+export { ProblemsToReviewPanel } from './ProblemsToReviewPanel'
+export type { TrendIndicatorProps } from './TrendIndicator'
+export { TrendIndicator } from './TrendIndicator'
 export { SkillPerformanceReports } from './SkillPerformanceReports'
 // Re-export shared types from BktContext for convenience
 export type {

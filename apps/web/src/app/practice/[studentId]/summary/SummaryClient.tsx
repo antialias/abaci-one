@@ -2,15 +2,27 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
+  AllProblemsSection,
   ContentBannerSlot,
+  OfflineWorkSection,
+  PhotoLightbox,
   PracticeSubNav,
+  ProblemsToReviewPanel,
   ProjectingBanner,
-  SessionSummary,
+  ScrollspyNav,
+  type ScrollspySection,
+  SessionHero,
+  SkillsPanel,
   StartPracticeModal,
 } from '@/components/practice'
+import { calculateAutoPauseInfo } from '@/components/practice/autoPauseCalculator'
+import {
+  filterProblemsNeedingAttention,
+  getProblemsWithContext,
+} from '@/components/practice/sessionSummaryUtils'
 import { Z_INDEX } from '@/constants/zIndex'
 import {
   SessionModeBannerProvider,
@@ -18,8 +30,9 @@ import {
 } from '@/contexts/SessionModeBannerContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
-import type { SessionPlan } from '@/db/schema/session-plans'
+import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
+import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../../../styled-system/css'
@@ -56,6 +69,8 @@ interface SummaryClientProps {
   problemHistory?: ProblemResultWithContext[]
   /** Whether we just transitioned from active practice to this summary */
   justCompleted?: boolean
+  /** Previous session accuracy (0-1) for trend comparison */
+  previousAccuracy?: number | null
 }
 
 /**
@@ -74,6 +89,7 @@ export function SummaryClient({
   avgSecondsPerProblem = 40,
   problemHistory,
   justCompleted = false,
+  previousAccuracy = null,
 }: SummaryClientProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -83,6 +99,9 @@ export function SummaryClient({
   const [dragOver, setDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Session mode - single source of truth for session planning decisions
@@ -108,8 +127,43 @@ export function SummaryClient({
   const isInProgress = session?.startedAt && !session?.completedAt
 
   // Check if session has actual problems (not just photos)
-  const sessionResults = (session?.results ?? []) as Array<unknown>
+  const sessionResults = (session?.results ?? []) as SlotResult[]
   const hasProblems = sessionResults.length > 0
+
+  // Compute BKT from problem history to get skill masteries
+  const skillMasteries = useMemo<Record<string, SkillBktResult>>(() => {
+    if (!problemHistory || problemHistory.length === 0) {
+      return {}
+    }
+    const bktResult = computeBktFromHistory(problemHistory)
+    // Convert array to record for easy lookup
+    return Object.fromEntries(bktResult.skills.map((skill) => [skill.skillId, skill]))
+  }, [problemHistory])
+
+  // Calculate auto-pause info for determining slow problems
+  const autoPauseInfo = useMemo(() => {
+    if (!hasProblems) return { threshold: 0, stats: { sampleCount: 0, meanMs: 0, stdDevMs: 0 } }
+    return calculateAutoPauseInfo(sessionResults)
+  }, [hasProblems, sessionResults])
+
+  // Get problems that need attention (incorrect, slow, or used heavy help)
+  const problemsNeedingAttention = useMemo(() => {
+    if (!session || !hasProblems) return []
+    const problemsWithContext = getProblemsWithContext(session)
+    return filterProblemsNeedingAttention(problemsWithContext, autoPauseInfo.threshold)
+  }, [session, hasProblems, autoPauseInfo.threshold])
+
+  // Define scrollspy sections to match plan: Overview | Skills | Review | Evidence
+  const scrollspySections = useMemo<ScrollspySection[]>(() => {
+    const sections: ScrollspySection[] = []
+    if (hasProblems) {
+      sections.push({ id: 'overview', label: 'Overview' })
+      sections.push({ id: 'skills', label: 'Skills' })
+      sections.push({ id: 'review', label: 'Review' })
+    }
+    sections.push({ id: 'evidence', label: 'Evidence' })
+    return sections
+  }, [hasProblems])
 
   // Upload photos immediately
   const uploadPhotos = useCallback(
@@ -194,6 +248,41 @@ export function SummaryClient({
     [uploadPhotos]
   )
 
+  // Handle photo deletion
+  const deletePhoto = useCallback(
+    async (attachmentId: string) => {
+      if (!session?.id) return
+
+      setDeletingId(attachmentId)
+      try {
+        const response = await fetch(`/api/curriculum/${studentId}/attachments/${attachmentId}`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to delete photo')
+        }
+
+        // Refresh attachments
+        queryClient.invalidateQueries({
+          queryKey: ['session-attachments', studentId, session.id],
+        })
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Failed to delete photo')
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [studentId, session?.id, queryClient]
+  )
+
+  // Open lightbox at specific photo
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIndex(index)
+    setLightboxOpen(true)
+  }, [])
+
   // Handle practice again - show the start practice modal
   const handlePracticeAgain = useCallback(() => {
     setShowStartPracticeModal(true)
@@ -238,7 +327,7 @@ export function SummaryClient({
         >
           <div
             className={css({
-              maxWidth: '800px',
+              maxWidth: '1400px',
               margin: '0 auto',
             })}
           >
@@ -277,188 +366,118 @@ export function SummaryClient({
               className={css({ marginBottom: '1.5rem' })}
             />
 
+            {/* Mobile scrollspy navigation */}
+            {session && scrollspySections.length > 1 && (
+              <ScrollspyNav
+                sections={scrollspySections}
+                topOffset={STICKY_HEADER_OFFSET + 60}
+                isDark={isDark}
+              />
+            )}
+
             {/* Session Summary or Empty State */}
             {session ? (
               <>
-                {/* Only show stats/problems if session has actual problems */}
-                {hasProblems && (
-                  <SessionSummary
-                    plan={session}
-                    studentId={studentId}
-                    studentName={player.name}
-                    problemHistory={problemHistory}
-                    justCompleted={justCompleted}
-                  />
-                )}
-
-                {/* Photos Section - Drop Target */}
+                {/* Responsive two-column layout for desktop
+                    Plan: Left (~45%) = Hero + Evidence, Right (~55%) = Skills + Review */}
                 <div
-                  data-section="session-photos"
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
+                  data-layout="summary-grid"
                   className={css({
-                    marginTop: hasProblems ? '2rem' : '0',
-                    padding: '1.5rem',
-                    backgroundColor: isDark ? 'gray.800' : 'white',
-                    borderRadius: '16px',
-                    border: '2px solid',
-                    borderColor: dragOver ? 'blue.400' : isDark ? 'gray.700' : 'gray.200',
-                    borderStyle: dragOver ? 'dashed' : 'solid',
-                    transition: 'all 0.2s',
+                    display: 'grid',
+                    gap: '1.5rem',
+                    // Mobile: single column
+                    gridTemplateColumns: '1fr',
+                    // Desktop (1200px+): two columns per plan spec
+                    '@media (min-width: 1200px)': {
+                      gridTemplateColumns: hasProblems ? '45% 55%' : '1fr',
+                      gap: '2rem',
+                      alignItems: 'start',
+                    },
                   })}
                 >
-                  {/* Hidden file input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileSelect}
-                    className={css({ display: 'none' })}
-                  />
-
-                  {/* Header with action buttons */}
+                  {/* Left column: Hero + Evidence (Photos + All Problems) */}
                   <div
+                    data-column="hero-evidence"
                     className={css({
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '1rem',
-                      flexWrap: 'wrap',
-                      gap: '0.5rem',
+                      flexDirection: 'column',
+                      gap: '1.5rem',
+                      // On mobile, this appears first
+                      order: 1,
                     })}
                   >
-                    <h3
-                      className={css({
-                        fontSize: '1.125rem',
-                        fontWeight: 'bold',
-                        color: isDark ? 'white' : 'gray.800',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      })}
-                    >
-                      <span>📷</span> Practice Photos
-                      {hasPhotos && (
-                        <span
-                          className={css({
-                            fontSize: '0.875rem',
-                            fontWeight: 'normal',
-                            color: isDark ? 'gray.400' : 'gray.500',
-                          })}
-                        >
-                          ({attachments.length})
-                        </span>
-                      )}
-                    </h3>
+                    {/* Session Hero - celebration header, stats, trend */}
+                    {hasProblems && (
+                      <div data-scrollspy-section="overview">
+                        <SessionHero
+                          plan={session}
+                          studentName={player.name}
+                          justCompleted={justCompleted}
+                          previousAccuracy={previousAccuracy ?? null}
+                          isDark={isDark}
+                        />
+                      </div>
+                    )}
 
-                    {/* Action buttons */}
-                    <div className={css({ display: 'flex', gap: '0.5rem' })}>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        className={css({
-                          px: 3,
-                          py: 1.5,
-                          bg: isDark ? 'blue.600' : 'blue.500',
-                          color: 'white',
-                          borderRadius: 'md',
-                          fontSize: 'sm',
-                          fontWeight: 'medium',
-                          cursor: 'pointer',
-                          _hover: { bg: isDark ? 'blue.500' : 'blue.600' },
-                          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                        })}
-                      >
-                        {isUploading ? 'Uploading...' : 'Choose Files'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowCamera(true)}
-                        disabled={isUploading}
-                        className={css({
-                          px: 3,
-                          py: 1.5,
-                          bg: isDark ? 'green.600' : 'green.500',
-                          color: 'white',
-                          borderRadius: 'md',
-                          fontSize: 'sm',
-                          fontWeight: 'medium',
-                          cursor: 'pointer',
-                          _hover: { bg: isDark ? 'green.500' : 'green.600' },
-                          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                        })}
-                      >
-                        📷 Camera
-                      </button>
+                    {/* Evidence section: Photos + All Problems */}
+                    <div data-scrollspy-section="evidence">
+                      <OfflineWorkSection
+                        attachments={attachments}
+                        fileInputRef={fileInputRef}
+                        isUploading={isUploading}
+                        uploadError={uploadError}
+                        deletingId={deletingId}
+                        dragOver={dragOver}
+                        isDark={isDark}
+                        onFileSelect={handleFileSelect}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onOpenCamera={() => setShowCamera(true)}
+                        onOpenLightbox={openLightbox}
+                        onDeletePhoto={deletePhoto}
+                      />
+                      {/* All Problems - complete session listing */}
+                      {hasProblems && (
+                        <div className={css({ marginTop: '1.5rem' })}>
+                          <AllProblemsSection plan={session} isDark={isDark} />
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Upload error */}
-                  {uploadError && (
+                  {/* Right column: Skills + Review */}
+                  {hasProblems && (
                     <div
+                      data-column="skills-review"
                       className={css({
-                        mb: 3,
-                        p: 2,
-                        bg: 'red.50',
-                        border: '1px solid',
-                        borderColor: 'red.200',
-                        borderRadius: 'md',
-                        color: 'red.700',
-                        fontSize: 'sm',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem',
+                        // On mobile, this appears second
+                        order: 2,
+                        '@media (min-width: 1200px)': {
+                          position: 'sticky',
+                          top: '160px', // Below nav
+                        },
                       })}
                     >
-                      {uploadError}
-                    </div>
-                  )}
+                      {/* Skills Panel */}
+                      <div data-scrollspy-section="skills">
+                        <SkillsPanel results={sessionResults} isDark={isDark} />
+                      </div>
 
-                  {/* Photo grid or empty state */}
-                  {hasPhotos ? (
-                    <div
-                      className={css({
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                        gap: '0.75rem',
-                      })}
-                    >
-                      {attachments.map((att) => (
-                        <div
-                          key={att.id}
-                          className={css({
-                            aspectRatio: '1',
-                            borderRadius: 'lg',
-                            overflow: 'hidden',
-                            bg: 'gray.100',
-                          })}
-                        >
-                          {/* biome-ignore lint/a11y/useAltText: decorative thumbnail */}
-                          {/* biome-ignore lint/performance/noImgElement: API-served images */}
-                          <img
-                            src={att.url}
-                            className={css({
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            })}
-                          />
-                        </div>
-                      ))}
+                      {/* Problems to Review */}
+                      <div data-scrollspy-section="review">
+                        <ProblemsToReviewPanel
+                          problems={problemsNeedingAttention}
+                          results={sessionResults}
+                          skillMasteries={skillMasteries}
+                          totalProblems={sessionResults.length}
+                          isDark={isDark}
+                        />
+                      </div>
                     </div>
-                  ) : (
-                    <p
-                      className={css({
-                        color: isDark ? 'gray.400' : 'gray.500',
-                        fontSize: '0.875rem',
-                        textAlign: 'center',
-                        py: 4,
-                      })}
-                    >
-                      {dragOver
-                        ? 'Drop photos here to upload'
-                        : 'Drag photos here or use the buttons above'}
-                    </p>
                   )}
                 </div>
               </>
@@ -500,6 +519,17 @@ export function SummaryClient({
             onStarted={() => setShowStartPracticeModal(false)}
           />
         )}
+
+        {/* Photo Lightbox */}
+        <PhotoLightbox
+          photos={attachments.map((att) => ({
+            id: att.id,
+            url: att.url,
+          }))}
+          initialIndex={lightboxIndex}
+          isOpen={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+        />
 
         {/* Fullscreen Camera Modal */}
         <Dialog.Root open={showCamera} onOpenChange={setShowCamera}>

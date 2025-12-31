@@ -322,7 +322,9 @@ export function SessionPhotoGallery({
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
-                  {isUploading ? 'Uploading...' : `Upload ${pendingPhotos.length} Photo${pendingPhotos.length !== 1 ? 's' : ''}`}
+                  {isUploading
+                    ? 'Uploading...'
+                    : `Upload ${pendingPhotos.length} Photo${pendingPhotos.length !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </div>

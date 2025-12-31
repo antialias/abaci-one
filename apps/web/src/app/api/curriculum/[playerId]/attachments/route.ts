@@ -55,9 +55,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ sessionCounts })
   } catch (error) {
     console.error('Error fetching attachment counts:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch attachment counts' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch attachment counts' }, { status: 500 })
   }
 }

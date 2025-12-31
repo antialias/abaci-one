@@ -594,7 +594,7 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
             color: isDark ? 'gray.200' : 'gray.800',
           })}
         >
-          📋 All Problems ({totalProblems})
+          📝 All Session Problems ({totalProblems})
         </span>
         <span
           className={css({

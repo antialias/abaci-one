@@ -40,10 +40,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const { playerId, sessionId } = await params
 
     if (!playerId || !sessionId) {
-      return NextResponse.json(
-        { error: 'Player ID and Session ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
     }
 
     // Authorization check
@@ -78,10 +75,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ attachments: result })
   } catch (error) {
     console.error('Error fetching session attachments:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch attachments' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch attachments' }, { status: 500 })
   }
 }
 
@@ -93,10 +87,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { playerId, sessionId } = await params
 
     if (!playerId || !sessionId) {
-      return NextResponse.json(
-        { error: 'Player ID and Session ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
@@ -108,10 +99,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Verify session exists and belongs to player
     const session = await db.query.sessionPlans.findFirst({
-      where: and(
-        eq(sessionPlans.id, sessionId),
-        eq(sessionPlans.playerId, playerId)
-      ),
+      where: and(eq(sessionPlans.id, sessionId), eq(sessionPlans.playerId, playerId)),
     })
 
     if (!session) {
@@ -127,10 +115,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       if (key === 'photos' && value instanceof File && value.size > 0) {
         // Validate file type
         if (!value.type.startsWith('image/')) {
-          return NextResponse.json(
-            { error: `File ${value.name} is not an image` },
-            { status: 400 }
-          )
+          return NextResponse.json({ error: `File ${value.name} is not an image` }, { status: 400 })
         }
         // Validate file size (max 10MB)
         if (value.size > 10 * 1024 * 1024) {
@@ -144,10 +129,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     if (photos.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one photo is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'At least one photo is required' }, { status: 400 })
     }
 
     // Save photos and create attachment records
@@ -195,9 +177,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     })
   } catch (error) {
     console.error('Error adding session attachments:', error)
-    return NextResponse.json(
-      { error: 'Failed to add attachments' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to add attachments' }, { status: 500 })
   }
 }

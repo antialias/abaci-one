@@ -4,6 +4,7 @@ import {
   getMostRecentCompletedSession,
   getPlayer,
   getRecentSessionResults,
+  getRecentSessions,
 } from '@/lib/curriculum/server'
 import { SummaryClient } from './SummaryClient'
 
@@ -35,13 +36,15 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   const { completed } = await searchParams
   const justCompleted = completed === '1'
 
-  // Fetch player, active session, most recent completed session, and problem history in parallel
-  const [player, activeSession, completedSession, problemHistory] = await Promise.all([
-    getPlayer(studentId),
-    getActiveSessionPlan(studentId),
-    getMostRecentCompletedSession(studentId),
-    getRecentSessionResults(studentId, 100),
-  ])
+  // Fetch player, active session, most recent completed session, problem history, and recent sessions in parallel
+  const [player, activeSession, completedSession, problemHistory, recentSessions] =
+    await Promise.all([
+      getPlayer(studentId),
+      getActiveSessionPlan(studentId),
+      getMostRecentCompletedSession(studentId),
+      getRecentSessionResults(studentId, 100),
+      getRecentSessions(studentId, 10), // For trend calculation
+    ])
 
   // 404 if player doesn't exist
   if (!player) {
@@ -54,6 +57,23 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   // Calculate average seconds per problem from the session
   const avgSecondsPerProblem = sessionToShow?.avgTimePerProblemSeconds ?? 40
 
+  // Calculate previous session's accuracy for trend comparison
+  // The current session (if completed) is included in recentSessions, so we need to find the one after it
+  let previousAccuracy: number | null = null
+  if (sessionToShow && recentSessions.length > 0) {
+    // Find index of current session in recent sessions
+    const currentIndex = recentSessions.findIndex((s) => s.id === sessionToShow.id)
+    // Previous session is the next one in the list (since ordered newest first)
+    const previousSession = currentIndex >= 0 ? recentSessions[currentIndex + 1] : recentSessions[0]
+    if (previousSession && previousSession.id !== sessionToShow.id) {
+      // Get accuracy from the session - it's stored as problemsCorrect/problemsAttempted
+      previousAccuracy =
+        previousSession.problemsAttempted > 0
+          ? previousSession.problemsCorrect / previousSession.problemsAttempted
+          : null
+    }
+  }
+
   return (
     <SummaryClient
       studentId={studentId}
@@ -62,6 +82,7 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
       avgSecondsPerProblem={avgSecondsPerProblem}
       problemHistory={problemHistory}
       justCompleted={justCompleted}
+      previousAccuracy={previousAccuracy}
     />
   )
 }
