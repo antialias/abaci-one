@@ -15,15 +15,15 @@ import {
 import type { Player } from '@/db/schema/players'
 import type { SessionHealth, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import {
+  type ReceivedAbacusControl,
+  type TeacherPauseRequest,
+  useSessionBroadcast,
+} from '@/hooks/useSessionBroadcast'
+import {
   useActiveSessionPlan,
   useEndSessionEarly,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
-import {
-  useSessionBroadcast,
-  type ReceivedAbacusControl,
-  type TeacherPauseRequest,
-} from '@/hooks/useSessionBroadcast'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -106,9 +106,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           result,
         })
 
-        // If session just completed, redirect to summary
+        // If session just completed, redirect to summary with completed flag
         if (updatedPlan.completedAt) {
-          router.push(`/practice/${studentId}/summary`, { scroll: false })
+          router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -134,8 +134,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           planId: currentPlan.id,
           reason,
         })
-        // Redirect to summary after ending early
-        router.push(`/practice/${studentId}/summary`, { scroll: false })
+        // Redirect to summary after ending early with completed flag
+        router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
       } catch (err) {
         // Check if it's an authorization error
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -154,8 +154,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Handle session completion (called by ActiveSession when all problems done)
   const handleSessionComplete = useCallback(() => {
-    // Redirect to summary
-    router.push(`/practice/${studentId}/summary`, { scroll: false })
+    // Redirect to summary with completed flag
+    router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
   }, [studentId, router])
 
   // Broadcast session state if student is in a classroom

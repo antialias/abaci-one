@@ -54,6 +54,8 @@ interface SummaryClientProps {
   avgSecondsPerProblem?: number
   /** Problem history for BKT computation in weak skills targeting */
   problemHistory?: ProblemResultWithContext[]
+  /** Whether we just transitioned from active practice to this summary */
+  justCompleted?: boolean
 }
 
 /**
@@ -71,6 +73,7 @@ export function SummaryClient({
   session,
   avgSecondsPerProblem = 40,
   problemHistory,
+  justCompleted = false,
 }: SummaryClientProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -285,6 +288,7 @@ export function SummaryClient({
                     studentName={player.name}
                     onPracticeAgain={handlePracticeAgain}
                     problemHistory={problemHistory}
+                    justCompleted={justCompleted}
                   />
                 )}
 

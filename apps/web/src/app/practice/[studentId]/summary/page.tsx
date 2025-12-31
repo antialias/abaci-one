@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 
 interface SummaryPageProps {
   params: Promise<{ studentId: string }>
+  searchParams: Promise<{ completed?: string }>
 }
 
 /**
@@ -29,8 +30,10 @@ interface SummaryPageProps {
  *
  * URL: /practice/[studentId]/summary
  */
-export default async function SummaryPage({ params }: SummaryPageProps) {
+export default async function SummaryPage({ params, searchParams }: SummaryPageProps) {
   const { studentId } = await params
+  const { completed } = await searchParams
+  const justCompleted = completed === '1'
 
   // Fetch player, active session, most recent completed session, and problem history in parallel
   const [player, activeSession, completedSession, problemHistory] = await Promise.all([
@@ -58,6 +61,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
       session={sessionToShow}
       avgSecondsPerProblem={avgSecondsPerProblem}
       problemHistory={problemHistory}
+      justCompleted={justCompleted}
     />
   )
 }
