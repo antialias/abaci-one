@@ -87,6 +87,18 @@ interface CV {
     borderMode: number,
     borderValue: unknown
   ) => void
+  warpAffine: (
+    src: CVMat,
+    dst: CVMat,
+    M: CVMat,
+    size: CVSize,
+    flags?: number,
+    borderMode?: number,
+    borderValue?: unknown
+  ) => void
+  getRotationMatrix2D: (center: CVPoint, angle: number, scale: number) => CVMat
+  rotate: (src: CVMat, dst: CVMat, rotateCode: number) => void
+  countNonZero: (src: CVMat) => number
   matFromArray: (
     rows: number,
     cols: number,
@@ -100,6 +112,9 @@ interface CV {
   CV_32FC2: number
   INTER_LINEAR: number
   BORDER_CONSTANT: number
+  ROTATE_90_CLOCKWISE: number
+  ROTATE_180: number
+  ROTATE_90_COUNTERCLOCKWISE: number
 }
 
 /** Represents a detected quadrilateral with corner points */
@@ -828,6 +843,176 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     [captureVideoFrame, findAllQuads, updateTrackedQuads, drawQuad]
   )
 
+  /**
+   * Analyze document orientation and return rotation needed (0, 90, 180, 270)
+   * Uses edge detection to find dominant text line direction
+   * and content density to detect upside-down orientation
+   */
+  const analyzeOrientation = useCallback(
+    (canvas: HTMLCanvasElement): 0 | 90 | 180 | 270 => {
+      const cv = cvRef.current
+      if (!cv) return 0
+
+      let src: CVMat | null = null
+      let gray: CVMat | null = null
+      let edges: CVMat | null = null
+
+      try {
+        src = cv.imread(canvas)
+        gray = new cv.Mat()
+        edges = new cv.Mat()
+
+        // Convert to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY)
+
+        // Apply Canny edge detection
+        cv.Canny(gray, edges, 50, 150)
+
+        const width = edges.cols
+        const height = edges.rows
+
+        // Sample horizontal and vertical edge strips to determine orientation
+        // For text documents, horizontal lines (text) should dominate
+        let horizontalEdges = 0
+        let verticalEdges = 0
+
+        // Sample middle section of the image (avoid margins)
+        const marginX = Math.floor(width * 0.1)
+        const marginY = Math.floor(height * 0.1)
+        const sampleHeight = height - 2 * marginY
+
+        // Count edge pixels in horizontal strips vs vertical strips
+        // Use a simple row/column scan approach
+        const edgeData = new Uint8Array(
+          (edges as unknown as { data: ArrayBuffer }).data
+        )
+
+        // Count horizontal edge continuity (text lines are horizontal)
+        for (let y = marginY; y < height - marginY; y += 5) {
+          let runLength = 0
+          for (let x = marginX; x < width - marginX; x++) {
+            if (edgeData[y * width + x] > 0) {
+              runLength++
+            } else {
+              if (runLength > 10) horizontalEdges += runLength
+              runLength = 0
+            }
+          }
+          if (runLength > 10) horizontalEdges += runLength
+        }
+
+        // Count vertical edge continuity
+        for (let x = marginX; x < width - marginX; x += 5) {
+          let runLength = 0
+          for (let y = marginY; y < height - marginY; y++) {
+            if (edgeData[y * width + x] > 0) {
+              runLength++
+            } else {
+              if (runLength > 10) verticalEdges += runLength
+              runLength = 0
+            }
+          }
+          if (runLength > 10) verticalEdges += runLength
+        }
+
+        // Determine if we need 90° rotation
+        // If vertical edges significantly dominate, text is probably sideways
+        const ratio = horizontalEdges / (verticalEdges + 1)
+        let rotation: 0 | 90 | 180 | 270 = 0
+
+        if (ratio < 0.5) {
+          // Vertical edges dominate - rotate 90° clockwise
+          rotation = 90
+        } else if (ratio > 2) {
+          // Horizontal edges dominate - correct orientation (or 180°)
+          rotation = 0
+        }
+
+        // Now check if upside down by comparing content density
+        // Top of document usually has more content (headers, titles)
+        const topThird = Math.floor(sampleHeight / 3)
+
+        let topDensity = 0
+        let bottomDensity = 0
+
+        for (let y = marginY; y < marginY + topThird; y++) {
+          for (let x = marginX; x < width - marginX; x += 3) {
+            if (edgeData[y * width + x] > 0) topDensity++
+          }
+        }
+
+        for (let y = height - marginY - topThird; y < height - marginY; y++) {
+          for (let x = marginX; x < width - marginX; x += 3) {
+            if (edgeData[y * width + x] > 0) bottomDensity++
+          }
+        }
+
+        // If bottom has significantly more content, probably upside down
+        if (bottomDensity > topDensity * 1.5) {
+          rotation = rotation === 0 ? 180 : rotation === 90 ? 270 : rotation
+        }
+
+        return rotation
+      } catch (err) {
+        console.warn('Orientation analysis failed:', err)
+        return 0
+      } finally {
+        src?.delete()
+        gray?.delete()
+        edges?.delete()
+      }
+    },
+    []
+  )
+
+  /**
+   * Rotate a canvas by the specified degrees (0, 90, 180, 270)
+   */
+  const rotateCanvas = useCallback(
+    (canvas: HTMLCanvasElement, degrees: 0 | 90 | 180 | 270): HTMLCanvasElement => {
+      if (degrees === 0) return canvas
+
+      const cv = cvRef.current
+      if (!cv) return canvas
+
+      let src: CVMat | null = null
+      let dst: CVMat | null = null
+
+      try {
+        src = cv.imread(canvas)
+        dst = new cv.Mat()
+
+        const rotateCode =
+          degrees === 90
+            ? cv.ROTATE_90_CLOCKWISE
+            : degrees === 180
+              ? cv.ROTATE_180
+              : cv.ROTATE_90_COUNTERCLOCKWISE
+
+        cv.rotate(src, dst, rotateCode)
+
+        const outputCanvas = document.createElement('canvas')
+        if (degrees === 90 || degrees === 270) {
+          outputCanvas.width = canvas.height
+          outputCanvas.height = canvas.width
+        } else {
+          outputCanvas.width = canvas.width
+          outputCanvas.height = canvas.height
+        }
+
+        cv.imshow(outputCanvas, dst)
+        return outputCanvas
+      } catch (err) {
+        console.warn('Canvas rotation failed:', err)
+        return canvas
+      } finally {
+        src?.delete()
+        dst?.delete()
+      }
+    },
+    []
+  )
+
   const extractDocument = useCallback(
     (video: HTMLVideoElement): HTMLCanvasElement | null => {
       const cv = cvRef.current
@@ -911,13 +1096,20 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         src.delete()
         dst.delete()
 
+        // Auto-rotate based on content analysis
+        const rotation = analyzeOrientation(outputCanvas)
+        if (rotation !== 0) {
+          console.log(`Auto-rotating document by ${rotation}°`)
+          return rotateCanvas(outputCanvas, rotation)
+        }
+
         return outputCanvas
       } catch (err) {
         console.warn('Document extraction failed:', err)
         return null
       }
     },
-    [captureVideoFrame, distance]
+    [captureVideoFrame, distance, analyzeOrientation, rotateCanvas]
   )
 
   // Compute derived state
