@@ -16,8 +16,6 @@ interface SessionSummaryProps {
   plan: SessionPlan
   studentId: string
   studentName: string
-  /** Called when user wants to practice again */
-  onPracticeAgain: () => void
   /** Problem history for BKT computation (optional - if not provided, weak skills won't be shown) */
   problemHistory?: ProblemResultWithContext[]
   /** Whether we just transitioned from active practice - shows celebration header */
@@ -70,7 +68,6 @@ export function SessionSummary({
   plan,
   studentId: _studentId,
   studentName,
-  onPracticeAgain,
   problemHistory,
   justCompleted = false,
 }: SessionSummaryProps) {
@@ -793,38 +790,6 @@ export function SessionSummary({
 
       {/* All Problems (collapsed by default) */}
       <AllProblemsSection plan={plan} isDark={isDark} />
-
-      {/* Action buttons */}
-      <div
-        data-section="actions"
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          marginTop: '1rem',
-        })}
-      >
-        <button
-          type="button"
-          data-action="practice-again"
-          onClick={onPracticeAgain}
-          className={css({
-            padding: '1rem',
-            fontSize: '1.125rem',
-            fontWeight: 'bold',
-            color: 'white',
-            backgroundColor: 'blue.500',
-            borderRadius: '12px',
-            border: 'none',
-            cursor: 'pointer',
-            _hover: {
-              backgroundColor: 'blue.600',
-            },
-          })}
-        >
-          Practice Again
-        </button>
-      </div>
     </div>
   )
 }

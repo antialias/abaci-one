@@ -200,22 +200,20 @@ export function SummaryClient({
   }, [])
 
   // Determine header text based on session state
+  // Only shown for photo-only sessions and no-session state
+  // (SessionSummary handles its own header for sessions with problems)
   const headerTitle = isInProgress
     ? 'Session In Progress'
     : session
-      ? hasProblems
-        ? 'Session Complete'
-        : 'Practice Session'
+      ? 'Practice Session'
       : 'No Sessions Yet'
 
   const headerSubtitle = isInProgress
     ? `${player.name} is currently practicing`
     : session
-      ? hasProblems
-        ? 'Great work on your practice session!'
-        : hasPhotos
-          ? 'Photos from practice'
-          : 'Add photos from practice'
+      ? hasPhotos
+        ? 'Photos from practice'
+        : 'Add photos from practice'
       : `${player.name} hasn't completed any sessions yet`
 
   return (
@@ -244,32 +242,34 @@ export function SummaryClient({
               margin: '0 auto',
             })}
           >
-            {/* Header */}
-            <header
-              className={css({
-                textAlign: 'center',
-                marginBottom: '2rem',
-              })}
-            >
-              <h1
+            {/* Header - only show when SessionSummary won't (photo-only or no session) */}
+            {!hasProblems && (
+              <header
                 className={css({
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  color: isDark ? 'white' : 'gray.800',
-                  marginBottom: '0.5rem',
+                  textAlign: 'center',
+                  marginBottom: '2rem',
                 })}
               >
-                {headerTitle}
-              </h1>
-              <p
-                className={css({
-                  fontSize: '0.875rem',
-                  color: isDark ? 'gray.400' : 'gray.600',
-                })}
-              >
-                {headerSubtitle}
-              </p>
-            </header>
+                <h1
+                  className={css({
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    color: isDark ? 'white' : 'gray.800',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  {headerTitle}
+                </h1>
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                  })}
+                >
+                  {headerSubtitle}
+                </p>
+              </header>
+            )}
 
             {/* Session mode banner - renders in-flow, projects to nav on scroll */}
             <ContentBannerSlot
@@ -286,7 +286,6 @@ export function SummaryClient({
                     plan={session}
                     studentId={studentId}
                     studentName={player.name}
-                    onPracticeAgain={handlePracticeAgain}
                     problemHistory={problemHistory}
                     justCompleted={justCompleted}
                   />
@@ -462,35 +461,6 @@ export function SummaryClient({
                     </p>
                   )}
                 </div>
-
-                {/* Practice Again button for photo-only sessions */}
-                {!hasProblems && (
-                  <div
-                    className={css({
-                      marginTop: '1.5rem',
-                      textAlign: 'center',
-                    })}
-                  >
-                    <button
-                      type="button"
-                      data-action="practice-again"
-                      onClick={handlePracticeAgain}
-                      className={css({
-                        padding: '0.75rem 1.5rem',
-                        fontSize: '1rem',
-                        fontWeight: 'bold',
-                        color: 'white',
-                        backgroundColor: 'blue.500',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        _hover: { backgroundColor: 'blue.600' },
-                      })}
-                    >
-                      Start Practice
-                    </button>
-                  </div>
-                )}
               </>
             ) : (
               <div
@@ -507,28 +477,10 @@ export function SummaryClient({
                   className={css({
                     fontSize: '1.125rem',
                     color: isDark ? 'gray.400' : 'gray.600',
-                    marginBottom: '1.5rem',
                   })}
                 >
                   Start a practice session to see results here.
                 </p>
-                <button
-                  type="button"
-                  onClick={handlePracticeAgain}
-                  className={css({
-                    padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    backgroundColor: 'blue.500',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    _hover: { backgroundColor: 'blue.600' },
-                  })}
-                >
-                  Start Practice
-                </button>
               </div>
             )}
           </div>
