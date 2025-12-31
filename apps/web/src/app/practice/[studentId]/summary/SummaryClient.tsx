@@ -19,6 +19,7 @@ import {
   StartPracticeModal,
 } from '@/components/practice'
 import { calculateAutoPauseInfo } from '@/components/practice/autoPauseCalculator'
+import { DocumentAdjuster } from '@/components/practice/DocumentAdjuster'
 import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
 import {
   filterProblemsNeedingAttention,
@@ -586,11 +587,18 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const lastDetectionRef = useRef<number>(0)
+  const autoCaptureTriggeredRef = useRef(false)
 
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
   const [documentDetected, setDocumentDetected] = useState(false)
+
+  // Adjustment mode state
+  const [adjustmentMode, setAdjustmentMode] = useState<{
+    sourceCanvas: HTMLCanvasElement
+    corners: Array<{ x: number; y: number }>
+  } | null>(null)
 
   // Document detection hook (lazy loads OpenCV.js)
   const {
@@ -599,6 +607,9 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     isStable: isDetectionStable,
     isLocked: isDetectionLocked,
     debugInfo: scannerDebugInfo,
+    cv: opencvRef,
+    getBestQuadCorners,
+    captureSourceFrame,
     highlightDocument,
     extractDocument,
   } = useDocumentDetection()
@@ -696,23 +707,43 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     }
   }, [isReady, isScannerReady, highlightDocument])
 
-  const capturePhoto = async () => {
+  // Enter adjustment mode with captured frame and detected corners
+  const enterAdjustmentMode = useCallback(() => {
+    if (!videoRef.current) return
+
+    const video = videoRef.current
+    const sourceCanvas = captureSourceFrame(video)
+    const corners = getBestQuadCorners()
+
+    if (sourceCanvas && corners) {
+      // Stop detection loop while adjusting
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      setAdjustmentMode({ sourceCanvas, corners })
+    } else {
+      // No document detected, do quick capture without adjustment
+      captureWithoutAdjustment()
+    }
+  }, [captureSourceFrame, getBestQuadCorners])
+
+  // Quick capture without adjustment (fallback)
+  const captureWithoutAdjustment = async () => {
     if (!videoRef.current || !canvasRef.current) return
 
     setIsCapturing(true)
     try {
       const video = videoRef.current
       const canvas = canvasRef.current
-      let sourceCanvas: HTMLCanvasElement
 
       // Try to extract document if scanner is ready
+      let sourceCanvas: HTMLCanvasElement
       if (isScannerReady) {
         const extractedCanvas = extractDocument(video)
         if (extractedCanvas) {
-          // Document successfully extracted and cropped
           sourceCanvas = extractedCanvas
         } else {
-          // Extraction failed, fall back to regular capture
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
           const ctx = canvas.getContext('2d')
@@ -721,7 +752,6 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
           sourceCanvas = canvas
         }
       } else {
-        // Scanner not ready, use regular capture
         canvas.width = video.videoWidth
         canvas.height = video.videoHeight
         const ctx = canvas.getContext('2d')
@@ -752,6 +782,80 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     } finally {
       setIsCapturing(false)
     }
+  }
+
+  // Handle capture button - enters adjustment mode if document detected
+  const capturePhoto = () => {
+    if (isCapturing) return
+    setIsCapturing(true)
+    enterAdjustmentMode()
+    setIsCapturing(false)
+  }
+
+  // Auto-capture when detection is locked and stable
+  useEffect(() => {
+    if (
+      isDetectionLocked &&
+      isReady &&
+      isScannerReady &&
+      !isCapturing &&
+      !adjustmentMode &&
+      !autoCaptureTriggeredRef.current
+    ) {
+      // Add a small delay to ensure stability
+      const timeout = setTimeout(() => {
+        if (isDetectionLocked && !autoCaptureTriggeredRef.current) {
+          autoCaptureTriggeredRef.current = true
+          console.log('Auto-capturing document...')
+          enterAdjustmentMode()
+        }
+      }, 500) // 500ms delay after lock to ensure stability
+
+      return () => clearTimeout(timeout)
+    }
+  }, [isDetectionLocked, isReady, isScannerReady, isCapturing, adjustmentMode, enterAdjustmentMode])
+
+  // Handle adjustment confirm
+  const handleAdjustmentConfirm = useCallback(
+    (file: File) => {
+      setAdjustmentMode(null)
+      onCapture(file)
+    },
+    [onCapture]
+  )
+
+  // Handle adjustment cancel - return to camera
+  const handleAdjustmentCancel = useCallback(() => {
+    setAdjustmentMode(null)
+    autoCaptureTriggeredRef.current = false // Allow auto-capture again
+    // Restart detection loop
+    if (videoRef.current && overlayCanvasRef.current && isScannerReady) {
+      const detectLoop = () => {
+        const now = Date.now()
+        if (now - lastDetectionRef.current > 150) {
+          if (videoRef.current && overlayCanvasRef.current) {
+            const detected = highlightDocument(videoRef.current, overlayCanvasRef.current)
+            setDocumentDetected(detected)
+          }
+          lastDetectionRef.current = now
+        }
+        animationFrameRef.current = requestAnimationFrame(detectLoop)
+      }
+      animationFrameRef.current = requestAnimationFrame(detectLoop)
+    }
+  }, [isScannerReady, highlightDocument])
+
+  // Show adjustment UI if in adjustment mode
+  if (adjustmentMode && opencvRef) {
+    return (
+      <DocumentAdjuster
+        sourceCanvas={adjustmentMode.sourceCanvas}
+        initialCorners={adjustmentMode.corners}
+        onConfirm={handleAdjustmentConfirm}
+        onCancel={handleAdjustmentCancel}
+        cv={opencvRef}
+      />
+    )
   }
 
   return (

@@ -195,6 +195,18 @@ export interface UseDocumentDetectionReturn {
   isLocked: boolean
   /** Debug information for troubleshooting */
   debugInfo: DocumentDetectionDebugInfo
+  /** OpenCV reference for external use (e.g., DocumentAdjuster) */
+  cv: unknown
+  /**
+   * Get the current best quad's corner positions
+   * Returns null if no quad is detected
+   */
+  getBestQuadCorners: () => Array<{ x: number; y: number }> | null
+  /**
+   * Capture the current video frame as a canvas
+   * Returns null if capture fails
+   */
+  captureSourceFrame: (video: HTMLVideoElement) => HTMLCanvasElement | null
   /**
    * Draw detected document edges on overlay canvas
    * Returns true if document was detected, false otherwise
@@ -1120,6 +1132,29 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     bestQuad.frameCount >= LOCKED_FRAME_COUNT &&
     bestQuad.stabilityScore > 0.5
 
+  // Get current best quad corners
+  const getBestQuadCorners = useCallback((): Array<{ x: number; y: number }> | null => {
+    const quad = bestQuadRef.current
+    if (!quad) return null
+    return [...quad.corners]
+  }, [])
+
+  // Capture source frame (expose captureVideoFrame)
+  const captureSourceFrame = useCallback(
+    (video: HTMLVideoElement): HTMLCanvasElement | null => {
+      const frame = captureVideoFrame(video)
+      if (!frame) return null
+      // Return a copy so caller can keep it
+      const copy = document.createElement('canvas')
+      copy.width = frame.width
+      copy.height = frame.height
+      const ctx = copy.getContext('2d')
+      ctx?.drawImage(frame, 0, 0)
+      return copy
+    },
+    [captureVideoFrame]
+  )
+
   return {
     isLoading,
     error,
@@ -1127,6 +1162,9 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     isStable,
     isLocked: !!isLocked,
     debugInfo,
+    cv: cvRef.current,
+    getBestQuadCorners,
+    captureSourceFrame,
     highlightDocument,
     extractDocument,
   }
