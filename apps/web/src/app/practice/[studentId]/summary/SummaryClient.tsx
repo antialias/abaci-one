@@ -19,6 +19,7 @@ import {
   StartPracticeModal,
 } from '@/components/practice'
 import { calculateAutoPauseInfo } from '@/components/practice/autoPauseCalculator'
+import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
 import {
   filterProblemsNeedingAttention,
   getProblemsWithContext,
@@ -29,6 +30,7 @@ import {
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { VisualDebugProvider } from '@/contexts/VisualDebugContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
@@ -550,14 +552,16 @@ export function SummaryClient({
                 outline: 'none',
               })}
             >
-              <Dialog.Title className={css({ srOnly: true })}>Take Photo</Dialog.Title>
-              <Dialog.Description className={css({ srOnly: true })}>
-                Camera viewfinder. Tap capture to take a photo.
-              </Dialog.Description>
-              <FullscreenCamera
-                onCapture={handleCameraCapture}
-                onClose={() => setShowCamera(false)}
-              />
+              <VisualDebugProvider>
+                <Dialog.Title className={css({ srOnly: true })}>Take Photo</Dialog.Title>
+                <Dialog.Description className={css({ srOnly: true })}>
+                  Camera viewfinder. Tap capture to take a photo.
+                </Dialog.Description>
+                <FullscreenCamera
+                  onCapture={handleCameraCapture}
+                  onClose={() => setShowCamera(false)}
+                />
+              </VisualDebugProvider>
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
@@ -578,11 +582,26 @@ interface FullscreenCameraProps {
 function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const lastDetectionRef = useRef<number>(0)
 
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [documentDetected, setDocumentDetected] = useState(false)
+
+  // Document detection hook (lazy loads OpenCV.js)
+  const {
+    isLoading: isScannerLoading,
+    isReady: isScannerReady,
+    isStable: isDetectionStable,
+    isLocked: isDetectionLocked,
+    debugInfo: scannerDebugInfo,
+    highlightDocument,
+    extractDocument,
+  } = useDocumentDetection()
 
   useEffect(() => {
     let cancelled = false
@@ -632,6 +651,51 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     }
   }, [])
 
+  // Detection loop - runs when camera and scanner are ready
+  useEffect(() => {
+    if (!isReady || !isScannerReady) return
+
+    const video = videoRef.current
+    const overlay = overlayCanvasRef.current
+    if (!video || !overlay) return
+
+    // Sync overlay canvas size with video
+    const syncCanvasSize = () => {
+      if (overlay && video) {
+        overlay.width = video.clientWidth
+        overlay.height = video.clientHeight
+      }
+    }
+    syncCanvasSize()
+
+    const detectLoop = () => {
+      const now = Date.now()
+      // Throttle detection to every 150ms for performance
+      if (now - lastDetectionRef.current > 150) {
+        if (video && overlay) {
+          const detected = highlightDocument(video, overlay)
+          setDocumentDetected(detected)
+        }
+        lastDetectionRef.current = now
+      }
+      animationFrameRef.current = requestAnimationFrame(detectLoop)
+    }
+
+    // Start detection loop
+    animationFrameRef.current = requestAnimationFrame(detectLoop)
+
+    // Sync on resize
+    window.addEventListener('resize', syncCanvasSize)
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      window.removeEventListener('resize', syncCanvasSize)
+    }
+  }, [isReady, isScannerReady, highlightDocument])
+
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -639,17 +703,35 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     try {
       const video = videoRef.current
       const canvas = canvasRef.current
+      let sourceCanvas: HTMLCanvasElement
 
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('Could not get canvas context')
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      // Try to extract document if scanner is ready
+      if (isScannerReady) {
+        const extractedCanvas = extractDocument(video)
+        if (extractedCanvas) {
+          // Document successfully extracted and cropped
+          sourceCanvas = extractedCanvas
+        } else {
+          // Extraction failed, fall back to regular capture
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          const ctx = canvas.getContext('2d')
+          if (!ctx) throw new Error('Could not get canvas context')
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          sourceCanvas = canvas
+        }
+      } else {
+        // Scanner not ready, use regular capture
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Could not get canvas context')
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        sourceCanvas = canvas
+      }
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
+        sourceCanvas.toBlob(
           (b) => {
             if (b) resolve(b)
             else reject(new Error('Failed to create blob'))
@@ -691,6 +773,18 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+        })}
+      />
+
+      {/* Overlay canvas for document detection visualization */}
+      <canvas
+        ref={overlayCanvasRef}
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
         })}
       />
 
@@ -773,14 +867,131 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
             ×
           </button>
 
+          {/* Debug overlay panel - always shown to help diagnose detection */}
+          <div
+            data-element="scanner-debug-panel"
+            className={css({
+              position: 'absolute',
+              top: 4,
+                left: 4,
+                p: 3,
+                bg: 'rgba(0, 0, 0, 0.8)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: 'lg',
+                color: 'white',
+                fontSize: 'xs',
+                fontFamily: 'monospace',
+                maxWidth: '280px',
+                zIndex: 10,
+              })}
+            >
+              <div className={css({ fontWeight: 'bold', mb: 2, color: 'yellow.400' })}>
+                Document Scanner Debug
+              </div>
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+                <div>
+                  Scanner:{' '}
+                  <span className={css({ color: isScannerReady ? 'green.400' : 'orange.400' })}>
+                    {isScannerLoading ? 'Loading...' : isScannerReady ? 'Ready' : 'Failed'}
+                  </span>
+                </div>
+                <div>
+                  Camera:{' '}
+                  <span className={css({ color: isReady ? 'green.400' : 'orange.400' })}>
+                    {isReady ? 'Ready' : 'Starting...'}
+                  </span>
+                </div>
+                <div>
+                  Document:{' '}
+                  <span
+                    className={css({
+                      color: isDetectionLocked
+                        ? 'green.400'
+                        : isDetectionStable
+                          ? 'green.300'
+                          : documentDetected
+                            ? 'yellow.400'
+                            : 'gray.400',
+                    })}
+                  >
+                    {isDetectionLocked
+                      ? 'LOCKED'
+                      : isDetectionStable
+                        ? 'Stable'
+                        : documentDetected
+                          ? 'Unstable'
+                          : 'Not detected'}
+                  </span>
+                </div>
+                <div>
+                  Quads: {scannerDebugInfo.quadsDetected} detected,{' '}
+                  {scannerDebugInfo.trackedQuads} tracked
+                </div>
+                <div>
+                  Best: {scannerDebugInfo.bestQuadFrameCount} frames,{' '}
+                  {Math.round(scannerDebugInfo.bestQuadStability * 100)}% stable
+                </div>
+                {scannerDebugInfo.loadTimeMs !== null && (
+                  <div>Load time: {scannerDebugInfo.loadTimeMs}ms</div>
+                )}
+                {scannerDebugInfo.lastDetectionMs !== null && (
+                  <div>Detection: {scannerDebugInfo.lastDetectionMs}ms</div>
+                )}
+                {scannerDebugInfo.lastDetectionError && (
+                  <div className={css({ color: 'red.400', wordBreak: 'break-word' })}>
+                    Error: {scannerDebugInfo.lastDetectionError}
+                  </div>
+                )}
+              </div>
+            </div>
+
           <div
             className={css({
               position: 'absolute',
               bottom: 8,
               left: '50%',
               transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 3,
             })}
           >
+            {/* Helper text for detection status */}
+            <div
+              data-element="detection-status"
+              className={css({
+                px: 4,
+                py: 2,
+                bg: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: 'full',
+                color: 'white',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                textAlign: 'center',
+                transition: 'all 0.2s',
+              })}
+            >
+              {isScannerLoading ? (
+                'Loading scanner...'
+              ) : isDetectionLocked ? (
+                <span className={css({ color: 'green.400', fontWeight: 'bold' })}>
+                  ✓ Hold steady - Ready to capture!
+                </span>
+              ) : isDetectionStable ? (
+                <span className={css({ color: 'green.300' })}>
+                  Document detected - Hold steady...
+                </span>
+              ) : documentDetected ? (
+                <span className={css({ color: 'yellow.400' })}>
+                  Detecting... hold camera steady
+                </span>
+              ) : (
+                'Point camera at document'
+              )}
+            </div>
+
             <button
               type="button"
               onClick={capturePhoto}
@@ -794,9 +1005,17 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                boxShadow: isDetectionLocked
+                  ? '0 4px 30px rgba(0, 255, 100, 0.5)'
+                  : '0 4px 20px rgba(0, 0, 0, 0.3)',
                 border: '4px solid',
-                borderColor: 'gray.300',
+                borderColor: isDetectionLocked
+                  ? 'green.400'
+                  : isDetectionStable
+                    ? 'green.300'
+                    : documentDetected
+                      ? 'yellow.400'
+                      : 'gray.300',
                 transition: 'all 0.15s',
                 _hover: { transform: 'scale(1.05)' },
                 _active: { transform: 'scale(0.95)' },
@@ -813,7 +1032,13 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
                     bg: 'white',
                     borderRadius: 'full',
                     border: '2px solid',
-                    borderColor: 'gray.400',
+                    borderColor: isDetectionLocked
+                      ? 'green.400'
+                      : isDetectionStable
+                        ? 'green.300'
+                        : documentDetected
+                          ? 'yellow.400'
+                          : 'gray.400',
                   })}
                 />
               )}

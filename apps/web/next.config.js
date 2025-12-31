@@ -25,6 +25,12 @@ const nextConfig = {
       layers: true,
     }
 
+    // Exclude native Node.js modules from client bundle
+    // canvas is a jscanify dependency only needed for Node.js, not browser
+    if (!isServer) {
+      config.externals = [...(config.externals || []), 'canvas']
+    }
+
     // Optimize WASM loading
     if (!isServer) {
       // Enable dynamic imports for better code splitting

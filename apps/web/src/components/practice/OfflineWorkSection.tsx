@@ -24,8 +24,6 @@ export interface OfflineWorkSectionProps {
   dragOver: boolean
   /** Dark mode */
   isDark: boolean
-  /** Optional scrollspy section ID for navigation */
-  scrollspySection?: string
   /** Handlers */
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   onDrop: (e: React.DragEvent) => void
@@ -37,15 +35,13 @@ export interface OfflineWorkSectionProps {
 }
 
 /**
- * OfflineWorkSection - Photos of offline practice work + Coming Soon placeholder
+ * OfflineWorkSection - Unified gallery for offline practice photos
  *
- * Features:
- * - Photo grid with 150px thumbnails
- * - Click-to-expand in lightbox
- * - Delete button on hover
- * - File upload via button or drag-and-drop
- * - Camera capture button
- * - "Coming Soon" placeholder for AI analysis
+ * Design principles:
+ * - Single unified card (not two separate panes)
+ * - Gallery-first: add buttons ARE gallery tiles
+ * - Accommodates 1-8 scans gracefully
+ * - Coming Soon is a subtle footer, not a separate box
  */
 export function OfflineWorkSection({
   attachments,
@@ -55,7 +51,6 @@ export function OfflineWorkSection({
   deletingId,
   dragOver,
   isDark,
-  scrollspySection,
   onFileSelect,
   onDrop,
   onDragOver,
@@ -64,299 +59,346 @@ export function OfflineWorkSection({
   onOpenLightbox,
   onDeletePhoto,
 }: OfflineWorkSectionProps) {
-  const hasPhotos = attachments.length > 0
+  const photoCount = attachments.length
+  // Show add tile unless we have 8+ photos (max reasonable gallery size)
+  const showAddTile = photoCount < 8
 
   return (
     <div
       data-component="offline-work-section"
-      data-scrollspy-section={scrollspySection}
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
+        padding: '1.25rem',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        borderRadius: '16px',
+        border: '2px solid',
+        borderColor: dragOver ? 'blue.400' : isDark ? 'gray.700' : 'gray.200',
+        borderStyle: dragOver ? 'dashed' : 'solid',
+        transition: 'border-color 0.2s, border-style 0.2s',
       })}
     >
-      {/* Photos Section - Drop Target */}
-      <div
-        data-section="session-photos"
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={onFileSelect}
+        className={css({ display: 'none' })}
+      />
+
+      {/* Header */}
+      <h3
         className={css({
-          padding: '1.5rem',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '16px',
-          border: '2px solid',
-          borderColor: dragOver ? 'blue.400' : isDark ? 'gray.700' : 'gray.200',
-          borderStyle: dragOver ? 'dashed' : 'solid',
-          transition: 'all 0.2s',
+          fontSize: '1rem',
+          fontWeight: 'bold',
+          color: isDark ? 'white' : 'gray.800',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
         })}
       >
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={onFileSelect}
-          className={css({ display: 'none' })}
-        />
-
-        {/* Header with action buttons */}
-        <div
-          className={css({
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1rem',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-          })}
-        >
-          <h3
+        <span>📝</span>
+        Offline Practice
+        {photoCount > 0 && (
+          <span
             className={css({
-              fontSize: '1.125rem',
-              fontWeight: 'bold',
-              color: isDark ? 'white' : 'gray.800',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            })}
-          >
-            <span>📝</span> Offline Practice
-            {hasPhotos && (
-              <span
-                className={css({
-                  fontSize: '0.875rem',
-                  fontWeight: 'normal',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                })}
-              >
-                ({attachments.length})
-              </span>
-            )}
-          </h3>
-
-          {/* Action buttons */}
-          <div className={css({ display: 'flex', gap: '0.5rem' })}>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className={css({
-                px: 3,
-                py: 1.5,
-                bg: isDark ? 'blue.600' : 'blue.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { bg: isDark ? 'blue.500' : 'blue.600' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              {isUploading ? 'Uploading...' : 'Choose Files'}
-            </button>
-            <button
-              type="button"
-              onClick={onOpenCamera}
-              disabled={isUploading}
-              className={css({
-                px: 3,
-                py: 1.5,
-                bg: isDark ? 'green.600' : 'green.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { bg: isDark ? 'green.500' : 'green.600' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              📷 Camera
-            </button>
-          </div>
-        </div>
-
-        {/* Upload error */}
-        {uploadError && (
-          <div
-            className={css({
-              mb: 3,
-              p: 2,
-              bg: 'red.50',
-              border: '1px solid',
-              borderColor: 'red.200',
-              borderRadius: 'md',
-              color: 'red.700',
-              fontSize: 'sm',
-            })}
-          >
-            {uploadError}
-          </div>
-        )}
-
-        {/* Photo grid or empty state */}
-        {hasPhotos ? (
-          <div
-            data-element="photo-grid"
-            className={css({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              gap: '0.75rem',
-            })}
-          >
-            {attachments.map((att, index) => (
-              <div
-                key={att.id}
-                data-element="photo-thumbnail"
-                className={css({
-                  position: 'relative',
-                  aspectRatio: '1',
-                  borderRadius: 'lg',
-                  overflow: 'hidden',
-                  bg: 'gray.100',
-                  cursor: 'pointer',
-                  '&:hover [data-action="delete-photo"]': {
-                    opacity: 1,
-                  },
-                })}
-              >
-                {/* Clickable image */}
-                <button
-                  type="button"
-                  onClick={() => onOpenLightbox(index)}
-                  className={css({
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    padding: 0,
-                    border: 'none',
-                    cursor: 'pointer',
-                  })}
-                  aria-label={`View photo ${index + 1}`}
-                >
-                  {/* biome-ignore lint/a11y/useAltText: decorative thumbnail */}
-                  {/* biome-ignore lint/performance/noImgElement: API-served images */}
-                  <img
-                    src={att.url}
-                    className={css({
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    })}
-                  />
-                </button>
-
-                {/* Delete button overlay */}
-                <button
-                  type="button"
-                  data-action="delete-photo"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeletePhoto(att.id)
-                  }}
-                  disabled={deletingId === att.id}
-                  className={css({
-                    position: 'absolute',
-                    top: '0.5rem',
-                    right: '0.5rem',
-                    width: '28px',
-                    height: '28px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    color: 'white',
-                    borderRadius: 'full',
-                    border: 'none',
-                    cursor: 'pointer',
-                    opacity: 0,
-                    transition: 'opacity 0.2s',
-                    fontSize: '1rem',
-                    _hover: {
-                      backgroundColor: 'red.600',
-                    },
-                    _disabled: {
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                    },
-                  })}
-                  aria-label="Delete photo"
-                >
-                  {deletingId === att.id ? '...' : '×'}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            data-element="empty-photos"
-            className={css({
-              textAlign: 'center',
-              py: 6,
+              fontSize: '0.875rem',
+              fontWeight: 'normal',
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            <div className={css({ fontSize: '3rem', mb: 2 })}>📷</div>
-            <p className={css({ mb: 1 })}>No photos yet</p>
-            <p className={css({ fontSize: 'sm' })}>Upload photos of worksheets or practice work</p>
+            ({photoCount})
+          </span>
+        )}
+      </h3>
+
+      {/* Upload error */}
+      {uploadError && (
+        <div
+          className={css({
+            mb: 3,
+            p: 2,
+            bg: isDark ? 'red.900/50' : 'red.50',
+            border: '1px solid',
+            borderColor: isDark ? 'red.700' : 'red.200',
+            borderRadius: 'md',
+            color: isDark ? 'red.300' : 'red.700',
+            fontSize: 'sm',
+          })}
+        >
+          {uploadError}
+        </div>
+      )}
+
+      {/* Unified Gallery Grid - photos + add tiles together */}
+      <div
+        data-element="photo-gallery"
+        className={css({
+          display: 'grid',
+          gap: '0.75rem',
+          // Responsive columns: 2 on mobile, 3 on tablet, 4 on desktop
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          '@media (min-width: 480px)': {
+            gridTemplateColumns: 'repeat(3, 1fr)',
+          },
+          '@media (min-width: 768px)': {
+            gridTemplateColumns: 'repeat(4, 1fr)',
+          },
+        })}
+      >
+        {/* Existing photos */}
+        {attachments.map((att, index) => (
+          <div
+            key={att.id}
+            data-element="photo-tile"
+            className={css({
+              position: 'relative',
+              aspectRatio: '1',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              bg: isDark ? 'gray.700' : 'gray.100',
+              cursor: 'pointer',
+              boxShadow: 'sm',
+              transition: 'transform 0.15s, box-shadow 0.15s',
+              _hover: {
+                transform: 'scale(1.02)',
+                boxShadow: 'md',
+                '& [data-action="delete-photo"]': {
+                  opacity: 1,
+                },
+              },
+            })}
+          >
+            <button
+              type="button"
+              onClick={() => onOpenLightbox(index)}
+              className={css({
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                padding: 0,
+                border: 'none',
+                cursor: 'pointer',
+                bg: 'transparent',
+              })}
+              aria-label={`View photo ${index + 1}`}
+            >
+              {/* biome-ignore lint/a11y/useAltText: decorative thumbnail */}
+              {/* biome-ignore lint/performance/noImgElement: API-served images */}
+              <img
+                src={att.url}
+                className={css({
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                })}
+              />
+            </button>
+
+            {/* Delete button overlay */}
+            <button
+              type="button"
+              data-action="delete-photo"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeletePhoto(att.id)
+              }}
+              disabled={deletingId === att.id}
+              className={css({
+                position: 'absolute',
+                top: '0.5rem',
+                right: '0.5rem',
+                width: '28px',
+                height: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                borderRadius: 'full',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 0,
+                transition: 'opacity 0.2s, background-color 0.2s',
+                fontSize: '1rem',
+                _hover: {
+                  backgroundColor: 'red.600',
+                },
+                _disabled: {
+                  opacity: 0.5,
+                  cursor: 'not-allowed',
+                },
+              })}
+              aria-label="Delete photo"
+            >
+              {deletingId === att.id ? '...' : '×'}
+            </button>
+
+            {/* Photo number badge */}
+            <div
+              className={css({
+                position: 'absolute',
+                bottom: '0.5rem',
+                left: '0.5rem',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                color: 'white',
+                borderRadius: 'full',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+              })}
+            >
+              {index + 1}
+            </div>
+          </div>
+        ))}
+
+        {/* Add tile - split into two instant-action zones */}
+        {showAddTile && (
+          <div
+            data-element="add-tile"
+            className={css({
+              position: 'relative',
+              aspectRatio: '1',
+              borderRadius: '12px',
+              border: '2px dashed',
+              borderColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? 'gray.750' : 'gray.100',
+              overflow: 'hidden',
+              display: 'flex',
+              opacity: isUploading ? 0.5 : 1,
+              pointerEvents: isUploading ? 'none' : 'auto',
+            })}
+          >
+            {isUploading ? (
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  gap: '0.25rem',
+                })}
+              >
+                <span className={css({ fontSize: '1.5rem' })}>⏳</span>
+                <span
+                  className={css({
+                    fontSize: '0.6875rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                  })}
+                >
+                  Uploading...
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Left half - Upload file */}
+                <button
+                  type="button"
+                  data-action="upload-file"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={css({
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.25rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                    },
+                  })}
+                  aria-label="Upload file"
+                >
+                  <span className={css({ fontSize: '1.25rem' })}>📄</span>
+                  <span
+                    className={css({
+                      fontSize: '0.625rem',
+                      color: isDark ? 'gray.500' : 'gray.500',
+                    })}
+                  >
+                    Upload
+                  </span>
+                </button>
+
+                {/* Divider */}
+                <div
+                  className={css({
+                    width: '1px',
+                    backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                  })}
+                />
+
+                {/* Right half - Take photo */}
+                <button
+                  type="button"
+                  data-action="take-photo"
+                  onClick={onOpenCamera}
+                  className={css({
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.25rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                    },
+                  })}
+                  aria-label="Take photo"
+                >
+                  <span className={css({ fontSize: '1.25rem' })}>📷</span>
+                  <span
+                    className={css({
+                      fontSize: '0.625rem',
+                      color: isDark ? 'gray.500' : 'gray.500',
+                    })}
+                  >
+                    Camera
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Coming Soon - AI Analysis Placeholder */}
+      {/* Coming Soon footer - subtle, integrated */}
       <div
-        data-section="coming-soon"
+        data-element="coming-soon-hint"
         className={css({
-          padding: '1rem',
-          backgroundColor: isDark ? 'gray.800/50' : 'gray.50',
-          borderRadius: '12px',
-          border: '1px solid',
+          marginTop: '1rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: isDark ? 'gray.500' : 'gray.500',
+          fontSize: '0.8125rem',
         })}
       >
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.75rem',
-          })}
-        >
-          <span
-            className={css({
-              fontSize: '1.5rem',
-              lineHeight: 1,
-            })}
-          >
-            🔮
-          </span>
-          <div>
-            <h4
-              className={css({
-                fontSize: '0.875rem',
-                fontWeight: 'bold',
-                color: isDark ? 'gray.300' : 'gray.700',
-                marginBottom: '0.25rem',
-              })}
-            >
-              Coming Soon
-            </h4>
-            <p
-              className={css({
-                fontSize: '0.8125rem',
-                color: isDark ? 'gray.400' : 'gray.600',
-                lineHeight: 1.4,
-              })}
-            >
-              We'll soon analyze your worksheets and automatically track problems completed, just
-              like online practice!
-            </p>
-          </div>
-        </div>
+        <span>🔮</span>
+        <span>Coming soon: Auto-analyze worksheets to track progress</span>
       </div>
     </div>
   )

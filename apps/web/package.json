@@ -79,6 +79,7 @@
     "gray-matter": "^4.0.3",
     "jose": "^6.1.0",
     "js-yaml": "^4.1.0",
+    "jscanify": "^1.4.0",
     "lib0": "^0.2.114",
     "lucide-react": "^0.294.0",
     "make-plural": "^7.4.0",
