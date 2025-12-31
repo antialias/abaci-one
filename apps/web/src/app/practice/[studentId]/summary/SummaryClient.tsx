@@ -1,26 +1,27 @@
 'use client'
 
+import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ContentBannerSlot,
   PracticeSubNav,
   ProjectingBanner,
-  SessionPhotoGallery,
   SessionSummary,
   StartPracticeModal,
 } from '@/components/practice'
-import { api } from '@/lib/queryClient'
-import { useTheme } from '@/contexts/ThemeContext'
+import { Z_INDEX } from '@/constants/zIndex'
 import {
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { api } from '@/lib/queryClient'
 import { css } from '../../../../../styled-system/css'
 
 // Combined height of sticky elements above content area
@@ -75,11 +76,16 @@ export function SummaryClient({
   const isDark = resolvedTheme === 'dark'
 
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
-  const [showPhotoGallery, setShowPhotoGallery] = useState(false)
-  const [galleryUploadMode, setGalleryUploadMode] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Session mode - single source of truth for session planning decisions
   const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+
+  const queryClient = useQueryClient()
 
   // Fetch attachments for this session
   const { data: attachmentsData } = useQuery({
@@ -98,26 +104,88 @@ export function SummaryClient({
 
   const isInProgress = session?.startedAt && !session?.completedAt
 
-  const queryClient = useQueryClient()
+  // Upload photos immediately
+  const uploadPhotos = useCallback(
+    async (files: File[]) => {
+      if (!session?.id || files.length === 0) return
 
-  // Handle opening gallery for viewing photos
-  const handleViewPhotos = useCallback(() => {
-    setGalleryUploadMode(false)
-    setShowPhotoGallery(true)
+      // Filter for images only
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+      if (imageFiles.length === 0) {
+        setUploadError('No valid image files selected')
+        return
+      }
+
+      setIsUploading(true)
+      setUploadError(null)
+
+      try {
+        const formData = new FormData()
+        for (const file of imageFiles) {
+          formData.append('photos', file)
+        }
+
+        const response = await fetch(
+          `/api/curriculum/${studentId}/sessions/${session.id}/attachments`,
+          { method: 'POST', body: formData }
+        )
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to upload photos')
+        }
+
+        // Refresh attachments
+        queryClient.invalidateQueries({
+          queryKey: ['session-attachments', studentId, session.id],
+        })
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Failed to upload photos')
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [studentId, session?.id, queryClient]
+  )
+
+  // Handle file selection
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files ? Array.from(e.target.files) : []
+      uploadPhotos(files)
+      e.target.value = ''
+    },
+    [uploadPhotos]
+  )
+
+  // Handle drag and drop
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setDragOver(false)
+      const files = Array.from(e.dataTransfer.files)
+      uploadPhotos(files)
+    },
+    [uploadPhotos]
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
   }, [])
 
-  // Handle opening gallery for adding photos
-  const handleAddPhotos = useCallback(() => {
-    setGalleryUploadMode(true)
-    setShowPhotoGallery(true)
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false)
   }, [])
 
-  // Refresh attachments query after upload
-  const handlePhotosUploaded = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ['session-attachments', studentId, session?.id],
-    })
-  }, [queryClient, studentId, session?.id])
+  // Handle camera capture
+  const handleCameraCapture = useCallback(
+    (file: File) => {
+      setShowCamera(false)
+      uploadPhotos([file])
+    },
+    [uploadPhotos]
+  )
 
   // Handle practice again - show the start practice modal
   const handlePracticeAgain = useCallback(() => {
@@ -207,24 +275,42 @@ export function SummaryClient({
                   problemHistory={problemHistory}
                 />
 
-                {/* Photos Section */}
+                {/* Photos Section - Drop Target */}
                 <div
                   data-section="session-photos"
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
                   className={css({
                     marginTop: '2rem',
                     padding: '1.5rem',
                     backgroundColor: isDark ? 'gray.800' : 'white',
                     borderRadius: '16px',
-                    border: '1px solid',
-                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    border: '2px solid',
+                    borderColor: dragOver ? 'blue.400' : isDark ? 'gray.700' : 'gray.200',
+                    borderStyle: dragOver ? 'dashed' : 'solid',
+                    transition: 'all 0.2s',
                   })}
                 >
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className={css({ display: 'none' })}
+                  />
+
+                  {/* Header with action buttons */}
                   <div
                     className={css({
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       marginBottom: '1rem',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
                     })}
                   >
                     <h3
@@ -250,25 +336,69 @@ export function SummaryClient({
                         </span>
                       )}
                     </h3>
-                    <button
-                      type="button"
-                      onClick={handleAddPhotos}
-                      className={css({
-                        px: 3,
-                        py: 1.5,
-                        bg: isDark ? 'blue.600' : 'blue.500',
-                        color: 'white',
-                        borderRadius: 'md',
-                        fontSize: 'sm',
-                        fontWeight: 'medium',
-                        cursor: 'pointer',
-                        _hover: { bg: isDark ? 'blue.500' : 'blue.600' },
-                      })}
-                    >
-                      Add Photos
-                    </button>
+
+                    {/* Action buttons */}
+                    <div className={css({ display: 'flex', gap: '0.5rem' })}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className={css({
+                          px: 3,
+                          py: 1.5,
+                          bg: isDark ? 'blue.600' : 'blue.500',
+                          color: 'white',
+                          borderRadius: 'md',
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          cursor: 'pointer',
+                          _hover: { bg: isDark ? 'blue.500' : 'blue.600' },
+                          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                        })}
+                      >
+                        {isUploading ? 'Uploading...' : 'Choose Files'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCamera(true)}
+                        disabled={isUploading}
+                        className={css({
+                          px: 3,
+                          py: 1.5,
+                          bg: isDark ? 'green.600' : 'green.500',
+                          color: 'white',
+                          borderRadius: 'md',
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          cursor: 'pointer',
+                          _hover: { bg: isDark ? 'green.500' : 'green.600' },
+                          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                        })}
+                      >
+                        📷 Camera
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Upload error */}
+                  {uploadError && (
+                    <div
+                      className={css({
+                        mb: 3,
+                        p: 2,
+                        bg: 'red.50',
+                        border: '1px solid',
+                        borderColor: 'red.200',
+                        borderRadius: 'md',
+                        color: 'red.700',
+                        fontSize: 'sm',
+                      })}
+                    >
+                      {uploadError}
+                    </div>
+                  )}
+
+                  {/* Photo grid or empty state */}
                   {hasPhotos ? (
                     <div
                       className={css({
@@ -277,23 +407,14 @@ export function SummaryClient({
                         gap: '0.75rem',
                       })}
                     >
-                      {attachments.slice(0, 6).map((att) => (
-                        <button
+                      {attachments.map((att) => (
+                        <div
                           key={att.id}
-                          type="button"
-                          onClick={handleViewPhotos}
                           className={css({
                             aspectRatio: '1',
                             borderRadius: 'lg',
                             overflow: 'hidden',
                             bg: 'gray.100',
-                            cursor: 'pointer',
-                            border: '2px solid transparent',
-                            transition: 'all 0.15s',
-                            _hover: {
-                              borderColor: 'blue.500',
-                              transform: 'scale(1.02)',
-                            },
                           })}
                         >
                           {/* biome-ignore lint/a11y/useAltText: decorative thumbnail */}
@@ -306,31 +427,8 @@ export function SummaryClient({
                               objectFit: 'cover',
                             })}
                           />
-                        </button>
+                        </div>
                       ))}
-                      {attachments.length > 6 && (
-                        <button
-                          type="button"
-                          onClick={handleViewPhotos}
-                          className={css({
-                            aspectRatio: '1',
-                            borderRadius: 'lg',
-                            bg: isDark ? 'gray.700' : 'gray.200',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 'lg',
-                            fontWeight: 'bold',
-                            color: isDark ? 'gray.300' : 'gray.600',
-                            cursor: 'pointer',
-                            _hover: {
-                              bg: isDark ? 'gray.600' : 'gray.300',
-                            },
-                          })}
-                        >
-                          +{attachments.length - 6}
-                        </button>
-                      )}
                     </div>
                   ) : (
                     <p
@@ -341,7 +439,9 @@ export function SummaryClient({
                         py: 4,
                       })}
                     >
-                      No photos attached. Add photos of student work to keep a visual record.
+                      {dragOver
+                        ? 'Drop photos here to upload'
+                        : 'Drag photos here or use the buttons above'}
                     </p>
                   )}
                 </div>
@@ -403,18 +503,296 @@ export function SummaryClient({
           />
         )}
 
-        {/* Photo Gallery Modal */}
-        {showPhotoGallery && session && (
-          <SessionPhotoGallery
-            playerId={studentId}
-            sessionId={session.id}
-            isOpen={true}
-            onClose={() => setShowPhotoGallery(false)}
-            initialShowUpload={galleryUploadMode}
-            onPhotosUploaded={handlePhotosUploaded}
-          />
-        )}
+        {/* Fullscreen Camera Modal */}
+        <Dialog.Root open={showCamera} onOpenChange={setShowCamera}>
+          <Dialog.Portal>
+            <Dialog.Overlay
+              className={css({
+                position: 'fixed',
+                inset: 0,
+                bg: 'black',
+                zIndex: Z_INDEX.MODAL,
+              })}
+            />
+            <Dialog.Content
+              className={css({
+                position: 'fixed',
+                inset: 0,
+                zIndex: Z_INDEX.MODAL + 1,
+                outline: 'none',
+              })}
+            >
+              <Dialog.Title className={css({ srOnly: true })}>Take Photo</Dialog.Title>
+              <Dialog.Description className={css({ srOnly: true })}>
+                Camera viewfinder. Tap capture to take a photo.
+              </Dialog.Description>
+              <FullscreenCamera
+                onCapture={handleCameraCapture}
+                onClose={() => setShowCamera(false)}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </PageWithNav>
     </SessionModeBannerProvider>
+  )
+}
+
+// =============================================================================
+// Fullscreen Camera Component
+// =============================================================================
+
+interface FullscreenCameraProps {
+  onCapture: (file: File) => void
+  onClose: () => void
+}
+
+function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const [isReady, setIsReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isCapturing, setIsCapturing] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const startCamera = async () => {
+      try {
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+
+        streamRef.current = stream
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+          if (!cancelled) {
+            setIsReady(true)
+          }
+        }
+      } catch (err) {
+        if (cancelled) return
+        console.error('Camera access error:', err)
+        setError('Camera access denied. Please allow camera access and try again.')
+      }
+    }
+
+    startCamera()
+
+    return () => {
+      cancelled = true
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
+
+  const capturePhoto = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    setIsCapturing(true)
+    try {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not get canvas context')
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => {
+            if (b) resolve(b)
+            else reject(new Error('Failed to create blob'))
+          },
+          'image/jpeg',
+          0.9
+        )
+      })
+
+      const file = new File([blob], `photo-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      })
+
+      onCapture(file)
+    } catch (err) {
+      console.error('Capture error:', err)
+      setError('Failed to capture photo. Please try again.')
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
+  return (
+    <div
+      data-component="fullscreen-camera"
+      className={css({
+        position: 'absolute',
+        inset: 0,
+        bg: 'black',
+      })}
+    >
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        })}
+      />
+
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {!isReady && !error && (
+        <div
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'black',
+          })}
+        >
+          <div className={css({ color: 'white', fontSize: 'xl' })}>Starting camera...</div>
+        </div>
+      )}
+
+      {error && (
+        <div
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'black',
+            p: 6,
+          })}
+        >
+          <div className={css({ color: 'red.400', fontSize: 'lg', textAlign: 'center', mb: 4 })}>
+            {error}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={css({
+              px: 6,
+              py: 3,
+              bg: 'white',
+              color: 'black',
+              borderRadius: 'full',
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            })}
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      {!error && (
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className={css({
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              width: '48px',
+              height: '48px',
+              bg: 'rgba(0, 0, 0, 0.5)',
+              color: 'white',
+              borderRadius: 'full',
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+              _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+            })}
+          >
+            ×
+          </button>
+
+          <div
+            className={css({
+              position: 'absolute',
+              bottom: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+            })}
+          >
+            <button
+              type="button"
+              onClick={capturePhoto}
+              disabled={isCapturing || !isReady}
+              className={css({
+                width: '80px',
+                height: '80px',
+                bg: 'white',
+                borderRadius: 'full',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                border: '4px solid',
+                borderColor: 'gray.300',
+                transition: 'all 0.15s',
+                _hover: { transform: 'scale(1.05)' },
+                _active: { transform: 'scale(0.95)' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              {isCapturing ? (
+                <div className={css({ fontSize: 'sm', color: 'gray.600' })}>...</div>
+              ) : (
+                <div
+                  className={css({
+                    width: '64px',
+                    height: '64px',
+                    bg: 'white',
+                    borderRadius: 'full',
+                    border: '2px solid',
+                    borderColor: 'gray.400',
+                  })}
+                />
+              )}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
