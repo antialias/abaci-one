@@ -30,7 +30,8 @@ export interface OfflineWorkSectionProps {
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: (e: React.DragEvent) => void
   onOpenCamera: () => void
-  onOpenLightbox: (index: number) => void
+  /** Open photo viewer/editor at index with specified mode */
+  onOpenViewer: (index: number, mode: 'view' | 'edit') => void
   onDeletePhoto: (id: string) => void
 }
 
@@ -56,7 +57,7 @@ export function OfflineWorkSection({
   onDragOver,
   onDragLeave,
   onOpenCamera,
-  onOpenLightbox,
+  onOpenViewer,
   onDeletePhoto,
 }: OfflineWorkSectionProps) {
   const photoCount = attachments.length
@@ -167,7 +168,7 @@ export function OfflineWorkSection({
               _hover: {
                 transform: 'scale(1.02)',
                 boxShadow: 'md',
-                '& [data-action="delete-photo"]': {
+                '& [data-action="delete-photo"], & [data-action="edit-photo"]': {
                   opacity: 1,
                 },
               },
@@ -175,7 +176,7 @@ export function OfflineWorkSection({
           >
             <button
               type="button"
-              onClick={() => onOpenLightbox(index)}
+              onClick={() => onOpenViewer(index, 'view')}
               className={css({
                 position: 'absolute',
                 inset: 0,
@@ -198,6 +199,40 @@ export function OfflineWorkSection({
                   objectFit: 'cover',
                 })}
               />
+            </button>
+
+            {/* Edit button overlay */}
+            <button
+              type="button"
+              data-action="edit-photo"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenViewer(index, 'edit')
+              }}
+              className={css({
+                position: 'absolute',
+                top: '0.5rem',
+                left: '0.5rem',
+                width: '28px',
+                height: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                borderRadius: 'full',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 0,
+                transition: 'opacity 0.2s, background-color 0.2s',
+                fontSize: '0.875rem',
+                _hover: {
+                  backgroundColor: 'blue.600',
+                },
+              })}
+              aria-label="Edit photo"
+            >
+              ✏️
             </button>
 
             {/* Delete button overlay */}

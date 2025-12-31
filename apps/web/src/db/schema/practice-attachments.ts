@@ -26,9 +26,17 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
     .references(() => sessionPlans.id, { onDelete: 'cascade' }),
 
   // File info
-  filename: text('filename').notNull(), // UUID.ext stored on disk
+  filename: text('filename').notNull(), // UUID.ext stored on disk (cropped version)
+  originalFilename: text('original_filename'), // Original uncropped file (null if no cropping applied)
   mimeType: text('mime_type').notNull(), // image/jpeg, image/png, etc.
-  fileSize: integer('file_size').notNull(), // bytes
+  fileSize: integer('file_size').notNull(), // bytes (of cropped file)
+
+  // Crop corners (JSON array of 4 {x, y} points in original image coordinates)
+  // Used to restore crop position when re-editing
+  corners: text('corners', { mode: 'json' }).$type<Array<{ x: number; y: number }> | null>(),
+
+  // Rotation in degrees (0, 90, 180, or 270) - applied after cropping
+  rotation: integer('rotation').$type<0 | 90 | 180 | 270>().default(0),
 
   // Audit
   uploadedBy: text('uploaded_by')

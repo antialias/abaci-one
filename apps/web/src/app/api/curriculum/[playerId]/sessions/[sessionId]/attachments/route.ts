@@ -8,6 +8,9 @@
  * POST: Adds new photos to an existing session.
  */
 
+// Disable Next.js caching for this route - attachment list changes frequently
+export const dynamic = 'force-dynamic'
+
 import { randomUUID } from 'crypto'
 import { mkdir, writeFile } from 'fs/promises'
 import { NextResponse } from 'next/server'
@@ -26,10 +29,14 @@ interface RouteParams {
 export interface SessionAttachment {
   id: string
   filename: string
+  originalFilename: string | null
   mimeType: string
   fileSize: number
   uploadedAt: string
   url: string
+  originalUrl: string | null
+  corners: Array<{ x: number; y: number }> | null
+  rotation: 0 | 90 | 180 | 270
 }
 
 /**
@@ -63,13 +70,20 @@ export async function GET(_request: Request, { params }: RouteParams) {
       .all()
 
     // Transform to response format with URLs
+    // Include filename as cache-busting param since it changes on re-crop
     const result: SessionAttachment[] = attachments.map((att) => ({
       id: att.id,
       filename: att.filename,
+      originalFilename: att.originalFilename,
       mimeType: att.mimeType,
       fileSize: att.fileSize,
       uploadedAt: att.uploadedAt,
-      url: `/api/curriculum/${playerId}/attachments/${att.id}/file`,
+      url: `/api/curriculum/${playerId}/attachments/${att.id}/file?v=${encodeURIComponent(att.filename)}`,
+      originalUrl: att.originalFilename
+        ? `/api/curriculum/${playerId}/attachments/${att.id}/original?v=${encodeURIComponent(att.originalFilename)}`
+        : null,
+      corners: att.corners ?? null,
+      rotation: (att.rotation ?? 0) as 0 | 90 | 180 | 270,
     }))
 
     return NextResponse.json({ attachments: result })
@@ -110,7 +124,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     const formData = await request.formData()
 
     // Get all photos from form data
+    // - 'photos' are the displayed/cropped versions
+    // - 'originals' are the uncropped originals (optional, same order as photos)
+    // - 'corners' are JSON strings of crop coordinates (optional, same order as photos)
     const photos: File[] = []
+    const originals: (File | null)[] = []
+    const cornersData: (Array<{ x: number; y: number }> | null)[] = []
+
     for (const [key, value] of formData.entries()) {
       if (key === 'photos' && value instanceof File && value.size > 0) {
         // Validate file type
@@ -128,6 +148,52 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
+    // Get originals (if provided)
+    for (const [key, value] of formData.entries()) {
+      if (key === 'originals' && value instanceof File && value.size > 0) {
+        // Validate file type
+        if (!value.type.startsWith('image/')) {
+          return NextResponse.json(
+            { error: `Original file ${value.name} is not an image` },
+            { status: 400 }
+          )
+        }
+        // Validate file size (max 15MB for originals - larger since uncropped)
+        if (value.size > 15 * 1024 * 1024) {
+          return NextResponse.json(
+            { error: `Original file ${value.name} exceeds 15MB limit` },
+            { status: 400 }
+          )
+        }
+        originals.push(value)
+      }
+    }
+
+    // Get corners data (if provided)
+    for (const [key, value] of formData.entries()) {
+      if (key === 'corners' && typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value) as Array<{ x: number; y: number }>
+          cornersData.push(parsed)
+        } catch {
+          cornersData.push(null)
+        }
+      }
+    }
+
+    // Get rotation data (if provided)
+    const rotationData: (0 | 90 | 180 | 270)[] = []
+    for (const [key, value] of formData.entries()) {
+      if (key === 'rotation' && typeof value === 'string') {
+        const parsed = parseInt(value, 10)
+        if (parsed === 0 || parsed === 90 || parsed === 180 || parsed === 270) {
+          rotationData.push(parsed)
+        } else {
+          rotationData.push(0)
+        }
+      }
+    }
+
     if (photos.length === 0) {
       return NextResponse.json({ error: 'At least one photo is required' }, { status: 400 })
     }
@@ -139,14 +205,29 @@ export async function POST(request: Request, { params }: RouteParams) {
     const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
     await mkdir(uploadDir, { recursive: true })
 
-    for (const photo of photos) {
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i]
+      const original = originals[i] || null
+      const corners = cornersData[i] || null
+      const rotation = rotationData[i] || 0
+
       const extension = photo.name.split('.').pop()?.toLowerCase() || 'jpg'
       const filename = `${randomUUID()}.${extension}`
       const filepath = join(uploadDir, filename)
 
-      // Save file
+      // Save cropped/displayed file
       const bytes = await photo.arrayBuffer()
       await writeFile(filepath, Buffer.from(bytes))
+
+      // Save original if provided
+      let originalFilename: string | null = null
+      if (original) {
+        const origExtension = original.name.split('.').pop()?.toLowerCase() || 'jpg'
+        originalFilename = `${randomUUID()}_original.${origExtension}`
+        const originalFilepath = join(uploadDir, originalFilename)
+        const originalBytes = await original.arrayBuffer()
+        await writeFile(originalFilepath, Buffer.from(originalBytes))
+      }
 
       // Create attachment record
       const attachmentId = createId()
@@ -155,18 +236,27 @@ export async function POST(request: Request, { params }: RouteParams) {
         playerId,
         sessionId,
         filename,
+        originalFilename,
         mimeType: photo.type,
         fileSize: photo.size,
         uploadedBy: userId,
+        corners,
+        rotation,
       })
 
       attachments.push({
         id: attachmentId,
         filename,
+        originalFilename,
         mimeType: photo.type,
         fileSize: photo.size,
         uploadedAt: new Date().toISOString(),
-        url: `/api/curriculum/${playerId}/attachments/${attachmentId}/file`,
+        url: `/api/curriculum/${playerId}/attachments/${attachmentId}/file?v=${encodeURIComponent(filename)}`,
+        originalUrl: originalFilename
+          ? `/api/curriculum/${playerId}/attachments/${attachmentId}/original?v=${encodeURIComponent(originalFilename)}`
+          : null,
+        corners,
+        rotation,
       })
     }
 

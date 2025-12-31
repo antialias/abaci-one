@@ -28,6 +28,8 @@ export type { OfflineWorkSectionProps, OfflineAttachment } from './OfflineWorkSe
 export { OfflineWorkSection } from './OfflineWorkSection'
 export type { PhotoLightboxPhoto } from './PhotoLightbox'
 export { PhotoLightbox } from './PhotoLightbox'
+export type { PhotoViewerEditorPhoto } from './PhotoViewerEditor'
+export { PhotoViewerEditor } from './PhotoViewerEditor'
 export { SessionPhotoGallery } from './SessionPhotoGallery'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'

@@ -55,13 +55,7 @@ interface CV {
     borderType: number
   ) => void
   Canny: (src: CVMat, dst: CVMat, t1: number, t2: number) => void
-  dilate: (
-    src: CVMat,
-    dst: CVMat,
-    kernel: CVMat,
-    anchor: CVPoint,
-    iterations: number
-  ) => void
+  dilate: (src: CVMat, dst: CVMat, kernel: CVMat, anchor: CVPoint, iterations: number) => void
   findContours: (
     src: CVMat,
     contours: CVMatVector,
@@ -71,12 +65,7 @@ interface CV {
   ) => void
   contourArea: (contour: CVMat) => number
   arcLength: (contour: CVMat, closed: boolean) => number
-  approxPolyDP: (
-    contour: CVMat,
-    approx: CVMat,
-    epsilon: number,
-    closed: boolean
-  ) => void
+  approxPolyDP: (contour: CVMat, approx: CVMat, epsilon: number, closed: boolean) => void
   getPerspectiveTransform: (src: CVMat, dst: CVMat) => CVMat
   warpPerspective: (
     src: CVMat,
@@ -99,12 +88,7 @@ interface CV {
   getRotationMatrix2D: (center: CVPoint, angle: number, scale: number) => CVMat
   rotate: (src: CVMat, dst: CVMat, rotateCode: number) => void
   countNonZero: (src: CVMat) => number
-  matFromArray: (
-    rows: number,
-    cols: number,
-    type: number,
-    data: number[]
-  ) => CVMat
+  matFromArray: (rows: number, cols: number, type: number, data: number[]) => CVMat
   COLOR_RGBA2GRAY: number
   BORDER_DEFAULT: number
   RETR_LIST: number
@@ -182,6 +166,15 @@ const EXPECTED_ASPECT_RATIOS = [
 /** How close aspect ratio must be to expected (tolerance) */
 const ASPECT_RATIO_TOLERANCE = 0.3
 
+export interface DetectQuadsInImageResult {
+  /** Whether a document quad was detected */
+  detected: boolean
+  /** Corner positions (detected or fallback to full image) */
+  corners: Array<{ x: number; y: number }>
+  /** The source canvas for the image */
+  sourceCanvas: HTMLCanvasElement
+}
+
 export interface UseDocumentDetectionReturn {
   /** Whether OpenCV is still loading */
   isLoading: boolean
@@ -211,15 +204,22 @@ export interface UseDocumentDetectionReturn {
    * Draw detected document edges on overlay canvas
    * Returns true if document was detected, false otherwise
    */
-  highlightDocument: (
-    video: HTMLVideoElement,
-    canvas: HTMLCanvasElement
-  ) => boolean
+  highlightDocument: (video: HTMLVideoElement, canvas: HTMLCanvasElement) => boolean
   /**
    * Extract and deskew the detected document
    * Returns canvas with cropped document, or null if extraction failed
    */
   extractDocument: (video: HTMLVideoElement) => HTMLCanvasElement | null
+  /**
+   * Detect quads in a static image (for file uploads and gallery edits)
+   * Returns detected corners or fallback corners (full image)
+   */
+  detectQuadsInImage: (canvas: HTMLCanvasElement) => DetectQuadsInImageResult
+  /**
+   * Load an image file into a canvas
+   * Returns the canvas, or null if loading failed
+   */
+  loadImageToCanvas: (file: File) => Promise<HTMLCanvasElement | null>
 }
 
 export function useDocumentDetection(): UseDocumentDetectionReturn {
@@ -259,9 +259,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
       try {
         if (typeof window !== 'undefined') {
           if (!isOpenCVReady()) {
-            const existingScript = document.querySelector(
-              'script[src="/opencv.js"]'
-            )
+            const existingScript = document.querySelector('script[src="/opencv.js"]')
 
             if (!existingScript) {
               await new Promise<void>((resolve, reject) => {
@@ -293,8 +291,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
                   checkReady()
                 }
 
-                script.onerror = () =>
-                  reject(new Error('Failed to load OpenCV.js'))
+                script.onerror = () => reject(new Error('Failed to load OpenCV.js'))
                 document.head.appendChild(script)
               })
             } else {
@@ -340,9 +337,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
       } catch (err) {
         if (!mounted) return
         console.error('Failed to load OpenCV:', err)
-        setError(
-          err instanceof Error ? err.message : 'Failed to load OpenCV'
-        )
+        setError(err instanceof Error ? err.message : 'Failed to load OpenCV')
         setIsLoading(false)
       }
     }
@@ -358,31 +353,25 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   // Helper to capture video frame to canvas
-  const captureVideoFrame = useCallback(
-    (video: HTMLVideoElement): HTMLCanvasElement | null => {
-      if (!video.videoWidth || !video.videoHeight) return null
+  const captureVideoFrame = useCallback((video: HTMLVideoElement): HTMLCanvasElement | null => {
+    if (!video.videoWidth || !video.videoHeight) return null
 
-      if (!frameCanvasRef.current) {
-        frameCanvasRef.current = document.createElement('canvas')
-      }
-      const frameCanvas = frameCanvasRef.current
+    if (!frameCanvasRef.current) {
+      frameCanvasRef.current = document.createElement('canvas')
+    }
+    const frameCanvas = frameCanvasRef.current
 
-      if (
-        frameCanvas.width !== video.videoWidth ||
-        frameCanvas.height !== video.videoHeight
-      ) {
-        frameCanvas.width = video.videoWidth
-        frameCanvas.height = video.videoHeight
-      }
+    if (frameCanvas.width !== video.videoWidth || frameCanvas.height !== video.videoHeight) {
+      frameCanvas.width = video.videoWidth
+      frameCanvas.height = video.videoHeight
+    }
 
-      const ctx = frameCanvas.getContext('2d')
-      if (!ctx) return null
+    const ctx = frameCanvas.getContext('2d')
+    if (!ctx) return null
 
-      ctx.drawImage(video, 0, 0)
-      return frameCanvas
-    },
-    []
-  )
+    ctx.drawImage(video, 0, 0)
+    return frameCanvas
+  }, [])
 
   // Calculate distance between two points
   const distance = useCallback(
@@ -394,9 +383,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
 
   // Order corners: top-left, top-right, bottom-right, bottom-left
   const orderCorners = useCallback(
-    (
-      corners: Array<{ x: number; y: number }>
-    ): Array<{ x: number; y: number }> => {
+    (corners: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> => {
       if (corners.length !== 4) return corners
 
       // Find centroid
@@ -441,11 +428,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
 
   // Generate a stable ID for a quad based on its center position
   const getQuadCenterId = useCallback(
-    (
-      corners: Array<{ x: number; y: number }>,
-      frameWidth: number,
-      frameHeight: number
-    ): string => {
+    (corners: Array<{ x: number; y: number }>, frameWidth: number, frameHeight: number): string => {
       const cx = corners.reduce((s, c) => s + c.x, 0) / 4
       const cy = corners.reduce((s, c) => s + c.y, 0) / 4
       // Quantize to grid cells (10x10 grid)
@@ -484,10 +467,8 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         const ys = history.map((h) => h[corner].y)
         const meanX = xs.reduce((a, b) => a + b, 0) / xs.length
         const meanY = ys.reduce((a, b) => a + b, 0) / ys.length
-        const varX =
-          xs.reduce((a, b) => a + (b - meanX) ** 2, 0) / xs.length
-        const varY =
-          ys.reduce((a, b) => a + (b - meanY) ** 2, 0) / ys.length
+        const varX = xs.reduce((a, b) => a + (b - meanX) ** 2, 0) / xs.length
+        const varY = ys.reduce((a, b) => a + (b - meanY) ** 2, 0) / ys.length
         totalVariance += Math.sqrt(varX + varY)
       }
 
@@ -507,9 +488,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
 
       const quads: DetectedQuad[] = []
       const frameArea = frameCanvas.width * frameCanvas.height
-      const frameDiagonal = Math.sqrt(
-        frameCanvas.width ** 2 + frameCanvas.height ** 2
-      )
+      const frameDiagonal = Math.sqrt(frameCanvas.width ** 2 + frameCanvas.height ** 2)
 
       // OpenCV processing
       let src: CVMat | null = null
@@ -529,14 +508,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY)
 
         // Blur to reduce noise
-        cv.GaussianBlur(
-          gray,
-          blurred,
-          new cv.Size(5, 5),
-          0,
-          0,
-          cv.BORDER_DEFAULT
-        )
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT)
 
         // Edge detection
         cv.Canny(blurred, edges, 50, 150)
@@ -549,13 +521,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         // Find contours
         contours = new cv.MatVector()
         hierarchy = new cv.Mat()
-        cv.findContours(
-          edges,
-          contours,
-          hierarchy,
-          cv.RETR_LIST,
-          cv.CHAIN_APPROX_SIMPLE
-        )
+        cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
 
         // Process each contour
         for (let i = 0; i < contours.size(); i++) {
@@ -598,11 +564,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
                 corners: orderedCorners,
                 area,
                 aspectRatio,
-                centerId: getQuadCenterId(
-                  orderedCorners,
-                  frameCanvas.width,
-                  frameCanvas.height
-                ),
+                centerId: getQuadCenterId(orderedCorners, frameCanvas.width, frameCanvas.height),
               })
             }
           }
@@ -646,10 +608,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         let matched = false
 
         for (const [id, tracked] of trackedQuads) {
-          if (
-            !seenIds.has(id) &&
-            quadsMatch(detected.corners, tracked.corners, frameDiagonal)
-          ) {
+          if (!seenIds.has(id) && quadsMatch(detected.corners, tracked.corners, frameDiagonal)) {
             // Update existing tracked quad
             tracked.corners = detected.corners
             tracked.area = detected.area
@@ -660,9 +619,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
             if (tracked.cornerHistory.length > HISTORY_LENGTH) {
               tracked.cornerHistory.shift()
             }
-            tracked.stabilityScore = calculateCornerStability(
-              tracked.cornerHistory
-            )
+            tracked.stabilityScore = calculateCornerStability(tracked.cornerHistory)
             seenIds.add(id)
             matched = true
             break
@@ -702,10 +659,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         if (currentFrame - tracked.lastSeenFrame > 2) continue
 
         // Score: prioritize stability and longevity, then area
-        const score =
-          tracked.frameCount *
-          (0.5 + tracked.stabilityScore) *
-          Math.sqrt(tracked.area)
+        const score = tracked.frameCount * (0.5 + tracked.stabilityScore) * Math.sqrt(tracked.area)
 
         if (score > bestScore) {
           bestScore = score
@@ -787,11 +741,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
         const detectedQuads = findAllQuads(frameCanvas)
 
         // Update tracking and get best quad
-        const bestQuad = updateTrackedQuads(
-          detectedQuads,
-          frameCanvas.width,
-          frameCanvas.height
-        )
+        const bestQuad = updateTrackedQuads(detectedQuads, frameCanvas.width, frameCanvas.height)
 
         const detectionTime = performance.now() - startTime
 
@@ -846,8 +796,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
       } catch (err) {
         setDebugInfo((prev) => ({
           ...prev,
-          lastDetectionError:
-            err instanceof Error ? err.message : 'Unknown error',
+          lastDetectionError: err instanceof Error ? err.message : 'Unknown error',
         }))
         return false
       }
@@ -860,122 +809,117 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
    * Uses edge detection to find dominant text line direction
    * and content density to detect upside-down orientation
    */
-  const analyzeOrientation = useCallback(
-    (canvas: HTMLCanvasElement): 0 | 90 | 180 | 270 => {
-      const cv = cvRef.current
-      if (!cv) return 0
+  const analyzeOrientation = useCallback((canvas: HTMLCanvasElement): 0 | 90 | 180 | 270 => {
+    const cv = cvRef.current
+    if (!cv) return 0
 
-      let src: CVMat | null = null
-      let gray: CVMat | null = null
-      let edges: CVMat | null = null
+    let src: CVMat | null = null
+    let gray: CVMat | null = null
+    let edges: CVMat | null = null
 
-      try {
-        src = cv.imread(canvas)
-        gray = new cv.Mat()
-        edges = new cv.Mat()
+    try {
+      src = cv.imread(canvas)
+      gray = new cv.Mat()
+      edges = new cv.Mat()
 
-        // Convert to grayscale
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY)
+      // Convert to grayscale
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY)
 
-        // Apply Canny edge detection
-        cv.Canny(gray, edges, 50, 150)
+      // Apply Canny edge detection
+      cv.Canny(gray, edges, 50, 150)
 
-        const width = edges.cols
-        const height = edges.rows
+      const width = edges.cols
+      const height = edges.rows
 
-        // Sample horizontal and vertical edge strips to determine orientation
-        // For text documents, horizontal lines (text) should dominate
-        let horizontalEdges = 0
-        let verticalEdges = 0
+      // Sample horizontal and vertical edge strips to determine orientation
+      // For text documents, horizontal lines (text) should dominate
+      let horizontalEdges = 0
+      let verticalEdges = 0
 
-        // Sample middle section of the image (avoid margins)
-        const marginX = Math.floor(width * 0.1)
-        const marginY = Math.floor(height * 0.1)
-        const sampleHeight = height - 2 * marginY
+      // Sample middle section of the image (avoid margins)
+      const marginX = Math.floor(width * 0.1)
+      const marginY = Math.floor(height * 0.1)
+      const sampleHeight = height - 2 * marginY
 
-        // Count edge pixels in horizontal strips vs vertical strips
-        // Use a simple row/column scan approach
-        const edgeData = new Uint8Array(
-          (edges as unknown as { data: ArrayBuffer }).data
-        )
+      // Count edge pixels in horizontal strips vs vertical strips
+      // Use a simple row/column scan approach
+      const edgeData = new Uint8Array((edges as unknown as { data: ArrayBuffer }).data)
 
-        // Count horizontal edge continuity (text lines are horizontal)
-        for (let y = marginY; y < height - marginY; y += 5) {
-          let runLength = 0
-          for (let x = marginX; x < width - marginX; x++) {
-            if (edgeData[y * width + x] > 0) {
-              runLength++
-            } else {
-              if (runLength > 10) horizontalEdges += runLength
-              runLength = 0
-            }
-          }
-          if (runLength > 10) horizontalEdges += runLength
-        }
-
-        // Count vertical edge continuity
-        for (let x = marginX; x < width - marginX; x += 5) {
-          let runLength = 0
-          for (let y = marginY; y < height - marginY; y++) {
-            if (edgeData[y * width + x] > 0) {
-              runLength++
-            } else {
-              if (runLength > 10) verticalEdges += runLength
-              runLength = 0
-            }
-          }
-          if (runLength > 10) verticalEdges += runLength
-        }
-
-        // Determine if we need 90° rotation
-        // If vertical edges significantly dominate, text is probably sideways
-        const ratio = horizontalEdges / (verticalEdges + 1)
-        let rotation: 0 | 90 | 180 | 270 = 0
-
-        if (ratio < 0.5) {
-          // Vertical edges dominate - rotate 90° clockwise
-          rotation = 90
-        } else if (ratio > 2) {
-          // Horizontal edges dominate - correct orientation (or 180°)
-          rotation = 0
-        }
-
-        // Now check if upside down by comparing content density
-        // Top of document usually has more content (headers, titles)
-        const topThird = Math.floor(sampleHeight / 3)
-
-        let topDensity = 0
-        let bottomDensity = 0
-
-        for (let y = marginY; y < marginY + topThird; y++) {
-          for (let x = marginX; x < width - marginX; x += 3) {
-            if (edgeData[y * width + x] > 0) topDensity++
+      // Count horizontal edge continuity (text lines are horizontal)
+      for (let y = marginY; y < height - marginY; y += 5) {
+        let runLength = 0
+        for (let x = marginX; x < width - marginX; x++) {
+          if (edgeData[y * width + x] > 0) {
+            runLength++
+          } else {
+            if (runLength > 10) horizontalEdges += runLength
+            runLength = 0
           }
         }
-
-        for (let y = height - marginY - topThird; y < height - marginY; y++) {
-          for (let x = marginX; x < width - marginX; x += 3) {
-            if (edgeData[y * width + x] > 0) bottomDensity++
-          }
-        }
-
-        // If bottom has significantly more content, probably upside down
-        if (bottomDensity > topDensity * 1.5) {
-          rotation = rotation === 0 ? 180 : rotation === 90 ? 270 : rotation
-        }
-
-        return rotation
-      } catch (err) {
-        console.warn('Orientation analysis failed:', err)
-        return 0
-      } finally {
-        src?.delete()
-        gray?.delete()
-        edges?.delete()
+        if (runLength > 10) horizontalEdges += runLength
       }
-    },
-    []
-  )
+
+      // Count vertical edge continuity
+      for (let x = marginX; x < width - marginX; x += 5) {
+        let runLength = 0
+        for (let y = marginY; y < height - marginY; y++) {
+          if (edgeData[y * width + x] > 0) {
+            runLength++
+          } else {
+            if (runLength > 10) verticalEdges += runLength
+            runLength = 0
+          }
+        }
+        if (runLength > 10) verticalEdges += runLength
+      }
+
+      // Determine if we need 90° rotation
+      // If vertical edges significantly dominate, text is probably sideways
+      const ratio = horizontalEdges / (verticalEdges + 1)
+      let rotation: 0 | 90 | 180 | 270 = 0
+
+      if (ratio < 0.5) {
+        // Vertical edges dominate - rotate 90° clockwise
+        rotation = 90
+      } else if (ratio > 2) {
+        // Horizontal edges dominate - correct orientation (or 180°)
+        rotation = 0
+      }
+
+      // Now check if upside down by comparing content density
+      // Top of document usually has more content (headers, titles)
+      const topThird = Math.floor(sampleHeight / 3)
+
+      let topDensity = 0
+      let bottomDensity = 0
+
+      for (let y = marginY; y < marginY + topThird; y++) {
+        for (let x = marginX; x < width - marginX; x += 3) {
+          if (edgeData[y * width + x] > 0) topDensity++
+        }
+      }
+
+      for (let y = height - marginY - topThird; y < height - marginY; y++) {
+        for (let x = marginX; x < width - marginX; x += 3) {
+          if (edgeData[y * width + x] > 0) bottomDensity++
+        }
+      }
+
+      // If bottom has significantly more content, probably upside down
+      if (bottomDensity > topDensity * 1.5) {
+        rotation = rotation === 0 ? 180 : rotation === 90 ? 270 : rotation
+      }
+
+      return rotation
+    } catch (err) {
+      console.warn('Orientation analysis failed:', err)
+      return 0
+    } finally {
+      src?.delete()
+      gray?.delete()
+      edges?.delete()
+    }
+  }, [])
 
   /**
    * Rotate a canvas by the specified degrees (0, 90, 180, 270)
@@ -1034,8 +978,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
       try {
         // Use stable frame if available, otherwise capture current
         const sourceCanvas =
-          lastStableFrameRef.current &&
-          bestQuad.frameCount >= LOCKED_FRAME_COUNT
+          lastStableFrameRef.current && bestQuad.frameCount >= LOCKED_FRAME_COUNT
             ? lastStableFrameRef.current
             : captureVideoFrame(video)
 
@@ -1128,9 +1071,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
   const bestQuad = bestQuadRef.current
   const isStable = bestQuad ? bestQuad.frameCount >= MIN_FRAMES_FOR_STABLE : false
   const isLocked =
-    bestQuad &&
-    bestQuad.frameCount >= LOCKED_FRAME_COUNT &&
-    bestQuad.stabilityScore > 0.5
+    bestQuad && bestQuad.frameCount >= LOCKED_FRAME_COUNT && bestQuad.stabilityScore > 0.5
 
   // Get current best quad corners
   const getBestQuadCorners = useCallback((): Array<{ x: number; y: number }> | null => {
@@ -1155,6 +1096,90 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     [captureVideoFrame]
   )
 
+  /**
+   * Load an image file into a canvas
+   */
+  const loadImageToCanvas = useCallback(async (file: File): Promise<HTMLCanvasElement | null> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(null)
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        resolve(canvas)
+      }
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        resolve(null)
+      }
+
+      img.src = url
+    })
+  }, [])
+
+  /**
+   * Detect quads in a static image (for file uploads and gallery edits)
+   * Returns detected corners or fallback corners (full image)
+   */
+  const detectQuadsInImage = useCallback(
+    (canvas: HTMLCanvasElement): DetectQuadsInImageResult => {
+      // Fallback corners (full image)
+      const fallbackCorners = [
+        { x: 0, y: 0 },
+        { x: canvas.width, y: 0 },
+        { x: canvas.width, y: canvas.height },
+        { x: 0, y: canvas.height },
+      ]
+
+      if (!cvRef.current) {
+        return {
+          detected: false,
+          corners: fallbackCorners,
+          sourceCanvas: canvas,
+        }
+      }
+
+      try {
+        // Run quad detection on the canvas
+        const detectedQuads = findAllQuads(canvas)
+
+        if (detectedQuads.length > 0) {
+          // Return the best quad (largest area, already sorted)
+          return {
+            detected: true,
+            corners: detectedQuads[0].corners,
+            sourceCanvas: canvas,
+          }
+        }
+
+        // No quads detected - return fallback
+        return {
+          detected: false,
+          corners: fallbackCorners,
+          sourceCanvas: canvas,
+        }
+      } catch (err) {
+        console.warn('Quad detection failed:', err)
+        return {
+          detected: false,
+          corners: fallbackCorners,
+          sourceCanvas: canvas,
+        }
+      }
+    },
+    [findAllQuads]
+  )
+
   return {
     isLoading,
     error,
@@ -1167,6 +1192,8 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     captureSourceFrame,
     highlightDocument,
     extractDocument,
+    detectQuadsInImage,
+    loadImageToCanvas,
   }
 }
 

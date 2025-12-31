@@ -1,10 +1,14 @@
 /**
- * API route for serving practice attachment files
+ * API route for serving original (uncropped) practice attachment files
  *
- * GET /api/curriculum/[playerId]/attachments/[attachmentId]/file
+ * GET /api/curriculum/[playerId]/attachments/[attachmentId]/original
  *
- * Serves the actual image file for a practice attachment.
- * Authorization is checked to ensure only parents and teachers can access.
+ * Serves the original uncropped image file for a practice attachment.
+ * If no original exists (legacy attachments or skipped crop), falls back
+ * to the regular cropped file.
+ *
+ * Used when re-editing photos to start from the full original image
+ * rather than cropping an already-cropped copy.
  */
 
 import { readFile, stat } from 'fs/promises'
@@ -21,7 +25,7 @@ interface RouteParams {
 }
 
 /**
- * GET - Serve attachment file
+ * GET - Serve original attachment file
  */
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
@@ -54,20 +58,43 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
+    // Use original filename if available, otherwise fall back to cropped file
+    const filename = attachment.originalFilename || attachment.filename
+
     // Build file path
-    const filepath = join(
-      process.cwd(),
-      'data',
-      'uploads',
-      'players',
-      playerId,
-      attachment.filename
-    )
+    const filepath = join(process.cwd(), 'data', 'uploads', 'players', playerId, filename)
 
     // Check if file exists
+    let fileStats
     try {
-      await stat(filepath)
+      fileStats = await stat(filepath)
     } catch {
+      // If original file doesn't exist, fall back to cropped file
+      if (attachment.originalFilename) {
+        const fallbackPath = join(
+          process.cwd(),
+          'data',
+          'uploads',
+          'players',
+          playerId,
+          attachment.filename
+        )
+        try {
+          fileStats = await stat(fallbackPath)
+          // Use fallback path
+          const fileBuffer = await readFile(fallbackPath)
+          return new NextResponse(new Uint8Array(fileBuffer), {
+            headers: {
+              'Content-Type': attachment.mimeType,
+              'Content-Length': fileStats.size.toString(),
+              'Cache-Control': 'private, max-age=31536000',
+            },
+          })
+        } catch {
+          console.error(`Attachment file not found: ${fallbackPath}`)
+          return NextResponse.json({ error: 'File not found' }, { status: 404 })
+        }
+      }
       console.error(`Attachment file not found: ${filepath}`)
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
@@ -78,12 +105,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': attachment.mimeType,
-        'Content-Length': attachment.fileSize.toString(),
+        'Content-Length': fileStats.size.toString(),
         'Cache-Control': 'private, max-age=31536000', // Cache for 1 year (files are immutable)
       },
     })
   } catch (error) {
-    console.error('Error serving attachment:', error)
+    console.error('Error serving original attachment:', error)
     return NextResponse.json({ error: 'Failed to serve attachment' }, { status: 500 })
   }
 }

@@ -8,17 +8,29 @@ interface Corner {
   y: number
 }
 
+interface DetectQuadsResult {
+  detected: boolean
+  corners: Array<{ x: number; y: number }>
+  sourceCanvas: HTMLCanvasElement
+}
+
 interface DocumentAdjusterProps {
   /** The original captured image as a canvas */
   sourceCanvas: HTMLCanvasElement
   /** Initial corner positions (in source image coordinates) */
   initialCorners: Corner[]
-  /** Callback when user confirms with final File */
-  onConfirm: (file: File) => void
+  /** Initial rotation in degrees (0, 90, 180, or 270) */
+  initialRotation?: 0 | 90 | 180 | 270
+  /** Callback when user confirms with final File, corners, and rotation */
+  onConfirm: (file: File, corners: Corner[], rotation: 0 | 90 | 180 | 270) => void
   /** Callback when user cancels */
   onCancel: () => void
+  /** Callback when user skips adjustment (uses original as-is) */
+  onSkip?: () => void
   /** OpenCV reference for transformations */
   cv: unknown
+  /** Optional function to re-detect quads in the source image (for autocrop) */
+  detectQuadsInImage?: (canvas: HTMLCanvasElement) => DetectQuadsResult
 }
 
 /**
@@ -30,17 +42,41 @@ interface DocumentAdjusterProps {
 export function DocumentAdjuster({
   sourceCanvas,
   initialCorners,
+  initialRotation = 0,
   onConfirm,
   onCancel,
+  onSkip,
   cv,
+  detectQuadsInImage,
 }: DocumentAdjusterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const previewCanvasRef = useRef<HTMLCanvasElement>(null)
   const [corners, setCorners] = useState<Corner[]>(initialCorners)
-  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0)
+  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(initialRotation)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [displayScale, setDisplayScale] = useState(1)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [autoDetectFailed, setAutoDetectFailed] = useState(false)
+  const [detectedCorners, setDetectedCorners] = useState<Corner[] | null>(null)
+
+  // Check if auto-detect would work on mount and store detected corners
+  useEffect(() => {
+    if (!detectQuadsInImage) return
+    const result = detectQuadsInImage(sourceCanvas)
+    if (result.detected) {
+      setDetectedCorners(result.corners)
+    } else {
+      setAutoDetectFailed(true)
+      setDetectedCorners(null)
+    }
+  }, [detectQuadsInImage, sourceCanvas])
+
+  // Check if current corners match detected corners
+  const cornersMatchDetected = !!(detectedCorners && corners.length === 4 && detectedCorners.length === 4 &&
+    corners.every((c, i) =>
+      Math.abs(c.x - detectedCorners[i].x) < 1 &&
+      Math.abs(c.y - detectedCorners[i].y) < 1
+    ))
 
   // Calculate display scale to fit source image in container
   useEffect(() => {
@@ -94,8 +130,7 @@ export function DocumentAdjuster({
     if (!previewCanvas) return
 
     // Helper to calculate distance
-    const distance = (p1: Corner, p2: Corner) =>
-      Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
+    const distance = (p1: Corner, p2: Corner) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
     try {
       // Calculate output dimensions from corners
@@ -108,17 +143,25 @@ export function DocumentAdjuster({
 
       // Create perspective transform
       const srcPts = cvAny.matFromArray(4, 1, cvAny.CV_32FC2, [
-        corners[0].x, corners[0].y,
-        corners[1].x, corners[1].y,
-        corners[2].x, corners[2].y,
-        corners[3].x, corners[3].y,
+        corners[0].x,
+        corners[0].y,
+        corners[1].x,
+        corners[1].y,
+        corners[2].x,
+        corners[2].y,
+        corners[3].x,
+        corners[3].y,
       ])
 
       const dstPts = cvAny.matFromArray(4, 1, cvAny.CV_32FC2, [
-        0, 0,
-        outputWidth, 0,
-        outputWidth, outputHeight,
-        0, outputHeight,
+        0,
+        0,
+        outputWidth,
+        0,
+        outputWidth,
+        outputHeight,
+        0,
+        outputHeight,
       ])
 
       const M = cvAny.getPerspectiveTransform(srcPts, dstPts)
@@ -218,6 +261,22 @@ export function DocumentAdjuster({
     })
   }, [])
 
+  // Handle autocrop - re-detect document edges and reset corners
+  const handleAutocrop = useCallback(() => {
+    if (!detectQuadsInImage) return
+
+    const result = detectQuadsInImage(sourceCanvas)
+    if (result.detected && result.corners.length === 4) {
+      setCorners(result.corners)
+      // Reset rotation when auto-detecting
+      setRotation(0)
+      setAutoDetectFailed(false)
+    } else {
+      // Detection failed - disable the button
+      setAutoDetectFailed(true)
+    }
+  }, [detectQuadsInImage, sourceCanvas])
+
   // Handle confirm
   const handleConfirm = useCallback(async () => {
     if (!previewCanvasRef.current) return
@@ -242,13 +301,14 @@ export function DocumentAdjuster({
         type: 'image/jpeg',
       })
 
-      onConfirm(file)
+      // Pass file, corners, and rotation to callback
+      onConfirm(file, corners, rotation)
     } catch (err) {
       console.error('Failed to create file:', err)
     } finally {
       setIsProcessing(false)
     }
-  }, [onConfirm, updatePreview])
+  }, [onConfirm, updatePreview, corners, rotation])
 
   const displayWidth = sourceCanvas.width * displayScale
   const displayHeight = sourceCanvas.height * displayScale
@@ -292,27 +352,48 @@ export function DocumentAdjuster({
         >
           ← Back
         </button>
-        <span className={css({ color: 'white', fontWeight: 'bold' })}>
-          Adjust Document
-        </span>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={isProcessing}
-          className={css({
-            px: 4,
-            py: 2,
-            bg: 'green.500',
-            color: 'white',
-            borderRadius: 'md',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            _hover: { bg: 'green.600' },
-            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-          })}
-        >
-          {isProcessing ? 'Processing...' : 'Done ✓'}
-        </button>
+        <span className={css({ color: 'white', fontWeight: 'bold' })}>Adjust Document</span>
+        <div className={css({ display: 'flex', gap: 2 })}>
+          {onSkip && (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={isProcessing}
+              data-action="skip-adjustment"
+              className={css({
+                px: 4,
+                py: 2,
+                bg: 'gray.700',
+                color: 'white',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { bg: 'gray.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              Skip
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isProcessing}
+            data-action="confirm-adjustment"
+            className={css({
+              px: 4,
+              py: 2,
+              bg: 'green.500',
+              color: 'white',
+              borderRadius: 'md',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              _hover: { bg: 'green.600' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {isProcessing ? 'Processing...' : 'Done ✓'}
+          </button>
+        </div>
       </div>
 
       {/* Source image with corner handles */}
@@ -383,18 +464,11 @@ export function DocumentAdjuster({
                 />
               </mask>
             </defs>
-            <rect
-              width="100%"
-              height="100%"
-              fill="rgba(0, 0, 0, 0.5)"
-              mask="url(#quadMask)"
-            />
+            <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.5)" mask="url(#quadMask)" />
 
             {/* Quad border */}
             <polygon
-              points={corners
-                .map((c) => `${c.x * displayScale},${c.y * displayScale}`)
-                .join(' ')}
+              points={corners.map((c) => `${c.x * displayScale},${c.y * displayScale}`).join(' ')}
               fill="none"
               stroke="#22c55e"
               strokeWidth="2"
@@ -481,7 +555,14 @@ export function DocumentAdjuster({
           >
             ↺
           </button>
-          <span className={css({ color: 'gray.400', fontSize: 'sm', minWidth: '60px', textAlign: 'center' })}>
+          <span
+            className={css({
+              color: 'gray.400',
+              fontSize: 'sm',
+              minWidth: '60px',
+              textAlign: 'center',
+            })}
+          >
             {rotation}°
           </span>
           <button
@@ -506,10 +587,49 @@ export function DocumentAdjuster({
           </button>
         </div>
 
+        {/* Autocrop button - only show if detection function is available */}
+        {detectQuadsInImage && (
+          <button
+            type="button"
+            onClick={handleAutocrop}
+            disabled={autoDetectFailed || cornersMatchDetected}
+            data-action="autocrop"
+            className={css({
+              px: 4,
+              py: 2,
+              bg: autoDetectFailed ? 'gray.600' : cornersMatchDetected ? 'green.600' : 'blue.600',
+              color: 'white',
+              borderRadius: 'lg',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: autoDetectFailed || cornersMatchDetected ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              opacity: autoDetectFailed ? 0.6 : 1,
+              _hover: autoDetectFailed || cornersMatchDetected ? {} : { bg: 'blue.500' },
+            })}
+            title={
+              autoDetectFailed
+                ? 'No document edges detected'
+                : cornersMatchDetected
+                  ? 'Document edges are currently applied'
+                  : 'Re-detect document edges automatically'
+            }
+          >
+            <span>{cornersMatchDetected ? '✓' : '🔍'}</span>
+            <span>
+              {autoDetectFailed
+                ? 'No edges found'
+                : cornersMatchDetected
+                  ? 'Edges detected'
+                  : 'Auto-detect edges'}
+            </span>
+          </button>
+        )}
+
         {/* Preview */}
-        <div className={css({ color: 'gray.400', fontSize: 'sm', mt: 2 })}>
-          Preview
-        </div>
+        <div className={css({ color: 'gray.400', fontSize: 'sm', mt: 2 })}>Preview</div>
         <div
           className={css({
             maxWidth: '100%',

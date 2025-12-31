@@ -8,7 +8,8 @@ import {
   AllProblemsSection,
   ContentBannerSlot,
   OfflineWorkSection,
-  PhotoLightbox,
+  PhotoViewerEditor,
+  type PhotoViewerEditorPhoto,
   PracticeSubNav,
   ProblemsToReviewPanel,
   ProjectingBanner,
@@ -102,10 +103,29 @@ export function SummaryClient({
   const [dragOver, setDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [lightboxIndex, setLightboxIndex] = useState(0)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Unified photo viewer/editor state
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerIndex, setViewerIndex] = useState(0)
+  const [viewerMode, setViewerMode] = useState<'view' | 'edit'>('view')
+
+  // File upload adjustment state (for processing files through DocumentAdjuster)
+  const [fileQueue, setFileQueue] = useState<File[]>([])
+  const [uploadAdjustmentState, setUploadAdjustmentState] = useState<{
+    originalFile: File
+    sourceCanvas: HTMLCanvasElement
+    corners: Array<{ x: number; y: number }>
+  } | null>(null)
+
+  // Document detection hook for file uploads and gallery edits
+  const {
+    isReady: isDetectionReady,
+    detectQuadsInImage,
+    loadImageToCanvas,
+    cv: opencvRef,
+  } = useDocumentDetection()
 
   // Session mode - single source of truth for session planning decisions
   const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
@@ -119,7 +139,15 @@ export function SummaryClient({
       if (!session?.id) return { attachments: [] }
       const res = await api(`curriculum/${studentId}/sessions/${session.id}/attachments`)
       if (!res.ok) return { attachments: [] }
-      return res.json() as Promise<{ attachments: Array<{ id: string; url: string }> }>
+      return res.json() as Promise<{
+        attachments: Array<{
+          id: string
+          url: string
+          originalUrl: string | null
+          corners: Array<{ x: number; y: number }> | null
+          rotation: 0 | 90 | 180 | 270
+        }>
+      }>
     },
     enabled: !!session?.id,
   })
@@ -168,25 +196,41 @@ export function SummaryClient({
     return sections
   }, [hasProblems])
 
-  // Upload photos immediately
+  // Upload photos with optional original preservation and corners
   const uploadPhotos = useCallback(
-    async (files: File[]) => {
-      if (!session?.id || files.length === 0) return
-
-      // Filter for images only
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'))
-      if (imageFiles.length === 0) {
-        setUploadError('No valid image files selected')
-        return
-      }
+    async (
+      photos: File[],
+      originals?: File[],
+      cornersData?: Array<Array<{ x: number; y: number }> | null>,
+      rotationData?: Array<0 | 90 | 180 | 270>
+    ) => {
+      if (!session?.id || photos.length === 0) return
 
       setIsUploading(true)
       setUploadError(null)
 
       try {
         const formData = new FormData()
-        for (const file of imageFiles) {
+        for (const file of photos) {
           formData.append('photos', file)
+        }
+        // Add original files if provided (for cropped uploads)
+        if (originals) {
+          for (const file of originals) {
+            formData.append('originals', file)
+          }
+        }
+        // Add corners data if provided (for restoring crop positions later)
+        if (cornersData) {
+          for (const corners of cornersData) {
+            formData.append('corners', corners ? JSON.stringify(corners) : '')
+          }
+        }
+        // Add rotation data if provided
+        if (rotationData) {
+          for (const rotation of rotationData) {
+            formData.append('rotation', rotation.toString())
+          }
         }
 
         const response = await fetch(
@@ -212,26 +256,133 @@ export function SummaryClient({
     [studentId, session?.id, queryClient]
   )
 
-  // Handle file selection
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files ? Array.from(e.target.files) : []
-      uploadPhotos(files)
-      e.target.value = ''
+  // Process next file in queue - load, detect quads, show adjuster
+  const processNextFile = useCallback(async () => {
+    if (fileQueue.length === 0) {
+      setUploadAdjustmentState(null)
+      return
+    }
+
+    const nextFile = fileQueue[0]
+
+    // Load file to canvas
+    const canvas = await loadImageToCanvas(nextFile)
+    if (!canvas) {
+      console.warn('Failed to load image:', nextFile.name)
+      // Skip this file and process next
+      setFileQueue((prev) => prev.slice(1))
+      return
+    }
+
+    // Detect quads (or get fallback corners)
+    const result = detectQuadsInImage(canvas)
+
+    // Show adjustment UI
+    setUploadAdjustmentState({
+      originalFile: nextFile,
+      sourceCanvas: result.sourceCanvas,
+      corners: result.corners,
+    })
+  }, [fileQueue, loadImageToCanvas, detectQuadsInImage])
+
+  // Start processing queue when files are added
+  useEffect(() => {
+    if (fileQueue.length > 0 && !uploadAdjustmentState && isDetectionReady) {
+      processNextFile()
+    }
+  }, [fileQueue, uploadAdjustmentState, isDetectionReady, processNextFile])
+
+  // Handle adjustment confirm - upload cropped + original with corners and rotation, process next
+  const handleUploadAdjustmentConfirm = useCallback(
+    async (croppedFile: File, corners: Array<{ x: number; y: number }>, rotation: 0 | 90 | 180 | 270) => {
+      if (!uploadAdjustmentState) return
+
+      // Upload both cropped and original, with corners and rotation for later re-editing
+      await uploadPhotos([croppedFile], [uploadAdjustmentState.originalFile], [corners], [rotation])
+
+      // Remove from queue and process next
+      setFileQueue((prev) => prev.slice(1))
+      setUploadAdjustmentState(null)
     },
-    [uploadPhotos]
+    [uploadAdjustmentState, uploadPhotos]
   )
 
-  // Handle drag and drop
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setDragOver(false)
-      const files = Array.from(e.dataTransfer.files)
-      uploadPhotos(files)
+  // Handle adjustment skip - upload original only, process next
+  const handleUploadAdjustmentSkip = useCallback(async () => {
+    if (!uploadAdjustmentState) return
+
+    // Upload original only (no crop)
+    await uploadPhotos([uploadAdjustmentState.originalFile])
+
+    // Remove from queue and process next
+    setFileQueue((prev) => prev.slice(1))
+    setUploadAdjustmentState(null)
+  }, [uploadAdjustmentState, uploadPhotos])
+
+  // Handle adjustment cancel - clear queue
+  const handleUploadAdjustmentCancel = useCallback(() => {
+    setFileQueue([])
+    setUploadAdjustmentState(null)
+  }, [])
+
+  // Handle photo edit confirm from PhotoViewerEditor
+  const handlePhotoEditConfirm = useCallback(
+    async (
+      photoId: string,
+      croppedFile: File,
+      corners: Array<{ x: number; y: number }>,
+      rotation: 0 | 90 | 180 | 270
+    ) => {
+      try {
+        setIsUploading(true)
+        const formData = new FormData()
+        formData.append('file', croppedFile)
+        formData.append('corners', JSON.stringify(corners))
+        formData.append('rotation', rotation.toString())
+
+        const response = await fetch(`/api/curriculum/${studentId}/attachments/${photoId}`, {
+          method: 'PATCH',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to update photo')
+        }
+
+        // Refresh attachments
+        queryClient.invalidateQueries({
+          queryKey: ['session-attachments', studentId, session?.id],
+        })
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Failed to update photo')
+      } finally {
+        setIsUploading(false)
+      }
     },
-    [uploadPhotos]
+    [studentId, session?.id, queryClient]
   )
+
+  // Handle file selection - queue files for adjustment
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : []
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+    if (imageFiles.length > 0) {
+      setFileQueue((prev) => [...prev, ...imageFiles])
+    }
+    e.target.value = ''
+  }, [])
+
+  // Handle drag and drop - queue files for adjustment
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+    if (imageFiles.length > 0) {
+      setFileQueue((prev) => [...prev, ...imageFiles])
+    }
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -242,11 +393,16 @@ export function SummaryClient({
     setDragOver(false)
   }, [])
 
-  // Handle camera capture
+  // Handle camera capture - receives cropped file, original file, corners, and rotation
   const handleCameraCapture = useCallback(
-    (file: File) => {
+    (
+      croppedFile: File,
+      originalFile: File,
+      corners: Array<{ x: number; y: number }>,
+      rotation: 0 | 90 | 180 | 270
+    ) => {
       setShowCamera(false)
-      uploadPhotos([file])
+      uploadPhotos([croppedFile], [originalFile], [corners], [rotation])
     },
     [uploadPhotos]
   )
@@ -280,10 +436,11 @@ export function SummaryClient({
     [studentId, session?.id, queryClient]
   )
 
-  // Open lightbox at specific photo
-  const openLightbox = useCallback((index: number) => {
-    setLightboxIndex(index)
-    setLightboxOpen(true)
+  // Open photo viewer at specific photo with optional mode
+  const openViewer = useCallback((index: number, mode: 'view' | 'edit') => {
+    setViewerIndex(index)
+    setViewerMode(mode)
+    setViewerOpen(true)
   }, [])
 
   // Handle practice again - show the start practice modal
@@ -437,7 +594,7 @@ export function SummaryClient({
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onOpenCamera={() => setShowCamera(true)}
-                        onOpenLightbox={openLightbox}
+                        onOpenViewer={openViewer}
                         onDeletePhoto={deletePhoto}
                       />
                       {/* All Problems - complete session listing */}
@@ -523,15 +680,20 @@ export function SummaryClient({
           />
         )}
 
-        {/* Photo Lightbox */}
-        <PhotoLightbox
+        {/* Photo Viewer/Editor */}
+        <PhotoViewerEditor
           photos={attachments.map((att) => ({
             id: att.id,
             url: att.url,
+            originalUrl: att.originalUrl,
+            corners: att.corners,
+            rotation: att.rotation,
           }))}
-          initialIndex={lightboxIndex}
-          isOpen={lightboxOpen}
-          onClose={() => setLightboxOpen(false)}
+          initialIndex={viewerIndex}
+          initialMode={viewerMode}
+          isOpen={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          onEditConfirm={handlePhotoEditConfirm}
         />
 
         {/* Fullscreen Camera Modal */}
@@ -566,6 +728,47 @@ export function SummaryClient({
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
+
+        {/* File Upload Adjustment Modal */}
+        {uploadAdjustmentState && opencvRef && (
+          <Dialog.Root open={true} onOpenChange={() => handleUploadAdjustmentCancel()}>
+            <Dialog.Portal>
+              <Dialog.Overlay
+                className={css({
+                  position: 'fixed',
+                  inset: 0,
+                  bg: 'black',
+                  zIndex: Z_INDEX.MODAL,
+                })}
+              />
+              <Dialog.Content
+                className={css({
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: Z_INDEX.MODAL + 1,
+                  outline: 'none',
+                })}
+              >
+                <Dialog.Title className={css({ srOnly: true })}>
+                  Adjust Photo {fileQueue.length > 0 ? `(1 of ${fileQueue.length + 1})` : ''}
+                </Dialog.Title>
+                <Dialog.Description className={css({ srOnly: true })}>
+                  Drag corners to crop the document. Tap Done to confirm or Skip to use original.
+                </Dialog.Description>
+                <DocumentAdjuster
+                  sourceCanvas={uploadAdjustmentState.sourceCanvas}
+                  initialCorners={uploadAdjustmentState.corners}
+                  onConfirm={handleUploadAdjustmentConfirm}
+                  onCancel={handleUploadAdjustmentCancel}
+                  onSkip={handleUploadAdjustmentSkip}
+                  cv={opencvRef}
+                  detectQuadsInImage={detectQuadsInImage}
+                />
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        )}
+
       </PageWithNav>
     </SessionModeBannerProvider>
   )
@@ -576,7 +779,13 @@ export function SummaryClient({
 // =============================================================================
 
 interface FullscreenCameraProps {
-  onCapture: (file: File) => void
+  /** Called with cropped file, original file, corners, and rotation for later re-editing */
+  onCapture: (
+    croppedFile: File,
+    originalFile: File,
+    corners: Array<{ x: number; y: number }>,
+    rotation: 0 | 90 | 180 | 270
+  ) => void
   onClose: () => void
 }
 
@@ -612,6 +821,7 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     captureSourceFrame,
     highlightDocument,
     extractDocument,
+    detectQuadsInImage: detectQuadsInCamera,
   } = useDocumentDetection()
 
   useEffect(() => {
@@ -708,27 +918,35 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
   }, [isReady, isScannerReady, highlightDocument])
 
   // Enter adjustment mode with captured frame and detected corners
+  // Always shows the adjustment UI - uses fallback corners if no quad detected
   const enterAdjustmentMode = useCallback(() => {
     if (!videoRef.current) return
 
     const video = videoRef.current
     const sourceCanvas = captureSourceFrame(video)
-    const corners = getBestQuadCorners()
+    const detectedCorners = getBestQuadCorners()
 
-    if (sourceCanvas && corners) {
-      // Stop detection loop while adjusting
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
-      }
-      setAdjustmentMode({ sourceCanvas, corners })
-    } else {
-      // No document detected, do quick capture without adjustment
-      captureWithoutAdjustment()
+    if (!sourceCanvas) return
+
+    // Stop detection loop while adjusting
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
     }
+
+    // Use detected corners if available, otherwise use full image bounds as fallback
+    // This allows user to manually define crop area even when detection fails
+    const corners = detectedCorners || [
+      { x: 0, y: 0 },
+      { x: sourceCanvas.width, y: 0 },
+      { x: sourceCanvas.width, y: sourceCanvas.height },
+      { x: 0, y: sourceCanvas.height },
+    ]
+
+    setAdjustmentMode({ sourceCanvas, corners })
   }, [captureSourceFrame, getBestQuadCorners])
 
-  // Quick capture without adjustment (fallback)
+  // Quick capture without adjustment (fallback when no document detected)
   const captureWithoutAdjustment = async () => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -737,31 +955,15 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
       const video = videoRef.current
       const canvas = canvasRef.current
 
-      // Try to extract document if scanner is ready
-      let sourceCanvas: HTMLCanvasElement
-      if (isScannerReady) {
-        const extractedCanvas = extractDocument(video)
-        if (extractedCanvas) {
-          sourceCanvas = extractedCanvas
-        } else {
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
-          const ctx = canvas.getContext('2d')
-          if (!ctx) throw new Error('Could not get canvas context')
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          sourceCanvas = canvas
-        }
-      } else {
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext('2d')
-        if (!ctx) throw new Error('Could not get canvas context')
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        sourceCanvas = canvas
-      }
+      // Capture full frame (no document extraction)
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not get canvas context')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        sourceCanvas.toBlob(
+        canvas.toBlob(
           (b) => {
             if (b) resolve(b)
             else reject(new Error('Failed to create blob'))
@@ -775,7 +977,16 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
         type: 'image/jpeg',
       })
 
-      onCapture(file)
+      // No cropping applied, so cropped = original = same file
+      // Corners are full image bounds (can be used for later cropping if desired)
+      const fullImageCorners = [
+        { x: 0, y: 0 },
+        { x: canvas.width, y: 0 },
+        { x: canvas.width, y: canvas.height },
+        { x: 0, y: canvas.height },
+      ]
+
+      onCapture(file, file, fullImageCorners, 0)
     } catch (err) {
       console.error('Capture error:', err)
       setError('Failed to capture photo. Please try again.')
@@ -815,13 +1026,30 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
     }
   }, [isDetectionLocked, isReady, isScannerReady, isCapturing, adjustmentMode, enterAdjustmentMode])
 
-  // Handle adjustment confirm
+  // Handle adjustment confirm - pass cropped file, original file, corners, and rotation for later re-editing
   const handleAdjustmentConfirm = useCallback(
-    (file: File) => {
+    async (croppedFile: File, corners: Array<{ x: number; y: number }>, rotation: 0 | 90 | 180 | 270) => {
+      if (!adjustmentMode) return
+
+      // Convert source canvas to file for original preservation
+      const originalBlob = await new Promise<Blob>((resolve, reject) => {
+        adjustmentMode.sourceCanvas.toBlob(
+          (b) => {
+            if (b) resolve(b)
+            else reject(new Error('Failed to create original blob'))
+          },
+          'image/jpeg',
+          0.95
+        )
+      })
+      const originalFile = new File([originalBlob], `original-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      })
+
       setAdjustmentMode(null)
-      onCapture(file)
+      onCapture(croppedFile, originalFile, corners, rotation)
     },
-    [onCapture]
+    [onCapture, adjustmentMode]
   )
 
   // Handle adjustment cancel - return to camera
@@ -854,6 +1082,7 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
         onConfirm={handleAdjustmentConfirm}
         onCancel={handleAdjustmentCancel}
         cv={opencvRef}
+        detectQuadsInImage={detectQuadsInCamera}
       />
     )
   }
@@ -977,77 +1206,77 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
             className={css({
               position: 'absolute',
               top: 4,
-                left: 4,
-                p: 3,
-                bg: 'rgba(0, 0, 0, 0.8)',
-                backdropFilter: 'blur(4px)',
-                borderRadius: 'lg',
-                color: 'white',
-                fontSize: 'xs',
-                fontFamily: 'monospace',
-                maxWidth: '280px',
-                zIndex: 10,
-              })}
-            >
-              <div className={css({ fontWeight: 'bold', mb: 2, color: 'yellow.400' })}>
-                Document Scanner Debug
-              </div>
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
-                <div>
-                  Scanner:{' '}
-                  <span className={css({ color: isScannerReady ? 'green.400' : 'orange.400' })}>
-                    {isScannerLoading ? 'Loading...' : isScannerReady ? 'Ready' : 'Failed'}
-                  </span>
-                </div>
-                <div>
-                  Camera:{' '}
-                  <span className={css({ color: isReady ? 'green.400' : 'orange.400' })}>
-                    {isReady ? 'Ready' : 'Starting...'}
-                  </span>
-                </div>
-                <div>
-                  Document:{' '}
-                  <span
-                    className={css({
-                      color: isDetectionLocked
-                        ? 'green.400'
-                        : isDetectionStable
-                          ? 'green.300'
-                          : documentDetected
-                            ? 'yellow.400'
-                            : 'gray.400',
-                    })}
-                  >
-                    {isDetectionLocked
-                      ? 'LOCKED'
-                      : isDetectionStable
-                        ? 'Stable'
-                        : documentDetected
-                          ? 'Unstable'
-                          : 'Not detected'}
-                  </span>
-                </div>
-                <div>
-                  Quads: {scannerDebugInfo.quadsDetected} detected,{' '}
-                  {scannerDebugInfo.trackedQuads} tracked
-                </div>
-                <div>
-                  Best: {scannerDebugInfo.bestQuadFrameCount} frames,{' '}
-                  {Math.round(scannerDebugInfo.bestQuadStability * 100)}% stable
-                </div>
-                {scannerDebugInfo.loadTimeMs !== null && (
-                  <div>Load time: {scannerDebugInfo.loadTimeMs}ms</div>
-                )}
-                {scannerDebugInfo.lastDetectionMs !== null && (
-                  <div>Detection: {scannerDebugInfo.lastDetectionMs}ms</div>
-                )}
-                {scannerDebugInfo.lastDetectionError && (
-                  <div className={css({ color: 'red.400', wordBreak: 'break-word' })}>
-                    Error: {scannerDebugInfo.lastDetectionError}
-                  </div>
-                )}
-              </div>
+              left: 4,
+              p: 3,
+              bg: 'rgba(0, 0, 0, 0.8)',
+              backdropFilter: 'blur(4px)',
+              borderRadius: 'lg',
+              color: 'white',
+              fontSize: 'xs',
+              fontFamily: 'monospace',
+              maxWidth: '280px',
+              zIndex: 10,
+            })}
+          >
+            <div className={css({ fontWeight: 'bold', mb: 2, color: 'yellow.400' })}>
+              Document Scanner Debug
             </div>
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div>
+                Scanner:{' '}
+                <span className={css({ color: isScannerReady ? 'green.400' : 'orange.400' })}>
+                  {isScannerLoading ? 'Loading...' : isScannerReady ? 'Ready' : 'Failed'}
+                </span>
+              </div>
+              <div>
+                Camera:{' '}
+                <span className={css({ color: isReady ? 'green.400' : 'orange.400' })}>
+                  {isReady ? 'Ready' : 'Starting...'}
+                </span>
+              </div>
+              <div>
+                Document:{' '}
+                <span
+                  className={css({
+                    color: isDetectionLocked
+                      ? 'green.400'
+                      : isDetectionStable
+                        ? 'green.300'
+                        : documentDetected
+                          ? 'yellow.400'
+                          : 'gray.400',
+                  })}
+                >
+                  {isDetectionLocked
+                    ? 'LOCKED'
+                    : isDetectionStable
+                      ? 'Stable'
+                      : documentDetected
+                        ? 'Unstable'
+                        : 'Not detected'}
+                </span>
+              </div>
+              <div>
+                Quads: {scannerDebugInfo.quadsDetected} detected, {scannerDebugInfo.trackedQuads}{' '}
+                tracked
+              </div>
+              <div>
+                Best: {scannerDebugInfo.bestQuadFrameCount} frames,{' '}
+                {Math.round(scannerDebugInfo.bestQuadStability * 100)}% stable
+              </div>
+              {scannerDebugInfo.loadTimeMs !== null && (
+                <div>Load time: {scannerDebugInfo.loadTimeMs}ms</div>
+              )}
+              {scannerDebugInfo.lastDetectionMs !== null && (
+                <div>Detection: {scannerDebugInfo.lastDetectionMs}ms</div>
+              )}
+              {scannerDebugInfo.lastDetectionError && (
+                <div className={css({ color: 'red.400', wordBreak: 'break-word' })}>
+                  Error: {scannerDebugInfo.lastDetectionError}
+                </div>
+              )}
+            </div>
+          </div>
 
           <div
             className={css({

@@ -171,11 +171,7 @@ export function ScrollspyNav({ sections, topOffset = 200, isDark }: ScrollspyNav
                   width: '4px',
                   height: '4px',
                   borderRadius: 'full',
-                  backgroundColor: isActive
-                    ? isDark
-                      ? 'blue.400'
-                      : 'blue.600'
-                    : 'transparent',
+                  backgroundColor: isActive ? (isDark ? 'blue.400' : 'blue.600') : 'transparent',
                   transition: 'background-color 0.2s',
                 })}
               />
