@@ -118,22 +118,32 @@ export default function RemoteCameraPage() {
     }
   }, [isConnected, videoStream, isCameraLoading, requestCamera])
 
-  // Update container dimensions
+  // Update container dimensions - run when isCalibrating changes too
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const updateDimensions = () => {
       const rect = container.getBoundingClientRect()
-      setContainerDimensions({ width: rect.width, height: rect.height })
+      if (rect.width > 0 && rect.height > 0) {
+        setContainerDimensions({ width: rect.width, height: rect.height })
+      }
     }
 
+    // Initial update
     updateDimensions()
+
+    // Also update after a short delay to handle layout settling
+    const timeoutId = setTimeout(updateDimensions, 100)
+
     const resizeObserver = new ResizeObserver(updateDimensions)
     resizeObserver.observe(container)
 
-    return () => resizeObserver.disconnect()
-  }, [])
+    return () => {
+      clearTimeout(timeoutId)
+      resizeObserver.disconnect()
+    }
+  }, [isCalibrating]) // Re-run when calibration starts to ensure dimensions are fresh
 
   // Auto-detect markers
   useEffect(() => {
@@ -351,7 +361,9 @@ export default function RemoteCameraPage() {
           {/* Manual calibration overlay */}
           {isCalibrating &&
             videoDimensions.width > 0 &&
-            containerDimensions.width > 0 && (
+            videoDimensions.height > 0 &&
+            containerDimensions.width > 0 &&
+            containerDimensions.height > 0 && (
               <CalibrationOverlay
                 columnCount={13}
                 videoWidth={videoDimensions.width}
