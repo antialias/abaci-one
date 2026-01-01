@@ -19,6 +19,11 @@ import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 import { canPerformAction, isParentOf } from './lib/classroom'
 import { incrementShareViewCount, validateSessionShare } from './lib/session-share'
+import {
+  getRemoteCameraSession,
+  markPhoneConnected,
+  markPhoneDisconnected,
+} from './lib/remote-camera/session-manager'
 
 // Yjs server-side imports
 import * as Y from 'yjs'
@@ -1073,7 +1078,130 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Remote Camera: Phone joins a remote camera session
+    socket.on('remote-camera:join', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        const session = getRemoteCameraSession(sessionId)
+        if (!session) {
+          socket.emit('remote-camera:error', { error: 'Invalid or expired session' })
+          return
+        }
+
+        // Mark phone as connected
+        markPhoneConnected(sessionId)
+
+        // Join the session room
+        await socket.join(`remote-camera:${sessionId}`)
+
+        // Store session ID on socket for cleanup on disconnect
+        socket.data.remoteCameraSessionId = sessionId
+
+        console.log(`📱 Phone connected to remote camera session: ${sessionId}`)
+
+        // Notify desktop that phone is connected
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:connected', {
+          phoneConnected: true,
+        })
+      } catch (error) {
+        console.error('Error joining remote camera session:', error)
+        socket.emit('remote-camera:error', { error: 'Failed to join session' })
+      }
+    })
+
+    // Remote Camera: Desktop subscribes to receive frames
+    socket.on('remote-camera:subscribe', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        const session = getRemoteCameraSession(sessionId)
+        if (!session) {
+          socket.emit('remote-camera:error', { error: 'Invalid or expired session' })
+          return
+        }
+
+        await socket.join(`remote-camera:${sessionId}`)
+        console.log(`🖥️ Desktop subscribed to remote camera session: ${sessionId}`)
+
+        // Send current connection status
+        socket.emit('remote-camera:status', {
+          phoneConnected: session.phoneConnected,
+        })
+      } catch (error) {
+        console.error('Error subscribing to remote camera session:', error)
+        socket.emit('remote-camera:error', { error: 'Failed to subscribe' })
+      }
+    })
+
+    // Remote Camera: Phone sends cropped frame to desktop
+    socket.on(
+      'remote-camera:frame',
+      ({
+        sessionId,
+        imageData,
+        timestamp,
+      }: {
+        sessionId: string
+        imageData: string // Base64 JPEG
+        timestamp: number
+      }) => {
+        // Forward frame to desktop (all other sockets in the room)
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:frame', {
+          imageData,
+          timestamp,
+        })
+      }
+    )
+
+    // Remote Camera: Phone sends calibration data to desktop
+    socket.on(
+      'remote-camera:calibration',
+      ({
+        sessionId,
+        corners,
+        columnCount,
+      }: {
+        sessionId: string
+        corners: { topLeft: { x: number; y: number }; topRight: { x: number; y: number }; bottomRight: { x: number; y: number }; bottomLeft: { x: number; y: number } }
+        columnCount: number
+      }) => {
+        // Forward calibration data to desktop
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:calibration', {
+          corners,
+          columnCount,
+        })
+      }
+    )
+
+    // Remote Camera: Leave session
+    socket.on('remote-camera:leave', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.leave(`remote-camera:${sessionId}`)
+
+        // If this was the phone, mark as disconnected
+        if (socket.data.remoteCameraSessionId === sessionId) {
+          markPhoneDisconnected(sessionId)
+          socket.data.remoteCameraSessionId = undefined
+
+          console.log(`📱 Phone left remote camera session: ${sessionId}`)
+
+          // Notify desktop
+          socket.to(`remote-camera:${sessionId}`).emit('remote-camera:disconnected', {
+            phoneConnected: false,
+          })
+        }
+      } catch (error) {
+        console.error('Error leaving remote camera session:', error)
+      }
+    })
+
     socket.on('disconnect', () => {
+      // Handle remote camera cleanup on disconnect
+      const remoteCameraSessionId = socket.data.remoteCameraSessionId as string | undefined
+      if (remoteCameraSessionId) {
+        markPhoneDisconnected(remoteCameraSessionId)
+        io!.to(`remote-camera:${remoteCameraSessionId}`).emit('remote-camera:disconnected', {
+          phoneConnected: false,
+        })
+        console.log(`📱 Phone disconnected from remote camera session: ${remoteCameraSessionId}`)
+      }
       // Don't delete session on disconnect - it persists across devices
     })
   })

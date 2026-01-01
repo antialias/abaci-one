@@ -257,6 +257,43 @@ export function rectifyQuadrilateral(
   }
 }
 
+export interface RectifyToBase64Options extends RectifyOptions {
+  /** JPEG quality (0-1, default 0.8) */
+  jpegQuality?: number
+}
+
+/**
+ * Rectify a quadrilateral region from video to a base64-encoded JPEG
+ *
+ * This is the function to use for remote camera streaming - it returns
+ * a base64 string ready to send over the network.
+ *
+ * @param video - Source video element
+ * @param corners - Quadrilateral corners in video coordinates
+ * @param options - Output size and quality options
+ * @returns Base64-encoded JPEG (without data URL prefix), or null on failure
+ */
+export function rectifyQuadrilateralToBase64(
+  video: HTMLVideoElement,
+  corners: QuadCorners,
+  options: RectifyToBase64Options = {}
+): string | null {
+  const { jpegQuality = 0.8, ...rectifyOptions } = options
+
+  // Create a temporary canvas
+  const canvas = document.createElement('canvas')
+
+  // Use the existing rectifyQuadrilateral function
+  const success = rectifyQuadrilateral(video, corners, canvas, rectifyOptions)
+  if (!success) {
+    return null
+  }
+
+  // Convert to JPEG and return base64 (without data URL prefix)
+  const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality)
+  return dataUrl.split(',')[1]
+}
+
 /**
  * Create a rectified frame processor that continuously updates a canvas
  *
