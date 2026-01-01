@@ -310,8 +310,12 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Vision callbacks
+  // Setup is complete if either:
+  // - Local camera: has camera device AND calibration
+  // - Remote camera: has remote session ID (phone handles calibration)
   const isVisionSetupComplete =
-    visionConfig.cameraDeviceId !== null && visionConfig.calibration !== null
+    (visionConfig.cameraDeviceId !== null && visionConfig.calibration !== null) ||
+    visionConfig.remoteCameraSessionId !== null
 
   const setVisionEnabled = useCallback((enabled: boolean) => {
     setVisionConfig((prev) => {
