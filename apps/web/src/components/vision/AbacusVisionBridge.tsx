@@ -137,13 +137,17 @@ export function AbacusVisionBridge({
       if (source === 'phone') {
         // Stop local camera - session will be created by RemoteCameraQRCode
         vision.disable()
+        // Clear local camera config in parent context
+        onConfigurationChange?.({ cameraDeviceId: null, calibration: null })
       } else {
         // Stop remote session and start local camera
         setRemoteCameraSessionId(null)
         vision.enable()
+        // Clear remote session config in parent context
+        onConfigurationChange?.({ remoteCameraSessionId: null })
       }
     },
-    [vision]
+    [vision, onConfigurationChange]
   )
 
   // Handle session created by QR code component
