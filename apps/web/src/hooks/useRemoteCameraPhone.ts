@@ -326,7 +326,14 @@ export function useRemoteCameraPhone(
   const connect = useCallback(
     (sessionId: string) => {
       const socket = socketRef.current
-      console.log('[RemoteCameraPhone] Connecting to session:', sessionId, 'socket:', !!socket, 'connected:', isSocketConnected)
+      console.log(
+        '[RemoteCameraPhone] Connecting to session:',
+        sessionId,
+        'socket:',
+        !!socket,
+        'connected:',
+        isSocketConnected
+      )
       if (!socket || !isSocketConnected) {
         console.error('[RemoteCameraPhone] Socket not connected!')
         setError('Socket not connected')

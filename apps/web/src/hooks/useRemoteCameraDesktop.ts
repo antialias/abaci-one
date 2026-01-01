@@ -184,7 +184,14 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
 
   const subscribe = useCallback(
     (sessionId: string) => {
-      console.log('[RemoteCameraDesktop] Subscribing to session:', sessionId, 'socket:', !!socket, 'connected:', isConnected)
+      console.log(
+        '[RemoteCameraDesktop] Subscribing to session:',
+        sessionId,
+        'socket:',
+        !!socket,
+        'connected:',
+        isConnected
+      )
       if (!socket || !isConnected) {
         console.error('[RemoteCameraDesktop] Socket not connected!')
         setError('Socket not connected')

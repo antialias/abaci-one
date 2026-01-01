@@ -85,7 +85,6 @@ export function VisionSetupModal() {
             {isVisionSetupComplete && (
               <button
                 type="button"
-                data-action="toggle-vision"
                 onClick={() => {
                   setVisionEnabled(!visionConfig.enabled)
                 }}
@@ -236,7 +235,9 @@ function StatusRow({
   isConfigured: boolean
 }) {
   return (
-    <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}>
+    <div
+      className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}
+    >
       <span className={css({ color: 'gray.400', fontSize: 'sm' })}>{label}</span>
       <span
         className={css({

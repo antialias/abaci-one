@@ -22,7 +22,10 @@ interface VisionIndicatorProps {
  * - If not configured: opens setup modal
  * - If configured: toggles vision on/off
  */
-export function VisionIndicator({ size = 'medium', position = 'bottom-right' }: VisionIndicatorProps) {
+export function VisionIndicator({
+  size = 'medium',
+  position = 'bottom-right',
+}: VisionIndicatorProps) {
   const { visionConfig, isVisionSetupComplete, openVisionSetup } = useMyAbacus()
 
   const handleClick = (e: React.MouseEvent) => {
@@ -65,8 +68,9 @@ export function VisionIndicator({ size = 'medium', position = 'bottom-right' }: 
   return (
     <button
       type="button"
-      data-action="toggle-vision"
-      data-vision-status={!isVisionSetupComplete ? 'not-configured' : visionConfig.enabled ? 'enabled' : 'disabled'}
+      data-vision-status={
+        !isVisionSetupComplete ? 'not-configured' : visionConfig.enabled ? 'enabled' : 'disabled'
+      }
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       title={`${statusLabel} (right-click for settings)`}
@@ -97,8 +101,7 @@ export function VisionIndicator({ size = 'medium', position = 'bottom-right' }: 
     >
       {/* Camera icon */}
       <span style={{ position: 'relative' }}>
-        📷
-        {/* Status dot */}
+        📷{/* Status dot */}
         <span
           data-element="vision-status-dot"
           className={css({

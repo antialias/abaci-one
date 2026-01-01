@@ -66,11 +66,7 @@ export interface UseSessionBroadcastResult {
   /** Send part transition complete event to observers */
   sendPartTransitionComplete: () => void
   /** Send vision frame to observers (when student has vision mode enabled) */
-  sendVisionFrame: (
-    imageData: string,
-    detectedValue: number | null,
-    confidence: number
-  ) => void
+  sendVisionFrame: (imageData: string, detectedValue: number | null, confidence: number) => void
 }
 
 export function useSessionBroadcast(

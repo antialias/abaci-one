@@ -64,7 +64,12 @@ export function ObserverVisionFeed({ frame }: ObserverVisionFeedProps) {
         {/* Detected value */}
         <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
           <span
-            className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'white', fontFamily: 'mono' })}
+            className={css({
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              color: 'white',
+              fontFamily: 'mono',
+            })}
           >
             {frame.detectedValue !== null ? frame.detectedValue : '---'}
           </span>

@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
-import { analyzeColumns, analysesToDigits, digitsToNumber } from '@/lib/vision/beadDetector'
-import { processVideoFrame, processImageFrame } from '@/lib/vision/frameProcessor'
 import {
   cleanupArucoDetector,
   detectMarkers,
@@ -16,6 +14,43 @@ import { useFrameStability } from '@/hooks/useFrameStability'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { css } from '../../../styled-system/css'
 import type { CalibrationGrid } from '@/types/vision'
+
+/**
+ * Feature flag: Enable automatic abacus value detection from video feed.
+ *
+ * When enabled:
+ * - Runs CV-based bead detection on video frames
+ * - Shows detected value overlay
+ * - Calls setDockedValue and onValueDetected with detected values
+ *
+ * When disabled:
+ * - Only shows the video feed (no detection)
+ * - Hides the detection overlay
+ * - Does not interfere with student's manual input
+ *
+ * Set to true when ready to work on improving detection accuracy.
+ */
+const ENABLE_AUTO_DETECTION = false
+
+// Only import detection modules when auto-detection is enabled
+// This ensures the detection code is tree-shaken when disabled
+let analyzeColumns: typeof import('@/lib/vision/beadDetector').analyzeColumns
+let analysesToDigits: typeof import('@/lib/vision/beadDetector').analysesToDigits
+let digitsToNumber: typeof import('@/lib/vision/beadDetector').digitsToNumber
+let processVideoFrame: typeof import('@/lib/vision/frameProcessor').processVideoFrame
+let processImageFrame: typeof import('@/lib/vision/frameProcessor').processImageFrame
+
+if (ENABLE_AUTO_DETECTION) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const beadDetector = require('@/lib/vision/beadDetector')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const frameProcessor = require('@/lib/vision/frameProcessor')
+  analyzeColumns = beadDetector.analyzeColumns
+  analysesToDigits = beadDetector.analysesToDigits
+  digitsToNumber = beadDetector.digitsToNumber
+  processVideoFrame = frameProcessor.processVideoFrame
+  processImageFrame = frameProcessor.processImageFrame
+}
 
 interface DockedVisionFeedProps {
   /** Called when a stable value is detected */
@@ -33,7 +68,8 @@ interface DockedVisionFeedProps {
  * - Shows the video feed with detection overlay
  */
 export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVisionFeedProps) {
-  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration, emitVisionFrame } = useMyAbacus()
+  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration, emitVisionFrame } =
+    useMyAbacus()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const remoteImageRef = useRef<HTMLImageElement>(null)
@@ -51,6 +87,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   const [isArucoReady, setIsArucoReady] = useState(false)
   const [markersFound, setMarkersFound] = useState(0)
 
+  // Stability tracking for detected values (hook must be called unconditionally)
   const stability = useFrameStability()
 
   // Determine camera source (must be before effects that use these)
@@ -152,7 +189,14 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
         markerDetectionFrameRef.current = null
       }
     }
-  }, [visionConfig.enabled, isLocalCamera, videoStream, isArucoReady, columnCount, setVisionCalibration])
+  }, [
+    visionConfig.enabled,
+    isLocalCamera,
+    videoStream,
+    isArucoReady,
+    columnCount,
+    setVisionCalibration,
+  ])
 
   // Remote camera hook
   const {
@@ -234,7 +278,13 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     return () => {
       remoteUnsubscribe()
     }
-  }, [visionConfig.enabled, isRemoteCamera, visionConfig.remoteCameraSessionId, remoteSubscribe, remoteUnsubscribe])
+  }, [
+    visionConfig.enabled,
+    isRemoteCamera,
+    visionConfig.remoteCameraSessionId,
+    remoteSubscribe,
+    remoteUnsubscribe,
+  ])
 
   // Update loading state when remote camera connects
   useEffect(() => {
@@ -243,8 +293,11 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     }
   }, [isRemoteCamera, remoteIsPhoneConnected])
 
-  // Process local camera frames for detection
+  // Process local camera frames for detection (only when enabled)
   const processLocalFrame = useCallback(() => {
+    // Skip detection when feature is disabled
+    if (!ENABLE_AUTO_DETECTION) return
+
     const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
       return
@@ -270,8 +323,11 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     stability.pushFrame(value, minConfidence)
   }, [visionConfig.calibration, stability])
 
-  // Process remote camera frames for detection
+  // Process remote camera frames for detection (only when enabled)
   useEffect(() => {
+    // Skip detection when feature is disabled
+    if (!ENABLE_AUTO_DETECTION) return
+
     if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
       return
     }
@@ -302,8 +358,11 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     stability.pushFrame(value, minConfidence)
   }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, columnCount, stability])
 
-  // Local camera detection loop
+  // Local camera detection loop (only when enabled)
   useEffect(() => {
+    // Skip detection loop when feature is disabled
+    if (!ENABLE_AUTO_DETECTION) return
+
     if (!visionConfig.enabled || !isLocalCamera || !videoStream || !visionConfig.calibration) {
       return
     }
@@ -326,17 +385,32 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
         animationFrameRef.current = null
       }
     }
-  }, [visionConfig.enabled, isLocalCamera, videoStream, visionConfig.calibration, processLocalFrame])
+  }, [
+    visionConfig.enabled,
+    isLocalCamera,
+    videoStream,
+    visionConfig.calibration,
+    processLocalFrame,
+  ])
 
-  // Handle stable value changes
+  // Handle stable value changes (only when auto-detection is enabled)
   useEffect(() => {
+    // Skip value updates when feature is disabled
+    if (!ENABLE_AUTO_DETECTION) return
+
     if (stability.stableValue !== null && stability.stableValue !== detectedValue) {
       setDetectedValue(stability.stableValue)
       setConfidence(stability.currentConfidence)
       setDockedValue(stability.stableValue)
       onValueDetected?.(stability.stableValue)
     }
-  }, [stability.stableValue, stability.currentConfidence, detectedValue, setDockedValue, onValueDetected])
+  }, [
+    stability.stableValue,
+    stability.currentConfidence,
+    detectedValue,
+    setDockedValue,
+    onValueDetected,
+  ])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
   const BROADCAST_INTERVAL_MS = 200
@@ -530,53 +604,62 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
         </div>
       )}
 
-      {/* Detection overlay */}
-      <div
-        data-element="detection-overlay"
-        className={css({
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          p: 2,
-          bg: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(4px)',
-        })}
-      >
-        {/* Detected value */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-          <span className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'white', fontFamily: 'mono' })}>
-            {detectedValue !== null ? detectedValue : '---'}
-          </span>
-          {detectedValue !== null && (
-            <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
-              {Math.round(confidence * 100)}%
+      {/* Detection overlay - only shown when auto-detection is enabled */}
+      {ENABLE_AUTO_DETECTION && (
+        <div
+          data-element="detection-overlay"
+          className={css({
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            p: 2,
+            bg: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+          })}
+        >
+          {/* Detected value */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span
+              className={css({
+                fontSize: 'lg',
+                fontWeight: 'bold',
+                color: 'white',
+                fontFamily: 'mono',
+              })}
+            >
+              {detectedValue !== null ? detectedValue : '---'}
             </span>
-          )}
-        </div>
+            {detectedValue !== null && (
+              <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                {Math.round(confidence * 100)}%
+              </span>
+            )}
+          </div>
 
-        {/* Stability indicator */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-          {stability.consecutiveFrames > 0 && (
-            <div className={css({ display: 'flex', gap: 0.5 })}>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={css({
-                    w: '6px',
-                    h: '6px',
-                    borderRadius: 'full',
-                    bg: i < stability.consecutiveFrames ? 'green.500' : 'gray.600',
-                  })}
-                />
-              ))}
-            </div>
-          )}
+          {/* Stability indicator */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
+            {stability.consecutiveFrames > 0 && (
+              <div className={css({ display: 'flex', gap: 0.5 })}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={css({
+                      w: '6px',
+                      h: '6px',
+                      borderRadius: 'full',
+                      bg: i < stability.consecutiveFrames ? 'green.500' : 'gray.600',
+                    })}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Disable button */}
       <button
